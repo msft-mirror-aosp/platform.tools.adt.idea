@@ -28,6 +28,10 @@ public class AndroidSessionManager {
                                                   @NotNull Executor executor,
                                                   @NotNull AndroidRunConfigurationBase configuration) {
     for (ProcessHandler handler : ExecutionManager.getInstance(project).getRunningProcesses()) {
+      if (handler.isProcessTerminated() || handler.isProcessTerminating()) {
+          continue;
+      }
+
       final AndroidSessionInfo info = handler.getUserData(AndroidDebugRunner.ANDROID_SESSION_INFO);
 
       if (info != null &&
