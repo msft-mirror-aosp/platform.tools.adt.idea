@@ -901,7 +901,6 @@ class IntellijLintProject extends Project {
       // TODO: b/22928250
       AndroidGradleModel androidModel = AndroidGradleModel.get(myFacet);
       if (androidModel != null) {
-        androidModel.getSelectedVariant();
         return androidModel.getAndroidProject();
       }
 
