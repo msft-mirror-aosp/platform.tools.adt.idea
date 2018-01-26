@@ -326,7 +326,13 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     List<Common.Process> processes = myProcesses.get(myDevice);
     if (process == null || processes == null || !processes.contains(process)) {
       process = getPreferredProcess(processes);
+    } else {
+      // The user wants to select a different process explicitly.
+      // If the user intentionally selects something else, the profiler should not switch
+      // back to the preferred process in any cases.
+      myPreferredProcessName = null;
     }
+
     if (!Objects.equals(process, myProcess)) {
       if (myDevice != null && myProcess != null &&
           myDevice.getState() == Common.Device.State.ONLINE &&
@@ -345,11 +351,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
           myProcess.getState() == Common.Process.State.ALIVE) {
         // Starts a new session.
         beginSession();
-
-        TimeResponse response =
-          myClient.getProfilerClient().getCurrentTime(TimeRequest.newBuilder().setDeviceId(myDevice.getDeviceId()).build());
-        long sessionRunTime = response.getTimestampNs() - mySessionData.getStartTimestamp();
-        myTimeline.reset(mySessionData.getStartTimestamp(), sessionRunTime);
+        myTimeline.reset(mySessionData.getStartTimestamp());
 
         // Attach agent for advanced profiling if JVMTI is enabled and not yet attached.
         if (myDevice.getFeatureLevel() >= AndroidVersion.VersionCodes.O &&
@@ -430,9 +432,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     if (myPreferredProcessName != null) {
       for (Common.Process process : processes) {
         if (process.getName().equals(myPreferredProcessName) && process.getState() == Common.Process.State.ALIVE) {
-          // Only switch to the preferred process once. If the user intentionally selects something else, the profiler should not switch
-          // back to the preferred process in any cases.
-          myPreferredProcessName = null;
           return process;
         }
       }

@@ -16,6 +16,7 @@
 package com.android.tools.idea.npw.template;
 
 import com.android.builder.model.SourceProvider;
+import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.TooltipLabel;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.npw.FormFactor;
@@ -52,7 +53,6 @@ import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.VerticalFlowLayout;
 import com.intellij.ui.PopupHandler;
 import com.intellij.ui.RecentsManager;
 import com.intellij.ui.components.JBLabel;
@@ -93,13 +93,13 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
 
   private final StringProperty myThumbPath = new StringValueProperty();
 
-  private final StudioWizardStepPanel myStudioPanel;
+  private final JBScrollPane myRoot;
 
   @Nullable private final AndroidFacet myFacet;
 
   /**
    * All parameters are calculated for validity every time any of them changes, and the first error
-   * found is set here. This is then registered as its own validator with {@link #myStudioPanel}.
+   * found is set here. This is then registered as its own validator with {@link #myRoot}.
    * This vastly simplifies validation, as we no longer have to worry about implicit relationships
    * between parameters (where changing one, like the package name, makes another valid/invalid).
    */
@@ -111,7 +111,6 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
   private JPanel myParametersPanel;
   private JSeparator myFooterSeparator;
   private TooltipLabel myParameterDescriptionLabel;
-  private JBScrollPane myParametersScrollPane;
   private JLabel myTemplateDescriptionLabel;
 
   private EvaluationState myEvaluationState = EvaluationState.NOT_EVALUATING;
@@ -132,10 +131,9 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
     myTemplates = templates;
     myPackageName = model.packageName();
     myValidatorPanel = new ValidatorPanel(this, myRootPanel);
-    myStudioPanel = new StudioWizardStepPanel(myValidatorPanel);
+    myRoot = StudioWizardStepPanel.wrappedWithVScroll(myValidatorPanel);
 
     myParameterDescriptionLabel.setScope(myParametersPanel);
-    myParametersScrollPane.setBorder(JBUI.Borders.empty());
 
     // Add an extra blank line under the template description to separate it from the main body
     myTemplateDescriptionLabel.setBorder(JBUI.Borders.emptyBottom(myTemplateDescriptionLabel.getFont().getSize()));
@@ -338,9 +336,9 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
         assert parameter.name != null;
         return new RowEntry<>(parameter.name, new TextFieldProvider(parameter));
       case BOOLEAN:
-        return new RowEntry<>(new CheckboxProvider(parameter));
+        return new RowEntry<>(new CheckboxProvider(parameter), RowEntry.WantGrow.NO);
       case SEPARATOR:
-        return new RowEntry<>(new SeparatorProvider(parameter));
+        return new RowEntry<>(new SeparatorProvider(parameter), RowEntry.WantGrow.YES);
       case ENUM:
         assert parameter.name != null;
         return new RowEntry<>(parameter.name, new EnumComboProvider(parameter));
@@ -502,7 +500,7 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
   @NotNull
   @Override
   protected JComponent getComponent() {
-    return myStudioPanel;
+    return myRoot;
   }
 
   @Nullable
@@ -528,7 +526,7 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
   }
 
   private void createUIComponents() {
-    myParametersPanel = new JPanel(new VerticalFlowLayout(0, 10));
+    myParametersPanel = new JPanel(new TabularLayout("Fit,*").setVGap(10));
   }
 
   private void resetPanel() {
@@ -638,24 +636,28 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
    * header. This class wraps all UI elements in the row, providing methods for managing them.
    */
   private static final class RowEntry<T extends JComponent> {
-    @NotNull private final Component myStrut = Box.createVerticalStrut(8);
-    @Nullable private final JBLabel myHeader;
+    @Nullable private final JPanel myHeader;
     @NotNull private final ComponentProvider<T> myComponentProvider;
     @NotNull private final T myComponent;
     @Nullable private final AbstractProperty<?> myProperty;
+    @NotNull private final WantGrow myWantGrow;
 
     public RowEntry(@NotNull String headerText, @NotNull ComponentProvider<T> componentProvider) {
-      myHeader = new JBLabel(headerText);
-      myHeader.setFont(myHeader.getFont().deriveFont(Font.BOLD));
+      myHeader = new JPanel(new FlowLayout(FlowLayout.LEFT));
+      JBLabel headerLabel = new JBLabel(headerText + ":");
+      myHeader.add(headerLabel);
+      myHeader.add(Box.createHorizontalStrut(20));
+      myWantGrow = WantGrow.NO;
       myComponentProvider = componentProvider;
       myComponent = componentProvider.createComponent();
       myProperty = componentProvider.createProperty(myComponent);
 
-      myHeader.setLabelFor(myComponent);
+      headerLabel.setLabelFor(myComponent);
     }
 
-    public RowEntry(@NotNull ParameterComponentProvider<T> componentProvider) {
+    public RowEntry(@NotNull ParameterComponentProvider<T> componentProvider, @NotNull WantGrow stretch) {
       myHeader = null;
+      myWantGrow = stretch;
       myComponentProvider = componentProvider;
       myComponent = componentProvider.createComponent();
       myProperty = componentProvider.createProperty(myComponent);
@@ -667,15 +669,16 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
     }
 
     public void addToPanel(@NotNull JPanel panel) {
-      if (panel.getComponentCount() != 0) {
-        panel.add(myStrut);
-      }
+      assert panel.getLayout().getClass().equals(TabularLayout.class);
+      int row = panel.getComponentCount();
 
       if (myHeader != null) {
-        panel.add(myHeader);
+        panel.add(myHeader, new TabularLayout.Constraint(row, 0));
+        assert myWantGrow == WantGrow.NO;
       }
 
-      panel.add(myComponent);
+      int colspan = myWantGrow == WantGrow.YES ? 2 : 1;
+      panel.add(myComponent, new TabularLayout.Constraint(row, 1, colspan));
     }
 
     public void setEnabled(boolean enabled) {
@@ -689,7 +692,6 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
       if (myHeader != null) {
         myHeader.setVisible(visible);
       }
-      myStrut.setVisible(visible);
       myComponent.setVisible(visible);
     }
 
@@ -706,6 +708,15 @@ public final class ConfigureTemplateParametersStep extends ModelWizardStep<Rende
 
     public void accept() {
       myComponentProvider.accept(myComponent);
+    }
+
+    /**
+     * A row is usually broken into two columns, but the item can optionally grow into both columns
+     * if it doesn't have a header.
+     */
+    public enum WantGrow {
+      NO,
+      YES,
     }
   }
 

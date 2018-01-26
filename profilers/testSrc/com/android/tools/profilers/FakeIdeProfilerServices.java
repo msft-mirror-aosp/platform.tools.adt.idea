@@ -103,11 +103,26 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private final List<ProfilingConfiguration> myCustomProfilingConfigurations = new ArrayList<>();
 
-  @NotNull private final ProfilerPreferences myPersistentPreferences;
   @NotNull private final ProfilerPreferences myTemporaryPreferences;
 
+  /**
+   * Title of the error balloon displayed when {@link #showErrorBalloon(String, String, String, String)} is called.
+   */
+  private String myErrorBalloonTitle;
+  /**
+   * Body of the error balloon displayed when {@link #showErrorBalloon(String, String, String, String)} is called.
+   */
+  private String myErrorBalloonBody;
+  /**
+   * Url of the error balloon displayed when {@link #showErrorBalloon(String, String, String, String)} is called.
+   */
+  private String myErrorBalloonUrl;
+  /**
+   * Linked text of the error balloon displayed when {@link #showErrorBalloon(String, String, String, String)} is called.
+   */
+  private String myErrorBalloonUrlText;
+
   public FakeIdeProfilerServices() {
-    myPersistentPreferences = new FakeProfilerPreferences();
     myTemporaryPreferences = new FakeProfilerPreferences();
   }
 
@@ -219,12 +234,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
     return myTemporaryPreferences;
   }
 
-  @NotNull
-  @Override
-  public ProfilerPreferences getPersistentProfilerPreferences() {
-    return myPersistentPreferences;
-  }
-
   @Override
   public void openCpuProfilingConfigurationsDialog(CpuProfilerConfigModel model, int deviceLevel,
                                                    Consumer<ProfilingConfiguration> callbackDialog) {
@@ -256,9 +265,39 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
     return myCustomProfilingConfigurations;
   }
 
+  @NotNull
+  @Override
+  public String getApplicationId() {
+    return "some.id";
+  }
+
   @Override
   public boolean isNativeProfilingConfigurationPreferred() {
     return myNativeProfilingConfigurationPreferred;
+  }
+
+  @Override
+  public void showErrorBalloon(@NotNull String title, @NotNull String body, String url, String urlText) {
+    myErrorBalloonTitle = title;
+    myErrorBalloonBody = body;
+    myErrorBalloonUrl = url;
+    myErrorBalloonUrlText = urlText;
+  }
+
+  public String getErrorBalloonTitle() {
+    return myErrorBalloonTitle;
+  }
+
+  public String getErrorBalloonBody() {
+    return myErrorBalloonBody;
+  }
+
+  public String getErrorBalloonUrl() {
+    return myErrorBalloonUrl;
+  }
+
+  public String getErrorBalloonUrlText() {
+    return myErrorBalloonUrlText;
   }
 
   public void setNativeProfilingConfigurationPreferred(boolean nativeProfilingConfigurationPreferred) {

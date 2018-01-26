@@ -431,14 +431,15 @@ public class TemplateManager {
   }
 
   public void refreshDynamicTemplateMenu(@Nullable Project project) {
-    if (myTopGroup == null) {
-      myTopGroup = new DefaultActionGroup("AndroidTemplateGroup", false);
-    } else {
-      myTopGroup.removeAll();
-    }
-    myTopGroup.addSeparator();
-    ActionManager am = ActionManager.getInstance();
     synchronized (CATEGORY_TABLE_LOCK) {
+      if (myTopGroup == null) {
+        myTopGroup = new DefaultActionGroup("AndroidTemplateGroup", false);
+      } else {
+        myTopGroup.removeAll();
+      }
+      myTopGroup.addSeparator();
+      ActionManager am = ActionManager.getInstance();
+
       for (final String category : getCategoryTable(true, project).rowKeySet()) {
         if (EXCLUDED_CATEGORIES.contains(category)) {
           continue;
@@ -463,7 +464,7 @@ public class TemplateManager {
     final Module module = LangDataKeys.MODULE.getData(event.getDataContext());
     final AndroidFacet facet = module != null ? AndroidFacet.getInstance(module) : null;
     Presentation presentation = event.getPresentation();
-    boolean isProjectReady = facet != null && facet.getAndroidModel() != null;
+    boolean isProjectReady = facet != null && facet.getConfiguration().getModel() != null;
     presentation.setText(text + (isProjectReady ? "" : " (Project not ready)"));
     presentation.setVisible(visible && view != null && facet != null && facet.requiresAndroidModel());
     presentation.setEnabled(disableIfNotReady ? isProjectReady : true);
@@ -495,7 +496,7 @@ public class TemplateManager {
           }
 
           AndroidFacet facet = AndroidFacet.getInstance(module);
-          assert facet != null && facet.getAndroidModel() != null;
+          assert facet != null && facet.getConfiguration().getModel() != null;
 
           List<NamedModuleTemplate> moduleTemplates = AndroidPackageUtils.getModuleTemplates(facet, targetDirectory);
           assert (!moduleTemplates.isEmpty());

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
-import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.model.GradleBuildModelImpl;
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslParser;
@@ -194,9 +193,14 @@ public class GroovyDslParser implements GradleDslParser {
       return ensureUnquotedText(literal.getText());
     }
 
+    // Check that we are not resolving into a cycle, if we are just return the unresolved text.
+    if (context.hasCycle()) {
+      return ensureUnquotedText(literal.getText());
+    }
+
     // Otherwise resolve the value and then return the resolved text.
     Collection<GradleReferenceInjection> injections = getInjections(context, literal);
-    return ensureUnquotedText(injectAll(literal, injections));
+    return ensureUnquotedText(GradleReferenceInjection.injectAll(literal, injections));
   }
 
   @Override
@@ -222,36 +226,6 @@ public class GroovyDslParser implements GradleDslParser {
       }
     }
     return injections;
-  }
-
-  /**
-   * Injects all given {@code injections} into a given {@link PsiElement}. These {@link GradleReferenceInjection}s should have been
-   * obtained using {@link GradleDslParser#getInjections(PsiElement)}.
-   */
-  @NotNull
-  private static String injectAll(@NotNull PsiElement psiElement, @NotNull Collection<GradleReferenceInjection> injections) {
-    StringBuilder builder = new StringBuilder();
-    for (PsiElement element : psiElement.getChildren()) {
-      // Reference equality intended
-      Optional<GradleReferenceInjection> filteredInjection =
-        injections.stream().filter(injection -> element == injection.getPsiInjection()).findFirst();
-      if (filteredInjection.isPresent()) {
-        GradleDslExpression expression = filteredInjection.get().getToBeInjectedExpression();
-        if (expression == null) {
-          // If this injection has no expression then we are trying to inject a string or map,
-          // in this case just use the raw text from the PsiElement instead.
-          builder.append(element.getText());
-          continue;
-        }
-
-        Object value = expression.getValue();
-        builder.append(value == null ? "" : value);
-      }
-      else {
-        builder.append(element.getText());
-      }
-    }
-    return builder.toString();
   }
 
   private static boolean parse(@NotNull PsiElement psiElement, @NotNull GradleDslFile gradleDslFile) {
@@ -412,7 +386,7 @@ public class GroovyDslParser implements GradleDslParser {
         propertyElement = getExpressionElement(blockElement, argumentList, propertyName, expressions.get(0));
       }
       else {
-        propertyElement = getExpressionList(blockElement, argumentList, propertyName, expressions);
+        propertyElement = getExpressionList(blockElement, argumentList, propertyName, expressions, false);
       }
     }
     else if (arguments[0] instanceof GrNamedArgument) {
@@ -425,7 +399,7 @@ public class GroovyDslParser implements GradleDslParser {
           namedArguments.add((GrNamedArgument)element);
         }
       }
-      propertyElement = getExpressionMap(blockElement, argumentList, propertyName, namedArguments);
+      propertyElement = getExpressionMap(blockElement, argumentList, propertyName, namedArguments, false);
     }
     if (propertyElement == null) {
       return false;
@@ -453,10 +427,10 @@ public class GroovyDslParser implements GradleDslParser {
     if (expression instanceof GrListOrMap) {
       GrListOrMap listOrMap = (GrListOrMap)expression;
       if (listOrMap.isMap()) { // ex: manifestPlaceholders = [activityLabel1:"defaultName1", activityLabel2:"defaultName2"]
-        propertyElement = getExpressionMap(parent, listOrMap, name, Arrays.asList(listOrMap.getNamedArguments()));
+        propertyElement = getExpressionMap(parent, listOrMap, name, Arrays.asList(listOrMap.getNamedArguments()), true);
       }
       else { // ex: proguardFiles = ['proguard-android.txt', 'proguard-rules.pro']
-        propertyElement = getExpressionList(parent, listOrMap, name, Arrays.asList(listOrMap.getInitializers()));
+        propertyElement = getExpressionList(parent, listOrMap, name, Arrays.asList(listOrMap.getInitializers()), true);
       }
     }
     else {
@@ -538,7 +512,7 @@ public class GroovyDslParser implements GradleDslParser {
     }
 
     if (propertyExpression instanceof GrReferenceExpression) { // ex: compileSdkVersion SDK_VERSION or sourceCompatibility = VERSION_1_5
-      return new GradleDslReference(parentElement, psiElement, propertyName, (GrReferenceExpression)propertyExpression);
+      return new GradleDslReference(parentElement, psiElement, propertyName, propertyExpression);
     }
 
     if (propertyExpression instanceof GrMethodCallExpression) { // ex: compile project("someProject")
@@ -581,14 +555,15 @@ public class GroovyDslParser implements GradleDslParser {
                                                    @NotNull GrMethodCallExpression psiElement,
                                                    @NotNull String propertyName,
                                                    @NotNull GrArgumentList argumentList) {
-    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement, propertyName);
+    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement.getArgumentList(), propertyName);
 
     for (GrExpression expression : argumentList.getExpressionArguments()) {
       if (expression instanceof GrListOrMap) {
         GrListOrMap listOrMap = (GrListOrMap)expression;
         if (listOrMap.isMap()) {
           methodCall
-            .addParsedExpressionMap(getExpressionMap(methodCall, expression, propertyName, Arrays.asList(listOrMap.getNamedArguments())));
+            .addParsedExpressionMap(
+              getExpressionMap(methodCall, expression, propertyName, Arrays.asList(listOrMap.getNamedArguments()), false));
         }
         else {
           for (GrExpression grExpression : listOrMap.getInitializers()) {
@@ -612,7 +587,8 @@ public class GroovyDslParser implements GradleDslParser {
 
     GrNamedArgument[] namedArguments = argumentList.getNamedArguments();
     if (namedArguments.length > 0) {
-      methodCall.addParsedExpressionMap(getExpressionMap(methodCall, argumentList, propertyName, Arrays.asList(namedArguments)));
+      methodCall.addParsedExpressionMap(
+        getExpressionMap(methodCall, argumentList, propertyName, Arrays.asList(namedArguments), false));
     }
 
     return methodCall;
@@ -652,8 +628,9 @@ public class GroovyDslParser implements GradleDslParser {
   private static GradleDslExpressionList getExpressionList(@NotNull GradleDslElement parentElement,
                                                            @NotNull GroovyPsiElement listPsiElement, // GrArgumentList or GrListOrMap
                                                            @NotNull String propertyName,
-                                                           @NotNull List<GrExpression> propertyExpressions) {
-    GradleDslExpressionList expressionList = new GradleDslExpressionList(parentElement, listPsiElement, propertyName);
+                                                           @NotNull List<GrExpression> propertyExpressions,
+                                                           boolean isLiteral) {
+    GradleDslExpressionList expressionList = new GradleDslExpressionList(parentElement, listPsiElement, isLiteral, propertyName);
     for (GrExpression expression : propertyExpressions) {
       GradleDslExpression expressionElement = getExpressionElement(expressionList, listPsiElement, propertyName, expression);
       if (expressionElement != null) {
@@ -667,8 +644,9 @@ public class GroovyDslParser implements GradleDslParser {
   private static GradleDslExpressionMap getExpressionMap(@NotNull GradleDslElement parentElement,
                                                          @NotNull GroovyPsiElement mapPsiElement, // GrArgumentList or GrListOrMap
                                                          @NotNull String propertyName,
-                                                         @NotNull List<GrNamedArgument> namedArguments) {
-    GradleDslExpressionMap expressionMap = new GradleDslExpressionMap(parentElement, mapPsiElement, propertyName);
+                                                         @NotNull List<GrNamedArgument> namedArguments,
+                                                         boolean isLiteralMap) {
+    GradleDslExpressionMap expressionMap = new GradleDslExpressionMap(parentElement, mapPsiElement, propertyName, isLiteralMap);
     for (GrNamedArgument namedArgument : namedArguments) {
       String argName = namedArgument.getLabelName();
       if (isEmpty(argName)) {
@@ -682,10 +660,10 @@ public class GroovyDslParser implements GradleDslParser {
       if (valueElement == null && valueExpression instanceof GrListOrMap) {
         GrListOrMap listOrMap = (GrListOrMap)valueExpression;
         if (listOrMap.isMap()) {
-          valueElement = getExpressionMap(expressionMap, listOrMap, argName, Arrays.asList(listOrMap.getNamedArguments()));
+          valueElement = getExpressionMap(expressionMap, listOrMap, argName, Arrays.asList(listOrMap.getNamedArguments()), true);
         }
         else { // ex: flatDir name: "libs", dirs: ["libs1", "libs2"]
-          valueElement = getExpressionList(expressionMap, listOrMap, argName, Arrays.asList(listOrMap.getInitializers()));
+          valueElement = getExpressionList(expressionMap, listOrMap, argName, Arrays.asList(listOrMap.getInitializers()), true);
         }
       }
       if (valueElement != null) {

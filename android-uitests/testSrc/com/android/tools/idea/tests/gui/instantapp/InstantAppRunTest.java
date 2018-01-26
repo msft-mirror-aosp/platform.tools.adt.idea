@@ -28,11 +28,12 @@ import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
+import com.android.tools.idea.tests.gui.framework.ScreenshotsDuringTest;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.ExecutionToolWindowFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.AvdManagerDialogFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.ChooseSystemImageStepFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.ChooseSystemImageStepFixture.SystemImage;
 import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.NewProjectWizardFixture;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.containers.ContainerUtil;
@@ -54,9 +55,11 @@ import java.util.regex.Pattern;
 @RunWith(GuiTestRunner.class)
 public class InstantAppRunTest {
   private static final String O_AVD_NAME = "O dev under test";
+  private static final SystemImage O_AVD_IMAGE = new SystemImage("Oreo", "26", "x86", "Android 8.0 (Google APIs)");
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
+  @Rule public final ScreenshotsDuringTest movie = new ScreenshotsDuringTest();
 
   /**
    * Verify imported instant apps can be deployed to an emulator running API 26 or newer.
@@ -82,7 +85,7 @@ public class InstantAppRunTest {
     emulator.createAVD(
       ideFrame.invokeAvdManager(),
       "x86 Images",
-      new ChooseSystemImageStepFixture.SystemImage("O", "26", "x86", "Android 8.0 (Google APIs)"),
+      O_AVD_IMAGE,
       O_AVD_NAME
     );
 
@@ -137,7 +140,7 @@ public class InstantAppRunTest {
     emulator.createAVD(
       ideFrame.invokeAvdManager(),
       "x86 Images",
-      new ChooseSystemImageStepFixture.SystemImage("Oreo", "26", "x86", "Android 8.0 (Google APIs)"),
+      O_AVD_IMAGE,
       O_AVD_NAME
     );
 
@@ -181,7 +184,7 @@ public class InstantAppRunTest {
     emulator.createAVD(
       ideFrame.invokeAvdManager(),
       "x86 Images",
-      new ChooseSystemImageStepFixture.SystemImage("Oreo", "26", "x86", "Android 8.0 (Google APIs)"),
+      O_AVD_IMAGE,
       O_AVD_NAME
     );
 

@@ -16,8 +16,8 @@
 package com.android.tools.idea.gradle.project.sync.common;
 
 import com.android.tools.idea.IdeInfo;
-import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.common.GradleInitScripts;
+import com.android.tools.idea.gradle.project.settings.AndroidStudioGradleIdeSettings;
 import com.android.tools.idea.gradle.project.sync.ng.NewGradleSync;
 import com.android.tools.idea.ui.GuiTestingService;
 import com.google.common.annotations.VisibleForTesting;
@@ -42,25 +42,27 @@ import static com.intellij.util.ArrayUtil.toStringArray;
 public class CommandLineArgs {
   private static Key<String[]> GRADLE_SYNC_COMMAND_LINE_OPTIONS_KEY = Key.create("gradle.sync.command.line.options");
 
-  private final boolean myEnableOfflineRepo = Boolean.getBoolean("android.studio.offline.repo.enabled");
-
   @NotNull private final ApplicationInfo myApplicationInfo;
   @NotNull private final IdeInfo myIdeInfo;
   @NotNull private final GradleInitScripts myInitScripts;
+  @NotNull private final AndroidStudioGradleIdeSettings myIdeSettings;
   private final boolean myApplyJavaLibraryPlugin;
 
   public CommandLineArgs(boolean applyJavaLibraryPlugin) {
-    this(ApplicationInfo.getInstance(), IdeInfo.getInstance(), GradleInitScripts.getInstance(), applyJavaLibraryPlugin);
+    this(ApplicationInfo.getInstance(), IdeInfo.getInstance(), GradleInitScripts.getInstance(),
+         AndroidStudioGradleIdeSettings.getInstance(), applyJavaLibraryPlugin);
   }
 
   @VisibleForTesting
   CommandLineArgs(@NotNull ApplicationInfo applicationInfo,
                   @NotNull IdeInfo ideInfo,
                   @NotNull GradleInitScripts initScripts,
+                  @NotNull AndroidStudioGradleIdeSettings ideSettings,
                   boolean applyJavaLibraryPlugin) {
     myApplicationInfo = applicationInfo;
     myIdeInfo = ideInfo;
     myInitScripts = initScripts;
+    myIdeSettings = ideSettings;
     myApplyJavaLibraryPlugin = applyJavaLibraryPlugin;
   }
 
@@ -108,31 +110,19 @@ public class CommandLineArgs {
     args.add(createProjectProperty("android.builder.sdkDownload", false));
 
     Application application = ApplicationManager.getApplication();
-    if (GuiTestingService.getInstance().isGuiTestingMode() || application.isUnitTestMode()) {
+    boolean isTestingMode = isInTestingMode();
+    if (isTestingMode) {
       // We store the command line args, the GUI test will later on verify that the correct values were passed to the sync process.
       application.putUserData(GRADLE_SYNC_COMMAND_LINE_OPTIONS_KEY, toStringArray(args));
     }
 
-    if (useOfflineRepo(project)) {
+    if (myIdeSettings.isEmbeddedMavenRepoEnabled() || isTestingMode) {
       myInitScripts.addLocalMavenRepoInitScriptCommandLineArg(args);
     }
     return args;
   }
 
-  private boolean useOfflineRepo(@Nullable Project project) {
-    if (myEnableOfflineRepo) {
-      return true; // This is for QA testing.
-    }
-    Application application = ApplicationManager.getApplication();
-    if (application.isInternal() || application.isUnitTestMode() || GuiTestingService.getInstance().isGuiTestingMode()) {
-      return true; // Use offline repo in development mode or tests.
-    }
-    if (project == null) {
-      // "null" project happens when the project is an imported project, but not a project just created with the NPW. Only happens with
-      // IDEA's Gradle Sync, not with new Sync.
-      return false;
-    }
-    GradleProjectInfo projectInfo = GradleProjectInfo.getInstance(project);
-    return projectInfo.isNewProject();
+  private static boolean isInTestingMode() {
+    return GuiTestingService.getInstance().isGuiTestingMode() || ApplicationManager.getApplication().isUnitTestMode();
   }
 }

@@ -30,7 +30,6 @@ import com.intellij.lang.findUsages.EmptyFindUsagesProvider
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.openapi.application.QueryExecutorBase
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.module.ModuleUtil
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
@@ -60,9 +59,7 @@ class RoomFindUsagesProvider : FindUsagesProvider by EmptyFindUsagesProvider() {
  */
 class RoomReferenceSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>() {
   private fun getSchema(element: PsiElement) = ReadAction.compute<RoomSchema?, Nothing> {
-    ModuleUtil.findModuleForPsiElement(element)
-        ?.let(RoomSchemaManager.Companion::getInstance)
-        ?.schema
+    RoomSchemaManager.getInstance(element.project)?.getSchema(element.containingFile)
   }
 
   override fun processQuery(queryParameters: ReferencesSearch.SearchParameters, consumer: Processor<PsiReference>) {
@@ -102,9 +99,9 @@ class RoomReferenceSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSe
     return when (element) {
       is PsiClass -> getSchema(element)?.findEntity(element) ?: return null
       is PsiField -> getSchema(element)
-          ?.findEntity(element.containingClass ?: return null)
-          ?.columns
-          ?.find { it.psiField.element == element }
+        ?.findEntity(element.containingClass ?: return null)
+        ?.columns
+        ?.find { it.psiField.element == element }
           ?: return null
       else -> return null
     }

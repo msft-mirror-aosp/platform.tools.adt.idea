@@ -33,10 +33,10 @@ import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CustomShortcutSet;
-import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.keymap.Keymap;
+import com.intellij.openapi.keymap.KeymapManager;
+import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
@@ -73,7 +73,7 @@ public class HotswapAction extends AndroidStudioGradleAction implements AnAction
     }
 
     AndroidSessionInfo session = getAndroidSessionInfo(project, settings);
-    if (session == null) {
+    if (session == null || session.getDevices().isEmpty()) {
       presentation.setText(String.format("Apply Changes: No active '%1$s' launch", settings.getName()));
       return;
     }
@@ -128,10 +128,6 @@ public class HotswapAction extends AndroidStudioGradleAction implements AnAction
     }
 
     if (!InstantRunGradleUtils.appHasCode(AndroidFacet.getInstance(module))) {
-      return;
-    }
-
-    if (!session.isInstantRun()) {
       return;
     }
 

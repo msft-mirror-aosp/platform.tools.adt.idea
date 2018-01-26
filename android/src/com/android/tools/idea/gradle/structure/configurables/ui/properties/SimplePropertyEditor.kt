@@ -15,10 +15,16 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
+import com.android.tools.idea.gradle.structure.model.VariablesProvider
 import com.android.tools.idea.gradle.structure.model.meta.*
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.ui.ComboBox
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.Event
+import java.awt.event.FocusEvent
+import java.awt.event.FocusEvent.FOCUS_GAINED
+import java.awt.event.FocusListener
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComponent
 import javax.swing.JTextField
@@ -29,13 +35,15 @@ import javax.swing.JTextField
  * This is a [ComboBox] based editor allowing manual text entry as well as entry by selecting an item from the list of values provided by
  * [ModelSimpleProperty.getKnownValues]. Text free text input is parsed by [ModelSimpleProperty.parse].
  */
-class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimpleProperty<ModelT, PropertyT>>(
-    val model: ModelT,
-    val property: ModelPropertyT
+class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSimpleProperty<ModelT, PropertyT>>(
+  val elementType: Class<PropertyT>,
+  val model: ModelT,
+  val property: ModelPropertyT,
+  private val variablesProvider: VariablesProvider?
 ) : ComboBox<String>(), ModelPropertyEditor<ModelT> {
 
-  private val textToValue: Map<String, PropertyT>
-  private val valueToText: Map<PropertyT, String>
+  private var textToParsedValue: Map<String, ParsedValue<PropertyT>> = mapOf()
+  private var valueToText: Map<PropertyT, String> = mapOf()
   private var beingLoaded = false
 
   override val component: JComponent = this
@@ -44,13 +52,17 @@ class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimp
     val dimensions = super.getPreferredSize()
     return if (dimensions.width < 200) {
       Dimension(200, dimensions.height)
-    }
-    else dimensions
+    } else dimensions
   }
 
   private fun getParsedValue(): ParsedValue<PropertyT> {
     val text = editor.item.toString()
-    return textToValue[text]?.let { ParsedValue.Set.Parsed(value = it) } ?: property.parse(text)
+    return when {
+      text.startsWith("\$") -> ParsedValue.Set.Parsed<PropertyT>(value = null, dslText = DslText(DslMode.REFERENCE, text.substring(1)))
+      text.startsWith("\"") && text.endsWith("\"") ->
+        ParsedValue.Set.Parsed<PropertyT>(value = null, dslText = DslText(DslMode.INTERPOLATED_STRING, text.substring(1, text.length - 1)))
+      else -> textToParsedValue[text] ?: property.parse(text)
+    }
   }
 
   private fun setText(text: String) {
@@ -69,6 +81,19 @@ class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimp
     }
   }
 
+  @VisibleForTesting
+  fun loadKnownValues() {
+    val availableVariables = getAvailableVariables()
+    val possibleValues = property.getKnownValues(model) ?: listOf()
+    textToParsedValue =
+        (possibleValues.map { it.description to ParsedValue.Set.Parsed(value = it.value) } + (availableVariables ?: listOf())).toMap()
+    valueToText = possibleValues.associate { it.value to it.description }
+    val comboBoxModel = DefaultComboBoxModel<String>(textToParsedValue.keys.toTypedArray()).apply {
+      selectedItem = super.getSelectedItem()
+    }
+    super.setModel(comboBoxModel)
+  }
+
   private fun loadValue(value: PropertyValue<PropertyT>) {
     beingLoaded = true
     try {
@@ -77,7 +102,17 @@ class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimp
           setText("")
         }
         is ParsedValue.Set.Parsed -> {
-          setValue(value.parsedValue.value)
+          val dsl = value.parsedValue.dslText
+          if (dsl != null)
+            when (dsl.mode) {
+              DslMode.LITERAL -> setValue(value.parsedValue.value)
+              DslMode.REFERENCE -> setText("\$${dsl.text}")
+              // TODO(b/72088462) Decide on how to handle unparsed DSL text.
+              DslMode.OTHER_UNPARSED_DSL_TEXT -> setText("\$\$${dsl.text}")
+              DslMode.INTERPOLATED_STRING -> setText("\"${dsl.text}\"")
+            }
+          else
+            setValue(value.parsedValue.value)
         }
         is ParsedValue.Set.Invalid -> {
           setText(value.parsedValue.dslText)
@@ -87,38 +122,41 @@ class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimp
       when {
         value.resolved is ResolvedValue.NotResolved && value.parsedValue is ParsedValue.Set -> {
           setColorAndTooltip(
-              toolTipText = "[Set but not resolved - not yet synced?]",
-              background = Color.GREEN
+            toolTipText = "[Set but not resolved - not yet synced?]",
+            background = Color.GREEN
           )
         }
         value.resolved is ResolvedValue.Set &&
             (value.parsedValue is ParsedValue.Set.Parsed &&
                 value.resolved.resolved != value.parsedValue.value ||
-            value.parsedValue is ParsedValue.NotSet &&
+                value.parsedValue is ParsedValue.NotSet &&
                 value.resolved.resolved != defaultValue)
         -> {
           setColorAndTooltip(
-              toolTipText = "[Set does not match resolved?]",
-              background = Color.YELLOW
+            toolTipText = "[Set does not match resolved? - '${value.resolved.resolved.toString()}']",
+            background = Color.YELLOW
           )
         }
         value.parsedValue is ParsedValue.Set.Invalid -> {
           setColorAndTooltip(
-              toolTipText = "[Invalid?]",
-              background = Color.RED
+            toolTipText = "[Invalid?]",
+            background = Color.RED
           )
         }
         value.parsedValue is ParsedValue.Set.Parsed -> {
           setColorAndTooltip(
-              toolTipText = value.parsedValue.dslText.orEmpty()
+            toolTipText = " = ${value.parsedValue.value.toString()}"
           )
-
         }
       }
-    }
-    finally {
+    } finally {
       beingLoaded = false
     }
+  }
+
+  @VisibleForTesting
+  fun reloadValue() {
+    loadValue(property.getValue(model))
   }
 
   private fun applyChanges(value: ParsedValue<PropertyT>) {
@@ -128,21 +166,50 @@ class SimplePropertyEditor<ModelT, PropertyT: Any, out ModelPropertyT: ModelSimp
     }
   }
 
+  private fun getAvailableVariables(): List<Pair<String, ParsedValue.Set.Parsed<PropertyT>>>? =
+    variablesProvider?.getAvailableVariablesForType(elementType)?.map {
+      val referenceText = "\$${it.first}"
+      referenceText to ParsedValue.Set.Parsed(
+        value = it.second,
+        dslText = DslText(mode = DslMode.REFERENCE, text = referenceText)
+      )
+    }
+
+  private fun addFocusGainedListener(listener: () -> Unit) {
+    val focusListener = object : FocusListener {
+      override fun focusLost(e: FocusEvent?) = Unit
+      override fun focusGained(e: FocusEvent?) = listener()
+    }
+    editor.editorComponent.addFocusListener(focusListener)
+    addFocusListener(focusListener)
+  }
+
   init {
     minLength = 60
     setEditable(true)
 
-    val possibleValues = property.getKnownValues(model) ?: listOf()
-    textToValue = possibleValues.associate { it.description to it.value }
-    valueToText = possibleValues.associate { it.value to it.description }
-    super.setModel(DefaultComboBoxModel<String>(textToValue.keys.toTypedArray()))
+    super.setModel(DefaultComboBoxModel<String>())
 
-    loadValue(property.getValue(model))
+    loadKnownValues()
+    reloadValue()
 
     addActionListener {
       if (!beingLoaded) {
         applyChanges(getParsedValue())
+        reloadValue()
       }
+    }
+    addFocusGainedListener {
+      loadKnownValues()
+      reloadValue()
     }
   }
 }
+
+inline fun <ModelT, reified PropertyT : Any, ModelPropertyT : ModelSimpleProperty<ModelT, PropertyT>> simplePropertyEditor(
+  model: ModelT,
+  property: ModelPropertyT,
+  variablesProvider: VariablesProvider? = null
+): SimplePropertyEditor<ModelT, PropertyT, ModelPropertyT> =
+  SimplePropertyEditor(PropertyT::class.java, model, property, variablesProvider)
+

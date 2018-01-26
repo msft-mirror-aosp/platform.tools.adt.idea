@@ -92,17 +92,11 @@ public interface IdeProfilerServices {
   ProfilerPreferences getTemporaryProfilerPreferences();
 
   /**
-   * Allows the profiler to cache settings across multiple studio sessions.
-   * e.g. settings are preserved when studio restarts.
-   */
-  @NotNull
-  ProfilerPreferences getPersistentProfilerPreferences();
-
-  /**
    * Open the dialog for managing the CPU profiling configurations.
    *
-   * @param configuration    Profiling configuration to be selected when opening the dialog
-   * @param deviceLevel API level of the device
+   * @param profilerModel    {@link CpuProfilerConfigModel} corresponding to the {@link ProfilingConfiguration} to be selected when opening
+                             the dialog.
+   * @param deviceLevel      API level of the device.
    * @param dialogCallback   Callback to be called once the dialog is closed. Takes a {@link ProfilingConfiguration}
    *                         that was selected on the configurations list when the dialog was closed.
    */
@@ -123,8 +117,24 @@ public interface IdeProfilerServices {
   List<ProfilingConfiguration> getCpuProfilingConfigurations();
 
   /**
+   * Returns the application ID. For example, "com.google.sample.tunnel".
+   */
+  @NotNull
+  String getApplicationId();
+
+  /**
    * Whether a native CPU profiling configuration is preferred over a Java one.
    * Native configurations can be preferred for native projects, for instance.
    */
   boolean isNativeProfilingConfigurationPreferred();
+
+  /**
+   * Displays a balloon message showing the user that an error has occurred.
+   *
+   * @param title   title of the message
+   * @param body    body of the message, followed by a hyperlink as specified by next two parameters
+   * @param url     destination of the hyperlink that follows the body, if neither url or urlText is null
+   * @param urlText shown text of the hyperlink that follows the body, if neither url or urlText is null
+   */
+  void showErrorBalloon(@NotNull String title, @NotNull String body, String url, String urlText);
 }

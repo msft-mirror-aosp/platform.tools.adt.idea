@@ -31,6 +31,7 @@ import com.intellij.execution.BeforeRunTask;
 import com.intellij.execution.BeforeRunTaskProvider;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -38,6 +39,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Key;
 import icons.AndroidIcons;
@@ -61,6 +63,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.android.instantapp.provision.ProvisionException.ErrorType.CANCELLED;
 import static com.android.instantapp.provision.ProvisionException.ErrorType.NO_GOOGLE_ACCOUNT;
 import static com.android.tools.idea.instantapp.InstantApps.getInstantAppSdk;
+import static com.android.tools.idea.instantapp.InstantApps.isInstantAppApplicationModule;
 import static com.android.tools.idea.instantapp.InstantApps.isInstantAppSdkEnabled;
 
 /**
@@ -113,20 +116,26 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
 
   @Nullable
   @Override
-  public ProvisionBeforeRunTask createTask(RunConfiguration runConfiguration) {
-    // This method is called when a new run configuration is created, and in that moment we don't know if it will be an Instant App or not,
-    // so we create the task anyway and later, when running it, we check if it's an instant app context to provision the device or not.
+  public ProvisionBeforeRunTask createTask(@NotNull RunConfiguration runConfiguration) {
+    // This method is called when a new run configuration is created, and in that moment we don't know if it will be an Instant App
+    // configuration or not, so we create the task for all configurations in aia projects (have at least one module PROJECT_TYPE_INSTANTAPP).
+    // When running it, we check if the configuration is running the project as app or instant app to decide if we provision or not the device.
     // This method is also called when reading from persistent data (first an empty task is created and after it's configured).
     if (runConfiguration instanceof AndroidRunConfigurationBase && isInstantAppSdkEnabled()) {
-      ProvisionBeforeRunTask task = new ProvisionBeforeRunTask();
-      task.setEnabled(true);
-      return task;
+      // Create the provision before run task only for projects containing an instant app module so normal projects are not affected
+      for (Module module : ((AndroidRunConfigurationBase)runConfiguration).getAllModules()) {
+        if (isInstantAppApplicationModule(module)) {
+          ProvisionBeforeRunTask task = new ProvisionBeforeRunTask(runConfiguration.getProject());
+          task.setEnabled(true);
+          return task;
+        }
+      }
     }
     return null;
   }
 
   @Override
-  public boolean configureTask(RunConfiguration runConfiguration, ProvisionBeforeRunTask task) {
+  public boolean configureTask(@NotNull RunConfiguration runConfiguration, @NotNull ProvisionBeforeRunTask task) {
     ProvisionEditTaskDialog dialog = new ProvisionEditTaskDialog(runConfiguration.getProject(), task.isClearCache(), task.isClearProvisionedDevices());
     if (!dialog.showAndGet()) {
       return false;
@@ -137,12 +146,12 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
   }
 
   @Override
-  public boolean canExecuteTask(RunConfiguration configuration, ProvisionBeforeRunTask task) {
+  public boolean canExecuteTask(@NotNull RunConfiguration configuration, @NotNull ProvisionBeforeRunTask task) {
     return isInstantAppContext((AndroidRunConfigurationBase)configuration);
   }
 
   @Override
-  public boolean executeTask(DataContext context, RunConfiguration configuration, ExecutionEnvironment env, ProvisionBeforeRunTask task) {
+  public boolean executeTask(DataContext context, @NotNull RunConfiguration configuration, @NotNull ExecutionEnvironment env, @NotNull ProvisionBeforeRunTask task) {
     if (!isInstantAppContext((AndroidRunConfigurationBase)configuration)) {
       // If the run configuration is not running an Instant App, there's no need to provision the device. Return early.
       return true;
@@ -299,6 +308,7 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
   }
 
   public static class ProvisionBeforeRunTask extends BeforeRunTask<ProvisionBeforeRunTask> {
+    @NotNull private static final String TIMESTAMP_PROPERTY_NAME = ProvisionBeforeRunTaskProvider.class.getName() + ".myTimeStamp";
     @NonNull private static final ImmutableList<String> INSTANT_APP_PACKAGES =
       ImmutableList.of("com.google.android.instantapps.supervisor", "com.google.android.instantapps.devman");
 
@@ -306,10 +316,12 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
     private boolean myClearProvisionedDevices;
     private long myTimestamp;
 
+    @NotNull private final Project myProject;
     @NotNull private final Set<String> myProvisionedDevices;
 
-    public ProvisionBeforeRunTask() {
+    public ProvisionBeforeRunTask(@NotNull Project project) {
       super(ID);
+      myProject = project;
       myClearCache = false;
       myTimestamp = 0;
       myClearProvisionedDevices = false;
@@ -396,18 +408,18 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
     }
 
     @Override
-    public void writeExternal(Element element) {
+    public void writeExternal(@NotNull Element element) {
       super.writeExternal(element);
       element.setAttribute("clearCache", String.valueOf(myClearCache));
       element.setAttribute("clearProvisionedDevices", String.valueOf(myClearProvisionedDevices));
       for (String deviceId : myProvisionedDevices) {
         element.addContent(new Element("provisionedDevices").setAttribute("provisionedDevice", deviceId));
       }
-      element.setAttribute("myTimestamp", Long.toString(System.currentTimeMillis()));
+      PropertiesComponent.getInstance(myProject).setValue(TIMESTAMP_PROPERTY_NAME, Long.toString(System.currentTimeMillis()));
     }
 
     @Override
-    public void readExternal(Element element) {
+    public void readExternal(@NotNull Element element) {
       super.readExternal(element);
       myClearCache = Boolean.valueOf(element.getAttributeValue("clearCache")).booleanValue();
       myClearProvisionedDevices = Boolean.valueOf(element.getAttributeValue("clearProvisionedDevices")).booleanValue();
@@ -416,7 +428,7 @@ public class ProvisionBeforeRunTaskProvider extends BeforeRunTaskProvider<Provis
         addProvisionedDevice(child.getAttributeValue("provisionedDevice"));
       }
       try {
-        myTimestamp = Long.parseLong(element.getAttributeValue("myTimestamp"));
+        myTimestamp = Long.parseLong(PropertiesComponent.getInstance(myProject).getValue(TIMESTAMP_PROPERTY_NAME));
       } catch (NumberFormatException e) {
         myTimestamp = 0;
       }

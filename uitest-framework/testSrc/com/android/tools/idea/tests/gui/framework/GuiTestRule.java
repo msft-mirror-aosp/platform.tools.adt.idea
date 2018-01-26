@@ -17,22 +17,19 @@ package com.android.tools.idea.tests.gui.framework;
 
 import com.android.SdkConstants;
 import com.android.testutils.TestUtils;
-import com.android.tools.idea.gradle.project.importing.GradleProjectImporter;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.testing.AndroidGradleTests;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.WelcomeFrameFixture;
+import com.android.tools.idea.tests.gui.framework.guitestsystem.GuiTestSystem;
 import com.android.tools.idea.tests.gui.framework.matcher.Matchers;
 import com.google.common.collect.ImmutableList;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.io.FileUtilRt;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.VfsUtil;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.impl.IdeFrameImpl;
 import org.fest.swing.core.Robot;
 import org.fest.swing.exception.WaitTimedOutError;
@@ -41,6 +38,7 @@ import org.jdom.Element;
 import org.jdom.input.SAXBuilder;
 import org.jdom.xpath.XPath;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.AssumptionViolatedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
@@ -66,6 +64,7 @@ import static com.android.tools.idea.testing.FileSubject.file;
 import static com.android.tools.idea.tests.gui.framework.GuiTests.refreshFiles;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.TruthJUnit.assume;
+import static com.intellij.openapi.util.io.FileUtil.sanitizeFileName;
 import static org.fest.reflect.core.Reflection.*;
 
 public class GuiTestRule implements TestRule {
@@ -73,7 +72,9 @@ public class GuiTestRule implements TestRule {
   /** Hack to solve focus issue when running with no window manager */
   private static final boolean HAS_EXTERNAL_WINDOW_MANAGER = Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.MAXIMIZED_BOTH);
 
+  private GuiTestSystem myTestSystem = null;
   private IdeFrameFixture myIdeFrameFixture;
+  @Nullable private String myTestDirectory;
 
   private final RobotTestRule myRobotTestRule = new RobotTestRule();
   private final LeakCheck myLeakCheck = new LeakCheck();
@@ -101,6 +102,10 @@ public class GuiTestRule implements TestRule {
   @NotNull
   @Override
   public Statement apply(final Statement base, final Description description) {
+    // The test system should be available at this time.  If it's not, error out.
+    myTestSystem = getTestSystem();
+    if (myTestSystem == null) throw new RuntimeException("Required GuiTestSystem cannot be found from extensions.");
+
     RuleChain chain = RuleChain.emptyRuleChain()
       .around(new LogStartAndStop())
       .around(new BlockReloading())
@@ -118,6 +123,18 @@ public class GuiTestRule implements TestRule {
     return chain.apply(base, description);
   }
 
+  /**
+   * @return the [GuiTestSystem] this test rule should use to perform build system specific operations.
+   */
+  public static GuiTestSystem getTestSystem() {
+    for (GuiTestSystem sys : GuiTestSystem.Companion.getEP_NAME().getExtensions()) {
+      if (System.getProperty("guitest.currentguitestsystem").equals(sys.getId())) {
+        return sys;
+      }
+    }
+    return null;
+  }
+
   private class IdeHandling implements TestRule {
     @NotNull
     @Override
@@ -128,9 +145,9 @@ public class GuiTestRule implements TestRule {
           if (!TestUtils.runningFromBazel()) {
             // when state can be bad from previous tests, check and skip in that case
             assume().that(GuiTests.fatalErrorsFromIde()).named("IDE errors").isEmpty();
-            assumeOnlyWelcomeFrameShowing();
+            assumeOnlyWelcomeFrameShowing(description);
           }
-          setUp();
+          setUp(description.getMethodName());
           List<Throwable> errors = new ArrayList<>();
           try {
             base.evaluate();
@@ -155,19 +172,24 @@ public class GuiTestRule implements TestRule {
     }
   }
 
-  private void assumeOnlyWelcomeFrameShowing() {
+  private void assumeOnlyWelcomeFrameShowing(Description description) {
     try {
       WelcomeFrameFixture.find(robot());
     } catch (WaitTimedOutError e) {
+      new ScreenshotOnFailure().failed(e, description);
       throw new AssumptionViolatedException("didn't find welcome frame", e);
     }
     assume().that(GuiTests.windowsShowing()).named("windows showing").hasSize(1);
   }
 
-  private void setUp() {
-    GuiTests.setUpDefaultProjectCreationLocationPath();
+  private void setUp(@Nullable String methodName) {
+    myTestDirectory = methodName != null ? sanitizeFileName(methodName) : null;
+    GuiTests.setUpDefaultProjectCreationLocationPath(myTestDirectory);
     GuiTests.setIdeSettings();
     GuiTests.setUpSdks();
+
+    // Compute the workspace root before any IDE code starts messing with user.dir:
+    TestUtils.getWorkspaceRoot();
 
     if (!HAS_EXTERNAL_WINDOW_MANAGER) {
       KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener(myGlobalFocusListener);
@@ -270,13 +292,14 @@ public class GuiTestRule implements TestRule {
   }
 
   public IdeFrameFixture importProjectAndWaitForProjectSyncToFinish(@NotNull String projectDirName) throws IOException {
-    return importProject(projectDirName).waitForGradleProjectSyncToFinish();
+    importProject(projectDirName);
+    myTestSystem.waitForProjectSyncToFinish(ideFrame());
+    return ideFrame();
   }
 
   public IdeFrameFixture importProject(@NotNull String projectDirName) throws IOException {
-    VirtualFile toSelect = VfsUtil.findFileByIoFile(setUpProject(projectDirName), true);
-    ApplicationManager.getApplication().invokeAndWait(() -> GradleProjectImporter.getInstance().importProject(toSelect));
-
+    File testProjectDir = setUpProject(projectDirName);
+    myTestSystem.importProject(testProjectDir, robot());
     return ideFrame();
   }
 
@@ -300,6 +323,7 @@ public class GuiTestRule implements TestRule {
   private File setUpProject(@NotNull String projectDirName) throws IOException {
     File projectPath = copyProjectBeforeOpening(projectDirName);
 
+    myTestSystem.prepareTestForImport(projectPath);
     createGradleWrapper(projectPath, SdkConstants.GRADLE_LATEST_VERSION);
     updateGradleVersions(projectPath);
     updateLocalProperties(projectPath);
@@ -344,7 +368,7 @@ public class GuiTestRule implements TestRule {
 
   @NotNull
   protected File getTestProjectDirPath(@NotNull String projectDirName) {
-    return new File(GuiTests.getProjectCreationDirPath(), projectDirName);
+    return new File(GuiTests.getProjectCreationDirPath(myTestDirectory), projectDirName);
   }
 
   public void cleanUpProjectForImport(@NotNull File projectPath) {

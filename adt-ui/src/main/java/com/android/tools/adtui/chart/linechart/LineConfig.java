@@ -16,7 +16,6 @@
 
 package com.android.tools.adtui.chart.linechart;
 
-import com.android.annotations.VisibleForTesting;
 import com.android.tools.adtui.LegendConfig;
 import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
@@ -69,6 +68,13 @@ public class LineConfig {
   private boolean myIsStepped = false;
 
   /**
+   * Whether data series are bucketed and shown by a bar chart. From the starting data x value,
+   * each data point are drawn at previous x + interval. If this is 0, the series is not buckets.
+   * The amount unit is same as x axis unit.
+   */
+  private double myDataBucketInterval = 0;
+
+  /**
    * Whether the series should be represented by a filled chart, instead of only lines.
    */
   private boolean myIsFilled = false;
@@ -109,6 +115,7 @@ public class LineConfig {
     LineConfig config = new LineConfig(otherConfig.getColor());
 
     config.setStepped(otherConfig.isStepped());
+    config.setDataBucketInterval(otherConfig.myDataBucketInterval);
     config.setFilled(otherConfig.isFilled());
     config.setStacked(otherConfig.isStacked());
     config.setAdjustDash(otherConfig.isAdjustDash());
@@ -126,6 +133,16 @@ public class LineConfig {
 
   public boolean isStepped() {
     return myIsStepped;
+  }
+
+  @NotNull
+  public LineConfig setDataBucketInterval(double bucketInterval) {
+    myDataBucketInterval = bucketInterval;
+    return this;
+  }
+
+  public double getDataBucketInterval() {
+    return myDataBucketInterval;
   }
 
   @NotNull
@@ -177,12 +194,10 @@ public class LineConfig {
   /**
    * Sets the dash phase which should be used for the stroke. The adjusted stroke can be then retrieved via {@link #getAdjustedStroke()}
    */
-  @VisibleForTesting
   public void setAdjustedDashPhase(double dashPhase) {
     myAdjustedDashPhase = dashPhase;
   }
 
-  @VisibleForTesting
   public double getAdjustedDashPhase() {
     return myAdjustedDashPhase;
   }

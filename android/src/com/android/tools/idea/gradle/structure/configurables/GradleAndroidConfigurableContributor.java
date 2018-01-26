@@ -38,7 +38,9 @@ public class GradleAndroidConfigurableContributor extends AndroidConfigurableCon
 
     List<Configurable> configurables = Lists.newArrayList();
     configurables.add(new VariablesConfigurable(project, myContext));
+    configurables.add(new ModulesPerspectiveConfigurable(myContext));
     configurables.add(new DependenciesPerspectiveConfigurable(myContext));
+    configurables.add(new BuildVariantsPerspectiveConfigurable(myContext));
 
     return configurables;
   }

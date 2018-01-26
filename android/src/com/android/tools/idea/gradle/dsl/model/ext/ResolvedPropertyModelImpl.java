@@ -19,7 +19,6 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
-import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -37,11 +36,10 @@ import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.Valu
  * reference changes in order to get a value.
  */
 public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
-  @NotNull
-  private final GradlePropertyModelImpl myRealModel;
+  @NotNull private final GradlePropertyModel myRealModel;
 
-  public ResolvedPropertyModelImpl(@NotNull GradleDslElement element) {
-    myRealModel = new GradlePropertyModelImpl(element);
+  public ResolvedPropertyModelImpl(@NotNull GradlePropertyModel realModel) {
+    myRealModel = realModel;
   }
 
   @NotNull
@@ -97,12 +95,35 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
     myRealModel.setValue(value);
   }
 
-  @NotNull
   @Override
-  public GradlePropertyModel delete() {
-    EmptyPropertyModel newModel = myRealModel.delete();
-    newModel.setShouldBecomeResolved(true);
-    return newModel;
+  public ResolvedPropertyModel convertToEmptyMap() {
+    myRealModel.convertToEmptyMap();
+    return this;
+  }
+
+  @Override
+  public GradlePropertyModel addMapValue(@NotNull String key) {
+    return myRealModel.addMapValue(key);
+  }
+
+  @Override
+  public GradlePropertyModel convertToEmptyList() {
+    return myRealModel.convertToEmptyList();
+  }
+
+  @Override
+  public GradlePropertyModel addListValue() {
+    return myRealModel.addListValue();
+  }
+
+  @Override
+  public GradlePropertyModel addListValueAt(int index) {
+    return myRealModel.addListValueAt(index);
+  }
+
+  @Override
+  public void delete() {
+    myRealModel.delete();
   }
 
   private GradlePropertyModel getResolvedModel() {

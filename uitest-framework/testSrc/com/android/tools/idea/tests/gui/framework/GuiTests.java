@@ -244,10 +244,11 @@ public final class GuiTests {
     throw new AssumptionViolatedException(message);
   }
 
-  public static void setUpDefaultProjectCreationLocationPath() {
-    FileUtilRt.delete(getProjectCreationDirPath());
+  public static void setUpDefaultProjectCreationLocationPath(@Nullable String testDirectory) {
+    FileUtilRt.delete(getProjectCreationDirPath(null));
     refreshFiles();
-    RecentProjectsManager.getInstance().setLastProjectCreationLocation(getProjectCreationDirPath().getPath());
+    String lastProjectLocation = getProjectCreationDirPath(testDirectory).getPath();
+    RecentProjectsManager.getInstance().setLastProjectCreationLocation(lastProjectLocation);
   }
 
   // Called by IdeTestApplication via reflection.
@@ -320,8 +321,8 @@ public final class GuiTests {
   }
 
   @NotNull
-  public static File getProjectCreationDirPath() {
-    return TMP_PROJECT_ROOT;
+  public static File getProjectCreationDirPath(@Nullable String testDirectory) {
+    return testDirectory != null ? new File(TMP_PROJECT_ROOT, testDirectory) : TMP_PROJECT_ROOT;
   }
 
   @NotNull
@@ -589,6 +590,9 @@ public final class GuiTests {
                                                        long secondsToWait) {
     AtomicReference<T> reference = new AtomicReference<>();
     String typeName = matcher.supportedType().getSimpleName();
+    // Since the condition may have been already satisfied in the middle of processing before the UI reaches its
+    // final state we need to for an idle queue before probing the UI state.
+    robot.waitForIdle();
     Wait.seconds(secondsToWait).expecting("matching " + typeName)
       .until(() -> {
         ComponentFinder finder = robot.finder();

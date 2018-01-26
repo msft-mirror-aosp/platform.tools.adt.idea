@@ -134,9 +134,9 @@ public final class StudioFlags {
     NELE, "animated.preview", "Show preview animations toolbar",
     "Show an animations bar that allows playback of vector drawable animations.",
     false);
-  public static final Flag<Boolean> NELE_TRANSITION_LAYOUT_ANIMATIONS = Flag.create(
-    NELE, "animated.transition.layout", "Show preview animations toolbar for TransitionLayout",
-    "Show an animations bar that allows playback of TransitionLayout animations.",
+  public static final Flag<Boolean> NELE_MOTION_LAYOUT_ANIMATIONS = Flag.create(
+    NELE, "animated.motion.layout", "Show preview animations toolbar for MotionLayout",
+    "Show an animations bar that allows playback of MotionLayout animations.",
     false);
 
   public static final Flag<Boolean> NELE_SAMPLE_DATA = Flag.create(
@@ -217,6 +217,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> MIGRATE_TO_APPCOMPAT_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.appcompat.enabled", "Enable the Migrate to AppCompat refactoring feature",
     "If enabled, show the action in the refactoring menu", true);
+
+  private static final FlagGroup IOT = new FlagGroup(FLAGS, "iot", "IoT features");
+  public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(
+    IOT, "iot.uninstalllauncherapps.enabled", "Enable the Uninstall of IoT launcher apps feature",
+    "If enabled, uninstall IoT launcher apps when installing a new one", false);
 
   private StudioFlags() {
   }

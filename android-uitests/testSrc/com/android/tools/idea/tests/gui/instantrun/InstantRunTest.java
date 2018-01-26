@@ -50,7 +50,6 @@ public class InstantRunTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
-  @Rule public final ScreenshotsDuringTest movie = new ScreenshotsDuringTest();
 
   private static final String APP_NAME = "app";
   private static final Pattern EMPTY_OUTPUT= Pattern.compile("^$", Pattern.DOTALL);
@@ -105,7 +104,6 @@ public class InstantRunTest {
       .enterText("\nSystem.out.println(\"Hello, hot swap!\");");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -162,7 +160,6 @@ public class InstantRunTest {
       .waitForRenderToFinish(Wait.seconds(30));
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -214,7 +211,6 @@ public class InstantRunTest {
       .enterText("\nandroid:process=\":foo\"");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -271,7 +267,6 @@ public class InstantRunTest {
       .enterText("<uses-permission android:name=\"android.permission.INTERNET\" /\n");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -450,7 +445,6 @@ public class InstantRunTest {
       .enterText("\nSystem.out.println(\"Hello, CMake hot swap!\");");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -578,7 +572,7 @@ public class InstantRunTest {
       .enterText("\nandroid.widget.TextView a = (android.widget.TextView)findViewById(R.id.view1);" +
                  "\nandroid.widget.Button b = (android.widget.Button)findViewById(R.id.view2);");
 
-    ideFrameFixture.waitForGradleProjectSyncToFinish()
+    ideFrameFixture
       .runApp(APP_NAME)
       .selectDevice(emulator.getDefaultAvdName())
       .clickOk();
@@ -607,7 +601,6 @@ public class InstantRunTest {
       .enterText("view1");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
 
@@ -673,7 +666,6 @@ public class InstantRunTest {
       .enterText("\"Instant Run\"");
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFinish()
       .findApplyChangesButton()
       .click();
     contentFixture.waitForOutput(runningAppMatcher, EmulatorTestRule.DEFAULT_EMULATOR_WAIT_SECONDS);

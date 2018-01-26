@@ -47,7 +47,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.JavaPsiFacade;
@@ -90,6 +89,16 @@ public class NavDesignSurface extends DesignSurface {
   public NavDesignSurface(@NotNull Project project, @NotNull Disposable parentDisposable) {
     super(project, parentDisposable);
     setBackground(JBColor.white);
+  }
+
+  @Override
+  public void dispose() {
+    Future<?> future = getScheduleRef().get();
+    if (future != null) {
+      future.cancel(false);
+    }
+    getScheduleRef().set(null);
+    super.dispose();
   }
 
   @Override
@@ -155,30 +164,31 @@ public class NavDesignSurface extends DesignSurface {
           public void onSuccess(@Nullable Object unused) {
             application.executeOnPooledThread(() -> {
               if (!tryToCreateSchema(facet)) {
-                showFailToAddMessage(project);
+                showFailToAddMessage(project, result);
               }
-              result.complete(null);
+              else {
+                result.complete(null);
+              }
             });
           }
 
           @Override
           public void onFailure(@Nullable Throwable t) {
-            showFailToAddMessage(project);
-            result.complete(null);
+            showFailToAddMessage(project, result);
           }
         });
       }
       else {
-        showFailToAddMessage(project);
-        result.complete(null);
+        showFailToAddMessage(project, result);
       }
     });
     return result;
   }
 
-  private static void showFailToAddMessage(@NotNull Project project) {
+  private static void showFailToAddMessage(@NotNull Project project, @NotNull CompletableFuture<?> result) {
     ApplicationManager.getApplication().invokeLater(() -> Messages.showErrorDialog(
       project, "Failed to add navigation library dependency", "Failed to Add Dependency"));
+    result.completeExceptionally(new Exception("Failed to add nav library dependency"));
   }
 
   private static boolean requestAddDependency(@NotNull AndroidFacet facet) {

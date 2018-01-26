@@ -26,20 +26,16 @@ import com.android.tools.idea.common.scene.draw.DrawArrow
 import com.android.tools.idea.common.scene.draw.DrawLine
 import com.android.tools.idea.naveditor.model.ActionType
 import com.android.tools.idea.naveditor.model.actionType
+import com.android.tools.idea.naveditor.scene.ACTION_STROKE
 import com.android.tools.idea.naveditor.scene.DRAW_ACTION_LEVEL
 import com.android.tools.idea.naveditor.scene.NavSceneManager
 import com.android.tools.idea.naveditor.scene.actionColor
-import java.awt.BasicStroke
 import java.awt.Point
 import java.awt.Rectangle
 
 /**
  * [ActionDecorator] responsible for creating draw commands for actions.
  */
-
-@SwingCoordinate private const val ACTION_STROKE_WIDTH = 3f
-@JvmField
-val ACTION_STROKE = BasicStroke(ACTION_STROKE_WIDTH, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND)
 
 class ActionDecorator : SceneDecorator() {
   override fun addBackground(list: DisplayList, sceneContext: SceneContext, component: SceneComponent) {

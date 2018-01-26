@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.run;
 
+import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
-import com.android.tools.idea.run.editor.ProfilerState;
+import com.android.tools.idea.fd.gradle.InstantRunGradleSupport;
+import com.android.tools.idea.fd.gradle.InstantRunGradleUtils;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.ConfigurationFactory;
 import com.intellij.openapi.module.Module;
@@ -27,32 +29,26 @@ import org.jetbrains.android.facet.AndroidFacet;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.android.tools.idea.fd.InstantRunManager.MIN_IR_API_VERSION;
 import static com.android.tools.idea.fd.gradle.InstantRunGradleSupport.API_TOO_LOW_FOR_INSTANT_RUN;
 import static com.android.tools.idea.fd.gradle.InstantRunGradleSupport.CANNOT_BUILD_FOR_MULTIPLE_DEVICES;
-import static com.android.tools.idea.fd.gradle.InstantRunGradleSupport.DISABLE_INSTANT_RUN_WHEN_PROFILING;
 import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 public class AndroidRunConfigurationBaseCanInstantRunTest extends AndroidTestCase {
   public static final String ID = "fakeId";
 
-  @Mock Module module;
   @Mock AndroidSessionInfo info;
-  @Mock AndroidFacet facet;
   @Mock Executor executor;
   private AndroidRunConfigurationBase myRunConfig;
-  private ProfilerState myProfilerState;
 
   @Override
   protected void setUp() throws Exception {
     super.setUp();
     initMocks(this);
     myRunConfig = new AndroidTestRunConfiguration(getProject(), mock(ConfigurationFactory.class), false);
-    myProfilerState = new ProfilerState();
   }
 
   // canInstantRunTests
@@ -62,34 +58,15 @@ public class AndroidRunConfigurationBaseCanInstantRunTest extends AndroidTestCas
     devices.add(mock(AndroidDevice.class));
     devices.add(mock(AndroidDevice.class));
 
-    assertEquals(CANNOT_BUILD_FOR_MULTIPLE_DEVICES, myRunConfig.canInstantRun(module, devices, executor, myProfilerState));
+    assertEquals(CANNOT_BUILD_FOR_MULTIPLE_DEVICES, myRunConfig.canInstantRun(myModule, devices));
   }
 
   public void testApiTooLow() {
-    List<AndroidDevice> devices = new ArrayList(1);
+    List<AndroidDevice> devices = new ArrayList(2);
     AndroidDevice device = mock(AndroidDevice.class);
     when(device.getVersion()).thenReturn(new AndroidVersion(MIN_IR_API_VERSION - 1));
     devices.add(device);
-    assertEquals(API_TOO_LOW_FOR_INSTANT_RUN, myRunConfig.canInstantRun(module, devices, executor, myProfilerState));
-  }
-
-  public void testDisabledForProfilingExecutor() {
-    when(executor.getId()).thenReturn(ProfilerState.PROFILER_EXECUTOR_ID);
-    List<AndroidDevice> devices = new ArrayList(1);
-    AndroidDevice device = mock(AndroidDevice.class);
-    when(device.getVersion()).thenReturn(new AndroidVersion(25));
-    devices.add(device);
-    assertEquals(DISABLE_INSTANT_RUN_WHEN_PROFILING, myRunConfig.canInstantRun(module, devices, executor, myProfilerState));
-  }
-
-  public void testDisabledForProfilingEnabled() {
-    when(executor.getId()).thenReturn(ID);
-    myProfilerState.ADVANCED_PROFILING_ENABLED = true;
-    List<AndroidDevice> devices = new ArrayList(1);
-    AndroidDevice device = mock(AndroidDevice.class);
-    when(device.getVersion()).thenReturn(new AndroidVersion(25));
-    devices.add(device);
-    assertEquals(DISABLE_INSTANT_RUN_WHEN_PROFILING, myRunConfig.canInstantRun(module, devices, executor, myProfilerState));
+    assertEquals(API_TOO_LOW_FOR_INSTANT_RUN, myRunConfig.canInstantRun(myModule, devices));
   }
 
   // prepareInstantRunSession tests
@@ -98,7 +75,7 @@ public class AndroidRunConfigurationBaseCanInstantRunTest extends AndroidTestCas
     when(executor.getId()).thenReturn(ID);
 
     Messages.setTestDialog(message -> Messages.NO);
-    assertNull(myRunConfig.prepareInstantRunSession(info, executor, facet, getProject(), null, false));
+    assertNull(myRunConfig.prepareInstantRunSession(info, executor, myFacet, getProject(), null, false));
   }
 
   public void testPrepareInstantRunSession_Kill() {
@@ -108,17 +85,78 @@ public class AndroidRunConfigurationBaseCanInstantRunTest extends AndroidTestCas
 
     Messages.setTestDialog(message -> Messages.YES);
     AndroidRunConfigurationBase.PrepareSessionResult result =
-      myRunConfig.prepareInstantRunSession(info, executor, facet, getProject(), null, false);
+      myRunConfig.prepareInstantRunSession(info, executor, myFacet, getProject(), null, false);
 
     assertNotNull(result);
     assertNull(result.futures);
     assertFalse(result.couldHaveHotswapped);
   }
 
+  public void testPrepareInstantRunSession_Cold_Kill() {
+    // Prepare
+    info = mock(AndroidSessionInfo.class, RETURNS_DEEP_STUBS);
+    AndroidProcessHandler handler = mock(AndroidProcessHandler.class);
+    when(info.getProcessHandler()).thenReturn(handler);
+    when(info.getExecutorId()).thenReturn(ID);
+    when(executor.getId()).thenReturn(ID);
+
+    List<IDevice> devices = new ArrayList(1);
+    IDevice mockDevice = mock(IDevice.class);
+    when(mockDevice.getVersion()).thenReturn(AndroidVersion.ART_RUNTIME);
+    when(mockDevice.getSerialNumber()).thenReturn("abc123");
+    devices.add(mockDevice);
+    when(info.getDevices()).thenReturn(devices);
+    DeviceFutures deviceFutures = DeviceFutures.forDevices(devices);
+
+    InstantRunGradleUtils.setInstantRunGradleSupportOverride(InstantRunGradleSupport.SUPPORTED);
+
+    // Act
+    AndroidRunConfigurationBase.PrepareSessionResult result =
+      myRunConfig.prepareInstantRunSession(info, executor, myFacet, getProject(), deviceFutures, true);
+
+    // Verify
+    assertNotNull(result);
+    assertTrue(deviceFutures.allMatch(result.futures));
+    assertTrue(result.couldHaveHotswapped);
+    verify(handler, times(1)).destroyProcess();
+  }
+
+  public void testPrepareInstantRunSession_Cold_NotKill() {
+    // Prepare
+    info = mock(AndroidSessionInfo.class, RETURNS_DEEP_STUBS);
+    AndroidProcessHandler handler = mock(AndroidProcessHandler.class);
+    when(info.getProcessHandler()).thenReturn(handler);
+    when(info.getExecutorId()).thenReturn(ID);
+    when(executor.getId()).thenReturn(ID);
+
+    List<IDevice> devices = new ArrayList(2);
+    IDevice mockDevice = mock(IDevice.class);
+    when(mockDevice.getVersion()).thenReturn(AndroidVersion.ART_RUNTIME);
+    when(mockDevice.getSerialNumber()).thenReturn("abc123");
+    devices.add(mockDevice);
+    when(info.getDevices()).thenReturn(devices);
+
+    devices.add(mock(IDevice.class));
+    DeviceFutures deviceFutures = DeviceFutures.forDevices(devices);
+
+    InstantRunGradleUtils.setInstantRunGradleSupportOverride(InstantRunGradleSupport.SUPPORTED);
+
+    // Act
+    AndroidRunConfigurationBase.PrepareSessionResult result =
+      myRunConfig.prepareInstantRunSession(info, executor, myFacet, getProject(), deviceFutures, true);
+
+    // Verify
+    assertNotNull(result);
+    assertFalse(deviceFutures.allMatch(result.futures));
+    assertFalse(result.couldHaveHotswapped);
+    verify(handler, never()).destroyProcess();
+  }
+
   @Override
   protected void tearDown() throws Exception {
     try {
       Messages.setTestDialog(TestDialog.DEFAULT);
+      InstantRunGradleUtils.setInstantRunGradleSupportOverride(null);
     }
     finally {
       super.tearDown();

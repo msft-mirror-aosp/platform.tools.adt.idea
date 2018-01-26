@@ -102,7 +102,7 @@ public class  AndroidResourcesLineMarkerTest extends AndroidTestCase {
   }
 
   public void testJavaFileNavigationToSystemResource1() throws Exception {
-    doJavaFileNavigationTest(82, true, XmlAttributeValue.class);
+    doJavaFileNavigationTest(84, true, XmlAttributeValue.class);
   }
 
   public void testJavaFileNavigationToSystemResource2() throws Exception {

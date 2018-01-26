@@ -16,10 +16,13 @@
 package com.android.tools.idea.profilers;
 
 import com.android.tools.idea.flags.StudioFlags;
+import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
+import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink;
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilingConfigService;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilingConfigurationsDialog;
 import com.android.tools.idea.profilers.stacktrace.IntellijCodeNavigator;
+import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.profilers.FeatureConfig;
 import com.android.tools.profilers.IdeProfilerServices;
@@ -32,9 +35,12 @@ import com.google.common.collect.ImmutableList;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.impl.EditConfigurationsDialog;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -60,13 +66,11 @@ public class IntellijProfilerServices implements IdeProfilerServices {
   private final StudioFeatureTracker myFeatureTracker = new StudioFeatureTracker();
 
   @NotNull private final Project myProject;
-  @NotNull private final IntellijProfilerPreferences myPersistentPreferences;
   @NotNull private final TemporaryProfilerPreferences myTemporaryPreferences;
 
   public IntellijProfilerServices(@NotNull Project project) {
     myProject = project;
     myCodeNavigator = new IntellijCodeNavigator(project, myFeatureTracker);
-    myPersistentPreferences = new IntellijProfilerPreferences();
     myTemporaryPreferences = new TemporaryProfilerPreferences();
   }
 
@@ -217,12 +221,6 @@ public class IntellijProfilerServices implements IdeProfilerServices {
     return myTemporaryPreferences;
   }
 
-  @NotNull
-  @Override
-  public ProfilerPreferences getPersistentProfilerPreferences() {
-    return myPersistentPreferences;
-  }
-
   @Override
   public void openCpuProfilingConfigurationsDialog(CpuProfilerConfigModel model, int deviceLevel,
                                                    Consumer<ProfilingConfiguration> dialogCallback) {
@@ -256,6 +254,19 @@ public class IntellijProfilerServices implements IdeProfilerServices {
     return CpuProfilingConfigService.getInstance(myProject).getConfigurations();
   }
 
+  @NotNull
+  @Override
+  public String getApplicationId() {
+    Module[] modules = ModuleManager.getInstance(myProject).getModules();
+    for (Module module : modules) {
+      AndroidModuleModel model = AndroidModuleModel.get(module);
+      if (model != null) {
+        return model.getApplicationId();
+      }
+    }
+    throw new IllegalStateException("No Android module found for the project.");
+  }
+
   @Override
   public boolean isNativeProfilingConfigurationPreferred() {
     // File extensions that we consider native. We can add more later if we feel that's necessary.
@@ -268,4 +279,12 @@ public class IntellijProfilerServices implements IdeProfilerServices {
         return extension != null && nativeExtensions.contains(extension.toLowerCase());
       });
   }
+
+  @Override
+  public void showErrorBalloon(@NotNull String title, @NotNull String body, @NotNull String url, @NotNull String urlText) {
+    OpenUrlHyperlink hyperlink = new OpenUrlHyperlink(url, urlText);
+    AndroidNotification.getInstance(myProject)
+      .showBalloon(title, body, NotificationType.ERROR, AndroidNotification.BALLOON_GROUP, false, hyperlink);
+  }
+
 }

@@ -77,7 +77,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.android.builder.model.AndroidProject.*;
 import static com.android.tools.idea.fd.gradle.InstantRunGradleSupport.*;
-import static com.android.tools.idea.run.editor.ProfilerState.PROFILER_EXECUTOR_ID;
 
 public abstract class AndroidRunConfigurationBase extends ModuleBasedConfiguration<JavaRunConfigurationModule> implements PreferGradleMake {
 
@@ -349,7 +348,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
                                                 @NotNull Project project,
                                                 @Nullable AndroidSessionInfo info,
                                                 @NotNull DeviceFutures deviceFutures) {
-    InstantRunGradleSupport gradleSupport = canInstantRun(module, deviceFutures.getDevices(), executor, myProfilerState);
+    InstantRunGradleSupport gradleSupport = canInstantRun(module, deviceFutures.getDevices());
     if (gradleSupport == TARGET_PLATFORM_NOT_INSTALLED) {
       if(promptInstallTargetPlatform(project, deviceFutures)) {
         gradleSupport = SUPPORTED;
@@ -412,14 +411,14 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     final DeviceFutures sessionDeviceFutures = getFastDeployDevices(executor, AndroidModuleModel.get(facet), info);;
     boolean couldHaveHotswapped = false;
 
-    if (sessionDeviceFutures == null) {
+    if (sessionDeviceFutures == null && !forceColdswap) {
       // If we should not be fast deploying, but there is an existing session, then terminate those sessions. Otherwise, we might end up
       // with 2 active sessions of the same launch, especially if we first think we can do a fast deploy, then end up doing a full launch
       if (!promptAndKillSession(executor, project, info)) {
         return null;
       }
     }
-    else if (forceColdswap && sessionDeviceFutures.allMatch(chosenDeviceFutues)) { // kill if forceColdswap to same device
+    else if (sessionDeviceFutures != null && sessionDeviceFutures.allMatch(chosenDeviceFutues)) { // kill if forceColdswap to same device
       // the user could have invoked the hotswap action in this scenario, but they chose to force a coldswap (by pressing run)
       couldHaveHotswapped = true;
 
@@ -510,7 +509,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     }
 
     List<IDevice> devices = info.getDevices();
-    if (devices == null || devices.isEmpty()) {
+    if (devices.isEmpty()) {
       InstantRunManager.LOG.info("Cannot Instant Run since we could not locate the devices from the existing launch session");
       return null;
     }
@@ -615,7 +614,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
 
   @NotNull
   protected ApplicationIdProvider getApplicationIdProvider(@NotNull AndroidFacet facet) {
-    if (facet.getAndroidModel() != null && facet.getAndroidModel() instanceof AndroidModuleModel) {
+    if (facet.getConfiguration().getModel() != null && facet.getConfiguration().getModel() instanceof AndroidModuleModel) {
       return new GradleApplicationIdProvider(facet, myOutputProvider);
     }
     return new NonGradleApplicationIdProvider(facet);
@@ -662,9 +661,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
   @VisibleForTesting
   @NotNull
   InstantRunGradleSupport canInstantRun(@NotNull Module module,
-                                        @NotNull List<AndroidDevice> targetDevices,
-                                        @NotNull Executor executor,
-                                        @NotNull ProfilerState profilerState) {
+                                        @NotNull List<AndroidDevice> targetDevices) {
     if (targetDevices.size() != 1) {
       return CANNOT_BUILD_FOR_MULTIPLE_DEVICES;
     }
@@ -673,11 +670,6 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     AndroidVersion version = device.getVersion();
     if (!InstantRunManager.isInstantRunCapableDeviceVersion(version)) {
       return API_TOO_LOW_FOR_INSTANT_RUN;
-    }
-
-    // Disable IR if user is starting a Profile run (aka clicking on Profile action)
-    if (executor.getId().equals(PROFILER_EXECUTOR_ID) || hasProfileInstrumentation(profilerState, version)) {
-      return DISABLE_INSTANT_RUN_WHEN_PROFILING;
     }
 
     IDevice targetDevice = MakeBeforeRunTaskProvider.getLaunchedDevice(device);
@@ -698,7 +690,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     }
 
     if (!InstantRunGradleUtils.appHasCode(AndroidFacet.getInstance(module))) {
-      return InstantRunGradleSupport.HAS_CODE_FALSE;
+      return HAS_CODE_FALSE;
     }
 
     // Gradle will instrument against the runtime android.jar (see commit 353f46cbc7363e3fca44c53a6dc0b4d17347a6ac).
@@ -722,14 +714,6 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     }
 
     return TARGET_PLATFORM_NOT_INSTALLED;
-  }
-
-  /**
-   * Returns true if profiler is adding instrumentation
-   */
-  private static boolean hasProfileInstrumentation(@NotNull ProfilerState profileState,
-                                                   @NotNull AndroidVersion version) {
-    return profileState.ADVANCED_PROFILING_ENABLED && !version.isGreaterOrEqualThan(26);
   }
 
   public void setOutputModel(@NotNull PostBuildModel outputModel) {

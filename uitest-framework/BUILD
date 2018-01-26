@@ -46,5 +46,6 @@ iml_module(
         "//tools/adt/idea/android-common[module, test]",
         "//tools/base/perf-logger:studio.perf-logger[module, test]",
         "//tools/adt/idea/project-system[module, test]",
+        "//tools/idea/.idea/libraries:KotlinJavaRuntime",
     ],
 )

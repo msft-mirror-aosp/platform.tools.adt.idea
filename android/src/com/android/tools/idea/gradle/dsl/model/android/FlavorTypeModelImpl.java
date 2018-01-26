@@ -19,7 +19,7 @@ import com.android.tools.idea.gradle.dsl.api.FlavorTypeModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel;
-import com.android.tools.idea.gradle.dsl.model.ext.EmptyPropertyModel;
+import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelImpl;
 import com.android.tools.idea.gradle.dsl.model.ext.ResolvedPropertyModelImpl;
 import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
 import com.android.tools.idea.gradle.dsl.parser.android.AbstractFlavorTypeDslElement;
@@ -80,7 +80,7 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
 
   @Override
   public void replaceConsumerProguardFile(@NotNull String oldConsumerProguardFile,
-                                                     @NotNull String newConsumerProguardFile) {
+                                          @NotNull String newConsumerProguardFile) {
     myDslElement.replaceInExpressionList(CONSUMER_PROGUARD_FILES, oldConsumerProguardFile, newConsumerProguardFile);
   }
 
@@ -119,11 +119,6 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
   @NotNull
   public ResolvedPropertyModel multiDexEnabled() {
     return getModelForProperty(MULTI_DEX_ENABLED);
-  }
-
-  @Override
-  public void removeMultiDexEnabled() {
-    myDslElement.removeProperty(MULTI_DEX_ENABLED);
   }
 
   @Override
@@ -233,7 +228,7 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
   }
 
   protected void replaceTypeNameValueElement(@NotNull TypeNameValueElement oldElement,
-                                                        @NotNull TypeNameValueElement newElement) {
+                                             @NotNull TypeNameValueElement newElement) {
     if (oldElement.elementName().equals(newElement.elementName())) {
       GradleDslElementList elementList = myDslElement.getPropertyElement(oldElement.elementName(), GradleDslElementList.class);
       if (elementList != null) {
@@ -261,11 +256,6 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
   @NotNull
   public ResolvedPropertyModel useJack() {
     return getModelForProperty(USE_JACK);
-  }
-
-  @Override
-  public void removeUseJack() {
-    myDslElement.removeProperty(USE_JACK);
   }
 
   /**
@@ -346,7 +336,7 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
       GradleDslLiteral valueElement = new GradleDslLiteral(parent, element.elementName());
       valueElement.setValue(element.value());
 
-      GradleDslExpressionList gradleDslExpressionList = new GradleDslExpressionList(parent, element.elementName());
+      GradleDslExpressionList gradleDslExpressionList = new GradleDslExpressionList(parent, element.elementName(), false);
       gradleDslExpressionList.addNewExpression(typeElement);
       gradleDslExpressionList.addNewExpression(nameElement);
       gradleDslExpressionList.addNewExpression(valueElement);
@@ -357,7 +347,9 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
   @NotNull
   protected ResolvedPropertyModel getModelForProperty(@NotNull String property) {
     GradleDslElement element = myDslElement.getPropertyElement(property);
-    return element == null ? new EmptyPropertyModel(myDslElement, REGULAR, property, true) : new ResolvedPropertyModelImpl(element);
+    return new ResolvedPropertyModelImpl(element == null
+                                         ? new GradlePropertyModelImpl(myDslElement, REGULAR, property)
+                                         : new GradlePropertyModelImpl(element));
   }
 
   /**

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
+import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNullableValue;
 import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
@@ -26,6 +27,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Base class for {@link GradleDslElement}s that represent a closure block or a map element. It provides the functionality to store the
@@ -125,8 +127,8 @@ public abstract class GradlePropertiesDslElement extends GradleDslElement {
     removePropertyInternal(propertyToReset);
   }
 
-  protected void addAsParsedDslExpressionList(@NotNull String property, GradleDslExpression dslLiteral) {
-    PsiElement psiElement = dslLiteral.getPsiElement();
+  protected void addAsParsedDslExpressionList(@NotNull String property, GradleDslExpression expression) {
+    PsiElement psiElement = expression.getPsiElement();
     if (psiElement == null) {
       return;
     }
@@ -135,7 +137,15 @@ public abstract class GradlePropertiesDslElement extends GradleDslElement {
     // supported even when there is only one element in it. This does not work in many other places like proguardFile elements where
     // only one argument is supported and for this cases we use addToParsedExpressionList method.
     GradleDslExpressionList literalList = new GradleDslExpressionList(this, psiElement, property, true);
-    literalList.addParsedExpression(dslLiteral);
+    if (expression instanceof GradleDslMethodCall) {
+      for (GradleDslElement element : ((GradleDslMethodCall)expression).getArguments()) {
+        if (element instanceof GradleDslExpression) {
+          literalList.addParsedExpression((GradleDslExpression)element);
+        }
+      }
+    } else {
+      literalList.addParsedExpression(expression);
+    }
     addPropertyInternal(property, literalList);
   }
 
@@ -147,7 +157,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElement {
 
     GradleDslExpressionList gradleDslExpressionList = getPropertyElement(property, GradleDslExpressionList.class);
     if (gradleDslExpressionList == null) {
-      gradleDslExpressionList = new GradleDslExpressionList(this, psiElement, property);
+      gradleDslExpressionList = new GradleDslExpressionList(this, psiElement, property, false);
       addPropertyInternal(property, gradleDslExpressionList);
     }
     else {
@@ -170,9 +180,23 @@ public abstract class GradlePropertiesDslElement extends GradleDslElement {
     return getPropertyElements().keySet();
   }
 
+  /**
+   * Note: This function does NOT guarantee that only elements belonging to properties are returned, since this class is also used
+   * for maps it is also possible for the resulting elements to be of {@link PropertyType#DERIVED}.
+   */
   @NotNull
   public Map<String, GradleDslElement> getPropertyElements() {
     return replayPropertyAdjustmentsOnto(myProperties);
+  }
+
+  @NotNull
+  public Map<String, GradleDslElement> getVariableElements() {
+    // We use a LinkedHashMap collector to ensure that the order of the element is preserved.
+    return replayPropertyAdjustmentsOnto(myVariables).entrySet().stream()
+      .filter(e -> e.getValue().getElementType() == PropertyType.VARIABLE)
+      .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue(), (u, v) -> {
+        throw new IllegalStateException(String.format("Duplicate key %s", u));
+      }, LinkedHashMap::new));
   }
 
   /**
@@ -305,7 +329,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElement {
   private GradlePropertiesDslElement addToNewLiteralListImpl(@NotNull String property, @NotNull Object value) {
     GradleDslExpressionList gradleDslExpressionList = getPropertyElement(property, GradleDslExpressionList.class);
     if (gradleDslExpressionList == null) {
-      gradleDslExpressionList = new GradleDslExpressionList(this, property);
+      gradleDslExpressionList = new GradleDslExpressionList(this, property, false);
       myAdjustedProperties.put(property, gradleDslExpressionList);
     }
     gradleDslExpressionList.addNewLiteral(value);

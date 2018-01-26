@@ -32,7 +32,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.rendering.RenderResult;
 import com.android.tools.idea.uibuilder.error.IssuePanelSplitter;
 import com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild;
-import com.android.tools.idea.uibuilder.handlers.transition.TransitionLayoutHandler;
+import com.android.tools.idea.uibuilder.handlers.motion.MotionLayoutHandler;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.idea.uibuilder.model.NlModelHelperKt;
 import com.android.tools.idea.uibuilder.palette2.PaletteDefinition;
@@ -359,22 +359,22 @@ public class NlPreviewForm implements Disposable, CaretListener {
     }
 
     boolean animationsBarEnabled = StudioFlags.NELE_ANIMATIONS_PREVIEW.get() ||
-                                   StudioFlags.NELE_TRANSITION_LAYOUT_ANIMATIONS.get();
+                                   StudioFlags.NELE_MOTION_LAYOUT_ANIMATIONS.get();
 
     if (!animationsBarEnabled || myModel == null) {
       myAnimationToolbar = null;
       return;
     }
 
-    if (StudioFlags.NELE_TRANSITION_LAYOUT_ANIMATIONS.get()) {
+    if (StudioFlags.NELE_MOTION_LAYOUT_ANIMATIONS.get()) {
       // Find if there is a transtion layout
       NlComponent transitionLayout = myModel.flattenComponents()
-        .filter(component -> NlComponentHelperKt.isOrHasSuperclass(component, SdkConstants.TRANSITION_LAYOUT))
+        .filter(component -> NlComponentHelperKt.isOrHasSuperclass(component, SdkConstants.MOTION_LAYOUT))
         .findAny()
         .orElse(null);
-      TransitionLayoutHandler.TransitionLayoutComponentHelper helper = transitionLayout != null ?
-                                                                       new TransitionLayoutHandler.TransitionLayoutComponentHelper(transitionLayout) :
-                                                                       null;
+      MotionLayoutHandler.MotionLayoutComponentHelper helper = transitionLayout != null ?
+                                                               new MotionLayoutHandler.MotionLayoutComponentHelper(transitionLayout) :
+                                                               null;
       long maxTimeMs = helper != null ? helper.getMaxTimeMs() : -1;
 
 

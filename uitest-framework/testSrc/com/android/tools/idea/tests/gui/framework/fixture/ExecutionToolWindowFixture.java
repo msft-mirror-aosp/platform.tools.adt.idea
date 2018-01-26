@@ -117,10 +117,8 @@ public class ExecutionToolWindowFixture extends ToolWindowFixture {
     @Nullable
     public XDebuggerTree getDebuggerTree() {
       try {
+        // There is a click on tab inside of getTabComponent() method.
         JComponent debuggerComponent = getTabComponent("Debugger");
-        if (debuggerComponent != null) {
-          myRobot.click(debuggerComponent);
-        }
         ThreeComponentsSplitter threeComponentsSplitter =
             myRobot.finder().findByType(debuggerComponent, ThreeComponentsSplitter.class, false);
         JComponent innerComponent = threeComponentsSplitter.getInnerComponent();
@@ -285,9 +283,8 @@ public class ExecutionToolWindowFixture extends ToolWindowFixture {
           }
         });
       }
-      assertThat(tabLabel.isShowing()).isTrue();
       myRobot.click(tabLabel);
-      return myRobot.finder().findByType(tabContentType);
+      return waitUntilShowing(myRobot, Matchers.byType(tabContentType));
     }
 
     public boolean isExecutionInProgress() {

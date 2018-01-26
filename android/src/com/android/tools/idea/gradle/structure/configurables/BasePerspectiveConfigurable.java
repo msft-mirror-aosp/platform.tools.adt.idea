@@ -28,6 +28,7 @@ import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.ActionCallback;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindowAnchor;
+import com.intellij.ui.JBSplitter;
 import com.intellij.ui.TreeSpeedSearch;
 import com.intellij.ui.components.JBLoadingPanel;
 import com.intellij.ui.navigation.Place;
@@ -69,6 +70,7 @@ public abstract class BasePerspectiveConfigurable extends MasterDetailsComponent
   private volatile boolean mySelectModuleQuietly;
 
   protected BasePerspectiveConfigurable(@NotNull PsContext context) {
+    ((JBSplitter)getSplitter()).setSplitterProportionKey("android.psd.proportion.modules");
     context.add(new GradleSyncListener.Adapter() {
       @Override
       public void syncStarted(@NotNull Project project, boolean skipped, boolean sourceGenerationRequested) {
@@ -92,7 +94,10 @@ public abstract class BasePerspectiveConfigurable extends MasterDetailsComponent
     myContext.add((moduleName, source) -> {
       if (source != this) {
         mySelectModuleQuietly = true;
-        selectModule(moduleName);
+        BaseNamedConfigurable<?> baseNamedConfigurable = selectModule(moduleName);
+        if (baseNamedConfigurable != null) {
+          baseNamedConfigurable.restoreUiState();
+        }
       }
     }, this);
     myContext.getAnalyzerDaemon().add(model -> {
@@ -122,15 +127,19 @@ public abstract class BasePerspectiveConfigurable extends MasterDetailsComponent
     }
   }
 
-  private void selectModule(@NotNull String moduleName) {
+  @Nullable
+  private BaseNamedConfigurable<?> selectModule(@NotNull String moduleName) {
     PsModule module = findModule(moduleName);
     if (module != null) {
       MyNode node = findNodeByObject(myRoot, module);
       if (node != null) {
         selectNodeInTree(moduleName);
         setSelectedNode(node);
+        NamedConfigurable configurable = node.getConfigurable();
+        return configurable instanceof BaseNamedConfigurable<?> ? ((BaseNamedConfigurable<?>)configurable) : null;
       }
     }
+    return null;
   }
 
   @Nullable
@@ -155,6 +164,7 @@ public abstract class BasePerspectiveConfigurable extends MasterDetailsComponent
       PsModule module = baseConfigurable.getEditableObject();
       if (!mySelectModuleQuietly) {
         myContext.setSelectedModule(module.getName(), this);
+        baseConfigurable.restoreUiState();
       }
       else {
         mySelectModuleQuietly = false;

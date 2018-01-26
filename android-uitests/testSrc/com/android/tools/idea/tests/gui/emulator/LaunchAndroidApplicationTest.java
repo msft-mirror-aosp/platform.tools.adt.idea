@@ -21,6 +21,7 @@ import com.android.tools.idea.tests.gui.framework.fixture.*;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.ChooseSystemImageStepFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.BrowseSamplesWizardFixture;
 import com.intellij.debugger.engine.evaluation.EvaluateException;
+import com.intellij.execution.impl.ConsoleViewImpl;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.SystemProperties;
 import org.fest.swing.fixture.DialogFixture;
@@ -51,13 +52,14 @@ public class LaunchAndroidApplicationTest {
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
 
   private static final String APP_NAME = "app";
-  private static final String APPLICATION_STARTED = ".*Application started.*";
   private static final String FATAL_SIGNAL_11_OR_6 = ".*SIGSEGV.*|.*SIGABRT.*";
   private static final String PROCESS_NAME = "google.simpleapplication";
   private static final String INSTRUMENTED_TEST_CONF_NAME = "instrumented_test";
   private static final String ANDROID_INSTRUMENTED_TESTS = "Android Instrumented Tests";
   private static final Pattern LOCAL_PATH_OUTPUT = Pattern.compile(
     ".*adb shell am start .*google\\.simpleapplication.*", Pattern.DOTALL);
+  private static final Pattern ADB_SHELL_AM_START = Pattern.compile(
+    ".*adb shell am start .*com\\.example\\.hellojni.*", Pattern.DOTALL);
   private static final Pattern INSTRUMENTED_TEST_OUTPUT = Pattern.compile(
     ".*adb shell am instrument .*AndroidJUnitRunner.*Tests ran to completion.*", Pattern.DOTALL);
   private static final Pattern RUN_OUTPUT = Pattern.compile(".*Connected to process.*", Pattern.DOTALL);
@@ -160,7 +162,7 @@ public class LaunchAndroidApplicationTest {
    *   </pre>
    * <p>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE)
+  @RunIn(TestGroup.SANITY)
   @Test
   public void testNdkHandlesDupeFilename() throws Exception {
     IdeFrameFixture ideFrameFixture = guiTest.importProjectAndWaitForProjectSyncToFinish("NdkDupeFilename");
@@ -170,7 +172,13 @@ public class LaunchAndroidApplicationTest {
       .selectDevice(emulator.getDefaultAvdName())
       .clickOk();
     ExecutionToolWindowFixture.ContentFixture contentWindow = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
-    contentWindow.waitForOutput(new PatternTextMatcher(Pattern.compile(APPLICATION_STARTED, Pattern.DOTALL)), 120);
+
+    // Workaround:
+    // Make sure the right app is being used. This also serves as the sync point for the package to get uploaded to the device/emulator.
+    ideFrameFixture.getRunToolWindow().findContent(APP_NAME).waitForOutput(new PatternTextMatcher(ADB_SHELL_AM_START), 120);
+    ideFrameFixture.getRunToolWindow().findContent(APP_NAME).waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
+    ideFrameFixture.getAndroidToolWindow().selectDevicesTab().selectProcess("com.example.hellojni");
+
     contentWindow.stop();
   }
 
@@ -257,10 +265,33 @@ public class LaunchAndroidApplicationTest {
     samplesWizard.clickFinish();
 
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
+    // HACK: This is needed until the github project is updated
+    ideFrameFixture
+      .waitForGradleProjectSyncToFail()
+      .getEditor()
+      .open("build.gradle")
+      .select("com.android.tools.build:gradle:(3.0.1)")
+      .enterText("3.1.0-dev")
+      .open("choreographer-30fps/build.gradle")
+      .select("constraint-layout:1.0.(1)")
+      .enterText("2")
+      .open("classic-teapot/build.gradle")
+      .select("constraint-layout:1.0.(1)")
+      .enterText("2")
+      .open("more-teapots/build.gradle")
+      .select("constraint-layout:1.0.(1)")
+      .enterText("2")
+      .open("gradle/wrapper/gradle-wrapper.properties")
+      .select("gradle-(4.1)-all.zip")
+      .enterText("4.4")
+      .getIdeFrame()
+      .requestProjectSync()
+      .waitForGradleProjectSyncToFinish(Wait.seconds(60));
+
     ideFrameFixture
       .waitForGradleProjectSyncToFinish()
       .getEditor()
-      .open("app/src/main/jni/TeapotNativeActivity.cpp")
+      .open("classic-teapot/src/main/cpp/TeapotNativeActivity.cpp")
       .moveBetween("g_engine.Draw", "Frame()")
       .invokeAction(EditorFixture.EditorAction.TOGGLE_LINE_BREAKPOINT) // First break point - First Frame is drawn
       .moveBetween("static int32_t Handle", "Input(")
@@ -273,15 +304,19 @@ public class LaunchAndroidApplicationTest {
     emulator.createDefaultAVD(guiTest.ideFrame().invokeAvdManager());
 
     ideFrameFixture
-      .debugApp(APP_NAME)
+      .debugApp("classic-teapot")
       .selectDevice(emulator.getDefaultAvdName())
       .clickOk();
+
+    Wait.seconds(EmulatorTestRule.DEFAULT_EMULATOR_WAIT_SECONDS)
+      .expecting("emulator with the app launched in debug mode")
+      .until(() -> ideFrameFixture.getDebugToolWindow().getContentCount() >= 2);
 
     // Wait for the UI App to be up and running, by waiting for the first Frame draw to get hit.
     expectBreakPoint("g_engine.DrawFrame()");
 
     // Simulate a screen touch
-    emulator.getEmulatorConnection().tapRunningAvd(400, 400);
+    emulator.getEmulatorConnection().tapRunningAvd(400, 800);
 
     // Wait for the Cpp HandleInput() break point to get hit.
     expectBreakPoint("Engine* eng = (Engine*)app->userData;");
@@ -323,13 +358,25 @@ public class LaunchAndroidApplicationTest {
 
     MessagesToolWindowFixture messagesToolWindow = ideFrameFixture.getMessagesToolWindow();
     MessagesToolWindowFixture.MessageFixture message = messagesToolWindow.getGradleSyncContent()
-      .findMessage(ERROR, firstLineStartingWith("Failed to find Build Tools revision"));
-    MessagesToolWindowFixture.HyperlinkFixture hyperlink = message.findHyperlinkByContainedText("Install Build Tools");
+      .findMessage(ERROR, firstLineStartingWith("Failed to find"));
+    MessagesToolWindowFixture.HyperlinkFixture hyperlink = message.findHyperlinkByContainedText("Install");
     hyperlink.clickAndContinue();
 
     DialogFixture downloadDialog = findDialog(withTitle("SDK Quickfix Installation"))
       .withTimeout(SECONDS.toMillis(30)).using(guiTest.robot());
     JButtonFixture finish = downloadDialog.button(withText("Finish"));
+    Wait.seconds(120).expecting("Android source to be installed").until(finish::isEnabled);
+    finish.click();
+
+    ideFrameFixture.waitForGradleProjectSyncToFail();
+
+    BuildToolWindowFixture buildToolWindow = ideFrameFixture.getBuildToolWindow();
+    ConsoleViewImpl consoleView = buildToolWindow.getGradleSyncConsoleView();
+    buildToolWindow.findHyperlinkByTextAndClick(consoleView, "Install Build Tools");
+
+    downloadDialog = findDialog(withTitle("SDK Quickfix Installation"))
+      .withTimeout(SECONDS.toMillis(30)).using(guiTest.robot());
+    finish = downloadDialog.button(withText("Finish"));
     Wait.seconds(120).expecting("Android source to be installed").until(finish::isEnabled);
     finish.click();
 

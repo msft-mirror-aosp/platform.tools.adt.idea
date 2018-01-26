@@ -16,6 +16,7 @@
 package com.android.tools.idea.model;
 
 import com.android.SdkConstants;
+import com.android.annotations.VisibleForTesting;
 import com.android.builder.model.*;
 import com.android.manifmerger.*;
 import com.android.sdklib.AndroidVersion;
@@ -89,7 +90,7 @@ final class ManifestInfo {
     ILogger logger = NullLogger.getLogger();
     ManifestMerger2.MergeType mergeType = facet.isAppProject() || facet.getProjectType() == PROJECT_TYPE_FEATURE ? ManifestMerger2.MergeType.APPLICATION : ManifestMerger2.MergeType.LIBRARY;
 
-    AndroidModel androidModel = facet.getAndroidModel();
+    AndroidModel androidModel = facet.getConfiguration().getModel();
     AndroidModuleModel gradleModel = AndroidModuleModel.get(facet);
 
     ManifestMerger2.Invoker manifestMergerInvoker = ManifestMerger2.newMerger(mainManifestFile, logger, mergeType);
@@ -417,11 +418,20 @@ final class ManifestInfo {
       return flavorAndBuildTypeManifests;
     }
 
+    @VisibleForTesting
     @NotNull
-    private static List<VirtualFile> getLibManifests(@NotNull AndroidFacet facet) {
+    static List<VirtualFile> getLibManifests(@NotNull AndroidFacet facet) {
       List<VirtualFile> libraryManifests = new ArrayList<>();
 
       List<AndroidFacet> dependencies = AndroidUtils.getAllAndroidDependencies(facet.getModule(), true);
+
+      // add local library manifests to libraryManifests before external library manifests because local manifests have higher priority.
+      for (AndroidFacet dependency : dependencies) {
+        VirtualFile vFile = dependency.getMainIdeaSourceProvider().getManifestFile();
+        if (vFile != null) {
+          libraryManifests.add(vFile);
+        }
+      }
 
       AndroidModuleModel androidModuleModel = AndroidModuleModel.get(facet);
       if (androidModuleModel != null) {
@@ -438,13 +448,6 @@ final class ManifestInfo {
         }
       }
 
-      for (AndroidFacet dependency : dependencies) {
-        // we will NOT actually be reading from this file, as we will need to recursively get the info from the modules MergedManifest
-        VirtualFile vFile = dependency.getMainIdeaSourceProvider().getManifestFile();
-        if (vFile != null) {
-          libraryManifests.add(vFile);
-        }
-      }
       return libraryManifests;
     }
 

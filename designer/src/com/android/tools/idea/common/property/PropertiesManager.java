@@ -36,7 +36,6 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Divider;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.SideBorder;
@@ -76,7 +75,7 @@ public abstract class PropertiesManager<Self extends PropertiesManager<Self>>
   private boolean myFirstLoad = true;
   private int myUpdateCount;
   private JBSplitter mySplitter;
-
+  private Runnable myStopFilteringCallback;
 
   public PropertiesManager(@NotNull AndroidFacet facet, @Nullable DesignSurface designSurface, @NotNull PropertyEditors editors) {
     myProject = facet.getModule().getProject();
@@ -84,7 +83,6 @@ public abstract class PropertiesManager<Self extends PropertiesManager<Self>>
     mySurface = designSurface;
     myEditors = editors;
     setToolContextWithoutCheck(designSurface);
-    Disposer.register(facet.getModule().getProject(), this);
   }
 
   @Override
@@ -93,6 +91,11 @@ public abstract class PropertiesManager<Self extends PropertiesManager<Self>>
       return;
     }
     setToolContextWithoutCheck(designSurface);
+  }
+
+  @Override
+  public void setStopFiltering(@NotNull Runnable callback) {
+    myStopFilteringCallback = callback;
   }
 
   @NotNull
@@ -242,6 +245,9 @@ public abstract class PropertiesManager<Self extends PropertiesManager<Self>>
           return;
         }
         getPropertiesPanel().setItems(components, properties);
+        if (myStopFilteringCallback != null) {
+          myStopFilteringCallback.run();
+        }
         if (postUpdateRunnable != null) {
           myLoading = false;
           postUpdateRunnable.run();

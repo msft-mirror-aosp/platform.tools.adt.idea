@@ -19,8 +19,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +27,25 @@ import java.util.Map;
  * of the projects Gradle build. It allows access to the properties name, values and dependencies.
  */
 public interface GradlePropertyModel {
+  @NotNull
+  String DOUBLE_QUOTES = "\"";
+
+  /**
+   * Converts a string to one that can be used to set interpolated strings using {@link #setValue(Object)}
+   * This type of string will perform string injections, e.g For Gradle file:
+   *
+   * ext {
+   *   prop1 = 'Hello'
+   * }
+   *
+   * property.setValue(iStr("$prop1"))
+   * property.getValue(STRING_TYPE) // This will return the string "Hello".
+   */
+  @NotNull
+  static String iStr(@NotNull String in) {
+    return DOUBLE_QUOTES + in.replace("\"", "\\\"") + DOUBLE_QUOTES;
+  }
+
   // The following are TypeReferences used in calls to getValue and getRawValue.
   TypeReference<String> STRING_TYPE = new TypeReference<String>() {};
   TypeReference<Integer> INTEGER_TYPE = new TypeReference<Integer>() {};
@@ -42,12 +59,12 @@ public interface GradlePropertyModel {
    * {@code UNKNOWN}. These value types provide a guarantee about the type of value
    * that the property contains:
    * <ul>
-   *   <li>{@code STRING} - Pass {@link STRING_TYPE} to {@link #getValue(TypeReference)}</li>
-   *   <li>{@code INTEGER} - Pass {@link INTEGER_TYPE} to {@link #getValue(TypeReference)}</li>
-   *   <li>{@code BOOLEAN} - Pass {@link BOOLEAN_TYPE} to {@link #getValue(TypeReference)}</li>
-   *   <li>{@code MAP} - Pass {@link MAP_TYPE} to {@link #getValue(TypeReference)}</li>
-   *   <li>{@code LIST} - Pass {@link LIST_TYPE} to {@link #getValue(TypeReference)}</li>
-   *   <li>{@code REFERENCE} - Pass {@link STRING_TYPE} to {@link #getValue(TypeReference)} to get the name of the
+   *   <li>{@code STRING} - Pass {@link #STRING_TYPE} to {@link #getValue(TypeReference)}</li>
+   *   <li>{@code INTEGER} - Pass {@link #INTEGER_TYPE} to {@link #getValue(TypeReference)}</li>
+   *   <li>{@code BOOLEAN} - Pass {@link #BOOLEAN_TYPE} to {@link #getValue(TypeReference)}</li>
+   *   <li>{@code MAP} - Pass {@link #MAP_TYPE} to {@link #getValue(TypeReference)}</li>
+   *   <li>{@code LIST} - Pass {@link #LIST_TYPE} to {@link #getValue(TypeReference)}</li>
+   *   <li>{@code REFERENCE} - Pass {@link #STRING_TYPE} to {@link #getValue(TypeReference)} to get the name of the
    *                           property or variable refereed to. Use {@link #getDependencies()} to get the value.</li>
    *   <li>{@code NONE} - This property currently has no value, any call to {@link #getValue(TypeReference)} will return null.</>
    *   <li>{@code UNKNOWN} - No guarantees about the type of this element can be made}</li>
@@ -97,7 +114,7 @@ public interface GradlePropertyModel {
    * </pre>
    * Getting the unresolved value of "prop2" will return "prop1" and for "prop3" it will return "Hello ${prop1}".
    * Otherwise if the property has no string injections or is not a reference this method will return the same value
-   * as {@link #getValue(Class)}.
+   * as {@link #getValue(TypeReference)}.
    */
   @Nullable
   <T> T getRawValue(@NotNull TypeReference<T> typeReference);
@@ -134,10 +151,43 @@ public interface GradlePropertyModel {
   void setValue(@NotNull Object value);
 
   /**
-   * Marks this property for deletion, which when {@link GradleBuildModel#applyChanges()} is called, removes it and its value
-   * from the file. Once {@link #delete()} has been called this {@link GradlePropertyModel} is invalid and any changes to it will be
-   * ignored. In order to alter this property further use the {@link GradlePropertyModel} returned by this method.
+   * Converts this property to an empty map. Any values stored inside the property will be removed.
+   * This can be called on a property with any {@link ValueType} but will always result in {@link ValueType#MAP}.
+   * This method returns itself for in order to chain operations e.g propertyModel.convertToEmptyMap().addMapValue()
    */
-  @NotNull
-  GradlePropertyModel delete();
+  GradlePropertyModel convertToEmptyMap();
+
+  /**
+   * Sets the value, in the map represented by this property, that corresponds to the given key. The model representing the
+   * new value is returned by this method. Unless this resulting model has its value set, nothing will be created.
+   * This should only be used for properties for which {@link #getValueType()} returns {@link ValueType#MAP}.
+   */
+  GradlePropertyModel addMapValue(@NotNull String key);
+
+  /**
+   * Converts this property to an empty list. Any values stored inside the property will be removed.
+   * This can be called on a property with any {@link ValueType} but will always result in {@link ValueType#LIST}
+   * This method returns itself for in order to chain operations e.g propertyModel.convertToEmptyList().addListValue()
+   */
+  GradlePropertyModel convertToEmptyList();
+
+  /**
+   * Create a new value at the end of this list property. The model representing the new value is returned by this method.
+   * Unless the resulting value is set, nothing will be added.
+   * Note: The returned {@link GradlePropertyModel} should not be set to a map or list. Setting these inside lists will throw an exception.
+   * This should only be used for properties for which {@link #getValueType()} return {@link ValueType#LIST}
+   */
+  GradlePropertyModel addListValue();
+
+  /**
+   * Same as {@link #addListValue()} but instead of the value being added at the end, it will be added at the given index.
+   * @throw {@link IndexOutOfBoundsException} if the index is outside the range of the list. Indexing starts from 0.
+   */
+  GradlePropertyModel addListValueAt(int index);
+
+  /**
+   * Marks this property for deletion, which when {@link GradleBuildModel#applyChanges()} is called, removes it and its value
+   * from the file. Any call to {@link #setValue(Object)} will recreate the property and add it back to the file.
+   */
+  void delete();
 }

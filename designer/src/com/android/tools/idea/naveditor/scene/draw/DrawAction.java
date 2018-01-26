@@ -21,7 +21,7 @@ import com.android.tools.idea.common.scene.draw.DisplayList;
 import com.android.tools.idea.common.scene.draw.DrawCommand;
 import com.android.tools.idea.common.scene.draw.DrawCommandSerializationHelperKt;
 import com.android.tools.idea.naveditor.scene.NavColorSet;
-import com.android.tools.idea.naveditor.scene.decorator.ActionDecoratorKt;
+import com.android.tools.idea.naveditor.scene.NavDrawHelperKt;
 import com.android.tools.idea.naveditor.scene.targets.ActionTarget;
 import com.android.tools.idea.uibuilder.handlers.constraint.draw.DrawConnectionUtils;
 import org.jetbrains.annotations.NotNull;
@@ -114,6 +114,7 @@ public class DrawAction extends NavBaseDrawCommand {
 
         break;
       case NORMAL:
+      case EXIT:
         ActionTarget.CurvePoints points = ActionTarget.getCurvePoints(source, dest, sceneContext);
         PATH.moveTo(points.p1.x, points.p1.y);
         PATH.curveTo(points.p2.x, points.p2.y, points.p3.x, points.p3.y, points.p4.x, points.p4.y);
@@ -123,7 +124,11 @@ public class DrawAction extends NavBaseDrawCommand {
         return;
     }
 
-    g.setStroke(ActionDecoratorKt.ACTION_STROKE); // TODO: Draw dashed stroke for nested actions
+    BasicStroke actionStroke = (connectionType == ActionTarget.ConnectionType.EXIT)
+                               ? NavDrawHelperKt.DASHED_ACTION_STROKE
+                               : NavDrawHelperKt.ACTION_STROKE;
+
+    g.setStroke(actionStroke);
     g.setColor(actionColor);
     g.draw(PATH);
   }

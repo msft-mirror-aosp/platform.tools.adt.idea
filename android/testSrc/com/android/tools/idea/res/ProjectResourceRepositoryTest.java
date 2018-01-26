@@ -152,7 +152,7 @@ public class ProjectResourceRepositoryTest extends AndroidTestCase {
   public void testGetResourceDirsAndUpdateRoots() {
     myFixture.copyFileToProject(LAYOUT, "res/layout/layout1.xml");
     addArchiveLibraries();
-    List<VirtualFile> flavorDirs = Lists.newArrayList(myFacet.getAllResourceDirectories());
+    List<VirtualFile> flavorDirs = Lists.newArrayList(myFacet.getResourceFolderManager().getFolders());
     final ProjectResourceRepository repository = ProjectResourceRepository.create(myFacet);
     List<? extends LocalResourceRepository> originalChildren = repository.getChildren();
     // Should have a bunch repository directories from the various flavors.
@@ -239,7 +239,7 @@ public class ProjectResourceRepositoryTest extends AndroidTestCase {
     File rootDir = androidProject.getRootDir();
     AndroidModuleModel androidModel =
       new AndroidModuleModel(androidProject.getName(), rootDir, androidProject, variant.getName(), new IdeDependenciesFactory());
-    myFacet.setAndroidModel(androidModel);
+    myFacet.getConfiguration().setModel(androidModel);
 
     File bundle = new File(rootDir, "bundle.aar");
     File libJar = new File(rootDir, "bundle_aar" + File.separatorChar + "library.jar");

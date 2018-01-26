@@ -16,6 +16,7 @@
 package com.android.tools.idea.avdmanager;
 
 import com.android.repository.io.FileOpUtils;
+import com.android.repository.Revision;
 import com.android.resources.Density;
 import com.android.resources.ScreenOrientation;
 import com.android.resources.ScreenSize;
@@ -555,7 +556,8 @@ public final class AvdOptionsModel extends WizardModel {
   @NotNull
   private static Storage calculateInitialVmHeap(@NotNull AvdDeviceData deviceData) {
     ScreenSize size = AvdScreenData.getScreenSize(deviceData.diagonalScreenSize().get());
-    Density density = AvdScreenData.getScreenDensity(deviceData.isTv().get(),
+    Density density = AvdScreenData.getScreenDensity(deviceData.deviceId().get(),
+                                                     deviceData.isTv().get(),
                                                      deviceData.screenDpi().get(),
                                                      deviceData.screenResolutionHeight().get());
     int vmHeapSize = 32;
@@ -772,7 +774,14 @@ public final class AvdOptionsModel extends WizardModel {
         return toIniString((Double)value);
       }
       else if (value instanceof GpuMode) {
-        return ((GpuMode)value).getGpuSetting();
+        GpuMode gpuMode = (GpuMode)value;
+        if (gpuMode == GpuMode.SWIFT &&
+            !AvdManagerConnection.getDefaultAvdManagerConnection().
+              emulatorVersionIsAtLeast(new Revision(27, 0, 5))) {
+          // Older Emulator versions expect "guest" when SWIFT is selected on the UI
+          return "guest";
+        }
+        return gpuMode.getGpuSetting();
       }
       else {
         return value.toString();

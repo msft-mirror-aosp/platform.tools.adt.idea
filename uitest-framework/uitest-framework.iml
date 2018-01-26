@@ -44,5 +44,6 @@
     <orderEntry type="module" module-name="android-common" scope="TEST" />
     <orderEntry type="module" module-name="perf-logger" scope="TEST" />
     <orderEntry type="module" module-name="project-system" scope="TEST" />
+    <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
   </component>
 </module>

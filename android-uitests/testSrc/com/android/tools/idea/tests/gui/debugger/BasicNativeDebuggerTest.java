@@ -18,6 +18,7 @@ package com.android.tools.idea.tests.gui.debugger;
 import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
+import com.android.tools.idea.tests.gui.framework.ScreenshotsDuringTest;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.DebugToolWindowFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.DeployTargetPickerDialogFixture;
@@ -25,10 +26,15 @@ import com.android.tools.idea.tests.gui.framework.fixture.EditConfigurationsDial
 import com.android.tools.idea.tests.gui.framework.fixture.ExecutionToolWindowFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.MessagesFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.NewModuleDialogFixture;
 import com.android.tools.idea.tests.util.NotMatchingPatternMatcher;
+import org.fest.swing.exception.WaitTimedOutError;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -37,6 +43,7 @@ public class BasicNativeDebuggerTest extends DebuggerTestBase {
 
   @Rule public final NativeDebuggerGuiTestRule guiTest = new NativeDebuggerGuiTestRule();
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
+  @Rule public final ScreenshotsDuringTest movieMaker = new ScreenshotsDuringTest();
 
   /**
    * <p>TT ID: TODO this test case needs a TT ID.
@@ -170,6 +177,57 @@ public class BasicNativeDebuggerTest extends DebuggerTestBase {
     assertThat(debugToolWindowFixture.getDebuggerContent("app-native")).isNull();
   }
 
+  @Test
+  @RunIn(TestGroup.QA_UNRELIABLE)
+  public void testNativeDebuggerNewLibraryWhileDebugging() throws Exception {
+    guiTest.importProjectAndWaitForProjectSyncToFinish("BasicCmakeAppForUI");
+    emulator.createDefaultAVD(guiTest.ideFrame().invokeAvdManager());
+    final IdeFrameFixture projectFrame = guiTest.ideFrame();
+
+    projectFrame.invokeMenuPath("Run", "Edit Configurations...");
+    EditConfigurationsDialogFixture.find(guiTest.robot())
+      .selectDebuggerType("Native")
+      .clickOk();
+
+    openAndToggleBreakPoints(projectFrame,
+                             "app/src/main/jni/native-lib.c",
+                             "return (*env)->NewStringUTF(env, message);");
+
+    projectFrame.debugApp(DEBUG_CONFIG_NAME)
+      .selectDevice(emulator.getDefaultAvdName())
+      .clickOk();
+
+    DebugToolWindowFixture debugToolWindowFixture = new DebugToolWindowFixture(projectFrame);
+    waitForSessionStart(debugToolWindowFixture);
+
+    // Add a new Android Library.  Note that this needs the path to Kotlin defined in the test's
+    // JVM arguments.  See go/studio-testing-pitfalls for information.
+    projectFrame.invokeMenuPath("File", "New", "New Module...");
+    NewModuleDialogFixture newModuleDialogFixture = NewModuleDialogFixture.find(guiTest.ideFrame());
+    newModuleDialogFixture.chooseModuleType("Android Library").clickNext().clickFinish();
+
+    MessagesFixture messagesFixture = MessagesFixture.findByTitle(guiTest.robot(), "Terminate debugging");
+    // Cancel and check that the debugging session is still happening.
+    messagesFixture.clickCancel();
+    checkAppIsPaused(projectFrame, new String[]{});
+    stopDebugSession(debugToolWindowFixture);
+
+    projectFrame.debugApp(DEBUG_CONFIG_NAME)
+      .selectDevice(emulator.getDefaultAvdName())
+      .clickOk();
+    debugToolWindowFixture = new DebugToolWindowFixture(projectFrame);
+    waitForSessionStart(debugToolWindowFixture);
+
+    projectFrame.invokeMenuPath("File", "New", "New Module...");
+    newModuleDialogFixture = NewModuleDialogFixture.find(guiTest.ideFrame());
+    newModuleDialogFixture.chooseModuleType("Android Library").clickNext().clickFinish();
+
+    messagesFixture = MessagesFixture.findByTitle(guiTest.robot(), "Terminate debugging");
+    // Click okay and check that the debugger has been killed.
+    messagesFixture.click("Terminate");
+    assertThat(debugToolWindowFixture.getDebuggerContent("app-native")).isNull();
+  }
+
   /**
    * Verifies that instant run hot swap works as expected on a C++ support project.
    * <p>
@@ -223,7 +281,8 @@ public class BasicNativeDebuggerTest extends DebuggerTestBase {
     expectedPatterns = new String[]{
       variableToSearchPattern("s", "\"Success. Sum = 55, Product = 3628800, Quotient = 512\""),
     };
-    checkAppIsPaused(ideFrameFixture, expectedPatterns);
+
+    checkAppIsPaused(ideFrameFixture, expectedPatterns, "app-java");
     assertThat(debugToolWindowFixture.getDebuggerContent("app-java")).isNotNull();
     // TODO Stop the session.
   }

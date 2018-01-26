@@ -15,12 +15,16 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.java.JavaVersionDslElement;
+import com.intellij.lang.ASTNode;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.codeStyle.CodeStyleManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyElementVisitor;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
@@ -34,7 +38,6 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplic
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrCommandArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterList;
@@ -44,6 +47,9 @@ import java.util.Collection;
 
 import static com.intellij.openapi.util.text.StringUtil.isQuotedString;
 import static com.intellij.openapi.util.text.StringUtil.unquoteString;
+import static com.intellij.psi.util.PsiTreeUtil.getChildOfType;
+import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOLON;
+import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
 
 public final class GroovyDslUtil {
 
@@ -133,7 +139,7 @@ public final class GroovyDslUtil {
   }
 
   static void deleteIfEmpty(@Nullable PsiElement element) {
-    if (element == null || !element.isValid()) {
+    if (element == null) {
       return;
     }
 
@@ -192,13 +198,6 @@ public final class GroovyDslUtil {
         commandArgumentList.delete();
       }
     }
-    else if (element instanceof GrListOrMap) {
-      GrListOrMap listOrMap = (GrListOrMap)element;
-      if ((listOrMap.isMap() && listOrMap.getNamedArguments().length == 0)
-          || (!listOrMap.isMap() && listOrMap.getInitializers().length == 0)) {
-        listOrMap.delete();
-      }
-    }
     else if (element instanceof GrNamedArgument) {
       GrNamedArgument namedArgument = (GrNamedArgument)element;
       if (namedArgument.getExpression() == null) {
@@ -223,26 +222,65 @@ public final class GroovyDslUtil {
       }
     }
 
-    if (!element.isValid()) { // If this element is deleted, also delete the parent if it is empty.
+    if (!element.isValid()) {
+      // Give the parent a chance to adapt to the missing child.
+      handleElementRemoved(parent, element);
+      // If this element is deleted, also delete the parent if it is empty.
       deleteIfEmpty(parent);
     }
   }
 
-  @Nullable
-  static GrLiteral extractUnsavedLiteral(@NotNull GradleDslLiteral literal) {
-    GroovyPsiElement newElement = ensureGroovyPsi(literal.getUnsavedValue());
-    if (!(newElement instanceof  GrLiteral)) {
-      return null;
+  static void removePsiIfInvalid(@Nullable GradleDslElement element) {
+    if (element == null) {
+      return;
     }
 
-    return (GrLiteral)newElement;
+    if (element.getPsiElement() != null && !element.getPsiElement().isValid()) {
+      element.setPsiElement(null);
+    }
+
+    if (element.getParent() != null) {
+      removePsiIfInvalid(element.getParent());
+    }
+  }
+
+  /**
+   * This method is used to edit the PsiTree once an element has been deleted.
+   *
+   * It currently only looks at GrListOrMap to insert a ":" into a map. This is needed because once we delete
+   * the final element in a map we are left with [], which is a list.
+   */
+  static void handleElementRemoved(@Nullable PsiElement psiElement, @Nullable PsiElement removed) {
+    if (psiElement == null) {
+      return;
+    }
+
+    if (psiElement instanceof GrListOrMap) {
+      GrListOrMap listOrMap = (GrListOrMap)psiElement;
+      // Make sure it was being used as a map
+      if (removed instanceof GrNamedArgument) {
+        if (listOrMap.getLBrack().getNextSibling() == listOrMap.getRBrack()) {
+          final ASTNode node = listOrMap.getNode();
+          node.addLeaf(mCOLON, ":", listOrMap.getRBrack().getNode());
+        }
+      }
+    }
   }
 
   @Nullable
-  static GrLiteral createLiteral(@NotNull GradleDslElement context, @NotNull Object unsavedValue) {
+  static GrExpression extractUnsavedExpression(@NotNull GradleDslSettableExpression literal) {
+    GroovyPsiElement newElement = ensureGroovyPsi(literal.getUnsavedValue());
+    if (!(newElement instanceof GrExpression)) {
+      return null;
+    }
+
+    return (GrExpression)newElement;
+  }
+
+  @Nullable
+  static PsiElement createLiteral(@NotNull GradleDslElement context, @NotNull Object unsavedValue) {
     CharSequence unsavedValueText = null;
     if (unsavedValue instanceof String) {
-      // If the string begins and ends with speech marks then make sure its correctly parsed as a non-raw string.
       String stringValue = (String)unsavedValue;
       if (stringValue.startsWith(GrStringUtil.DOUBLE_QUOTES) && stringValue.endsWith(GrStringUtil.DOUBLE_QUOTES)) {
         unsavedValueText = (String)unsavedValue;
@@ -252,6 +290,9 @@ public final class GroovyDslUtil {
     }
     else if (unsavedValue instanceof Integer || unsavedValue instanceof Boolean) {
       unsavedValueText = unsavedValue.toString();
+    }
+    else if (unsavedValue instanceof ReferenceTo) {
+      unsavedValueText = ((ReferenceTo)unsavedValue).getText();
     }
 
     if (unsavedValueText == null) {
@@ -263,12 +304,88 @@ public final class GroovyDslUtil {
       return null;
     }
 
-    GrExpression newExpression = factory.createExpressionFromText(unsavedValueText);
+    return factory.createExpressionFromText(unsavedValueText);
+  }
 
-    if (!(newExpression instanceof GrLiteral)) {
+  /**
+   * Creates a literal expression map enclosed with brackets "[]" from the given {@link GradleDslExpressionMap}.
+   */
+  static PsiElement createDerivedMap(@NotNull GradleDslExpressionMap expressionMap) {
+    PsiElement parentPsiElement = getParentPsi(expressionMap);
+    if (parentPsiElement == null) {
       return null;
     }
-    return (GrLiteral)newExpression;
+
+    GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(parentPsiElement.getProject());
+    GrExpression emptyMap = factory.createExpressionFromText("[:]");
+    GrNamedArgument namedArgument = factory.createNamedArgument(expressionMap.getName(), emptyMap);
+    PsiElement addedElement = addToMap((GrListOrMap)parentPsiElement, namedArgument);
+    assert addedElement instanceof GrNamedArgument;
+
+    PsiElement added = ((GrNamedArgument)addedElement).getExpression();
+    expressionMap.setPsiElement(added);
+    return added;
+  }
+
+  static PsiElement addToMap(@NotNull GrListOrMap map, @NotNull GrNamedArgument newValue) {
+    if (map.getNamedArguments().length != 0) {
+      map.addAfter(GroovyPsiElementFactory.getInstance(map.getProject()).createWhiteSpace(), map.getLBrack());
+      final ASTNode astNode = map.getNode();
+      astNode.addLeaf(GroovyTokenTypes.mCOMMA, ",", map.getLBrack().getNextSibling().getNode());
+      CodeStyleManager.getInstance(map.getProject()).reformat(map);
+    } else {
+      // Empty maps are defined by [:], we need to delete the colon before adding the first element.
+      while (map.getLBrack().getNextSibling() != map.getRBrack()) {
+        map.getLBrack().getNextSibling().delete();
+      }
+    }
+    // GrMapOrListImpl ignores anchor, this will place at start of list after '['
+    return map.addAfter(newValue, map.getLBrack());
+  }
+
+  @Nullable
+  static PsiElement processMapElement(@NotNull GradleDslSettableExpression expression) {
+    GradleDslElement parent = expression.getParent();
+    assert parent != null;
+
+    GroovyPsiElement parentPsiElement = ensureGroovyPsi(parent.create());
+    if (parentPsiElement == null) {
+      return null;
+    }
+
+    expression.setPsiElement(parentPsiElement);
+    GrExpression newLiteral = extractUnsavedExpression(expression);
+    if (newLiteral == null) {
+      return null;
+    }
+
+    GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(newLiteral.getProject());
+    GrNamedArgument namedArgument = factory.createNamedArgument(expression.getName(), newLiteral);
+    PsiElement added;
+    if (parentPsiElement instanceof GrArgumentList) {
+      added = ((GrArgumentList)parentPsiElement).addNamedArgument(namedArgument);
+    }
+    else if (parentPsiElement instanceof GrListOrMap) {
+      GrListOrMap grListOrMap = (GrListOrMap) parentPsiElement;
+      added = addToMap(grListOrMap, namedArgument);
+    }
+    else {
+      added = parentPsiElement.addBefore(namedArgument, parentPsiElement.getLastChild());
+    }
+    if (added instanceof GrNamedArgument) {
+      GrNamedArgument addedNameArgument = (GrNamedArgument)added;
+      GrExpression grExpression = getChildOfType(addedNameArgument, GrExpression.class);
+      if (grExpression != null) {
+        expression.setExpression(grExpression);
+        expression.setModified(false);
+        expression.reset();
+        return expression.getPsiElement();
+      } else {
+        return null;
+      }
+    } else {
+      throw new IllegalStateException("Unexpected element type added to Mpa: " + added);
+    }
   }
 
   @Nullable
@@ -292,6 +409,15 @@ public final class GroovyDslUtil {
     PsiElement added;
     if (parentPsiElement instanceof GrArgumentList) {
       added = ((GrArgumentList)parentPsiElement).addNamedArgument(namedArgument);
+    }
+    else if (parentPsiElement instanceof GrListOrMap) {
+      GrListOrMap listOrMap = (GrListOrMap)parentPsiElement;
+      // For list and maps we need to add the element delimiter "," after the added element if there is more than one.
+      if (!listOrMap.isEmpty()) {
+        final ASTNode node = listOrMap.getNode();
+        node.addLeaf(mCOMMA, ",", listOrMap.getLBrack().getNextSibling().getNode());
+      }
+      added = parentPsiElement.addAfter(namedArgument, parentPsiElement.getLastChild());
     }
     else {
       added = parentPsiElement.addAfter(namedArgument, parentPsiElement.getLastChild());
@@ -345,4 +471,45 @@ public final class GroovyDslUtil {
     }
     return str;
   }
+
+  @Nullable
+  static PsiElement getParentPsi(@NotNull GradleDslElement element) {
+    GradleDslElement parent = element.getParent();
+    if (parent == null) {
+      return null;
+    }
+
+    GroovyPsiElement parentPsiElement = ensureGroovyPsi(parent.create());
+    if (parentPsiElement == null) {
+      return null;
+    }
+    return parentPsiElement;
+  }
+
+  /**
+   * This method is required to work out whether a GradleDslReference or GradleDslLiteral is an internal value in a map.
+   * This allows us to add the PsiElement into the correct position, note: due to the PsiElements Api we have to add the
+   * ASTNodes directly in {@link #emplaceElementIntoList(PsiElement, PsiElement, PsiElement)}. This method checks the specific
+   * conditions where we need to add an element to the inside of a literal list. The reason we have to do it this way
+   * is that when we are applying a GradleDslReference or GradleDslLiteral we don't know whether (1) we are actually in a list and (2)
+   * whether the list actually needs us to add a comma. Ideally we would have the apply/create/delete methods of GradleDslExpressionList
+   * position the arguments. This is a workaround for now.
+   *
+   * Note: In order to get the position of where to insert the item, we set the PsiElement of the literal/reference to be the previous
+   * item in the list (this is done in GradleDslExpressionList) and then set it back once we have called apply.
+   */
+  static boolean shouldAddToListInternal(@NotNull GradleDslElement element) {
+    return element.getParent() instanceof GradleDslExpressionList &&
+           ((GradleDslExpressionList)element.getParent()).isLiteralList() &&
+           element.getParent().getPsiElement() instanceof GrListOrMap &&
+           ((GrListOrMap)element.getParent().getPsiElement()).getInitializers().length > 0;
+  }
+
+  static void emplaceElementIntoList(@NotNull PsiElement anchorBefore, @NotNull PsiElement list, @NotNull PsiElement newElement) {
+    final ASTNode node = list.getNode();
+    final ASTNode anchor = anchorBefore.getNode().getTreeNext();
+    node.addChild(newElement.getNode(), anchor);
+    node.addLeaf(mCOMMA, ",", newElement.getNode());
+  }
+
 }

@@ -41,6 +41,7 @@ import org.fest.swing.fixture.JMenuItemFixture;
 import org.fest.swing.fixture.JPanelFixture;
 import org.fest.swing.fixture.JPopupMenuFixture;
 import org.fest.swing.fixture.JTreeFixture;
+import org.fest.swing.timing.Pause;
 import org.fest.swing.timing.Wait;
 import org.jetbrains.annotations.NotNull;
 
@@ -75,13 +76,16 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, NlEditorP
 
   @NotNull
   public NlEditorFixture waitForRenderToFinish() {
-    myDesignSurfaceFixture.waitForRenderToFinish();
+    waitForRenderToFinish(Wait.seconds(10));
     return this;
   }
 
   @NotNull
   public NlEditorFixture waitForRenderToFinish(@NotNull Wait wait) {
     myDesignSurfaceFixture.waitForRenderToFinish(wait);
+    wait.expecting("WorkBench is showing").until(() -> !target().getWorkBench().isLoading());
+    // Fade out of the loading panel takes 500ms
+    Pause.pause(1000);
     return this;
   }
 
@@ -181,6 +185,9 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, NlEditorP
 
     myDragAndDrop
       .drop(target, new Point(sceneView.getX() + sceneView.getSize().width / 2, sceneView.getY() + sceneView.getSize().height / 2));
+
+    // Wait for the button to settle. It sometimes moves after being dropped onto the canvas.
+    robot().waitForIdle();
     return this;
   }
 

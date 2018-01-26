@@ -16,6 +16,7 @@
 package org.jetbrains.android.facet;
 
 import com.android.sdklib.IAndroidTarget;
+import com.android.tools.idea.model.AndroidModel;
 import com.intellij.facet.FacetConfiguration;
 import com.intellij.facet.FacetManager;
 import com.intellij.facet.ui.FacetEditorContext;
@@ -48,6 +49,8 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
   private AndroidFacet myFacet = null;
 
   private JpsAndroidModuleProperties myProperties = new JpsAndroidModuleProperties();
+
+  @Nullable private AndroidModel myAndroidModel;
 
   public void init(@NotNull Module module, @NotNull VirtualFile contentRoot) {
     init(module, contentRoot.getPath());
@@ -144,5 +147,32 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
   @Override
   public void loadState(JpsAndroidModuleProperties properties) {
     myProperties = properties;
+  }
+
+  /**
+   * Associates the given Android model to this facet.
+   *
+   * @param androidModel the new Android model.
+   */
+  public void setModel(@Nullable AndroidModel model) {
+    myAndroidModel = model;
+    if (myFacet != null) {
+      myFacet.getModule().getMessageBus().syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(myFacet);
+    }
+  }
+
+  /**
+   * @return the Android model associated to this facet.
+   */
+  @Nullable
+  public AndroidModel getModel() {
+    return myAndroidModel;
+  }
+
+  /**
+   * Invoked when the facet is disposed. Nulls out fields to facilitate garbage collection.
+   */
+  public void disposeFacet() {
+    myAndroidModel = null;
   }
 }

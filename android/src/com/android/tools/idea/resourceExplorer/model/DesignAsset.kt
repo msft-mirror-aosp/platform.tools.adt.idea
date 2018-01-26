@@ -28,14 +28,15 @@ import com.intellij.openapi.vfs.VirtualFile
 data class DesignAsset(
     val file: VirtualFile,
     val qualifiers: List<ResourceQualifier>,
-    val type : ResourceFolderType
+    val type : ResourceFolderType,
+    val name: String = file.nameWithoutExtension
 )
 
 /**
  * Represents a set of design assets on disk grouped by base name.
  *
  * For example, fr/icon@2x.png, fr/icon.jpg  and en/icon.png will be
- * gatherd in the same DesignAssetSet under the name "icon"
+ * gathered in the same DesignAssetSet under the name "icon"
  */
 data class DesignAssetSet(
     val name: String,

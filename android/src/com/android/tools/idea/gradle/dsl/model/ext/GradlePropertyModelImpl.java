@@ -15,6 +15,7 @@ package com.android.tools.idea.gradle.dsl.model.ext;
 
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.google.common.collect.ImmutableList;
@@ -23,6 +24,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,13 +33,35 @@ import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.Valu
 
 public class GradlePropertyModelImpl implements GradlePropertyModel {
   @NotNull private ValueType myValueType;
-  @NotNull private final GradleDslElement myElement;
-  private boolean myIsValid = true;
+  @Nullable private GradleDslElement myElement;
+  @NotNull private GradleDslElement myPropertyHolder;
+
+  // The following properties should always be kept up to date with the values given by myElement.getElementType() and myElement.getName().
+  @NotNull private final PropertyType myPropertyType;
+  @NotNull private String myName;
 
   public GradlePropertyModelImpl(@NotNull GradleDslElement element) {
     myElement = element;
 
+    GradleDslElement parent = element.getParent();
+    assert parent != null &&
+           (parent instanceof GradlePropertiesDslElement ||
+            parent instanceof GradleDslExpressionList) : "Property found to be invalid, this should never happen!";
+    myPropertyHolder = parent;
+
+    myPropertyType = myElement.getElementType();
+    myName = myElement.getName();
+
     myValueType = extractAndGetValueType(myElement);
+  }
+
+  // Used to create an empty property with no backing element.
+  public GradlePropertyModelImpl(@NotNull GradleDslElement element, @NotNull PropertyType type, @NotNull String name) {
+    myPropertyHolder = element;
+    myPropertyType = type;
+    myName = name;
+
+    myValueType = NONE;
   }
 
   @Override
@@ -49,7 +73,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Override
   @NotNull
   public PropertyType getPropertyType() {
-    return myElement.getElementType();
+    return myPropertyType;
   }
 
   @Override
@@ -87,12 +111,21 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Override
   @NotNull
   public String getName() {
-    return myElement.getName();
+    if (myElement != null && myPropertyHolder instanceof GradleDslExpressionList) {
+      GradleDslExpressionList list = (GradleDslExpressionList)myPropertyHolder;
+      return String.valueOf(list.findIndexOf(myElement));
+    }
+
+    return myName;
   }
 
   @Override
   @NotNull
   public List<GradlePropertyModel> getDependencies() {
+    if (myElement == null) {
+      return Collections.emptyList();
+    }
+
     return myElement.getResolvedVariables().stream()
       .map(injection -> new GradlePropertyModelImpl(injection.getToBeInjected())).collect(
         Collectors.toList());
@@ -101,50 +134,110 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Override
   @NotNull
   public String getFullyQualifiedName() {
-    return myElement.getQualifiedName();
+    if (myElement != null && myPropertyHolder instanceof GradleDslExpressionList) {
+      GradleDslExpressionList list = (GradleDslExpressionList)myPropertyHolder;
+      return myPropertyHolder.getQualifiedName() + "[" + String.valueOf(list.findIndexOf(myElement)) + "]";
+    }
+
+    return myPropertyHolder.getQualifiedName() + "." + getName();
   }
 
   @Override
   @NotNull
   public VirtualFile getGradleFile() {
-    return myElement.getDslFile().getFile();
+    return myPropertyHolder.getDslFile().getFile();
   }
 
   @Override
   public void setValue(@NotNull Object value) {
-    ensureValid();
-    if (myValueType == MAP || myValueType == LIST) {
-      throw new UnsupportedOperationException("Setting map and list values are not supported!");
+    boolean isReference = value instanceof ReferenceTo;
+
+    // Check if we can reuse the element.
+    if (!isReference && myElement instanceof GradleDslLiteral ||
+        isReference && myElement instanceof GradleDslReference) {
+      GradleDslExpression expression = (GradleDslExpression)myElement;
+      expression.setValue(value);
+      // Set the value type for the new value.
+      myValueType = extractAndGetValueType(myElement);
+    } else {
+      // We can't reuse, need to delete and create a new one.
+      int index = deleteInternal();
+
+      GradleDslExpression newElement;
+      if (!isReference) {
+        newElement = new GradleDslLiteral(myPropertyHolder, myName);
+      }
+      else {
+        newElement = new GradleDslReference(myPropertyHolder, myName);
+      }
+      newElement.setValue(value);
+      bindToNewElement(newElement, index);
     }
-
-    GradleDslExpression expression = (GradleDslExpression)myElement;
-    expression.setValue(value);
-
-    // Update the current value type
-    myValueType = extractAndGetValueType(myElement);
   }
 
   @Override
   @NotNull
-  public EmptyPropertyModel delete() {
-    ensureValid();
-    GradleDslElement parent = myElement.getParent();
+  public GradlePropertyModel convertToEmptyMap() {
+    makeEmptyMap();
+    return this;
+  }
 
-    assert parent != null && parent instanceof GradlePropertiesDslElement : "Property found to be invalid, this should never happen!";
+  @Override
+  public GradlePropertyModel addMapValue(@NotNull String key) {
+    if (myValueType != MAP) {
+      throw new IllegalStateException("Please call GradlePropertyModel#convertToMap before trying to add values");
+    }
 
-    GradlePropertiesDslElement propertyHolder = ((GradlePropertiesDslElement)parent);
-    propertyHolder.removeProperty(myElement.getName());
+    assert myElement instanceof GradleDslExpressionMap;
 
-    // Invalidate this property.
-    this.myIsValid = false;
+    return new GradlePropertyModelImpl(myElement, PropertyType.DERIVED, key);
+  }
 
-    return new EmptyPropertyModel(propertyHolder, myElement.getElementType(), myElement.getName(), false);
+  @Override
+  public GradlePropertyModel convertToEmptyList() {
+    makeEmptyList();
+    return this;
+  }
+
+  @Override
+  public GradlePropertyModel addListValue() {
+    if (myValueType != LIST) {
+      throw new IllegalStateException("Please call GradlePropertyModel#convertToList before trying to add values");
+    }
+
+    assert myElement instanceof GradleDslExpressionList;
+
+    return addListValueAt(((GradleDslExpressionList)myElement).getExpressions().size());
+  }
+
+  @Override
+  public GradlePropertyModel addListValueAt(int index) {
+    if (myValueType != LIST) {
+      throw new IllegalStateException("Please call GradlePropertyModel#convertToList before trying to add values");
+    }
+
+    assert myElement instanceof GradleDslExpressionList;
+
+    // Unlike maps, we don't create a placeholder element. This is since we need to retain and update order in the list.
+    // This would be hard to create an intuitive api to do this, so instead we always create an empty string as the new item.
+    GradleDslLiteral literal = new GradleDslLiteral(myElement, "listItem");
+    literal.setValue("");
+
+    GradleDslExpressionList list = (GradleDslExpressionList) myElement;
+    list.addNewExpression(literal, index);
+
+    return new GradlePropertyModelImpl(literal);
+  }
+
+  @Override
+  public void delete() {
+    deleteInternal();
   }
 
   @Override
   public String toString() {
     return String.format("[Element: %1$s, Type: %2$s, ValueType: %3$s]@%4$s",
-                         myElement.toString(), myElement.getElementType(), myValueType.toString(), Integer.toHexString(hashCode()));
+                         myElement, myPropertyType, myValueType.toString(), Integer.toHexString(hashCode()));
   }
 
   private static ValueType extractAndGetValueType(@NotNull GradleDslElement element) {
@@ -181,6 +274,11 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
 
   @Nullable
   private <T> T extractValue(@NotNull TypeReference<T> typeReference, boolean resolved) {
+    // If we don't have an element, no value have yet been set.
+    if (myElement == null) {
+      return null;
+    }
+
     if (myValueType == MAP) {
       Object value = getMap();
       return typeReference.castTo(value);
@@ -207,9 +305,57 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     return typeReference.castTo(value);
   }
 
-  private void ensureValid() {
-    if (!myIsValid) {
-      throw new IllegalStateException("Attempted to change an invalid GradlePropertyModel " + this);
+  private void makeEmptyMap() {
+    // Makes this property a map, first remove the old property.
+    int index = deleteInternal();
+
+    bindToNewElement(new GradleDslExpressionMap(myPropertyHolder, myName, true), index);
+  }
+
+  private void makeEmptyList() {
+    // Remove the old property.
+    int index = deleteInternal();
+
+    bindToNewElement(new GradleDslExpressionList(myPropertyHolder, myName, true), index);
+  }
+
+  private void bindToNewElement(@NotNull GradleDslElement element, int index) {
+    if (myPropertyHolder instanceof GradlePropertiesDslElement) {
+      element.setElementType(myPropertyType);
+      myElement = ((GradlePropertiesDslElement)myPropertyHolder).setNewElement(myName, element);
+      myValueType = extractAndGetValueType(myElement);
     }
+    else if (myPropertyHolder instanceof GradleDslExpressionList) {
+      GradleDslExpressionList list = (GradleDslExpressionList)myPropertyHolder;
+      assert index != -1; // Can't bind with an invalid index.
+      // TODO: Remove this assertion
+      assert element instanceof GradleDslExpression;
+      list.addNewExpression((GradleDslExpression)element, index);
+    }
+  }
+
+  /**
+   * Returns the index of the deleted element if myPropertyHolder is a list, -1 otherwise.
+   */
+  private int deleteInternal() {
+    int index = -1;
+    // This model doesn't have a backing element, so there is nothing to delete.
+    if (myElement == null) {
+      return index;
+    }
+
+    if (myPropertyHolder instanceof GradlePropertiesDslElement) {
+      ((GradlePropertiesDslElement)myPropertyHolder).removeProperty(myElement.getName());
+    }
+    else {
+      assert myPropertyHolder instanceof GradleDslExpressionList;
+      GradleDslExpressionList list = (GradleDslExpressionList)myPropertyHolder;
+      index = list.findIndexOf(myElement);
+      ((GradleDslExpressionList)myPropertyHolder).removeElement(myElement);
+    }
+
+    myElement = null;
+    myValueType = NONE;
+    return index;
   }
 }
