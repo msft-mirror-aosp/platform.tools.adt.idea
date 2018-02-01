@@ -24,6 +24,7 @@ import org.fest.swing.exception.WaitTimedOutError;
 import org.fest.swing.fixture.JListFixture;
 import org.fest.swing.timing.Wait;
 import org.fest.swing.util.PatternTextMatcher;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,7 +64,8 @@ public class EspressoRecorderTest {
    *   </pre>
    * <p>
    */
-  @RunIn(TestGroup.SANITY)
+  @Ignore("b/72160209")
+  @RunIn(TestGroup.QA_UNRELIABLE) // http://b/72160209
   @Test
   public void addDependencyOnFly() throws Exception {
     guiTest.importSimpleApplication();

@@ -158,7 +158,7 @@ public class RtlSupportProcessor extends BaseRefactoringProcessor {
     // For all non library modules in our project
     for (Module module : ModuleManager.getInstance(myProject).getModules()) {
       AndroidFacet facet = AndroidFacet.getInstance(module);
-      if (facet == null || facet.isLibraryProject()) {
+      if (facet == null || facet.getConfiguration().isLibraryProject()) {
         continue;
       }
       for (VirtualFile manifestFile : IdeaSourceProvider.getManifestFiles(facet)) {
@@ -290,12 +290,12 @@ public class RtlSupportProcessor extends BaseRefactoringProcessor {
     // For all non library modules in our project
     for (Module module : ModuleManager.getInstance(myProject).getModules()) {
       AndroidFacet facet = AndroidFacet.getInstance(module);
-      if (facet != null && facet.isAppProject()) {
+      if (facet != null && facet.getConfiguration().isAppProject()) {
         int minSdk = AndroidModuleInfo.getInstance(facet).getMinSdkVersion().getApiLevel();
 
         if (myProperties.generateV17resourcesOption) {
           // First get all the "res" directories
-          final List<VirtualFile> allRes = facet.getResourceFolderManager().getFolders();
+          final List<VirtualFile> allRes = ResourceFolderManager.getInstance(facet).getFolders();
 
           // Then, need to get all the "layout-XXX" sub directories
           final List<VirtualFile> allLayoutDir = new ArrayList<>();

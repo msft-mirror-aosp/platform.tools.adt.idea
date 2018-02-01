@@ -15,14 +15,10 @@
  */
 package com.android.tools.idea.tests.gui.uibuilder;
 
-import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
-import com.android.tools.idea.tests.gui.framework.RunIn;
-import com.android.tools.idea.tests.gui.framework.TestGroup;
+import com.android.tools.idea.tests.gui.framework.*;
 import com.android.tools.idea.tests.gui.framework.fixture.AppBarConfigurationDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.MessagesFixture;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,6 +32,7 @@ import static com.google.common.truth.Truth.assertThat;
 public class AppBarConfigurationDialogTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final ScreenshotsDuringTest screenshotsRule = new ScreenshotsDuringTest();
 
   @RunIn(TestGroup.UNRELIABLE)  // b/72124019
   @Test
@@ -99,31 +96,5 @@ public class AppBarConfigurationDialogTest {
     String gradleContents = editor.open("app/build.gradle")
       .getCurrentFileContents();
     assertThat(gradleContents).contains("com.android.support:design:");
-  }
-
-  @Ignore("b/71719290")
-  @Test
-  public void testSyncFailsAfterAddingNonExistentDependency() throws Exception {
-    EditorFixture editor = guiTest.importSimpleLocalApplication()
-      .getEditor()
-      .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN);
-
-    // Sync should fail since we've added a dependency that doesn't exist.
-    editor.open("app/build.gradle", EditorFixture.Tab.EDITOR)
-      .select("dependencies \\{()")
-      .enterText("\ncompile 'something:not:exists'");
-
-    editor.open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
-      .getLayoutEditor(true)
-      .dragComponentToSurface("Containers", "AppBarLayout");
-
-    MessagesFixture dependencyDialog = MessagesFixture.findByTitle(guiTest.robot(), "Add Project Dependency");
-    dependencyDialog.clickOk();
-
-    guiTest.ideFrame().waitForGradleProjectSyncToFail();
-
-    AppBarConfigurationDialogFixture configDialog = AppBarConfigurationDialogFixture.find(guiTest.robot());
-    configDialog.waitForSyncFailedPreviewMessage();
-    configDialog.clickCancel();
   }
 }

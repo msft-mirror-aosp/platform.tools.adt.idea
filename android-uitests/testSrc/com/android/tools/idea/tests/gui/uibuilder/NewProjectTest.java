@@ -138,7 +138,7 @@ public class NewProjectTest {
    *   1. Module setting is updated.
    *   </pre>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE)
+  @RunIn(TestGroup.QA)
   @Test
   public void changeLibraryModuleSettings() throws Exception {
     newProject("MyTestApp").withMinSdk("24").create(guiTest)
@@ -282,7 +282,6 @@ public class NewProjectTest {
     assertTrue(gradleFile.canExecute());
   }
 
-  @RunIn(TestGroup.UNRELIABLE)
   @Test // http://b.android.com/227918
   public void scrollingActivityFollowedByBasicActivity() throws Exception {
     NewProjectWizardFixture newProjectWizard = guiTest.welcomeFrame()
@@ -331,6 +330,7 @@ public class NewProjectTest {
     ideFrameFixture.getEditor()
       .open("app/src/main/res/layout/activity_main.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(true)
+      .waitForRenderToFinish()
       .dragComponentToSurface("Containers", "RecyclerView");
 
     MessagesFixture.findByTitle(guiTest.robot(), "Add Project Dependency").clickOk();

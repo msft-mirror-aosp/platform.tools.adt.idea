@@ -46,6 +46,7 @@ import org.jetbrains.android.compiler.AndroidDexCompiler;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.AndroidRootUtil;
 import org.jetbrains.android.facet.IdeaSourceProvider;
+import org.jetbrains.android.facet.ResourceFolderManager;
 import org.jetbrains.android.sdk.AndroidPlatform;
 import org.jetbrains.android.util.AndroidCommonUtils;
 import org.jetbrains.android.util.AndroidUtils;
@@ -172,7 +173,7 @@ public class LintIdeProject extends Project {
 
     // Prefer Android app modules
     for (AndroidFacet facet : facets) {
-      if (facet.isAppProject()) {
+      if (facet.getConfiguration().isAppProject()) {
         return facet.getModule();
       }
     }
@@ -557,7 +558,7 @@ public class LintIdeProject extends Project {
       myFacet = facet;
 
       gradleProject = false;
-      library = myFacet.isLibraryProject();
+      library = myFacet.getConfiguration().isLibraryProject();
 
       AndroidPlatform platform = AndroidPlatform.getInstance(myFacet.getModule());
       if (platform != null) {
@@ -623,7 +624,7 @@ public class LintIdeProject extends Project {
     @Override
     public List<File> getResourceFolders() {
       if (resourceFolders == null) {
-        List<VirtualFile> folders = myFacet.getResourceFolderManager().getFolders();
+        List<VirtualFile> folders = ResourceFolderManager.getInstance(myFacet).getFolders();
         List<File> dirs = Lists.newArrayListWithExpectedSize(folders.size());
         for (VirtualFile folder : folders) {
           dirs.add(VfsUtilCore.virtualToIoFile(folder));

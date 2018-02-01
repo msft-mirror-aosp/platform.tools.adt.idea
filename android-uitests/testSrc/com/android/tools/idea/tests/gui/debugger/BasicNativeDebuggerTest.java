@@ -50,7 +50,7 @@ public class BasicNativeDebuggerTest extends DebuggerTestBase {
    *
    */
   @Test
-  @RunIn(TestGroup.QA)
+  @RunIn(TestGroup.QA_UNRELIABLE) // b/72699808
   public void testSessionRestart() throws Exception{
     guiTest.importProjectAndWaitForProjectSyncToFinish("BasicCmakeAppForUI");
     emulator.createDefaultAVD(guiTest.ideFrame().invokeAvdManager());
@@ -77,9 +77,6 @@ public class BasicNativeDebuggerTest extends DebuggerTestBase {
 
     DeployTargetPickerDialogFixture deployTargetPicker = DeployTargetPickerDialogFixture.find(guiTest.robot());
     deployTargetPicker.selectDevice(emulator.getDefaultAvdName()).clickOk();
-
-    MessagesFixture errorMessage = MessagesFixture.findByTitle(guiTest.robot(), "Launching " + DEBUG_CONFIG_NAME);
-    errorMessage.requireMessageContains("Restart App").click("Restart " + DEBUG_CONFIG_NAME);
 
     waitUntilDebugConsoleCleared(debugToolWindowFixture);
     waitForSessionStart(debugToolWindowFixture);

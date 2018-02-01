@@ -69,7 +69,7 @@ public final class ModuleResourceRepository extends MultiResourceRepository {
   @Contract("_, true -> !null")
   @Nullable
   private static LocalResourceRepository findModuleResources(@NotNull AndroidFacet facet, boolean createIfNecessary) {
-    ResourceRepositories repositories = ResourceRepositories.getOrCreateInstance(facet);
+    ResourceRepositoryManager repositories = ResourceRepositoryManager.getOrCreateInstance(facet);
     return repositories.getModuleResources(createIfNecessary);
   }
 
@@ -83,14 +83,14 @@ public final class ModuleResourceRepository extends MultiResourceRepository {
   static LocalResourceRepository create(@NotNull AndroidFacet facet) {
     if (!facet.requiresAndroidModel()) {
       // Always just a single resource folder: simple
-      VirtualFile primaryResourceDir = facet.getPrimaryResourceDir();
+      VirtualFile primaryResourceDir = ResourceFolderManager.getInstance(facet).getPrimaryFolder();
       if (primaryResourceDir == null) {
         return new EmptyRepository();
       }
       return ResourceFolderRegistry.get(facet, primaryResourceDir);
     }
 
-    ResourceFolderManager folderManager = facet.getResourceFolderManager();
+    ResourceFolderManager folderManager = ResourceFolderManager.getInstance(facet);
     List<VirtualFile> resourceDirectories = folderManager.getFolders();
     List<LocalResourceRepository> resources = Lists.newArrayListWithExpectedSize(resourceDirectories.size() + 1);
     for (VirtualFile resourceDirectory : resourceDirectories) {
@@ -114,7 +114,7 @@ public final class ModuleResourceRepository extends MultiResourceRepository {
     myFacet = facet;
 
     // Subscribe to update the roots when the resource folders change
-    myResourceFolderManager = myFacet.getResourceFolderManager();
+    myResourceFolderManager = ResourceFolderManager.getInstance(myFacet);
     myResourceFolderManager.addListener(myResourceFolderListener);
   }
 

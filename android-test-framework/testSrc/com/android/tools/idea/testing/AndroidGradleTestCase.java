@@ -199,7 +199,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
           try {
             myFixture.tearDown();
           }
-          catch (Exception e) {
+          catch (Throwable e) {
             LOG.warn("Failed to tear down " + myFixture.getClass().getSimpleName(), e);
           }
           myFixture = null;
@@ -283,7 +283,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
       // then try and find a non-lib facet
       for (Module module : modules) {
         AndroidFacet androidFacet = AndroidFacet.getInstance(module);
-        if (androidFacet != null && androidFacet.isAppProject()) {
+        if (androidFacet != null && androidFacet.getConfiguration().isAppProject()) {
           myAndroidFacet = androidFacet;
           break;
         }

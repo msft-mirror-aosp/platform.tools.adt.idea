@@ -15,10 +15,10 @@
  */
 package com.android.tools.profilers;
 
-import com.android.tools.adtui.flat.FlatButton;
+import com.android.tools.adtui.stdui.CommonButton;
 import com.android.tools.adtui.flat.FlatComboBox;
 import com.android.tools.adtui.flat.FlatSeparator;
-import com.android.tools.adtui.flat.FlatToggleButton;
+import com.android.tools.adtui.stdui.CommonToggleButton;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profilers.cpu.CpuProfilerStage;
@@ -29,9 +29,12 @@ import com.android.tools.profilers.memory.MemoryProfilerStage;
 import com.android.tools.profilers.memory.MemoryProfilerStageView;
 import com.android.tools.profilers.network.NetworkProfilerStage;
 import com.android.tools.profilers.network.NetworkProfilerStageView;
+import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.SimpleTextAttributes;
@@ -42,11 +45,18 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.util.function.BiFunction;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_BOTTOM_BORDER;
+import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
+import static java.awt.event.InputEvent.META_DOWN_MASK;
 
 public class StudioProfilersView extends AspectObserver {
+  private static final int SHORTCUT_MODIFIER_MASK_NUMBER = SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK;
+  private static final String SHORTCUT_MODIFIER_STRING =
+    KeymapUtil.getKeystrokeText(KeyStroke.getKeyStroke(SystemInfo.isMac ? KeyEvent.VK_META : KeyEvent.VK_CONTROL, 0));
+
   private final StudioProfilers myProfiler;
   private final ViewBinder<StudioProfilersView, Stage, StageView> myBinder;
   private StageView myStageView;
@@ -126,7 +136,7 @@ public class StudioProfilersView extends AspectObserver {
     myMonitoringToolbar.add(processCombo);
 
     myCommonToolbar = new JPanel(ProfilerLayout.createToolbarLayout());
-    JButton button = new FlatButton(StudioIcons.Common.BACK_ARROW);
+    JButton button = new CommonButton(StudioIcons.Common.BACK_ARROW);
     button.addActionListener(action -> {
       myProfiler.setMonitoringStage();
       myProfiler.getIdeServices().getFeatureTracker().trackGoBack();
@@ -156,7 +166,7 @@ public class StudioProfilersView extends AspectObserver {
     toolbar.add(rightToolbar, BorderLayout.EAST);
     rightToolbar.setBorder(new JBEmptyBorder(0, 0, 0, 2));
 
-    FlatButton endSession = new FlatButton("End Session");
+    CommonButton endSession = new CommonButton("End Session");
     endSession.setFont(endSession.getFont().deriveFont(12.f));
     endSession.setBorder(new JBEmptyBorder(4, 7, 4, 7));
     endSession.addActionListener(event -> myProfiler.stop());
@@ -166,48 +176,77 @@ public class StudioProfilersView extends AspectObserver {
     rightToolbar.add(new FlatSeparator());
 
     ProfilerTimeline timeline = myProfiler.getTimeline();
-    FlatButton zoomOut = new FlatButton(StudioIcons.Common.ZOOM_OUT);
+    CommonButton zoomOut = new CommonButton(StudioIcons.Common.ZOOM_OUT);
     zoomOut.setDisabledIcon(IconLoader.getDisabledIcon(StudioIcons.Common.ZOOM_OUT));
     zoomOut.addActionListener(event -> {
       timeline.zoomOut();
       myProfiler.getIdeServices().getFeatureTracker().trackZoomOut();
     });
-    zoomOut.setToolTipText("Zoom out");
+    ProfilerAction zoomOutAction =
+      new ProfilerAction.Builder("Zoom out").setContainerComponent(myComponent).setActionRunnable(() -> zoomOut.doClick(0))
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, SHORTCUT_MODIFIER_MASK_NUMBER),
+                       KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, SHORTCUT_MODIFIER_MASK_NUMBER)).build();
+
+    zoomOut.setToolTipText(zoomOutAction.getDefaultToolTipText());
     rightToolbar.add(zoomOut);
 
-    FlatButton zoomIn = new FlatButton(StudioIcons.Common.ZOOM_IN);
+    CommonButton zoomIn = new CommonButton(StudioIcons.Common.ZOOM_IN);
     zoomIn.setDisabledIcon(IconLoader.getDisabledIcon(StudioIcons.Common.ZOOM_IN));
     zoomIn.addActionListener(event -> {
       timeline.zoomIn();
       myProfiler.getIdeServices().getFeatureTracker().trackZoomIn();
     });
-    zoomIn.setToolTipText("Zoom in");
+    ProfilerAction zoomInAction =
+      new ProfilerAction.Builder("Zoom in").setContainerComponent(myComponent)
+        .setActionRunnable(() -> zoomIn.doClick())
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, SHORTCUT_MODIFIER_MASK_NUMBER),
+                       KeyStroke.getKeyStroke(KeyEvent.VK_ADD, SHORTCUT_MODIFIER_MASK_NUMBER)).build();
+    zoomIn.setToolTipText(zoomInAction.getDefaultToolTipText());
     rightToolbar.add(zoomIn);
 
-    FlatButton resetZoom = new FlatButton(StudioIcons.Common.RESET_ZOOM);
+    CommonButton resetZoom = new CommonButton(StudioIcons.Common.RESET_ZOOM);
     resetZoom.setDisabledIcon(IconLoader.getDisabledIcon(StudioIcons.Common.RESET_ZOOM));
     resetZoom.addActionListener(event -> {
       timeline.resetZoom();
       myProfiler.getIdeServices().getFeatureTracker().trackResetZoom();
     });
-    resetZoom.setToolTipText("Reset zoom");
+    ProfilerAction resetZoomAction =
+      new ProfilerAction.Builder("Reset zoom").setContainerComponent(myComponent)
+        .setActionRunnable(() -> resetZoom.doClick(0))
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD0, 0), KeyStroke.getKeyStroke(KeyEvent.VK_0, 0)).build();
+    resetZoom.setToolTipText(resetZoomAction.getDefaultToolTipText());
     rightToolbar.add(resetZoom);
     rightToolbar.add(new FlatSeparator());
 
-    myGoLive = new FlatToggleButton("Live", StudioIcons.Profiler.Toolbar.GOTO_LIVE);
+    myGoLive = new CommonToggleButton("Live", StudioIcons.Profiler.Toolbar.GOTO_LIVE);
     myGoLive.setDisabledIcon(IconLoader.getDisabledIcon(StudioIcons.Profiler.Toolbar.GOTO_LIVE));
-    myGoLive.setToolTipText("See realtime profiler data");
     myGoLive.setFont(myGoLive.getFont().deriveFont(13.f));
     myGoLive.setHorizontalTextPosition(SwingConstants.LEFT);
     myGoLive.setHorizontalAlignment(SwingConstants.LEFT);
     myGoLive.setBorder(new JBEmptyBorder(3, 8, 3, 7));
     myGoLive.setIconTextGap(JBUI.scale(8));
+    // Configure shortcuts for GoLive
+    ProfilerAction attachAction =
+      new ProfilerAction.Builder("Attach to Live").setContainerComponent(myComponent)
+        .setActionRunnable(() -> myGoLive.doClick(0))
+        .setEnableBooleanSupplier(() -> !myGoLive.isSelected())
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, SHORTCUT_MODIFIER_MASK_NUMBER)).build();
+    ProfilerAction detachAction =
+      new ProfilerAction.Builder("Detach from Live").setContainerComponent(myComponent)
+        .setActionRunnable(() -> myGoLive.doClick(0))
+        .setEnableBooleanSupplier(() -> myGoLive.isSelected())
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0)).build();
+
+    myGoLive.setToolTipText(detachAction.getDefaultToolTipText());
     myGoLive.addActionListener(event -> {
+      myGoLive.setToolTipText(myGoLive.isSelected() ? detachAction.getDefaultToolTipText() : attachAction.getDefaultToolTipText());
       timeline.toggleStreaming();
       myProfiler.getIdeServices().getFeatureTracker().trackToggleStreaming();
     });
     timeline.addDependency(this).onChange(ProfilerTimeline.Aspect.STREAMING, this::updateStreaming);
     rightToolbar.add(myGoLive);
+
+    ProfilerContextMenu.createIfAbsent(myComponent).add(attachAction, detachAction, ContextMenuItem.SEPARATOR, zoomInAction, zoomOutAction);
 
     Runnable toggleToolButtons = () -> {
       zoomOut.setEnabled(myProfiler.isProcessAlive());

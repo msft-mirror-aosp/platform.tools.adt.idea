@@ -40,6 +40,11 @@ import org.jetbrains.jps.android.model.impl.JpsAndroidModuleProperties;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_FEATURE;
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_LIBRARY;
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_APP;
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_INSTANTAPP;
+
 /**
  * @author Eugene.Kudelevsky
  */
@@ -138,6 +143,11 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
     myProperties.myIncludeAssetsFromLibraries = includeAssetsFromLibraries;
   }
 
+  public boolean isAppProject() {
+    int projectType = getState().PROJECT_TYPE;
+    return projectType == PROJECT_TYPE_APP || projectType == PROJECT_TYPE_INSTANTAPP;
+  }
+
   @Nullable
   @Override
   public JpsAndroidModuleProperties getState() {
@@ -147,6 +157,11 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
   @Override
   public void loadState(JpsAndroidModuleProperties properties) {
     myProperties = properties;
+  }
+
+  public boolean canBeDependency() {
+    int projectType = getState().PROJECT_TYPE;
+    return projectType == PROJECT_TYPE_LIBRARY || projectType == PROJECT_TYPE_FEATURE;
   }
 
   /**
@@ -174,5 +189,17 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
    */
   public void disposeFacet() {
     myAndroidModel = null;
+  }
+
+  public boolean isLibraryProject() {
+    return getState().PROJECT_TYPE == PROJECT_TYPE_LIBRARY;
+  }
+
+  public int getProjectType() {
+    return getState().PROJECT_TYPE;
+  }
+
+  public void setProjectType(int type) {
+    getState().PROJECT_TYPE = type;
   }
 }

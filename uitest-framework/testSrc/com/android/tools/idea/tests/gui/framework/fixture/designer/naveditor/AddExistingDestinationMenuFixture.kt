@@ -20,10 +20,10 @@ import org.fest.swing.fixture.JListFixture
 import javax.swing.JPanel
 
 class AddExistingDestinationMenuFixture(private val robot: Robot, private val menu: AddExistingDestinationMenu) :
-    ComponentFixture<AddExistingDestinationMenuFixture, JPanel>(AddExistingDestinationMenuFixture::class.java, robot, menu.mainPanel) {
+    ComponentFixture<AddExistingDestinationMenuFixture, JPanel>(AddExistingDestinationMenuFixture::class.java, robot, menu.getMainPanel()) {
 
   fun selectDestination(label: String) {
     val index = menu.myDestinations.indexOfFirst{ it.label == label }
-    JListFixture(robot, menu.myDestinationsGallery).clickItem(index)
+    JListFixture(robot, menu.myDestinationsList).clickItem(index)
   }
 }

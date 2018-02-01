@@ -17,7 +17,6 @@ package com.android.tools.idea.gradle.dsl.api.android;
 
 import com.android.tools.idea.gradle.dsl.api.FlavorTypeModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,15 +27,20 @@ public interface BuildTypeModel extends FlavorTypeModel {
   ResolvedPropertyModel applicationIdSuffix();
 
   @Nullable
-  List<GradleNotNullValue<BuildConfigField>> buildConfigFields();
+  List<BuildConfigField> buildConfigFields();
 
-  void addBuildConfigField(@NotNull BuildConfigField buildConfigField);
+  BuildConfigField addBuildConfigField(@NotNull String type, @NotNull String name, @NotNull String value);
 
-  void removeBuildConfigField(@NotNull BuildConfigField buildConfigField);
+  void removeBuildConfigField(@NotNull String type, @NotNull String name, @NotNull String value);
+
+  BuildConfigField replaceBuildConfigField(@NotNull String oldType,
+                                           @NotNull String oldName,
+                                           @NotNull String oldValue,
+                                           @NotNull String type,
+                                           @NotNull String name,
+                                           @NotNull String value);
 
   void removeAllBuildConfigFields();
-
-  void replaceBuildConfigField(@NotNull BuildConfigField oldBuildConfigField, @NotNull BuildConfigField newBuildConfigField);
 
   @NotNull
   ResolvedPropertyModel debuggable();

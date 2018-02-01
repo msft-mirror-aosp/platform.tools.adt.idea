@@ -113,7 +113,7 @@ public class AndroidRootUtil {
   @Deprecated
   @Nullable
   public static VirtualFile getResourceDir(@NotNull AndroidFacet facet) {
-    return facet.getPrimaryResourceDir();
+    return ResourceFolderManager.getInstance(facet).getPrimaryFolder();
   }
 
   @Nullable
@@ -290,7 +290,7 @@ public class AndroidRootUtil {
             continue;
           }
           AndroidFacet facet = AndroidFacet.getInstance(depModule);
-          boolean libraryProject = facet != null && facet.isLibraryProject();
+          boolean libraryProject = facet != null && facet.getConfiguration().isLibraryProject();
 
           CompilerModuleExtension extension = CompilerModuleExtension.getInstance(depModule);
           if (extension != null) {

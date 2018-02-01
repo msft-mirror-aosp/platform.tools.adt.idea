@@ -326,6 +326,7 @@
                         serviceImplementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$MaintenanceActivity"/>
     <cachesInvalidator implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$CacheInvalidator"/>
+    <cachesInvalidator implementation="com.android.tools.idea.gradle.project.sync.idea.data.IdeaSyncCachesInvalidator"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$PopulateCachesActivity"/>
     <externalSystemTaskNotificationListener implementation="com.android.tools.idea.gradle.AndroidGradleImportTaskNotificationListener"/>
     <externalSystemNotificationExtension implementation="com.android.tools.idea.gradle.project.sync.idea.notification.GradleNotificationExtension"/>
@@ -360,7 +361,6 @@
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.SdkSync"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.precheck.PreSyncChecks"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.GradleSyncInvoker"/>
-    <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.GradleSyncFailureHandler" />
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.cleanup.PreSyncProjectCleanUp"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.issues.SyncIssuesReporter"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.issues.UnresolvedDependenciesReporter"/>
@@ -395,8 +395,8 @@
                         serviceImplementation="com.android.tools.idea.gradle.project.GradleExperimentalSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.sdk.StudioSettingsController"/>
     <applicationService serviceImplementation="com.android.tools.idea.fd.InstantRunConfiguration"/>
-    <applicationService serviceInterface="com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings"
-                        serviceImplementation="com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings"/>
+    <projectService serviceInterface="com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings"
+                    serviceImplementation="com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings"/>
 
     <applicationService serviceInterface="com.intellij.openapi.help.HelpManager"
                         serviceImplementation="com.android.tools.idea.help.StudioHelpManagerImpl"
@@ -478,7 +478,7 @@
     <fileEditorProvider implementation="com.android.tools.idea.editors.manifest.ManifestEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.apk.viewer.ApkEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.editors.fonts.FontEditorProvider" />
-    <fileEditorProvider implementation="com.android.tools.idea.resourceExplorer.ResourceExplorerEditorProvider"/>
+    <fileEditorProvider implementation="com.android.tools.idea.resourceExplorer.editor.ResourceExplorerEditorProvider"/>
 
     <runConfigurationProducer implementation="com.android.tools.idea.run.AndroidConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer" order="first"/>

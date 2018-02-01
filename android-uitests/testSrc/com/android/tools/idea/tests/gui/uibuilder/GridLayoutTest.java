@@ -23,7 +23,6 @@ import com.android.tools.idea.tests.gui.framework.fixture.designer.NlEditorFixtu
 import com.android.tools.idea.tests.gui.framework.GuiTestFileUtils;
 import com.android.tools.idea.tests.util.WizardUtils;
 import org.intellij.lang.annotations.Language;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,7 +38,6 @@ public final class GridLayoutTest {
   @Rule
   public final GuiTestRule myGuiTest = new GuiTestRule();
 
-  @Ignore("b/66680171")
   @Test
   public void dragViewIntoEmptyGridLayout() throws IOException {
     WizardUtils.createNewProject(myGuiTest, "Empty Activity");

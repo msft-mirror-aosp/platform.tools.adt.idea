@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.tests.gui.framework;
 
+import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.TargetBuildSystem;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.intellij.ide.BootstrapClassLoaderUtil;
@@ -31,6 +32,7 @@ import com.intellij.util.SystemProperties;
 import com.intellij.util.lang.UrlClassLoader;
 import com.intellij.util.text.StringTokenizer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,6 +63,7 @@ public class IdeTestApplication implements Disposable {
   private static IdeTestApplication ourInstance;
 
   @NotNull private final ClassLoader myIdeClassLoader;
+  @Nullable private TargetBuildSystem.BuildSystem myTargetBuildSystem;
 
   @NotNull
   public static synchronized IdeTestApplication getInstance() throws Exception {
@@ -171,7 +174,6 @@ public class IdeTestApplication implements Disposable {
       Main.showMessage("Plugin Installation Error", e);
     }
 
-    Thread.currentThread().setContextClassLoader(newClassLoader);
     return newClassLoader;
   }
 
@@ -256,5 +258,14 @@ public class IdeTestApplication implements Disposable {
 
   public static synchronized boolean isLoaded() {
     return ourInstance != null;
+  }
+
+  public void setTargetBuildSystem(@NotNull TargetBuildSystem.BuildSystem targetBuildSystem) {
+    myTargetBuildSystem = targetBuildSystem;
+  }
+
+  @Nullable
+  public TargetBuildSystem.BuildSystem getTargetBuildSystem() {
+    return myTargetBuildSystem;
   }
 }

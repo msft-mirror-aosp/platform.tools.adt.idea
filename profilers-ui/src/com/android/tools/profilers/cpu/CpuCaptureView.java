@@ -16,14 +16,14 @@
 package com.android.tools.profilers.cpu;
 
 import com.android.tools.adtui.FilterComponent;
-import com.android.tools.adtui.FlatTabbedPane;
+import com.android.tools.adtui.stdui.CommonTabbedPane;
 import com.android.tools.adtui.RangeTimeScrollBar;
 import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.chart.hchart.HTreeChart;
 import com.android.tools.adtui.chart.hchart.HTreeChartVerticalScrollBar;
 import com.android.tools.adtui.common.ColumnTreeBuilder;
 import com.android.tools.adtui.flat.FlatSeparator;
-import com.android.tools.adtui.flat.FlatToggleButton;
+import com.android.tools.adtui.stdui.CommonToggleButton;
 import com.android.tools.adtui.instructions.InstructionsPanel;
 import com.android.tools.adtui.instructions.TextInstruction;
 import com.android.tools.adtui.model.AspectObserver;
@@ -91,7 +91,7 @@ class CpuCaptureView {
 
   private final JPanel myPanel;
 
-  private final FlatTabbedPane myTabsPanel;
+  private final CommonTabbedPane myTabsPanel;
 
   @NotNull
   private FilterComponent myFilterComponent;
@@ -110,7 +110,7 @@ class CpuCaptureView {
 
   CpuCaptureView(@NotNull CpuProfilerStageView view) {
     myView = view;
-    myTabsPanel = new FlatTabbedPane();
+    myTabsPanel = new CommonTabbedPane();
 
     for (String label : TABS.values()) {
       myTabsPanel.addTab(label, new JPanel(new BorderLayout()));
@@ -134,7 +134,7 @@ class CpuCaptureView {
     toolbar.add(myView.getSelectionTimeLabel());
     myFilterComponent = new FilterComponent(FILTER_TEXT_FIELD_WIDTH, FILTER_TEXT_HISTORY_SIZE, FILTER_TEXT_FIELD_TRIGGER_DELAY_MS);
     if (view.getStage().getStudioProfilers().getIdeServices().getFeatureConfig().isCpuCaptureFilterEnabled()) {
-      FlatToggleButton filterButton = FilterComponent.createFilterToggleButton();
+      CommonToggleButton filterButton = FilterComponent.createFilterToggleButton();
       toolbar.add(new FlatSeparator());
       toolbar.add(filterButton);
 

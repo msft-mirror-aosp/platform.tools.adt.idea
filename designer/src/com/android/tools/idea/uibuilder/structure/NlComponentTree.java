@@ -18,17 +18,18 @@ package com.android.tools.idea.uibuilder.structure;
 import com.android.tools.idea.common.model.*;
 import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.common.surface.DesignSurface;
-import com.android.tools.idea.common.surface.DesignSurfaceActionHandler;
 import com.android.tools.idea.common.surface.DesignSurfaceListener;
 import com.android.tools.idea.uibuilder.actions.ComponentHelpAction;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.graphics.NlConstants;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.intellij.ide.DeleteProvider;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.DataProvider;
-import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
@@ -36,6 +37,7 @@ import com.intellij.ui.ColorUtil;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import com.intellij.ui.TreeSpeedSearch;
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.util.ArrayUtil;
 import com.intellij.util.IJSwingUtilities;
 import com.intellij.util.ui.JBInsets;
 import com.intellij.util.ui.JBUI;
@@ -60,7 +62,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -107,7 +108,6 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
     addTreeSelectionListener(new StructurePaneSelectionListener());
     new StructureSpeedSearch(this);
 
-
     enableDnD();
 
     addMouseListener(new StructurePaneMouseListener());
@@ -137,10 +137,51 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
     if (mySurface != null) {
       mySurface.getSelectionModel().addListener(this);
       mySurface.getActionManager().registerActionsShortcuts(this);
-      mySurface.getActionManager().registerActionsShortcuts(this);
+      overrideCtrlClick();
     }
     setModel(designSurface != null ? designSurface.getModel() : null);
     myBadgeHandler.setIssuePanel(designSurface != null ? designSurface.getIssuePanel() : null);
+  }
+
+  /**
+   * Hack to ensure that no IDEA shortcuts is called when using Ctrl+Click.
+   * <p>
+   * Ctrl+click has a broadly adopted meaning of multi-selecting elements.
+   * In IntelliJ, it is also used to jump to the declaration of the component by default.
+   * In the case of the component tree, we prefer to just add the component to the selection without jumping to
+   * the XML declaration.
+   */
+  private void overrideCtrlClick() {
+    MouseShortcut ctrlClickShortcut = new MouseShortcut(MouseEvent.BUTTON1, InputEvent.CTRL_MASK, 1);
+
+    // Get all the action registered for this component
+    List<AnAction> actions = ImmutableList.copyOf(ActionUtil.getActions(this));
+    for (AnAction action : actions) {
+
+      // Get all the shortcuts registered for this action and create
+      // a copy them into a new list filtering Ctrl+click if it is
+      // present.
+      Shortcut[] shortcuts = action.getShortcutSet().getShortcuts();
+      Shortcut existingShortcut = null;
+
+      for (Shortcut shortcut : shortcuts) {
+        if (shortcut.equals(ctrlClickShortcut)) {
+          existingShortcut = shortcut;
+          action.unregisterCustomShortcutSet(this);
+          break;
+        }
+      }
+
+      if (existingShortcut != null) {
+        List<Shortcut> newShortcuts = new ArrayList<>(shortcuts.length - 1);
+        for (Shortcut shortcut : shortcuts) {
+          if (shortcut != existingShortcut) {
+            newShortcuts.add(shortcut);
+          }
+        }
+        action.registerCustomShortcutSet(new CustomShortcutSet(newShortcuts.toArray(Shortcut.EMPTY_ARRAY)), this);
+      }
+    }
   }
 
   @Nullable
@@ -218,9 +259,15 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
           }
           mySelectionIsUpdating.set(true);
 
-          Collection<NlComponent> components = getCollapsedComponents();
+          List<TreePath> expandedPaths = TreeUtil.collectExpandedPaths(NlComponentTree.this);
+          Object oldRoot = treeModel.getRoot();
           setModel(new NlComponentTreeModel(myModel));
-          collapseComponents(components);
+          if (oldRoot == treeModel.getRoot()) {
+            TreeUtil.restoreExpandedPaths(NlComponentTree.this, expandedPaths);
+          }
+          else {
+            TreeUtil.expandAll(NlComponentTree.this);
+          }
 
           invalidateUI();
         }
@@ -234,50 +281,6 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
     if (mySkipWait) {
       mySkipWait = false;
       myUpdateQueue.flush();
-    }
-  }
-
-  @NotNull
-  private Collection<NlComponent> getCollapsedComponents() {
-    int rowCount = getRowCount();
-    Collection<NlComponent> components = Sets.newHashSetWithExpectedSize(rowCount);
-
-    for (int row = 0; row < rowCount; row++) {
-      if (isCollapsed(row)) {
-        Object last = getPathForRow(row).getLastPathComponent();
-        if (!(last instanceof NlComponent)) {
-          continue;
-        }
-        NlComponent component = (NlComponent)last;
-
-        if (component.getChildCount() != 0) {
-          components.add(component);
-        }
-      }
-    }
-
-    return components;
-  }
-
-  private void collapseComponents(@NotNull Collection<NlComponent> components) {
-    NlComponent root = (NlComponent)getModel().getRoot();
-
-    if (root == null) {
-      return;
-    }
-
-    expandAll(root);
-    components.forEach(component -> collapsePath(newTreePath(component)));
-  }
-
-  private void expandAll(@NotNull NlComponent parent) {
-    // If all the children are leaves
-    if (parent.getChildren().stream().allMatch(child -> child.getChildCount() == 0)) {
-      expandPath(newTreePath(parent));
-    }
-    else {
-      // Recurse
-      parent.getChildren().forEach(this::expandAll);
     }
   }
 
@@ -508,6 +511,13 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
             // TODO: Ensure the node is selected first
             mySurface.getActionManager().showPopup(e, (NlComponent)component);
           }
+          else {
+            ActionManager actionManager = ActionManager.getInstance();
+            actionManager.createActionPopupMenu(
+              ActionPlaces.EDITOR_POPUP,
+              new DefaultActionGroup(actionManager.getAction(IdeActions.ACTION_DELETE)))
+              .getComponent().show(e.getComponent(), e.getX(), e.getY());
+          }
         }
       }
     }
@@ -570,7 +580,28 @@ public class NlComponentTree extends Tree implements DesignSurfaceListener, Mode
   // ---- Implements DataProvider ----
   @Override
   public Object getData(@NonNls String dataId) {
+    TreePath path = getSelectionPath();
+    if (path != null && !(path.getLastPathComponent() instanceof NlComponent)) {
+      if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId)) {
+        return createNonNlComponentDeleteProvider();
+      }
+    }
     return mySurface == null ? null : mySurface.getData(dataId);
+  }
+
+  @NotNull
+  private DeleteProvider createNonNlComponentDeleteProvider() {
+    return new DeleteProvider() {
+      @Override
+      public void deleteElement(@NotNull DataContext dataContext) {
+        deleteNonNlComponent(getSelectionPaths());
+      }
+
+      @Override
+      public boolean canDeleteElement(@NotNull DataContext dataContext) {
+        return true;
+      }
+    };
   }
 
   /**

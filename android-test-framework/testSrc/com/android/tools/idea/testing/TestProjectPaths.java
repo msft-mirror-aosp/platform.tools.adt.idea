@@ -34,6 +34,7 @@ public final class TestProjectPaths {
   public static final String MODULE_INFO_MERGE = "projects/moduleInfo/merge";
   public static final String MOVE_WITH_RESOURCES = "projects/moveWithResources";
   public static final String MULTI_FEATURE = "projects/multiFeature";
+  public static final String NAMESPACES = "projects/namespaces";
   public static final String NAVIGATION_EDITOR_BASIC = "projects/navigationEditor/basic";
   public static final String NAVIGATOR_INVALID = "projects/navigator/invalid";
   public static final String NAVIGATOR_PACKAGEVIEW_COMMONROOTS = "projects/navigator/packageview/commonroots";

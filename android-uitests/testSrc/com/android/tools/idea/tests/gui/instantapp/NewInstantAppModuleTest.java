@@ -49,7 +49,6 @@ import static org.junit.Assert.assertNotNull;
 @RunWith(GuiTestRunner.class)
 public class NewInstantAppModuleTest {
   private static final String SAVED_COMPANY_DOMAIN = "SAVED_COMPANY_DOMAIN";
-  private static final Wait WAIT_BUILD_TIME = Wait.seconds(30);
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
   @Nullable private String myOldSavedCompanyDomain;
@@ -74,14 +73,14 @@ public class NewInstantAppModuleTest {
   public void testCanBuildDefaultNewInstantAppFeatureModules() throws IOException {
     guiTest.importSimpleLocalApplication();
     addNewFeatureModule("feature1");
-    assertThat(guiTest.ideFrame().invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
   @Test
   public void testCanBuildEmptyNewInstantAppFeatureModules() throws IOException {
     guiTest.importSimpleLocalApplication();
     addNewFeatureModule("feature1", "Add No Activity");
-    assertThat(guiTest.ideFrame().invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
   @RunIn(TestGroup.UNRELIABLE)  // b/71515856
@@ -90,9 +89,9 @@ public class NewInstantAppModuleTest {
     guiTest.importSimpleLocalApplication();
     addNewFeatureModule(null, null);
     IdeFrameFixture ideFrame = guiTest.ideFrame();
-    assertThat(ideFrame.invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(ideFrame.invokeProjectMake().isBuildSuccessful()).isTrue();
     addNewFeatureModule(null, null);
-    assertThat(ideFrame.invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(ideFrame.invokeProjectMake().isBuildSuccessful()).isTrue();
 
     // Check that the modules are correctly added to the project
     assertValidFeatureModule(ideFrame.getModule("base"));
@@ -114,9 +113,9 @@ public class NewInstantAppModuleTest {
   public void testCanBuildProjectWithEmptySecondFeatureModule() throws IOException {
     guiTest.importSimpleLocalApplication();
     addNewFeatureModule("feature1");
-    assertThat(guiTest.ideFrame().invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
     addNewFeatureModule("feature2", "Add No Activity");
-    assertThat(guiTest.ideFrame().invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
 
@@ -140,7 +139,6 @@ public class NewInstantAppModuleTest {
   }
 
   @Test
-  @Ignore("http://b/69534580")
   public void testAddNewInstantAppModule() throws IOException {
     guiTest.importSimpleLocalApplication();
     IdeFrameFixture ideFrame = guiTest.ideFrame();
@@ -153,12 +151,11 @@ public class NewInstantAppModuleTest {
     ideFrame
       .waitForGradleProjectSyncToFinish(Wait.seconds(20))
       .waitForBuildToFinish(SOURCE_GEN);
-    assertThat(ideFrame.invokeProjectMake(WAIT_BUILD_TIME).isBuildSuccessful()).isTrue();
 
     Module module = ideFrame.getModule("instantapp");
     AndroidFacet facet = AndroidFacet.getInstance(module);
     assertNotNull(facet);
-    assertEquals(PROJECT_TYPE_INSTANTAPP, facet.getProjectType());
+    assertEquals(PROJECT_TYPE_INSTANTAPP, facet.getConfiguration().getProjectType());
   }
 
   private void addNewFeatureModule(@Nullable String moduleName) {
@@ -202,6 +199,6 @@ public class NewInstantAppModuleTest {
   private static void assertValidFeatureModule(Module module) {
     AndroidFacet facet = AndroidFacet.getInstance(module);
     assertNotNull(facet);
-    assertEquals(PROJECT_TYPE_FEATURE, facet.getProjectType());
+    assertEquals(PROJECT_TYPE_FEATURE, facet.getConfiguration().getProjectType());
   }
 }

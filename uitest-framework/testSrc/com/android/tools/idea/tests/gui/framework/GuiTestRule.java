@@ -23,7 +23,8 @@ import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.testing.AndroidGradleTests;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.WelcomeFrameFixture;
-import com.android.tools.idea.tests.gui.framework.guitestsystem.GuiTestSystem;
+import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.GuiTestProjectSystem;
+import com.android.tools.idea.tests.gui.framework.guitestsystem.CurrentGuiTestProjectSystem;
 import com.android.tools.idea.tests.gui.framework.matcher.Matchers;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.project.Project;
@@ -72,12 +73,12 @@ public class GuiTestRule implements TestRule {
   /** Hack to solve focus issue when running with no window manager */
   private static final boolean HAS_EXTERNAL_WINDOW_MANAGER = Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.MAXIMIZED_BOTH);
 
-  private GuiTestSystem myTestSystem = null;
   private IdeFrameFixture myIdeFrameFixture;
   @Nullable private String myTestDirectory;
 
   private final RobotTestRule myRobotTestRule = new RobotTestRule();
   private final LeakCheck myLeakCheck = new LeakCheck();
+  private final CurrentGuiTestProjectSystem myCurrentProjectSystem = new CurrentGuiTestProjectSystem();
 
   private Timeout myTimeout = new Timeout(5, TimeUnit.MINUTES);
 
@@ -102,13 +103,10 @@ public class GuiTestRule implements TestRule {
   @NotNull
   @Override
   public Statement apply(final Statement base, final Description description) {
-    // The test system should be available at this time.  If it's not, error out.
-    myTestSystem = getTestSystem();
-    if (myTestSystem == null) throw new RuntimeException("Required GuiTestSystem cannot be found from extensions.");
-
     RuleChain chain = RuleChain.emptyRuleChain()
       .around(new LogStartAndStop())
       .around(new BlockReloading())
+      .around(myCurrentProjectSystem)
       .around(myRobotTestRule)
       .around(myLeakCheck)
       .around(new IdeHandling())
@@ -121,18 +119,6 @@ public class GuiTestRule implements TestRule {
     }
 
     return chain.apply(base, description);
-  }
-
-  /**
-   * @return the [GuiTestSystem] this test rule should use to perform build system specific operations.
-   */
-  public static GuiTestSystem getTestSystem() {
-    for (GuiTestSystem sys : GuiTestSystem.Companion.getEP_NAME().getExtensions()) {
-      if (System.getProperty("guitest.currentguitestsystem").equals(sys.getId())) {
-        return sys;
-      }
-    }
-    return null;
   }
 
   private class IdeHandling implements TestRule {
@@ -293,13 +279,13 @@ public class GuiTestRule implements TestRule {
 
   public IdeFrameFixture importProjectAndWaitForProjectSyncToFinish(@NotNull String projectDirName) throws IOException {
     importProject(projectDirName);
-    myTestSystem.waitForProjectSyncToFinish(ideFrame());
+    testSystem().waitForProjectSyncToFinish(ideFrame());
     return ideFrame();
   }
 
   public IdeFrameFixture importProject(@NotNull String projectDirName) throws IOException {
     File testProjectDir = setUpProject(projectDirName);
-    myTestSystem.importProject(testProjectDir, robot());
+    testSystem().importProject(testProjectDir, robot());
     return ideFrame();
   }
 
@@ -323,7 +309,7 @@ public class GuiTestRule implements TestRule {
   private File setUpProject(@NotNull String projectDirName) throws IOException {
     File projectPath = copyProjectBeforeOpening(projectDirName);
 
-    myTestSystem.prepareTestForImport(projectPath);
+    testSystem().prepareTestForImport(projectPath);
     createGradleWrapper(projectPath, SdkConstants.GRADLE_LATEST_VERSION);
     updateGradleVersions(projectPath);
     updateLocalProperties(projectPath);
@@ -413,6 +399,10 @@ public class GuiTestRule implements TestRule {
 
   public Robot robot() {
     return myRobotTestRule.getRobot();
+  }
+
+  public GuiTestProjectSystem testSystem() {
+    return myCurrentProjectSystem.getTestProjectSystem();
   }
 
   @NotNull

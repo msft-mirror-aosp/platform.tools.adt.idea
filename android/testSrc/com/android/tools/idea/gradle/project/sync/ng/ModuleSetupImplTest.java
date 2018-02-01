@@ -65,6 +65,7 @@ public class ModuleSetupImplTest extends IdeaTestCase {
   @Mock private ModuleFinder.Factory myModulesFinderFactory;
   @Mock private ModuleSetupContext.Factory myModuleSetupContextFactory;
   @Mock private ModuleFinder myModuleFinder;
+  @Mock private CompositeBuildDataSetup myCompositeBuildDataSetup;
 
   private ModuleSetupImpl myModuleSetup;
 
@@ -79,7 +80,8 @@ public class ModuleSetupImplTest extends IdeaTestCase {
                                         myAndroidModuleSetup, myNdkModuleSetup, myJavaModuleSetup, myAndroidModuleProcessor,
                                         myVariantSelector, myProjectCleanup, myModuleDisposer, myCachedProjectModelsFactory,
                                         myNativeAndroidProjectFactory, myJavaModuleModelFactory, myDependenciesFactory,
-                                        myProjectDataNodeSetup, myModuleSetupContextFactory, myModulesFinderFactory);
+                                        myProjectDataNodeSetup, myModuleSetupContextFactory, myModulesFinderFactory,
+                                        myCompositeBuildDataSetup);
   }
 
   public void testSetUpModulesFromCache() throws Exception {
@@ -90,7 +92,7 @@ public class ModuleSetupImplTest extends IdeaTestCase {
     GradleModuleModel appGradleModel = mock(GradleModuleModel.class);
 
     CachedModuleModels cachedAppModels = mock(CachedModuleModels.class);
-    when(myCachedProjectModels.findCacheForModule(":app")).thenReturn(cachedAppModels);
+    when(myCachedProjectModels.findCacheForModule("app")).thenReturn(cachedAppModels);
     when(cachedAppModels.findModel(AndroidModuleModel.class)).thenReturn(appAndroidModel);
     when(cachedAppModels.findModel(GradleModuleModel.class)).thenReturn(appGradleModel);
 
@@ -101,7 +103,7 @@ public class ModuleSetupImplTest extends IdeaTestCase {
     GradleModuleModel cppGradleModel = mock(GradleModuleModel.class);
 
     CachedModuleModels cachedCppModels = mock(CachedModuleModels.class);
-    when(myCachedProjectModels.findCacheForModule(":cpp")).thenReturn(cachedCppModels);
+    when(myCachedProjectModels.findCacheForModule("cpp")).thenReturn(cachedCppModels);
     when(cachedCppModels.findModel(NdkModuleModel.class)).thenReturn(cppNdkModel);
     when(cachedCppModels.findModel(GradleModuleModel.class)).thenReturn(cppGradleModel);
 
@@ -112,7 +114,7 @@ public class ModuleSetupImplTest extends IdeaTestCase {
     GradleModuleModel javaGradleModel = mock(GradleModuleModel.class);
 
     CachedModuleModels cachedJavaModels = mock(CachedModuleModels.class);
-    when(myCachedProjectModels.findCacheForModule(":java")).thenReturn(cachedJavaModels);
+    when(myCachedProjectModels.findCacheForModule("java")).thenReturn(cachedJavaModels);
     when(cachedJavaModels.findModel(JavaModuleModel.class)).thenReturn(javaModel);
     when(cachedJavaModels.findModel(GradleModuleModel.class)).thenReturn(javaGradleModel);
 
@@ -132,6 +134,9 @@ public class ModuleSetupImplTest extends IdeaTestCase {
 
     // Invoke the method to test.
     myModuleSetup.setUpModules(myCachedProjectModels, indicator);
+
+    // Verify CompositeBuild data is setup.
+    verify(myCompositeBuildDataSetup).setupCompositeBuildData(myCachedProjectModels, myProject);
 
     // Verify that the modules were set up from the models in the cache.
     verify(myGradleModuleSetup).setUpModule(appModule, myModelsProvider, appGradleModel);

@@ -28,6 +28,7 @@ import com.intellij.ui.navigation.Place
 import com.intellij.ui.navigation.Place.goFurther
 import com.intellij.ui.navigation.Place.queryFurther
 import com.intellij.util.IconUtil
+import com.intellij.util.ui.tree.TreeUtil
 import java.util.*
 import javax.swing.tree.TreeNode
 import javax.swing.tree.TreePath
@@ -38,7 +39,8 @@ import javax.swing.tree.TreePath
 abstract class ConfigurablesMasterDetailsPanel<ModelT>(
     override val title: String,
     private val placeName: String,
-    private val treeModel: ConfigurablesTreeModel
+    private val treeModel: ConfigurablesTreeModel,
+    private val uiSettings: PsUISettings
 ) : MasterDetailsComponent(), ModelPanel<ModelT>, Place.Navigator, PanelWithUiState {
 
   private var inQuietSelection = false
@@ -53,6 +55,7 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
     (splitter as JBSplitter).splitterProportionKey = "android.psd.proportion.configurables"
     tree.model = treeModel
     tree.isRootVisible = false
+    TreeUtil.expandAll(tree)
   }
 
   override fun createActions(fromPopup: Boolean): ArrayList<AnAction>? {
@@ -125,7 +128,7 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
   }
 
   override fun restoreUiState() {
-    val lastEditedItem = PsUISettings.getInstance().getLastEditedItem()
+    val lastEditedItem = uiSettings.getLastEditedItem()
     if (lastEditedItem != null) {
       val configurableNode = findConfigurableNode(lastEditedItem)
       if (configurableNode != null) {
@@ -141,7 +144,7 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
 
   private fun saveUiState() {
     if (selectedConfigurable == null) return
-    PsUISettings.getInstance().setLastEditedItem(selectedConfigurable?.displayName)
+    uiSettings.setLastEditedItem(selectedConfigurable?.displayName)
   }
 
   protected fun selectNode(node: TreeNode?) {

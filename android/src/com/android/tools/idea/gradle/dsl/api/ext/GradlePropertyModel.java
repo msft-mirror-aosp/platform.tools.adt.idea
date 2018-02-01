@@ -16,6 +16,7 @@ package com.android.tools.idea.gradle.dsl.api.ext;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -153,16 +154,17 @@ public interface GradlePropertyModel {
   /**
    * Converts this property to an empty map. Any values stored inside the property will be removed.
    * This can be called on a property with any {@link ValueType} but will always result in {@link ValueType#MAP}.
-   * This method returns itself for in order to chain operations e.g propertyModel.convertToEmptyMap().addMapValue()
+   * This method returns itself for in order to chain operations e.g propertyModel.convertToEmptyMap().getMapValue()
    */
   GradlePropertyModel convertToEmptyMap();
 
   /**
-   * Sets the value, in the map represented by this property, that corresponds to the given key. The model representing the
-   * new value is returned by this method. Unless this resulting model has its value set, nothing will be created.
+   * Gets the model in the map represented by this property, that corresponds to the given key. If the key does not exist
+   * the model representing an empty value is returned by this method, and can then be used to create new value.
+   * Unless this resulting model has its value set, nothing will be created.
    * This should only be used for properties for which {@link #getValueType()} returns {@link ValueType#MAP}.
    */
-  GradlePropertyModel addMapValue(@NotNull String key);
+  GradlePropertyModel getMapValue(@NotNull String key);
 
   /**
    * Converts this property to an empty list. Any values stored inside the property will be removed.
@@ -190,4 +192,15 @@ public interface GradlePropertyModel {
    * from the file. Any call to {@link #setValue(Object)} will recreate the property and add it back to the file.
    */
   void delete();
+
+  /**
+   * @return a resolved model representing this property.
+   */
+  ResolvedPropertyModel resolve();
+
+  /**
+   * @return the {@link PsiElement} that this property originated from.
+   */
+  @Nullable
+  PsiElement getPsiElement();
 }

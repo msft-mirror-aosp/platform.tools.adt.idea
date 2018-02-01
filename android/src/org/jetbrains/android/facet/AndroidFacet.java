@@ -18,7 +18,6 @@ package org.jetbrains.android.facet;
 import com.android.builder.model.AndroidProject;
 import com.android.builder.model.SourceProvider;
 import com.android.tools.idea.apk.ApkFacet;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.util.GradleProjects;
 import com.android.tools.idea.model.AndroidModel;
 import com.intellij.facet.Facet;
@@ -98,28 +97,6 @@ public class AndroidFacet extends Facet<AndroidFacetConfiguration> {
     return !getProperties().ALLOW_USER_CONFIGURATION && ApkFacet.getInstance(getModule()) == null;
   }
 
-  public boolean isAppProject() {
-    int projectType = getProjectType();
-    return projectType == PROJECT_TYPE_APP || projectType == PROJECT_TYPE_INSTANTAPP;
-  }
-
-  public boolean canBeDependency() {
-    int projectType = getProjectType();
-    return projectType == PROJECT_TYPE_LIBRARY || projectType == PROJECT_TYPE_FEATURE;
-  }
-
-  public boolean isLibraryProject() {
-    return getProjectType() == PROJECT_TYPE_LIBRARY;
-  }
-
-  public int getProjectType() {
-    return getProperties().PROJECT_TYPE;
-  }
-
-  public void setProjectType(int type) {
-    getProperties().PROJECT_TYPE = type;
-  }
-
   /**
    * Returns the main source provider for the project. For projects that are not backed by an {@link AndroidProject}, this method returns a
    * {@link SourceProvider} wrapper which provides information about the old project.
@@ -155,12 +132,7 @@ public class AndroidFacet extends Facet<AndroidFacetConfiguration> {
 
     return myMainIdeaSourceSet;
   }
-
-  @NotNull
-  public ResourceFolderManager getResourceFolderManager() {
-    return ResourceFolderManager.getInstance(this);
-  }
-
+  
   /**
    * @return all resource directories, in the overlay order.
    * @deprecated use getResourceFolderManager().getFolders() instead
@@ -168,24 +140,7 @@ public class AndroidFacet extends Facet<AndroidFacetConfiguration> {
   @NotNull
   @Deprecated
   public List<VirtualFile> getAllResourceDirectories() {
-    return getResourceFolderManager().getFolders();
-  }
-
-  /**
-   * This returns the primary resource directory; the default location to place newly created resources etc.  This method is marked
-   * deprecated since we should be gradually adding in UI to allow users to choose specific resource folders among the available flavors
-   * (see {@link AndroidModuleModel#getFlavorSourceProviders()} etc).
-   *
-   * @return the primary resource dir, if any.
-   */
-  @Deprecated
-  @Nullable
-  public VirtualFile getPrimaryResourceDir() {
-    List<VirtualFile> dirs = getResourceFolderManager().getFolders();
-    if (!dirs.isEmpty()) {
-      return dirs.get(0);
-    }
-    return null;
+    return ResourceFolderManager.getInstance(this).getFolders();
   }
 
   @Override

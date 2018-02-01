@@ -105,7 +105,6 @@ public class NewInstantAppTest {
       .clickPath(featureModuleName == null ? "feature" : featureModuleName);
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // b/71515855
   @Test
   public void testNoWarningsInDefaultNewInstantAppProjects() throws IOException {
     String projectName = "Warning";
@@ -192,7 +191,6 @@ public class NewInstantAppTest {
     assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
-  @RunIn(TestGroup.UNRELIABLE)
   @Test // b/68122671
   public void addMapActivityToExistingIappModule() throws Exception {
     createAndOpenDefaultAIAProject("BuildApp", "feature", null);

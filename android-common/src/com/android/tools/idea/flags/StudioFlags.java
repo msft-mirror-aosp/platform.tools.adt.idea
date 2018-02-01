@@ -164,6 +164,11 @@ public final class StudioFlags {
     "Enable the Convert View Action when right clicking on a component",
     true);
 
+  public static final Flag<Boolean> ENABLE_NEW_SCOUT = Flag.create(
+    NELE, "exp.scout.engine", "Experimental version of the Scout inference system",
+    "Enable experimental version of the Scout inference system",
+    false);
+
   private static final FlagGroup ASSISTANT = new FlagGroup(FLAGS, "assistant", "Assistants");
   public static final Flag<Boolean> CONNECTION_ASSISTANT_ENABLED = Flag.create(
     ASSISTANT, "connection.enabled", "Enable the connection assistant",
@@ -222,6 +227,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(
     IOT, "iot.uninstalllauncherapps.enabled", "Enable the Uninstall of IoT launcher apps feature",
     "If enabled, uninstall IoT launcher apps when installing a new one", false);
+
+  private static final FlagGroup NDK = new FlagGroup(FLAGS, "ndk", "Native code features");
+  public static final Flag<Boolean> CMAKE_ENABLE_FEATURES_FROM_CLION = Flag
+    .create(NDK, "ndk.cmakeclionfeatures", "Enable CMake language support from CLion",
+            "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", false);
 
   private StudioFlags() {
   }

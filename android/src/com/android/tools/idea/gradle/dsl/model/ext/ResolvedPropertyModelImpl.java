@@ -19,7 +19,9 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,10 +44,14 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
     myRealModel = realModel;
   }
 
+  public ResolvedPropertyModelImpl(@NotNull GradleDslElement element) {
+    myRealModel = new GradlePropertyModelImpl(element);
+  }
+
   @NotNull
   @Override
   public ValueType getValueType() {
-    return getResolvedModel().getValueType();
+    return resolveModel().getValueType();
   }
 
   @NotNull
@@ -57,7 +63,7 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
   @Nullable
   @Override
   public <T> T getValue(@NotNull TypeReference<T> typeReference) {
-    return getResolvedModel().getValue(typeReference);
+    return resolveModel().getValue(typeReference);
   }
 
   @Nullable
@@ -102,13 +108,14 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
   }
 
   @Override
-  public GradlePropertyModel addMapValue(@NotNull String key) {
-    return myRealModel.addMapValue(key);
+  public GradlePropertyModel getMapValue(@NotNull String key) {
+    return myRealModel.getMapValue(key);
   }
 
   @Override
   public GradlePropertyModel convertToEmptyList() {
-    return myRealModel.convertToEmptyList();
+    myRealModel.convertToEmptyList();
+    return this;
   }
 
   @Override
@@ -126,7 +133,30 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
     myRealModel.delete();
   }
 
-  private GradlePropertyModel getResolvedModel() {
+  @Override
+  public ResolvedPropertyModel resolve() {
+    return this;
+  }
+
+  @Nullable
+  @Override
+  public PsiElement getPsiElement() {
+    return myRealModel.getPsiElement();
+  }
+
+  @Override
+  @NotNull
+  public GradlePropertyModel getUnresolvedModel() {
+    return myRealModel;
+  }
+
+  @NotNull
+  @Override
+  public GradlePropertyModel getResultModel() {
+    return resolveModel();
+  }
+
+  private GradlePropertyModel resolveModel() {
     GradlePropertyModel model = myRealModel;
     Set<GradlePropertyModel> seenModels = new HashSet<>();
 
@@ -138,11 +168,5 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
       model = model.getDependencies().get(0);
     }
     return model;
-  }
-
-  @Override
-  @NotNull
-  public GradlePropertyModel getUnresolvedModel() {
-    return myRealModel;
   }
 }

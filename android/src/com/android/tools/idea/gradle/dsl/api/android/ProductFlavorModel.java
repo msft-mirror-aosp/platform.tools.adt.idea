@@ -19,12 +19,8 @@ import com.android.tools.idea.gradle.dsl.api.FlavorTypeModel;
 import com.android.tools.idea.gradle.dsl.api.android.productFlavors.ExternalNativeBuildOptionsModel;
 import com.android.tools.idea.gradle.dsl.api.android.productFlavors.NdkOptionsModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.Map;
 
 public interface ProductFlavorModel extends FlavorTypeModel {
   @NotNull
@@ -49,16 +45,8 @@ public interface ProductFlavorModel extends FlavorTypeModel {
 
   void removeNdk();
 
-  @Nullable
-  List<GradleNotNullValue<String>> resConfigs();
-
-  void addResConfig(@NotNull String resConfig);
-
-  void removeResConfig(@NotNull String resConfig);
-
-  void removeAllResConfigs();
-
-  void replaceResConfig(@NotNull String oldResConfig, @NotNull String newResConfig);
+  @NotNull
+  ResolvedPropertyModel resConfigs();
 
   @NotNull
   ResolvedPropertyModel targetSdkVersion();
@@ -75,14 +63,8 @@ public interface ProductFlavorModel extends FlavorTypeModel {
   @NotNull
   ResolvedPropertyModel testInstrumentationRunner();
 
-  @Nullable
-  Map<String, GradleNotNullValue<String>> testInstrumentationRunnerArguments();
-
-  void setTestInstrumentationRunnerArgument(@NotNull String name, @NotNull String value);
-
-  void removeTestInstrumentationRunnerArgument(@NotNull String name);
-
-  void removeAllTestInstrumentationRunnerArguments();
+  @NotNull
+  ResolvedPropertyModel testInstrumentationRunnerArguments();
 
   @NotNull
   ResolvedPropertyModel versionCode();

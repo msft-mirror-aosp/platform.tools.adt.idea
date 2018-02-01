@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.PropertyType
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.*
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
+import com.google.common.collect.ImmutableMap
 import com.intellij.openapi.vfs.VfsUtil
 
 class GradlePropertyModelTest : GradleFileModelTestCase() {
@@ -1473,7 +1474,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     run {
       val propertyModel = buildModel.ext().findProperty("prop1")
       try {
-        propertyModel.addMapValue("key")
+        propertyModel.getMapValue("key")
         fail("Exception should have been thrown!")
       } catch (e : IllegalStateException) {
         // Expected.
@@ -1501,7 +1502,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
         verifyPropertyModel(map["key2"], STRING_TYPE, "value2", STRING, DERIVED, 0)
 
         // Attempt to set a new value.
-        val newValue = propertyModel.addMapValue("key3")
+        val newValue = propertyModel.getMapValue("key3")
         verifyPropertyModel(newValue, OBJECT_TYPE, null, NONE, DERIVED, 0)
         newValue.setValue(true)
         verifyPropertyModel(newValue, BOOLEAN_TYPE, true, BOOLEAN, DERIVED, 0)
@@ -1550,7 +1551,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       }
 
       // Set the new value.
-      propertyModel.addMapValue("key1").setValue(ReferenceTo("val"))
+      propertyModel.getMapValue("key1").setValue(ReferenceTo("val"))
 
       // Check the correct values are shown in the property.
       run {
@@ -1643,7 +1644,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       assertSize(0, propertyModel.getValue(MAP_TYPE)!!.entries)
 
       // Attempt to set a new value
-      propertyModel.addMapValue("Conquest").setValue("Famine")
+      propertyModel.getMapValue("Conquest").setValue("Famine")
       // Check the model again
       assertEquals(MAP, propertyModel.valueType)
       val map = propertyModel.getValue(MAP_TYPE)!!
@@ -1685,6 +1686,63 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     run {
       val propertyModel = buildModel.ext().findProperty("prop1")
       verifyPropertyModel(propertyModel, INTEGER_TYPE, 77, INTEGER, REGULAR, 0)
+    }
+  }
+
+  fun testDeleteToEmptyMap() {
+    val text = """
+               ext {
+                 prop1 = [key : "value", key1 :32, key2: true]
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      assertEquals(MAP, propertyModel.valueType)
+      assertSize(3, propertyModel.getValue(MAP_TYPE)!!.entries)
+
+      val map = propertyModel.getValue(MAP_TYPE)!!
+      map["key"]!!.delete()
+      map["key1"]!!.delete()
+      map["key2"]!!.delete()
+
+      assertEquals(MAP, propertyModel.valueType)
+      assertSize(0, propertyModel.getValue(MAP_TYPE)!!.entries)
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      assertEquals(MAP, propertyModel.valueType)
+      assertSize(0, propertyModel.getValue(MAP_TYPE)!!.entries)
+    }
+  }
+
+  fun testAddExistingMapProperty() {
+    val text = """
+               ext {
+                 prop = [key: 'val']
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop")
+      verifyMapProperty(propertyModel, ImmutableMap.of("key", "val") as Map<String, Any>)
+
+      propertyModel.getMapValue("key").setValue("newVal")
+      verifyMapProperty(propertyModel, ImmutableMap.of("key", "newVal") as Map<String, Any>)
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop")
+      verifyMapProperty(propertyModel, ImmutableMap.of("key", "newVal") as Map<String, Any>)
     }
   }
 
@@ -1792,7 +1850,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       // Check it is not a map yet
       verifyPropertyModel(mapPropertyModel, STRING_TYPE, "value", STRING, VARIABLE, 0)
 
-      mapPropertyModel.addMapValue("key").setValue("Hello")
+      mapPropertyModel.getMapValue("key").setValue("Hello")
 
       assertEquals(MAP, mapPropertyModel.valueType)
       val map = mapPropertyModel.getValue(MAP_TYPE)!!
@@ -1940,7 +1998,7 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       val map = propertyModel.getValue(MAP_TYPE)!!
       assertSize(1, map.entries)
       // Try to set a new map value.
-      propertyModel.getValue(MAP_TYPE)!!["key1"]!!.convertToEmptyMap().addMapValue("War")?.setValue("Death")
+      propertyModel.getValue(MAP_TYPE)!!["key1"]!!.convertToEmptyMap().getMapValue("War")?.setValue("Death")
     }
 
     applyChangesAndReparse(buildModel)
@@ -2360,14 +2418,14 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       propertyModel.addListValueAt(1).setValue(ReferenceTo("var"))
       propertyModel.addListValueAt(2).setValue(3)
 
-      verifyListProperty(propertyModel, listOf(1, "var", 3, 4), REGULAR, 1)
+      verifyListProperty(propertyModel, listOf(1, "2", 3, 4), REGULAR, 1)
     }
 
     applyChangesAndReparse(buildModel)
 
     run {
       val propertyModel = buildModel.ext().findProperty("prop1")
-      verifyListProperty(propertyModel, listOf(1, "var", 3, 4), REGULAR, 1)
+      verifyListProperty(propertyModel, listOf(1, "2", 3, 4), REGULAR, 1)
     }
   }
 
@@ -2383,19 +2441,19 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
 
     run {
       val propertyModel = buildModel.ext().findProperty("prop1")
-      verifyListProperty(propertyModel, listOf(1, 2, "var", 4), REGULAR, 1)
+      verifyListProperty(propertyModel, listOf(1, 2, "2", 4), REGULAR, 1)
 
       propertyModel.getValue(LIST_TYPE)!![1].setValue(ReferenceTo("var"))
       propertyModel.getValue(LIST_TYPE)!![2].setValue(3)
 
-      verifyListProperty(propertyModel, listOf(1, "var", 3, 4), REGULAR, 1)
+      verifyListProperty(propertyModel, listOf(1, "2", 3, 4), REGULAR, 1)
     }
 
     applyChangesAndReparse(buildModel)
 
     run {
       val propertyModel = buildModel.ext().findProperty("prop1")
-      verifyListProperty(propertyModel, listOf(1, "var", 3, 4), REGULAR, 1)
+      verifyListProperty(propertyModel, listOf(1, "2", 3, 4), REGULAR, 1)
     }
   }
 
@@ -2519,6 +2577,193 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       verifyPropertyModel(propertyModel, STRING_TYPE, "hello, ${'$'}{animal}!", STRING, REGULAR, 0)
     }
   }
+
+  fun testSetValueInMap() {
+    val text = """
+               ext {
+                 def val = "hello"
+                 def otherVal = "goodbye"
+                 prop1 = [key1: 'value', key2: val, key3: 23, key4: true]
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      assertEquals(MAP, propertyModel.valueType)
+      val map = propertyModel.getValue(MAP_TYPE)!!
+      verifyPropertyModel(map["key1"], STRING_TYPE, "value", STRING, DERIVED, 0)
+      verifyPropertyModel(map["key2"], STRING_TYPE, "val", REFERENCE, DERIVED, 1)
+      verifyPropertyModel(map["key3"], INTEGER_TYPE, 23, INTEGER, DERIVED, 0)
+      verifyPropertyModel(map["key4"], BOOLEAN_TYPE, true, BOOLEAN, DERIVED, 0)
+
+      propertyModel.getMapValue("key1").setValue(ReferenceTo("otherVal"))
+      propertyModel.getMapValue("key2").setValue("newValue")
+      propertyModel.getMapValue("key3").setValue(false)
+      propertyModel.getMapValue("key4").setValue(32)
+      propertyModel.getMapValue("newKey").setValue("meerkats")
+
+      assertEquals(MAP, propertyModel.valueType)
+      val newMap = propertyModel.getValue(MAP_TYPE)!!
+      verifyPropertyModel(newMap["key1"], STRING_TYPE, "otherVal", REFERENCE, DERIVED, 1)
+      verifyPropertyModel(newMap["key2"], STRING_TYPE, "newValue", STRING, DERIVED, 0)
+      verifyPropertyModel(newMap["key3"], BOOLEAN_TYPE, false, BOOLEAN, DERIVED, 0)
+      verifyPropertyModel(newMap["key4"], INTEGER_TYPE, 32, INTEGER, DERIVED, 0)
+      verifyPropertyModel(newMap["newKey"], STRING_TYPE, "meerkats", STRING, DERIVED, 0)
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      assertEquals(MAP, propertyModel.valueType)
+      val map = propertyModel.getValue(MAP_TYPE)!!
+      verifyPropertyModel(map["key1"], STRING_TYPE, "otherVal", REFERENCE, DERIVED, 1)
+      verifyPropertyModel(map["key2"], STRING_TYPE, "newValue", STRING, DERIVED, 0)
+      verifyPropertyModel(map["key3"], BOOLEAN_TYPE, false, BOOLEAN, DERIVED, 0)
+      verifyPropertyModel(map["key4"], INTEGER_TYPE, 32, INTEGER, DERIVED, 0)
+      verifyPropertyModel(map["newKey"], STRING_TYPE, "meerkats", STRING, DERIVED, 0)
+    }
+  }
+
+  fun testSetMapValueOnNoneMap() {
+    val text = """
+               ext {
+                 prop1 = ['value1', false, 17]
+                 prop2 = "hello"
+                 prop3 = prop1 // Should only work for resolved properties.
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    run {
+      val firstModel = buildModel.ext().findProperty("prop1")
+      try {
+        firstModel.getMapValue("value1").setValue("newValue")
+        fail()
+      }
+      catch (e: IllegalStateException) {
+        // Expected
+      }
+
+      val secondModel = buildModel.ext().findProperty("prop2")
+      try {
+        secondModel.getMapValue("hello").setValue("goodbye")
+        fail()
+      }
+      catch (e: IllegalStateException) {
+        // Expected
+      }
+
+      val thirdModel = buildModel.ext().findProperty("prop3")
+      try {
+        thirdModel.getMapValue("key").setValue(0)
+        fail()
+      }
+      catch (e: IllegalStateException) {
+        // Expected
+      }
+    }
+  }
+
+  fun testOuterScopeVariablesResolved() {
+    val text = """
+               def max_version = 15
+               android {
+                 def min_version = 12
+                 defaultConfig {
+                   minSdkVersion min_version
+                   targetSdkVersion max_version
+                 }
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    run {
+      val defaultConfig = buildModel.android()!!.defaultConfig()
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 12, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 15, INTEGER, DERIVED, 1)
+
+      // Check that we can edit them.
+      defaultConfig.minSdkVersion().resultModel.setValue(18)
+      defaultConfig.targetSdkVersion().resultModel.setValue(21)
+
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, DERIVED, 1)
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val defaultConfig = buildModel.android()!!.defaultConfig()
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, DERIVED, 1)
+    }
+  }
+
+  fun testInScopeElement() {
+    val parentText = """
+                     def var1 = "aardwolf" // No
+                     ext {
+                       def var2 = "zorro" // No
+                       prop1 = "baboon" // Yes
+                     }""".trimIndent()
+    val childText = """
+                    ext {
+                      def var6 = "swan" // No
+                      prop2 = "kite" // Yes
+                    }
+                    def var3 = "goldeneye" // Yes
+                    android {
+                      def var4 = "wallaby" // Yes
+                      defaultConfig {
+                        def var5 = "curlew" // Yes
+                        targetSdkVersion 14 // No
+                        minSdkVersion 12 // No
+                      }
+                    }""".trimIndent()
+    val childProperties = "prop3 = chickadee"
+    val parentProperties = "prop4 = ferret"
+    writeToBuildFile(parentText)
+    writeToSubModuleBuildFile(childText)
+    writeToSettingsFile("include ':${SUB_MODULE_NAME}'")
+    writeToPropertiesFile(parentProperties)
+    writeToSubModulePropertiesFile(childProperties)
+
+    val buildModel = subModuleGradleBuildModel
+
+    run {
+      val defaultConfig = buildModel.android()!!.defaultConfig()
+      val properties = defaultConfig.inScopeProperties
+      assertEquals(7, properties.entries.size)
+
+      // Check all the properties that we expect are present.
+      verifyPropertyModel(properties["var3"], STRING_TYPE, "goldeneye", STRING, VARIABLE, 0)
+      verifyPropertyModel(properties["var4"], STRING_TYPE, "wallaby", STRING, VARIABLE, 0)
+      verifyPropertyModel(properties["var5"], STRING_TYPE, "curlew", STRING, VARIABLE, 0)
+      verifyPropertyModel(properties["prop1"], STRING_TYPE, "baboon", STRING, REGULAR, 0)
+      verifyPropertyModel(properties["prop2"], STRING_TYPE, "kite", STRING, REGULAR, 0)
+      verifyPropertyModel(properties["prop3"], STRING_TYPE, "chickadee", STRING, PROPERTIES_FILE, 0)
+      verifyPropertyModel(properties["prop4"], STRING_TYPE, "ferret", STRING, PROPERTIES_FILE, 0)
+    }
+
+    run {
+      val properties = buildModel.ext().inScopeProperties
+      assertEquals(6, properties.entries.size)
+      verifyPropertyModel(properties["prop1"], STRING_TYPE, "baboon", STRING, REGULAR, 0)
+      verifyPropertyModel(properties["prop2"], STRING_TYPE, "kite", STRING, REGULAR, 0)
+      verifyPropertyModel(properties["prop3"], STRING_TYPE, "chickadee", STRING, PROPERTIES_FILE, 0)
+      verifyPropertyModel(properties["prop4"], STRING_TYPE, "ferret", STRING, PROPERTIES_FILE, 0)
+      verifyPropertyModel(properties["var6"], STRING_TYPE, "swan", STRING, VARIABLE, 0)
+      // TODO: Should not be visible, this needs line number support to correctly hide itself.
+      verifyPropertyModel(properties["var3"], STRING_TYPE, "goldeneye", STRING, VARIABLE, 0)
+
+    }
+  }
+
 
   private fun runSetPropertyTest(text: String, type: PropertyType) {
     writeToBuildFile(text)

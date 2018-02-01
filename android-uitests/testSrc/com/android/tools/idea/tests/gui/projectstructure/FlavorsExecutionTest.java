@@ -79,7 +79,7 @@ public class FlavorsExecutionTest {
    *   2. Verify in Android Run tool window for the launch of F2_Main_Activity
    * </pre>
    */
-  @RunIn(TestGroup.SANITY)
+  @RunIn(TestGroup.QA_UNRELIABLE) // b/72654538
   @Test
   public void runBuildFlavors() throws Exception {
     InstantRunSettings.setShowStatusNotifications(false);
@@ -116,8 +116,8 @@ public class FlavorsExecutionTest {
 
     ideFrameFixture
       .getProjectView()
-      .selectProjectPane()
-      .clickPath("SimpleApplication", "app")
+      .selectAndroidPane()
+      .clickPath("app")
       .openFromMenu(NewActivityWizardFixture::find, "File", "New", "Activity", "Basic Activity")
       .getConfigureActivityStep()
       .enterTextFieldValue(ConfigureBasicActivityStepFixture.ActivityTextField.NAME, FIRST_ACTIVITY_NAME)
@@ -133,8 +133,8 @@ public class FlavorsExecutionTest {
 
     ideFrameFixture
       .getProjectView()
-      .selectProjectPane()
-      .clickPath("SimpleApplication", "app")
+      .selectAndroidPane()
+      .clickPath("app")
       .openFromMenu(NewActivityWizardFixture::find, "File", "New", "Activity", "Basic Activity")
       .getConfigureActivityStep()
       .enterTextFieldValue(ConfigureBasicActivityStepFixture.ActivityTextField.NAME, SECOND_ACTIVITY_NAME)

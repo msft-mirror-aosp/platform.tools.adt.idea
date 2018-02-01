@@ -34,7 +34,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Objects;
 
-@Ignore("b/66680171")
 @RunWith(GuiTestRunner.class)
 public final class NavigationViewTest {
   @Rule
@@ -62,6 +61,7 @@ public final class NavigationViewTest {
     waitUntilEditorCurrentFileEquals(FileSystems.getDefault().getPath("app", "src", "main", "res", "layout", "nav_header_main.xml"));
   }
 
+  @Ignore("b/72574190")  // triggers IDE error
   @Test
   public void doubleClickMenu() {
     myLayoutEditor.getSurface().doubleClick(new Point(150, 410));

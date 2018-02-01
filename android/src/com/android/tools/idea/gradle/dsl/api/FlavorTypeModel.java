@@ -15,66 +15,46 @@
  */
 package com.android.tools.idea.gradle.dsl.api;
 
+import com.android.annotations.VisibleForTesting;
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
+import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
 
-public interface FlavorTypeModel {
+public interface FlavorTypeModel extends GradleDslModel {
   @NotNull
   String name();
 
-  @Nullable
-  List<GradleNotNullValue<String>> consumerProguardFiles();
+  @NotNull
+  ResolvedPropertyModel consumerProguardFiles();
 
-  void addConsumerProguardFile(@NotNull String consumerProguardFile);
-
-  void removeConsumerProguardFile(@NotNull String consumerProguardFile);
-
-  void removeAllConsumerProguardFiles();
-
-  void replaceConsumerProguardFile(@NotNull String oldConsumerProguardFile, @NotNull String newConsumerProguardFile);
-
-  @Nullable
-  Map<String, GradleNotNullValue<Object>> manifestPlaceholders();
-
-  void setManifestPlaceholder(@NotNull String name, @NotNull String value);
-
-  void setManifestPlaceholder(@NotNull String name, int value);
-
-  void setManifestPlaceholder(@NotNull String name, boolean value);
-
-  void removeManifestPlaceholder(@NotNull String name);
-
-  void removeAllManifestPlaceholders();
+  @NotNull
+  ResolvedPropertyModel manifestPlaceholders();
 
   @NotNull
   ResolvedPropertyModel multiDexEnabled();
 
-  @Nullable
-  List<GradleNotNullValue<String>> proguardFiles();
-
-  void addProguardFile(@NotNull String proguardFile);
-
-  void removeProguardFile(@NotNull String proguardFile);
-
-  void removeAllProguardFiles();
-
-  void replaceProguardFile(@NotNull String oldProguardFile, @NotNull String newProguardFile);
+  @NotNull
+  ResolvedPropertyModel proguardFiles();
 
   @Nullable
-  List<GradleNotNullValue<ResValue>> resValues();
+  List<ResValue> resValues();
 
-  void addResValue(@NotNull ResValue resValue);
+  ResValue addResValue(@NotNull String type, @NotNull String name, @NotNull String value);
 
-  void removeResValue(@NotNull ResValue resValue);
+  void removeResValue(@NotNull String type, @NotNull String name, @NotNull String value);
+
+  ResValue replaceResValue(@NotNull String oldType,
+                           @NotNull String oldName,
+                           @NotNull String oldValue,
+                           @NotNull String type,
+                           @NotNull String name,
+                           @NotNull String value);
 
   void removeAllResValues();
-
-  void replaceResValue(@NotNull ResValue oldResValue, @NotNull ResValue newResValue);
 
   @NotNull
   ResolvedPropertyModel useJack();
@@ -83,17 +63,23 @@ public interface FlavorTypeModel {
    * Represents a statement like {@code resValue} or {@code buildConfigField} which contains type, name and value parameters.
    */
   interface TypeNameValueElement {
-    @NotNull
-    String name();
 
     @NotNull
-    String value();
+    ResolvedPropertyModel name();
 
     @NotNull
-    String type();
+    ResolvedPropertyModel value();
+
+    @NotNull
+    ResolvedPropertyModel type();
 
     @NotNull
     String elementName();
+
+    void remove();
+
+    @VisibleForTesting
+    GradlePropertyModel getModel();
   }
 
   /**

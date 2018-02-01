@@ -42,7 +42,6 @@ import org.fest.swing.fixture.JTableCellFixture;
 import org.fest.swing.timing.Wait;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -567,7 +566,6 @@ public class ConstraintLayoutTest {
     assertThat(layoutContents).doesNotContainMatch("<Button.*app:layout_constraintBottom_toBottomOf=\"parent\"");
   }
 
-  @Ignore("b/66680171")
   @RunIn(TestGroup.UNRELIABLE)  // b/64152425
   @Test
   public void fileIsFormattedAfterSelectingMarginStart() {
@@ -592,23 +590,25 @@ public class ConstraintLayoutTest {
       "    xmlns:tools=\"http://schemas.android.com/tools\"\n" +
       "    android:layout_width=\"match_parent\"\n" +
       "    android:layout_height=\"match_parent\"\n" +
-      "    tools:context=\"com.google.myapplication.MainActivity\">\n" +
+      "    tools:context=\".MainActivity\">\n" +
       "\n" +
       "    <TextView\n" +
       "        android:layout_width=\"wrap_content\"\n" +
       "        android:layout_height=\"wrap_content\"\n" +
+      "        android:layout_marginTop=\"8dp\"\n" +
       "        android:text=\"Hello World!\"\n" +
       "        app:layout_constraintBottom_toBottomOf=\"parent\"\n" +
       "        app:layout_constraintLeft_toLeftOf=\"parent\"\n" +
       "        app:layout_constraintRight_toRightOf=\"parent\"\n" +
       "        app:layout_constraintTop_toTopOf=\"parent\" />\n" +
       "\n" +
-      "</android.support.constraint.ConstraintLayout>\n";
+      "</android.support.constraint.ConstraintLayout>";
 
+    Wait.seconds(10).expecting("the editor to update and reformat the XML file")
+      .until(() -> expected.equals(editor.getCurrentFileContents()));
     assertEquals(expected, editor.getCurrentFileContents());
   }
 
-  @Ignore("b/66680171")
   @RunIn(TestGroup.UNRELIABLE)  // b/64152425
   @Test
   public void cleanUpAttributes() throws IOException {

@@ -141,8 +141,11 @@ java_test(
 java_test(
     name = "NlEditorTest",
     data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/sdk:tools/support-annotations",
         "//prebuilts/studio/layoutlib:data/res",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.1.0:aar",
+        ":unzip_aswb",
     ] + glob([
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
@@ -229,4 +232,20 @@ java_test(
     tags = COMMON_TAGS + ["manual"],  #Sanity tests passing, but other tests fail
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":android-uitests_testlib"],
+)
+
+genrule(
+    name = "unzip_aswb",
+    srcs = ["@blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip"],
+    outs = [
+        "aswb/aspect/WORKSPACE",
+        "aswb/aspect/BUILD.bazel",
+        "aswb/aspect/intellij_info_bundled.bzl",
+        "aswb/aspect/intellij_info_impl.bzl",
+        "aswb/aspect/java_classpath.bzl",
+        "aswb/aspect/JarFilter_deploy.jar",
+        "aswb/aspect/PackageParser_deploy.jar",
+        "aswb/lib/aswb_bazel.jar",
+    ],
+    cmd = "unzip $(location @blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip) -d $(@D)",
 )

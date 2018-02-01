@@ -31,7 +31,6 @@ import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
-import com.intellij.execution.ui.ConsoleView;
 import com.intellij.facet.FacetManager;
 import com.intellij.facet.ModifiableFacetModel;
 import com.intellij.facet.ProjectFacetManager;
@@ -374,7 +373,7 @@ public class AndroidUtils {
       AndroidFacetConfiguration configuration = facet.getConfiguration();
       configuration.init(module, contentRoot);
       if (library) {
-        facet.setProjectType(PROJECT_TYPE_LIBRARY);
+        facet.getConfiguration().setProjectType(PROJECT_TYPE_LIBRARY);
       }
       model.addFacet(facet);
     }
@@ -456,7 +455,7 @@ public class AndroidUtils {
     final List<AndroidFacet> result = new ArrayList<>();
 
     for (AndroidFacet facet : ProjectFacetManager.getInstance(project).getFacets(AndroidFacet.ID)) {
-      if (facet.isAppProject()) {
+      if (facet.getConfiguration().isAppProject()) {
         result.add(facet);
       }
     }
@@ -477,7 +476,7 @@ public class AndroidUtils {
           if (depModule != null) {
             final AndroidFacet depFacet = AndroidFacet.getInstance(depModule);
 
-            if (depFacet != null && depFacet.canBeDependency()) {
+            if (depFacet != null && depFacet.getConfiguration().canBeDependency()) {
               depFacets.add(depFacet);
             }
           }

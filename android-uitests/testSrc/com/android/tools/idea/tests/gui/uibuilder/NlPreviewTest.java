@@ -334,7 +334,7 @@ public class NlPreviewTest {
     assertTrue(editor.isPreviewShowing("activity_my.xml"));
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // Should be fixed with ag/3371722 (failed 1 time in last 50 runs)
+  @RunIn(TestGroup.UNRELIABLE)  // b/63923598
   @Test
   public void closeSplitLayoutShouldMovePreviewToCorrectFile() throws Exception {
     // Regression test for b/64199946

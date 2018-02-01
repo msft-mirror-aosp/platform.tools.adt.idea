@@ -18,7 +18,7 @@ package com.android.tools.idea.tests.gui.uibuilder;
 import android.view.View;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
+import com.android.tools.idea.tests.gui.framework.GuiTestRunnerFactory;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
@@ -27,6 +27,8 @@ import com.android.tools.idea.tests.gui.framework.fixture.MessagesFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlComponentFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlEditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.MorphDialogFixture;
+import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.TargetBuildSystem;
+import com.google.common.collect.ImmutableList;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
@@ -35,6 +37,7 @@ import org.fest.swing.fixture.JPopupMenuFixture;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.awt.*;
 import java.awt.event.InputEvent;
@@ -45,10 +48,18 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(GuiTestRunnerFactory.class)
 public class NlEditorTest {
-
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
+
+  @Parameterized.Parameters
+  public static Iterable<?> data() {
+    return ImmutableList.of(TargetBuildSystem.BuildSystem.GRADLE, TargetBuildSystem.BuildSystem.BAZEL);
+  }
+
+  @Parameterized.Parameter
+  public TargetBuildSystem.BuildSystem myBuildSystem;
 
   @Test
   public void testSelectComponent() throws Exception {
@@ -84,6 +95,7 @@ public class NlEditorTest {
    * </pre>
    */
   @RunIn(TestGroup.SANITY)
+  @TargetBuildSystem({TargetBuildSystem.BuildSystem.GRADLE, TargetBuildSystem.BuildSystem.BAZEL})
   @Test
   public void basicLayoutEdit() throws Exception {
     guiTest.importSimpleLocalApplication()
@@ -133,6 +145,7 @@ public class NlEditorTest {
     assertEquals(5, layout.getAllComponents().size());
   }
 
+  @RunIn(TestGroup.UNRELIABLE)  // b/72573971
   @Test
   public void testZoomAndPanWithMouseShortcut() throws Exception {
     guiTest.importSimpleLocalApplication();

@@ -93,7 +93,8 @@ abstract class ModuleSetup {
                                  new IdeDependenciesFactory(),
                                  new ProjectDataNodeSetup(),
                                  new ModuleSetupContext.Factory(),
-                                 new ModuleFinder.Factory());
+                                 new ModuleFinder.Factory(),
+                                 new CompositeBuildDataSetup());
     }
   }
 
@@ -118,6 +119,7 @@ abstract class ModuleSetup {
     @NotNull private final ProjectDataNodeSetup myProjectDataNodeSetup;
     @NotNull private final ModuleSetupContext.Factory myModuleSetupFactory;
     @NotNull private final ModuleFinder.Factory myModuleFinderFactory;
+    @NotNull private final CompositeBuildDataSetup myCompositeBuildDataSetup;
 
     @NotNull private final List<Module> myAndroidModules = new ArrayList<>();
 
@@ -139,7 +141,8 @@ abstract class ModuleSetup {
                     @NotNull IdeDependenciesFactory dependenciesFactory,
                     @NotNull ProjectDataNodeSetup projectDataNodeSetup,
                     @NotNull ModuleSetupContext.Factory moduleSetupFactory,
-                    @NotNull ModuleFinder.Factory moduleFinderFactory) {
+                    @NotNull ModuleFinder.Factory moduleFinderFactory,
+                    @NotNull CompositeBuildDataSetup compositeBuildDataSetup) {
       myProject = project;
       myModelsProvider = modelsProvider;
       myModuleFactory = moduleFactory;
@@ -159,6 +162,7 @@ abstract class ModuleSetup {
       myProjectDataNodeSetup = projectDataNodeSetup;
       myModuleSetupFactory = moduleSetupFactory;
       myModuleFinderFactory = moduleFinderFactory;
+      myCompositeBuildDataSetup = compositeBuildDataSetup;
     }
 
     @Override
@@ -172,6 +176,7 @@ abstract class ModuleSetup {
 
       notifyModuleConfigurationStarted(indicator);
 
+      myCompositeBuildDataSetup.setupCompositeBuildData(projectModels, myProject);
       List<Module> modules = Arrays.asList(ModuleManager.getInstance(myProject).getModules());
       List<GradleFacet> gradleFacets = new ArrayList<>();
 
@@ -190,8 +195,8 @@ abstract class ModuleSetup {
       });
 
       for (GradleFacet gradleFacet : gradleFacets) {
-        String gradlePath = gradleFacet.getConfiguration().GRADLE_PROJECT_PATH;
-        CachedModuleModels moduleModelsCache = projectModels.findCacheForModule(gradlePath);
+        String moduleName = gradleFacet.getModule().getName();
+        CachedModuleModels moduleModelsCache = projectModels.findCacheForModule(moduleName);
         if (moduleModelsCache != null) {
           setUpModule(gradleFacet, moduleModelsCache, moduleFinder);
         }
@@ -240,6 +245,7 @@ abstract class ModuleSetup {
     void setUpModules(@NotNull SyncProjectModels projectModels, @NotNull ProgressIndicator indicator) {
       notifyModuleConfigurationStarted(indicator);
       CachedProjectModels cache = myCachedProjectModelsFactory.createNew();
+      myCompositeBuildDataSetup.setupCompositeBuildData(projectModels, cache, myProject);
 
       GlobalLibraryMap globalLibraryMap = projectModels.getGlobalLibraryMap();
       if (globalLibraryMap != null) {
@@ -268,22 +274,20 @@ abstract class ModuleSetup {
       String projectRootFolderPath = nullToEmpty(myProject.getBasePath());
 
       ModuleFinder moduleFinder = myModuleFinderFactory.create(myProject);
-      for (String gradlePath : projectModels.getProjectPaths()) {
-        GradleModuleModels moduleModels = projectModels.getModels(gradlePath);
-        if (moduleModels != null) {
-          Module module = myModuleFactory.createModule(moduleModels);
+      for (GradleModuleModels moduleModels : projectModels.getSyncModuleModels()) {
+        Module module = myModuleFactory.createModule(moduleModels);
 
-          // This is needed by GradleOrderEnumeratorHandler#addCustomModuleRoots. Without this option, sync will fail.
-          module.setOption(ROOT_PROJECT_PATH_KEY, projectRootFolderPath);
+        // This is needed by GradleOrderEnumeratorHandler#addCustomModuleRoots. Without this option, sync will fail.
+        //noinspection deprecation
+        module.setOption(ROOT_PROJECT_PATH_KEY, projectRootFolderPath);
 
-          // Set up GradleFacet right away. This is necessary to set up inter-module dependencies.
-          GradleModuleModel gradleModel = myGradleModuleSetup.setUpModule(module, myModelsProvider, moduleModels);
-          CachedModuleModels cachedModels = cache.addModule(module, gradlePath);
-          cachedModels.addModel(gradleModel);
+        // Set up GradleFacet right away. This is necessary to set up inter-module dependencies.
+        GradleModuleModel gradleModel = myGradleModuleSetup.setUpModule(module, myModelsProvider, moduleModels);
+        CachedModuleModels cachedModels = cache.addModule(module);
+        cachedModels.addModel(gradleModel);
 
-          moduleFinder.addModule(module, gradleModel.getGradlePath());
-          moduleSetupInfos.add(new ModuleSetupInfo(module, moduleModels, cachedModels));
-        }
+        moduleFinder.addModule(module, gradleModel.getGradlePath());
+        moduleSetupInfos.add(new ModuleSetupInfo(module, moduleModels, cachedModels));
       }
 
       for (ModuleSetupInfo moduleSetupInfo : moduleSetupInfos) {
@@ -296,11 +300,7 @@ abstract class ModuleSetup {
      * It will be used to check if a {@link AndroidLibrary} is sub-module that wraps local aar.
      */
     private void populateModuleBuildFolders(@NotNull SyncProjectModels projectModels) {
-      for (String projectPath : projectModels.getProjectPaths()) {
-        GradleModuleModels moduleModels = projectModels.getModels(projectPath);
-        if (moduleModels == null) {
-          continue;
-        }
+      for (GradleModuleModels moduleModels : projectModels.getSyncModuleModels()) {
         GradleProject gradleProject = moduleModels.findModel(GradleProject.class);
         if (gradleProject != null) {
           try {
