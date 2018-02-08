@@ -24,7 +24,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.codeStyle.CodeStyleManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
@@ -45,7 +44,6 @@ import static com.android.tools.idea.gradle.dsl.parser.elements.BaseCompileOptio
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.*;
 import static com.android.tools.idea.gradle.dsl.parser.java.LanguageLevelUtil.convertToGradleString;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mASSIGN;
-import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
 
 public class GroovyDslWriter implements GradleDslWriter {
   @Override
@@ -183,7 +181,13 @@ public class GroovyDslWriter implements GradleDslWriter {
     }
     else {
       PsiElement added;
-      if (psiElement instanceof GrListOrMap || // Entries in [].
+      if (psiElement instanceof GrListOrMap && literal.getParent() instanceof GradleDslExpressionList &&
+        ((GradleDslExpressionList)literal.getParent()).isLiteralList()) {
+        // Add to the front when we are inserting the first element into a literal list
+        emplaceElementToFrontOfList((GrListOrMap)psiElement, newLiteral);
+        added = newLiteral;
+      }
+      else if (psiElement instanceof GrListOrMap || // Entries in [].
           (psiElement instanceof GrArgumentList && !(psiElement instanceof GrCommandArgumentList))) { // Method call arguments in ().
         added = psiElement.addBefore(newLiteral, psiElement.getLastChild()); // add before ) or ]
 

@@ -31,5 +31,7 @@ android {
 }
 
 dependencies {
-  // No external dependencies for now.
+    implementation project(':lib')
+
+    // No external dependencies for now.
 }

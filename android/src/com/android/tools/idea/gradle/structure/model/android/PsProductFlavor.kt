@@ -15,10 +15,12 @@ package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.builder.model.ProductFlavor
 import com.android.tools.idea.gradle.dsl.api.android.ProductFlavorModel
+import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.structure.model.PsChildModel
 import com.android.tools.idea.gradle.structure.model.helpers.*
 import com.android.tools.idea.gradle.structure.model.meta.*
+import java.io.File
 
 open class PsProductFlavor(
     parent: PsAndroidModule,
@@ -44,6 +46,8 @@ open class PsProductFlavor(
   var testInstrumentationRunner by ProductFlavorDescriptors.testInstrumentationRunner
   var versionCode by ProductFlavorDescriptors.versionCode
   var versionName by ProductFlavorDescriptors.versionName
+  var manifestPlaceholders by ProductFlavorDescriptors.manifestPlaceholders
+  var testInstrumentationRunnerArguments by ProductFlavorDescriptors.testInstrumentationRunnerArguments
 
   override fun getName(): String = name
   override fun getParent(): PsAndroidModule = super.getParent() as PsAndroidModule
@@ -198,6 +202,36 @@ open class PsProductFlavor(
         clearParsedValue = { versionName().clear() },
         setParsedRawValue = { versionName().setDslText(it) },
         parse = { parseString(it) }
+    )
+
+    val proGuardFiles: ModelListProperty<PsProductFlavor, File> = listProperty(
+      "Proguard Files",
+      getResolvedValue = { proguardFiles.toList() },
+      getParsedCollection = { proguardFiles().asParsedListValue(ResolvedPropertyModel::asFile, { setValue(it.toString()) }) },
+      getParsedRawValue = { proguardFiles().dslText() },
+      clearParsedValue = { proguardFiles().delete() },
+      setParsedRawValue = { proguardFiles().setDslText(it) },
+      parse = { parseFile(it) }
+    )
+
+    val manifestPlaceholders: ModelMapProperty<PsProductFlavor, String> = mapProperty(
+      "Manifest Placeholders",
+      getResolvedValue = { manifestPlaceholders.mapValues { it.value.toString() } },
+      getParsedCollection = { manifestPlaceholders().asParsedMapValue(ResolvedPropertyModel::asString, { setValue(it) }) },
+      getParsedRawValue = { manifestPlaceholders().dslText() },
+      clearParsedValue = { manifestPlaceholders().delete() },
+      setParsedRawValue = { manifestPlaceholders().setDslText(it) },
+      parse = { parseString(it) }
+    )
+
+    val testInstrumentationRunnerArguments: ModelMapProperty<PsProductFlavor, String> = mapProperty(
+      "Test Instrumentation Runner Arguments",
+      getResolvedValue = { testInstrumentationRunnerArguments },
+      getParsedCollection = { testInstrumentationRunnerArguments().asParsedMapValue(ResolvedPropertyModel::asString, { setValue(it) }) },
+      getParsedRawValue = { testInstrumentationRunnerArguments().dslText() },
+      clearParsedValue = { testInstrumentationRunnerArguments().delete() },
+      setParsedRawValue = { testInstrumentationRunnerArguments().setDslText(it) },
+      parse = { parseString(it) }
     )
   }
 }

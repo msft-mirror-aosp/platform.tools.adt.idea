@@ -21,9 +21,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.ui.ComboBox
 import java.awt.Color
 import java.awt.Dimension
-import java.awt.Event
 import java.awt.event.FocusEvent
-import java.awt.event.FocusEvent.FOCUS_GAINED
 import java.awt.event.FocusListener
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComponent
@@ -40,11 +38,14 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
   val model: ModelT,
   val property: ModelPropertyT,
   private val variablesProvider: VariablesProvider?
-) : ComboBox<String>(), ModelPropertyEditor<ModelT> {
-
+) : ComboBox<String>(), ModelPropertyEditor<ModelT, PropertyT> {
   private var textToParsedValue: Map<String, ParsedValue<PropertyT>> = mapOf()
   private var valueToText: Map<PropertyT, String> = mapOf()
   private var beingLoaded = false
+  private var disposed = false
+  private var lastTextSet: String? = null
+
+
 
   override val component: JComponent = this
 
@@ -55,7 +56,8 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
     } else dimensions
   }
 
-  private fun getParsedValue(): ParsedValue<PropertyT> {
+  override fun getValue(): ParsedValue<PropertyT> {
+    // Note: it is fine to get the current value of a disposed editor.
     val text = editor.item.toString()
     return when {
       text.startsWith("\$") -> ParsedValue.Set.Parsed<PropertyT>(value = null, dslText = DslText(DslMode.REFERENCE, text.substring(1)))
@@ -65,12 +67,27 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
     }
   }
 
-  private fun setText(text: String) {
-    selectedItem = text
+  override fun getValueText(): String = getValue().getText(valueToText)
+
+  override fun updateProperty() {
+    if (disposed) throw IllegalStateException()
+    // It is important to avoid applying the unchanged values since the application
+    // process while not intended may change the "psi"-representation of the value.
+    // it is especially important in the case of invalid/unparsed values.
+    if (isChanged()) {
+      applyChanges(getValue())
+    }
   }
 
-  private fun setValue(value: PropertyT?) {
-    selectedItem = if (value == null) "" else (valueToText[value] ?: value.toString())
+  override fun dispose() {
+    disposed = true
+  }
+
+  private fun isChanged() = editor.item.toString() != lastTextSet
+
+  private fun setText(text: String) {
+    lastTextSet = text
+    selectedItem = text
   }
 
   private fun setColorAndTooltip(toolTipText: String? = null, background: Color? = null) {
@@ -97,27 +114,7 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
   private fun loadValue(value: PropertyValue<PropertyT>) {
     beingLoaded = true
     try {
-      when (value.parsedValue) {
-        is ParsedValue.NotSet -> {
-          setText("")
-        }
-        is ParsedValue.Set.Parsed -> {
-          val dsl = value.parsedValue.dslText
-          if (dsl != null)
-            when (dsl.mode) {
-              DslMode.LITERAL -> setValue(value.parsedValue.value)
-              DslMode.REFERENCE -> setText("\$${dsl.text}")
-              // TODO(b/72088462) Decide on how to handle unparsed DSL text.
-              DslMode.OTHER_UNPARSED_DSL_TEXT -> setText("\$\$${dsl.text}")
-              DslMode.INTERPOLATED_STRING -> setText("\"${dsl.text}\"")
-            }
-          else
-            setValue(value.parsedValue.value)
-        }
-        is ParsedValue.Set.Invalid -> {
-          setText(value.parsedValue.dslText)
-        }
-      }
+      setText(value.parsedValue.getText(valueToText))
       val defaultValue = property.getDefaultValue(model)
       when {
         value.resolved is ResolvedValue.NotResolved && value.parsedValue is ParsedValue.Set -> {
@@ -162,7 +159,7 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
   private fun applyChanges(value: ParsedValue<PropertyT>) {
     when (value) {
       is ParsedValue.Set.Invalid -> Unit
-      else -> property.setValue(model!!, value)
+      else -> property.setParsedValue(model!!, value)
     }
   }
 
@@ -194,14 +191,16 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
     reloadValue()
 
     addActionListener {
-      if (!beingLoaded) {
-        applyChanges(getParsedValue())
+      if (!disposed && !beingLoaded) {
+        updateProperty()
         reloadValue()
       }
     }
     addFocusGainedListener {
-      loadKnownValues()
-      reloadValue()
+      if (!disposed) {
+        loadKnownValues()
+        reloadValue()
+      }
     }
   }
 }

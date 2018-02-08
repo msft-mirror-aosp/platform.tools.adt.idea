@@ -22,7 +22,6 @@ import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.InspectCodeDialogFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.ConfigureAndroidProjectStepFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.NewProjectWizardFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewActivityWizardFixture;
 import com.intellij.openapi.module.Module;
@@ -35,7 +34,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -130,6 +128,9 @@ public class NewInstantAppTest {
                                "            ExampleUnitTest\n" +
                                "                The declared exception 'Exception' is never thrown\n" +
                                "        Unnecessary module dependency\n" +
+                               "            app\n" +
+                               "                Module 'app' sources do not depend on module 'base' sources\n" +
+                               "                Module 'app' sources do not depend on module 'feature' sources\n" +
                                "            feature\n" +
                                "                Module 'feature' sources do not depend on module 'base' sources\n" +
                                "    XML\n" +
@@ -201,8 +202,8 @@ public class NewInstantAppTest {
     guiTest.ideFrame()
       .waitForGradleProjectSyncToFinish();
 
-    assertAbout(file()).that(new File(guiTest.getProjectPath(), "base/src/debug/res/values/google_maps_api.xml")).isFile();
-    assertAbout(file()).that(new File(guiTest.getProjectPath(), "base/src/release/res/values/google_maps_api.xml")).isFile();
+    assertAbout(file()).that(guiTest.getProjectPath("base/src/debug/res/values/google_maps_api.xml")).isFile();
+    assertAbout(file()).that(guiTest.getProjectPath("base/src/release/res/values/google_maps_api.xml")).isFile();
   }
 
   @Test // b/68478730

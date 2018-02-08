@@ -18,6 +18,7 @@ package com.android.tools.idea.uibuilder.model
 import com.android.SdkConstants
 import com.android.ide.common.repository.GradleCoordinate
 import com.android.ide.common.repository.GradleVersion
+import com.android.tools.idea.common.model.NlDependencyManager
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.projectsystem.AndroidProjectSystemProvider
 import com.android.tools.idea.projectsystem.EP_NAME
@@ -44,10 +45,10 @@ open class NlDependencyManagerTest : LayoutTestCase() {
     dummyDependenciesManager = DummyDependenciesManager()
     nlDependencyManager = NlDependencyManager.get(dummyDependenciesManager)
     model = model("model.xml",
-        component(SdkConstants.CONSTRAINT_LAYOUT)
+        component(SdkConstants.CONSTRAINT_LAYOUT.defaultName())
             .withBounds(0, 0, 10, 10)
             .children(
-                component(SdkConstants.CARD_VIEW)
+                component(SdkConstants.CARD_VIEW.defaultName())
                     .withBounds(1, 1, 1, 1)
             )).build()
   }

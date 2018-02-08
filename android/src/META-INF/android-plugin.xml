@@ -341,6 +341,7 @@
     <codeFoldingOptionsProvider instance="com.android.tools.idea.folding.AndroidCodeFoldingOptionsProvider"/>
     <console.folding implementation="com.android.tools.idea.logcat.ExceptionFolding"/>
     <consoleActionsPostProcessor implementation="com.android.tools.idea.logcat.LogcatConsoleActionsPostProcessor" />
+    <applicationService serviceImplementation="com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData" />
     <applicationService serviceImplementation="com.android.tools.idea.IdeInfo" />
     <applicationService serviceImplementation="com.android.tools.idea.ui.GuiTestingService"/>
     <applicationService serviceImplementation="com.android.tools.idea.flags.StudioFlagSettings"/>
@@ -717,6 +718,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintInvalidResourceFolder" displayName="Invalid Resource Folder" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintInvalidResourceFolderInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintInvalidUsesTagAttribute" displayName="Invalid name attribute for uses element." bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintInvalidUsesTagAttributeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintInvalidVectorPath" displayName="Invalid vector paths" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintInvalidVectorPathInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintInvalidWakeLockTag" displayName="Invalid Wake Lock Tag" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintInvalidWakeLockTagInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintInvalidWearFeatureAttribute" displayName="Invalid attribute for Wear uses-feature" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintInvalidWearFeatureAttributeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintJavascriptInterface" displayName="Missing @JavascriptInterface on methods" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintJavascriptInterfaceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintJobSchedulerService" displayName="JobScheduler problems" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintJobSchedulerServiceInspection"/>

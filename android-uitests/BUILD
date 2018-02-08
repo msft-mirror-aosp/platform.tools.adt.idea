@@ -35,8 +35,8 @@ iml_module(
     test_runtime_deps = [
         "//tools/idea/platform/credential-store",
         "//tools/idea/java/compiler/instrumentation-util-8",
-        "//tools/idea/plugins/maven:maven2-server-impl",
         "//tools/vendor/intellij/cidr:doxygen",
+        "//tools/idea/plugins/settings-repository",
         "//tools/idea/jps/javac-ref-scanner-8",
     ],
     test_srcs = ["testSrc"],
@@ -80,6 +80,7 @@ iml_module(
 
 java_test(
     name = "GuiTestRuleTest",
+    size = "large",
     data = COMMON_DATA + glob(["testData/SimpleLocalApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.framework.GuiTestRuleTest"],
     tags = COMMON_TAGS,
@@ -89,6 +90,7 @@ java_test(
 
 java_test(
     name = "DataBindingTest",
+    size = "large",
     data = COMMON_DATA + ["//tools/data-binding:data_binding_runtime.zip"] + glob([
         "testData/DatabindingMethodsTest/**",
     ]),
@@ -100,6 +102,7 @@ java_test(
 
 java_test(
     name = "ApkViewerTest",
+    size = "large",
     data = COMMON_DATA + glob(["testData/SimpleLocalApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editors.ApkViewerTest"],
     tags = COMMON_TAGS + ["manual"],  # testFileHandleRelease fails after 2017.3.1 merge
@@ -109,6 +112,7 @@ java_test(
 
 java_test(
     name = "NewProjectTest",
+    size = "large",
     data = COMMON_DATA + ["//prebuilts/studio/layoutlib:data/res"],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.NewProjectTest"],
     tags = COMMON_TAGS + ["manual"],  #sanity test passing, but latestSupportLibraryWhileDndLayouts failed for UI reason
@@ -118,6 +122,7 @@ java_test(
 
 java_test(
     name = "NewActivityTest",
+    size = "large",
     data = COMMON_DATA + ["//prebuilts/studio/layoutlib:data/res"] + glob([
         "testData/SimpleLocalApplication/**",
     ]),
@@ -129,6 +134,7 @@ java_test(
 
 java_test(
     name = "AddModuleTest",
+    size = "large",
     data = COMMON_DATA + ["//prebuilts/studio/layoutlib:data/res"] + glob([
         "testData/SimpleLocalApplication/**",
     ]),
@@ -140,6 +146,7 @@ java_test(
 
 java_test(
     name = "NlEditorTest",
+    size = "large",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
         "//prebuilts/studio/sdk:tools/support-annotations",
@@ -156,7 +163,41 @@ java_test(
 )
 
 java_test(
+    name = "BazelStartupSyncTest",
+    data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/sdk:tools/support-annotations",
+        "//prebuilts/studio/layoutlib:data/res",
+        "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.1.0:aar",
+        ":unzip_aswb",
+    ] + glob([
+        "testData/SimpleLocalApplication/**",
+    ]) + glob(["testData/LayoutLocalTest/**"]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BazelStartupSyncTest"],
+    tags = COMMON_TAGS + ["manual"],  # b/73037396
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":android-uitests_testlib"],
+)
+
+java_test(
+    name = "AswbGotoDeclarationTest",
+    size = "large",
+    data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/sdk:tools/support-annotations",
+        ":unzip_aswb",
+    ] + glob([
+        "testData/SimpleBazelApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editing.AswbGotoDeclarationTest"],
+    tags = COMMON_TAGS + ["manual"],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":android-uitests_testlib"],
+)
+
+java_test(
     name = "ConstraintLayoutTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -171,6 +212,7 @@ java_test(
 
 java_test(
     name = "GradleSyncTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -184,6 +226,7 @@ java_test(
 
 java_test(
     name = "NewModuleTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -197,6 +240,7 @@ java_test(
 
 java_test(
     name = "BuildTypesTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -210,6 +254,7 @@ java_test(
 
 java_test(
     name = "LayoutInspectorTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -223,6 +268,7 @@ java_test(
 
 java_test(
     name = "ConvertToWebpActionTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:data/res",
     ] + glob([
@@ -243,8 +289,8 @@ genrule(
         "aswb/aspect/intellij_info_bundled.bzl",
         "aswb/aspect/intellij_info_impl.bzl",
         "aswb/aspect/java_classpath.bzl",
-        "aswb/aspect/JarFilter_deploy.jar",
-        "aswb/aspect/PackageParser_deploy.jar",
+        "aswb/aspect/tools/JarFilter_deploy.jar",
+        "aswb/aspect/tools/PackageParser_deploy.jar",
         "aswb/lib/aswb_bazel.jar",
     ],
     cmd = "unzip $(location @blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip) -d $(@D)",

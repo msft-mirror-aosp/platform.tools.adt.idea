@@ -199,7 +199,8 @@ public class StudioProfilersView extends AspectObserver {
     ProfilerAction zoomInAction =
       new ProfilerAction.Builder("Zoom in").setContainerComponent(myComponent)
         .setActionRunnable(() -> zoomIn.doClick())
-        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, SHORTCUT_MODIFIER_MASK_NUMBER),
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, SHORTCUT_MODIFIER_MASK_NUMBER),
+                       KeyStroke.getKeyStroke(KeyEvent.VK_EQUALS, SHORTCUT_MODIFIER_MASK_NUMBER),
                        KeyStroke.getKeyStroke(KeyEvent.VK_ADD, SHORTCUT_MODIFIER_MASK_NUMBER)).build();
     zoomIn.setToolTipText(zoomInAction.getDefaultToolTipText());
     rightToolbar.add(zoomIn);
@@ -249,10 +250,10 @@ public class StudioProfilersView extends AspectObserver {
     ProfilerContextMenu.createIfAbsent(myComponent).add(attachAction, detachAction, ContextMenuItem.SEPARATOR, zoomInAction, zoomOutAction);
 
     Runnable toggleToolButtons = () -> {
-      zoomOut.setEnabled(myProfiler.isProcessAlive());
-      zoomIn.setEnabled(myProfiler.isProcessAlive());
-      resetZoom.setEnabled(myProfiler.isProcessAlive());
-      myGoLive.setEnabled(myProfiler.isProcessAlive());
+      zoomOut.setEnabled(myProfiler.isSessionAlive());
+      zoomIn.setEnabled(myProfiler.isSessionAlive());
+      resetZoom.setEnabled(myProfiler.isSessionAlive());
+      myGoLive.setEnabled(myProfiler.isSessionAlive());
     };
     myProfiler.addDependency(this).onChange(ProfilerAspect.PROCESSES, toggleToolButtons);
     toggleToolButtons.run();
@@ -294,6 +295,10 @@ public class StudioProfilersView extends AspectObserver {
 
   public JPanel getComponent() {
     return myComponent;
+  }
+
+  public ProfilerContextMenu getTimelineContextMenu() {
+    return ProfilerContextMenu.createIfAbsent(myComponent);
   }
 
   @VisibleForTesting

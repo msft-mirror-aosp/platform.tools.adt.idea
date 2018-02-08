@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.util.GradleProjectSettingsFinder;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.project.AndroidProjectBuildNotifications;
 import com.android.tools.idea.testing.Modules;
+import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTests;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.AvdManagerDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.gradle.GradleBuildModelFixture;
@@ -325,10 +326,9 @@ public class IdeFrameFixture extends ComponentFixture<IdeFrameFixture, IdeFrameI
     }
 
     if (wait == null) {
-      // http://b.android.com/226797 - Most builds finish in 10 seconds, but GradleBuildTest.compileWithJack was failing.
-      wait = Wait.seconds(20);
+      // http://b/72834057 - If we keep tweaking this value we should consider a different way of waiting for this.
+      wait = Wait.seconds(60);
     }
-
     wait.expecting("Build (" + buildMode + ") for project " + quote(project.getName()) + " to finish'")
       .until(() -> {
         if (buildMode == SOURCE_GEN) {
@@ -378,13 +378,13 @@ public class IdeFrameFixture extends ComponentFixture<IdeFrameFixture, IdeFrameI
   public IdeFrameFixture requestProjectSync(@Nullable Wait wait) {
     myGradleProjectEventListener.reset();
 
-    waitForGradleSyncAction(wait);
+    waitForSyncAction(wait);
     invokeMenuPath("File", "Sync Project with Gradle Files");
 
     return this;
   }
 
-  private void waitForGradleSyncAction(@Nullable Wait wait) {
+  private void waitForSyncAction(@Nullable Wait wait) {
     GuiTests.waitForBackgroundTasks(robot(), wait);
   }
 
@@ -451,7 +451,7 @@ public class IdeFrameFixture extends ComponentFixture<IdeFrameFixture, IdeFrameI
     AndroidGradleBuildConfiguration buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project);
     buildConfiguration.USE_EXPERIMENTAL_FASTER_BUILD = true;
 
-    waitForSync.expecting("Syncing project " + quote(project.getName()) + " to finish")
+    waitForSync.expecting("syncing project " + quote(project.getName()) + " to finish")
       .until(() -> {
         GradleSyncState syncState = GradleSyncState.getInstance(project);
         boolean syncFinished =
@@ -462,7 +462,7 @@ public class IdeFrameFixture extends ComponentFixture<IdeFrameFixture, IdeFrameI
         return syncFinished;
       });
 
-    waitForGradleSyncAction(null);
+    waitForSyncAction(null);
 
     if (myGradleProjectEventListener.hasSyncError()) {
       RuntimeException syncError = myGradleProjectEventListener.getSyncError();

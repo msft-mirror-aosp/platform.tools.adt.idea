@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.tests.gui.uibuilder;
 
-import com.android.SdkConstants;
 import com.android.builder.model.ApiVersion;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
@@ -46,10 +45,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.File;
 import java.io.IOException;
 
+import static com.android.SdkConstants.FN_GRADLE_WRAPPER_UNIX;
 import static com.android.tools.idea.npw.FormFactor.MOBILE;
+import static com.android.tools.idea.testing.FileSubject.file;
+import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static org.fest.swing.core.MouseButton.RIGHT_BUTTON;
 import static org.junit.Assert.assertTrue;
@@ -278,20 +279,17 @@ public class NewProjectTest {
     Assume.assumeTrue("Is Unix", SystemInfo.isUnix);
     newProject("Test Application").withBriefNames().create(guiTest);
 
-    File gradleFile = new File(guiTest.getProjectPath(), SdkConstants.FN_GRADLE_WRAPPER_UNIX);
-    assertTrue(gradleFile.canExecute());
+    assertTrue(guiTest.getProjectPath(FN_GRADLE_WRAPPER_UNIX).canExecute());
   }
 
   @Test // http://b.android.com/227918
   public void scrollingActivityFollowedByBasicActivity() throws Exception {
-    NewProjectWizardFixture newProjectWizard = guiTest.welcomeFrame()
-      .createNewProject();
-
-    newProjectWizard.getConfigureAndroidProjectStep()
+    guiTest.welcomeFrame()
+      .createNewProject()
+      .getConfigureAndroidProjectStep()
       .enterApplicationName("My Test App")
-      .enterPackageName("com.test.project");
-
-    newProjectWizard
+      .enterPackageName("com.test.project")
+      .wizard()
       .clickNext()
       .clickNext() // Default Form Factor
       .chooseActivity("Scrolling Activity")
@@ -301,10 +299,9 @@ public class NewProjectTest {
       .clickNext()
       .clickFinish();
 
-    guiTest.ideFrame().getEditor()
-      .open("app/src/main/res/layout/content_main.xml")
-      .open("app/src/main/res/layout/activity_main.xml")
-      .open("app/src/main/java/com/test/project/MainActivity.java");
+    assertAbout(file()).that(guiTest.getProjectPath("app/src/main/res/layout/content_main.xml")).isFile();
+    assertAbout(file()).that(guiTest.getProjectPath("app/src/main/res/layout/activity_main.xml")).isFile();
+    assertAbout(file()).that(guiTest.getProjectPath("app/src/main/java/com/test/project/MainActivity.java")).isFile();
   }
 
   /**

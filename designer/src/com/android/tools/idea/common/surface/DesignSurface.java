@@ -43,7 +43,6 @@ import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.wm.IdeGlassPane;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.ui.JBColor;
@@ -95,7 +94,12 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   private SceneManager mySceneManager;
   private final SelectionModel mySelectionModel;
   private final RenderListener myRenderListener = this::modelRendered;
-  private final ModelListener myModelListener = (model, animate) -> repaint();
+  private final ModelListener myModelListener = new ModelListener() {
+    @Override
+    public void modelChangedOnLayout(@NotNull NlModel model, boolean animate) {
+      repaint();
+    }
+  };
 
   private final IssueModel myIssueModel = new IssueModel();
   private final IssuePanel myIssuePanel;
@@ -559,6 +563,14 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
 
   public double getScale() {
     return myScale;
+  }
+
+  public boolean canZoomIn() {
+    return getScale() < getMaxScale();
+  }
+
+  public boolean canZoomOut() {
+    return getScale() > getMinScale();
   }
 
   public void setScrollPosition(int x, int y) {

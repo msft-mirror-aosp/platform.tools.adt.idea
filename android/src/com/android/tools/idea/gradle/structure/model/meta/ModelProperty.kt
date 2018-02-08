@@ -18,17 +18,56 @@ package com.android.tools.idea.gradle.structure.model.meta
 import kotlin.properties.ReadWriteProperty
 
 /**
- * A UI descriptor a property of a model of type [ModelT].
+ * Core methods of a UI property descriptor manipulating parsed values.
  */
-interface ModelProperty<in ModelT, PropertyT: Any> : ReadWriteProperty<ModelT, ParsedValue<PropertyT>> {
+interface ModelPropertyParsedCore<in ModelT, PropertyT : Any> {
+  fun getParsedValue(model: ModelT): ParsedValue<PropertyT>
+  fun setParsedValue(model: ModelT, value: ParsedValue<PropertyT>)
+}
+
+/**
+ * Core methods of a UI property descriptor manipulating resolved values.
+ */
+interface ModelPropertyResolvedCore<in ModelT, out PropertyT : Any> {
+  fun getResolvedValue(model: ModelT): ResolvedValue<PropertyT>
+}
+
+/**
+ * A UI core descriptor of a property of a model of type [ModelT].
+ */
+interface ModelPropertyCore<in ModelT, PropertyT : Any>:
+    ModelPropertyParsedCore<ModelT, PropertyT>,
+    ModelPropertyResolvedCore<ModelT, PropertyT>
+
+fun <ModelT, PropertyT: Any> ModelPropertyCore<ModelT, PropertyT>.getValue(model: ModelT): PropertyValue<PropertyT> =
+    PropertyValue(parsedValue = getParsedValue(model), resolved = getResolvedValue(model))
+
+/**
+ * A UI descriptor of a property of a model of type [ModelT].
+ */
+interface ModelProperty<in ModelT, PropertyT : Any> :
+  ModelPropertyCore<ModelT, PropertyT>,
+  ReadWriteProperty<ModelT, ParsedValue<PropertyT>> {
   /**
    * A property description as it should appear in the UI.
    */
   val description: String
 
-  fun getValue(model: ModelT): PropertyValue<PropertyT>
-  fun setValue(model: ModelT, value: ParsedValue<PropertyT>)
   fun getDefaultValue(model: ModelT): PropertyT?
+}
+
+interface ModelPropertyContext<in ModelT, out ValueT : Any> {
+  /**
+   * Parses the text representation of type [ValueT].
+   *
+   * This is up to the parser to decide whether [value] is valid, invalid or is a DSL expression.
+   */
+  fun parse(value: String): ParsedValue<ValueT>
+
+  /**
+   * Returns a list of well-known values (constants) with their short human-readable descriptions that are applicable to the property.
+   */
+  fun getKnownValues(model: ModelT): List<ValueDescriptor<ValueT>>?
 }
 
 /**
@@ -36,16 +75,30 @@ interface ModelProperty<in ModelT, PropertyT: Any> : ReadWriteProperty<ModelT, P
  *
  * The simple-types property is a property whose value can be easily represented in the UI as text.
  */
-interface ModelSimpleProperty<in ModelT, PropertyT: Any> : ModelProperty<ModelT, PropertyT> {
-  /**
-   * Parses the text representation of type [PropertyT].
-   *
-   * This is up to the parser to decide whether [value] is valid, invalid or is a DSL expression.
-   */
-  fun parse(value: String): ParsedValue<PropertyT>
+interface ModelSimpleProperty<in ModelT, PropertyT : Any> :
+  ModelProperty<ModelT, PropertyT>,
+  ModelPropertyContext<ModelT, PropertyT>
 
-  /**
-   * Returns a list of well-known values (constants) with their short human-readable descriptions that are applicable to the property.
-   */
-  fun getKnownValues(model: ModelT): List<ValueDescriptor<PropertyT>>?
+/**
+ * A UI descriptor of a collection property.
+ */
+interface ModelCollectionProperty<in ModelT, CollectionT : Any, out ValueT : Any>
+  : ModelProperty<ModelT, CollectionT>,
+    ModelPropertyContext<ModelT, ValueT>
+
+/**
+ * A UI descriptor of a list property.
+ */
+interface ModelListProperty<in ModelT, ValueT : Any> :
+  ModelCollectionProperty<ModelT, List<ValueT>, ValueT> {
+  fun getEditableValues(model: ModelT): List<ModelPropertyCore<Unit, ValueT>>
 }
+
+/**
+ * A UI descriptor of a map property.
+ */
+interface ModelMapProperty<in ModelT, ValueT : Any> :
+  ModelCollectionProperty<ModelT, Map<String, ValueT>, ValueT> {
+  fun getEditableValues(model: ModelT): Map<String, ModelPropertyCore<Unit, ValueT>>
+}
+

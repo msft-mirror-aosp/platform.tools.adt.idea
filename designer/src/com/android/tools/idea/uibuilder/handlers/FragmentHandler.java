@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.handlers;
 
+import com.android.tools.idea.common.api.InsertType;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.uibuilder.api.*;
 import com.google.common.collect.ImmutableList;
@@ -107,7 +108,7 @@ public final class FragmentHandler extends ViewHandler {
   @Nullable
   private static String browseClasses(@NotNull ViewEditor editor, @Nullable String existingValue) {
     return editor.displayClassInput("Fragments",
-                                    Sets.newHashSet(CLASS_FRAGMENT, CLASS_V4_FRAGMENT),
+                                    Sets.newHashSet(CLASS_FRAGMENT, CLASS_V4_FRAGMENT.oldName(), CLASS_V4_FRAGMENT.newName()),
                                     null,
                                     existingValue);
   }

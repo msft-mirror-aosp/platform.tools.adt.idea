@@ -312,7 +312,7 @@ public class GradleSyncTest {
   public void withUserDefinedLibraryAttachments() throws IOException {
     guiTest.importProjectAndWaitForProjectSyncToFinish("MultipleModuleTypes");
 
-    File javadocJarPath = new File(guiTest.getProjectPath(), "fake-javadoc.jar");
+    File javadocJarPath = guiTest.getProjectPath("fake-javadoc.jar");
     try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(javadocJarPath)))) {
       zos.putNextEntry(new ZipEntry("allclasses-frame.html"));
       zos.putNextEntry(new ZipEntry("allclasses-noframe.html"));
@@ -604,7 +604,6 @@ public class GradleSyncTest {
     assertThat(buildTarget.getAdditionalLibraries()).hasSize(0);
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // b/72071969
   @Test
   public void gradleModelCache() throws IOException {
     guiTest.importSimpleLocalApplication();

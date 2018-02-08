@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener;
 import com.android.tools.idea.gradle.project.sync.GradleSyncState;
+import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.project.AndroidProjectInfo;
@@ -72,7 +73,6 @@ import java.util.concurrent.CountDownLatch;
 
 import static com.android.SdkConstants.*;
 import static com.android.testutils.TestUtils.getSdk;
-import static com.android.testutils.TestUtils.getWorkspaceFile;
 import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.android.tools.idea.testing.FileSubject.file;
 import static com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION;
@@ -308,22 +308,30 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
     if (!root.exists()) {
       root = new File(PathManager.getHomePath() + "/../../external", toSystemDependentName(relativePath));
     }
-    assertTrue(root.getPath(), root.exists());
-
-    File build = new File(root, FN_BUILD_GRADLE);
-    File settings = new File(root, FN_SETTINGS_GRADLE);
-    assertTrue("Couldn't find build.gradle or settings.gradle in " + root.getPath(), build.exists() || settings.exists());
 
     // Sync the model
     Project project = myFixture.getProject();
     File projectRoot = virtualToIoFile(project.getBaseDir());
-    copyDir(root, projectRoot);
+    prepareProjectForImport(root, projectRoot);
+    return projectRoot;
+  }
+
+  @NotNull
+  protected File prepareProjectForImport(@NotNull File srcRoot, @NotNull File projectRoot) throws IOException {
+    assertTrue(srcRoot.getPath(), srcRoot.exists());
+
+    File build = new File(srcRoot, FN_BUILD_GRADLE);
+    File settings = new File(srcRoot, FN_SETTINGS_GRADLE);
+    assertTrue("Couldn't find build.gradle or settings.gradle in " + srcRoot.getPath(), build.exists() || settings.exists());
+
+
+    copyDir(srcRoot, projectRoot);
 
     // We need the wrapper for import to succeed
     createGradleWrapper(projectRoot);
 
     // Override settings just for tests (e.g. sdk.dir)
-    updateLocalProperties();
+    updateLocalProperties(projectRoot);
 
     // Update dependencies to latest, and possibly repository URL too if android.mavenRepoUrl is set
     updateVersionAndDependencies(projectRoot);
@@ -374,8 +382,8 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
     return result;
   }
 
-  private void updateLocalProperties() throws IOException {
-    LocalProperties localProperties = new LocalProperties(getProject());
+  private void updateLocalProperties(@NotNull File projectRoot) throws IOException {
+    LocalProperties localProperties = new LocalProperties(projectRoot);
     File sdkPath = findSdkPath();
     assertAbout(file()).that(sdkPath).named("Android SDK path").isDirectory();
     localProperties.setAndroidSdkPath(sdkPath.getPath());
@@ -388,7 +396,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
 
   protected void createGradleWrapper(@NotNull File projectRoot, @NotNull String gradleVersion) throws IOException {
     GradleWrapper wrapper = GradleWrapper.create(projectRoot);
-    File path = getWorkspaceFile("tools/external/gradle/gradle-" + gradleVersion + "-bin.zip");
+    File path = EmbeddedDistributionPaths.getInstance().findEmbeddedGradleDistributionFile(gradleVersion);
     assertAbout(file()).that(path).named("Gradle distribution path").isFile();
     wrapper.updateDistributionUrl(path);
   }

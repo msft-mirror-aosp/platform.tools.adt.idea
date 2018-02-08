@@ -15,12 +15,13 @@
  */
 package com.android.tools.idea.npw.project;
 
-import com.android.SdkConstants;
 import com.android.repository.io.FileOpUtils;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter;
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener;
+import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleWrapper;
+import com.android.tools.idea.instantapp.InstantApps;
 import com.android.tools.idea.npw.module.NewModuleModel;
 import com.android.tools.idea.npw.template.MultiTemplateRenderer;
 import com.android.tools.idea.observable.core.*;
@@ -35,6 +36,7 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.projectRoots.JavaSdk;
@@ -49,6 +51,7 @@ import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.util.ui.UIUtil;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidSdkData;
 import org.jetbrains.android.util.AndroidUtils;
 import org.jetbrains.annotations.NotNull;
@@ -61,6 +64,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 import static com.android.tools.idea.templates.TemplateMetadata.*;
 import static org.jetbrains.android.util.AndroidBundle.message;
 
@@ -168,6 +172,28 @@ public class NewProjectModel extends WizardModel {
     // TODO: Figure out if this legacy behaviour, of including User Name, can be removed.
     String userName = includeUserName ? System.getProperty("user.name") : null;
     return userName == null ? EXAMPLE_DOMAIN : toPackagePart(userName) + '.' + EXAMPLE_DOMAIN;
+  }
+
+  /**
+   * Tries to get a valid package suggestion for the specifies Project. For instant apps, the base feature module package is used, for
+   * other modules, the saved user domain is used.
+   */
+  @NotNull
+  public static String getSuggestedProjectPackage(@NotNull Project project, boolean isInstantApp) {
+    String basePackage = null;
+    if (isInstantApp) {
+      Module baseFeatureModule = InstantApps.findBaseFeature(project);
+      AndroidFacet androidFacet = baseFeatureModule == null ? null : AndroidFacet.getInstance(baseFeatureModule);
+      if (androidFacet != null && androidFacet.getConfiguration().getModel() != null) {
+        basePackage = AndroidPackageUtils.getPackageForApplication(androidFacet);
+      }
+    }
+
+    if (basePackage == null) {
+      StringProperty companyDomain = new StringValueProperty(getInitialDomain(false));
+      basePackage = new DomainToPackageExpression(companyDomain, new StringValueProperty("")).get();
+    }
+    return basePackage;
   }
 
   /**
@@ -304,7 +330,13 @@ public class NewProjectModel extends WizardModel {
       File rootLocation = new File(projectLocation().get());
       File wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation);
       try {
-        GradleWrapper.get(wrapperPropertiesFilePath).updateDistributionUrl(SdkConstants.GRADLE_LATEST_VERSION);
+        File gradleDistFile = EmbeddedDistributionPaths.getInstance().findEmbeddedGradleDistributionFile(GRADLE_LATEST_VERSION);
+        if (gradleDistFile == null) {
+          GradleWrapper.get(wrapperPropertiesFilePath).updateDistributionUrl(GRADLE_LATEST_VERSION);
+        }
+        else {
+          GradleWrapper.get(wrapperPropertiesFilePath).updateDistributionUrl(gradleDistFile);
+        }
       }
       catch (IOException e) {
         // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails and the error message has a "quick fix".

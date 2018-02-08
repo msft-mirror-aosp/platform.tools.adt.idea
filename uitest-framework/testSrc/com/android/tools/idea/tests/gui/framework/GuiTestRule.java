@@ -17,6 +17,7 @@ package com.android.tools.idea.tests.gui.framework;
 
 import com.android.SdkConstants;
 import com.android.testutils.TestUtils;
+import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.sdk.IdeSdks;
@@ -60,7 +61,6 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.android.testutils.TestUtils.getWorkspaceFile;
 import static com.android.tools.idea.testing.FileSubject.file;
 import static com.android.tools.idea.tests.gui.framework.GuiTests.refreshFiles;
 import static com.google.common.truth.Truth.assertAbout;
@@ -106,6 +106,7 @@ public class GuiTestRule implements TestRule {
     RuleChain chain = RuleChain.emptyRuleChain()
       .around(new LogStartAndStop())
       .around(new BlockReloading())
+      .around(new BazelUndeclaredOutputs())
       .around(myCurrentProjectSystem)
       .around(myRobotTestRule)
       .around(myLeakCheck)
@@ -217,10 +218,18 @@ public class GuiTestRule implements TestRule {
     List<AssertionError> errors = new ArrayList<>();
     // We close all modal dialogs left over, because they block the AWT thread and could trigger a deadlock in the next test.
     Dialog modalDialog;
-    while ((modalDialog = getActiveModalDialog()) != null) {
+
+    // Loop can be infinite loop when a modal dialog opens itself again after closing.
+    // Prevent infinite loop without a timeout
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime + TimeUnit.SECONDS.toMillis(10);
+    while ((modalDialog = getActiveModalDialog()) != null && System.currentTimeMillis() < endTime) {
       robot().close(modalDialog);
       errors.add(new AssertionError(
         String.format("Modal dialog showing: %s with title '%s'", modalDialog.getClass().getName(), modalDialog.getTitle())));
+    }
+    if (System.currentTimeMillis() >= endTime) {
+      errors.add(new AssertionError("Potential modal dialog infinite loop"));
     }
     return errors;
   }
@@ -278,14 +287,22 @@ public class GuiTestRule implements TestRule {
   }
 
   public IdeFrameFixture importProjectAndWaitForProjectSyncToFinish(@NotNull String projectDirName) throws IOException {
-    importProject(projectDirName);
+    return importProjectAndWaitForProjectSyncToFinish(projectDirName, null);
+  }
+
+  public IdeFrameFixture importProjectAndWaitForProjectSyncToFinish(@NotNull String projectDirName, @Nullable String buildFilePath) throws IOException {
+    importProject(projectDirName, buildFilePath);
     testSystem().waitForProjectSyncToFinish(ideFrame());
     return ideFrame();
   }
 
   public IdeFrameFixture importProject(@NotNull String projectDirName) throws IOException {
+    return importProject(projectDirName, null);
+  }
+
+  public IdeFrameFixture importProject(@NotNull String projectDirName, @Nullable String buildFilePath) throws IOException {
     File testProjectDir = setUpProject(projectDirName);
-    testSystem().importProject(testProjectDir, robot());
+    testSystem().importProject(testProjectDir, robot(), buildFilePath);
     return ideFrame();
   }
 
@@ -331,7 +348,7 @@ public class GuiTestRule implements TestRule {
 
   protected boolean createGradleWrapper(@NotNull File projectDirPath, @NotNull String gradleVersion) throws IOException {
     GradleWrapper wrapper = GradleWrapper.create(projectDirPath, gradleVersion);
-    File path = getWorkspaceFile("tools/external/gradle/gradle-" + gradleVersion + "-bin.zip");
+    File path = EmbeddedDistributionPaths.getInstance().findEmbeddedGradleDistributionFile(gradleVersion);
     assertAbout(file()).that(path).named("Gradle distribution path").isFile();
     wrapper.updateDistributionUrl(path);
     return wrapper != null;
@@ -408,6 +425,11 @@ public class GuiTestRule implements TestRule {
   @NotNull
   public File getProjectPath() {
     return ideFrame().getProjectPath();
+  }
+
+  @NotNull
+  public File getProjectPath(@NotNull String child) {
+    return new File(ideFrame().getProjectPath(), child);
   }
 
   @NotNull

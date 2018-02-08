@@ -18,7 +18,7 @@ package com.android.tools.idea.tests.gui.uibuilder;
 import android.view.View;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunnerFactory;
+import com.android.tools.idea.tests.gui.framework.MultiBuildGuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
@@ -28,7 +28,6 @@ import com.android.tools.idea.tests.gui.framework.fixture.designer.NlComponentFi
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlEditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.MorphDialogFixture;
 import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.TargetBuildSystem;
-import com.google.common.collect.ImmutableList;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
@@ -37,7 +36,6 @@ import org.fest.swing.fixture.JPopupMenuFixture;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import java.awt.*;
 import java.awt.event.InputEvent;
@@ -48,18 +46,9 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-@RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(GuiTestRunnerFactory.class)
+@RunWith(MultiBuildGuiTestRunner.class)
 public class NlEditorTest {
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-
-  @Parameterized.Parameters
-  public static Iterable<?> data() {
-    return ImmutableList.of(TargetBuildSystem.BuildSystem.GRADLE, TargetBuildSystem.BuildSystem.BAZEL);
-  }
-
-  @Parameterized.Parameter
-  public TargetBuildSystem.BuildSystem myBuildSystem;
 
   @Test
   public void testSelectComponent() throws Exception {
@@ -98,20 +87,76 @@ public class NlEditorTest {
   @TargetBuildSystem({TargetBuildSystem.BuildSystem.GRADLE, TargetBuildSystem.BuildSystem.BAZEL})
   @Test
   public void basicLayoutEdit() throws Exception {
-    guiTest.importSimpleLocalApplication()
+    NlEditorFixture editorFixture = guiTest.importSimpleLocalApplication()
       .getEditor()
-      // TODO: once cr/181207315 is submitted, reformat Bazel files so that the "../SimpleLocalApplication/" isn't necessary.
+      // TODO: once cr/181207315 is submitted, reformat Bazel files so that the leading "../" isn't necessary. Here and rest of file.
       .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(false)
-      .waitForRenderToFinish()
-      .dragComponentToSurface("Text", "TextView")
+      .waitForSurfaceToLoad();
+
+    assertThat(editorFixture.canInteractWithSurface()).isTrue();
+
+    editorFixture.dragComponentToSurface("Text", "TextView")
       .dragComponentToSurface("Buttons", "Button");
+
     String layoutFileContents = guiTest.ideFrame()
       .getEditor()
       .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.EDITOR)
       .getCurrentFileContents();
     assertThat(layoutFileContents).contains("<TextView");
     assertThat(layoutFileContents).contains("<Button");
+  }
+
+  @RunIn(TestGroup.UNRELIABLE)  // b/72912068
+  @TargetBuildSystem({TargetBuildSystem.BuildSystem.BAZEL})
+  @Test
+  public void designEditorUnavailableIfInProgressBazelSyncFailed() throws Exception {
+    // Add a bad dependency to app/BUILD. This will cause the next sync to fail.
+    guiTest.importSimpleLocalApplication()
+      .getEditor()
+      .open("../SimpleLocalApplication/app/BUILD")
+      .moveBetween("deps = [", "")
+      .enterText("\n\":bogus_dependency\",")
+      .close();
+
+    guiTest.testSystem().requestProjectSync(guiTest.ideFrame());
+
+    // Open design editor while sync is in progress. We should see a loading panel
+    // while the sync is taking place. Then, once the sync fails, the loading
+    // animation should be replaced with an error message.
+    NlEditorFixture editorFixture = guiTest.ideFrame().getEditor()
+      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
+      .getLayoutEditor(false)
+      .waitForSurfaceToLoad();
+
+    // The design editor should be unavailable because the in-progress sync failed.
+    assertThat(editorFixture.canInteractWithSurface()).isFalse();
+  }
+
+  @RunIn(TestGroup.UNRELIABLE)  // b/72912068
+  @TargetBuildSystem({TargetBuildSystem.BuildSystem.BAZEL})
+  @Test
+  public void designEditorUnavailableIfLastBazelSyncFailed() throws Exception {
+    // Add a bad dependency to app/BUILD. This will cause the next sync to fail.
+    guiTest.importSimpleLocalApplication()
+      .getEditor()
+      .open("../SimpleLocalApplication/app/BUILD")
+      .moveBetween("deps = [", "")
+      .enterText("\n\":bogus_dependency\",")
+      .close();
+
+    guiTest.testSystem()
+      .requestProjectSync(guiTest.ideFrame())
+      .waitForProjectSyncToFinish(guiTest.ideFrame());
+
+    // After the failing sync, open the design editor.
+    NlEditorFixture editorFixture = guiTest.ideFrame().getEditor()
+      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
+      .getLayoutEditor(false)
+      .waitForSurfaceToLoad();
+
+    // The design editor should be unavailable because the last sync failed.
+    assertThat(editorFixture.canInteractWithSurface()).isFalse();
   }
 
   @Test

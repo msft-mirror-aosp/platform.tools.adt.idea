@@ -28,8 +28,9 @@ import com.android.tools.adtui.model.SelectionListener;
 import com.android.tools.adtui.model.SeriesData;
 import com.android.tools.adtui.stdui.CommonTabbedPane;
 import com.android.tools.profilers.*;
-import com.android.tools.profilers.event.EventMonitorView;
+import com.android.tools.profilers.event.*;
 import com.android.tools.profilers.network.details.ConnectionDetailsView;
+import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.components.JBPanel;
@@ -65,6 +66,8 @@ public class NetworkProfilerStageView extends StageView<NetworkProfilerStage> {
 
     getTooltipBinder().bind(NetworkRadioTooltip.class, NetworkRadioTooltipView::new);
     getTooltipBinder().bind(NetworkTrafficTooltip.class, NetworkTrafficTooltipView::new);
+    getTooltipBinder().bind(EventActivityTooltip.class, EventActivityTooltipView::new);
+    getTooltipBinder().bind(EventSimpleEventTooltip.class, EventSimpleEventTooltipView::new);
 
     myConnectionDetails = new ConnectionDetailsView(this);
     myConnectionDetails.setMinimumSize(new Dimension(JBUI.scale(450), (int)myConnectionDetails.getMinimumSize().getHeight()));
@@ -253,8 +256,14 @@ public class NetworkProfilerStageView extends StageView<NetworkProfilerStage> {
                                                               timeline.getDataRange(),
                                                               getTooltipPanel(),
                                                               ProfilerLayeredPane.class);
+    eventsView.registerTooltip(tooltip, getStage());
+
     tooltip.registerListenersOn(selection);
     tooltip.registerListenersOn(radioComponent);
+
+    ContextMenuInstaller contextMenuInstaller = getIdeComponents().createContextMenuInstaller();
+    getProfilersView().getTimelineContextMenu().getContextMenuItems()
+      .forEach(item -> contextMenuInstaller.installGenericContextMenu(selection, item));
 
     if (!getStage().hasUserUsedNetworkSelection()) {
       installProfilingInstructions(monitorPanel);

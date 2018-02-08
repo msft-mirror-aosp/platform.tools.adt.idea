@@ -42,9 +42,14 @@ class GradleGuiTestProjectSystem : GuiTestProjectSystem {
     }
   }
 
-  override fun importProject(targetTestDirectory: File, robot: Robot) {
+  override fun importProject(targetTestDirectory: File, robot: Robot, buildFilePath: String?) {
     val toSelect = VfsUtil.findFileByIoFile(targetTestDirectory, true)
     ApplicationManager.getApplication().invokeAndWait { GradleProjectImporter.getInstance().importProject(toSelect!!) }
+  }
+
+  override fun requestProjectSync(ideFrameFixture: IdeFrameFixture): GuiTestProjectSystem {
+    ideFrameFixture.invokeMenuPath("File", "Sync Project with Gradle Files")
+    return this
   }
 
   override fun waitForProjectSyncToFinish(ideFrameFixture: IdeFrameFixture) {

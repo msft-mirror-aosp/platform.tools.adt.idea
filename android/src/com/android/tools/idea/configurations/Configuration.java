@@ -16,9 +16,8 @@
 package com.android.tools.idea.configurations;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.ide.common.rendering.api.Features;
-import com.android.ide.common.resources.ResourceRepository;
+import com.android.ide.common.res2.AbstractResourceRepository;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.configuration.*;
 import com.android.resources.*;
@@ -27,6 +26,7 @@ import com.android.sdklib.devices.Device;
 import com.android.sdklib.devices.State;
 import com.android.tools.idea.AndroidPsiUtils;
 import com.android.tools.idea.editors.theme.ResolutionUtils;
+import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.rendering.Locale;
 import com.android.tools.idea.rendering.RenderService;
 import com.android.tools.idea.rendering.multi.CompatibilityRenderTarget;
@@ -207,9 +207,9 @@ public class Configuration implements Disposable, ModificationTracker {
    */
   @NotNull
   @VisibleForTesting
-  static Configuration create(@NotNull ConfigurationManager manager,
-                              @Nullable VirtualFile file,
-                              @NotNull FolderConfiguration editedConfig) {
+  public static Configuration create(@NotNull ConfigurationManager manager,
+                                     @Nullable VirtualFile file,
+                                     @NotNull FolderConfiguration editedConfig) {
     return new Configuration(manager, file, editedConfig);
   }
 
@@ -1204,13 +1204,13 @@ public class Configuration implements Disposable, ModificationTracker {
   }
 
   /**
-   * Returns a {@link LocalResourceRepository} for the framework resources based on the current
+   * Returns an {@link AbstractResourceRepository} for the framework resources based on the current
    * configuration selection.
    *
    * @return the framework resources or null if not found.
    */
   @Nullable
-  public ResourceRepository getFrameworkResources() {
+  public AbstractResourceRepository getFrameworkResources() {
     IAndroidTarget target = getTarget();
     if (target != null) {
       return myManager.getResolverCache().getFrameworkResources(getFullConfig(), target);

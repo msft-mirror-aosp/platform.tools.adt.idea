@@ -32,7 +32,6 @@ iml_module(
         "//tools/idea/json",
         "//tools/idea/xml/relaxng",
         "//tools/idea/java/compiler/instrumentation-util-8",
-        "//tools/idea/plugins/maven:maven2-server-impl",
         "//tools/adt/idea/adt-branding",
     ],
     # do not sort: must match IML order
@@ -170,7 +169,6 @@ iml_module(
         "//tools/idea/platform/tasks-platform-impl",
         "//tools/idea/platform/credential-store",
         "//tools/idea/java/compiler/instrumentation-util-8",
-        "//tools/idea/plugins/maven:maven2-server-impl",
     ],
     test_shard_count = 8,
     test_srcs = ["testSrc"],
@@ -203,7 +201,6 @@ iml_module(
         "//tools/adt/idea/observable[module, test]",
         "//tools/idea/java/compiler/openapi:compiler-openapi[module, test]",
         "//tools/base/common:studio.common[module, test]",
-        "//tools/idea/plugins/gradle/lib:commons-io-2.2[test]",
         "//tools/idea/plugins/gradle/tooling-extension-api:gradle-tooling-extension-api[module, test]",
         "//tools/base/build-system:studio.manifest-merger[module, test]",
         "//tools/idea/.idea/libraries:Eclipse[test]",

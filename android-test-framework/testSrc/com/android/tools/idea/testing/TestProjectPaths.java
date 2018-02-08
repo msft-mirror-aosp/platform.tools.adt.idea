@@ -9,6 +9,8 @@ public final class TestProjectPaths {
   public static final String BUDDY_APKS = "projects/buddyApks";
   public static final String CENTRAL_BUILD_DIRECTORY = "projects/centralBuildDirectory";
   public static final String CIRCULAR_MODULE_DEPS = "projects/circularModuleDeps";
+  public static final String COMPOSITE_BUILD = "projects/compositeBuild";
+  public static final String COMPOSITE_BUILD_ROOT_PROJECT = "projects/compositeBuild/TestCompositeApp";
   public static final String DEPENDENT_MODULES = "projects/dependentModules";
   public static final String EXPERIMENTAL_PLUGIN = "projects/experimentalPlugin";
   public static final String HELLO_JNI = "projects/helloJni";
@@ -36,7 +38,6 @@ public final class TestProjectPaths {
   public static final String MULTI_FEATURE = "projects/multiFeature";
   public static final String NAMESPACES = "projects/namespaces";
   public static final String NAVIGATION_EDITOR_BASIC = "projects/navigationEditor/basic";
-  public static final String NAVIGATOR_INVALID = "projects/navigator/invalid";
   public static final String NAVIGATOR_PACKAGEVIEW_COMMONROOTS = "projects/navigator/packageview/commonroots";
   public static final String NAVIGATOR_PACKAGEVIEW_SIMPLE = "projects/navigator/packageview/simple";
   public static final String NESTED_MODULE = "projects/nestedModule";
@@ -49,7 +50,6 @@ public final class TestProjectPaths {
   public static final String PROJECT_WITH_DATA_BINDING_AND_SIMPLE_LIB = "projects/projectWithDataBindingAndSimpleLib";
   public static final String PSD_SAMPLE = "projects/psdSample";
   public static final String PURE_JAVA_PROJECT = "projects/pureJavaProject";
-  public static final String RESOLVE = "projects/resolve";
   public static final String RUN_CONFIG_ACTIVITY = "projects/runConfig/activity";
   public static final String RUN_CONFIG_ALIAS = "projects/runConfig/alias";
   public static final String RUN_CONFIG_DEFAULT = "projects/runConfig/default";

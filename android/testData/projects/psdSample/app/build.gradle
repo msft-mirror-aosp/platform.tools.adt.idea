@@ -22,6 +22,7 @@ ext {
     varInt = 1
     varBool = true
     varRefString = variable1
+    varProGuardFiles = ['proguard-rules.txt', 'proguard-rules2.txt']
 }
 
 android {
@@ -45,6 +46,7 @@ android {
         targetSdkVersion(19)
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [aa: "aaa", bb: "bbb"]
     }
     buildTypes {
         release {
@@ -55,7 +57,7 @@ android {
             minifyEnabled false
             renderscriptOptimLevel 2
             signingConfig signingConfigs.myConfig
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt', 'proguard-rules2.txt'
         }
     }
     flavorDimensions 'foo', 'bar'
@@ -73,6 +75,7 @@ android {
             targetSdkVersion(20)
             versionCode 2
             versionName "2.0"
+            testInstrumentationRunnerArguments = ["a": "AAA", "b": "BBB"]
         }
         bar {
             dimension "bar"
