@@ -109,11 +109,11 @@ public class ConfiguredThemeEditorStyle extends ThemeEditorStyle {
       List<ResourceItem> styleItems =
           frameworkResources.getResourceItems(ResourceNamespace.ANDROID, ResourceType.STYLE, myStyleResourceValue.getName());
       for (ResourceItem item : styleItems) {
-        ResourceValue styleResourceValue = item.getResourceValue(true);
+        ResourceValue styleResourceValue = item.getResourceValue();
 
         if (styleResourceValue instanceof StyleResourceValue) {
           FolderConfiguration folderConfiguration = item.getConfiguration();
-          for (ItemResourceValue value : ((StyleResourceValue)styleResourceValue).getValues()) {
+          for (ItemResourceValue value : ((StyleResourceValue)styleResourceValue).getDefinedItems()) {
             itemResourceValues.add(ConfiguredElement.create(folderConfiguration, value));
           }
         }
@@ -121,11 +121,11 @@ public class ConfiguredThemeEditorStyle extends ThemeEditorStyle {
     }
     else {
       for (ResourceItem styleDefinition : getStyleResourceItems()) {
-        ResourceValue styleResourceValue = styleDefinition.getResourceValue(false);
+        ResourceValue styleResourceValue = styleDefinition.getResourceValue();
         FolderConfiguration folderConfiguration = styleDefinition.getConfiguration();
 
         if (styleResourceValue instanceof StyleResourceValue) {
-          for (ItemResourceValue value : ((StyleResourceValue)styleResourceValue).getValues()) {
+          for (ItemResourceValue value : ((StyleResourceValue)styleResourceValue).getDefinedItems()) {
             // We use the qualified name since apps and libraries can use the same attribute name twice with and without "android:"
             itemResourceValues.add(ConfiguredElement.create(folderConfiguration, value));
           }
@@ -153,7 +153,7 @@ public class ConfiguredThemeEditorStyle extends ThemeEditorStyle {
 
     ImmutableList.Builder<ConfiguredElement<String>> parents = ImmutableList.builder();
     for (ResourceItem styleItem : getStyleResourceItems()) {
-      StyleResourceValue style = (StyleResourceValue)styleItem.getResourceValue(false);
+      StyleResourceValue style = (StyleResourceValue)styleItem.getResourceValue();
       assert style != null;
       String parentName = ResolutionUtils.getParentQualifiedName(style);
       if (parentName != null) {
@@ -165,11 +165,12 @@ public class ConfiguredThemeEditorStyle extends ThemeEditorStyle {
 
   public boolean hasItem(@Nullable EditedStyleItem item) {
     //TODO: add isOverriden() method to EditedStyleItem
-    return item != null && getStyleResourceValue().getItem(item.getName(), item.isFrameworkAttr()) != null;
+    return item != null && getStyleResourceValue().getItem(item.getAttrNamespace(), item.getAttrName()) != null;
   }
 
   public ItemResourceValue getItem(@NotNull String name, boolean isFramework) {
-    return getStyleResourceValue().getItem(name, isFramework);
+    // TODO: namespaces
+    return getStyleResourceValue().getItem(ResourceNamespace.fromBoolean(isFramework), name);
   }
 
   /**

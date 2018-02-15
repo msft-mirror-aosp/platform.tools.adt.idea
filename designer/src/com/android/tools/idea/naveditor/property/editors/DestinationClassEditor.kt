@@ -15,21 +15,64 @@
  */
 package com.android.tools.idea.naveditor.property.editors
 
+import com.android.SdkConstants.ATTR_LAYOUT
+import com.android.SdkConstants.TOOLS_URI
+import com.android.annotations.VisibleForTesting
+import com.android.resources.ResourceFolderType
+import com.android.tools.idea.common.command.NlWriteCommandAction
 import com.android.tools.idea.common.property.NlProperty
 import com.android.tools.idea.common.property.editors.EnumEditor
+import com.android.tools.idea.common.property.editors.NlComponentEditor
 import com.android.tools.idea.naveditor.model.destinationType
 import com.android.tools.idea.uibuilder.property.editors.NlEditingListener
+import com.android.tools.idea.uibuilder.property.editors.NlEditingListener.DEFAULT_LISTENER
 import com.android.tools.idea.uibuilder.property.editors.support.EnumSupport
 import com.android.tools.idea.uibuilder.property.editors.support.ValueWithDisplayString
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.xml.XmlFile
+import org.jetbrains.android.AndroidGotoRelatedProvider
 import org.jetbrains.android.dom.navigation.NavigationSchema
+import org.jetbrains.android.dom.navigation.NavigationSchema.NAV_HOST_FRAGMENT
+import org.jetbrains.android.resourceManagers.LocalResourceManager
 
 // TODO: ideally this wouldn't be a separate editor, and EnumEditor could just get the EnumSupport from the property itself.
 class DestinationClassEditor(listener: NlEditingListener, comboBox: CustomComboBox) : EnumEditor(listener, comboBox, null, true, true) {
 
-  constructor() : this(NlEditingListener.DEFAULT_LISTENER, CustomComboBox())
+  constructor() : this(Listener, CustomComboBox())
+
+  @VisibleForTesting
+  object Listener: NlEditingListener {
+    override fun stopEditing(editor: NlComponentEditor, value: Any?) {
+      NlWriteCommandAction.run(editor.property.components[0], "Set Class Name") layout@{
+        DEFAULT_LISTENER.stopEditing(editor, value)
+        val className = value as? String ?: return@layout
+        editor.property.components[0].setAttribute(TOOLS_URI, ATTR_LAYOUT, (editor as DestinationClassEditor).findLayoutForClass(className))
+      }
+    }
+
+    override fun cancelEditing(editor: NlComponentEditor) {}
+  }
+
+  // TODO: support multiple layouts per class
+  private fun findLayoutForClass(className: String): String? {
+    val resourceManager = LocalResourceManager.getInstance(property.model.module) ?: return null
+
+    for (resourceFile in resourceManager.findResourceFiles(ResourceFolderType.LAYOUT).filterIsInstance<XmlFile>()) {
+      // TODO: refactor AndroidGotoRelatedProvider so this can be done more cleanly
+      val itemComputable = AndroidGotoRelatedProvider.getLazyItemsForXmlFile(resourceFile, property.model.facet)
+      for (item in itemComputable?.compute() ?: continue) {
+        val element = item.element as? PsiClass ?: continue
+        if (element.qualifiedName == className) {
+          return "@layout/" + FileUtil.getNameWithoutExtension(resourceFile.name)
+        }
+      }
+    }
+    return null
+  }
 
   override fun getEnumSupport(property: NlProperty): EnumSupport = SubclassEnumSupport(property)
 
@@ -40,13 +83,21 @@ class DestinationClassEditor(listener: NlEditingListener, comboBox: CustomComboB
       val project = component.model.project
       val psiFacade = JavaPsiFacade.getInstance(project)
       val allScope = GlobalSearchScope.allScope(project)
-      return NavigationSchema.DESTINATION_SUPERCLASS_TO_TYPE
-          .filterValues { it == targetType }
-          .keys
-          .mapNotNull { psiFacade.findClass(it, allScope) }
-          .flatMap { ClassInheritorsSearch.search(it, allScope, true) }
-          .map { ValueWithDisplayString(it.qualifiedName, it.qualifiedName) }
-          .toMutableList()
+      val result = mutableListOf<ValueWithDisplayString>()
+      for ((key, value) in NavigationSchema.DESTINATION_SUPERCLASS_TO_TYPE) {
+        if (value != targetType) {
+          continue
+        }
+        val psiClass = psiFacade.findClass(key, allScope) ?: continue
+        for (inheritor in ClassInheritorsSearch.search(psiClass, allScope, true)) {
+          val qname = inheritor.qualifiedName
+          if (inheritor.supers.map { it.qualifiedName }.plus(qname).contains(NAV_HOST_FRAGMENT)) {
+            continue
+          }
+          result.add(ValueWithDisplayString(qname, qname))
+        }
+      }
+      return result
     }
   }
 }

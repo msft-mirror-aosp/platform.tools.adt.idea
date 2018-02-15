@@ -17,7 +17,7 @@ package com.android.tools.idea.tests.gui.gradle;
 
 import com.android.tools.idea.tests.gui.framework.*;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.NewModuleDialogFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture;
 import com.intellij.lang.annotation.HighlightSeverity;
 import org.fest.swing.timing.Wait;
 import org.junit.Rule;
@@ -31,6 +31,7 @@ import static com.google.common.truth.Truth.assertThat;
 /**
  * Tests, that newly generated modules work, even with older gradle plugin versions.
  */
+@RunIn(TestGroup.PROJECT_WIZARD)
 @RunWith(GuiTestRunner.class)
 public class NewModuleTest {
 
@@ -52,7 +53,7 @@ public class NewModuleTest {
       .getIdeFrame()
       .requestProjectSync()
       .waitForGradleProjectSyncToFail(Wait.seconds(30))
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Android Library")
       .clickNextToStep("Android Library")
       .setModuleName("somelibrary")
@@ -71,7 +72,7 @@ public class NewModuleTest {
     String jarFile = GuiTests.getTestDataDir() + "/LocalJarsAsModules/localJarAsModule/local.jar";
 
     guiTest.importSimpleLocalApplication()
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Import .JAR/.AAR Package")
       .clickNextToStep("Import Module from Library")
       .setFileName(jarFile)
@@ -110,7 +111,7 @@ public class NewModuleTest {
   @Test
   public void createNewAppModuleWithDefaults() throws Exception {
     guiTest.importSimpleLocalApplication()
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Phone & Tablet Module")
       .clickNextToStep("Phone & Tablet Module")
       .setModuleName("application-module")
@@ -139,7 +140,7 @@ public class NewModuleTest {
   @Test
   public void createNewLibraryModuleWithDefaults() throws Exception {
     guiTest.importSimpleLocalApplication()
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Android Library")
       .clickNextToStep("Android Library")
       .setModuleName("library-module")
@@ -148,10 +149,11 @@ public class NewModuleTest {
     assertAbout(file()).that(guiTest.getProjectPath("library-module")).isDirectory();
   }
 
+  @RunIn(TestGroup.UNRELIABLE)  // b/73262313
   @Test
   public void createNewJavaLibraryWithDefaults() throws Exception {
     guiTest.importSimpleLocalApplication()
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Java Library")
       .clickNextToStep("Library name:")
       .getConfigureJavaLibaryStepFixture()
@@ -168,7 +170,7 @@ public class NewModuleTest {
   @Test
   public void createNewJavaLibraryWithNoGitIgnore() throws Exception {
     guiTest.importSimpleLocalApplication()
-      .openFromMenu(NewModuleDialogFixture::find, "File", "New", "New Module...")
+      .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Java Library")
       .clickNextToStep("Library name:")
       .getConfigureJavaLibaryStepFixture()

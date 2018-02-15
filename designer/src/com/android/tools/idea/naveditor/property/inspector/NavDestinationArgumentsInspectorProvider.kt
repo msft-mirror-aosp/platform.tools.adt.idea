@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.naveditor.property.inspector
 
+import com.android.tools.adtui.common.ColoredIconGenerator
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.property.NlProperty
 import com.android.tools.idea.common.property.editors.NlComponentEditor
@@ -27,14 +28,21 @@ import com.android.tools.idea.naveditor.property.editors.TextEditor
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
 import com.android.tools.idea.uibuilder.property.editors.NlEditingListener
 import com.android.tools.idea.uibuilder.property.editors.NlTableCellEditor
+import com.intellij.icons.AllIcons
+import com.intellij.ui.InplaceButton
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.table.JBTable
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.FlowLayout
 import javax.swing.BorderFactory
 import javax.swing.JPanel
+import javax.swing.JTable
 import javax.swing.table.TableCellRenderer
 
 const val NAV_ARGUMENTS_COMPONENT_NAME = "NavArgumentsPropertyInspector"
+const val NAV_ARGUMENTS_ROW_HEIGHT = 22
 
 class NavDestinationArgumentsInspectorProvider : InspectorProvider<NavPropertiesManager> {
 
@@ -92,25 +100,17 @@ class NavDestinationArgumentsInspectorProvider : InspectorProvider<NavProperties
 
     override fun attachToInspector(inspector: InspectorPanel<NavPropertiesManager>) {
       val panel = JPanel(BorderLayout())
-      val table = JBTable(NavArgumentsTableModel(argumentProperty))
+      val tableModel = NavArgumentsTableModel(argumentProperty)
+      val table = JBTable(tableModel)
+      table.rowHeight = NAV_ARGUMENTS_ROW_HEIGHT
       table.name = NAV_ARGUMENTS_COMPONENT_NAME
+      table.rowSelectionAllowed = true
 
-      val nameCellRenderer = JBTextField()
-      nameCellRenderer.emptyText.text = "name"
-      nameCellRenderer.border = BorderFactory.createEmptyBorder()
-      table.columnModel.getColumn(0).cellRenderer = TableCellRenderer { _, value, _, _, _, _ ->
-        nameCellRenderer.also { it.text = (value as? NlProperty)?.value }
-      }
+      table.columnModel.getColumn(0).cellRenderer = MyCellRenderer("name")
+      table.columnModel.getColumn(1).cellRenderer = MyCellRenderer("default value")
 
-      val defaultValueCellRenderer = JBTextField()
-      defaultValueCellRenderer.emptyText.text = "default value"
-      defaultValueCellRenderer.border = BorderFactory.createEmptyBorder()
-      table.columnModel.getColumn(1).cellRenderer = TableCellRenderer { _, value, _, _, _, _ ->
-        defaultValueCellRenderer.also { it.text = (value as? NlProperty)?.value }
-      }
-
-      val nameTextEditor = TextEditor(surface!!.project, NlEditingListener.DEFAULT_LISTENER)
-      val defaultValueTextEditor = TextEditor(surface!!.project, NlEditingListener.DEFAULT_LISTENER)
+      val nameTextEditor = TextEditor(surface!!.project, false, NlEditingListener.DEFAULT_LISTENER)
+      val defaultValueTextEditor = TextEditor(surface!!.project, false, NlEditingListener.DEFAULT_LISTENER)
 
       val nameEditor = NlTableCellEditor()
       nameEditor.init(nameTextEditor, null)
@@ -123,8 +123,27 @@ class NavDestinationArgumentsInspectorProvider : InspectorProvider<NavProperties
       table.putClientProperty("terminateEditOnFocusLost", true)
 
       panel.add(table, BorderLayout.CENTER)
-      val emptyPanel = JPanel()
-      inspector.addExpandableComponent("Arguments", null, emptyPanel, emptyPanel)
+      val minus = InplaceButton("Delete Argument", deleteIcon) {
+        table.cellEditor?.stopCellEditing()
+        argumentProperty.deleteRows(table.selectedRows)
+        tableModel.fireTableDataChanged()
+      }
+      val plus = InplaceButton("Add Argument", addIcon) {
+        table.cellEditor?.stopCellEditing()
+        argumentProperty.addRow()
+        tableModel.fireTableDataChanged()
+      }
+      table.selectionModel.addListSelectionListener {
+        minus.isEnabled = !table.selectedRows.isEmpty()
+      }
+      val plusPanel = JPanel(BorderLayout())
+      val actionPanel = JPanel(FlowLayout())
+      actionPanel.add(minus)
+      actionPanel.add(plus)
+      actionPanel.isOpaque = false
+      plusPanel.add(actionPanel, BorderLayout.EAST)
+
+      inspector.addExpandableComponent("Arguments", null, plusPanel, plusPanel)
       inspector.addPanel(panel)
     }
 
@@ -133,3 +152,35 @@ class NavDestinationArgumentsInspectorProvider : InspectorProvider<NavProperties
     }
   }
 }
+
+private class MyCellRenderer(emptyText: String) : TableCellRenderer {
+  val rendererComponent = JBTextField()
+  init {
+    rendererComponent.emptyText.text = emptyText
+    rendererComponent.border = BorderFactory.createEmptyBorder()
+  }
+
+  override fun getTableCellRendererComponent(
+    table: JTable?,
+    value: Any?,
+    isSelected: Boolean,
+    hasFocus: Boolean,
+    row: Int,
+    column: Int
+  ): Component {
+    return rendererComponent.also {
+      it.text = (value as? NlProperty)?.value
+      if (isSelected) {
+        it.foreground = table?.selectionForeground
+        it.background = table?.selectionBackground
+      }
+      else {
+        it.foreground = table?.foreground
+        it.background = table?.background
+      }
+    }
+  }
+}
+
+private val deleteIcon = ColoredIconGenerator.generateColoredIcon(AllIcons.General.Remove, JBColor.GRAY.rgb)
+private val addIcon = ColoredIconGenerator.generateColoredIcon(AllIcons.General.Add, JBColor.GRAY.rgb)

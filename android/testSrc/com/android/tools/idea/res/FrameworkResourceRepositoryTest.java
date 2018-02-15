@@ -39,7 +39,7 @@ import java.util.List;
  */
 public class FrameworkResourceRepositoryTest extends AndroidTestCase {
   /** Enables printing of repository statistics. */
-  private static final boolean PRINT_STATS = true;
+  private static final boolean PRINT_STATS = false;
 
   private File myResourceFolder;
 
@@ -144,7 +144,7 @@ public class FrameworkResourceRepositoryTest extends AndroidTestCase {
         assertEquals("Different ResourceItem at position " + i, withoutCache, withCache);
         assertEquals("Different FolderConfiguration at position " + i, withoutCache.getConfiguration(), withCache.getConfiguration());
         assertEquals("Different ResourceValue at position " + i,
-                     withoutCache.getResourceValue(true), withCache.getResourceValue(true));
+                     withoutCache.getResourceValue(), withCache.getResourceValue());
       }
 
       for (ResourceType type : ResourceType.values()) {

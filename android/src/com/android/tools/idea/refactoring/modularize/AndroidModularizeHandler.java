@@ -222,7 +222,7 @@ public class AndroidModularizeHandler implements RefactoringActionHandler {
 
       Set<ResourceReference> seenResources = new HashSet<>(myResourceRefSet.size());
       for (ResourceItem item : myResourceRefSet) {
-        ResourceReference ref = item.getReferenceToSelf(false);
+        ResourceReference ref = item.getReferenceToSelf();
         if (seenResources.add(ref)) {
           PsiField[] fields;
           PsiElement elm = getResourceDefinition(item);
@@ -304,7 +304,7 @@ public class AndroidModularizeHandler implements RefactoringActionHandler {
       private void processPotentialReference(String text) {
         ResourceUrl url = ResourceUrl.parse(text);
         if (url != null) {
-          if (!url.framework && !url.create && url.type != ResourceType.ID) {
+          if (!url.isFramework() && !url.isCreate() && url.type != ResourceType.ID) {
             List<ResourceItem> matches = myResourceRepository.getResourceItem(url.type, url.name);
             if (matches != null) {
               for (ResourceItem match : matches) {

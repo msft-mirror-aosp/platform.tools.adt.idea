@@ -18,6 +18,7 @@ package org.jetbrains.android.dom.converters;
 
 import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.ItemResourceValue;
+import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.StyleResourceValue;
 import com.android.ide.common.res2.ResourceItem;
 import com.android.resources.ResourceType;
@@ -96,21 +97,22 @@ public class StyleItemNameConverter extends ResolvingConverter<String> {
         int i = 0;
         while (!toExplore.isEmpty() && i++ < MAX_RESOURCE_INDIRECTION) {
           ResourceItem parentItem = toExplore.pop();
-          StyleResourceValue parentValue = (StyleResourceValue)parentItem.getResourceValue(false);
+          StyleResourceValue parentValue = (StyleResourceValue)parentItem.getResourceValue();
           if (parentValue == null || parentValue.isFramework()) {
             // No parent or the parent is a framework style
             continue;
           }
 
-          for (ItemResourceValue value : parentValue.getValues()) {
+          // TODO: namespaces
+          for (ItemResourceValue value : parentValue.getDefinedItems()) {
             if (!value.isFramework()) {
-              attributeNames.add(value.getName());
+              attributeNames.add(value.getAttrName());
             }
           }
 
-          List<ResourceItem> parents = appResourceRepository.getResourceItem(ResourceType.STYLE, parentValue.getParentStyle());
-          if (parents != null) {
-            toExplore.addAll(parents);
+          ResourceReference parentStyle = parentValue.getParentStyle();
+          if (parentStyle != null) {
+            toExplore.addAll(appResourceRepository.getResourceItems(parentStyle));
           }
         }
 

@@ -41,23 +41,30 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
   private val variablesProvider: VariablesProvider?
 ) : JPanel(BorderLayout()) {
 
-  private var beingLoaded = false
   val component: JComponent get() = this
+  private var beingLoaded = false
+  protected var tableModel: DefaultTableModel? = null ; private set
+  protected val valueToText: Map<ValueT, String> = buildValueToTextMap()
 
-  private val table: JBTable = JBTable().also {
-    add(
-      ToolbarDecorator.createDecorator(it)
-            .setAddAction({})
-            .setRemoveAction({})
-            .setPreferredSize(Dimension(450, 100))
-            .setToolbarPosition(ActionToolbarPosition.RIGHT)
-            .createPanel())
-  }
+  protected val table: JBTable = JBTable()
+    .apply {
+      rowHeight = calculateMinRowHeight()
+    }
+    .also {
+      add(
+        ToolbarDecorator.createDecorator(it)
+          .setAddAction { addItem() }
+          .setRemoveAction { removeItem() }
+          .setPreferredSize(Dimension(450, 100))
+          .setToolbarPosition(ActionToolbarPosition.RIGHT)
+          .createPanel()
+      )
+    }
 
   protected fun loadValue() {
     beingLoaded = true
     try {
-      val tableModel = createTableModel()
+      tableModel = createTableModel()
       table.model = tableModel
       table.columnModel = createColumnModel()
     }
@@ -68,17 +75,32 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
 
   protected abstract fun createTableModel(): DefaultTableModel
   protected abstract fun createColumnModel(): TableColumnModel
-  protected abstract fun getRowElement(rowIndex: Int): ModelPropertyCore<Unit, ValueT>
+  protected abstract fun getValueAt(row: Int): ParsedValue<ValueT>
+  protected abstract fun setValueAt(row: Int, value: ParsedValue<ValueT>)
+  protected abstract fun addItem()
+  protected abstract fun removeItem()
+
+  private fun buildValueToTextMap() = property.getKnownValues(model)?.associate { it.value to it.description } ?: mapOf()
+
+  private fun calculateMinRowHeight() = editor(Unit, SimplePropertyStub(), null).component.minimumSize.height
+
+  protected fun ParsedValue<ValueT>.toTableModelValue() = Value(this)
+
+  /**
+   * A [ParsedValue] wrapper for the table model that defines a [toString] implementation compatible with the implementation
+   * in [MyCellEditor].
+   */
+  protected inner class Value(val value: ParsedValue<ValueT>) {
+    override fun toString(): String = value.getText(valueToText)
+  }
 
   inner class MyCellEditor : AbstractTableCellEditor() {
     private var currentRow: Int = -1
-    private var currentProperty: ModelPropertyCore<Unit, ValueT>? = null
     private var lastEditor: ModelPropertyEditor<Unit, ValueT>? = null
     private val bindingProperty = BindingProperty()
 
     override fun getTableCellEditorComponent(table: JTable?, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
       currentRow = row
-      currentProperty = getRowElement(currentRow)
       val editor = this@CollectionPropertyEditor.editor(Unit, bindingProperty, variablesProvider)
       lastEditor = editor
       return editor.component
@@ -89,7 +111,6 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
         if (it) {
           lastEditor?.updateProperty()
           currentRow = -1
-          currentProperty = null
           lastEditor?.dispose()
         }
       }
@@ -97,18 +118,17 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
 
     override fun cancelCellEditing() {
       currentRow = -1
-      currentProperty = null
       lastEditor?.dispose()
       super.cancelCellEditing()
     }
 
-    override fun getCellEditorValue(): Any = lastEditor!!.getValueText()
+    override fun getCellEditorValue(): Any = lastEditor!!.getValue().toTableModelValue()
 
     inner class BindingProperty : ModelSimpleProperty<Unit, ValueT> {
       override val description: String = "Binding Property"
-      override fun getParsedValue(model: Unit): ParsedValue<ValueT> = currentProperty?.getParsedValue(Unit) ?: ParsedValue.NotSet()
+      override fun getParsedValue(model: Unit): ParsedValue<ValueT> = getValueAt(currentRow)
       override fun getResolvedValue(model: Unit): ResolvedValue<ValueT> = ResolvedValue.NotResolved()
-      override fun setParsedValue(model: Unit, value: ParsedValue<ValueT>) = currentProperty?.setParsedValue(Unit, value) ?: Unit
+      override fun setParsedValue(model: Unit, value: ParsedValue<ValueT>) = setValueAt(currentRow, value)
       override fun getDefaultValue(model: Unit): ValueT? = null
       override fun parse(value: String): ParsedValue<ValueT> = property.parse(value)
       override fun getKnownValues(model: Unit): List<ValueDescriptor<ValueT>>? =
@@ -123,3 +143,14 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
   }
 }
 
+class SimplePropertyStub<ValueT : Any> : ModelSimpleProperty<Unit, ValueT> {
+  override fun getParsedValue(model: Unit): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun setParsedValue(model: Unit, value: ParsedValue<ValueT>) = Unit
+  override fun getResolvedValue(model: Unit): ResolvedValue<ValueT> = ResolvedValue.NotResolved()
+  override val description: String = ""
+  override fun getDefaultValue(model: Unit): ValueT? = null
+  override fun getValue(thisRef: Unit, property: KProperty<*>): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun setValue(thisRef: Unit, property: KProperty<*>, value: ParsedValue<ValueT>) = Unit
+  override fun parse(value: String): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun getKnownValues(model: Unit): List<ValueDescriptor<ValueT>>? = null
+}

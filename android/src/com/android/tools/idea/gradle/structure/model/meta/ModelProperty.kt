@@ -92,6 +92,8 @@ interface ModelCollectionProperty<in ModelT, CollectionT : Any, out ValueT : Any
 interface ModelListProperty<in ModelT, ValueT : Any> :
   ModelCollectionProperty<ModelT, List<ValueT>, ValueT> {
   fun getEditableValues(model: ModelT): List<ModelPropertyCore<Unit, ValueT>>
+  fun addItem(model: ModelT, index: Int): ModelPropertyCore<Unit, ValueT>
+  fun deleteItem(model: ModelT, index: Int)
 }
 
 /**
@@ -100,5 +102,8 @@ interface ModelListProperty<in ModelT, ValueT : Any> :
 interface ModelMapProperty<in ModelT, ValueT : Any> :
   ModelCollectionProperty<ModelT, Map<String, ValueT>, ValueT> {
   fun getEditableValues(model: ModelT): Map<String, ModelPropertyCore<Unit, ValueT>>
+  fun addEntry(model: ModelT, key: String): ModelPropertyCore<Unit, ValueT>
+  fun deleteEntry(model: ModelT, key: String)
+  fun changeEntryKey(model: ModelT, old: String, new: String): ModelPropertyCore<Unit, ValueT>
 }
 

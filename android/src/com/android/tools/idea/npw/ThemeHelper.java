@@ -112,12 +112,13 @@ public class ThemeHelper {
     if (items == null || items.isEmpty()) {
       return null;
     }
-    return (StyleResourceValue)items.get(0).getResourceValue(false);
+    return (StyleResourceValue)items.get(0).getResourceValue();
   }
 
   private boolean isAppCompatTheme(@NotNull String themeName, @Nullable StyleResourceValue localTheme) {
     while (localTheme != null) {
-      String parentThemeName = localTheme.getParentStyle();
+      // TODO: namespaces
+      String parentThemeName = localTheme.getParentStyleName();
       if (parentThemeName == null) {
         if (themeName.lastIndexOf('.') > 0) {
           parentThemeName = themeName.substring(0, themeName.lastIndexOf('.'));

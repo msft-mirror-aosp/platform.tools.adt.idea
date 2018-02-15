@@ -35,7 +35,6 @@ import com.intellij.openapi.application.Result;
 import com.intellij.openapi.command.WriteCommandAction;
 import org.jetbrains.android.dom.navigation.NavigationSchema;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.util.List;
@@ -104,7 +103,7 @@ public class ActionHandleTarget extends NavBaseTarget {
   }
 
   @Override
-  public void mouseRelease(@NavCoordinate int x, @NavCoordinate int y, @Nullable List<Target> closestTargets) {
+  public void mouseRelease(@NavCoordinate int x, @NavCoordinate int y, @NotNull List<Target> closestTargets) {
     myIsDragging = false;
     getComponent().setDragging(false);
   }
@@ -172,6 +171,10 @@ public class ActionHandleTarget extends NavBaseTarget {
   }
 
   private HandleState calculateState() {
+    if (myComponent.getScene().getDesignSurface().getInteractionManager().isInteractionInProgress()) {
+      return HandleState.INVISIBLE;
+    }
+
     if (mIsOver) {
       return HandleState.LARGE;
     }

@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.run;
 
 import com.android.builder.model.AndroidProject;
-import com.android.ide.common.rendering.api.ItemResourceValue;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.StyleResourceValue;
 import com.android.ide.common.repository.GradleVersion;
@@ -136,7 +135,7 @@ public class GradleInstantRunContext implements InstantRunContext {
         String value = attribute.getNodeValue();
         if (value.startsWith(PREFIX_RESOURCE_REF)) {
           ResourceUrl url = ResourceUrl.parse(value);
-          if (url != null && !url.framework) {
+          if (url != null && !url.isFramework()) {
             refs.add(url);
           }
         }
@@ -162,7 +161,7 @@ public class GradleInstantRunContext implements InstantRunContext {
       }
 
       for (ResourceItem item : items) {
-        ResourceValue resourceValue = item.getResourceValue(false);
+        ResourceValue resourceValue = item.getResourceValue();
         if (resourceValue != null) {
           String text = resourceValue.getValue();
           if (text != null) {
@@ -180,7 +179,7 @@ public class GradleInstantRunContext implements InstantRunContext {
               hasher.putString(text, UTF_8);
             }
           } else if (resourceValue.getResourceType() == ResourceType.STYLE){
-            ((StyleResourceValue) resourceValue).getValues().stream().forEach(value -> hasher.putString(value.getValue(), UTF_8));
+            ((StyleResourceValue) resourceValue).getDefinedItems().stream().forEach(value -> hasher.putString(value.getValue(), UTF_8));
           }
         }
       }

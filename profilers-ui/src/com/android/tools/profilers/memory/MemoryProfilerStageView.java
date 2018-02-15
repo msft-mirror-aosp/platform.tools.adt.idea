@@ -191,7 +191,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
       myHeapDumpButton.setEnabled(profilers.isSessionAlive());
       myAllocationButton.setEnabled(profilers.isSessionAlive());
     };
-    profilers.addDependency(this).onChange(ProfilerAspect.PROCESSES, toggleButtons);
+    profilers.addDependency(this).onChange(ProfilerAspect.SESSIONS, toggleButtons);
     toggleButtons.run();
 
     JPanel panel = new JPanel(new BorderLayout());
@@ -484,8 +484,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     contextMenuInstaller.installGenericContextMenu(component, myHeapDumpAction);
     contextMenuInstaller.installGenericContextMenu(component, ContextMenuItem.SEPARATOR);
 
-    getProfilersView().getTimelineContextMenu().getContextMenuItems()
-      .forEach(item -> contextMenuInstaller.installGenericContextMenu(component, item));
+    getProfilersView().installCommonMenuItems(component);
   }
 
   private void installProfilingInstructions(@NotNull JPanel parent) {

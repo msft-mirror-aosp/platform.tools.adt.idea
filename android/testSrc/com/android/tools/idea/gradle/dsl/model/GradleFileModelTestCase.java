@@ -192,6 +192,19 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
     buildModel.reparse();
   }
 
+  protected void removeListValue(@NotNull GradlePropertyModel model, @NotNull Object valueToRemove) {
+    assertEquals(LIST, model.getValueType());
+    GradlePropertyModel itemModel = model.getListValue(valueToRemove);
+    assertNotNull(itemModel);
+    itemModel.delete();
+  }
+
+  protected void replaceListValue(@NotNull GradlePropertyModel model, @NotNull Object valueToRemove, @NotNull Object valueToAdd) {
+    GradlePropertyModel itemModel = model.getListValue(valueToRemove);
+    assertNotNull(itemModel);
+    itemModel.setValue(valueToAdd);
+  }
+
   protected void verifyPropertyModel(@NotNull GradlePropertyModel propertyModel,
                                      @NotNull String propertyName,
                                      @NotNull String propertyText) {
@@ -374,6 +387,9 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
           assertEquals(message, expected, model.getValue(STRING_TYPE));
         }
         break;
+      case UNKNOWN:
+        assertEquals(message, expected, model.getValue(STRING_TYPE));
+        break;
       default:
         fail("Type for model: " + model + " was unexpected, " + model.getValueType());
     }
@@ -406,6 +422,17 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
     verifyListProperty("verifyListProperty", model, expectedValues);
     assertEquals(propertyType, model.getPropertyType());
     assertEquals(dependencies, model.getDependencies().size());
+  }
+
+  public static void verifyListProperty(GradlePropertyModel model,
+                                        List<Object> expectedValues,
+                                        PropertyType propertyType,
+                                        int dependencies,
+                                        String name) {
+    verifyListProperty("verifyListProperty", model, expectedValues);
+    assertEquals(propertyType, model.getPropertyType());
+    assertEquals(dependencies, model.getDependencies().size());
+    assertEquals(name, model.getName());
   }
 
   public static void verifyListProperty(@NotNull String message,
@@ -451,6 +478,17 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
                                              ValueType valueType,
                                              PropertyType propertyType,
                                              int dependencies,
+                                             String name) {
+    verifyPropertyModel(model, type, value, valueType, propertyType, dependencies);
+    assertEquals(name, model.getName());
+  }
+
+  public static <T> void verifyPropertyModel(GradlePropertyModel model,
+                                             TypeReference<T> type,
+                                             T value,
+                                             ValueType valueType,
+                                             PropertyType propertyType,
+                                             int dependencies,
                                              String name,
                                              String fullName) {
     verifyPropertyModel(model, type, value, valueType, propertyType, dependencies);
@@ -459,6 +497,6 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
   }
 
   public static void verifyFilePathsAreEqual(@NotNull File expected, @NotNull VirtualFile actual) {
-    assertEquals(expected.getAbsolutePath(), actual.getPath());
+    assertEquals(toSystemIndependentName(expected.getAbsolutePath()), actual.getPath());
   }
 }

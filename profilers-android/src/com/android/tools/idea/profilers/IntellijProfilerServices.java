@@ -175,6 +175,11 @@ public class IntellijProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isExportCpuTraceEnabled() {
+        return StudioFlags.PROFILER_EXPORT_CPU_TRACE.get();
+      }
+
+      @Override
       public boolean isJniReferenceTrackingEnabled() {
         return StudioFlags.PROFILER_TRACK_JNI_REFS.get();
       }
@@ -210,7 +215,12 @@ public class IntellijProfilerServices implements IdeProfilerServices {
       }
 
       @Override
-      public boolean isSimplePerfEnabled() {
+      public boolean isSessionsEnabled() {
+        return StudioFlags.PROFILER_SHOW_SESSIONS.get();
+      }
+
+      @Override
+      public boolean isSimpleperfEnabled() {
         return StudioFlags.PROFILER_USE_SIMPLEPERF.get();
       }
     };

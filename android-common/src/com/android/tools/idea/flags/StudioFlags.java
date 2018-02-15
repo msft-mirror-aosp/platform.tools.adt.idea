@@ -73,6 +73,11 @@ public final class StudioFlags {
     "and provides more advanced CPU, event, memory, and network profiling information.",
     true);
 
+  public static final Flag<Boolean> PROFILER_SHOW_SESSIONS = Flag.create(
+    PROFILER, "show.session", "Enable the sessions panel",
+    "Shows the sessions panel used for managing and navigating profiling data.",
+    false);
+
   public static final Flag<Boolean> PROFILER_USE_JVMTI = Flag.create(
     PROFILER, "jvmti", "Enable JVMTI profiling",
     "Use JVMTI for profiling devices with Android O or newer. " +
@@ -88,6 +93,11 @@ public final class StudioFlags {
     "Use Simpleperf for CPU profiling on devices with Android O or newer. " +
     "Simpleperf is a native profiler tool built for Android.",
     true);
+
+  public static final Flag<Boolean> PROFILER_EXPORT_CPU_TRACE = Flag.create(
+    PROFILER, "cpu.export.trace", "Enable CPU trace exporting",
+    "Add the option to export CPU trace files when right-clicking a CPU capture.",
+    false);
 
   public static final Flag<Boolean> PROFILER_SHOW_THREADS_VIEW = Flag.create(
     PROFILER, "threads.view", "Show network threads view",
@@ -169,6 +179,11 @@ public final class StudioFlags {
     "Enable experimental version of the Scout inference system",
     false);
 
+  public static final Flag<Boolean> NELE_USE_ANDROIDX_DEFAULT = Flag.create(
+    NELE, "androidx.default", "Use androidx. support lib by default",
+    "Enable the use of androidx dependencies by default when the old support library is not present",
+    true);
+
   private static final FlagGroup ASSISTANT = new FlagGroup(FLAGS, "assistant", "Assistants");
   public static final Flag<Boolean> CONNECTION_ASSISTANT_ENABLED = Flag.create(
     ASSISTANT, "connection.enabled", "Enable the connection assistant",
@@ -231,7 +246,7 @@ public final class StudioFlags {
   private static final FlagGroup NDK = new FlagGroup(FLAGS, "ndk", "Native code features");
   public static final Flag<Boolean> CMAKE_ENABLE_FEATURES_FROM_CLION = Flag
     .create(NDK, "ndk.cmakeclionfeatures", "Enable CMake language support from CLion",
-            "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", false);
+            "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
 
   private StudioFlags() {
   }

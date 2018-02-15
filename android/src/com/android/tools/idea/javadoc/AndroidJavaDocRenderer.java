@@ -102,14 +102,14 @@ public class AndroidJavaDocRenderer {
   @Nullable
   public static String render(@NotNull Module module, @Nullable Configuration configuration, @NotNull ResourceUrl url) {
     ResourceValueRenderer renderer = ResourceValueRenderer.create(url.type, module, configuration);
-    boolean framework = url.framework;
+    boolean framework = url.isFramework();
     if (renderer == null || framework && renderer.getFrameworkResources() == null || !framework && renderer.getAppResources() == null) {
       return null;
     }
 
     String valueDoc = renderer.render(url);
-    if (url.theme) {
-      String attrDoc = renderAttributeDoc(module, configuration, (url.framework ? SdkConstants.ANDROID_NS_NAME_PREFIX : "") + url.name);
+    if (url.isTheme()) {
+      String attrDoc = renderAttributeDoc(module, configuration, (url.isFramework() ? SdkConstants.ANDROID_NS_NAME_PREFIX : "") + url.name);
       if (valueDoc == null) {
         return attrDoc;
       }
@@ -289,7 +289,7 @@ public class AndroidJavaDocRenderer {
     private List<ItemInfo> gatherItems(@NotNull ResourceUrl url) {
       ResourceType type = url.type;
       String resourceName = url.name;
-      boolean framework = url.framework;
+      boolean framework = url.isFramework();
 
       if (framework) {
         List<ItemInfo> results = new ArrayList<>();
@@ -435,7 +435,7 @@ public class AndroidJavaDocRenderer {
           folderName = source.getFile().getParentFile().getName();
         }
         String folder = renderFolderName(folderName);
-        ResourceValue value = item.getResourceValue(isFramework);
+        ResourceValue value = item.getResourceValue();
         ItemInfo info = new ItemInfo(value, item.getConfiguration(), folder, flavor, rank, mask);
         results.add(info);
       }
@@ -689,7 +689,7 @@ public class AndroidJavaDocRenderer {
 
       if (value != null) {
         boolean found = false;
-        if (url.theme) {
+        if (url.isTheme()) {
           // If it's a theme attribute such as ?foo, it might resolve to a value we can
           // preview in a better way, such as a drawable, color or array. In that case,
           // look at the resolution chain and figure out the type of the resolved value,
@@ -726,7 +726,7 @@ public class AndroidJavaDocRenderer {
                 String value2 = rv.getValue();
                 if (value2 != null) {
                   ResourceUrl resourceUrl = ResourceUrl.parse(value2, rv.isFramework());
-                  if (resourceUrl != null && !resourceUrl.theme) {
+                  if (resourceUrl != null && !resourceUrl.isTheme()) {
                     ResourceValueRenderer renderer = create(resourceUrl.type, myModule, myConfiguration);
                     if (renderer != null && renderer.getClass() != this.getClass()) {
                       found = true;
@@ -774,18 +774,25 @@ public class AndroidJavaDocRenderer {
       while (styleValue != null) {
         // Make sure the contents for the style are always generated in the same order. Helps with testing and the
         // user will know where to find attributes.
-        ImmutableList<ItemResourceValue> values = Ordering.usingToString().immutableSortedCopy(styleValue.getValues());
+        ImmutableList<ItemResourceValue> values = Ordering.usingToString().immutableSortedCopy(styleValue.getDefinedItems());
         for (ItemResourceValue itemResourceValue : values) {
-          String name = itemResourceValue.getName();
+          String name = itemResourceValue.getAttrName();
           if (masked.contains(name)) {
             continue;
           }
           masked.add(name);
-          final ResourceValue v = styleValue.getItem(name, itemResourceValue.isFrameworkAttr());
-          String value = v == null ? null : v.getValue();
+          String value = null;
+          ResourceReference attr = itemResourceValue.getAttr();
+          if (attr != null) {
+            final ResourceValue v = styleValue.getItem(attr);
+            if (v != null) {
+              value = v.getValue();
+            }
+          }
 
           builder.addNbsps(4);
-          if (itemResourceValue.isFrameworkAttr()) {
+          if (attr != null && attr.getNamespace() == ResourceNamespace.ANDROID) {
+            // TODO: namespaces
             builder.add(PREFIX_ANDROID);
           }
           builder.addBold(name).add(" = ").add(value == null ? "null" : value);
@@ -799,18 +806,18 @@ public class AndroidJavaDocRenderer {
                   lookupChain.clear();
                 }
                 ResourceValue resourceValue;
-                if (resolvedUrl.theme) {
-                  resourceValue = resolver.findItemInTheme(resolvedUrl.name, resolvedUrl.framework);
+                if (resolvedUrl.isTheme()) {
+                  resourceValue = resolver.findItemInTheme(resolvedUrl.name, resolvedUrl.isFramework());
                 }
                 else {
-                  resourceValue = resolver.findResValue(resolvedUrl.toString(), resolvedUrl.framework);
+                  resourceValue = resolver.findResValue(resolvedUrl.toString(), resolvedUrl.isFramework());
                 }
                 if (resourceValue == null || resourceValue.getValue() == null) {
                   break;
                 }
                 url = resolvedUrl;
                 value = resourceValue.getValue();
-                resolvedUrl = ResourceUrl.parse(value, resolvedUrl.framework);
+                resolvedUrl = ResourceUrl.parse(value, resolvedUrl.isFramework());
                 if (count++ == MAX_RESOURCE_INDIRECTION) { // prevent deep recursion (likely an invalid resource cycle)
                   break;
                 }
@@ -857,7 +864,7 @@ public class AndroidJavaDocRenderer {
   @NotNull
   private static ResourceReference urlToReference(ResourceUrl url) {
     // TODO: namespaces.
-    return new ResourceReference(url.type, url.name, url.framework);
+    return new ResourceReference(url.type, url.name, url.isFramework());
   }
 
   private static class ArrayRenderer extends ResourceValueRenderer {

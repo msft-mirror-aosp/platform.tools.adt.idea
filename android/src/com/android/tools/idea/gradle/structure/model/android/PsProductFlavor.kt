@@ -15,7 +15,6 @@ package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.builder.model.ProductFlavor
 import com.android.tools.idea.gradle.dsl.api.android.ProductFlavorModel
-import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.structure.model.PsChildModel
 import com.android.tools.idea.gradle.structure.model.helpers.*
@@ -207,30 +206,27 @@ open class PsProductFlavor(
     val proGuardFiles: ModelListProperty<PsProductFlavor, File> = listProperty(
       "Proguard Files",
       getResolvedValue = { proguardFiles.toList() },
-      getParsedCollection = { proguardFiles().asParsedListValue(ResolvedPropertyModel::asFile, { setValue(it.toString()) }) },
-      getParsedRawValue = { proguardFiles().dslText() },
-      clearParsedValue = { proguardFiles().delete() },
-      setParsedRawValue = { proguardFiles().setDslText(it) },
+      getParsedProperty = { proguardFiles() },
+      itemValueGetter = { asFile() },
+      itemValueSetter = { setValue(it.toString()) },
       parse = { parseFile(it) }
     )
 
     val manifestPlaceholders: ModelMapProperty<PsProductFlavor, String> = mapProperty(
       "Manifest Placeholders",
       getResolvedValue = { manifestPlaceholders.mapValues { it.value.toString() } },
-      getParsedCollection = { manifestPlaceholders().asParsedMapValue(ResolvedPropertyModel::asString, { setValue(it) }) },
-      getParsedRawValue = { manifestPlaceholders().dslText() },
-      clearParsedValue = { manifestPlaceholders().delete() },
-      setParsedRawValue = { manifestPlaceholders().setDslText(it) },
+      getParsedProperty = { manifestPlaceholders() },
+      itemValueGetter = { asString() },
+      itemValueSetter = { setValue(it) },
       parse = { parseString(it) }
     )
 
     val testInstrumentationRunnerArguments: ModelMapProperty<PsProductFlavor, String> = mapProperty(
       "Test Instrumentation Runner Arguments",
       getResolvedValue = { testInstrumentationRunnerArguments },
-      getParsedCollection = { testInstrumentationRunnerArguments().asParsedMapValue(ResolvedPropertyModel::asString, { setValue(it) }) },
-      getParsedRawValue = { testInstrumentationRunnerArguments().dslText() },
-      clearParsedValue = { testInstrumentationRunnerArguments().delete() },
-      setParsedRawValue = { testInstrumentationRunnerArguments().setDslText(it) },
+      getParsedProperty = { testInstrumentationRunnerArguments() },
+      itemValueGetter = { asString() },
+      itemValueSetter = { setValue(it) },
       parse = { parseString(it) }
     )
   }

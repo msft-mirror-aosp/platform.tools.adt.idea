@@ -13,16 +13,30 @@
 // limitations under the License.
 package com.android.tools.profilers.energy
 
+import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.EnergyProfiler
 import com.android.tools.profiler.proto.EnergyProfiler.*
 import com.android.tools.profiler.proto.EnergyServiceGrpc
 import io.grpc.stub.StreamObserver
-import java.util.*
 import java.util.stream.Collectors
+import kotlin.collections.ArrayList
 
-class FakeEnergyService(val dataList: List<EnergySample> = ArrayList()) : EnergyServiceGrpc.EnergyServiceImplBase() {
+class FakeEnergyService(val dataList: List<EnergySample> = ArrayList(), val eventList: List<EnergyEvent> = ArrayList())
+  : EnergyServiceGrpc.EnergyServiceImplBase() {
 
-  private var myEvents: List<EnergyProfiler.EnergyEvent> = ArrayList()
+  lateinit var session: Common.Session
+
+  override fun startMonitoringApp(request: EnergyStartRequest, responseObserver: StreamObserver<EnergyStartResponse>) {
+    session = request.session
+    responseObserver.onNext(EnergyStartResponse.getDefaultInstance())
+    responseObserver.onCompleted()
+  }
+
+  override fun stopMonitoringApp(request: EnergyStopRequest, responseObserver: StreamObserver<EnergyStopResponse>) {
+    session = request.session
+    responseObserver.onNext(EnergyStopResponse.getDefaultInstance())
+    responseObserver.onCompleted()
+  }
 
   override fun getData(request: EnergyRequest, responseObserver: StreamObserver<EnergyDataResponse>) {
     val listStream = dataList.stream().filter({d -> d.timestamp >= request.startTimestamp && d.timestamp < request.endTimestamp })
@@ -33,12 +47,8 @@ class FakeEnergyService(val dataList: List<EnergySample> = ArrayList()) : Energy
   }
 
   override fun getEvents(request: EnergyRequest, responseObserver: StreamObserver<EnergyProfiler.EnergyEventsResponse>) {
-    val response = EnergyProfiler.EnergyEventsResponse.newBuilder().addAllEvent(myEvents).build()
+    val response = EnergyProfiler.EnergyEventsResponse.newBuilder().addAllEvent(eventList).build()
     responseObserver.onNext(response)
     responseObserver.onCompleted()
-  }
-
-  fun setEvents(events: List<EnergyProfiler.EnergyEvent>) {
-    myEvents = events
   }
 }

@@ -35,7 +35,7 @@ import com.android.tools.idea.tests.gui.framework.fixture.ExecutionToolWindowFix
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.AvdManagerDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.ChooseSystemImageStepFixture.SystemImage;
-import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.NewProjectWizardFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.npw.NewProjectWizardFixture;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.containers.ContainerUtil;
 import org.fest.swing.timing.Wait;
@@ -138,14 +138,6 @@ public class InstantAppRunTest {
       .clickFinish();
 
     IdeFrameFixture ideFrame = guiTest.ideFrame();
-
-    // TODO remove the following workaround waits for the project to be set up. See http://b/72666461
-    // TODO Gradle distribution is retrieved from services.gradle.org rather than local filesystem. See http://b/72832198
-    Wait.seconds(projectSetupTime)
-      .expecting("a file to be opened")
-      .until(() -> ideFrame.getEditor().getCurrentFile() != null);
-
-    guiTest.waitForBackgroundTasks();
 
     emulator.createAVD(
       ideFrame.invokeAvdManager(),

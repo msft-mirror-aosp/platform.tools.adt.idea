@@ -133,7 +133,7 @@ public class ActionTarget extends BaseTarget {
   }
 
   @Override
-  public void mouseRelease(int x, int y, @Nullable List<Target> closestTargets) {
+  public void mouseRelease(int x, int y, @NotNull List<Target> closestTargets) {
     myComponent.getScene().getDesignSurface().getSelectionModel().setSelection(ImmutableList.of(myNlComponent));
   }
 
@@ -231,7 +231,7 @@ public class ActionTarget extends BaseTarget {
     }
 
     CurvePoints points = getCurvePoints(mySourceRect, myDestRect, transform);
-    picker.addCurveTo(this, 0, points.p1.x, points.p1.y, points.p2.x, points.p2.y, points.p3.x, points.p3.y, points.p4.x, points.p4.y, 5);
+    picker.addCurveTo(this, 0, points.p1.x, points.p1.y, points.p2.x, points.p2.y, points.p3.x, points.p3.y, points.p4.x, points.p4.y, 10);
   }
 
   @NotNull

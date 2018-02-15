@@ -21,7 +21,6 @@ import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.property.NlProperty
 import com.android.tools.idea.common.scene.Scene
 import com.android.tools.idea.common.scene.SceneComponent
-import com.android.tools.idea.naveditor.model.*
 import com.android.tools.idea.naveditor.property.NavActionsProperty
 import com.android.tools.idea.naveditor.property.NavPropertiesManager
 import com.android.tools.idea.naveditor.scene.targets.ActionTarget
@@ -29,19 +28,27 @@ import com.android.tools.idea.naveditor.surface.NavDesignSurface
 import com.google.common.collect.HashMultimap
 import com.google.common.collect.Multimap
 import com.intellij.openapi.actionSystem.*
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.ui.components.JBList
 import icons.StudioIcons
 import java.awt.Component
+import java.awt.event.ActionEvent
 import java.awt.event.MouseEvent
 
 // Open for testing only
 open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProperty>(NavActionsProperty::class.java,
-    StudioIcons.NavEditor.Properties.ACTION) {
+    StudioIcons.NavEditor.Properties.ACTION, "Add Action") {
 
-  override fun addItem(existing: NlComponent?, parents: List<NlComponent>, resourceResolver: ResourceResolver?) {
+  override fun doAddItem(existing: NlComponent?, parents: List<NlComponent>, resourceResolver: ResourceResolver?) {
     assert(parents.size == 1)
-    AddActionDialogHelper.addItem(existing, parents[0], resourceResolver, AddActionDialog.Defaults.NORMAL)
+    showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.NORMAL, existing, parents[0], resourceResolver))
+  }
+
+  @VisibleForTesting
+  fun showAndUpdateFromDialog(actionDialog: AddActionDialog) {
+    if (actionDialog.showAndGet()) {
+      actionDialog.writeUpdatedAction()
+    }
+    inspector.refresh()
   }
 
   override fun getTitle(components: List<NlComponent>, surface: NavDesignSurface?) =
@@ -54,8 +61,8 @@ open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProp
 
   override fun createCustomInspector(components: List<NlComponent>,
                                      properties: Map<String, NlProperty>,
-                                     propertiesManager: NavPropertiesManager): NavListInspectorComponent<NavActionsProperty> {
-    val inspector: NavListInspectorComponent<NavActionsProperty> = super.createCustomInspector(components, properties, propertiesManager)
+                                     propertiesManager: NavPropertiesManager): NavListInspectorComponent {
+    val inspector: NavListInspectorComponent = super.createCustomInspector(components, properties, propertiesManager)
     val scene = propertiesManager.designSurface?.scene
     if (scene != null) {
       inspector.addAttachListener { list ->
@@ -86,13 +93,14 @@ open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProp
     scene.repaint()
   }
 
-  override fun plusClicked(event: MouseEvent, parents: List<NlComponent>, resourceResolver: ResourceResolver?, surface: NavDesignSurface) {
+  override fun plusClicked(event: ActionEvent, parents: List<NlComponent>, resourceResolver: ResourceResolver?, surface: NavDesignSurface) {
     val actions: MutableList<AnAction> = getPopupActions(parents, resourceResolver, surface)
 
     val actionManager = ActionManager.getInstance()
     val popupMenu = actionManager.createActionPopupMenu("NavListInspector", DefaultActionGroup(actions))
-    val invoker: Component = event.source as? Component ?: return
-    popupMenu.component.show(invoker, event.x, event.y)
+    val mouseEvent: MouseEvent = event.source as? MouseEvent ?: return
+    val invoker: Component = mouseEvent.source as? Component ?: return
+    popupMenu.component.show(invoker, mouseEvent.x, mouseEvent.y)
   }
 
   @VisibleForTesting
@@ -102,19 +110,19 @@ open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProp
     val actions: MutableList<AnAction> = mutableListOf(
         object : AnAction("Add Action...") {
           override fun actionPerformed(e: AnActionEvent?) {
-            AddActionDialogHelper.addItem(null, parent, resourceResolver, AddActionDialog.Defaults.NORMAL)
+            showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.NORMAL, null, parent, resourceResolver))
           }
         },
         object : AnAction("Return to Source...") {
           override fun actionPerformed(e: AnActionEvent?) {
-            AddActionDialogHelper.addItem(null, parent, resourceResolver, AddActionDialog.Defaults.RETURN_TO_SOURCE)
+            showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.RETURN_TO_SOURCE, null, parent, resourceResolver))
           }
         })
     if (parent != surface.currentNavigation) {
       actions.add(Separator.getInstance())
       actions.add(object : AnAction("Add Global...") {
         override fun actionPerformed(e: AnActionEvent?) {
-          AddActionDialogHelper.addItem(null, parent, resourceResolver, AddActionDialog.Defaults.GLOBAL)
+          showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.GLOBAL, null, parent, resourceResolver))
         }
       })
     }

@@ -20,8 +20,8 @@ import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.ConfigureAndroidModuleStepFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.newProjectWizard.NewModuleWizardFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.npw.ConfigureAndroidModuleStepFixture;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
@@ -83,7 +83,6 @@ public class NewInstantAppModuleTest {
     assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // b/71515856
   @Test
   public void testCanBuildProjectWithMultipleFeatureModules() throws IOException {
     guiTest.importSimpleLocalApplication();
@@ -118,7 +117,7 @@ public class NewInstantAppModuleTest {
     assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful()).isTrue();
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // b/72887122
+
   @Test
   public void testPackageGeneratedCorrectly() throws IOException {
     guiTest.importSimpleLocalApplication();

@@ -16,7 +16,14 @@
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
 import com.android.tools.idea.gradle.structure.model.VariablesProvider
-import com.android.tools.idea.gradle.structure.model.meta.*
+import com.android.tools.idea.gradle.structure.model.meta.ModelMapProperty
+import com.android.tools.idea.gradle.structure.model.meta.ModelSimpleProperty
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
+import com.android.tools.idea.gradle.structure.model.meta.PropertyEditorFactory
+import com.intellij.util.ui.AbstractTableCellEditor
+import java.awt.Component
+import java.awt.TextField
+import javax.swing.JTable
 import javax.swing.table.DefaultTableColumnModel
 import javax.swing.table.DefaultTableModel
 import javax.swing.table.TableColumn
@@ -33,11 +40,7 @@ class MapPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelMapPrope
 ) : CollectionPropertyEditor<ModelT, ModelPropertyT, ValueT>(model, property, editor, variablesProvider),
     ModelPropertyEditor<ModelT, Map<String, ValueT>> {
 
-  private var valueToText: Map<ValueT, String>
-
   init {
-    val possibleValues = property.getKnownValues(model) ?: listOf()
-    valueToText = possibleValues.associate { it.value to it.description }
     loadValue()
   }
 
@@ -45,8 +48,45 @@ class MapPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelMapPrope
 
   override fun dispose() = Unit
 
-  override fun getRowElement(rowIndex: Int): ModelPropertyCore<Unit, ValueT> =
-    property.getEditableValues(model).toList()[rowIndex].second
+  override fun getValueAt(row: Int): ParsedValue<ValueT> {
+    val entryKey = keyAt(row)
+    val entryValue = if (entryKey == "") modelValueAt(row) else property.getEditableValues(model)[entryKey]?.getParsedValue(Unit)
+    return entryValue ?: ParsedValue.NotSet()
+  }
+
+  override fun setValueAt(row: Int, value: ParsedValue<ValueT>) {
+    val entryKey = keyAt(row)
+    // If entryKey == "", we don't need to store the value in the property. It is, however, automatically stored in the table model and
+    // it will be transferred to the property when the key value is set.
+    if (entryKey != "") {
+      (property.getEditableValues(model)[entryKey] ?: property.addEntry(model, entryKey)).setParsedValue(Unit, value)
+    }
+  }
+
+  override fun addItem() {
+    tableModel?.let { tableModel ->
+      val index = tableModel.rowCount
+      tableModel.addRow(arrayOf("", ParsedValue.NotSet<ValueT>().toTableModelValue()))
+      table.selectionModel.setSelectionInterval(index, index)
+      table.editCellAt(index, 0)
+    }
+  }
+
+  override fun removeItem() {
+    tableModel?.let { tableModel ->
+      table.removeEditor()
+      val selection = table.selectionModel
+      for (index in selection.maxSelectionIndex downTo selection.minSelectionIndex) {
+        if (table.selectionModel.isSelectedIndex(index)) {
+          val key = (tableModel.getValueAt(index, 0) as String?).orEmpty()
+          if (key != "") {
+            property.deleteEntry(model, key)
+            tableModel.removeRow(index)
+          }
+        }
+      }
+    }
+  }
 
   override fun createTableModel(): DefaultTableModel {
     val tableModel = DefaultTableModel()
@@ -54,14 +94,17 @@ class MapPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelMapPrope
     tableModel.addColumn("value")
     val value = property.getEditableValues(model)
     for ((k, v) in value.entries) {
-      tableModel.addRow(arrayOf(k, v.getParsedValue(Unit).getText(valueToText)))
+      tableModel.addRow(arrayOf(k, v.getParsedValue(Unit).toTableModelValue()))
     }
     return tableModel
   }
 
   override fun createColumnModel(): TableColumnModel {
     return DefaultTableColumnModel().apply {
-      addColumn(TableColumn(0, 50).apply { headerValue = "K" })
+      addColumn(TableColumn(0, 50).apply {
+        headerValue = "K"
+        cellEditor = MyKeyCellEditor()
+      })
       addColumn(TableColumn(1).apply {
         headerValue = "V"
         cellEditor = MyCellEditor()
@@ -71,6 +114,59 @@ class MapPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelMapPrope
 
   override fun getValueText(): String = throw UnsupportedOperationException()
   override fun getValue(): ParsedValue<Map<String, ValueT>> = throw UnsupportedOperationException()
+
+  private fun keyAt(row: Int) = (table.model.getValueAt(row, 0) as? String).orEmpty()
+
+  private fun modelValueAt(row: Int) =
+    @Suppress("UNCHECKED_CAST")  // If it is of type Value, then generic type arguments are correct.
+    (table.model.getValueAt(row, 1) as? CollectionPropertyEditor<ModelT, ModelPropertyT, ValueT>.Value)?.value
+
+  inner class MyKeyCellEditor : AbstractTableCellEditor() {
+    private var currentRow: Int = -1
+    private var currentKey: String? = null
+    private var lastEditor: TextField? = null
+
+    override fun getTableCellEditorComponent(table: JTable?, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
+      currentRow = row
+      currentKey = keyAt(row)
+      lastEditor = TextField().apply {
+        text = currentKey
+      }
+      return lastEditor
+    }
+
+    override fun stopCellEditing(): Boolean {
+      return super.stopCellEditing().also {
+        if (it) {
+          val oldKey = currentKey!!
+          val newKey = lastEditor!!.text!!
+          when {
+            oldKey == "" -> {
+              val addedEntry = property.addEntry(model, newKey)
+              @Suppress("UNCHECKED_CAST")
+              val modelValue: Value? =
+                table.model.getValueAt(currentRow, 1) as? CollectionPropertyEditor<ModelT, ModelPropertyT, ValueT>.Value
+              if (modelValue != null) {
+                addedEntry.setParsedValue(Unit, modelValue.value)
+              }
+            }
+            newKey == "" -> property.deleteEntry(model, oldKey)
+            else -> property.changeEntryKey(model, oldKey, newKey)
+          }
+          currentRow = -1
+          currentKey = null
+        }
+      }
+    }
+
+    override fun cancelCellEditing() {
+      currentRow = -1
+      currentKey = null
+      super.cancelCellEditing()
+    }
+
+    override fun getCellEditorValue(): Any = lastEditor!!.text
+  }
 }
 
 fun <ModelT, ValueT : Any, ModelPropertyT : ModelMapProperty<ModelT, ValueT>> mapPropertyEditor(

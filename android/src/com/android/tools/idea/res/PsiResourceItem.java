@@ -94,8 +94,7 @@ class PsiResourceItem extends ResourceItem {
     FolderConfiguration configuration = FolderConfiguration.getConfigForFolder(name);
     int index = name.indexOf('-');
     String qualifiers = index == -1 ? "" : name.substring(index + 1);
-    source = new PsiResourceFile(myFile, Collections.<ResourceItem>singletonList(this), qualifiers, folderType,
-                                 configuration);
+    source = new PsiResourceFile(myFile, Collections.singletonList(this), qualifiers, folderType, configuration);
     setSource(source);
 
     return source;
@@ -107,7 +106,7 @@ class PsiResourceItem extends ResourceItem {
    */
   @Nullable
   @Override
-  public ResourceValue getResourceValue(boolean isFrameworks) {
+  public ResourceValue getResourceValue() {
     if (mResourceValue == null) {
       //noinspection VariableNotUsedInsideIf
       if (myTag == null) {
@@ -115,17 +114,17 @@ class PsiResourceItem extends ResourceItem {
         ResourceType type = getType();
         Density density = type == ResourceType.DRAWABLE || type == ResourceType.MIPMAP ? getFolderDensity() : null;
         if (density != null) {
-          mResourceValue = new DensityBasedResourceValue(getReferenceToSelf(isFrameworks),
+          mResourceValue = new DensityBasedResourceValue(getReferenceToSelf(),
                                                          getSource().getFile().getAbsolutePath(),
                                                          density,
                                                          null);
         } else {
-          mResourceValue = new ResourceValue(getReferenceToSelf(isFrameworks),
+          mResourceValue = new ResourceValue(getReferenceToSelf(),
                                              getSource().getFile().getAbsolutePath(),
                                              null);
         }
       } else {
-        mResourceValue = parseXmlToResourceValue(isFrameworks);
+        mResourceValue = parseXmlToResourceValue();
       }
     }
 
@@ -145,7 +144,7 @@ class PsiResourceItem extends ResourceItem {
   }
 
   @Nullable
-  private ResourceValue parseXmlToResourceValue(boolean isFrameworks) {
+  private ResourceValue parseXmlToResourceValue() {
     assert myTag != null;
 
     if (!myTag.isValid()) {
@@ -156,16 +155,16 @@ class PsiResourceItem extends ResourceItem {
     switch (getType()) {
       case STYLE:
         String parent = getAttributeValue(myTag, ATTR_PARENT);
-        value = parseStyleValue(new StyleResourceValue(getReferenceToSelf(isFrameworks), parent, null));
+        value = parseStyleValue(new StyleResourceValue(getReferenceToSelf(), parent, null));
         break;
       case DECLARE_STYLEABLE:
-        value = parseDeclareStyleable(new DeclareStyleableResourceValue(getReferenceToSelf(isFrameworks), null, null));
+        value = parseDeclareStyleable(new DeclareStyleableResourceValue(getReferenceToSelf(), null, null));
         break;
       case ATTR:
-        value = parseAttrValue(new AttrResourceValue(getReferenceToSelf(isFrameworks), null));
+        value = parseAttrValue(new AttrResourceValue(getReferenceToSelf(), null));
         break;
       case ARRAY:
-          value = parseArrayValue(new ArrayResourceValue(getReferenceToSelf(isFrameworks), null) {
+          value = parseArrayValue(new ArrayResourceValue(getReferenceToSelf(), null) {
           // Allow the user to specify a specific element to use via tools:index
           @Override
           protected int getDefaultIndex() {
@@ -178,7 +177,7 @@ class PsiResourceItem extends ResourceItem {
         });
         break;
       case PLURALS:
-        value = parsePluralsValue(new PluralsResourceValue(getReferenceToSelf(isFrameworks), null, null) {
+        value = parsePluralsValue(new PluralsResourceValue(getReferenceToSelf(), null, null) {
           // Allow the user to specify a specific quantity to use via tools:quantity
           @Override
           public String getValue() {
@@ -194,16 +193,26 @@ class PsiResourceItem extends ResourceItem {
         });
         break;
       case STRING:
-        value = parseTextValue(new PsiTextResourceValue(getReferenceToSelf(isFrameworks), null, null, null));
+        value = parseTextValue(new PsiTextResourceValue(getReferenceToSelf(), null, null, null));
         break;
       default:
-        value = parseValue(new ResourceValue(getReferenceToSelf(isFrameworks), null));
+        value = parseValue(new ResourceValue(getReferenceToSelf(), null));
         break;
     }
 
-    // TODO(b/72688160, namespaces): precompute this to avoid the read lock.
-    value.setNamespaceLookup(prefix -> ReadAction.compute(() -> StringUtil.nullize(myTag.getNamespaceByPrefix(prefix))));
+    value.setNamespaceLookup(getNamespaceResolver(myTag));
     return value;
+  }
+
+  @NotNull
+  private static ResourceNamespace.Resolver getNamespaceResolver(XmlTag tag) {
+    // TODO(b/72688160, namespaces): precompute this to avoid the read lock.
+    return prefix -> ReadAction.compute(() -> {
+      if (!tag.isValid()) {
+        return null;
+      }
+      return StringUtil.nullize(tag.getNamespaceByPrefix(prefix));
+    });
   }
 
   @Nullable
@@ -240,16 +249,10 @@ class PsiResourceItem extends ResourceItem {
     for (XmlTag child : myTag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (!StringUtil.isEmpty(name)) {
-        // is the attribute in the android namespace?
-        boolean isFrameworkAttr = styleValue.isFramework();
-        if (name.startsWith(ANDROID_NS_NAME_PREFIX)) {
-          name = name.substring(ANDROID_NS_NAME_PREFIX_LEN);
-          isFrameworkAttr = true;
-        }
-
         String value = ValueXmlHelper.unescapeResourceString(ResourceHelper.getTextContent(child), true, true);
-        ItemResourceValue resValue = new ItemResourceValue(name, isFrameworkAttr, value, styleValue.isFramework(), styleValue.getLibraryName());
-        styleValue.addItem(resValue);
+        ItemResourceValue itemValue = new ItemResourceValue(styleValue.getNamespace(), name, value, styleValue.getLibraryName());
+        itemValue.setNamespaceLookup(getNamespaceResolver(child));
+        styleValue.addItem(itemValue);
       }
     }
 

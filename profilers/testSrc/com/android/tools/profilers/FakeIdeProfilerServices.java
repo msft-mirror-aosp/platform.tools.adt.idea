@@ -59,6 +59,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myEnergyProfilerEnabled = false;
 
   /**
+   * Can toggle for tests via {@link #enableExportTrace(boolean)}, but each test starts with this defaulted to false.
+   */
+  private boolean myExportCpuTraceEnabled = false;
+
+  /**
    * Toggle for faking jvmti agent support in tests.
    */
   private boolean myJvmtiAgentEnabled = false;
@@ -94,9 +99,15 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myShouldParseLongTraces = false;
 
   /**
-   * Can toggle for tests via {@link #enableSimplePerf(boolean)}, but each test starts with this defaulted to false.
+   * Toggle for faking sessions UI support in tests.
    */
-  private boolean mySimplePerfEnabled = false;
+  private boolean mySessionsViewEnabled = true;
+
+  /**
+   * Can toggle for tests via {@link #enableSimpleperf(boolean)}, but each test starts with this defaulted to false.
+   */
+  private boolean mySimpleperfEnabled = false;
+
 
   /**
    * List of custom CPU profiling configurations.
@@ -189,6 +200,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isExportCpuTraceEnabled() {
+        return myExportCpuTraceEnabled;
+      }
+
+      @Override
       public boolean isJniReferenceTrackingEnabled() { return myIsJniReferenceTrackingEnabled; }
 
       @Override
@@ -222,8 +238,13 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
-      public boolean isSimplePerfEnabled() {
-        return mySimplePerfEnabled;
+      public boolean isSessionsEnabled() {
+        return mySessionsViewEnabled;
+      }
+
+      @Override
+      public boolean isSimpleperfEnabled() {
+        return mySimpleperfEnabled;
       }
     };
   }
@@ -343,7 +364,15 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
     myRequestPayloadEnabled = enabled;
   }
 
-  public void enableSimplePerf(boolean enabled) {
-    mySimplePerfEnabled = enabled;
+  public void enableSessionsView(boolean enabled) {
+    mySessionsViewEnabled = enabled;
+  }
+
+  public void enableSimpleperf(boolean enabled) {
+    mySimpleperfEnabled = enabled;
+  }
+
+  public void enableExportTrace(boolean enabled) {
+    myExportCpuTraceEnabled = enabled;
   }
 }
