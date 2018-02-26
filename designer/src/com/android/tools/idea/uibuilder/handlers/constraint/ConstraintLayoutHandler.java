@@ -17,7 +17,6 @@
 package com.android.tools.idea.uibuilder.handlers.constraint;
 
 import com.android.ide.common.rendering.api.ViewInfo;
-import com.android.support.AndroidxNameUtils;
 import com.android.tools.idea.common.analytics.NlUsageTracker;
 import com.android.tools.idea.common.analytics.NlUsageTrackerManager;
 import com.android.tools.idea.common.api.DragType;
@@ -28,6 +27,7 @@ import com.android.tools.idea.common.scene.ComponentProvider;
 import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.common.scene.SceneComponent;
 import com.android.tools.idea.common.scene.target.ActionTarget;
+import com.android.tools.idea.common.scene.target.AnchorTarget;
 import com.android.tools.idea.common.scene.target.LassoTarget;
 import com.android.tools.idea.common.scene.target.Target;
 import com.android.tools.idea.common.surface.DesignSurface;
@@ -114,7 +114,6 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
 
   // This is used to efficiently test if they are horizontal or vertical.
   private static HashSet<String> ourHorizontalBarriers = new HashSet<>(Arrays.asList(GRAVITY_VALUE_TOP, GRAVITY_VALUE_BOTTOM));
-  private ArrayList<ViewAction> myActions = new ArrayList<>();
 
   /**
    * Base constructor
@@ -175,8 +174,6 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
 
   @Override
   public void addToolbarActions(@NotNull List<ViewAction> actions) {
-    myActions.clear();
-
     // noinspection unchecked
     actions.add(new NestedViewActionMenu("View Options", StudioIcons.Common.VISIBILITY_INLINE, Lists.<List<ViewAction>>newArrayList(
       Lists.newArrayList(
@@ -325,30 +322,6 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
   }
 
   /**
-   * This updates what is grayed out
-   *
-   * @param selection
-   */
-  private void updateActions(List<NlComponent> selection) {
-    if (myActions == null) {
-      return;
-    }
-    for (ViewAction action : myActions) {
-      if (action instanceof Enableable) {
-        Enableable e = (Enableable)action;
-        e.enable(selection);
-      }
-    }
-
-    for (ViewAction action : ConstraintViewActions.ALL_POPUP_ACTIONS) {
-      if (action instanceof Enableable) {
-        Enableable e = (Enableable)action;
-        e.enable(selection);
-      }
-    }
-  }
-
-  /**
    * Return a new ConstraintInteraction instance to handle a mouse interaction
    *
    * @param screenView the associated screen view
@@ -367,10 +340,10 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
 
     return ImmutableList.of(
       new LassoTarget(),
-      new AnchorTarget(AnchorTarget.Type.LEFT, false),
-      new AnchorTarget(AnchorTarget.Type.TOP, false),
-      new AnchorTarget(AnchorTarget.Type.RIGHT, false),
-      new AnchorTarget(AnchorTarget.Type.BOTTOM, false)
+      new ConstraintAnchorTarget(AnchorTarget.Type.LEFT, false),
+      new ConstraintAnchorTarget(AnchorTarget.Type.TOP, false),
+      new ConstraintAnchorTarget(AnchorTarget.Type.RIGHT, false),
+      new ConstraintAnchorTarget(AnchorTarget.Type.BOTTOM, false)
     );
   }
 
@@ -421,10 +394,10 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
       new ConstraintResizeTarget(ResizeBaseTarget.Type.LEFT_BOTTOM),
       new ConstraintResizeTarget(ResizeBaseTarget.Type.RIGHT_TOP),
       new ConstraintResizeTarget(ResizeBaseTarget.Type.RIGHT_BOTTOM),
-      new AnchorTarget(AnchorTarget.Type.LEFT, true),
-      new AnchorTarget(AnchorTarget.Type.TOP, true),
-      new AnchorTarget(AnchorTarget.Type.RIGHT, true),
-      new AnchorTarget(AnchorTarget.Type.BOTTOM, true)
+      new ConstraintAnchorTarget(AnchorTarget.Type.LEFT, true),
+      new ConstraintAnchorTarget(AnchorTarget.Type.TOP, true),
+      new ConstraintAnchorTarget(AnchorTarget.Type.RIGHT, true),
+      new ConstraintAnchorTarget(AnchorTarget.Type.BOTTOM, true)
     );
 
     ActionTarget previousAction = new ClearConstraintsTarget(null);
@@ -436,7 +409,7 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
       baseline = info.getBaseLine();
     }
     if (baseline > 0) {
-      listBuilder.add(new AnchorTarget(AnchorTarget.Type.BASELINE, true));
+      listBuilder.add(new ConstraintAnchorTarget(AnchorTarget.Type.BASELINE, true));
       ActionTarget baselineActionTarget =
         new ActionTarget(previousAction, BASELINE_ICON, (SceneComponent c) -> c.setShowBaseline(!c.canShowBaseline())) {
           @NotNull
@@ -495,21 +468,6 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
   @Override
   public boolean handlesPainting() {
     return true;
-  }
-
-  /**
-   * Paint the component and its children on the given context
-   *
-   * @param gc         graphics context
-   * @param screenView the current screenview
-   * @param component  the component to draw
-   * @return true to indicate that we will need to be repainted
-   */
-  @Override
-  public boolean drawGroup(@NotNull Graphics2D gc, @NotNull ScreenView screenView,
-                           @NotNull NlComponent component) {
-    updateActions(screenView.getSelectionModel().getSelection());
-    return false;
   }
 
   private static class ToggleAutoConnectAction extends ToggleViewAction implements Enableable {
@@ -1077,7 +1035,7 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
         .logAction(LayoutEditorEvent.LayoutEditorEventType.ALIGN);
       // noinspection AssignmentToMethodParameter
       modifiers &= InputEvent.CTRL_MASK;
-      Scout.arrangeWidgets(myActionType, selectedChildren, modifiers == 0 || ourAutoConnect);
+      Scout.arrangeWidgetsAndCommit(myActionType, selectedChildren, modifiers == 0 || ourAutoConnect);
       ensureLayersAreShown(editor, 1000);
     }
 
@@ -1289,6 +1247,10 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
       }
     }
     return component.getNlComponent();
+  }
+
+  public static boolean isAutoconnectOn() {
+    return PropertiesComponent.getInstance().getBoolean(AUTO_CONNECT_PREF_KEY, false);
   }
 
   private static class ConstraintViewActions {

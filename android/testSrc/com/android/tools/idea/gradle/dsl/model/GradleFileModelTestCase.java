@@ -24,6 +24,7 @@ import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNullableValue;
 import com.android.tools.idea.gradle.dsl.api.values.GradleValue;
 import com.android.tools.idea.gradle.dsl.model.values.GradleValueImpl;
+import com.android.tools.idea.sdk.IdeSdks;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.ide.highlighter.ModuleFileType;
 import com.intellij.openapi.application.ApplicationManager;
@@ -71,6 +72,7 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
   @Override
   protected void setUp() throws Exception {
     super.setUp();
+    IdeSdks.removeJdksOn(getTestRootDisposable());
 
     String basePath = myProject.getBasePath();
     assertNotNull(basePath);
@@ -435,6 +437,16 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
     assertEquals(name, model.getName());
   }
 
+  public static void verifyListProperty(GradlePropertyModel model,
+                                        List<Object> expectedValues,
+                                        PropertyType propertyType,
+                                        int dependencies,
+                                        String name,
+                                        String fullName) {
+    verifyListProperty(model, expectedValues, propertyType, dependencies, name);
+    assertEquals(fullName, model.getFullyQualifiedName());
+  }
+
   public static void verifyListProperty(@NotNull String message,
                                         @Nullable GradlePropertyModel model,
                                         @NotNull List<Object> expectedValues,
@@ -450,6 +462,14 @@ public abstract class GradleFileModelTestCase extends PlatformTestCase {
     }
   }
 
+  public static void verifyMapProperty(@Nullable GradlePropertyModel model,
+                                       @NotNull Map<String, Object> expectedValues,
+                                       @NotNull String name,
+                                       @NotNull String fullName) {
+    verifyMapProperty(model, expectedValues);
+    assertEquals(name, model.getName());
+    assertEquals(fullName, model.getFullyQualifiedName());
+  }
 
   public static void verifyMapProperty(@Nullable GradlePropertyModel model,
                                        @NotNull Map<String, Object> expectedValues) {

@@ -40,6 +40,7 @@ import com.android.tools.idea.gradle.dsl.parser.build.SubProjectsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
@@ -205,7 +206,7 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
     if (getValues(appliedPlugins()).contains(plugin.trim())) {
       return this;
     }
-    GradleDslExpressionMap applyMap = new GradleDslExpressionMap(myGradleDslFile, APPLY_BLOCK_NAME);
+    GradleDslExpressionMap applyMap = new GradleDslExpressionMap(myGradleDslFile, GradleNameElement.create(APPLY_BLOCK_NAME));
     applyMap.addNewLiteral(PLUGIN, plugin.trim());
     myToBeAppliedPlugins.add(applyMap);
     return this;
@@ -241,8 +242,8 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
    * <p>Returns {@code null} when experimental plugin is used as reading and updating android section is not supported for the
    * experimental dsl.</p>
    */
-  @Nullable
   @Override
+  @Nullable
   public AndroidModel android() {
     AndroidPluginInfo androidPluginInfo = AndroidPluginInfo.find(myGradleDslFile.getProject());
     if (androidPluginInfo != null && androidPluginInfo.isExperimental()) {

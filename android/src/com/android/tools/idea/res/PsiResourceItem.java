@@ -17,9 +17,9 @@ package com.android.tools.idea.res;
 
 import com.android.annotations.NonNull;
 import com.android.ide.common.rendering.api.*;
-import com.android.ide.common.res2.ResourceFile;
-import com.android.ide.common.res2.ResourceItem;
-import com.android.ide.common.res2.ValueXmlHelper;
+import com.android.ide.common.resources.ResourceFile;
+import com.android.ide.common.resources.ResourceItem;
+import com.android.ide.common.resources.ValueXmlHelper;
 import com.android.ide.common.resources.configuration.DensityQualifier;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.resources.Density;
@@ -200,19 +200,37 @@ class PsiResourceItem extends ResourceItem {
         break;
     }
 
-    value.setNamespaceLookup(getNamespaceResolver(myTag));
+    value.setNamespaceResolver(getNamespaceResolver(myTag));
     return value;
   }
 
   @NotNull
   private static ResourceNamespace.Resolver getNamespaceResolver(XmlTag tag) {
     // TODO(b/72688160, namespaces): precompute this to avoid the read lock.
-    return prefix -> ReadAction.compute(() -> {
-      if (!tag.isValid()) {
-        return null;
+    return new ResourceNamespace.Resolver() {
+      @Nullable
+      @Override
+      public String uriToPrefix(@NonNull String namespaceUri) {
+        return ReadAction.compute(() -> {
+          if (!tag.isValid()) {
+            return null;
+          }
+          return StringUtil.nullize(tag.getPrefixByNamespace(namespaceUri));
+        });
       }
-      return StringUtil.nullize(tag.getNamespaceByPrefix(prefix));
-    });
+
+      @Nullable
+      @Override
+      public String prefixToUri(@NonNull String namespacePrefix) {
+        return ReadAction.compute(() -> {
+          if (!tag.isValid()) {
+
+            return null;
+          }
+          return StringUtil.nullize(tag.getNamespaceByPrefix(namespacePrefix));
+        });
+      }
+    };
   }
 
   @Nullable
@@ -251,7 +269,7 @@ class PsiResourceItem extends ResourceItem {
       if (!StringUtil.isEmpty(name)) {
         String value = ValueXmlHelper.unescapeResourceString(ResourceHelper.getTextContent(child), true, true);
         ItemResourceValue itemValue = new ItemResourceValue(styleValue.getNamespace(), name, value, styleValue.getLibraryName());
-        itemValue.setNamespaceLookup(getNamespaceResolver(child));
+        itemValue.setNamespaceResolver(getNamespaceResolver(child));
         styleValue.addItem(itemValue);
       }
     }

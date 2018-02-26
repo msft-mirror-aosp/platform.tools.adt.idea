@@ -19,6 +19,7 @@ import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
+import com.android.tools.idea.tests.gui.framework.ScreenshotsDuringTest;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.ConfigureKotlinDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorNotificationPanelFixture;
@@ -40,6 +41,7 @@ public class ProjectWithKotlinTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
+  @Rule public final ScreenshotsDuringTest movieMaker = new ScreenshotsDuringTest();
 
   private static final String CLASS_NAME = "KotlinClass";
   private static final String KOTLIN_EXTENSION = ".kt";
@@ -155,8 +157,6 @@ public class ProjectWithKotlinTest {
     // Check app successfully builds and deploys on emulator.
     ideFrameFixture.getRunToolWindow().findContent(APP)
       .waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 60);
-
-    // b/67846310 Plugin Error: NoReadAccessException. Test will fail during tearing down.
   }
 
   private void newKotlinFileAndClass(@NotNull ProjectViewFixture.PaneFixture projectPane,

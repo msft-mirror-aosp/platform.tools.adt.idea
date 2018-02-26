@@ -18,11 +18,8 @@ package com.android.tools.idea.gradle.dsl.parser.groovy;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
-import com.android.tools.idea.gradle.dsl.parser.java.JavaVersionDslElement;
 import com.intellij.lang.ASTNode;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
@@ -35,14 +32,13 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaratio
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.*;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplicationStatement;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 
-import static com.android.tools.idea.gradle.dsl.parser.elements.BaseCompileOptionsDslElement.SOURCE_COMPATIBILITY_ATTRIBUTE_NAME;
-import static com.android.tools.idea.gradle.dsl.parser.elements.BaseCompileOptionsDslElement.TARGET_COMPATIBILITY_ATTRIBUTE_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.*;
-import static com.android.tools.idea.gradle.dsl.parser.java.LanguageLevelUtil.convertToGradleString;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mASSIGN;
 
 public class GroovyDslWriter implements GradleDslWriter {
@@ -65,7 +61,7 @@ public class GroovyDslWriter implements GradleDslWriter {
       return null; // Avoid creation of an empty block statement.
     }
 
-    String statementText = element.getName();
+    String statementText = element.getFullName();
     if (element.isBlockElement()) {
       statementText += " {\n}\n";
     }
@@ -168,6 +164,8 @@ public class GroovyDslWriter implements GradleDslWriter {
       return;
     }
 
+    maybeUpdateName(literal);
+
     GrExpression newLiteral = extractUnsavedExpression(literal);
     if (newLiteral == null) {
       return;
@@ -224,6 +222,8 @@ public class GroovyDslWriter implements GradleDslWriter {
       return;
     }
 
+    maybeUpdateName(reference);
+
     PsiElement newReference = extractUnsavedExpression(reference);
     if (newReference == null) {
       return;
@@ -272,7 +272,7 @@ public class GroovyDslWriter implements GradleDslWriter {
     }
 
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(parentPsiElement.getProject());
-    String statementText = (methodCall.getStatementName() != null ? methodCall.getStatementName() + " " : "") + methodCall.getName() + "()";
+    String statementText = (methodCall.getStatementName() != null ? methodCall.getStatementName() + " " : "") + methodCall.getFullName() + "()";
     GrStatement statement = factory.createStatementFromText(statementText);
     PsiElement addedElement = parentPsiElement.addBefore(statement, parentPsiElement.getLastChild());
 
@@ -295,6 +295,9 @@ public class GroovyDslWriter implements GradleDslWriter {
   @Override
   public void applyDslMethodCall(@NotNull GradleDslMethodCall element) {
     PsiElement psiElement = element.getPsiElement();
+
+    maybeUpdateName(element);
+
     if (psiElement instanceof GrMethodCallExpression) {
       GrMethodCallExpression methodCall = (GrMethodCallExpression)psiElement;
       GradleDslElement toBeAddedArgument = element.getToBeAddedArgument();
@@ -373,6 +376,11 @@ public class GroovyDslWriter implements GradleDslWriter {
   }
 
   @Override
+  public void applyDslExpressionList(@NotNull GradleDslExpressionList expressionList) {
+    maybeUpdateName(expressionList);
+  }
+
+  @Override
   public PsiElement createDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap) {
     if (expressionMap.getPsiElement() != null) {
       return expressionMap.getPsiElement();
@@ -418,101 +426,7 @@ public class GroovyDslWriter implements GradleDslWriter {
   }
 
   @Override
-  public PsiElement createDslJavaVersionElement(@NotNull JavaVersionDslElement element) {
-    GroovyPsiElement psiElement = ensureGroovyPsi(extractCorrectJavaVersionPsiElement(element));
-    if (psiElement != null && psiElement.isValid()) {
-      return psiElement;
-    }
-
-    GradlePropertiesDslElement parent = (GradlePropertiesDslElement)element.getParent();
-    assert parent != null;
-    PsiElement javaPsiElement = parent.create();
-    assert javaPsiElement != null;
-    ApplicationManager.getApplication().assertWriteAccessAllowed();
-    GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(javaPsiElement.getProject());
-
-    // Tries to create the new element close to targetCompatibility or sourceCompatibility, if neither of them exists, create it at the
-    // end of the file.
-    // Also, tries to copy the value from targetCompatibility or sourceCompatibility if possible to keep consistency.
-    JavaVersionDslElement anchor = null;
-
-    String name = element.getName();
-    if (SOURCE_COMPATIBILITY_ATTRIBUTE_NAME.equals(name)) {
-      anchor = parent.getPropertyElement(TARGET_COMPATIBILITY_ATTRIBUTE_NAME, JavaVersionDslElement.class);
-    }
-    else if (TARGET_COMPATIBILITY_ATTRIBUTE_NAME.equals(name)) {
-      anchor = parent.getPropertyElement(SOURCE_COMPATIBILITY_ATTRIBUTE_NAME, JavaVersionDslElement.class);
-    }
-
-    PsiElement anchorPsiElement = null;
-    String anchorText = null;
-    if (anchor != null) {
-      anchorPsiElement = anchor.getPsiElement();
-      anchorText = anchor.getVersionText();
-    }
-
-    if (anchorPsiElement == null) {
-      anchorPsiElement = javaPsiElement.getLastChild();
-    }
-
-    if (anchorText == null) {
-      anchorText = "1.6";
-    }
-
-    GrExpression newExpressionPsi;
-    GroovyPsiElement valuePsi;
-    if (element.shouldUseAssignment()) {
-      GrExpression expression = factory.createExpressionFromText(name + " = " + anchorText);
-      newExpressionPsi = (GrExpression)javaPsiElement.addBefore(expression, anchorPsiElement);
-      valuePsi = ((GrAssignmentExpression)newExpressionPsi).getRValue();
-    }
-    else {
-      GrExpression expression = factory.createExpressionFromText(name + " " + anchorText);
-      newExpressionPsi = (GrExpression)javaPsiElement.addBefore(expression, anchorPsiElement);
-      valuePsi = ((GrApplicationStatement)newExpressionPsi).getExpressionArguments()[0];
-    }
-
-    if (valuePsi instanceof GrLiteral) {
-      element.setVersionElement(new GradleDslLiteral(parent, newExpressionPsi, name, valuePsi));
-    }
-    else if (valuePsi instanceof GrReferenceExpression) {
-      element.setVersionElement(new GradleDslReference(parent, newExpressionPsi, name, valuePsi));
-    }
-    return element.getPsiElement();
-  }
-
-  @Override
-  public void applyDslJavaVersionElement(@NotNull JavaVersionDslElement element) {
-    PsiElement psiElement = extractCorrectJavaVersionPsiElement(element);
-
-    LanguageLevel newValue = element.getUnsavedValue();
-    if (newValue == null || psiElement == null) {
-      return;
-    }
-
-    String groovyString = convertToGradleString(newValue, element.getVersionText());
-    GrExpression newVersionPsi = GroovyPsiElementFactory.getInstance(psiElement.getProject()).createExpressionFromText(groovyString);
-
-    GrExpression oldVersionPsi;
-    if (element.shouldUseAssignment()) {
-      oldVersionPsi = ((GrAssignmentExpression)psiElement).getRValue();
-    }
-    else {
-      oldVersionPsi = ((GrApplicationStatement)psiElement).getExpressionArguments()[0];
-    }
-
-    assert oldVersionPsi != null;
-    oldVersionPsi.replace(newVersionPsi);
-  }
-
-  @Override
-  public void deleteDslJavaVersionElement(@NotNull JavaVersionDslElement element) {
-    PsiElement psiElement = extractCorrectJavaVersionPsiElement(element);
-    if (psiElement != null) {
-      PsiElement parent = psiElement.getParent();
-      psiElement.delete();
-      deleteIfEmpty(parent);
-      removePsiIfInvalid(element);
-    }
+  public void applyDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap) {
+    maybeUpdateName(expressionMap);
   }
 }

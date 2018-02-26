@@ -25,19 +25,20 @@ import org.junit.rules.TestName;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * JUnit rule for creating a test instance of {@link StudioProfilers} connected over a light,
+ * JUnit rule for tests that have a datastore and need to fake a connection to it.
+ *
+ * This rule creates a test instance of {@link StudioProfilers} connected over a light,
  * in-process GRPC server that reads from a mock service which provides fake data. Besides creating
  * the {@link StudioProfilers} instance, it also starts up / shuts down the test server automatically.
- *
- * Within a test, use {@link #get()} to fetch a valid {@link StudioProfilers} instance.
  */
-public final class TestGrpcService<S extends BindableService> extends ExternalResource {
+public final class TestGrpcService extends ExternalResource {
+  private final List<BindableService> myServices;
   private String myGrpcName;
-  private final S myService;
-  private final BindableService mySecondaryService;
   private Server myServer;
   private ServicePassThrough myDataStoreService;
   private File myTestFile;
@@ -46,19 +47,22 @@ public final class TestGrpcService<S extends BindableService> extends ExternalRe
   private TestName myMethodName;
   private String myTestClassName;
 
-  public TestGrpcService(Class testClazz, TestName methodName, ServicePassThrough dataStoreService, S service) {
-    this(testClazz, methodName, dataStoreService, service, null);
-  }
-
-  public TestGrpcService(Class testClazz,
+  /**
+   * @param testClass        The owning test class, used for generating a unique name for a call
+   *                         history file
+   * @param methodName       The name of the test, used for generating a unique name for a call
+   *                         history file
+   * @param dataStoreService The main datastore service under test
+   * @param services         All services that the datastore under test depends on. These services
+   *                         are usually fakes.
+   */
+  public TestGrpcService(Class testClass,
                          TestName methodName,
                          ServicePassThrough dataStoreService,
-                         S service,
-                         BindableService secondaryService) {
-    myService = service;
+                         BindableService... services) {
+    myServices = Arrays.asList(services);
     myMethodName = methodName;
-    myTestClassName = testClazz.getSimpleName();
-    mySecondaryService = secondaryService;
+    myTestClassName = testClass.getSimpleName();
     myDataStoreService = dataStoreService;
   }
 
@@ -67,9 +71,9 @@ public final class TestGrpcService<S extends BindableService> extends ExternalRe
     myRpcFile = new TestGrpcFile(File.separator + myTestClassName + File.separator + myMethodName.getMethodName());
     myGrpcName = UUID.randomUUID().toString();
     InProcessServerBuilder builder = InProcessServerBuilder.forName(myGrpcName);
-    builder.addService(ServerInterceptors.intercept(myService, new TestServerInterceptor(myRpcFile)));
-    if (mySecondaryService != null) {
-      builder.addService(ServerInterceptors.intercept(mySecondaryService, new TestServerInterceptor(myRpcFile)));
+    TestServerInterceptor interceptor = new TestServerInterceptor(myRpcFile);
+    for (BindableService service : myServices) {
+      builder.addService(ServerInterceptors.intercept(service, interceptor));
     }
     myServer = builder.build();
     myServer.start();

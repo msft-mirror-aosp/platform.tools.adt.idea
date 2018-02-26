@@ -25,10 +25,12 @@ import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.REFERENCE;
 
@@ -171,6 +173,12 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
 
   @Nullable
   @Override
+  public BigDecimal toBigDecimal() {
+    return resolveModel().toBigDecimal();
+  }
+
+  @Nullable
+  @Override
   public Boolean toBoolean() {
     return resolveModel().toBoolean();
   }
@@ -178,13 +186,26 @@ public class ResolvedPropertyModelImpl implements ResolvedPropertyModel {
   @Nullable
   @Override
   public List<GradlePropertyModel> toList() {
-    return resolveModel().toList();
+    List<GradlePropertyModel> list = resolveModel().toList();
+    if (list == null) {
+      return null;
+    }
+    return list.stream().map(GradlePropertyModel::resolve).collect(Collectors.toList());
   }
 
   @Nullable
   @Override
   public Map<String, GradlePropertyModel> toMap() {
-    return resolveModel().toMap();
+    Map<String, GradlePropertyModel> map = resolveModel().toMap();
+    if (map == null) {
+      return null;
+    }
+    return map.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().resolve()));
+  }
+
+  @Override
+  public void rename(@NotNull String name) {
+    myRealModel.rename(name);
   }
 
   @Override

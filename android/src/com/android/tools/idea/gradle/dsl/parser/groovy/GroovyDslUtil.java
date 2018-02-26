@@ -17,14 +17,13 @@ package com.android.tools.idea.gradle.dsl.parser.groovy;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
-import com.android.tools.idea.gradle.dsl.parser.java.JavaVersionDslElement;
 import com.intellij.lang.ASTNode;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyElementVisitor;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
@@ -105,7 +104,7 @@ public final class GroovyDslUtil {
     return null;
   }
 
-  private static GroovyPsiElementFactory getPsiElementFactory(@NotNull GradleDslElement element) {
+  static GroovyPsiElementFactory getPsiElementFactory(@NotNull GradleDslElement element) {
     GroovyPsiElement psiElement = ensureGroovyPsi(element.getPsiElement());
     if (psiElement == null) {
       return null;
@@ -334,7 +333,7 @@ public final class GroovyDslUtil {
     if (map.getNamedArguments().length != 0) {
       map.addAfter(GroovyPsiElementFactory.getInstance(map.getProject()).createWhiteSpace(), map.getLBrack());
       final ASTNode astNode = map.getNode();
-      astNode.addLeaf(GroovyTokenTypes.mCOMMA, ",", map.getLBrack().getNextSibling().getNode());
+      astNode.addLeaf(mCOMMA, ",", map.getLBrack().getNextSibling().getNode());
       CodeStyleManager.getInstance(map.getProject()).reformat(map);
     }
     else {
@@ -434,21 +433,6 @@ public final class GroovyDslUtil {
       return expressionList.getPsiElement();
     }
     return null;
-  }
-
-  /**
-   * Returns the correct PsiElement required to represent the JavaVersionDslElement.
-   */
-  @Nullable
-  static PsiElement extractCorrectJavaVersionPsiElement(@NotNull JavaVersionDslElement element) {
-    PsiElement psiElement = element.getPsiElement();
-    // If psiElement is an instance of GrCommandArgumentList then it only contains the version
-    // part of the element e.g ("1.6" from "sourceCompatibility 1.6").
-    // Since we need to replace both the argument and method name we need to use the parent.
-    if (psiElement instanceof GrCommandArgumentList) {
-      psiElement = psiElement.getParent();
-    }
-    return psiElement;
   }
 
   @Nullable
@@ -577,5 +561,40 @@ public final class GroovyDslUtil {
     }
 
     return added;
+  }
+
+  @Nullable
+  static PsiElement createNameElement(@NotNull GradleDslElement context, @NotNull String name) {
+    GroovyPsiElementFactory factory = getPsiElementFactory(context);
+    if (factory == null) {
+      return null;
+    }
+
+    String str = name + " = 1";
+    GrExpression expression = factory.createExpressionFromText(str);
+    assert expression instanceof GrAssignmentExpression;
+    return ((GrAssignmentExpression)expression).getLValue();
+  }
+
+  static void maybeUpdateName(@NotNull GradleDslElement element) {
+    PsiElement oldName = element.getNameElement().getNamedPsiElement();
+    String newName = element.getNameElement().getUnsavedName();
+    PsiElement newElement;
+    if (newName == null || oldName == null) {
+      return;
+    }
+    if (oldName instanceof PsiNamedElement) {
+      PsiNamedElement namedElement = (PsiNamedElement)oldName;
+      namedElement.setName(newName);
+      newElement = namedElement;
+    }
+    else {
+      PsiElement psiElement = createNameElement(element, newName);
+      if (psiElement == null) {
+        throw new IllegalStateException("Can't create new GrExpression for name element");
+      }
+      newElement = oldName.replace(psiElement);
+    }
+    element.getNameElement().commitNameChange(newElement);
   }
 }

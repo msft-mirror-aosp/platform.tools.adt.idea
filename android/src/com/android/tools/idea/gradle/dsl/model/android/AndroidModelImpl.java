@@ -18,14 +18,13 @@ package com.android.tools.idea.gradle.dsl.model.android;
 import com.android.tools.idea.gradle.dsl.api.ExternalNativeBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.*;
 import com.android.tools.idea.gradle.dsl.api.android.externalNativeBuild.AdbOptionsModel;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNullableValue;
+import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel;
 import com.android.tools.idea.gradle.dsl.parser.android.*;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.google.common.collect.ImmutableList;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -84,29 +83,8 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @NotNull
   @Override
-  public GradleNullableValue<String> buildToolsVersion() {
-    return getIntOrStringValue(BUILD_TOOLS_VERSION);
-  }
-
-  @NotNull
-  @Override
-  public AndroidModel setBuildToolsVersion(int buildToolsVersion) {
-    myDslElement.setNewLiteral(BUILD_TOOLS_VERSION, buildToolsVersion);
-    return this;
-  }
-
-  @NotNull
-  @Override
-  public AndroidModel setBuildToolsVersion(@NotNull String buildToolsVersion) {
-    myDslElement.setNewLiteral(BUILD_TOOLS_VERSION, buildToolsVersion);
-    return this;
-  }
-
-  @NotNull
-  @Override
-  public AndroidModel removeBuildToolsVersion() {
-    myDslElement.removeProperty(BUILD_TOOLS_VERSION);
-    return this;
+  public ResolvedPropertyModel buildToolsVersion() {
+    return getModelForProperty(BUILD_TOOLS_VERSION);
   }
 
   @NotNull
@@ -118,7 +96,7 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @NotNull
   @Override
-  public AndroidModel addBuildType(@NotNull String buildType) {
+  public BuildTypeModel addBuildType(@NotNull String buildType) {
     BuildTypesDslElement buildTypes = myDslElement.getPropertyElement(BUILD_TYPES_BLOCK_NAME, BuildTypesDslElement.class);
     if (buildTypes == null) {
       buildTypes = new BuildTypesDslElement(myDslElement);
@@ -127,20 +105,18 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
     BuildTypeDslElement buildTypeElement = buildTypes.getPropertyElement(buildType, BuildTypeDslElement.class);
     if (buildTypeElement == null) {
-      buildTypeElement = new BuildTypeDslElement(buildTypes, buildType);
+      buildTypeElement = new BuildTypeDslElement(buildTypes, GradleNameElement.create(buildType));
       buildTypes.setNewElement(buildType, buildTypeElement);
     }
-    return this;
+    return new BuildTypeModelImpl(buildTypeElement);
   }
 
-  @NotNull
   @Override
-  public AndroidModel removeBuildType(@NotNull String buildType) {
+  public void removeBuildType(@NotNull String buildType) {
     BuildTypesDslElement buildTypes = myDslElement.getPropertyElement(BUILD_TYPES_BLOCK_NAME, BuildTypesDslElement.class);
     if (buildTypes != null) {
       buildTypes.removeProperty(buildType);
     }
-    return this;
   }
 
   @NotNull
@@ -156,29 +132,8 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @NotNull
   @Override
-  public GradleNullableValue<String> compileSdkVersion() {
-    return getIntOrStringValue(COMPILE_SDK_VERSION);
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel setCompileSdkVersion(int compileSdkVersion) {
-    myDslElement.setNewLiteral(COMPILE_SDK_VERSION, compileSdkVersion);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel setCompileSdkVersion(@NotNull String compileSdkVersion) {
-    myDslElement.setNewLiteral(COMPILE_SDK_VERSION, compileSdkVersion);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeCompileSdkVersion() {
-    myDslElement.removeProperty(COMPILE_SDK_VERSION);
-    return this;
+  public ResolvedPropertyModel compileSdkVersion() {
+    return getModelForProperty(COMPILE_SDK_VERSION);
   }
 
   @Override
@@ -197,7 +152,7 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
   public ProductFlavorModel defaultConfig() {
     ProductFlavorDslElement defaultConfigElement = myDslElement.getPropertyElement(DEFAULT_CONFIG, ProductFlavorDslElement.class);
     if (defaultConfigElement == null) {
-      defaultConfigElement = new ProductFlavorDslElement(myDslElement, DEFAULT_CONFIG);
+      defaultConfigElement = new ProductFlavorDslElement(myDslElement, GradleNameElement.create(DEFAULT_CONFIG));
       myDslElement.setNewElement(DEFAULT_CONFIG, defaultConfigElement);
     }
     return new ProductFlavorModelImpl(defaultConfigElement);
@@ -205,22 +160,8 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @Override
   @NotNull
-  public GradleNullableValue<String> defaultPublishConfig() {
-    return myDslElement.getLiteralProperty(DEFAULT_PUBLISH_CONFIG, String.class);
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel setDefaultPublishConfig(@NotNull String defaultPublishConfig) {
-    myDslElement.setNewLiteral(DEFAULT_PUBLISH_CONFIG, defaultPublishConfig);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeDefaultPublishConfig() {
-    myDslElement.removeProperty(DEFAULT_PUBLISH_CONFIG);
-    return this;
+  public ResolvedPropertyModel defaultPublishConfig() {
+    return getModelForProperty(DEFAULT_PUBLISH_CONFIG);
   }
 
   @Override
@@ -247,57 +188,15 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
   }
 
   @Override
-  @Nullable
-  public List<GradleNotNullValue<String>> flavorDimensions() {
-    return myDslElement.getListProperty(FLAVOR_DIMENSIONS, String.class);
+  @NotNull
+  public ResolvedPropertyModel flavorDimensions() {
+    return getModelForProperty(FLAVOR_DIMENSIONS);
   }
 
   @Override
   @NotNull
-  public AndroidModel addFlavorDimension(@NotNull String flavorDimension) {
-    myDslElement.addToNewLiteralList(FLAVOR_DIMENSIONS, flavorDimension);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeFlavorDimension(@NotNull String flavorDimension) {
-    myDslElement.removeFromExpressionList(FLAVOR_DIMENSIONS, flavorDimension);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeAllFlavorDimensions() {
-    myDslElement.removeProperty(FLAVOR_DIMENSIONS);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel replaceFlavorDimension(@NotNull String oldFlavorDimension, @NotNull String newFlavorDimension) {
-    myDslElement.replaceInExpressionList(FLAVOR_DIMENSIONS, oldFlavorDimension, newFlavorDimension);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public GradleNullableValue<Boolean> generatePureSplits() {
-    return myDslElement.getLiteralProperty(GENERATE_PURE_SPLITS, Boolean.class);
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel setGeneratePureSplits(boolean generatePureSplits) {
-    myDslElement.setNewLiteral(GENERATE_PURE_SPLITS, generatePureSplits);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeGeneratePureSplits() {
-    myDslElement.removeProperty(GENERATE_PURE_SPLITS);
-    return this;
+  public ResolvedPropertyModel generatePureSplits() {
+    return getModelForProperty(GENERATE_PURE_SPLITS);
   }
 
   @Override
@@ -332,7 +231,7 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @Override
   @NotNull
-  public AndroidModel addProductFlavor(@NotNull String flavor) {
+  public ProductFlavorModel addProductFlavor(@NotNull String flavor) {
     ProductFlavorsDslElement productFlavors = myDslElement.getPropertyElement(PRODUCT_FLAVORS_BLOCK_NAME, ProductFlavorsDslElement.class);
     if (productFlavors == null) {
       productFlavors = new ProductFlavorsDslElement(myDslElement);
@@ -341,20 +240,19 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
     ProductFlavorDslElement flavorElement = productFlavors.getPropertyElement(flavor, ProductFlavorDslElement.class);
     if (flavorElement == null) {
-      flavorElement = new ProductFlavorDslElement(productFlavors, flavor);
+      GradleNameElement name = GradleNameElement.create(flavor);
+      flavorElement = new ProductFlavorDslElement(productFlavors, name);
       productFlavors.setNewElement(flavor, flavorElement);
     }
-    return this;
+    return new ProductFlavorModelImpl(flavorElement);
   }
 
   @Override
-  @NotNull
-  public AndroidModel removeProductFlavor(@NotNull String flavor) {
+  public void removeProductFlavor(@NotNull String flavor) {
     ProductFlavorsDslElement productFlavors = myDslElement.getPropertyElement(PRODUCT_FLAVORS_BLOCK_NAME, ProductFlavorsDslElement.class);
     if (productFlavors != null) {
       productFlavors.removeProperty(flavor);
     }
-    return this;
   }
 
   @Override
@@ -366,7 +264,7 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @Override
   @NotNull
-  public AndroidModel addSigningConfig(@NotNull String config) {
+  public SigningConfigModel addSigningConfig(@NotNull String config) {
     SigningConfigsDslElement signingConfigs = myDslElement.getPropertyElement(SIGNING_CONFIGS_BLOCK_NAME, SigningConfigsDslElement.class);
     if (signingConfigs == null) {
       signingConfigs = new SigningConfigsDslElement(myDslElement);
@@ -375,20 +273,19 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
     SigningConfigDslElement configElement = signingConfigs.getPropertyElement(config, SigningConfigDslElement.class);
     if (configElement == null) {
-      configElement = new SigningConfigDslElement(signingConfigs, config);
+      GradleNameElement name = GradleNameElement.create(config);
+      configElement = new SigningConfigDslElement(signingConfigs, name);
       signingConfigs.setNewElement(config, configElement);
     }
-    return this;
+    return new SigningConfigModelImpl(configElement);
   }
 
   @Override
-  @NotNull
-  public AndroidModel removeSigningConfig(@NotNull String configName) {
+  public void removeSigningConfig(@NotNull String configName) {
     SigningConfigsDslElement signingConfig = myDslElement.getPropertyElement(SIGNING_CONFIGS_BLOCK_NAME, SigningConfigsDslElement.class);
     if (signingConfig != null) {
       signingConfig.removeProperty(configName);
     }
-    return this;
   }
 
   @Override
@@ -400,7 +297,7 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @Override
   @NotNull
-  public AndroidModel addSourceSet(@NotNull String sourceSet) {
+  public SourceSetModel addSourceSet(@NotNull String sourceSet) {
     SourceSetsDslElement sourceSets = myDslElement.getPropertyElement(SOURCE_SETS_BLOCK_NAME, SourceSetsDslElement.class);
     if (sourceSets == null) {
       sourceSets = new SourceSetsDslElement(myDslElement);
@@ -409,20 +306,19 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
     SourceSetDslElement sourceSetElement = sourceSets.getPropertyElement(sourceSet, SourceSetDslElement.class);
     if (sourceSetElement == null) {
-      sourceSetElement = new SourceSetDslElement(sourceSets, sourceSet);
+      GradleNameElement name = GradleNameElement.create(sourceSet);
+      sourceSetElement = new SourceSetDslElement(sourceSets, name);
       sourceSets.setNewElement(sourceSet, sourceSetElement);
     }
-    return this;
+    return new SourceSetModelImpl(sourceSetElement);
   }
 
   @Override
-  @NotNull
-  public AndroidModel removeSourceSet(@NotNull String sourceSet) {
+  public void removeSourceSet(@NotNull String sourceSet) {
     SourceSetsDslElement sourceSets = myDslElement.getPropertyElement(SOURCE_SETS_BLOCK_NAME, SourceSetsDslElement.class);
     if (sourceSets != null) {
       sourceSets.removeProperty(sourceSet);
     }
-    return this;
   }
 
   @Override
@@ -449,41 +345,13 @@ public final class AndroidModelImpl extends GradleDslBlockModel implements Andro
 
   @Override
   @NotNull
-  public GradleNullableValue<Boolean> publishNonDefault() {
-    return myDslElement.getLiteralProperty(PUBLISH_NON_DEFAULT, Boolean.class);
+  public ResolvedPropertyModel publishNonDefault() {
+    return getModelForProperty(PUBLISH_NON_DEFAULT);
   }
 
   @Override
   @NotNull
-  public AndroidModel setPublishNonDefault(boolean publishNonDefault) {
-    myDslElement.setNewLiteral(PUBLISH_NON_DEFAULT, publishNonDefault);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removePublishNonDefault() {
-    myDslElement.removeProperty(PUBLISH_NON_DEFAULT);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public GradleNullableValue<String> resourcePrefix() {
-    return myDslElement.getLiteralProperty(RESOURCE_PREFIX, String.class);
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel setResourcePrefix(@NotNull String resourcePrefix) {
-    myDslElement.setNewLiteral(RESOURCE_PREFIX, resourcePrefix);
-    return this;
-  }
-
-  @Override
-  @NotNull
-  public AndroidModel removeResourcePrefix() {
-    myDslElement.removeProperty(RESOURCE_PREFIX);
-    return this;
+  public ResolvedPropertyModel resourcePrefix() {
+    return getModelForProperty(RESOURCE_PREFIX);
   }
 }

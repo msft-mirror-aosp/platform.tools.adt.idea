@@ -18,13 +18,13 @@ package com.android.tools.idea.gradle.structure.model.android;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel;
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
+import com.android.tools.idea.gradle.dsl.api.dependencies.ModuleDependencyModel;
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec;
 import com.android.tools.idea.gradle.structure.model.PsModule;
 import com.android.tools.idea.gradle.structure.model.PsParsedDependencies;
 import com.android.tools.idea.gradle.structure.model.PsProject;
-import com.android.tools.idea.gradle.structure.model.android.dependency.PsNewDependencyScopes;
 import com.android.tools.idea.gradle.structure.model.repositories.search.AndroidSdkRepositories;
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepository;
 import com.google.common.collect.Lists;
@@ -92,10 +92,10 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     GradleBuildModel parsedModel = getParsedModel();
     AndroidModel parsedAndroidModel = parsedModel != null ? parsedModel.android() : null;
     result.addAll(getGradleModel().getAndroidProject().getFlavorDimensions());
-    List<GradleNotNullValue<String>> parsedFlavorDimensions = (parsedAndroidModel != null) ?
-                                                              parsedAndroidModel.flavorDimensions() : null;
+    List<GradlePropertyModel> parsedFlavorDimensions = (parsedAndroidModel != null) ?
+                                                       parsedAndroidModel.flavorDimensions().toList() : null;
     if (parsedFlavorDimensions != null) {
-      result.addAll(parsedFlavorDimensions.stream().map(v -> v.value()).collect(Collectors.toList()));
+      result.addAll(parsedFlavorDimensions.stream().map(v -> v.toString()).collect(Collectors.toList()));
     }
     return result;
   }
@@ -148,6 +148,11 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
   @Nullable
   public PsLibraryAndroidDependency findLibraryDependency(@NotNull PsArtifactDependencySpec spec) {
     return getOrCreateDependencyCollection().findElement(spec);
+  }
+
+  @Nullable
+  public PsModuleAndroidDependency findModuleDependency(@NotNull String modulePath) {
+    return getOrCreateDependencyCollection().findElement(modulePath, PsModuleAndroidDependency.class);
   }
 
   @NotNull
@@ -212,7 +217,8 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     return repositories;
   }
 
-  public void addLibraryDependency(@NotNull String library, @NotNull PsNewDependencyScopes newScopes, @NotNull List<String> scopesNames) {
+  @Override
+  public void addLibraryDependency(@NotNull String library, @NotNull List<String> scopesNames) {
     // Update/reset the "parsed" model.
     addLibraryDependencyToParsedModel(scopesNames, library);
 
@@ -220,9 +226,10 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     myDependencyCollection = null;
     PsAndroidDependencyCollection dependencyCollection = getOrCreateDependencyCollection();
 
+    Set<String> configurationNames = Sets.newHashSet(scopesNames);
     List<PsAndroidArtifact> targetArtifacts = Lists.newArrayList();
     forEachVariant(variant -> variant.forEachArtifact(artifact -> {
-      if (newScopes.contains(artifact)) {
+      if (artifact.containsAnyConfigurationName(configurationNames)) {
         targetArtifacts.add(artifact);
       }
     }));
@@ -243,6 +250,37 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     setModified(true);
   }
 
+  @Override
+  public void addModuleDependency(@NotNull String modulePath, @NotNull List<String> scopesNames) {
+    // Update/reset the "parsed" model.
+    addModuleDependencyToParsedModel(scopesNames, modulePath);
+
+    // Reset dependencies.
+    myDependencyCollection = null;
+    PsAndroidDependencyCollection dependencyCollection = getOrCreateDependencyCollection();
+
+    Set<String> configurationNames = Sets.newHashSet(scopesNames);
+    List<PsAndroidArtifact> targetArtifacts = Lists.newArrayList();
+    forEachVariant(variant -> variant.forEachArtifact(artifact -> {
+      if (artifact.containsAnyConfigurationName(configurationNames)) {
+        targetArtifacts.add(artifact);
+      }
+    }));
+    assert !targetArtifacts.isEmpty();
+
+    PsParsedDependencies parsedDependencies = getParsedDependencies();
+    for (PsAndroidArtifact artifact : targetArtifacts) {
+      @Nullable ModuleDependencyModel parsedDependency = parsedDependencies.findModuleDependency(modulePath, artifact::contains);
+      if (parsedDependency != null) {
+        // TODO(solodkyy) : Revisit passing null instead of a resolved model.
+        dependencyCollection.addModuleDependency(modulePath, artifact, null, parsedDependency);
+      }
+    }
+
+    fireModuleDependencyAddedEvent(modulePath);
+    setModified(true);
+  }
+
   @NotNull
   public PsBuildType addNewBuildType(@NotNull String name) {
     return getOrCreateBuildTypeCollection().addNew(name);
@@ -256,7 +294,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     assert getParsedModel() != null;
     AndroidModel androidModel = getParsedModel().android();
     assert androidModel != null;
-    androidModel.addFlavorDimension(newName);
+    androidModel.flavorDimensions().addListValue().setValue(newName);
     setModified(true);
   }
 
@@ -264,8 +302,12 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     assert getParsedModel() != null;
     AndroidModel androidModel = getParsedModel().android();
     assert androidModel != null;
-    androidModel.removeFlavorDimension(flavorDimension);
-    setModified(true);
+
+    GradlePropertyModel model = androidModel.flavorDimensions().getListValue(flavorDimension);
+    if (model != null) {
+      model.delete();
+      setModified(true);
+    }
   }
 
   @NotNull

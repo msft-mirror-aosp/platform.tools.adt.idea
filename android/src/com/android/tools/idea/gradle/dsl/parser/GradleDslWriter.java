@@ -17,7 +17,6 @@ package com.android.tools.idea.gradle.dsl.parser;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
-import com.android.tools.idea.gradle.dsl.parser.java.JavaVersionDslElement;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 
@@ -65,13 +64,11 @@ public interface GradleDslWriter {
 
   PsiElement createDslExpressionList(@NotNull GradleDslExpressionList expressionList);
 
+  void applyDslExpressionList(@NotNull GradleDslExpressionList expressionList);
+
   PsiElement createDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap);
 
-  PsiElement createDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement);
-
-  void applyDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement);
-
-  void deleteDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement);
+  void applyDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap);
 
   class Adapter implements GradleDslWriter {
     @Override
@@ -108,15 +105,12 @@ public interface GradleDslWriter {
     public PsiElement createDslExpressionList(@NotNull GradleDslExpressionList expressionList) { return null; }
 
     @Override
+    public void applyDslExpressionList(@NotNull GradleDslExpressionList expressionList) { }
+
+    @Override
     public PsiElement createDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap) { return null; }
 
     @Override
-    public PsiElement createDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement) { return null; }
-
-    @Override
-    public void applyDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement) { }
-
-    @Override
-    public void deleteDslJavaVersionElement(@NotNull JavaVersionDslElement javaVersionDslElement) { }
+    public void applyDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap) { }
   }
 }

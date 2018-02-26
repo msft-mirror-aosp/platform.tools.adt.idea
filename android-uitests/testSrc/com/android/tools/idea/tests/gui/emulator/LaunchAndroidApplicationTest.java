@@ -16,12 +16,16 @@
 package com.android.tools.idea.tests.gui.emulator;
 
 import com.android.tools.idea.fd.InstantRunSettings;
+import com.android.tools.idea.tests.gui.debugger.DebuggerTestBase;
 import com.android.tools.idea.tests.gui.framework.*;
 import com.android.tools.idea.tests.gui.framework.fixture.*;
 import com.android.tools.idea.tests.gui.framework.fixture.avdmanager.ChooseSystemImageStepFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.BrowseSamplesWizardFixture;
+import com.android.tools.idea.tests.gui.framework.matcher.Matchers;
 import com.intellij.debugger.engine.evaluation.EvaluateException;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.wm.impl.content.BaseLabel;
+import com.intellij.openapi.wm.impl.content.ContentTabLabelFixture;
 import com.intellij.util.SystemProperties;
 import org.fest.swing.timing.Wait;
 import org.fest.swing.util.PatternTextMatcher;
@@ -31,6 +35,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static com.android.tools.idea.gradle.util.BuildMode.REBUILD;
@@ -39,7 +44,7 @@ import static com.google.common.truth.Truth.assertThat;
 @RunWith(GuiTestRunner.class)
 public class LaunchAndroidApplicationTest {
 
-  @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final GuiTestRule guiTest = new GuiTestRule().withTimeout(7, TimeUnit.MINUTES);
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
 
   private static final String APP_NAME = "app";
@@ -215,9 +220,26 @@ public class LaunchAndroidApplicationTest {
       .selectDevice(emulator.getDefaultAvdName())
       .clickOk();
 
+    // wait for both debugger tabs to be available and visible
+    ContentTabLabelFixture.find(
+      ideFrameFixture.robot(),
+      Matchers.byText(BaseLabel.class, APP_NAME),
+      EmulatorTestRule.DEFAULT_EMULATOR_WAIT_SECONDS
+    );
+    ContentTabLabelFixture.find(
+      ideFrameFixture.robot(),
+      Matchers.byText(BaseLabel.class, APP_NAME + "-java"),
+      EmulatorTestRule.DEFAULT_EMULATOR_WAIT_SECONDS
+    );
+
+    // wait for native debugger to receive a fatal signal. Use DebuggerTestBase to check for when the app has paused.
+    String[] expectedDebuggerPatterns = {
+      "Signal = (SIGABRT|SIGSEGV).*"
+    };
+    DebuggerTestBase.checkAppIsPaused(ideFrameFixture, expectedDebuggerPatterns, APP_NAME);
     // Look for text indicating a crash. Check for both SIGSEGV and SIGABRT since they are both given in some cases.
     ExecutionToolWindowFixture.ContentFixture contentWindow = ideFrameFixture.getDebugToolWindow().findContent(APP_NAME);
-    contentWindow.waitForOutput(new PatternTextMatcher(Pattern.compile(FATAL_SIGNAL_11_OR_6, Pattern.DOTALL)), 120);
+    contentWindow.waitForOutput(new PatternTextMatcher(Pattern.compile(FATAL_SIGNAL_11_OR_6, Pattern.DOTALL)), 10);
     contentWindow.stop();
   }
 
@@ -344,12 +366,10 @@ public class LaunchAndroidApplicationTest {
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
 
     ideFrameFixture
-      .waitForGradleProjectSyncToFail()
+      .waitForGradleProjectSyncToFail(Wait.seconds(20))
       .getEditor()
       .open("Application/build.gradle")
-      .select("compileSdkVersion (26)")
-      .enterText("27")
-      .select("buildToolsVersion \"(26.0.1)\"")
+      .select("buildToolsVersion \"(.*)\"")
       .enterText("27.0.3")
       .invokeAction(EditorFixture.EditorAction.SAVE);
 
@@ -359,7 +379,7 @@ public class LaunchAndroidApplicationTest {
       ideFrameFixture.waitForDialog("Android Gradle Plugin Update Recommended", 120),
       "Update");
 
-    ideFrameFixture.waitForGradleProjectSyncToFinish(Wait.seconds(60));
+    ideFrameFixture.waitForGradleProjectSyncToFinish(Wait.seconds(120));
 
     emulator.createDefaultAVD(ideFrameFixture.invokeAvdManager());
 
@@ -370,7 +390,7 @@ public class LaunchAndroidApplicationTest {
       .clickOk();
 
     ideFrameFixture.getRunToolWindow().findContent(appName)
-      .waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
+      .waitForOutput(new PatternTextMatcher(RUN_OUTPUT), EmulatorTestRule.DEFAULT_EMULATOR_WAIT_SECONDS);
   }
 
   /**

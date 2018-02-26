@@ -34,7 +34,7 @@
     <orderEntry type="module" module-name="spellchecker" />
     <orderEntry type="module" module-name="draw9patch" />
     <orderEntry type="module" module-name="manifest-merger" />
-    <orderEntry type="library" name="freemarker-2.3.20" level="project" />
+    <orderEntry type="library" name="freemarker" level="project" />
     <orderEntry type="module" module-name="images" />
     <orderEntry type="module" module-name="platform-api" />
     <orderEntry type="module" module-name="eclipse" />
@@ -85,7 +85,7 @@
     <orderEntry type="module" module-name="observable" />
     <orderEntry type="module" module-name="gradle-tooling-extension-impl" />
     <orderEntry type="module" module-name="wizard" />
-    <orderEntry type="library" name="commons-io-2.4" level="project" />
+    <orderEntry type="library" name="commons-io" level="project" />
     <orderEntry type="module" module-name="smali" />
     <orderEntry type="module" module-name="java-lib-model" />
     <orderEntry type="module" module-name="java-lib-model-builder" />
@@ -98,6 +98,5 @@
     <orderEntry type="module" module-name="apkanalyzer" />
     <orderEntry type="module" module-name="android-lang" />
     <orderEntry type="module" module-name="android-adb" />
-    <orderEntry type="module" module-name="usb-devices" />
   </component>
 </module>

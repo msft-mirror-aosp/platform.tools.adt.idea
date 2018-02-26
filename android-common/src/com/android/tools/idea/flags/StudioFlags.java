@@ -97,6 +97,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_EXPORT_CPU_TRACE = Flag.create(
     PROFILER, "cpu.export.trace", "Enable CPU trace exporting",
     "Add the option to export CPU trace files when right-clicking a CPU capture.",
+    true);
+
+  public static final Flag<Boolean> PROFILER_STARTUP_CPU_PROFILING = Flag.create(
+    PROFILER, "startup.cpu.profiling", "Enable startup CPU Profiling",
+    "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
     false);
 
   public static final Flag<Boolean> PROFILER_SHOW_THREADS_VIEW = Flag.create(
@@ -245,7 +250,7 @@ public final class StudioFlags {
 
   private static final FlagGroup NDK = new FlagGroup(FLAGS, "ndk", "Native code features");
   public static final Flag<Boolean> CMAKE_ENABLE_FEATURES_FROM_CLION = Flag
-    .create(NDK, "ndk.cmakeclionfeatures", "Enable CMake language support from CLion",
+    .create(NDK, "cmakeclionfeatures", "Enable CMake language support from CLion",
             "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
 
   private StudioFlags() {

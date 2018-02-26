@@ -15,9 +15,8 @@
  */
 package com.android.tools.idea.common.scene;
 
-import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintComponentUtilities;
+import com.android.tools.idea.common.scene.target.AnchorTarget;
 import com.android.tools.idea.common.scene.draw.DisplayList;
-import com.android.tools.idea.uibuilder.handlers.constraint.targets.AnchorTarget;
 import com.android.tools.idea.uibuilder.scene.target.ResizeBaseTarget;
 import com.android.tools.idea.common.scene.target.Target;
 
@@ -90,20 +89,20 @@ public class SceneMouseInteraction {
   }
 
   /**
-   * Simulate a click on a given anchor of the {@link SceneComponent} component
+   * Simulate a click on a given {@link AnchorTarget} of the {@link SceneComponent} component
    *
    * @param component   the component we want to click on
    * @param type        the type of anchor we want to click on
    */
   public void mouseDown(SceneComponent component, AnchorTarget.Type type) {
     if (component != null) {
-      AnchorTarget target = ConstraintComponentUtilities.getAnchorTarget(component, type);
+      AnchorTarget target = AnchorTarget.findAnchorTarget(component, type);
       mouseDown(target.getCenterX(), target.getCenterY());
     }
   }
 
   /**
-   * Simulate a click on a given anchor of the component with componentId
+   * Simulate a click on a given {@link AnchorTarget} of the component with componentId
    *
    * @param componentId the id of the component we want to click on
    * @param type        the type of anchor we want to click on
@@ -179,7 +178,7 @@ public class SceneMouseInteraction {
   }
 
   /**
-   * Simulate releasing the mouse above the given anchor of the component
+   * Simulate releasing the mouse above the given {@link AnchorTarget} of the component
    * with the given componentId
    *
    * @param componentId the id of the component we will release the mouse above
@@ -188,7 +187,7 @@ public class SceneMouseInteraction {
   public void mouseRelease(String componentId, AnchorTarget.Type type) {
     SceneComponent component = myScene.getSceneComponent(componentId);
     if (component != null) {
-      AnchorTarget target = ConstraintComponentUtilities.getAnchorTarget(component, type);
+      AnchorTarget target = AnchorTarget.findAnchorTarget(component, type);
       float x = target.getCenterX();
       float y = target.getCenterY();
       mouseRelease(x, y);

@@ -96,8 +96,7 @@ public class NlEditorTest {
   public void basicLayoutEdit() throws Exception {
     NlEditorFixture editorFixture = guiTest.importSimpleLocalApplication()
       .getEditor()
-      // TODO: once cr/181207315 is submitted, reformat Bazel files so that the leading "../" isn't necessary. Here and rest of file.
-      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
+      .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(false)
       .waitForSurfaceToLoad();
 
@@ -108,7 +107,7 @@ public class NlEditorTest {
 
     String layoutFileContents = guiTest.ideFrame()
       .getEditor()
-      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.EDITOR)
+      .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.EDITOR)
       .getCurrentFileContents();
     assertThat(layoutFileContents).contains("<TextView");
     assertThat(layoutFileContents).contains("<Button");
@@ -120,7 +119,7 @@ public class NlEditorTest {
     // Add a bad dependency to app/BUILD. This will cause the next sync to fail.
     guiTest.importSimpleLocalApplication()
       .getEditor()
-      .open("../SimpleLocalApplication/app/BUILD")
+      .open("app/BUILD")
       .moveBetween("deps = [", "")
       .enterText("\n\":bogus_dependency\",");
 
@@ -130,7 +129,7 @@ public class NlEditorTest {
     // while the sync is taking place. Then, once the sync fails, the loading
     // animation should be replaced with an error message.
     NlEditorFixture editorFixture = guiTest.ideFrame().getEditor()
-      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
+      .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(false)
       .waitForSurfaceToLoad();
 
@@ -144,7 +143,7 @@ public class NlEditorTest {
     // Add a bad dependency to app/BUILD. This will cause the next sync to fail.
     guiTest.importSimpleLocalApplication()
       .getEditor()
-      .open("../SimpleLocalApplication/app/BUILD")
+      .open("app/BUILD")
       .moveBetween("deps = [", "")
       .enterText("\n\":bogus_dependency\",");
 
@@ -154,7 +153,7 @@ public class NlEditorTest {
 
     // After the failing sync, open the design editor.
     NlEditorFixture editorFixture = guiTest.ideFrame().getEditor()
-      .open("../SimpleLocalApplication/app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
+      .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(false)
       .waitForSurfaceToLoad();
 

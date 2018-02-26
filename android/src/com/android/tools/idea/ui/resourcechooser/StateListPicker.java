@@ -16,7 +16,7 @@
 package com.android.tools.idea.ui.resourcechooser;
 
 import com.android.ide.common.rendering.api.ResourceValue;
-import com.android.ide.common.res2.AbstractResourceRepository;
+import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
@@ -362,7 +362,8 @@ public class StateListPicker extends JPanel {
     resValue = resourceResolver.resolveResValue(resValue);
 
     if (resValue == null || resValue.getResourceType() == ResourceType.COLOR) {
-      final List<Color> colors = ResourceHelper.resolveMultipleColors(resourceResolver, resValue, renderTask.getModule().getProject());
+      final List<Color> colors = ResourceHelper.resolveMultipleColors(resourceResolver, resValue,
+                                                                      renderTask.getContext().getModule().getProject());
       ResourceSwatchComponent.SwatchIcon icon;
       if (colors.isEmpty()) {
         Color colorValue = ResourceHelper.parseColor(resourceName);

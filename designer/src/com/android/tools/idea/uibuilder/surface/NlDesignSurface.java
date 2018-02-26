@@ -34,6 +34,7 @@ import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.editor.NlActionManager;
 import com.android.tools.idea.uibuilder.mockup.editor.MockupEditor;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
+import com.android.tools.idea.uibuilder.model.NlSelectionModel;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.google.common.collect.Lists;
 import com.intellij.ide.DataManager;
@@ -77,7 +78,7 @@ public class NlDesignSurface extends DesignSurface {
   private ShapeMenuAction.AdaptiveIconShape myAdaptiveIconShape = ShapeMenuAction.AdaptiveIconShape.getDefaultShape();
 
   public NlDesignSurface(@NotNull Project project, boolean inPreview, @NotNull Disposable parentDisposable) {
-    super(project, parentDisposable);
+    super(project, new NlSelectionModel(), parentDisposable);
     myInPreview = inPreview;
   }
 
@@ -159,11 +160,6 @@ public class NlDesignSurface extends DesignSurface {
    */
   public void forceLayersPaint(boolean value) {
     for (Layer layer : getLayers()) {
-      if (layer instanceof ConstraintsLayer) {
-        ConstraintsLayer constraintsLayer = (ConstraintsLayer)layer;
-        constraintsLayer.setTemporaryShow(value);
-        repaint();
-      }
       if (layer instanceof SceneLayer) {
         SceneLayer sceneLayer = (SceneLayer)layer;
         sceneLayer.setTemporaryShow(value);
@@ -430,6 +426,11 @@ public class NlDesignSurface extends DesignSurface {
   }
 
   @Override
+  public NlSelectionModel getSelectionModel() {
+    return (NlSelectionModel)super.getSelectionModel();
+  }
+
+  @Override
   public void notifyComponentActivate(@NotNull NlComponent component, int x, int y) {
     ViewHandler handler = NlComponentHelperKt.getViewHandler(component);
 
@@ -486,7 +487,7 @@ public class NlDesignSurface extends DesignSurface {
           RenderErrorModel model = gradleBuildMode != null && result.getLogger().hasErrors()
                                    ? RenderErrorModel.STILL_BUILDING_ERROR_MODEL
                                    : RenderErrorModelFactory
-                                     .createErrorModel(result, DataManager.getInstance().getDataContext(getIssuePanel()));
+                                     .createErrorModel(NlDesignSurface.this, result, DataManager.getInstance().getDataContext(getIssuePanel()));
           getIssueModel().setRenderErrorModel(model);
         });
       }

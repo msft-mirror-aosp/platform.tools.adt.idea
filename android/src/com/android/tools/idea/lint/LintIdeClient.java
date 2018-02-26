@@ -20,9 +20,9 @@ import com.android.builder.model.AndroidProject;
 import com.android.builder.model.LintOptions;
 import com.android.ide.common.repository.GradleVersion;
 import com.android.ide.common.repository.ResourceVisibilityLookup;
-import com.android.ide.common.res2.AbstractResourceRepository;
-import com.android.ide.common.res2.ResourceFile;
-import com.android.ide.common.res2.ResourceItem;
+import com.android.ide.common.resources.AbstractResourceRepository;
+import com.android.ide.common.resources.ResourceFile;
+import com.android.ide.common.resources.ResourceItem;
 import com.android.manifmerger.Actions;
 import com.android.repository.Revision;
 import com.android.sdklib.BuildToolInfo;
@@ -132,6 +132,11 @@ public class LintIdeClient extends LintClient implements Disposable {
   @Override
   public void runReadAction(@NonNull Runnable runnable) {
     ApplicationManager.getApplication().runReadAction(runnable);
+  }
+
+  @Override
+  public <T> T runReadAction(@NonNull Computable<T> computable) {
+    return ApplicationManager.getApplication().runReadAction(computable);
   }
 
   /**

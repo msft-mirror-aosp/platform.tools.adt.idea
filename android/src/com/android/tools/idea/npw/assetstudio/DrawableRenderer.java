@@ -21,6 +21,8 @@ import com.android.tools.idea.concurrent.FutureUtils;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.editors.theme.ThemeEditorUtils;
 import com.android.tools.idea.rendering.*;
+import com.android.tools.idea.rendering.parsers.ILayoutPullParserFactory;
+import com.android.tools.idea.rendering.parsers.LayoutPsiPullParser;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.Disposable;
@@ -72,7 +74,7 @@ class DrawableRenderer implements Disposable {
       try {
         Configuration configuration = ThemeEditorUtils.getConfigurationForModule(module);
         RenderService service = RenderService.getInstance(facet);
-        RenderTask renderTask = service.createTask(null, configuration, logger, null, myParserFactory);
+        RenderTask renderTask = service.createTask(null, configuration, logger, myParserFactory);
         assert renderTask != null;
         renderTask.getLayoutlibCallback().setLogger(logger);
         if (logger.hasProblems()) {

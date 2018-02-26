@@ -16,14 +16,16 @@
 package com.android.tools.idea.gradle.rendering;
 
 import com.android.ide.common.repository.GradleVersion;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
+import com.android.tools.idea.gradle.plugin.AndroidPluginGeneration;
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
+import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.sync.hyperlink.FixAndroidGradlePluginVersionHyperlink;
 import com.android.tools.idea.rendering.HtmlLinkManager;
 import com.android.tools.idea.rendering.RenderErrorContributor;
 import com.android.tools.idea.rendering.RenderLogger;
 import com.android.tools.idea.rendering.RenderResult;
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel;
+import com.android.tools.idea.ui.designer.EditorDesignSurface;
 import com.android.utils.HtmlBuilder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.actionSystem.DataContext;
@@ -36,11 +38,9 @@ import javax.swing.event.HyperlinkEvent;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.android.SdkConstants.GRADLE_PLUGIN_RECOMMENDED_VERSION;
-
 public class GradleRenderErrorContributor extends RenderErrorContributor {
-  public GradleRenderErrorContributor(@NotNull RenderResult result, @Nullable DataContext dataContext) {
-    super(result, dataContext);
+  public GradleRenderErrorContributor(@Nullable EditorDesignSurface surface, @NotNull RenderResult result, @Nullable DataContext dataContext) {
+    super(surface, result, dataContext);
   }
 
   @Override
@@ -66,7 +66,7 @@ public class GradleRenderErrorContributor extends RenderErrorContributor {
       @Override
       public void run() {
         FixAndroidGradlePluginVersionHyperlink
-          quickFix = new FixAndroidGradlePluginVersionHyperlink(GradleVersion.parse(GRADLE_PLUGIN_RECOMMENDED_VERSION), null);
+          quickFix = new FixAndroidGradlePluginVersionHyperlink(GradleVersion.parse(AndroidPluginGeneration.ORIGINAL.getLatestKnownVersion()), null);
         quickFix.executeIfClicked(facet.getModule().getProject(),
                                   new HyperlinkEvent(this, HyperlinkEvent.EventType.ACTIVATED, null, quickFix.getUrl()));
       }
@@ -99,8 +99,10 @@ public class GradleRenderErrorContributor extends RenderErrorContributor {
     }
 
     @Override
-    public RenderErrorContributor getContributor(@NotNull RenderResult result, @Nullable DataContext dataContext) {
-      return new GradleRenderErrorContributor(result, dataContext);
+    public RenderErrorContributor getContributor(@Nullable EditorDesignSurface surface,
+                                                 @NotNull RenderResult result,
+                                                 @Nullable DataContext dataContext) {
+      return new GradleRenderErrorContributor(surface, result, dataContext);
     }
   }
 }

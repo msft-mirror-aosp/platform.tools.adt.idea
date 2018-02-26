@@ -92,10 +92,10 @@ public class EnergyService extends EnergyServiceGrpc.EnergyServiceImplBase imple
   }
 
   @Override
-  public void getData(EnergyRequest request, StreamObserver<EnergyDataResponse> responseObserver) {
-    EnergyProfiler.EnergyDataResponse.Builder response = EnergyProfiler.EnergyDataResponse.newBuilder();
+  public void getSamples(EnergyRequest request, StreamObserver<EnergySamplesResponse> responseObserver) {
+    EnergyProfiler.EnergySamplesResponse.Builder response = EnergyProfiler.EnergySamplesResponse.newBuilder();
     List<EnergySample> samples = myEnergyTable.findSamples(request);
-    response.addAllSampleData(samples);
+    response.addAllSamples(samples);
     responseObserver.onNext(response.build());
     responseObserver.onCompleted();
   }
@@ -104,7 +104,7 @@ public class EnergyService extends EnergyServiceGrpc.EnergyServiceImplBase imple
   public void getEvents(EnergyRequest request, StreamObserver<EnergyEventsResponse> responseObserver) {
     EnergyProfiler.EnergyEventsResponse.Builder response = EnergyProfiler.EnergyEventsResponse.newBuilder();
     List<EnergyEvent> events = myEnergyTable.findEvents(request);
-    response.addAllEvent(events);
+    response.addAllEvents(events);
     responseObserver.onNext(response.build());
     responseObserver.onCompleted();
   }

@@ -28,26 +28,22 @@ import java.util.Map;
  * Represents an element which consists of a map from properties of type {@link String} and values of type {@link GradleDslExpression}.
  */
 public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
-  // Is this GradleDslExpressionMap being used as an actual map. This is used when creating the element to
-  // work out whether we need to wrap this map in brackets. For example expression maps are used for literals maps
-  // like "prop = [key: 'value']" but can also be used for things such as apply statements like "apply plugin: 'value'".
-  private boolean myIsLiteralMap;
 
-  public GradleDslExpressionMap(@Nullable GradleDslElement parent, @NotNull String name) {
+  public GradleDslExpressionMap(@Nullable GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, null, name);
   }
 
-  public GradleDslExpressionMap(@Nullable GradleDslElement parent, @NotNull String name, boolean isLiteralMap) {
+  public GradleDslExpressionMap(@Nullable GradleDslElement parent, @NotNull GradleNameElement name, boolean isLiteralMap) {
     super(parent, null, name);
-    myIsLiteralMap = isLiteralMap;
+    myUseAssignment = isLiteralMap;
   }
 
   public GradleDslExpressionMap(@Nullable GradleDslElement parent,
                                 @NotNull PsiElement psiElement,
-                                @NotNull String name,
+                                @NotNull GradleNameElement name,
                                 boolean isLiteralMap) {
     super(parent, psiElement, name);
-    myIsLiteralMap = isLiteralMap;
+    myUseAssignment = isLiteralMap;
   }
 
   public void addNewLiteral(String key, Object value) {
@@ -56,7 +52,8 @@ public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
       ((GradleDslLiteral)propertyElement).setValue(value);
       return;
     }
-    GradleDslLiteral gradleDslLiteral = new GradleDslLiteral(this, key);
+    GradleNameElement name = GradleNameElement.create(key);
+    GradleDslLiteral gradleDslLiteral = new GradleDslLiteral(this, name);
     setNewElement(key, gradleDslLiteral);
     gradleDslLiteral.setValue(value);
   }
@@ -87,7 +84,13 @@ public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
     return getDslFile().getWriter().createDslExpressionMap(this);
   }
 
+  @Override
+  public void apply() {
+    getDslFile().getWriter().applyDslExpressionMap(this);
+    super.apply();
+  }
+
   public boolean isLiteralMap() {
-    return myIsLiteralMap;
+    return myUseAssignment;
   }
 }

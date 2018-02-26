@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.dsl.model.values;
 
 import com.android.tools.idea.gradle.dsl.api.FlavorTypeModel.ResValue;
+import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
 import com.android.tools.idea.gradle.dsl.api.android.BuildTypeModel;
 import com.android.tools.idea.gradle.dsl.api.android.BuildTypeModel.BuildConfigField;
@@ -50,12 +51,12 @@ public class GradleValueTest extends GradleFileModelTestCase {
     AndroidModel android = getGradleBuildModel().android();
     assertNotNull(android);
 
-    verifyGradleValue(android.buildToolsVersion(), "android.buildToolsVersion", "\"23.0.0\"");
-    verifyGradleValue(android.compileSdkVersion(), "android.compileSdkVersion", "23");
-    verifyGradleValue(android.defaultPublishConfig(), "android.defaultPublishConfig", "\"debug\"");
-    verifyGradleValue(android.generatePureSplits(), "android.generatePureSplits", "true");
-    verifyGradleValue(android.publishNonDefault(), "android.publishNonDefault", "false");
-    verifyGradleValue(android.resourcePrefix(), "android.resourcePrefix", "\"abcd\"");
+    verifyPropertyModel(android.buildToolsVersion(), "android.buildToolsVersion", "23.0.0");
+    verifyPropertyModel(android.compileSdkVersion(), "android.compileSdkVersion", "23");
+    verifyPropertyModel(android.defaultPublishConfig(), "android.defaultPublishConfig", "debug");
+    verifyPropertyModel(android.generatePureSplits(), "android.generatePureSplits", "true");
+    verifyPropertyModel(android.publishNonDefault(), "android.publishNonDefault", "false");
+    verifyPropertyModel(android.resourcePrefix(), "android.resourcePrefix", "abcd");
   }
 
   public void testGradleValuesOfLiteralElementsInAssignmentStatements() throws Exception {
@@ -71,10 +72,10 @@ public class GradleValueTest extends GradleFileModelTestCase {
     AndroidModel android = getGradleBuildModel().android();
     assertNotNull(android);
 
-    verifyGradleValue(android.buildToolsVersion(), "android.buildToolsVersion", "\"23.0.0\"");
-    verifyGradleValue(android.compileSdkVersion(), "android.compileSdkVersion", "\"android-23\"");
-    verifyGradleValue(android.defaultPublishConfig(), "android.defaultPublishConfig", "\"debug\"");
-    verifyGradleValue(android.generatePureSplits(), "android.generatePureSplits", "true");
+    verifyPropertyModel(android.buildToolsVersion(), "android.buildToolsVersion", "23.0.0");
+    verifyPropertyModel(android.compileSdkVersion(), "android.compileSdkVersion", "android-23");
+    verifyPropertyModel(android.defaultPublishConfig(), "android.defaultPublishConfig", "debug");
+    verifyPropertyModel(android.generatePureSplits(), "android.generatePureSplits", "true");
   }
 
   public void testListOfGradleValuesInApplicationStatements() throws Exception {
@@ -221,7 +222,9 @@ public class GradleValueTest extends GradleFileModelTestCase {
                   "}";
 
     writeToBuildFile(text);
-    AndroidModel android = getGradleBuildModel().android();
+    GradleBuildModel buildModel = getGradleBuildModel();
+    AndroidModel android = buildModel.android();
+
     assertNotNull(android);
 
     ProductFlavorModel defaultConfig = android.defaultConfig();

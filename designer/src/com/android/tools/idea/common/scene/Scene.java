@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.common.scene;
 
-import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.ide.common.resources.configuration.LayoutDirectionQualifier;
 import com.android.resources.LayoutDirection;
@@ -23,10 +22,10 @@ import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.adtui.common.SwingCoordinate;
 import com.android.tools.idea.common.model.*;
-import com.android.tools.idea.common.scene.target.ActionTarget;
-import com.android.tools.idea.common.scene.target.DragBaseTarget;
-import com.android.tools.idea.common.scene.target.LassoTarget;
-import com.android.tools.idea.common.scene.target.Target;
+import com.android.tools.idea.common.scene.draw.DisplayList;
+import com.android.tools.idea.common.scene.target.*;
+import com.android.tools.idea.common.surface.DesignSurface;
+import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.naveditor.scene.targets.ActionHandleTarget;
@@ -34,19 +33,16 @@ import com.android.tools.idea.naveditor.scene.targets.ScreenHeaderTarget;
 import com.android.tools.idea.rendering.RenderLogger;
 import com.android.tools.idea.rendering.RenderService;
 import com.android.tools.idea.rendering.RenderTask;
-import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintLayoutHandler;
 import com.android.tools.idea.uibuilder.handlers.constraint.targets.*;
 import com.android.tools.idea.uibuilder.handlers.coordinator.CoordinatorSnapTarget;
-import com.android.tools.idea.uibuilder.model.*;
+import com.android.tools.idea.uibuilder.handlers.relative.targets.RelativeAnchorTarget;
+import com.android.tools.idea.uibuilder.model.NlSelectionModel;
+import com.android.tools.idea.uibuilder.model.SelectionHandle;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
-import com.android.tools.idea.common.scene.draw.DisplayList;
-import com.android.tools.idea.uibuilder.scene.target.*;
-import com.android.tools.idea.common.surface.DesignSurface;
-import com.android.tools.idea.common.surface.SceneView;
+import com.android.tools.idea.uibuilder.scene.target.ResizeBaseTarget;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.SceneMode;
 import com.google.common.collect.Lists;
-import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.xml.XmlFile;
@@ -115,9 +111,8 @@ public class Scene implements SelectionListener, Disposable {
   private boolean myIsControlDown;
   private boolean myIsShiftDown;
   private boolean myIsAltDown;
-  private boolean myShowAllConstraints = false;
 
-  private enum FilterType {ALL, ANCHOR, VERTICAL_ANCHOR, HORIZONTAL_ANCHOR, BASELINE_ANCHOR, NONE, RESIZE}
+  public enum FilterType {ALL, ANCHOR, VERTICAL_ANCHOR, HORIZONTAL_ANCHOR, BASELINE_ANCHOR, NONE, RESIZE}
 
   private FilterType myFilterTarget = FilterType.NONE;
 
@@ -242,19 +237,6 @@ public class Scene implements SelectionListener, Disposable {
 
   public Cursor getMouseCursor() {
     return myMouseCursor;
-  }
-
-  public boolean isAutoconnectOn() {
-    return PropertiesComponent.getInstance().getBoolean(ConstraintLayoutHandler.AUTO_CONNECT_PREF_KEY, false);
-  }
-
-  public boolean isShowAllConstraints() {
-    return myShowAllConstraints || PropertiesComponent.getInstance().getBoolean(ConstraintLayoutHandler.SHOW_CONSTRAINTS_PREF_KEY);
-  }
-
-  @VisibleForTesting
-  public void setShowAllConstraints(boolean showAllConstraints) {
-    myShowAllConstraints = showAllConstraints;
   }
 
   /**
@@ -448,6 +430,7 @@ public class Scene implements SelectionListener, Disposable {
 
   /**
    * Decides which target type we should display
+   * TODO: this function needs refactor.
    *
    * @param target
    * @return true if the target will be displayed
@@ -458,8 +441,8 @@ public class Scene implements SelectionListener, Disposable {
     if (component.isSelected()) {
       boolean hasBaselineConnection = component.getAuthoritativeNlComponent().getAttribute(SHERPA_URI,
                                                                                            ATTR_LAYOUT_BASELINE_TO_BASELINE_OF) != null;
-      if (target instanceof AnchorTarget) {
-        AnchorTarget anchor = (AnchorTarget)target;
+      if (target instanceof ConstraintAnchorTarget) {
+        ConstraintAnchorTarget anchor = (ConstraintAnchorTarget)target;
         if (anchor.getType() == AnchorTarget.Type.BASELINE) {
           // only show baseline anchor as needed
           return component.canShowBaseline() || hasBaselineConnection;
@@ -482,8 +465,8 @@ public class Scene implements SelectionListener, Disposable {
     if (target instanceof CoordinatorSnapTarget) {
       return true;
     }
-    if (target instanceof AnchorTarget) {
-      AnchorTarget anchor = (AnchorTarget)target;
+    if (target instanceof ConstraintAnchorTarget) {
+      ConstraintAnchorTarget anchor = (ConstraintAnchorTarget)target;
       if (myFilterTarget == FilterType.BASELINE_ANCHOR) {
         return anchor.getType() == AnchorTarget.Type.BASELINE;
       }
@@ -496,6 +479,12 @@ public class Scene implements SelectionListener, Disposable {
         return true;
       }
       if (myFilterTarget == FilterType.ANCHOR) {
+        return true;
+      }
+    }
+    if (target instanceof RelativeAnchorTarget) {
+      RelativeAnchorTarget anchor = (RelativeAnchorTarget) target;
+      if (anchor.isConnectible(myFilterTarget)) {
         return true;
       }
     }
@@ -601,9 +590,10 @@ public class Scene implements SelectionListener, Disposable {
 
     SelectionModel selectionModel = myDesignSurface.getSelectionModel();
 
-    if (!selectionModel.isEmpty()) {
+    // TODO: remove selectionhandle reference
+    if (!selectionModel.isEmpty() && selectionModel instanceof NlSelectionModel) {
       int max = Coordinates.getAndroidDimensionDip(myDesignSurface, PIXEL_RADIUS + PIXEL_MARGIN);
-      SelectionHandle handle = selectionModel.findHandle(x, y, max, getDesignSurface());
+      SelectionHandle handle = ((NlSelectionModel)selectionModel).findHandle(x, y, max, getDesignSurface());
       if (handle != null) {
         myMouseCursor = handle.getCursor();
         return;
@@ -695,8 +685,8 @@ public class Scene implements SelectionListener, Disposable {
     myHitTarget = myHitListener.getClosestTarget();
     myHitComponent = myHitListener.getClosestComponent();
     if (myHitTarget != null) {
-      if (myHitTarget instanceof AnchorTarget) {
-        AnchorTarget anchor = (AnchorTarget)myHitTarget;
+      if (myHitTarget instanceof ConstraintAnchorTarget) {
+        ConstraintAnchorTarget anchor = (ConstraintAnchorTarget)myHitTarget;
         if (anchor.isHorizontalAnchor()) {
           myFilterTarget = FilterType.HORIZONTAL_ANCHOR;
         }
@@ -706,6 +696,10 @@ public class Scene implements SelectionListener, Disposable {
         if (anchor.getType() == AnchorTarget.Type.BASELINE) {
           myFilterTarget = FilterType.BASELINE_ANCHOR;
         }
+      }
+      else if (myHitTarget instanceof RelativeAnchorTarget) {
+        RelativeAnchorTarget anchor = (RelativeAnchorTarget)myHitTarget;
+        myFilterTarget = anchor.getPreferredFilterType();
       }
       myHitTarget.mouseDown(x, y);
       if (myHitTarget instanceof MultiComponentTarget) {
@@ -767,7 +761,7 @@ public class Scene implements SelectionListener, Disposable {
                         ((NlDesignSurface)myDesignSurface).getSceneMode() != SceneMode.BLUEPRINT_ONLY;
 
       if (renderOnLayout && manager instanceof LayoutlibSceneManager) {
-        ((LayoutlibSceneManager)manager).requestLayoutAndRender(mNeedsLayout == ANIMATED_LAYOUT);
+        manager.requestLayoutAndRender(mNeedsLayout == ANIMATED_LAYOUT);
       }
       else {
         manager.layout(mNeedsLayout == ANIMATED_LAYOUT);
@@ -940,6 +934,10 @@ public class Scene implements SelectionListener, Disposable {
 
   public void setRoot(SceneComponent root) {
     myRoot = root;
+  }
+
+  public FilterType getFilterType() {
+    return myFilterTarget;
   }
 
   @Nullable

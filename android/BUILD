@@ -58,7 +58,7 @@ iml_module(
         "//tools/idea/spellchecker[module]",
         "//tools/base/draw9patch:studio.draw9patch[module]",
         "//tools/base/build-system:studio.manifest-merger[module]",
-        "//tools/idea/.idea/libraries:freemarker-2.3.20",
+        "//tools/idea/.idea/libraries:freemarker",
         "//tools/idea/images[module]",
         "//tools/idea/platform/platform-api[module]",
         "//tools/idea/plugins/eclipse[module]",
@@ -99,7 +99,7 @@ iml_module(
         "//tools/adt/idea/observable[module]",
         "//tools/idea/plugins/gradle/tooling-extension-impl:gradle-tooling-extension-impl[module]",
         "//tools/adt/idea/wizard[module]",
-        "//tools/idea/.idea/libraries:commons-io-2.4",
+        "//tools/idea/.idea/libraries:commons-io",
         "//tools/adt/idea/smali[module]",
         "//tools/base/build-system/java-lib-plugin/java-lib-model:studio.java-lib-model[module]",
         "//tools/base/build-system/java-lib-plugin/java-lib-model-builder:studio.java-lib-model-builder[module]",
@@ -112,7 +112,6 @@ iml_module(
         "//tools/adt/idea/apkanalyzer[module]",
         "//tools/adt/idea/android-lang[module]",
         "//tools/adt/idea/android-adb[module]",
-        "//tools/base/usb-devices:studio.usb-devices[module]",
     ],
 )
 
@@ -195,7 +194,7 @@ iml_module(
         "//tools/idea/xml/dom-impl[module, test]",
         "//tools/base/testutils:studio.testutils[module, test]",
         "//tools/analytics-library/protos:analytics-protos[module, test]",
-        "//tools/idea/.idea/libraries:freemarker-2.3.20[test]",
+        "//tools/idea/.idea/libraries:freemarker[test]",
         "//tools/idea/platform/external-system-impl[module, test]",
         "//tools/adt/idea/observable[module, test]",
         "//tools/idea/java/compiler/openapi:compiler-openapi[module, test]",
@@ -241,7 +240,6 @@ iml_module(
         "//tools/adt/idea/project-system-gradle[module, test]",
         "//tools/adt/idea/project-system:project-system-tests[module, test]",
         "//tools/adt/idea/adt-testutils[module, test]",
-        "//tools/base/usb-devices:studio.usb-devices[module, test]",
         "//tools/adt/idea/android-lang[module, test]",
     ],
 )

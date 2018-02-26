@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.parser.android.AbstractFlavorTypeDslEle
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElementList;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import org.jetbrains.annotations.NonNls;
@@ -201,36 +202,19 @@ public abstract class FlavorTypeModelImpl extends GradleDslBlockModel implements
     }
   }
 
-  @NotNull
-  protected ResolvedPropertyModel getModelForProperty(@NotNull String property) {
-    return getModelForProperty(property, false);
-  }
-
-  @NotNull
-  protected ResolvedPropertyModel getModelForProperty(@NotNull String property, boolean isMethod) {
-    GradleDslElement element = myDslElement.getPropertyElement(property);
-
-    GradlePropertyModelImpl model = element == null
-                                    ? new GradlePropertyModelImpl(myDslElement, REGULAR, property) : new GradlePropertyModelImpl(element);
-    if (isMethod) {
-      model.markAsMethodCall();
-    }
-    return new ResolvedPropertyModelImpl(model);
-  }
-
-
   protected <T extends TypeNameValueElement> T addNewTypeNameValueElement(@NotNull Function<GradleDslExpressionList, T> producer,
                                                                           @NotNull String elementName,
                                                                           @NotNull String type,
                                                                           @NotNull String name,
                                                                           @NotNull String value) {
+    GradleNameElement nameElement = GradleNameElement.create(elementName);
     GradleDslElementList elementList = myDslElement.getPropertyElement(elementName, GradleDslElementList.class);
     if (elementList == null) {
-      elementList = new GradleDslElementList(myDslElement, elementName);
+      elementList = new GradleDslElementList(myDslElement, nameElement);
       myDslElement.setNewElement(elementName, elementList);
     }
 
-    GradleDslExpressionList expressionList = new GradleDslExpressionList(myDslElement, elementName, false);
+    GradleDslExpressionList expressionList = new GradleDslExpressionList(myDslElement, nameElement, false);
     T newValue = producer.apply(expressionList);
     assert newValue != null;
     newValue.type().setValue(type);

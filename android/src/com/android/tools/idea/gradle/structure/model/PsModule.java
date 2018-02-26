@@ -38,7 +38,6 @@ import javax.swing.*;
 import java.io.File;
 import java.util.EventListener;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static icons.StudioIcons.Shell.Filetree.ANDROID_MODULE;
 
@@ -111,12 +110,26 @@ public abstract class PsModule extends PsChildModel {
     }
   }
 
+  protected void addModuleDependencyToParsedModel(@NotNull List<String> configurationNames, @NotNull String modulePath) {
+    GradleBuildModel parsedModel = getParsedModel();
+    if (parsedModel != null) {
+      DependenciesModel dependencies = parsedModel.dependencies();
+      configurationNames.forEach(configurationName -> dependencies.addModule(configurationName, modulePath));
+
+      getParsedDependencies().reset(getParsedModel());
+    }
+  }
+
   public void add(@NotNull DependenciesChangeListener listener, @NotNull Disposable parentDisposable) {
     myDependenciesChangeEventDispatcher.addListener(listener, parentDisposable);
   }
 
   protected void fireLibraryDependencyAddedEvent(@NotNull PsArtifactDependencySpec spec) {
     myDependenciesChangeEventDispatcher.getMulticaster().dependencyChanged(new LibraryDependencyAddedEvent(spec));
+  }
+
+  protected void fireModuleDependencyAddedEvent(@NotNull String modulePath) {
+    myDependenciesChangeEventDispatcher.getMulticaster().dependencyChanged(new ModuleDependencyAddedEvent(modulePath));
   }
 
   public void fireDependencyModifiedEvent(@NotNull PsDependency dependency) {
@@ -207,6 +220,9 @@ public abstract class PsModule extends PsChildModel {
     return myVariables;
   }
 
+  public abstract void addLibraryDependency(@NotNull String library, @NotNull List<String> scopesNames);
+  public abstract void addModuleDependency(@NotNull String modulePath, @NotNull List<String> scopesNames);
+
   public interface DependenciesChangeListener extends EventListener {
     void dependencyChanged(@NotNull DependencyChangedEvent event);
   }
@@ -224,6 +240,19 @@ public abstract class PsModule extends PsChildModel {
     @NotNull
     public PsArtifactDependencySpec getSpec() {
       return mySpec;
+    }
+  }
+
+  public static class ModuleDependencyAddedEvent implements DependencyChangedEvent {
+    @NotNull private final String myModulePath;
+
+    ModuleDependencyAddedEvent(@NotNull String modulePath) {
+      myModulePath = modulePath;
+    }
+
+    @NotNull
+    public String getModulePath() {
+      return myModulePath;
     }
   }
 

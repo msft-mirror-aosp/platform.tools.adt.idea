@@ -123,7 +123,7 @@ public class InstantAppRunTest {
   public void createAndRunInstantApp() throws Exception {
     String runConfigName = "instantapp";
     long deviceProvisioningSeconds = TimeUnit.MINUTES.toSeconds(3);
-    long projectSetupTime = TimeUnit.MINUTES.toSeconds(3);
+    long projectSetupTime = TimeUnit.MINUTES.toSeconds(2);
     NewProjectWizardFixture newProj = guiTest.welcomeFrame().createNewProject();
 
     newProj.clickNext();
@@ -138,6 +138,8 @@ public class InstantAppRunTest {
       .clickFinish();
 
     IdeFrameFixture ideFrame = guiTest.ideFrame();
+    // TODO remove the following workaround wait to workaround http://b/72666461
+    guiTest.testSystem().waitForProjectSyncToFinish(ideFrame);
 
     emulator.createAVD(
       ideFrame.invokeAvdManager(),
@@ -181,7 +183,8 @@ public class InstantAppRunTest {
   @Test
   @RunIn(TestGroup.QA)
   public void runFromCmdLine() throws Exception {
-    IdeFrameFixture ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish("TopekaInstantApp");
+    IdeFrameFixture ideFrame = guiTest.importProject("TopekaInstantApp", null, Wait.seconds(150));
+    guiTest.testSystem().waitForProjectSyncToFinish(ideFrame);
 
     emulator.createAVD(
       ideFrame.invokeAvdManager(),
