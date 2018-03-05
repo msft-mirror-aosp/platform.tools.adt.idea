@@ -59,7 +59,7 @@ public class ApkViewerTest {
   @RunIn(TestGroup.SANITY)
   @Test
   public void launchApkViewer() throws Exception {
-    List<String> apkEntries = guiTest.importProject("SimpleLocalApplication")
+    List<String> apkEntries = guiTest.importSimpleLocalApplication()
       .invokeMenuPath("Build", "Build APK(s)")
       .waitForBuildToFinish(BuildMode.ASSEMBLE, Wait.seconds(180))
       .openFromMenu(SelectPathFixture::find, "Build", "Analyze APK...")

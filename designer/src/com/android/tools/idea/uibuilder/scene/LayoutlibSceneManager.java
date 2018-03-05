@@ -19,10 +19,7 @@ import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.tools.idea.AndroidPsiUtils;
 import com.android.tools.idea.common.analytics.NlUsageTrackerManager;
 import com.android.tools.idea.common.model.*;
-import com.android.tools.idea.common.scene.Scene;
-import com.android.tools.idea.common.scene.SceneComponent;
-import com.android.tools.idea.common.scene.SceneManager;
-import com.android.tools.idea.common.scene.TemporarySceneComponent;
+import com.android.tools.idea.common.scene.*;
 import com.android.tools.idea.common.scene.decorator.SceneDecoratorFactory;
 import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.Layer;
@@ -66,16 +63,14 @@ import com.intellij.util.ui.update.MergingUpdateQueue;
 import com.intellij.util.ui.update.Update;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.ide.PooledThreadExecutor;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.swing.Timer;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -126,6 +121,12 @@ public class LayoutlibSceneManager extends SceneManager {
   private final LinkedList<Runnable> myRenderCallbacks = new LinkedList<>();
   private final Semaphore myUpdateHierarchyLock = new Semaphore(1);
   @NotNull private final ViewEditor myViewEditor;
+  /**
+   * {@code Executor} to run the {@code Runnable} that disposes {@code RenderTask}s. This allows
+   * {@code SyncLayoutlibSceneManager} to use a different strategy to dispose the tasks that does not involve using
+   * pooled threads.
+   */
+  @NotNull private final Executor myRenderTaskDisposerExecutor;
 
   protected static LayoutEditorRenderResult.Trigger getTriggerFromChangeType(@Nullable NlModel.ChangeType changeType) {
     if (changeType == null) {
@@ -155,8 +156,9 @@ public class LayoutlibSceneManager extends SceneManager {
     return null;
   }
 
-  public LayoutlibSceneManager(@NotNull NlModel model, @NotNull DesignSurface designSurface) {
+  protected LayoutlibSceneManager(@NotNull NlModel model, @NotNull DesignSurface designSurface, @NotNull Executor renderTaskDisposerExecutor) {
     super(model, designSurface);
+    myRenderTaskDisposerExecutor = renderTaskDisposerExecutor;
     createSceneView();
     updateTrackingConfiguration();
 
@@ -185,6 +187,10 @@ public class LayoutlibSceneManager extends SceneManager {
 
     // let's make sure the selection is correct
     scene.selectionChanged(getDesignSurface().getSelectionModel(), getDesignSurface().getSelectionModel().getSelection());
+  }
+
+  public LayoutlibSceneManager(@NotNull NlModel model, @NotNull DesignSurface designSurface) {
+    this(model, designSurface, PooledThreadExecutor.INSTANCE);
   }
 
   @NotNull
@@ -226,7 +232,7 @@ public class LayoutlibSceneManager extends SceneManager {
 
     super.dispose();
     // dispose is called by the project close using the read lock. Invoke the render task dispose later without the lock.
-    ApplicationManager.getApplication().executeOnPooledThread(() -> {
+    myRenderTaskDisposerExecutor.execute(() -> {
       synchronized (myRenderingTaskLock) {
         if (myRenderTask != null) {
           myRenderTask.dispose();
@@ -345,6 +351,11 @@ public class LayoutlibSceneManager extends SceneManager {
    * {@linkplain ViewGroupHandler} to do it)
    */
   public void addTargets(@NotNull SceneComponent component) {
+    ViewHandler componentHandler = NlComponentHelperKt.getViewHandler(component.getNlComponent());
+    if (componentHandler instanceof TargetProvider) {
+      component.setTargetProvider((TargetProvider) componentHandler);
+    }
+
     SceneComponent parent = component.getParent();
     if (parent == null) {
       parent = getScene().getRoot();
@@ -352,9 +363,9 @@ public class LayoutlibSceneManager extends SceneManager {
     if (parent == null) {
       return;
     }
-    ViewHandler handler = NlComponentHelperKt.getViewHandler(parent.getNlComponent());
-    if (handler instanceof ViewGroupHandler) {
-      parent.setTargetProvider((ViewGroupHandler) handler);
+    ViewHandler parentHandler = NlComponentHelperKt.getViewHandler(parent.getNlComponent());
+    if (parentHandler instanceof ViewGroupHandler) {
+      parent.setTargetProvider((ViewGroupHandler) parentHandler);
     }
   }
 

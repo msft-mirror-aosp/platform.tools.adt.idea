@@ -8,22 +8,12 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="assistant" />
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$APPLICATION_HOME_DIR$/redist/annotations-java8.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
     <orderEntry type="module" module-name="core-api" />
     <orderEntry type="module" module-name="android-common" />
     <orderEntry type="module" module-name="editor-ui-api" />
     <orderEntry type="module" module-name="analytics-protos" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
-    <orderEntry type="module" module-name="usb-devices" />
     <orderEntry type="module" module-name="usb-devices" />
     <orderEntry type="module" module-name="common" />
     <orderEntry type="module" module-name="ddmlib" />

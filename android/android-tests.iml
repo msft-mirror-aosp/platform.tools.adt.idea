@@ -47,6 +47,7 @@
     <orderEntry type="module" module-name="analytics-testing" scope="TEST" />
     <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
     <orderEntry type="module" module-name="wizard" scope="TEST" />
+    <orderEntry type="module" module-name="wizard-model" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="guava-testlib" level="project" />
     <orderEntry type="module" module-name="fakeadbserver" scope="TEST" />
     <orderEntry type="module" module-name="adt-branding" scope="TEST" />
@@ -69,5 +70,15 @@
     <orderEntry type="module" module-name="adt-testutils" scope="TEST" />
     <orderEntry type="module" module-name="jps-builders" scope="TEST" />
     <orderEntry type="module" module-name="android-lang" scope="TEST" />
+    <orderEntry type="module-library">
+      <library name="instantapps-api-1.0">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib/instantapps-api-1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" scope="TEST" name="jimfs" level="project" />
   </component>
 </module>

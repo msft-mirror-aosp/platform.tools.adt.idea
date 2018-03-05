@@ -37,7 +37,8 @@ import static com.android.tools.profilers.memory.adapters.FakeCaptureObject.DEFA
 import static org.junit.Assert.*;
 
 public class MemoryNavigationTest {
-  @Rule public final FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MemoryNavigationTestGrpc", new FakeMemoryService());
+  @Rule public final FakeGrpcChannel myGrpcChannel =
+    new FakeGrpcChannel("MemoryNavigationTestGrpc", new FakeProfilerService(), new FakeMemoryService());
 
   private MemoryProfilerStage myStage;
   private MemoryProfilerStageView myStageView;
@@ -52,7 +53,7 @@ public class MemoryNavigationTest {
 
     FakeCaptureObjectLoader loader = new FakeCaptureObjectLoader();
     loader.setReturnImmediateFuture(true);
-    myStage = new MemoryProfilerStage(new StudioProfilers(myGrpcChannel.getClient(), profilerServices), loader);
+    myStage = new MemoryProfilerStage(profilers, loader);
     myStageView = new MemoryProfilerStageView(profilersView, myStage);
   }
 

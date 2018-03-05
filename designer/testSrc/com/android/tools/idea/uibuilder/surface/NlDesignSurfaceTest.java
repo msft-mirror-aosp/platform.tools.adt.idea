@@ -32,14 +32,11 @@ import com.intellij.ide.IdeEventQueue;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.util.SystemInfo;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assume;
 import org.mockito.Mockito;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.android.SdkConstants.*;
@@ -77,7 +74,7 @@ public class NlDesignSurfaceTest extends LayoutTestCase {
     NlModel model = modelBuilder.build();
     mySurface.setModel(model);
     mySurface.setScreenMode(SceneMode.SCREEN_ONLY, false);
-    assertEquals(6, mySurface.myLayers.size());
+    assertEquals(5, mySurface.myLayers.size());
 
     droppedLayers = ImmutableList.copyOf(mySurface.myLayers);
     mySurface.setScreenMode(SceneMode.BLUEPRINT_ONLY, false);
@@ -87,7 +84,7 @@ public class NlDesignSurfaceTest extends LayoutTestCase {
 
     droppedLayers = ImmutableList.copyOf(mySurface.myLayers);
     mySurface.setScreenMode(SceneMode.BOTH, false);
-    assertEquals(10, mySurface.myLayers.size());
+    assertEquals(9, mySurface.myLayers.size());
     // Make sure all dropped layers are disposed.
     assertEmpty(droppedLayers.stream().filter(Disposer::isDisposed).collect(Collectors.toList()));
 

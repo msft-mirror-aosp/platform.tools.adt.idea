@@ -1095,6 +1095,71 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     }
   }
 
+  fun testEscapeSetStrings() {
+    val text = """
+               ext {
+               }""".trimIndent()
+    writeToBuildFile(text)
+    val buildModel = gradleBuildModel
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      assertMissingProperty(propertyModel)
+      propertyModel.setValue(iStr("\nNewLines\n\tWith\n\tSome\n\tTabs\n"))
+      verifyPropertyModel(propertyModel, STRING_TYPE, "\nNewLines\n\tWith\n\tSome\n\tTabs\n", STRING, REGULAR, 0)
+      assertEquals("\nNewLines\n\tWith\n\tSome\n\tTabs\n", propertyModel.getRawValue(STRING_TYPE))
+      val literalModel = buildModel.ext().findProperty("prop2")
+      assertMissingProperty(literalModel)
+      literalModel.setValue("\nNewLines\n\tWith\n\tSome\n\tTabs\n")
+      verifyPropertyModel(literalModel, STRING_TYPE, "\nNewLines\n\tWith\n\tSome\n\tTabs\n", STRING, REGULAR, 0)
+      assertEquals("\nNewLines\n\tWith\n\tSome\n\tTabs\n", literalModel.getRawValue(STRING_TYPE))
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val propertyModel = buildModel.ext().findProperty("prop1")
+      verifyPropertyModel(propertyModel, STRING_TYPE, "\nNewLines\n\tWith\n\tSome\n\tTabs\n", STRING, REGULAR, 0)
+      assertEquals("\nNewLines\n\tWith\n\tSome\n\tTabs\n", propertyModel.getRawValue(STRING_TYPE))
+      val literalModel = buildModel.ext().findProperty("prop2")
+      verifyPropertyModel(literalModel, STRING_TYPE, "\nNewLines\n\tWith\n\tSome\n\tTabs\n", STRING, REGULAR, 0)
+      assertEquals("\nNewLines\n\tWith\n\tSome\n\tTabs\n", literalModel.getRawValue(STRING_TYPE))
+    }
+  }
+
+  fun testQuotesInString() {
+    val text = """
+               ext {
+               }""".trimIndent()
+    writeToBuildFile(text)
+    val buildModel = gradleBuildModel
+
+    run {
+      val literalModel = buildModel.ext().findProperty("prop1")
+      assertMissingProperty(literalModel)
+      literalModel.setValue("'these should be escaped' \"But these shouldn't\"")
+      verifyPropertyModel(literalModel, STRING_TYPE, "'these should be escaped' \"But these shouldn't\"", STRING, REGULAR, 0)
+      assertEquals("'these should be escaped' \"But these shouldn't\"", literalModel.getRawValue(STRING_TYPE))
+
+      val gStringModel = buildModel.ext().findProperty("prop2")
+      assertMissingProperty(gStringModel)
+      gStringModel.setValue(iStr("'these should not be escaped' \"But these should be\""))
+      verifyPropertyModel(gStringModel, STRING_TYPE, "'these should not be escaped' \"But these should be\"", STRING, REGULAR, 0)
+      assertEquals("'these should not be escaped' \"But these should be\"", gStringModel.getRawValue(STRING_TYPE))
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val literalModel = buildModel.ext().findProperty("prop1")
+      verifyPropertyModel(literalModel, STRING_TYPE, "'these should be escaped' \"But these shouldn't\"", STRING, REGULAR, 0)
+      assertEquals("'these should be escaped' \"But these shouldn't\"", literalModel.getRawValue(STRING_TYPE))
+      val gStringModel = buildModel.ext().findProperty("prop2")
+      verifyPropertyModel(gStringModel, STRING_TYPE, "'these should not be escaped' \"But these should be\"", STRING, REGULAR, 0)
+      assertEquals("'these should not be escaped' \"But these should be\"", gStringModel.getRawValue(STRING_TYPE))
+    }
+  }
+
   fun testSetBothStringTypes() {
     val text = """
                ext {
@@ -1666,13 +1731,6 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
       val dependencyModel = propertyModel.dependencies[0]
       verifyPropertyModel(dependencyModel, INTEGER_TYPE, two, INTEGER, DERIVED, 0 /*, "0", "ext.prop1.0" TODO: FIX THIS */)
     }
-  }
-
-  fun testiStr() {
-    assertEquals("\"Its rider held a bow, and he was given a crown, and he rode out as a conqueror bent on conquest.\"",
-        iStr("Its rider held a bow, and he was given a crown, and he rode out as a conqueror bent on conquest."))
-    assertEquals("\"When the Lamb opened the second seal, I heard the second living creature say, \\\"Come and see!\\\" \"",
-        iStr("When the Lamb opened the second seal, I heard the second living creature say, \"Come and see!\" "))
   }
 
   fun testCreateNewEmptyMapValue() {
@@ -2954,23 +3012,23 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
 
     run {
       val defaultConfig = buildModel.android()!!.defaultConfig()
-      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 12, INTEGER, DERIVED, 1)
-      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 15, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 12, INTEGER, REGULAR, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 15, INTEGER, REGULAR, 1)
 
       // Check that we can edit them.
       defaultConfig.minSdkVersion().resultModel.setValue(18)
       defaultConfig.targetSdkVersion().resultModel.setValue(21)
 
-      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, DERIVED, 1)
-      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, REGULAR, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, REGULAR, 1)
     }
 
     applyChangesAndReparse(buildModel)
 
     run {
       val defaultConfig = buildModel.android()!!.defaultConfig()
-      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, DERIVED, 1)
-      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, DERIVED, 1)
+      verifyPropertyModel(defaultConfig.minSdkVersion(), INTEGER_TYPE, 18, INTEGER, REGULAR, 1)
+      verifyPropertyModel(defaultConfig.targetSdkVersion(), INTEGER_TYPE, 21, INTEGER, REGULAR, 1)
     }
   }
 

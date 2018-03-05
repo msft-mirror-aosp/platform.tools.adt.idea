@@ -17,6 +17,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.google.common.collect.ImmutableList;
@@ -37,7 +38,7 @@ import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.Valu
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.*;
 
 public class GradlePropertyModelImpl implements GradlePropertyModel {
-  @Nullable private GradleDslElement myElement;
+  @Nullable protected GradleDslElement myElement;
   @NotNull private GradleDslElement myPropertyHolder;
   // Indicates whether this property represents a method call or an assignment. This is needed to remove the braces when creating
   // properties for example "android.defaultConfig.proguardFiles" requires "proguardFiles "file.txt", "file.pro"" whereas
@@ -51,11 +52,11 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
 
   // The following properties should always be kept up to date with the values given by myElement.getElementType() and myElement.getName().
   @NotNull private final PropertyType myPropertyType;
-  @NotNull private String myName;
+  @NotNull protected String myName;
 
   public GradlePropertyModelImpl(@NotNull GradleDslElement element) {
     myElement = element;
-    myTransforms.add(defaultTransform);
+    myTransforms.add(DEFAULT_TRANSFORM);
 
     GradleDslElement parent = element.getParent();
     assert parent != null &&
@@ -75,7 +76,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     myPropertyHolder = element;
     myPropertyType = type;
     myName = name;
-    myTransforms.add(defaultTransform);
+    myTransforms.add(DEFAULT_TRANSFORM);
 
     myIsMethodCall = false;
   }
@@ -184,13 +185,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Override
   @NotNull
   public List<GradlePropertyModel> getDependencies() {
-    if (myElement == null) {
-      return Collections.emptyList();
-    }
-
-    return myElement.getResolvedVariables().stream()
-      .map(injection -> new GradlePropertyModelImpl(injection.getToBeInjected())).collect(
-        Collectors.toList());
+    return new ArrayList<>(dependencies());
   }
 
   @Override
@@ -212,7 +207,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
 
   @Override
   public void setValue(@NotNull Object value) {
-    GradleDslElement newElement = getTransform().binding.bind(myPropertyHolder, myElement, value, myName);
+    GradleDslElement newElement = getTransform().bind(myPropertyHolder, myElement, value, myName);
     bindToNewElement(newElement);
   }
 
@@ -312,7 +307,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     return list.stream().filter(e -> {
       Object v = e.getValue(OBJECT_TYPE);
       return v != null && v.equals(value);
-    }).findFirst().orElseGet(null);
+    }).findFirst().orElse(null);
   }
 
   @Override
@@ -323,8 +318,14 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
 
   @Override
   @NotNull
-  public ResolvedPropertyModel resolve() {
+  public ResolvedPropertyModelImpl resolve() {
     return new ResolvedPropertyModelImpl(this);
+  }
+
+  @NotNull
+  @Override
+  public GradlePropertyModel getUnresolvedModel() {
+    return this;
   }
 
   @Nullable
@@ -428,7 +429,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     }
     else {
       // We should not be trying to create properties based of other elements.
-      throw new IllegalArgumentException("Can't create property model from given GradleDslElement: " + element);
+      return UNKNOWN;
     }
   }
 
@@ -456,10 +457,17 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
       value = refText == null ? null : typeReference.castTo(refText);
     }
     else if (valueType == UNKNOWN) {
-      if (element.getPsiElement() == null) {
-        return null;
+      // If its a GradleDslBlockElement use the name, otherwise use the psi text. This prevents is dumping the whole
+      // elements block as a string value.
+      if (!(element instanceof GradleDslBlockElement)) {
+        if (element.getPsiElement() == null) {
+          return null;
+        }
+        value = element.getPsiElement().getText();
       }
-      value = element.getPsiElement().getText();
+      else {
+        value = element.getFullName();
+      }
     }
     else {
       GradleDslExpression expression = (GradleDslExpression)element;
@@ -503,21 +511,36 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     myElement = newElement;
   }
 
+  /**
+   * This method has package visibility so that subclasses of {@link ResolvedPropertyModelImpl} can access the element to
+   * extract custom types.
+   */
   @Nullable
-  private GradleDslElement getElement() {
+  GradleDslElement getElement() {
     if (myElement == null) {
       return null;
     }
-    return getTransform().transform.transform(myElement);
+    return getTransform().transform(myElement);
   }
 
   @NotNull
-  private PropertyTransform getTransform() {
+  protected PropertyTransform getTransform() {
     for (PropertyTransform transform : myTransforms) {
-      if (transform.condition.test(myElement)) {
+      if (transform.test(myElement)) {
         return transform;
       }
     }
     throw new IllegalStateException("No transforms found for this property model!");
+  }
+
+  @NotNull
+  List<GradlePropertyModelImpl> dependencies() {
+    if (myElement == null) {
+      return Collections.emptyList();
+    }
+
+    return myElement.getResolvedVariables().stream()
+      .map(injection -> new GradlePropertyModelImpl(injection.getToBeInjected())).collect(
+        Collectors.toList());
   }
 }

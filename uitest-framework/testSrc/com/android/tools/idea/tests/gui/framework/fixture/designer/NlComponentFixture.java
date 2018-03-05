@@ -17,6 +17,7 @@ package com.android.tools.idea.tests.gui.framework.fixture.designer;
 
 import com.android.SdkConstants;
 import com.android.tools.adtui.common.SwingCoordinate;
+import com.android.tools.idea.common.scene.target.ComponentAssistantActionTarget;
 import com.android.tools.idea.tests.gui.framework.GuiTests;
 import com.android.tools.idea.tests.gui.framework.matcher.Matchers;
 import com.android.tools.idea.common.model.Coordinates;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.android.tools.idea.tests.gui.framework.GuiTests.waitUntilFound;
 import static org.fest.swing.timing.Pause.pause;
 
 /**
@@ -238,6 +240,23 @@ public class NlComponentFixture {
     myDragAndDrop.drop(mySurface, destinationBaseline);
     pause(SceneComponent.ANIMATION_DURATION);
     return this;
+  }
+
+  @NotNull
+  public ComponentAssistantFixture openComponentAssistant() {
+    SceneView sceneView = mySurface.getCurrentSceneView();
+
+    // Find the position of the baseline target icon and click on it
+    SceneComponent sceneComponent = sceneView.getScene().getSceneComponent(myComponent);
+    Target target = GuiQuery.getNonNull(() -> sceneComponent.getTargets().stream()
+      .filter(ComponentAssistantActionTarget.class::isInstance)
+      .findFirst().get());
+    SceneContext context = SceneContext.get(sceneView);
+    Point p = new Point(context.getSwingXDip(target.getCenterX()), context.getSwingYDip(target.getCenterY()));
+    myComponentDriver.click(mySurface, p);
+
+    return new ComponentAssistantFixture(myRobot, waitUntilFound(myRobot, null,
+                                                                 Matchers.byName(JComponent.class,"Component Assistant")));
   }
 
   @NotNull

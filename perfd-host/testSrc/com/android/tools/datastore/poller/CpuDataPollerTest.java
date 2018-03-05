@@ -124,7 +124,7 @@ public class CpuDataPollerTest extends DataStorePollerTest {
   public void testCheckAppProfilingStateWithNullClientShouldReturnDefaultInstance() {
     when(myDataStoreService.getCpuClient(any())).thenReturn(null);
     ProfilingStateRequest request = ProfilingStateRequest.newBuilder()
-      .setSession(SESSION).setTimestamp(BASE_TIME_NS).build();
+      .setSession(SESSION).build();
 
     StreamObserver<ProfilingStateResponse> observer = mock(StreamObserver.class);
 
@@ -227,7 +227,7 @@ public class CpuDataPollerTest extends DataStorePollerTest {
   public void traceProfilerTypeShouldBeCorrectlySet() {
     CpuProfilerType traceType = CpuProfilerType.SIMPLEPERF;
     CpuProfilingAppStartRequest startRequest = CpuProfilingAppStartRequest.newBuilder()
-      .setProfilerType(traceType)
+      .setConfiguration(CpuProfilerConfiguration.newBuilder().setProfilerType(traceType))
       .build();
     StreamObserver<CpuProfilingAppStartResponse> startObserver = mock(StreamObserver.class);
     myCpuService.startProfilingApp(startRequest, startObserver);

@@ -19,7 +19,6 @@ import com.android.SdkConstants;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.tools.idea.common.analytics.NlUsageTrackerManager;
 import com.android.tools.idea.common.model.NlComponent;
-import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.property.NlProperty;
 import com.android.tools.idea.common.property.PropertiesManager;
 import com.android.tools.idea.common.property.inspector.InspectorPanel;
@@ -27,7 +26,6 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
-import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistant;
 import com.android.tools.idea.uibuilder.property.editors.NlPropertyEditors;
 import com.android.tools.idea.uibuilder.property.inspector.NlInspectorProviders;
 import com.android.tools.idea.uibuilder.scene.RenderListener;
@@ -46,7 +44,6 @@ import java.util.List;
 import static com.android.tools.idea.uibuilder.property.ToggleXmlPropertyEditor.NL_XML_PROPERTY_EDITOR;
 
 public class NlPropertiesManager extends PropertiesManager<NlPropertiesManager> implements RenderListener {
-  private ComponentAssistant myComponentAssistant;
   private NlInspectorProviders myInspectorProviders;
 
   public NlPropertiesManager(@NotNull AndroidFacet facet, @Nullable DesignSurface designSurface) {
@@ -72,15 +69,6 @@ public class NlPropertiesManager extends PropertiesManager<NlPropertiesManager> 
   @Override
   public void setRestoreToolWindow(@NotNull Runnable restoreToolWindowCallback) {
     getPropertiesPanel().setRestoreToolWindow(restoreToolWindowCallback);
-  }
-
-  @NotNull
-  private ComponentAssistant getComponentAssistant() {
-    if (myComponentAssistant == null) {
-      myComponentAssistant = new ComponentAssistant(getProject());
-    }
-
-    return myComponentAssistant;
   }
 
   @NotNull
@@ -170,25 +158,6 @@ public class NlPropertiesManager extends PropertiesManager<NlPropertiesManager> 
       getPropertiesPanel().getFilterMatchCount());
   }
 
-  // ---- Implements DesignSurfaceListener ----
-
-  @Override
-  public void componentSelectionChanged(@NotNull DesignSurface surface, @NotNull final List<NlComponent> newSelection) {
-    super.componentSelectionChanged(surface, newSelection);
-    if (surface != getDesignSurface()) {
-      return;
-    }
-
-    ComponentAssistant assistant = getComponentAssistant();
-    assistant.componentSelectionChanged(surface, newSelection);
-    getContentPanel().setSecondComponent(assistant.isVisible() ? assistant : null);
-  }
-
-  @Override
-  public void modelChanged(@NotNull DesignSurface surface, @Nullable NlModel model) {
-    getComponentAssistant().modelChanged(surface, model);
-  }
-
   /**
    * Find the preferred attribute of the component specified,
    * and bring focus to the editor of this attribute in the inspector.
@@ -200,8 +169,6 @@ public class NlPropertiesManager extends PropertiesManager<NlPropertiesManager> 
    */
   @Override
   public boolean activatePreferredEditor(@NotNull DesignSurface surface, @NotNull NlComponent component) {
-    getComponentAssistant().activatePreferredEditor(surface, component);
-
     ViewHandler handler = NlComponentHelperKt.getViewHandler(component);
     String propertyName = handler != null ? handler.getPreferredProperty() : null;
     if (propertyName == null) {

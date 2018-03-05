@@ -61,6 +61,11 @@ public final class StudioFlags {
     "Show new version of the Welcome Wizard when Studio starts",
     false);
 
+  public static final Flag<Boolean> NPW_DYNAMIC_APPS = Flag.create(
+    NPW, "dynamic.apps", "New Project/Module Dynamic Apps flow",
+    "Use new Dynamic Apps flow when creating a New Mobile Project/Module",
+    false);
+
   public static final Flag<Boolean> NPW_USE_HOME_FOLDER_AS_EXTRA_TEMPLATE_ROOT_FOLDER = Flag.create(
     NPW, "home.template.root", "Use .android folder as a Template Root Folder",
     "Let the user keep templates in the .android folder such that they are kept after a Studio install/upgrade",
@@ -68,7 +73,7 @@ public final class StudioFlags {
 
   private static final FlagGroup PROFILER = new FlagGroup(FLAGS, "profiler", "Android Profiler");
   public static final Flag<Boolean> PROFILER_ENABLED = Flag.create(
-    PROFILER, "enabled", "Enable \"Android Profiler\" toolbar",
+    PROFILER, "enabled", "Enable \"Profiler\" toolbar",
     "Enable the new Android Profiler toolbar, which replaces the Android Monitor toolbar " +
     "and provides more advanced CPU, event, memory, and network profiling information.",
     true);
@@ -102,6 +107,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_STARTUP_CPU_PROFILING = Flag.create(
     PROFILER, "startup.cpu.profiling", "Enable startup CPU Profiling",
     "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
+    false);
+
+  public static final Flag<Boolean> PROFILER_CPU_API_TRACING = Flag.create(
+    PROFILER, "cpu.api.tracing", "Enable CPU API Tracing",
+    "Support method tracing through APIs from android.os.Debug.",
     false);
 
   public static final Flag<Boolean> PROFILER_SHOW_THREADS_VIEW = Flag.create(
@@ -195,6 +205,11 @@ public final class StudioFlags {
     "If enabled, user can access the Connection Assistant under \"Tools\" and \"Deploy Target Dialog\"",
     true);
 
+  public static final Flag<Boolean> WHATS_NEW_ASSISTANT_ENABLED = Flag.create(
+    ASSISTANT, "whats.new.enabled", "Enable the \"What's New\" assistant",
+    "If enabled, user can access the \"What's New\" assistant under \"Help\" and \"What's New in Android Studio\"",
+    false);
+
   public static final Flag<Boolean> NELE_TARGET_RELATIVE = Flag.create(
     NELE, "target.relative", "Enable the target architecture in relative layout",
     "Enable the new Target architecture in relative layout",
@@ -205,6 +220,11 @@ public final class StudioFlags {
     RUNDEBUG_GROUP, "logcat.console.output.enabled", "Show logcat process output in Run/Debug console window",
     "When running or debugging an Android process, output the logcat output of the process in the console window.",
     true);
+  public static final Flag<Boolean> RUNDEBUG_USE_AIA_SDK_LIBRARY = Flag.create(
+    RUNDEBUG_GROUP, "instantapps.sdklib.enabled", "Use external SDK library to launch Instant Apps",
+    "When provisioning devices and launching Instant Apps, use the AIA SDK library JAR to perform these functions if available",
+    false);
+
 
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
   public static final Flag<Boolean> GRADLE_INVOCATIONS_INDEXING_AWARE = Flag.create(

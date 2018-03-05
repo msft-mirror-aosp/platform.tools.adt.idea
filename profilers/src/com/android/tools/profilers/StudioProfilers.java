@@ -15,7 +15,6 @@
  */
 package com.android.tools.profilers;
 
-import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.model.*;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.model.updater.Updatable;
@@ -31,10 +30,13 @@ import com.android.tools.profilers.memory.MemoryProfiler;
 import com.android.tools.profilers.memory.MemoryProfilerStage;
 import com.android.tools.profilers.network.NetworkProfiler;
 import com.android.tools.profilers.network.NetworkProfilerStage;
+import com.android.tools.profilers.sessions.SessionAspect;
+import com.android.tools.profilers.sessions.SessionsManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.intellij.openapi.util.text.StringUtil;
 import io.grpc.StatusRuntimeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,6 +46,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.android.tools.profiler.proto.CpuProfiler.*;
 
 /**
  * The suite of profilers inside Android Studio. This object is responsible for maintaining the information
@@ -84,8 +88,14 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   /**
    * The session that is currently selected.
    */
-  @NotNull
-  private Common.Session mySession;
+  @NotNull private Common.Session mySelectedSession;
+
+  /**
+   * The session that is currently under profiling.
+   */
+  @NotNull private Common.Session myProfilingSession;
+
+  @NotNull private Common.SessionMetaData mySelectedSessionMetaData;
 
   @NotNull
   private Stage myStage;
@@ -119,7 +129,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     }
     myProfilers = profilersBuilder.build();
 
-    myTimeline = new ProfilerTimeline();
+    myTimeline = new ProfilerTimeline(myUpdater);
     myTimeline.getSelectionRange().addDependency(this).onChange(Range.Aspect.RANGE, () -> {
       if (!myTimeline.getSelectionRange().isEmpty()) {
         myTimeline.setStreaming(false);
@@ -132,14 +142,16 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
     // TODO: StudioProfilers initalizes with a default session, which a lot of tests now relies on to avoid a NPE.
     // We should clean all the tests up to either have StudioProfilers create a proper session first or handle the null cases better.
-    mySession = Common.Session.getDefaultInstance();
+    mySelectedSession = myProfilingSession = Common.Session.getDefaultInstance();
+    mySelectedSessionMetaData = Common.SessionMetaData.getDefaultInstance();
     mySessionsManager = new SessionsManager(this);
-    mySessionsManager.addDependency(this).onChange(SessionAspect.SELECTED_SESSION, this::sessionsChanged);
+    mySessionsManager.addDependency(this)
+      .onChange(SessionAspect.SELECTED_SESSION, this::selectedSessionChanged)
+      .onChange(SessionAspect.PROFILING_SESSION, this::profilingSessionChanged);
 
     myViewAxis = new AxisComponentModel(myTimeline.getViewRange(), TimeAxisFormatter.DEFAULT);
     myViewAxis.setGlobalRange(myTimeline.getDataRange());
 
-    myUpdater.register(myTimeline);
     myUpdater.register(myViewAxis);
     myUpdater.register(this);
   }
@@ -163,6 +175,10 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     // inconsistency worse if we call these lines again.
     setDevice(null);
     changed(ProfilerAspect.STAGE);
+  }
+
+  public Map<Common.Device, List<Common.Process>> getDeviceProcessMap() {
+    return myProcesses;
   }
 
   public List<Common.Device> getDevices() {
@@ -219,8 +235,8 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
       // A heartbeat event may not have been sent by perfa when we first profile an app, here we keep pinging the status and
       // fire the corresponding change and tracking events.
-      if (isSessionAlive(mySession)) {
-        AgentStatusResponse.Status agentStatus = getAgentStatus();
+      if (isSessionAlive(mySelectedSession)) {
+        AgentStatusResponse.Status agentStatus = getAgentStatus(mySelectedSession);
         if (myAgentStatus != agentStatus) {
           myAgentStatus = agentStatus;
           changed(ProfilerAspect.AGENT);
@@ -331,38 +347,46 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     }
   }
 
-  private void sessionsChanged() {
-    Common.Session newSession = mySessionsManager.getSession();
-    if (newSession.equals(mySession)) {
-      return;
-    }
+  private void selectedSessionChanged() {
+    Common.Session newSession = mySessionsManager.getSelectedSession();
 
-    // The current selected session has not changed but it has gone from live to finished, stop all profilers.
-    if (mySession.getSessionId() == newSession.getSessionId() &&
-        isSessionAlive(mySession) && !isSessionAlive(newSession)) {
-      mySession = newSession;
-      myProfilers.forEach(profiler -> profiler.stopProfiling(mySession));
+    // The current selected session has not changed but it has gone from live to finished, simply pause the timeline.
+    if (mySelectedSession.getSessionId() == newSession.getSessionId() &&
+        isSessionAlive(mySelectedSession) && !isSessionAlive(newSession)) {
+      mySelectedSession = newSession;
       myTimeline.setIsPaused(true);
       return;
     }
 
-    mySession = newSession;
-    myAgentStatus = getAgentStatus();
+    mySelectedSession = newSession;
+    mySelectedSessionMetaData = myClient.getProfilerClient()
+      .getSessionMetaData(GetSessionMetaDataRequest.newBuilder().setSessionId(mySelectedSession.getSessionId()).build()).getData();
+    myAgentStatus = getAgentStatus(mySelectedSession);
+    if (Common.Session.getDefaultInstance().equals(newSession)) {
+      // No selected session - go to the null stage.
+      myTimeline.setIsPaused(true);
+      setStage(new NullMonitorStage(this));
+      return;
+    }
 
-    // The new session is just starting, start the profilers.
-    if (isSessionAlive(mySession)) {
-      myProfilers.forEach(profiler -> profiler.startProfiling(mySession));
-      myTimeline.reset(mySession.getStartTimestamp());
-
-      // Navigate back to the monitor stage whenever we are starting a new session.
-      setStage(new StudioMonitorStage(this));
-      myIdeServices.getFeatureTracker().trackProfilingStarted();
-      if (myAgentStatus == AgentStatusResponse.Status.ATTACHED) {
-        getIdeServices().getFeatureTracker().trackAdvancedProfilingStarted();
+    // Set the stage before updating the timeline, otherwise the stage's scrollbar would not pick up the initial timeline changes.
+    setStage(new StudioMonitorStage(this));
+    if (isSessionAlive(mySelectedSession)) {
+      // The session is live - move the timeline to the current time.
+      TimeResponse timeResponse = myClient.getProfilerClient()
+        .getCurrentTime(TimeRequest.newBuilder().setDeviceId(mySelectedSession.getDeviceId()).build());
+      myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
+      if (startupCpuProfilingStarted()) {
+        setStage(new CpuProfilerStage(this));
       }
     }
-    else if (Common.Session.getDefaultInstance().equals(newSession)) {
-      setStage(new NullMonitorStage(this));
+    else {
+      // The session is finished, reset the timeline to include the entire data range.
+      myTimeline.reset(mySelectedSession.getStartTimestamp(), mySelectedSession.getEndTimestamp());
+      // We are not streaming so we don't need the view range to have the extra initial buffer if the session's duration is short.
+      // Just set the view range to be the data range.
+      myTimeline.getViewRange().set(myTimeline.getDataRange());
+      myTimeline.setIsPaused(true);
     }
 
     // Profilers can query data depending on whether the agent is set. Even though we set the status above, delay until after the session
@@ -370,15 +394,45 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     changed(ProfilerAspect.AGENT);
   }
 
+  private void profilingSessionChanged() {
+    Common.Session newSession = mySessionsManager.getProfilingSession();
+    // Stops the previous profiling session if it is active
+    if (!Common.Session.getDefaultInstance().equals(myProfilingSession)) {
+      assert isSessionAlive(myProfilingSession);
+      myProfilers.forEach(profiler -> profiler.stopProfiling(myProfilingSession));
+    }
+
+    myProfilingSession = newSession;
+
+    if (!Common.Session.getDefaultInstance().equals(myProfilingSession)) {
+      assert isSessionAlive(myProfilingSession);
+      myProfilers.forEach(profiler -> profiler.startProfiling(myProfilingSession));
+      myIdeServices.getFeatureTracker().trackProfilingStarted();
+      if (getAgentStatus(myProfilingSession) == AgentStatusResponse.Status.ATTACHED) {
+        getIdeServices().getFeatureTracker().trackAdvancedProfilingStarted();
+      }
+    }
+  }
+
+  /**
+   * Checks whether startup CPU Profiling started for the selected session by making RPC call to perfd.
+   */
+  private boolean startupCpuProfilingStarted() {
+    if (!getIdeServices().getFeatureConfig().isStartupCpuProfilingEnabled()) {
+      return false;
+    }
+    ProfilingStateResponse response = getClient().getCpuClient()
+      .checkAppProfilingState(ProfilingStateRequest.newBuilder().setSession(mySelectedSession).build());
+    return response.getBeingProfiled() && response.getIsStartupProfiling();
+  }
+
   @NotNull
   public String getSessionDisplayName() {
-    if (Common.Session.getDefaultInstance().equals(mySession)) {
+    if (Common.Session.getDefaultInstance().equals(mySelectedSession)) {
       return "";
     }
 
-    GetSessionMetaDataResponse response = myClient.getProfilerClient()
-      .getSessionMetaData(GetSessionMetaDataRequest.newBuilder().setSessionId(mySession.getSessionId()).build());
-    return response.getData().getSessionName();
+    return mySelectedSessionMetaData.getSessionName();
   }
 
   /**
@@ -412,13 +466,13 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   @NotNull
-  private AgentStatusResponse.Status getAgentStatus() {
-    if (Common.Session.getDefaultInstance().equals(mySession)) {
+  private AgentStatusResponse.Status getAgentStatus(@NotNull Common.Session session) {
+    if (Common.Session.getDefaultInstance().equals(session)) {
       return AgentStatusResponse.getDefaultInstance().getStatus();
     }
 
     AgentStatusRequest statusRequest =
-      AgentStatusRequest.newBuilder().setPid(mySession.getPid()).setDeviceId(mySession.getDeviceId()).build();
+      AgentStatusRequest.newBuilder().setPid(session.getPid()).setDeviceId(session.getDeviceId()).build();
     return myClient.getProfilerClient().getAgentStatus(statusRequest).getStatus();
   }
 
@@ -457,7 +511,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    */
   @NotNull
   public Common.Session getSession() {
-    return mySession;
+    return mySelectedSession;
   }
 
   public void setStage(@NotNull Stage stage) {
@@ -485,11 +539,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
   private boolean isSessionAlive(@NotNull Common.Session session) {
     return session.getEndTimestamp() == Long.MAX_VALUE;
-  }
-
-  public boolean isLiveAllocationEnabled() {
-    return getIdeServices().getFeatureConfig().isLiveAllocationsEnabled() && getDevice() != null &&
-           getDevice().getFeatureLevel() >= AndroidVersion.VersionCodes.O && isAgentAttached();
   }
 
   public boolean isAgentAttached() {
@@ -551,5 +600,29 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
       // will not happen
     }
+  }
+
+  @NotNull
+  public static String buildSessionName(@NotNull Common.Device device, @NotNull Common.Process process) {
+    return String.format("%s (%s)", process.getName(), buildDeviceName(device));
+  }
+
+  @NotNull
+  public static String buildDeviceName(@NotNull Common.Device device) {
+    StringBuilder deviceNameBuilder = new StringBuilder();
+    String manufacturer = device.getManufacturer();
+    String model = device.getModel();
+    String serial = device.getSerial();
+    String suffix = String.format("-%s", serial);
+    if (model.endsWith(suffix)) {
+      model = model.substring(0, model.length() - suffix.length());
+    }
+    if (!StringUtil.isEmpty(manufacturer)) {
+      deviceNameBuilder.append(manufacturer);
+      deviceNameBuilder.append(" ");
+    }
+    deviceNameBuilder.append(model);
+
+    return deviceNameBuilder.toString();
   }
 }

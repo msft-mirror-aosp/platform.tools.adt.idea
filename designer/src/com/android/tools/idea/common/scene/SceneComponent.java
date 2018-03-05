@@ -89,7 +89,7 @@ public class SceneComponent {
 
   private boolean myShowBaseline = false;
 
-  private Notch.Provider myNotchProvider;
+  @Nullable private Notch.Provider myNotchProvider = null;
 
   @AndroidDpCoordinate
   public int getCenterX() {
@@ -286,6 +286,7 @@ public class SceneComponent {
 
   /**
    * Returns true if the widget is parent(0,0) - 0x0
+   *
    * @return true if no dimension
    */
   public boolean hasNoDimension() {
@@ -575,11 +576,12 @@ public class SceneComponent {
     return myDecorator;
   }
 
+  @Nullable
   public Notch.Provider getNotchProvider() {
     return myNotchProvider;
   }
 
-  public void setNotchProvider(Notch.Provider notchProvider) {
+  public void setNotchProvider(@Nullable Notch.Provider notchProvider) {
     myNotchProvider = notchProvider;
   }
 
@@ -825,9 +827,6 @@ public class SceneComponent {
     myTargetProvider = targetProvider;
 
     updateTargets();
-    for (SceneComponent child : getChildren()) {
-      child.updateTargets();
-    }
   }
 
   /**

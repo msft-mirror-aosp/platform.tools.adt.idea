@@ -40,6 +40,7 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker[module]",
         "//tools/analytics-library/shared:analytics-shared[module]",
         "//tools/adt/idea/wizard[module]",
+        "//tools/adt/idea/wizard-model[module]",
         "//tools/base/flags:studio.flags[module]",
         "//tools/adt/idea/artwork[module]",
         "//tools/adt/idea/android-common[module]",
@@ -84,11 +85,13 @@ iml_module(
         "//tools/idea/platform/credential-store",
         "//tools/idea/java/compiler/instrumentation-util-8",
     ],
+    test_shard_count = 8,
     test_srcs = ["testSrc"],
     test_tags = [
         "slow",
         "cpu:3",
         "block-network",
+        "no_test_mac",  # b/72973198
     ],
     test_timeout = "long",
     visibility = ["//visibility:public"],

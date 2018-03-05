@@ -15,17 +15,17 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
+import com.android.tools.adtui.HtmlLabel
 import com.android.tools.idea.gradle.structure.model.VariablesProvider
 import com.android.tools.idea.gradle.structure.model.meta.*
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.ui.ComboBox
-import java.awt.Color
 import java.awt.Dimension
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComponent
-import javax.swing.JTextField
+import javax.swing.text.DefaultCaret
 
 /**
  * A property editor [ModelPropertyEditor] for properties of simple (not complex) types.
@@ -40,7 +40,7 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
   private val variablesProvider: VariablesProvider?
 ) : ComboBox<String>(), ModelPropertyEditor<ModelT, PropertyT> {
   private var textToParsedValue: Map<String, ParsedValue<PropertyT>> = mapOf()
-  private var valueToText: Map<PropertyT, String> = mapOf()
+  private var valueToText: Map<PropertyT?, String> = mapOf()
   private var beingLoaded = false
   private var disposed = false
   private var lastTextSet: String? = null
@@ -48,6 +48,11 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
 
 
   override val component: JComponent = this
+  override val statusComponent: HtmlLabel = HtmlLabel().also {
+    // Note: this is important to be the first step to prevent automatic scrolling of the container to the last added label.
+    (it.caret as DefaultCaret).updatePolicy = DefaultCaret.NEVER_UPDATE
+    HtmlLabel.setUpAsHtmlLabel(it, font)
+  }
 
   override fun getPreferredSize(): Dimension {
     val dimensions = super.getPreferredSize()
@@ -90,20 +95,13 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
     selectedItem = text
   }
 
-  private fun setColorAndTooltip(toolTipText: String? = null, background: Color? = null) {
-    val jTextField = editor.editorComponent as? JTextField
-    if (jTextField != null) {
-      if (toolTipText != null) jTextField.toolTipText = toolTipText
-      if (background != null) jTextField.background = background
-    }
-  }
-
   @VisibleForTesting
   fun loadKnownValues() {
     val availableVariables = getAvailableVariables()
-    val possibleValues = property.getKnownValues(model) ?: listOf()
+    val possibleValues = getKnowValues()
     textToParsedValue =
-        (possibleValues.map { it.description to ParsedValue.Set.Parsed(value = it.value) } + (availableVariables ?: listOf())).toMap()
+        (possibleValues.map { it.description to ParsedValue.Set.Parsed(value = it.value) } +
+            availableVariables.orEmpty()).toMap()
     valueToText = possibleValues.associate { it.value to it.description }
     val comboBoxModel = DefaultComboBoxModel<String>(textToParsedValue.keys.toTypedArray()).apply {
       selectedItem = super.getSelectedItem()
@@ -111,43 +109,73 @@ class SimplePropertyEditor<ModelT, PropertyT : Any, out ModelPropertyT : ModelSi
     super.setModel(comboBoxModel)
   }
 
+  private fun getKnowValues(): List<ValueDescriptor<PropertyT>> {
+    val defaultValue = property.getDefaultValue(model)
+    val result = mutableListOf<ValueDescriptor<PropertyT>>()
+    if (defaultValue != null) {
+      // Note: having this value prevents users from inputting string value "($default)". However, since there are just few properties with
+      // default string values and the values in parentheses do not make sense it is safe to recognize this value as NotSet.
+      result.add(ValueDescriptor(null, "($defaultValue)"))
+    }
+    val knownValues = property.getKnownValues(model)
+    if (knownValues != null) {
+      result.addAll(knownValues)
+    }
+    return result.toList()
+  }
+
   private fun loadValue(value: PropertyValue<PropertyT>) {
     beingLoaded = true
     try {
-      setText(value.parsedValue.getText(valueToText))
-      val defaultValue = property.getDefaultValue(model)
-      when {
-        value.resolved is ResolvedValue.NotResolved && value.parsedValue is ParsedValue.Set -> {
-          setColorAndTooltip(
-            toolTipText = "[Set but not resolved - not yet synced?]",
-            background = Color.GREEN
-          )
-        }
-        value.resolved is ResolvedValue.Set &&
-            (value.parsedValue is ParsedValue.Set.Parsed &&
-                value.resolved.resolved != value.parsedValue.value ||
-                value.parsedValue is ParsedValue.NotSet &&
-                value.resolved.resolved != defaultValue)
-        -> {
-          setColorAndTooltip(
-            toolTipText = "[Set does not match resolved? - '${value.resolved.resolved.toString()}']",
-            background = Color.YELLOW
-          )
-        }
-        value.parsedValue is ParsedValue.Set.Invalid -> {
-          setColorAndTooltip(
-            toolTipText = "[Invalid?]",
-            background = Color.RED
-          )
-        }
-        value.parsedValue is ParsedValue.Set.Parsed -> {
-          setColorAndTooltip(
-            toolTipText = " = ${value.parsedValue.value.toString()}"
-          )
-        }
-      }
+      val text = value.parsedValue.getText(valueToText)
+      setText(text)
+      setStatusHtmlText(getStatusHtmlText(value))
     } finally {
       beingLoaded = false
+    }
+  }
+
+  private fun setStatusHtmlText(statusHtmlText: String) {
+    statusComponent.text = statusHtmlText
+  }
+
+  private fun getStatusHtmlText(value: PropertyValue<PropertyT>): String {
+    // TODO(solodkyy): Consider resolving well-known values and handling long string.
+    fun PropertyT?.formatValue() = this?.toString()
+
+    val parsedValue = value.parsedValue
+    val resolvedValue = value.resolved
+    val defaultValue = property.getDefaultValue(model)
+
+    val editorValueText = when (parsedValue) {
+      is ParsedValue.Set.Parsed<PropertyT> ->
+        when (parsedValue.dslText?.mode) {
+          DslMode.REFERENCE, DslMode.INTERPOLATED_STRING -> parsedValue.value.formatValue()
+          else -> null
+        }
+      else -> null
+    }
+    val effectiveEditorValue = when (parsedValue) {
+      is ParsedValue.Set.Parsed -> parsedValue.value
+      is ParsedValue.NotSet -> defaultValue
+      else -> null
+    }
+    val resolvedValueText = when (resolvedValue) {
+      is ResolvedValue.Set -> when {
+        effectiveEditorValue != resolvedValue.resolved -> resolvedValue.resolved.formatValue()
+        else -> null
+      }
+      is ResolvedValue.NotResolved -> null
+    }
+    return buildString {
+      if (editorValueText != null) {
+        append(" = ")
+        append(editorValueText)
+      }
+      if (resolvedValueText != null) {
+        append(" -> ")
+        append(resolvedValueText)
+      }
     }
   }
 

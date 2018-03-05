@@ -26,7 +26,7 @@ import com.android.tools.idea.uibuilder.api.ViewEditor;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.api.XmlType;
 import com.android.tools.idea.uibuilder.model.NlModelHelperKt;
-import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistant;
+import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistantFactory;
 import com.android.xml.XmlBuilder;
 import com.google.common.collect.ImmutableList;
 import org.intellij.lang.annotations.Language;
@@ -146,7 +146,7 @@ public class ImageViewHandler extends ViewHandler {
 
   @Nullable
   @Override
-  public ComponentAssistant.PanelFactory getComponentAssistant(@NotNull DesignSurface surface, @NotNull NlComponent component) {
+  public ComponentAssistantFactory getComponentAssistant(@NotNull DesignSurface surface, @NotNull NlComponent component) {
     if (!NELE_WIDGET_ASSISTANT.get()) {
       return null;
     }
@@ -159,6 +159,6 @@ public class ImageViewHandler extends ViewHandler {
     JButton button = new JButton("Set image");
     button.addActionListener(e -> showImageChooser(new ViewEditorImpl(surface.getCurrentSceneView()), component));
 
-    return (comp, close) -> button;
+    return (context) -> button;
   }
 }

@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.memory.adapters;
 
+import com.android.tools.adtui.model.FakeTimer;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.perflib.heap.Instance;
 import com.android.tools.perflib.heap.Type;
@@ -50,7 +51,7 @@ public class HeapDumpInstanceObjectTest {
   @Before
   public void setup() {
     FakeIdeProfilerServices profilerServices = new FakeIdeProfilerServices();
-    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), profilerServices);
+    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), profilerServices, new FakeTimer());
     myCaptureObject = new FakeHeapDumpCaptureObject(profilers.getClient().getMemoryClient());
   }
 

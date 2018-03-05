@@ -20,15 +20,13 @@ import com.android.tools.idea.uibuilder.api.actions.*;
 import com.android.tools.idea.common.model.AndroidCoordinate;
 import com.android.tools.idea.uibuilder.model.FillPolicy;
 import com.android.tools.idea.common.model.NlComponent;
-import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistant;
 import com.android.tools.idea.common.surface.DesignSurface;
-import com.android.tools.idea.uibuilder.surface.ScreenView;
+import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistantFactory;
 import com.google.common.collect.Lists;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.*;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -143,23 +141,24 @@ public class ViewHandler extends StructurePaneComponentHandler {
   /**
    * Handles a double click on the component in the component tree
    */
-  public void onActivateInComponentTree(@NotNull NlComponent component) {
+  public void onActivateInComponentTree(@NotNull NlComponent component, ViewEditor editor) {
     // Do nothing
   }
 
   /**
    * Handles a double click on the component in the design surface
    *
+   * @param editor
    * @param x the x coordinate of the double click converted to pixels in the Android coordinate system
    * @param y the y coordinate of the double click converted to pixels in the Android coordinate system
    */
   public void onActivateInDesignSurface(@NotNull NlComponent component,
-                                        @AndroidCoordinate int x,
+                                        ViewEditor editor, @AndroidCoordinate int x,
                                         @AndroidCoordinate int y) {
   }
 
   @Nullable
-  public ComponentAssistant.PanelFactory getComponentAssistant(@NotNull DesignSurface surface, @NotNull NlComponent component) {
+  public ComponentAssistantFactory getComponentAssistant(@NotNull DesignSurface surface, @NotNull NlComponent component) {
     return null;
   }
 }

@@ -16,9 +16,9 @@
 <component xmlns="http://jetbrains.org/intellij/schema/application-info"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://jetbrains.org/intellij/schema/application-info http://jetbrains.org/intellij/schema/ApplicationInfo.xsd">
-  <version major="3" minor="2" micro="0" patch="4" full="{0}.{1} Canary 5" eap="true" />
+  <version major="3" minor="2" micro="0" patch="5" full="{0}.{1} Canary 6" eap="true" />
   <company name="Google" url="http://developer.android.com"/>
-  <build number="__BUILD_NUMBER__" date="__BUILD_DATE__" apiVersion="AI-173.4548.29"/>
+  <build number="__BUILD_NUMBER__" date="__BUILD_DATE__" apiVersion="AI-173.4548.30"/>
   <logo url="/artwork/studio_splash.png" textcolor="cccccc" progressColor="cccccc" progressY="268" progressTailIcon="/artwork/studio_progress_tail.png"/>
   <about url="/artwork/studio_about.png" foreground="cccccc"/>
   <icon size128="/artwork/icon_AS_128.png" size32="/artwork/icon_AS.png" size16="/artwork/icon_AS_small.png" size12="/artwork/toolWindowProject_AS.png" ico="artwork/androidstudio.ico"/>
@@ -35,8 +35,8 @@
 
   <help file="ideahelp.jar" root="idea"/>
   <documentation url="http://developer.android.com/r/studio-ui/menu-start.html"/>
-  <feedback eap-url="https://code.google.com/p/android/issues/entry?template=Android Studio bug&amp;comment=Build: $VERSION, __BUILD_NUMBER__, __BUILD_DATE__, $DESCR &#10;&#10;IMPORTANT: Please read https://developer.android.com/studio/report-bugs.html carefully and supply all required information.&amp;status=New"
-        release-url="https://code.google.com/p/android/issues/entry?template=Android Studio bug&amp;comment=Build: $VERSION, __BUILD_NUMBER__, __BUILD_DATE__, $DESCR &#10;&#10;IMPORTANT: Please read https://developer.android.com/studio/report-bugs.html carefully and supply all required information.&amp;status=New"/>
+  <feedback eap-url="https://issuetracker.google.com/issues/new?component=192708&amp;template=840533&amp;description=Build: $VERSION, __BUILD_NUMBER__, __BUILD_DATE__, $DESCR &#10;&#10;IMPORTANT: Please read https://developer.android.com/studio/report-bugs.html carefully and supply all required information."
+        release-url="https://issuetracker.google.com/issues/new?component=192708&amp;template=840533&amp;description=Build: $VERSION, __BUILD_NUMBER__, __BUILD_DATE__, $DESCR &#10;&#10;IMPORTANT: Please read https://developer.android.com/studio/report-bugs.html carefully and supply all required information."/>
   <whatsnew url="https://developer.android.com/r/studio-ui/menu-whats-new.html"/>
   <keymap win="https://www.jetbrains.com/idea/docs/IntelliJIDEA_ReferenceCard.pdf"
           mac="https://www.jetbrains.com/idea/docs/IntelliJIDEA_ReferenceCard_Mac.pdf"/>

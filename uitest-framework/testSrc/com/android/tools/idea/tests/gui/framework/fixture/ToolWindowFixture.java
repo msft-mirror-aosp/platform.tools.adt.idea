@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.tests.gui.framework.fixture;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.wm.IdeFocusManager;
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 public abstract class ToolWindowFixture {
 
   private static final int SECONDS_TO_WAIT = 120;
+  private static final Logger LOG = Logger.getInstance(ToolWindowFixture.class);
 
   @NotNull protected final String myToolWindowId;
   @NotNull protected final Project myProject;
@@ -101,7 +103,7 @@ public abstract class ToolWindowFixture {
 
   protected final void activateAndWaitUntilIsVisible(long secondsToWait) {
     long startTime = System.currentTimeMillis();
-    activate();
+    activate(secondsToWait);
     long secondsRemaining = secondsToWait - TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime);
     waitUntilIsVisible(secondsRemaining);
   }
@@ -115,18 +117,41 @@ public abstract class ToolWindowFixture {
     return GuiQuery.getNonNull(() -> {
       Content content = myToolWindow.getContentManager().getSelectedContent();
       Component owner = IdeFocusManager.getInstance(myProject).getFocusOwner();
-      return myToolWindow.isActive() && content != null && UIUtil.isDescendingFrom(owner, content.getPreferredFocusableComponent());
+
+      boolean activeWindow = myToolWindow.isActive();
+      boolean nonNullContent = content != null;
+
+      boolean isDescendant;
+      if (nonNullContent) {
+        isDescendant = UIUtil.isDescendingFrom(owner, content.getPreferredFocusableComponent());
+      } else {
+        isDescendant = false;
+      }
+
+      boolean isActive = activeWindow && nonNullContent && isDescendant;
+      if (!isActive) {
+        LOG.info("isActive = " + Boolean.toString(activeWindow) +
+                  ", contentIsNotNull = " + Boolean.toString(nonNullContent) +
+                  ", isDescending = " + Boolean.toString(isDescendant));
+      }
+      return isActive;
     });
   }
 
   public void activate() {
-    Wait.seconds(SECONDS_TO_WAIT).expecting("ToolWindow '" + myToolWindowId + "' to be activated").until(() -> {
-      boolean isActive = isActive();
-      if (!isActive) {
-        GuiTask.execute(() -> myToolWindow.activate(null));
-      }
-      return isActive;
-    });
+    activate(SECONDS_TO_WAIT);
+  }
+
+  public void activate(long secondsToWait) {
+    Wait.seconds(secondsToWait)
+      .expecting("ToolWindow '" + myToolWindowId + "' to be activated")
+      .until(() -> {
+        boolean isActive = isActive();
+        if (!isActive) {
+          GuiTask.execute(() -> myToolWindow.activate(null));
+        }
+        return isActive;
+      });
   }
 
   protected void waitUntilIsVisible() {

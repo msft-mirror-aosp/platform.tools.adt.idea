@@ -29,8 +29,12 @@ import com.android.tools.adtui.model.DefaultDurationData;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.stdui.CommonButton;
+import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profilers.*;
+import com.android.tools.profilers.cpu.atrace.AtraceExporter;
 import com.android.tools.profilers.event.*;
+import com.android.tools.profilers.sessions.SessionAspect;
+import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.android.tools.profilers.stacktrace.LoadingPanel;
 import com.intellij.icons.AllIcons;
@@ -43,7 +47,6 @@ import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.TitledSeparator;
-import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.IconUtil;
@@ -66,11 +69,9 @@ import java.time.format.DateTimeFormatter;
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS;
 import static com.android.tools.profilers.ProfilerColors.CPU_CAPTURE_BACKGROUND;
 import static com.android.tools.profilers.ProfilerLayout.*;
-import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
-import static java.awt.event.InputEvent.META_DOWN_MASK;
+import static java.awt.event.InputEvent.*;
 
 public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
-
   private final CpuProfilerStage myStage;
 
   private final JButton myCaptureButton;
@@ -78,7 +79,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
    * Contains the status of the capture, e.g. "Starting record...", "Recording - XXmXXs", etc.
    */
   private final JLabel myCaptureStatus;
-  private final JBList<CpuThreadsModel.RangedCpuThread> myThreads;
+  private final DragAndDropList<CpuThreadsModel.RangedCpuThread> myThreads;
   /**
    * The action listener of the capture button changes depending on the state of the profiler.
    * It can be either "start capturing" or "stop capturing".
@@ -124,7 +125,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
                                                    ProfilerLayeredPane.class);
     mySelection = new SelectionComponent(getStage().getSelectionModel(), getTimeline().getViewRange());
     mySelection.setCursorSetter(ProfilerLayeredPane::setCursorOnProfilerLayeredPane);
-    myThreads = new JBList<>(myStage.getThreadStates());
+    myThreads = new DragAndDropList<>(myStage.getThreadStates());
 
     final OverlayComponent overlay = new OverlayComponent(mySelection);
     final EventMonitorView eventsView = new EventMonitorView(profilersView, stage.getEventMonitor());
@@ -209,6 +210,20 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     updateCaptureState();
     installContextMenu();
+  }
+
+  /**
+   * Makes sure the selected capture fits entirely in user's view range.
+   */
+  private void ensureCaptureInViewRange() {
+    CpuCapture capture = myStage.getCapture();
+    assert capture != null;
+
+    // Give a padding to the capture. 5% of the view range on each side.
+    ProfilerTimeline timeline = myStage.getStudioProfilers().getTimeline();
+    double padding = timeline.getViewRange().getLength() * 0.05;
+    // Now makes sure the capture range + padding is within view range.
+    timeline.ensureRangeFitsViewRange(new Range(capture.getRange().getMin() - padding, capture.getRange().getMax() + padding));
   }
 
   private void configureProfilingConfigCombo() {
@@ -310,6 +325,9 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   }
 
   private void configureThreadsPanel(JScrollPane scrollingThreads, AxisComponent timeAxisGuide) {
+    // TODO(b/62447834): Make a decision on how we want to handle thread selection.
+    myThreads.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
     CpuThreadsModel model = myStage.getThreadStates();
     myThreads.addListSelectionListener((e) -> {
       int selectedIndex = myThreads.getSelectedIndex();
@@ -328,7 +346,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     myThreads.addFocusListener(new FocusAdapter() {
       @Override
       public void focusGained(FocusEvent e) {
-        if (myThreads.getSelectedIndex() < 0 && myThreads.getItemsCount() > 0) {
+        if (myThreads.getSelectedIndex() < 0 && myThreads.getModel().getSize() > 0) {
           myThreads.setSelectedIndex(0);
         }
       }
@@ -452,10 +470,33 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     if (myStage.getStudioProfilers().getIdeServices().getFeatureConfig().isExportCpuTraceEnabled()) {
       installExportTraceMenuItem(contextMenuInstaller);
     }
-    // TODO(b/73338399): add actions to navigate through captures.
+    installCaptureNavigationMenuItems(contextMenuInstaller);
 
     // Add the profilers common menu items
     getProfilersView().installCommonMenuItems(mySelection);
+  }
+
+  /**
+   * Installs both {@link ContextMenuItem} corresponding to the CPU capture navigation feature on {@link #mySelection}.
+   */
+  private void installCaptureNavigationMenuItems(ContextMenuInstaller contextMenuInstaller) {
+    int shortcutModifier = (SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK) | SHIFT_DOWN_MASK;
+
+    ProfilerAction navigateNext =
+      new ProfilerAction.Builder("Next capture")
+        .setActionRunnable(() -> myStage.navigateNext())
+        .setEnableBooleanSupplier(() -> myStage.getTraceIdsIterator().hasNext())
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, shortcutModifier)).build();
+
+    ProfilerAction navigatePrevious =
+      new ProfilerAction.Builder("Previous capture")
+        .setActionRunnable(() -> myStage.navigatePrevious())
+        .setEnableBooleanSupplier(() -> myStage.getTraceIdsIterator().hasPrevious())
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, shortcutModifier)).build();
+
+    contextMenuInstaller.installGenericContextMenu(mySelection, navigateNext);
+    contextMenuInstaller.installGenericContextMenu(mySelection, navigatePrevious);
+    contextMenuInstaller.installGenericContextMenu(mySelection, ContextMenuItem.SEPARATOR);
   }
 
   /**
@@ -463,7 +504,6 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
    */
   private void installExportTraceMenuItem(ContextMenuInstaller contextMenuInstaller) {
     ProfilerAction exportTrace = new ProfilerAction.Builder("Export trace...").setIcon(StudioIcons.Common.EXPORT).build();
-    // TODO (b/73296572)  provide a default file name for exporting CPU trace file
     contextMenuInstaller.installGenericContextMenu(
       mySelection, exportTrace,
       x -> getTraceIntersectingWithMouseX(x) != null,
@@ -522,7 +562,18 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     // Copy temp trace file to the output stream.
     try (FileInputStream input = new FileInputStream(traceInfo.getTraceFilePath())) {
-      FileUtil.copy(input, output);
+      // Atrace Format = [HEADER|ZlibData][HEADER|ZlibData]
+      // Systrace Expected format = [HEADER|ZlipData]
+      // As such exporting the file raw Systrace will only read the first header/data chunk.
+      // Atrace captures come over as several parts combined into one file. As such we need an exporter
+      // to handle converting the format to a format that Systrace can support. The reason for the multi-part file
+      // is because Atrace dumps a compressed data file every X interval and this file represents the concatenation of all
+      // the individual dumps.
+      if (traceInfo.getProfilerType() == CpuProfiler.CpuProfilerType.ATRACE) {
+        AtraceExporter.export(input, output);
+      } else {
+        FileUtil.copy(input, output);
+      }
     }
     catch (IOException e) {
       getLogger().warn("Failed to export CPU trace file:\n" + e);
@@ -682,6 +733,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       // Capture has finished. Create a CpuCaptureView to display it.
       myCaptureView = new CpuCaptureView(this);
       mySplitter.setSecondComponent(myCaptureView.getComponent());
+      ensureCaptureInViewRange();
     }
   }
 

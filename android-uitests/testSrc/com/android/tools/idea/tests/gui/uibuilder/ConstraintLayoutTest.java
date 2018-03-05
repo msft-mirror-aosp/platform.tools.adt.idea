@@ -65,7 +65,6 @@ public class ConstraintLayoutTest {
     FileSystems.getDefault().getPath("app", "src", "main", "res", "layout", "activity_main.xml");
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-  @Rule public final ScreenshotsDuringTest screenshotsDuringTest = new ScreenshotsDuringTest();
 
   /**
    * Verifies the UI for adding side constraints for a ConstraintLayout in the layout editor.
@@ -200,7 +199,7 @@ public class ConstraintLayoutTest {
    *   1. Verify the item displays in the xml view.
    *   </pre>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE) // http://b/70683493
+  @RunIn(TestGroup.QA)
   @Test
   public void addAllLayoutItemsFromToolbar() throws Exception {
     IdeFrameFixture ideFrameFixture = guiTest.importSimpleLocalApplication();
@@ -224,7 +223,15 @@ public class ConstraintLayoutTest {
 
     for (Map.Entry<String, String> entry : widgets.entries()) {
       design.dragComponentToSurface(entry.getKey(), entry.getValue());
+      assertThat(design.getIssuePanel().hasRenderError()).isFalse();
     }
+
+    // Testing these separately because the generated tag does not correspond to the
+    // displayed name to the code below would fail
+    design.dragComponentToSurface("Widgets", "Vertical Divider");
+    assertThat(design.getIssuePanel().hasRenderError()).isFalse();
+    design.dragComponentToSurface("Widgets", "Horizontal Divider");
+    assertThat(design.getIssuePanel().hasRenderError()).isFalse();
 
     String layoutXml = ideFrameFixture
       .getEditor()
@@ -258,16 +265,16 @@ public class ConstraintLayoutTest {
    *   5. Preview layout is rendered for the selected activity.
    *   </pre>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE) // b/69792022
+  @RunIn(TestGroup.QA)
   @Test
   public void layoutPreviewRendering() throws Exception {
     IdeFrameFixture ideFrameFixture = guiTest.importProjectAndWaitForProjectSyncToFinish("LayoutTest");
 
     EditorFixture editorFixture = ideFrameFixture.getEditor()
-      .open("app/src/main/res/layout/layout2.xml", Tab.DESIGN);
+      .open("app/src/main/res/layout/layout2.xml", Tab.EDITOR);
 
     NlPreviewFixture preview = editorFixture
-      .getLayoutPreview(true)
+      .getLayoutPreview(false)
       .waitForRenderToFinish();
 
     preview.getConfigToolbar()
@@ -312,10 +319,10 @@ public class ConstraintLayoutTest {
       .requireTheme("Material");
 
     editorFixture = ideFrameFixture.getEditor()
-      .open("app/src/main/res/layout/layout1.xml", Tab.DESIGN);
+      .open("app/src/main/res/layout/layout1.xml", Tab.EDITOR);
 
     preview = editorFixture
-      .getLayoutPreview(true)
+      .getLayoutPreview(false)
       .waitForRenderToFinish();
 
     preview.getConfigToolbar()
@@ -355,7 +362,7 @@ public class ConstraintLayoutTest {
    *   and that they need to create a new theme with the selected background color.
    *   </pre>
    */
-  @RunIn(TestGroup.QA)
+  @RunIn(TestGroup.QA_UNRELIABLE) // b/73952775
   @Test
   public void themeEditor() throws Exception {
     guiTest.importSimpleLocalApplication();

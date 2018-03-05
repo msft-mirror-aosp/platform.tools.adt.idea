@@ -16,8 +16,12 @@
 package com.android.tools.idea.gradle.dsl.api;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
+import com.android.tools.idea.gradle.dsl.api.android.SigningConfigModel;
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
+import com.android.tools.idea.gradle.dsl.api.ext.SigningConfigPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +33,25 @@ public interface FlavorTypeModel extends GradleDslModel {
   String name();
 
   @NotNull
+  ResolvedPropertyModel applicationIdSuffix();
+
+  @Nullable
+  List<BuildConfigField> buildConfigFields();
+
+  BuildConfigField addBuildConfigField(@NotNull String type, @NotNull String name, @NotNull String value);
+
+  void removeBuildConfigField(@NotNull String type, @NotNull String name, @NotNull String value);
+
+  BuildConfigField replaceBuildConfigField(@NotNull String oldType,
+                                                          @NotNull String oldName,
+                                                          @NotNull String oldValue,
+                                                          @NotNull String type,
+                                                          @NotNull String name,
+                                                          @NotNull String value);
+
+  void removeAllBuildConfigFields();
+
+  @NotNull
   ResolvedPropertyModel consumerProguardFiles();
 
   @NotNull
@@ -36,6 +59,12 @@ public interface FlavorTypeModel extends GradleDslModel {
 
   @NotNull
   ResolvedPropertyModel multiDexEnabled();
+
+  @NotNull
+  ResolvedPropertyModel multiDexKeepFile();
+
+  @NotNull
+  ResolvedPropertyModel multiDexKeepProguard();
 
   @NotNull
   ResolvedPropertyModel proguardFiles();
@@ -56,8 +85,21 @@ public interface FlavorTypeModel extends GradleDslModel {
 
   void removeAllResValues();
 
+  /**
+   * You most likely want to set this property as a reference to a signing config,
+   * to do this please use {@link ReferenceTo#ReferenceTo(SigningConfigModel)}.
+   *
+   * You can obtain a list of signing configs from {@link AndroidModel#signingConfigs()}
+   */
+  @NotNull
+  SigningConfigPropertyModel signingConfig();
+
   @NotNull
   ResolvedPropertyModel useJack();
+
+
+  @NotNull
+  ResolvedPropertyModel versionNameSuffix();
 
   /**
    * Represents a statement like {@code resValue} or {@code buildConfigField} which contains type, name and value parameters.
@@ -86,5 +128,12 @@ public interface FlavorTypeModel extends GradleDslModel {
    * Represents a {@code resValue} statement defined in the product flavor block of the Gradle file.
    */
   interface ResValue extends TypeNameValueElement {
+  }
+
+
+  /**
+   * Represents a {@code buildConfigField} statement defined in the build type block of the Gradle file.
+   */
+  interface BuildConfigField extends TypeNameValueElement {
   }
 }

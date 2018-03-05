@@ -42,6 +42,7 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.scene.target.ResizeBaseTarget;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.SceneMode;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
@@ -726,6 +727,17 @@ public class Scene implements SelectionListener, Disposable {
         return;
       }
 
+      if (myHitTarget instanceof LassoTarget) {
+        LassoTarget lassoTarget = (LassoTarget)myHitTarget;
+
+        if (lassoTarget.getSelectWhileDragging() && lassoTarget.getHasChanged()) {
+          myNewSelectedComponentsOnRelease.clear();
+          myNewSelectedComponentsOnRelease.addAll(lassoTarget.getIntersectingComponents());
+          select(myNewSelectedComponentsOnRelease);
+          lassoTarget.clearHasChanged();
+        }
+      }
+
       myHitListener.skipTarget(myHitTarget);
       myHitListener.find(transform, myRoot, x, y);
       myHitTarget.mouseDrag(x, y, myHitListener.myHitTargets);
@@ -806,14 +818,20 @@ public class Scene implements SelectionListener, Disposable {
     }
     if (myHitTarget instanceof LassoTarget) {
       LassoTarget lassoTarget = (LassoTarget)myHitTarget;
-      lassoTarget.fillSelectedComponents(myNewSelectedComponentsOnRelease);
+      if (lassoTarget.getHasDragged()) {
+        myNewSelectedComponentsOnRelease.clear();
+        myNewSelectedComponentsOnRelease.addAll(lassoTarget.getIntersectingComponents());
+      }
     }
     if (myHitTarget instanceof ActionHandleTarget) {
       // TODO: Refactor this so explicit cast not required
       SceneComponent closestComponent = myHitListener.getClosestComponent();
       if (closestComponent != null && closestComponent != myRoot) {
         ActionHandleTarget actionHandleTarget = (ActionHandleTarget)myHitTarget;
-        actionHandleTarget.createAction(closestComponent);
+        NlComponent action = actionHandleTarget.createAction(closestComponent);
+        if (action != null) {
+          myDesignSurface.getSelectionModel().setSelection(ImmutableList.of(action));
+        }
       }
     }
     boolean canChangeSelection = true;

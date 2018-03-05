@@ -16,15 +16,15 @@
 package com.android.tools.idea.tests.gui.framework.fixture.designer;
 
 import com.android.tools.idea.tests.gui.framework.fixture.ComponentFixture;
-import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistant;
 import org.fest.swing.core.Robot;
 
+import javax.swing.*;
 import java.awt.*;
 
 public class ComponentAssistantFixture extends ComponentFixture<ComponentAssistantFixture, Component> {
-  private final ComponentAssistant myAssistantPanel;
+  private final JComponent myAssistantPanel;
 
-  public ComponentAssistantFixture(Robot robot, ComponentAssistant assistant) {
+  public ComponentAssistantFixture(Robot robot, JComponent assistant) {
     super(ComponentAssistantFixture.class, robot, assistant);
     myAssistantPanel = assistant;
   }

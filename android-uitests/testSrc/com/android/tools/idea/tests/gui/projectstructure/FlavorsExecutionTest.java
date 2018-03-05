@@ -22,12 +22,13 @@ import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.ExecutionToolWindowFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.ConfigureBasicActivityStepFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewActivityWizardFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.projectstructure.FlavorsTabFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.projectstructure.ProjectStructureDialogFixture;
-import org.fest.swing.timing.Wait;
+import com.intellij.openapi.diagnostic.Logger;
 import org.fest.swing.util.PatternTextMatcher;
 import org.junit.Before;
 import org.junit.Rule;
@@ -40,6 +41,8 @@ import static com.google.common.truth.Truth.assertThat;
 
 @RunWith(GuiTestRunner.class)
 public class FlavorsExecutionTest {
+
+  private final static Logger LOG = Logger.getInstance(FlavorsExecutionTest.class);
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
   @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
@@ -54,8 +57,7 @@ public class FlavorsExecutionTest {
 
   @Before
   public void setUp() throws Exception {
-    guiTest.importProject("SimpleLocalApplication");
-    guiTest.ideFrame().waitForGradleProjectSyncToFinish(Wait.seconds(60));
+    guiTest.importSimpleLocalApplication();
     emulator.createDefaultAVD(guiTest.ideFrame().invokeAvdManager());
   }
 
@@ -186,9 +188,14 @@ public class FlavorsExecutionTest {
       .runApp("app")
       .selectDevice(emulator.getDefaultAvdName())
       .clickOk();
-    ideFrameFixture.getRunToolWindow().findContent("app")
-      .waitForOutput(new PatternTextMatcher(Pattern.compile(
-        ACTIVITY_OUTPUT_PATTERN.replace("Main_Activity", SECOND_ACTIVITY_NAME), Pattern.DOTALL)), 120);
+
+    ExecutionToolWindowFixture.ContentFixture contentWindow = ideFrameFixture.getRunToolWindow().findContent("app");
+
+    String pattern = ACTIVITY_OUTPUT_PATTERN.replace("Main_Activity", SECOND_ACTIVITY_NAME);
+    LOG.info("Starting search for " +  pattern + " at system time " + System.currentTimeMillis());
+    contentWindow.waitForOutput(new PatternTextMatcher(Pattern.compile(pattern, Pattern.DOTALL)), 120);
+    LOG.info("Ending search for " + pattern + " at system time " + System.currentTimeMillis());
+
     ideFrameFixture
       .getAndroidToolWindow()
       .selectDevicesTab()

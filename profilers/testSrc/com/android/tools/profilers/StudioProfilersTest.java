@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -42,7 +41,8 @@ import static org.junit.Assert.assertTrue;
 
 public final class StudioProfilersTest {
   private final FakeProfilerService myProfilerService = new FakeProfilerService(false);
-  @Rule public FakeGrpcServer myGrpcServer = new FakeGrpcServer("StudioProfilerTestChannel", myProfilerService);
+  private final FakeGrpcServer.CpuService myCpuService = new FakeGrpcServer.CpuService();
+  @Rule public FakeGrpcServer myGrpcServer = new FakeGrpcServer("StudioProfilerTestChannel", myProfilerService, myCpuService);
 
   @Before
   public void setup() {
@@ -237,6 +237,8 @@ public final class StudioProfilersTest {
     assertThat(profilers.getTimeline().getDataRange().getMin()).isWithin(0.001).of(TimeUnit.SECONDS.toMicros(nowInSeconds));
     assertThat(profilers.getTimeline().getDataRange().getMax()).isWithin(0.001).of(TimeUnit.SECONDS.toMicros(nowInSeconds));
 
+    // The timeline has reset in the previous tick, so we need to advance the current time to make sure the next tick advances data range.
+    timer.setCurrentTimeNs(FakeTimer.ONE_SECOND_IN_NS * 5);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS * 5);
 
     assertThat(profilers.getTimeline().getDataRange().getMin()).isWithin(0.001).of(TimeUnit.SECONDS.toMicros(nowInSeconds));
@@ -389,6 +391,32 @@ public final class StudioProfilersTest {
     profilers.setProcess(null);
     assertThat(profilers.getProcess().getPid()).isEqualTo(21);
     assertThat(profilers.getProcess().getState()).isEqualTo(Common.Process.State.ALIVE);
+  }
+
+  @Test
+  public void shouldOpenCpuProfileStageIfStartupProfilingStarted() throws Exception {
+    FakeTimer timer = new FakeTimer();
+    FakeIdeProfilerServices ideServices = new FakeIdeProfilerServices();
+    ideServices.enableStartupCpuProfiling(true);
+
+    StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), ideServices, timer);
+    myProfilerService.setTimestampNs(TimeUnit.SECONDS.toNanos(42));
+
+    Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
+    Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
+    profilers.setPreferredProcessName(process.getName());
+
+    myProfilerService.addDevice(device);
+    myProfilerService.addProcess(device, process);
+    myCpuService.setStartupProfiling(true);
+
+    // To make sure that StudioProfilers#update is called, which in a consequence polls devices and processes,
+    // and starts a new session with the preferred process name.
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+
+    assertThat(profilers.getProcess().getPid()).isEqualTo(20);
+    assertThat(profilers.getProcess().getState()).isEqualTo(Common.Process.State.ALIVE);
+    assertThat(profilers.getStage()).isInstanceOf(CpuProfilerStage.class);
   }
 
   @Test
@@ -600,11 +628,9 @@ public final class StudioProfilersTest {
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(profilers.getProcess()).isEqualTo(process1);
     assertThat(myGrpcServer.getProfiledProcessCount()).isEqualTo(1);
-    assertThat(profilers.getProcess()).isEqualTo(process1);
 
     // Switch to another process.
     profilers.setProcess(process2);
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(myGrpcServer.getProfiledProcessCount()).isEqualTo(1);
     assertThat(profilers.getProcess()).isEqualTo(process2);
 
@@ -895,42 +921,6 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testSessionsListUpdated() {
-    FakeTimer timer = new FakeTimer();
-    StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
-    Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
-    Common.Process process1 = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
-    Common.Process process2 = createProcess(device.getDeviceId(), 21, "FakeProcess2", Common.Process.State.ALIVE);
-    myProfilerService.addDevice(device);
-    myProfilerService.addProcess(device, process1);
-    myProfilerService.addProcess(device, process2);
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
-
-    Map<Long, Common.Session> sessions = profilers.getSessionsManager().getSessions();
-    Common.Session session1 = profilers.getSession();
-    assertThat(session1.getDeviceId()).isEqualTo(device.getDeviceId());
-    assertThat(session1.getPid()).isEqualTo(process1.getPid());
-    assertThat(session1.getEndTimestamp()).isEqualTo(Long.MAX_VALUE);
-    assertThat(sessions.size()).isEqualTo(1);
-    assertThat(sessions.containsKey(session1.getSessionId())).isTrue();
-    assertThat(sessions.get(session1.getSessionId())).isEqualTo(session1);
-
-    profilers.setProcess(process2);
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    sessions = profilers.getSessionsManager().getSessions();
-    Common.Session session2 = profilers.getSession();
-    session1 = session1.toBuilder().setEndTimestamp(session1.getStartTimestamp() + 1).build();
-    assertThat(session2.getDeviceId()).isEqualTo(device.getDeviceId());
-    assertThat(session2.getPid()).isEqualTo(process2.getPid());
-    assertThat(session2.getEndTimestamp()).isEqualTo(Long.MAX_VALUE);
-    assertThat(sessions.size()).isEqualTo(2);
-    assertThat(sessions.containsKey(session1.getSessionId())).isTrue();
-    assertThat(sessions.containsKey(session2.getSessionId())).isTrue();
-    assertThat(sessions.get(session1.getSessionId())).isEqualTo(session1);
-    assertThat(sessions.get(session2.getSessionId())).isEqualTo(session2);
-  }
-
-  @Test
   public void testGetDirectStagesReturnsOnlyExpectedStages() throws Exception {
     FakeTimer timer = new FakeTimer();
     FakeIdeProfilerServices fakeServices = new FakeIdeProfilerServices();
@@ -948,6 +938,55 @@ public final class StudioProfilersTest {
       MemoryProfilerStage.class,
       NetworkProfilerStage.class,
       EnergyProfilerStage.class).inOrder();
+  }
+
+  @Test
+  public void testBuildSessionName() {
+    Common.Device device1 = Common.Device.newBuilder()
+      .setManufacturer("Manufacturer")
+      .setModel("Model")
+      .setSerial("Serial")
+      .build();
+    Common.Device device2 = Common.Device.newBuilder()
+      .setModel("Model-Serial")
+      .setSerial("Serial")
+      .build();
+    Common.Process process1 = Common.Process.newBuilder()
+      .setPid(10)
+      .setAbiCpuArch("x86")
+      .setName("Process1")
+      .build();
+    Common.Process process2 = Common.Process.newBuilder()
+      .setPid(20)
+      .setAbiCpuArch("arm")
+      .setName("Process2")
+      .build();
+
+    assertThat(StudioProfilers.buildSessionName(device1, process1)).isEqualTo("Process1 (Manufacturer Model)");
+    assertThat(StudioProfilers.buildSessionName(device2, process2)).isEqualTo("Process2 (Model)");
+  }
+
+  @Test
+  public void testBuildDeviceName() {
+    Common.Device device = Common.Device.newBuilder()
+      .setManufacturer("Manufacturer")
+      .setModel("Model")
+      .setSerial("Serial")
+      .build();
+    assertThat(StudioProfilers.buildDeviceName(device)).isEqualTo("Manufacturer Model");
+
+    Common.Device deviceWithEmptyManufacturer = Common.Device.newBuilder()
+      .setModel("Model")
+      .setSerial("Serial")
+      .build();
+    assertThat(StudioProfilers.buildDeviceName(deviceWithEmptyManufacturer)).isEqualTo("Model");
+
+    Common.Device deviceWithSerialInModel = Common.Device.newBuilder()
+      .setManufacturer("Manufacturer")
+      .setModel("Model-Serial")
+      .setSerial("Serial")
+      .build();
+    assertThat(StudioProfilers.buildDeviceName(deviceWithSerialInModel)).isEqualTo("Manufacturer Model");
   }
 
   private StudioProfilers getProfilersWithDeviceAndProcess() {

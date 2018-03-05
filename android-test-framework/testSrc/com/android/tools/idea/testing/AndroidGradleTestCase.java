@@ -162,6 +162,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
         LOG.info("Set JDK to " + ideSdks.getJdkPath());
       }
 
+      Sdks.allowAccessToSdk(myFixture.getProjectDisposable());
       ideSdks.setAndroidSdkPath(androidSdkPath, project);
       IdeSdks.removeJdksOn(myFixture.getProjectDisposable());
 

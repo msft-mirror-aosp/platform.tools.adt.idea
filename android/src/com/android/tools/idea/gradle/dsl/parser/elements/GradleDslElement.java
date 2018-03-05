@@ -75,7 +75,7 @@ public abstract class GradleDslElement {
       myDslFile = (GradleDslFile)this;
     }
     else {
-      myDslFile = parent.myDslFile;
+      myDslFile = parent.getDslFile();
     }
 
     myUseAssignment = false;
@@ -157,7 +157,8 @@ public abstract class GradleDslElement {
       return getName();
     }
 
-    return myParent.getQualifiedName() + "." + getName();
+    String ourName = getName();
+    return myParent.getQualifiedName() + (ourName.isEmpty() ? "" : "." + getName());
   }
 
   @NotNull

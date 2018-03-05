@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@
 package com.android.tools.idea.run.tasks;
 
 import com.android.ddmlib.IDevice;
-import com.android.tools.idea.fd.BuildSelection;
-import com.android.tools.idea.fd.InstantRunContext;
+import com.android.ddmlib.InstallException;
 import com.android.tools.idea.run.ConsolePrinter;
 import com.android.tools.idea.run.util.LaunchStatus;
-import com.android.tools.ir.client.InstantRunBuildInfo;
 import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -29,10 +28,12 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
-import static com.android.tools.idea.fd.BuildCause.APP_NOT_INSTALLED;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
@@ -42,61 +43,65 @@ import static org.mockito.Mockito.when;
 public class SplitApkDeployTaskTest {
   private static final String PACKAGE_NAME = "com.somepackage";
   @Mock private Project myProject;
-  @Mock private InstantRunContext myContext;
-  @Mock private InstantRunBuildInfo myBuildInfo;
+  @Mock private SplitApkDeployTaskContext myContext;
   @Mock private IDevice myDevice;
   @Mock private IDevice myEmbeddedDevice;
   @Mock private LaunchStatus myLaunchStatus;
-  @Mock ConsolePrinter myPrinter;
+  @Mock private ConsolePrinter myPrinter;
 
   @Before
   public void initMocks() {
     MockitoAnnotations.initMocks(this);
     when(myEmbeddedDevice.supportsFeature(IDevice.HardwareFeature.EMBEDDED)).thenReturn(true);
-    when(myContext.getInstantRunBuildInfo()).thenReturn(myBuildInfo);
     when(myContext.getApplicationId()).thenReturn(PACKAGE_NAME);
-    when(myContext.getBuildSelection()).thenReturn(new BuildSelection(APP_NOT_INSTALLED, false));
   }
 
   @Test
   public void testPerformOnEmbedded() throws Throwable {
     SplitApkDeployTask task = new SplitApkDeployTask(myProject, myContext);
-    doAnswer(new Answer<Void>() {
-      @Override
-      public Void answer(InvocationOnMock invocation) {
-        Object[] args = invocation.getArguments();
-        //noinspection unchecked
-        List<String> installOptions = (List<String>)args[2];
-        assertThat(installOptions).containsExactly("-t", "-g");
-        return null;
-      }
-    }).when(myEmbeddedDevice).installPackages(anyList(), anyBoolean(), anyList(), anyLong(), any(TimeUnit.class));
-    try {
-      assertTrue(task.perform(myEmbeddedDevice, myLaunchStatus, myPrinter));
-    }
-    catch (Exception e) {
-      // Expected because we did not mock InstantRunStatsService.
-    }
+    answerInstallOptions(myEmbeddedDevice, installOptions -> assertThat(installOptions).containsExactly("-t", "-g"));
+    assertTrue(task.perform(myEmbeddedDevice, myLaunchStatus, myPrinter));
   }
 
   @Test
   public void testPerformOnNonEmbeddedDevice() throws Throwable {
     SplitApkDeployTask task = new SplitApkDeployTask(myProject, myContext);
+    answerInstallOptions(myDevice, installOptions -> assertThat(installOptions).containsExactly("-t"));
+    assertTrue(task.perform(myDevice, myLaunchStatus, myPrinter));
+  }
+
+  @Test
+  public void testPerformPartial() throws Throwable {
+    SplitApkDeployTask task = new SplitApkDeployTask(myProject, myContext);
+    when(myContext.isPatchBuild()).thenReturn(true);
+    when(myContext.getArtifacts()).thenReturn(Arrays.asList(new File("foo.apk"), new File("bar.apk")));
+    answerInstallOptions(myDevice,
+                         apks -> assertThat(apks).containsExactly(new File("foo.apk"), new File("bar.apk")),
+                         installOptions -> assertThat(installOptions).containsExactly("-t", "-p", PACKAGE_NAME));
+    assertTrue(task.perform(myDevice, myLaunchStatus, myPrinter));
+  }
+
+  private static void answerInstallOptions(@NotNull IDevice device,
+                                           @NotNull Consumer<List<String>> checkOptions) throws InstallException {
+    answerInstallOptions(device, apks -> {
+    }, checkOptions);
+  }
+
+  private static void answerInstallOptions(@NotNull IDevice device,
+                                           @NotNull Consumer<List<File>> checkApks,
+                                           @NotNull Consumer<List<String>> checkOptions) throws InstallException {
     doAnswer(new Answer<Void>() {
       @Override
       public Void answer(InvocationOnMock invocation) {
         Object[] args = invocation.getArguments();
         //noinspection unchecked
+        List<File> apks = (List<File>)args[0];
+        //noinspection unchecked
         List<String> installOptions = (List<String>)args[2];
-        assertThat(installOptions).containsExactly("-t");
+        checkApks.accept(apks);
+        checkOptions.accept(installOptions);
         return null;
       }
-    }).when(myDevice).installPackages(anyList(), anyBoolean(), anyList(), anyLong(), any(TimeUnit.class));
-    try {
-      assertTrue(task.perform(myDevice, myLaunchStatus, myPrinter));
-    }
-    catch (Exception e) {
-      // Expected because we did not mock InstantRunStatsService.
-    }
+    }).when(device).installPackages(anyList(), anyBoolean(), anyList(), anyLong(), any(TimeUnit.class));
   }
 }

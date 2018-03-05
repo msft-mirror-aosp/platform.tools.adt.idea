@@ -45,7 +45,7 @@ public interface GradlePropertyModel {
    */
   @NotNull
   static String iStr(@NotNull String in) {
-    return DOUBLE_QUOTES + in.replace("\"", "\\\"") + DOUBLE_QUOTES;
+    return DOUBLE_QUOTES + in + DOUBLE_QUOTES;
   }
 
   // The following are TypeReferences used in calls to getValue and getRawValue.
@@ -72,6 +72,7 @@ public interface GradlePropertyModel {
    *                           property or variable refereed to. Use {@link #getDependencies()} to get the value.</li>
    *   <li>{@code NONE} - This property currently has no value, any call to {@link #getValue(TypeReference)} will return null.</>
    *   <li>{@code UNKNOWN} - No guarantees about the type of this element can be made}</li>
+   *   <li>{@code CUSTOM} - Returned by subclasses, they should provide an alternate method to get the value.</li>
    * </ul>
    */
   enum ValueType {
@@ -84,6 +85,7 @@ public interface GradlePropertyModel {
     REFERENCE,
     NONE,
     UNKNOWN,
+    CUSTOM,
   }
 
   /**
@@ -215,6 +217,12 @@ public interface GradlePropertyModel {
    */
   @NotNull
   ResolvedPropertyModel resolve();
+
+  /**
+   * @return an unresolved model representing this property.
+   */
+  @NotNull
+  GradlePropertyModel getUnresolvedModel();
 
   /**
    * @return the {@link PsiElement} that this property originated from.

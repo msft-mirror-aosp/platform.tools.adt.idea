@@ -24,6 +24,7 @@ import com.android.tools.idea.gradle.dsl.parser.android.externalNativeBuild.CMak
 import com.android.tools.idea.gradle.dsl.parser.android.externalNativeBuild.NdkBuildDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.ExternalNativeBuildOptionsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.NdkOptionsDslElement;
+import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.VectorDrawablesOptionsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.externalNativeBuild.CMakeOptionsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.externalNativeBuild.NdkBuildOptionsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.sourceSets.SourceDirectoryDslElement;
@@ -52,7 +53,10 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.groovy.lang.psi.*;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyElementVisitor;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementVisitor;
 import org.jetbrains.plugins.groovy.lang.psi.api.auxiliary.GrListOrMap;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
@@ -89,6 +93,7 @@ import static com.android.tools.idea.gradle.dsl.parser.android.TestOptionsDslEle
 import static com.android.tools.idea.gradle.dsl.parser.android.externalNativeBuild.CMakeDslElement.CMAKE_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.externalNativeBuild.NdkBuildDslElement.NDK_BUILD_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.productFlavors.NdkOptionsDslElement.NDK_BLOCK_NAME;
+import static com.android.tools.idea.gradle.dsl.parser.android.productFlavors.VectorDrawablesOptionsDslElement.VECTOR_DRAWABLES_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.splits.AbiDslElement.ABI_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.splits.DensityDslElement.DENSITY_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.splits.LanguageDslElement.LANGUAGE_BLOCK_NAME;
@@ -265,7 +270,7 @@ public class GroovyDslParser implements GradleDslParser {
     if (argumentList.getAllArguments().length > 0) {
       // This element is a method call with arguments and an optional closure associated with it.
       // ex: compile("dependency") {}
-      GradleDslExpression methodCall = getMethodCall(dslElement, expression, name, argumentList);
+      GradleDslExpression methodCall = getMethodCall(dslElement, expression, GradleNameElement.empty(), argumentList, name.fullName());
       if (closureArguments.length > 0) {
         methodCall.setParsedClosureElement(getClosureElement(methodCall, closureArguments[0], name));
       }
@@ -277,7 +282,8 @@ public class GroovyDslParser implements GradleDslParser {
     if (argumentList.getAllArguments().length == 0 && closureArguments.length == 0) {
       // This element is a pure method call, i.e a method call with no arguments and no closure arguments.
       // ex: jcenter()
-      GradleDslMethodCall methodCall = new GradleDslMethodCall(dslElement, expression, name, expression.getArgumentList());
+      GradleDslMethodCall methodCall =
+        new GradleDslMethodCall(dslElement, expression, GradleNameElement.empty(), expression.getArgumentList(), name.fullName());
       methodCall.setElementType(REGULAR);
       dslElement.addParsedElement(name.name(), methodCall);
       return true;
@@ -407,6 +413,7 @@ public class GroovyDslParser implements GradleDslParser {
       propertyElement.setParsedClosureElement(getClosureElement(propertyElement, (GrClosableBlock)lastArgument, propertyName));
     }
 
+    propertyElement.setElementType(REGULAR);
     blockElement.addParsedElement(propertyName.name(), propertyElement);
     return true;
   }
@@ -515,14 +522,14 @@ public class GroovyDslParser implements GradleDslParser {
       GrMethodCallExpression methodCall = (GrMethodCallExpression)propertyExpression;
       GrReferenceExpression callReferenceExpression = getChildOfType(methodCall, GrReferenceExpression.class);
       if (callReferenceExpression != null) {
-        GradleNameElement referenceName = GradleNameElement.from(callReferenceExpression);
-        if (!referenceName.isEmpty()) {
+        String methodName = callReferenceExpression.getText();
+        if (!methodName.isEmpty()) {
           GrArgumentList argumentList = methodCall.getArgumentList();
           if (argumentList.getAllArguments().length > 0) {
-            return getMethodCall(parentElement, methodCall, referenceName, argumentList);
+            return getMethodCall(parentElement, methodCall, propertyName, argumentList, methodName);
           }
           else {
-            return new GradleDslMethodCall(parentElement, propertyExpression, referenceName, methodCall.getArgumentList());
+            return new GradleDslMethodCall(parentElement, propertyExpression, propertyName, methodCall.getArgumentList(), methodName);
           }
         }
       }
@@ -556,8 +563,9 @@ public class GroovyDslParser implements GradleDslParser {
   private static GradleDslMethodCall getMethodCall(@NotNull GradleDslElement parentElement,
                                                    @NotNull GrMethodCallExpression psiElement,
                                                    @NotNull GradleNameElement propertyName,
-                                                   @NotNull GrArgumentList argumentList) {
-    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement, propertyName, argumentList);
+                                                   @NotNull GrArgumentList argumentList,
+                                                   @NotNull String methodName) {
+    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement, propertyName, argumentList, methodName);
 
     for (GrExpression expression : argumentList.getExpressionArguments()) {
       if (expression instanceof GrListOrMap) {
@@ -829,6 +837,9 @@ public class GroovyDslParser implements GradleDslParser {
           }
           else if (NDK_BLOCK_NAME.equals(nestedElementName)) {
             newElement = new NdkOptionsDslElement(resultElement);
+          }
+          else if (VECTOR_DRAWABLES_OPTIONS_BLOCK_NAME.equals(nestedElementName)) {
+            newElement = new VectorDrawablesOptionsDslElement(resultElement);
           }
           else {
             return null;

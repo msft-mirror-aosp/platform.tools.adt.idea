@@ -18,6 +18,7 @@ package com.android.tools.idea.profilers;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.idea.model.AndroidModuleInfo;
 import com.android.tools.profilers.*;
+import com.android.tools.profilers.sessions.SessionAspect;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
@@ -115,7 +116,7 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
   }
 
   @Nullable
-  private String getPreferredProcessName(Project project) {
+  private static String getPreferredProcessName(Project project) {
     for (Module module : ModuleManager.getInstance(project).getModules()) {
       AndroidModuleInfo moduleInfo = AndroidModuleInfo.getInstance(module);
       if (moduleInfo != null) {

@@ -16,9 +16,11 @@
 package com.android.tools.idea.gradle.dsl.model.ext;
 
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
+import com.android.tools.idea.gradle.dsl.api.ext.PasswordPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.java.LanguageLevelPropertyModel;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.model.java.LanguageLevelPropertyModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement;
@@ -107,19 +109,27 @@ public class GradlePropertyModelBuilder {
    *
    * @return the built model
    */
-  public GradlePropertyModel build() {
+  public GradlePropertyModelImpl build() {
     GradleDslElement currentElement = myHolder.getPropertyElement(myName);
     GradlePropertyModelImpl model = currentElement == null
                                     ? new GradlePropertyModelImpl(myHolder, myType, myName) : new GradlePropertyModelImpl(currentElement);
-    if (myIsMethod) {
-      model.markAsMethodCall();
-    }
+    return setUpModel(model);
+  }
 
-    for (PropertyTransform t : myTransforms) {
-      model.addTransform(t);
-    }
+  public SigningConfigPropertyModelImpl buildSigningConfig() {
+    return new SigningConfigPropertyModelImpl(build());
+  }
 
-    return model;
+  /**
+   *  Builds a {@link PasswordPropertyModel} with the properties defined by this builder.
+   *
+   * @return the built model
+   */
+  public PasswordPropertyModelImpl buildPassword() {
+    GradleDslElement currentElement = myHolder.getPropertyElement(myName);
+    PasswordPropertyModelImpl model = currentElement == null
+                                    ? new PasswordPropertyModelImpl(myHolder, myType, myName) : new PasswordPropertyModelImpl(currentElement);
+    return setUpModel(model);
   }
 
   /**
@@ -127,7 +137,7 @@ public class GradlePropertyModelBuilder {
    *
    * @return the built model
    */
-  public ResolvedPropertyModel buildResolved() {
+  public ResolvedPropertyModelImpl buildResolved() {
     return build().resolve();
   }
 
@@ -136,7 +146,19 @@ public class GradlePropertyModelBuilder {
    *
    * @return the built model
    */
-  public LanguageLevelPropertyModel buildLanguage() {
+  public LanguageLevelPropertyModelImpl buildLanguage() {
     return new LanguageLevelPropertyModelImpl(build());
+  }
+
+  @NotNull
+  private <T extends GradlePropertyModelImpl> T setUpModel(@NotNull T model) {
+    if (myIsMethod) {
+      model.markAsMethodCall();
+    }
+
+    for (PropertyTransform t : myTransforms) {
+      model.addTransform(t);
+    }
+    return model;
   }
 }

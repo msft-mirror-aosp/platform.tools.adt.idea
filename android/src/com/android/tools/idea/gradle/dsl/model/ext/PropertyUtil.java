@@ -16,28 +16,22 @@
 package com.android.tools.idea.gradle.dsl.model.ext;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.DefaultTransform;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.SingleArgumentMethodTransform;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static com.android.tools.idea.gradle.dsl.model.ext.PropertyTransform.*;
-
 public class PropertyUtil {
-  @NotNull
-  public static final TransformCondition defaultTransformCondition = e -> true;
-
-  @NotNull
-  public static final ElementTransform defaultElementTransform = e -> e;
-
-  @NotNull
-  public static final ElementBindingFunction defaultBindingFunction =
-    (holder, oldElement, value, name) -> createOrReplaceBasicExpression(holder, oldElement, value, name);
+  @NonNls private static final String FILE_METHOD_NAME = "file";
 
   @NotNull
   public static GradleDslExpression createOrReplaceBasicExpression(@NotNull GradleDslElement parent,
                                                                    @Nullable GradleDslElement oldElement,
                                                                    @NotNull Object value,
-                                                                   @NotNull String name) {
+                                                                   @NotNull GradleNameElement name) {
     boolean isReference = value instanceof ReferenceTo;
 
     // Check if we can reuse the element.
@@ -48,13 +42,16 @@ public class PropertyUtil {
       return expression;
     }
     else {
+      if (oldElement != null) {
+        name = oldElement.getNameElement();
+      }
+
       GradleDslExpression newElement;
-      GradleNameElement nameElement = GradleNameElement.create(name);
       if (!isReference) {
-        newElement = new GradleDslLiteral(parent, nameElement);
+        newElement = new GradleDslLiteral(parent, name);
       }
       else {
-        newElement = new GradleDslReference(parent, nameElement);
+        newElement = new GradleDslReference(parent, name);
       }
 
       newElement.setValue(value);
@@ -116,6 +113,6 @@ public class PropertyUtil {
     return index;
   }
 
-  public static final PropertyTransform defaultTransform =
-    new PropertyTransform(defaultTransformCondition, defaultElementTransform, defaultBindingFunction);
+  public static final PropertyTransform DEFAULT_TRANSFORM = new DefaultTransform();
+  public static final PropertyTransform FILE_TRANSFORM = new SingleArgumentMethodTransform(FILE_METHOD_NAME);
 }

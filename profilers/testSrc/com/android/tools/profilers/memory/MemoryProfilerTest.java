@@ -22,10 +22,7 @@ import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.MemoryProfiler.AllocationsInfo;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryData;
 import com.android.tools.profiler.proto.Profiler;
-import com.android.tools.profilers.FakeGrpcChannel;
-import com.android.tools.profilers.FakeIdeProfilerServices;
-import com.android.tools.profilers.FakeProfilerService;
-import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.*;
 import com.android.tools.profilers.cpu.FakeCpuService;
 import com.android.tools.profilers.event.FakeEventService;
 import com.android.tools.profilers.network.FakeNetworkService;
@@ -78,6 +75,7 @@ public class MemoryProfilerTest {
 
   @Test
   public void testLiveAllocationTrackingOnAgentAttach() {
+    myIdeProfilerServices.enableJvmtiAgent(true);
     myIdeProfilerServices.enableLiveAllocationTracking(true);
     setupODeviceAndProcess();
 
@@ -92,46 +90,32 @@ public class MemoryProfilerTest {
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     Truth.assertThat(myStudioProfiler.isAgentAttached()).isTrue();
     Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(2);
-    // AllocationsInfo should be queried for {0ns, 0ns}, but here we account for the +/- 1s buffer in AllocationInfosDataSeries as well.
-    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(TimeUnit.SECONDS.toNanos(-1));
-    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(TimeUnit.SECONDS.toNanos(1));
+    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(0);
+    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(0);
   }
 
   @Test
-  public void testAllocationTrackingNotStartedIfInfoExists() {
+  public void liveAllocationTrackingDidNotStartIfAgentIsNotAttached() {
+    myIdeProfilerServices.enableJvmtiAgent(true);
     myIdeProfilerServices.enableLiveAllocationTracking(true);
-    myProfilerService.setTimestampNs(DEVICE_STARTTIME_NS);
     setupODeviceAndProcess();
 
-    // AllocationsInfo should exist for tracking to not restart.
-    myMemoryService.setMemoryData(MemoryData.newBuilder().addAllocationsInfo(
-      AllocationsInfo.newBuilder()
-        .setStatus(AllocationsInfo.Status.IN_PROGRESS)
-        .setStartTime(Long.MIN_VALUE)
-        .setEndTime(Long.MAX_VALUE)
-        .setLegacy(false).build()
-    ).build());
-
-    Range dataRequestRange = myMemoryService.getLastRequestedDataRange();
-    Truth.assertThat(myStudioProfiler.isAgentAttached()).isFalse();
-    Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(0);
-    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(TimeUnit.SECONDS.toNanos(0));
-    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(TimeUnit.SECONDS.toNanos(0));
-
-    // Advance the timer to select the device + process
     myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.ATTACHED);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-
-    // Should not stop/start live tracking since an AllocationsInfo already exists.
     Truth.assertThat(myStudioProfiler.isAgentAttached()).isTrue();
+    Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(2);
+
+    myMemoryService.resetTrackAllocationCount();
+    myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.DETACHED);
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    myStudioProfiler.changed(ProfilerAspect.AGENT);
+    Truth.assertThat(myStudioProfiler.isAgentAttached()).isFalse();
     Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(0);
-    // AllocationsInfo should be queried for {0ns, 0ns}, but here we account for the +/- 1s buffer in AllocationInfosDataSeries as well.
-    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(TimeUnit.SECONDS.toNanos(-1));
-    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(TimeUnit.SECONDS.toNanos(1));
   }
 
   @Test
   public void testStopTrackingOnProfilerStop() {
+    myIdeProfilerServices.enableJvmtiAgent(true);
     myIdeProfilerServices.enableLiveAllocationTracking(true);
     myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.ATTACHED);
     setupODeviceAndProcess();

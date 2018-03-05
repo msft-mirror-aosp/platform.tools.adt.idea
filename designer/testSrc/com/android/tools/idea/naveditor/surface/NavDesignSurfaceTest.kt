@@ -15,14 +15,18 @@
  */
 package com.android.tools.idea.naveditor.surface
 
+import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.model.Coordinates
+import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.scene.SceneContext
+import com.android.tools.idea.common.surface.DesignSurfaceListener
 import com.android.tools.idea.common.surface.InteractionManager
 import com.android.tools.idea.common.surface.Layer
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.naveditor.NavModelBuilderUtil.navigation
 import com.android.tools.idea.naveditor.NavTestCase
+import com.android.tools.idea.naveditor.model.NavCoordinate
 import com.android.tools.idea.uibuilder.LayoutTestUtilities
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -33,6 +37,7 @@ import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.*
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.Rectangle
 import java.awt.event.MouseEvent
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicReference
@@ -113,6 +118,29 @@ class NavDesignSurfaceTest : NavTestCase() {
     assertEquals(subnav, surface.currentNavigation)
   }
 
+  fun testRootActivated() {
+    val surface = NavDesignSurface(project, myRootDisposable)
+    val model = model("nav.xml") {
+      navigation("root") {
+        fragment("fragment1")
+        navigation("subnav") {
+          fragment("fragment2")
+        }
+      }
+    }
+    surface.model = model
+    val modelListener = mock(ModelListener::class.java)
+    val surfaceListener = mock(DesignSurfaceListener::class.java)
+    model.addListener(modelListener)
+    surface.addListener(surfaceListener)
+    assertEquals(model.components[0], surface.currentNavigation)
+    val root = model.find("root")!!
+    surface.notifyComponentActivate(root)
+    assertEquals(root, surface.currentNavigation)
+    verifyZeroInteractions(modelListener)
+    verifyZeroInteractions(surfaceListener)
+  }
+
   fun testDoubleClickFragment() {
     val model = model("nav.xml") {
       navigation("root") {
@@ -179,17 +207,81 @@ class NavDesignSurfaceTest : NavTestCase() {
   }
 
   private fun verifyScroll(
-      components: List<NlComponent>,
-      surface: NavDesignSurface,
-      scheduleRef: AtomicReference<Future<*>>,
-      scrollPosition: Point,
-      expectedX: Int,
-      expectedY: Int) {
+    components: List<NlComponent>,
+    surface: NavDesignSurface,
+    scheduleRef: AtomicReference<Future<*>>,
+    scrollPosition: Point,
+    expectedX: Int,
+    expectedY: Int
+  ) {
     surface.scrollToCenter(components)
 
     while (scheduleRef.get() != null && !scheduleRef.get().isCancelled) {
       UIUtil.dispatchAllInvocationEvents()
     }
     assertEquals(Point(expectedX, expectedY), scrollPosition)
+  }
+
+  fun testDragSelect() {
+    val model = model("nav.xml") {
+      navigation {
+        fragment("fragment1")
+        fragment("fragment2")
+      }
+    }
+
+    val surface = model.surface as NavDesignSurface
+    val scene = surface.scene!!
+    scene.layout(0, SceneContext.get())
+    val sceneView = NavView(surface, surface.sceneManager!!)
+    `when`<SceneView>(surface.currentSceneView).thenReturn(sceneView)
+    `when`<SceneView>(surface.getSceneView(anyInt(), anyInt())).thenReturn(sceneView)
+
+    model.surface.selectionModel.setSelection(ImmutableList.of(model.find("fragment1")!!))
+
+    val manager = InteractionManager(surface)
+    manager.startListening()
+
+    val fragment1 = scene.getSceneComponent("fragment1")!!
+    val fragment2 = scene.getSceneComponent("fragment2")!!
+
+    val rect1 = fragment1.fillDrawRect(0, null)
+    rect1.grow(5, 5)
+    dragSelect(manager, sceneView, rect1)
+    assertTrue(fragment1.isSelected)
+    assertFalse(fragment2.isSelected)
+
+    val rect2 = fragment2.fillDrawRect(0, null)
+    rect2.grow(5, 5)
+    dragSelect(manager, sceneView, rect2)
+    assertFalse(fragment1.isSelected)
+    assertTrue(fragment2.isSelected)
+
+    val rect3 = Rectangle()
+    rect3.add(rect1)
+    rect3.add(rect2)
+    rect3.grow(5, 5)
+    dragSelect(manager, sceneView, rect3)
+    assertTrue(fragment1.isSelected)
+    assertTrue(fragment2.isSelected)
+
+    val rect4 = Rectangle(rect3.x + 10, rect3.y + 10, 10, 10)
+    dragSelect(manager, sceneView, rect4)
+    assertFalse(fragment1.isSelected)
+    assertFalse(fragment2.isSelected)
+
+    manager.stopListening()
+  }
+
+  private fun dragSelect(manager: InteractionManager, sceneView: SceneView, @NavCoordinate rect: Rectangle) {
+
+    @SwingCoordinate val x1 = Coordinates.getSwingX(sceneView, rect.x)
+    @SwingCoordinate val y1 = Coordinates.getSwingY(sceneView, rect.y)
+    @SwingCoordinate val x2 = Coordinates.getSwingX(sceneView, rect.x + rect.width)
+    @SwingCoordinate val y2 = Coordinates.getSwingY(sceneView, rect.y + rect.height)
+
+    LayoutTestUtilities.pressMouse(manager, MouseEvent.BUTTON1, x1, y1, 0)
+    LayoutTestUtilities.dragMouse(manager, x1, y1, x2, y2, 0)
+    LayoutTestUtilities.releaseMouse(manager, MouseEvent.BUTTON1, x2, y2, 0)
   }
 }

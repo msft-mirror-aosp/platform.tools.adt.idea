@@ -15,33 +15,37 @@
  */
 package com.android.tools.idea.uibuilder.handlers.assistant;
 
+import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
-import com.android.tools.idea.res.AppResourceRepository;
+import com.android.tools.adtui.HorizontalSpinner;
 import com.android.tools.idea.common.model.NlComponent;
-import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistant;
+import com.android.tools.idea.res.AppResourceRepository;
+import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistantFactory.Context;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.ListCellRendererWrapper;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.ui.components.JBList;
+import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import kotlin.Unit;
-import kotlin.jvm.functions.Function0;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.ResourceFolderManager;
 import org.jetbrains.android.util.AndroidResourceUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
@@ -49,7 +53,7 @@ import java.util.List;
 
 import static com.android.SdkConstants.*;
 
-public class RecyclerViewAssistant extends JPanel implements ComponentAssistant.PanelFactory {
+public class RecyclerViewAssistant extends JPanel {
   private static Logger LOG = Logger.getInstance(RecyclerViewAssistant.class);
 
   @Language("XML")
@@ -165,34 +169,100 @@ public class RecyclerViewAssistant extends JPanel implements ComponentAssistant.
     "</LinearLayout>";
 
   private static final ImmutableList<Template> TEMPLATES = ImmutableList.of(
-    new Template("e-mail client template", EMAIL_TEMPLATE),
-    new Template("One line template", ONE_LINE_TEMPLATE),
-    new Template("Two lines template", TWO_LINES_TEMPLATE),
-    new Template("Three lines template", THREE_LINES_TEMPLATE));
+    new Template("e-mail client", EMAIL_TEMPLATE),
+    new Template("One line", ONE_LINE_TEMPLATE),
+    new Template("Two lines", TWO_LINES_TEMPLATE),
+    new Template("Three lines", THREE_LINES_TEMPLATE));
 
+  private final NlComponent myComponent;
+  private final String myOriginalListItemValue;
+  private final Project myProject;
+  private final String myResourceName;
+  private final HorizontalSpinner<Template> mySpinner;
+  @Nullable private PsiFile myCreatedFile;
+
+  public RecyclerViewAssistant(@NotNull Context context) {
+    super(new BorderLayout());
+
+    myComponent = context.getComponent();
+    AndroidFacet facet = myComponent.getModel().getFacet();
+    VirtualFile resourceDir = ResourceFolderManager.getInstance(facet).getPrimaryFolder();
+    assert resourceDir != null;
+    myProject = facet.getModule().getProject();
+    myResourceName = getTemplateName(facet, "recycler_view");
+
+    mySpinner = HorizontalSpinner.forModel(
+      JBList.createDefaultListModel(TEMPLATES.toArray(new Template[0])));
+
+    mySpinner.addListSelectionListener(event -> {
+      if (event.getValueIsAdjusting()) {
+        return;
+      }
+
+      fireSelectionUpdated();
+    });
+
+    JLabel label = new JLabel("Item template");
+    label.setBorder(JBUI.Borders.emptyBottom(5));
+    JButton apply = new JButton("Apply");
+    apply.setOpaque(false);
+    JPanel applyPanel = new JPanel(new BorderLayout());
+    applyPanel.setOpaque(false);
+    applyPanel.setBorder(JBUI.Borders.emptyTop(10));
+    applyPanel.add(apply, BorderLayout.CENTER);
+    apply.addActionListener(e -> {
+      myCreatedFile = null;
+      context.getDoClose().invoke();
+    });
+
+    add(label, BorderLayout.NORTH);
+    add(mySpinner, BorderLayout.CENTER);
+    add(applyPanel, BorderLayout.SOUTH);
+
+    setBorder(JBUI.Borders.empty(10));
+
+    setBackground(UIUtil.getListBackground());
+    myOriginalListItemValue = myComponent.getAttribute(TOOLS_URI, ATTR_LISTITEM);
+
+    context.setOnClose(this::onClosed);
+
+    ApplicationManager.getApplication().invokeLater(this::fireSelectionUpdated);
+  }
+
+  private void fireSelectionUpdated() {
+    Template template = mySpinner.getModel().getElementAt(mySpinner.getSelectedIndex());
+    myCreatedFile = setTemplate(myProject, myComponent, myResourceName, template.myTemplate);
+  }
+
+
+  @NotNull
   private static String getTemplateName(@NotNull AndroidFacet facet, @NotNull String templateRootName) {
     AppResourceRepository appResourceRepository = AppResourceRepository.getOrCreateInstance(facet);
     String resourceNameRoot = AndroidResourceUtil.getValidResourceFileName(templateRootName);
 
-    String resourceName = resourceNameRoot;
-    int index = 1;
-    while (appResourceRepository.getResourceItem(ResourceType.LAYOUT, resourceName) != null &&
-           !appResourceRepository.getResourceItem(ResourceType.LAYOUT, resourceName).isEmpty()) {
-      resourceName = resourceNameRoot + "_" + index++;
-    }
+    String resourceName;
+    int index = 0;
+    do {
+      resourceName = resourceNameRoot + (index < 1 ? "" : "_" + index);
+      index++;
+    } while (!appResourceRepository.getResourceItems(ResourceNamespace.TODO, ResourceType.LAYOUT, resourceName).isEmpty());
     return resourceName;
   }
 
-  private static void setTemplate(@NotNull Project project, @NotNull NlComponent component, @NotNull String resourceName, @NotNull String content) {
+  @Nullable
+  private static PsiFile setTemplate(@NotNull Project project,
+                                     @NotNull NlComponent component,
+                                     @NotNull String resourceName,
+                                     @NotNull String content) {
     AndroidFacet facet = component.getModel().getFacet();
     VirtualFile resourceDir = ResourceFolderManager.getInstance(facet).getPrimaryFolder();
     assert resourceDir != null;
 
-    WriteCommandAction.runWriteCommandAction(project, "Adding RecyclerView template", null, () -> {
+    return WriteCommandAction.runWriteCommandAction(project, (Computable<PsiFile>)() -> {
       List<VirtualFile> files = AndroidResourceUtil.findOrCreateStateListFiles(
         project, resourceDir, ResourceFolderType.LAYOUT, ResourceType.LAYOUT, resourceName, Collections.singletonList(FD_RES_LAYOUT));
       if (files == null || files.isEmpty()) {
-        return;
+        return null;
       }
 
       VirtualFile file = files.get(0);
@@ -207,13 +277,35 @@ public class RecyclerViewAssistant extends JPanel implements ComponentAssistant.
       }
       component.setAttribute(TOOLS_URI, ATTR_LISTITEM, LAYOUT_RESOURCE_PREFIX + resourceName);
       CommandProcessor.getInstance().addAffectedFiles(project, component.getTag().getContainingFile().getVirtualFile());
+
+      return PsiManager.getInstance(project).findFile(file);
     });
   }
 
+  /**
+   * Method called if the user has closed the popup
+   */
+  @Nullable
+  private Unit onClosed(Boolean cancelled) {
+    if (myCreatedFile == null || !cancelled) {
+      // The user didn't create a file, nothing to undo
+      return null;
+    }
+
+    AndroidFacet facet = myComponent.getModel().getFacet();
+    Project project = facet.getModule().getProject();
+    // onClosed is invoked when the dialog is closed so we run the clean-up it later when the dialog has effectively closed
+    ApplicationManager.getApplication().invokeLater(() -> WriteCommandAction.runWriteCommandAction(project, () -> {
+      myCreatedFile.delete();
+      myComponent.setAttribute(TOOLS_URI, ATTR_LISTITEM, myOriginalListItemValue);
+      CommandProcessor.getInstance().addAffectedFiles(project, myComponent.getTag().getContainingFile().getVirtualFile());
+    }));
+    return null;
+  }
+
   @NotNull
-  @Override
-  public JComponent createComponent(@NotNull NlComponent component, @NotNull Function0<Unit> close) {
-    return new RecyclerViewAssistant(component, close);
+  public static JComponent createComponent(@NotNull Context context) {
+    return new RecyclerViewAssistant(context);
   }
 
   /**
@@ -227,46 +319,10 @@ public class RecyclerViewAssistant extends JPanel implements ComponentAssistant.
       myTemplateName = templateName;
       myTemplate = template;
     }
-  }
 
-  public RecyclerViewAssistant(@NotNull NlComponent component, @NotNull Function0<Unit> close) {
-    super(new BorderLayout());
-
-    AndroidFacet facet = component.getModel().getFacet();
-    VirtualFile resourceDir = ResourceFolderManager.getInstance(facet).getPrimaryFolder();
-    assert resourceDir != null;
-    Project project = facet.getModule().getProject();
-    String resourceName = getTemplateName(facet, "recycler_view");
-
-    JBList<Template> templatesList = new JBList<>(TEMPLATES.toArray(new Template[0]));
-    templatesList.setCellRenderer( new ListCellRendererWrapper<Template>() {
-      @Override
-      public void customize(JList list,
-                            Template value,
-                            int index,
-                            boolean selected,
-                            boolean hasFocus) {
-        setText(value.myTemplateName);
-      }
-    });
-    templatesList.addListSelectionListener(event -> {
-      if (event.getValueIsAdjusting()) {
-        return;
-      }
-      Template template = templatesList.getModel().getElementAt(templatesList.getSelectedIndex());
-      setTemplate(project, component, resourceName, template.myTemplate);
-    });
-    templatesList.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mouseClicked(MouseEvent e) {
-        boolean isDoubleClick = e.getClickCount() > 0 && e.getClickCount() % 2 == 0;
-        if (isDoubleClick) {
-          close.invoke();
-        }
-      }
-    });
-    add(templatesList, BorderLayout.NORTH);
-
-    setBackground(UIUtil.getListBackground());
+    @Override
+    public String toString() {
+      return myTemplateName;
+    }
   }
 }

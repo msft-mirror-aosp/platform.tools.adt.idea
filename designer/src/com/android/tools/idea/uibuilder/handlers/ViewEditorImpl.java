@@ -19,10 +19,13 @@ import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.resources.ResourceType;
 import com.android.sdklib.AndroidVersion;
+import com.android.tools.idea.common.api.InsertType;
 import com.android.tools.idea.common.model.NlComponent;
+import com.android.tools.idea.common.model.NlDependencyManager;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.common.scene.SceneManager;
+import com.android.tools.idea.common.surface.DesignSurfaceHelper;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.model.AndroidModuleInfo;
@@ -31,10 +34,8 @@ import com.android.tools.idea.rendering.RenderResult;
 import com.android.tools.idea.rendering.RenderService;
 import com.android.tools.idea.rendering.RenderTask;
 import com.android.tools.idea.ui.resourcechooser.ChooseResourceDialog;
-import com.android.tools.idea.common.api.InsertType;
 import com.android.tools.idea.uibuilder.api.ViewEditor;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
-import com.android.tools.idea.common.model.NlDependencyManager;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.google.common.collect.Maps;
 import com.intellij.openapi.module.Module;
@@ -276,6 +277,11 @@ public class ViewEditorImpl extends ViewEditor {
   @Nullable
   private static NlComponent getChild(@NotNull NlComponent parent, int index) {
     return 0 <= index && index < parent.getChildCount() ? parent.getChild(index) : null;
+  }
+
+  @Override
+  public void openResourceFile(@NotNull String resourceId) {
+    DesignSurfaceHelper.openResource(myConfiguration, resourceId, myModel.getVirtualFile());
   }
 
   /**
