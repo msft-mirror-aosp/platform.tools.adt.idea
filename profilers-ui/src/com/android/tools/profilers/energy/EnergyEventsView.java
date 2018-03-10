@@ -17,10 +17,12 @@ package com.android.tools.profilers.energy;
 
 import com.android.tools.adtui.AxisComponent;
 import com.android.tools.adtui.TabularLayout;
+import com.android.tools.adtui.chart.statechart.StateChart;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.AxisComponentModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.profiler.proto.EnergyProfiler.EnergyEvent;
 import com.android.tools.profilers.BorderlessTableCellRenderer;
 import com.android.tools.profilers.HoverRowTable;
 import com.android.tools.profilers.ProfilerColors;
@@ -55,19 +57,22 @@ public final class EnergyEventsView {
   enum Column {
     NAME(0.25, String.class) {
       @Override
-      Object getValueFrom(@NotNull EventDuration data) {
+      Object getValueFrom(@NotNull EnergyDuration data) {
         return data.getName();
       }
     },
-    KIND(0.25, Integer.class) {
+    KIND(0.25, String.class) {
       @Override
-      Object getValueFrom(@NotNull EventDuration data) {
-        return data.getKind();
+      Object getValueFrom(@NotNull EnergyDuration data) {
+        String kindStr = data.getKind().name().replace('_', ' ');
+        // Capitalize first letter because it looks nicer in the table
+        kindStr = kindStr.substring(0, 1).toUpperCase(Locale.US) + kindStr.substring(1).toLowerCase(Locale.US);
+        return kindStr;
       }
     },
     TIMELINE(0.5, Long.class) {
       @Override
-      Object getValueFrom(@NotNull EventDuration data) {
+      Object getValueFrom(@NotNull EnergyDuration data) {
         return data.getInitialTimestamp();
       }
     };
@@ -92,7 +97,7 @@ public final class EnergyEventsView {
       return StringUtil.capitalize(name().toLowerCase(Locale.getDefault()));
     }
 
-    abstract Object getValueFrom(@NotNull EventDuration data);
+    abstract Object getValueFrom(@NotNull EnergyDuration data);
   }
 
   @NotNull private final EnergyProfilerStage myStage;
@@ -148,7 +153,7 @@ public final class EnergyEventsView {
   }
 
   private void updateTableSelection() {
-    EventDuration duration = myStage.getSelectedDuration();
+    EnergyDuration duration = myStage.getSelectedDuration();
     if (duration != null) {
       int id = duration.getEventList().get(0).getEventId();
       for (int i = 0; i < myTableModel.getRowCount(); ++i) {
@@ -169,7 +174,7 @@ public final class EnergyEventsView {
   }
 
   private static final class EventsTableModel extends AbstractTableModel {
-    @NotNull private List<EventDuration> myList = new ArrayList<>();
+    @NotNull private List<EnergyDuration> myList = new ArrayList<>();
 
     private EventsTableModel(EnergyEventsFetcher fetcher) {
       fetcher.addListener(list -> {
@@ -195,7 +200,7 @@ public final class EnergyEventsView {
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-      EventDuration duration = myList.get(rowIndex);
+      EnergyDuration duration = myList.get(rowIndex);
       return Column.values()[columnIndex].getValueFrom(duration);
     }
 
@@ -205,7 +210,7 @@ public final class EnergyEventsView {
     }
 
     @NotNull
-    public EventDuration getValue(int rowIndex) {
+    public EnergyDuration getValue(int rowIndex) {
       return myList.get(rowIndex);
     }
   }
@@ -215,7 +220,7 @@ public final class EnergyEventsView {
      * Keep in sync 1:1 with {@link EventsTableModel#myList}. When the table asks for the
      * chart to render, it will be converted from model index to view index.
      */
-    @NotNull private final List<DurationStateChart> myEventCharts = new ArrayList<>();
+    @NotNull private final List<StateChart<EnergyEvent>> myEventCharts = new ArrayList<>();
     @NotNull private final JTable myTable;
     @NotNull private final Range myRange;
 
@@ -237,7 +242,7 @@ public final class EnergyEventsView {
         panel.add(axisLabels, new TabularLayout.Constraint(0, 0));
       }
 
-      DurationStateChart chart = myEventCharts.get(myTable.convertRowIndexToModel(row));
+      StateChart<EnergyEvent> chart = myEventCharts.get(myTable.convertRowIndexToModel(row));
       panel.add(chart, new TabularLayout.Constraint(0, 0));
       // Show timeline lines behind chart components
       AxisComponent axisTicks = createAxis();
@@ -253,7 +258,7 @@ public final class EnergyEventsView {
       myEventCharts.clear();
       EventsTableModel model = (EventsTableModel) myTable.getModel();
       for (int i = 0; i < model.getRowCount(); ++i) {
-        DurationStateChart chart = new DurationStateChart(model.getValue(i), myRange);
+        StateChart<EnergyEvent> chart = EnergyEventStateChart.create(model.getValue(i), myRange);
         chart.setHeightGap(0.3f);
         myEventCharts.add(chart);
       }

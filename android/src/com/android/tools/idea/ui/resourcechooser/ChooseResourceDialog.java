@@ -37,18 +37,19 @@ import com.android.tools.idea.editors.theme.ui.ResourceComponent;
 import com.android.tools.idea.javadoc.AndroidJavaDocRenderer;
 import com.android.tools.idea.rendering.HtmlBuilderHelper;
 import com.android.tools.idea.rendering.RenderTask;
-import com.android.tools.idea.res.AppResourceRepository;
-import com.android.tools.idea.res.IdeResourceNameValidator;
-import com.android.tools.idea.res.ProjectResourceRepository;
-import com.android.tools.idea.res.ResourceHelper;
-import com.android.tools.lint.checks.IconDetector;
+import com.android.tools.idea.res.*;
+import com.android.tools.idea.ui.resourcechooser.groups.ResourceChooserGroup;
+import com.android.tools.idea.ui.resourcechooser.groups.ResourceChooserGroups;
+import com.android.tools.idea.ui.resourcechooser.icons.IconFactory;
+import com.android.tools.idea.ui.resourcechooser.preview.EditResourcePanel;
+import com.android.tools.idea.ui.resourcechooser.preview.ResourceDrawablePanel;
+import com.android.tools.idea.ui.resourcechooser.preview.ResourceEditorTab;
+import com.android.tools.idea.ui.resourcechooser.preview.ResourceTablePanel;
+import com.android.tools.idea.ui.resourcechooser.util.SimpleTabUI;
 import com.android.utils.HtmlBuilder;
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.ide.util.treeView.AbstractTreeStructure;
@@ -99,7 +100,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.ide.PooledThreadExecutor;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.Border;
@@ -111,9 +111,6 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -183,6 +180,7 @@ public class ChooseResourceDialog extends DialogWrapper {
   private final boolean myHideLeftSideActions;
   private String myResultResourceName;
   private boolean myUseGlobalUndo;
+  private final IconFactory myIconFactory;
   private RenderTask myRenderTask;
   private final MultiMap<ResourceType, String> myThemAttributes;
 
@@ -423,6 +421,7 @@ public class ChooseResourceDialog extends DialogWrapper {
       }
       return StringUtil.containsIgnoreCase(item.getName(), text);
     };
+    myIconFactory = new IconFactory(this::getRenderTask);
 
     setTitle("Resources");
     setupViewOptions();
@@ -482,7 +481,6 @@ public class ChooseResourceDialog extends DialogWrapper {
                                                                           @NotNull ResourceResolver resolver) {
     MultiMap<ResourceType, String> attrs = new MultiMap<>();
     String themeName = configuration.getTheme();
-    assert themeName != null;
     for (ItemResourceValue item : ResolutionUtils.getThemeAttributes(resolver, themeName)) {
       ResourceType type = ResolutionUtils.getAttrType(item, configuration);
       if (type != null) {
@@ -840,7 +838,7 @@ public class ChooseResourceDialog extends DialogWrapper {
                                          ResourceResolver resolver,
                                          ResourceValue resValue,
                                          final ResourceType stateListType, final ResourceFolderType stateListFolderType) {
-    ResourceHelper.StateList stateList = null;
+    StateList stateList = null;
     if (resValue != null) {
       stateList = ResourceHelper.resolveStateList(resolver, resValue, myModule.getProject());
       if (stateList != null && stateList.getType() != stateListType) {
@@ -873,6 +871,7 @@ public class ChooseResourceDialog extends DialogWrapper {
         VirtualFile resDir = getResourceDirectory();
         List<String> dirNames = getLocationSettings().getDirNames();
         ResourceFolderType resourceFolderType = ResourceFolderType.getFolderType(dirNames.get(0));
+        assert resourceFolderType != null;
         ResourceType resourceType = ResourceType.getEnum(resourceFolderType.getName());
 
         Project project = module.getProject();
@@ -888,7 +887,7 @@ public class ChooseResourceDialog extends DialogWrapper {
         }
         if (files != null) {
           assert myStateListPicker != null;
-          ResourceHelper.StateList stateList1 = myStateListPicker.getStateList();
+          StateList stateList1 = myStateListPicker.getStateList();
           assert stateList1 != null;
           AndroidResourceUtil.updateStateList(project, stateList1, files);
         }
@@ -1169,80 +1168,30 @@ public class ChooseResourceDialog extends DialogWrapper {
       case COLOR:
       case DRAWABLE:
       case MIPMAP:
-        AsyncIcon futureIcon =
-          new AsyncIcon(createIcon(size, checkerboardSize, true, item.getPath(), item.getResourceValue(), item.getType()),
-                        EmptyIcon.create(size), onLoadComplete);
-        item.setIcon(futureIcon);
+        Icon icon = null;
+        String path = item.getPath();
+        if (path != null) {
+          icon = myIconFactory.createIconFromPath(size,
+                                           checkerboardSize,
+                                           true,
+                                           item.getPath());
+        }
 
-        return futureIcon;
+        if (icon == null) {
+          icon = myIconFactory.createAsyncIconFromResourceValue(size,
+                                                                checkerboardSize,
+                                                                true,
+                                                                item.getResourceValue(),
+                                                                EmptyIcon.create(size),
+                                                                onLoadComplete);
+        }
+        item.setIcon(icon);
+
+        return icon;
       default:
     }
 
     return null;
-  }
-
-  @NotNull
-  ListenableFuture<Icon> createIcon(int size,
-                                    int checkerboardSize,
-                                    boolean interpolate,
-                                    @Nullable String path,
-                                    @NotNull ResourceValue resourceValue,
-                                    @NotNull ResourceType type) {
-    if (path != null && IconDetector.isDrawableFile(path)
-        && !path.endsWith(DOT_XML)) {
-      // WebP images for unknown reasons don't load via ImageIcon(path)
-      if (path.endsWith(DOT_WEBP)) {
-        try {
-          BufferedImage image = ImageIO.read(new File(path));
-          if (image != null) {
-            return Futures.immediateFuture(new ResourceChooserImageIcon(size, image, checkerboardSize, interpolate));
-          }
-        } catch (IOException ignore) {
-        }
-      }
-
-      return Futures.immediateFuture(new ResourceChooserImageIcon(size, new ImageIcon(path).getImage(), checkerboardSize, interpolate));
-    }
-    else if (type == ResourceType.DRAWABLE || type == ResourceType.MIPMAP) {
-      // TODO: Attempt to guess size for XML drawables since at least for vectors, we have attributes
-      // like android:width, android:height, android:viewportWidth and android:viewportHeight
-      // which we can use to get a suitable aspect ratio
-      //noinspection UnnecessaryLocalVariable
-      int width = size;
-      //noinspection UnnecessaryLocalVariable
-      int height = size;
-
-      RenderTask renderTask = getRenderTask();
-      renderTask.setOverrideRenderSize(width, height)
-        .setMaxRenderSize(width, height);
-      return Futures.transform(renderTask.renderDrawable(resourceValue), (Function<BufferedImage, ResourceChooserImageIcon>)drawable -> {
-        if (drawable != null) {
-          return new ResourceChooserImageIcon(size, drawable, checkerboardSize, interpolate);
-        }
-
-        return null;
-      });
-      // TODO maybe have a different icon for state list drawable
-    }
-    else if (type == ResourceType.COLOR) {
-      List<Color> colors = ResourceHelper.resolveMultipleColors(getResourceResolver(), resourceValue, myModule.getProject());
-      if (colors.size() == 1) {
-        return Futures.immediateFuture(new ResourceChooserColorIcon(size, colors.get(0), checkerboardSize));
-      }
-      if (colors.size() > 1) {
-        ResourceChooserColorIcon[] colorIcons = new ResourceChooserColorIcon[colors.size()];
-        for (int i = 0; i < colors.size(); i++) {
-          int sectionSize = size / colors.size();
-          if (i == colors.size() - 1) {
-            sectionSize = size - sectionSize * (colors.size() - 1);
-          }
-          colorIcons[i] = new ResourceChooserColorIcon(sectionSize, size, colors.get(i), checkerboardSize);
-        }
-        return Futures.immediateFuture(new RowIcon(colorIcons));
-      }
-    }
-
-    return Futures.immediateFuture(null);
   }
 
   @NotNull
@@ -1262,6 +1211,7 @@ public class ChooseResourceDialog extends DialogWrapper {
   private RenderTask getRenderTask() {
     if (myRenderTask == null) {
       myRenderTask = DrawableRendererEditor.configureRenderTask(myModule, getConfiguration());
+      Disposer.register(getDisposable(), () -> myRenderTask.dispose());
       myRenderTask.setMaxRenderSize(150, 150); // don't make huge images here
     }
     return myRenderTask;
@@ -1346,15 +1296,15 @@ public class ChooseResourceDialog extends DialogWrapper {
       myComponent.setSplitterProportionKey("android.resource_dialog_splitter");
       CompletableFuture.runAsync(() -> {
         List<ResourceChooserGroup> groups = Lists.newArrayListWithCapacity(3);
-        ResourceChooserGroup projectItems = new ResourceChooserGroup(APP_NAMESPACE_LABEL, type, myFacet, false, includeFileResources);
+        ResourceChooserGroup projectItems = ResourceChooserGroups.createResourceItemsGroup(APP_NAMESPACE_LABEL, type, myFacet, false, includeFileResources);
         if (!projectItems.isEmpty()) {
           groups.add(projectItems);
         }
-        ResourceChooserGroup frameworkItems = new ResourceChooserGroup(ANDROID_NS_NAME, type, myFacet, true, includeFileResources);
+        ResourceChooserGroup frameworkItems = ResourceChooserGroups.createResourceItemsGroup(ANDROID_NS_NAME, type, myFacet, true, includeFileResources);
         if (!frameworkItems.isEmpty()) {
           groups.add(frameworkItems);
         }
-        ResourceChooserGroup themeItems = new ResourceChooserGroup("Theme attributes", myType, myFacet, attrs);
+        ResourceChooserGroup themeItems = ResourceChooserGroups.createThemeAttributesGroup(myType, myFacet, attrs);
         if (!themeItems.isEmpty()) {
           groups.add(themeItems);
         }
@@ -1579,7 +1529,7 @@ public class ChooseResourceDialog extends DialogWrapper {
 
     private void showDrawableItem(ResourceChooserItem item) {
       if (myDrawablePanel == null) {
-        myDrawablePanel = new ResourceDrawablePanel(ChooseResourceDialog.this);
+        myDrawablePanel = new ResourceDrawablePanel(myConfiguration, myFacet, myIconFactory);
         myPreviewPanel.add(myDrawablePanel, DRAWABLE);
       }
       CardLayout layout = (CardLayout)myPreviewPanel.getLayout();
@@ -1589,7 +1539,7 @@ public class ChooseResourceDialog extends DialogWrapper {
 
     private void showTableItem(ResourceChooserItem item) {
       if (myTablePanel == null) {
-        myTablePanel = new ResourceTablePanel(ChooseResourceDialog.this);
+        myTablePanel = new ResourceTablePanel(getModule(), ChooseResourceDialog.this::close, TABLE_CELL_HEIGHT);
         myPreviewPanel.add(myTablePanel.getPanel(), TABLE);
       }
       else {
@@ -1789,7 +1739,7 @@ public class ChooseResourceDialog extends DialogWrapper {
           return true;
         }
         Project project = myModule.getProject();
-        ResourceHelper.StateList stateList = ResourceHelper.resolveStateList(getResourceResolver(), item.getResourceValue(), project);
+        StateList stateList = ResourceHelper.resolveStateList(getResourceResolver(), item.getResourceValue(), project);
         if (stateList != null) { // if this is not a state list, it may be just a normal color
           return true;
         } else {
@@ -1891,7 +1841,7 @@ public class ChooseResourceDialog extends DialogWrapper {
         resourceEditorTab = myReferencePanel;
       }
       else {
-        ResourceHelper.StateList stateList = ResourceHelper.resolveStateList(getResourceResolver(), resourceValue, myModule.getProject());
+        StateList stateList = ResourceHelper.resolveStateList(getResourceResolver(), resourceValue, myModule.getProject());
         if (stateList != null) { // if this is not a state list, it may be just a normal color
           ensurePickersInitialized();
           assert myStateListPickerPanel != null;
@@ -1989,6 +1939,11 @@ public class ChooseResourceDialog extends DialogWrapper {
     }
 
     private void setLocationFromResourceItem(@NotNull ResourceItem item) {
+      if (item.getFile() == null) {
+        assert false : "item.getFile can not be null when selecting a resource item";
+        return;
+      }
+
       VirtualFile file = LocalFileSystem.getInstance().findFileByIoFile(item.getFile());
       assert file != null;
       // TODO as we only show variants that are specific to the folderType, and we have different folderTypes for different Editor tabs, reset does not always work.

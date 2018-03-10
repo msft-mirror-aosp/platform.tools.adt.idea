@@ -23,16 +23,19 @@ import org.jetbrains.annotations.NotNull;
 import static com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl.INCLUDE;
 
 public class GradleSettingsFile extends GradleDslFile {
-  public GradleSettingsFile(@NotNull VirtualFile file, @NotNull Project project, @NotNull String moduleName) {
-    super(file, project, moduleName);
+  public GradleSettingsFile(@NotNull VirtualFile file,
+                            @NotNull Project project,
+                            @NotNull String moduleName,
+                            @NotNull GradleDslFileCache fileCache) {
+    super(file, project, moduleName, fileCache);
   }
 
   @Override
-  public void addParsedElement(@NotNull String property, @NotNull GradleDslElement element) {
-    if (INCLUDE.equals(property)) {
-      addToParsedExpressionList(property, element);
+  public void addParsedElement(@NotNull GradleDslElement element) {
+    if (INCLUDE.equals(element.getName())) {
+      addToParsedExpressionList(element.getName(), element);
       return;
     }
-    super.addParsedElement(property, element);
+    super.addParsedElement(element);
   }
 }

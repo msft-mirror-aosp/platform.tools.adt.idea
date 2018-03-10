@@ -51,8 +51,8 @@ class SerializationTest : TestCase() {
   fun testDrawActionHandleDrag() {
     val factory = { s: String -> DrawActionHandleDrag(s) }
 
-    testSerialization("DrawActionHandleDrag,10,20,5", DrawActionHandleDrag(10, 20, 5), factory)
-    testSerialization("DrawActionHandleDrag,30,50,10", DrawActionHandleDrag(30, 50, 10), factory)
+    testSerialization("DrawActionHandleDrag,10,20", DrawActionHandleDrag(10, 20), factory)
+    testSerialization("DrawActionHandleDrag,30,50", DrawActionHandleDrag(30, 50), factory)
   }
 
   fun testDrawTruncatedText() {
@@ -127,6 +127,13 @@ class SerializationTest : TestCase() {
     testSerialization("DrawLine,1,60x70,80x90,ffff0000,2:1:2",
         DrawLine(1, Point(60, 70), Point(80, 90),
             Color.RED, BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_BEVEL)), factory)
+  }
+
+  fun testDrawEmptyDesigner() {
+    val factory = { s: String -> DrawEmptyDesigner(s) }
+
+    testSerialization("DrawEmptyDesigner,0x0", DrawEmptyDesigner(Point(0, 0)), factory)
+    testSerialization("DrawEmptyDesigner,10x20", DrawEmptyDesigner(Point(10, 20)), factory)
   }
 
   companion object {

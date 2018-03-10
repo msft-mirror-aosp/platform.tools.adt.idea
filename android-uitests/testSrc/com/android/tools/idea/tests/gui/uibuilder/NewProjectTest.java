@@ -80,7 +80,7 @@ public class NewProjectTest {
    *   Successfully created new project with name containing a space.
    *   </pre>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE) // b/68723053
+  @RunIn(TestGroup.QA)
   @Test
   public void createNewProjectNameWithSpace() {
     EditorFixture editor = newProject("Test Application").withMinSdk("23").create(guiTest)
@@ -139,7 +139,7 @@ public class NewProjectTest {
    *   1. Module setting is updated.
    *   </pre>
    */
-  @RunIn(TestGroup.QA)
+  @RunIn(TestGroup.QA_UNRELIABLE) // b/62260575
   @Test
   public void changeLibraryModuleSettings() throws Exception {
     newProject("MyTestApp").withMinSdk("24").create(guiTest)

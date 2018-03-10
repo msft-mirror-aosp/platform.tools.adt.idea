@@ -76,6 +76,7 @@ iml_module(
         "//tools/adt/idea/uitest-framework[module, test]",
         "//tools/adt/idea/uitest-framework-gradle[module, test]",
         "//tools/adt/idea/uitest-framework-bazel[module, test]",
+        "//tools/idea/platform/testFramework[module, test]",
     ],
 )
 
@@ -156,7 +157,7 @@ java_test(
         "//prebuilts/studio/sdk:tools/support-annotations",
         "//prebuilts/studio/layoutlib:data/res",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.1.0:aar",
-        ":unzip_aswb",
+        ":aswb_plugin",
     ] + glob([
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
@@ -173,7 +174,7 @@ java_test(
         "//prebuilts/studio/sdk:tools/support-annotations",
         "//prebuilts/studio/layoutlib:data/res",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.1.0:aar",
-        ":unzip_aswb",
+        ":aswb_plugin",
     ] + glob([
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
@@ -189,7 +190,7 @@ java_test(
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
         "//prebuilts/studio/sdk:tools/support-annotations",
-        ":unzip_aswb",
+        ":aswb_plugin",
     ] + glob([
         "testData/SimpleBazelApplication/**",
     ]),
@@ -285,7 +286,7 @@ java_test(
 )
 
 genrule(
-    name = "unzip_aswb",
+    name = "aswb_plugin",
     srcs = ["@blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip"],
     outs = [
         "aswb/aspect/WORKSPACE",

@@ -30,7 +30,7 @@ import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.rendering.RenderResult;
-import com.android.tools.idea.uibuilder.error.IssuePanelSplitter;
+import com.android.tools.idea.common.error.IssuePanelSplitter;
 import com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild;
 import com.android.tools.idea.uibuilder.handlers.motion.MotionLayoutHandler;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
@@ -40,6 +40,7 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.scene.RenderListener;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.SceneMode;
+import com.android.tools.idea.uibuilder.surface.ScreenView;
 import com.android.tools.idea.util.SyncUtil;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.Disposable;
@@ -242,13 +243,13 @@ public class NlPreviewForm implements Disposable, CaretListener {
   private class Pending implements RenderListener, Runnable {
     public final XmlFile file;
     public final NlModel model;
-    public final SceneView screenView;
+    public final ScreenView screenView;
     public boolean valid = true;
 
     public Pending(XmlFile file, NlModel model) {
       this.file = file;
       this.model = model;
-      screenView = mySurface.getCurrentSceneView();
+      screenView = (ScreenView)mySurface.getCurrentSceneView();
       if (screenView != null) {
         screenView.getSceneManager().addRenderListener(this);
         screenView.getSceneManager().requestRender();

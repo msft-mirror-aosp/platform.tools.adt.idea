@@ -42,9 +42,7 @@ import com.android.tools.idea.rendering.parsers.ILayoutPullParserFactory;
 import com.android.tools.idea.rendering.parsers.LayoutFilePullParser;
 import com.android.tools.idea.rendering.parsers.LayoutPsiPullParser;
 import com.android.tools.idea.rendering.parsers.LayoutPullParsers;
-import com.android.tools.idea.res.AppResourceRepository;
-import com.android.tools.idea.res.AssetRepositoryImpl;
-import com.android.tools.idea.res.ResourceHelper;
+import com.android.tools.idea.res.*;
 import com.android.tools.idea.util.DependencyManagementUtil;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -139,7 +137,9 @@ public class RenderTask {
     ActionBarHandler actionBarHandler = new ActionBarHandler(this, myCredential);
     myLayoutlibCallback =
         new LayoutlibCallbackImpl(this, myLayoutLib, appResources, module, facet, myLogger, myCredential, actionBarHandler, parserFactory);
-    myLayoutlibCallback.loadAndParseRClass();
+    if (ResourceIdManager.get(module).getFinalIdsUsed()) {
+      myLayoutlibCallback.loadAndParseRClass();
+    }
     AndroidModuleInfo moduleInfo = AndroidModuleInfo.getInstance(facet);
     myLocale = configuration.getLocale();
     myContext = new RenderTaskContext(renderService.getProject(),
@@ -514,7 +514,8 @@ public class RenderTask {
         }
 
         if (topParser == null) {
-          topParser = LayoutFilePullParser.create(myIncludedWithin.getFromPath());
+          // TODO(namespaces, b/74003372): figure out where to get the namespace from.
+          topParser = LayoutFilePullParser.create(myIncludedWithin.getFromPath(), ResourceNamespace.TODO);
         }
 
         return topParser;

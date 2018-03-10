@@ -32,10 +32,12 @@ import com.android.tools.idea.uibuilder.adaptiveicon.ShapeMenuAction;
 import com.android.tools.idea.uibuilder.api.ViewGroupHandler;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.editor.NlActionManager;
+import com.android.tools.idea.uibuilder.error.RenderIssueProvider;
 import com.android.tools.idea.uibuilder.mockup.editor.MockupEditor;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.idea.uibuilder.model.NlSelectionModel;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
+import com.android.tools.idea.uibuilder.scene.RenderListener;
 import com.google.common.collect.Lists;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.Disposable;
@@ -76,6 +78,8 @@ public class NlDesignSurface extends DesignSurface {
   private boolean myCentered;
   private final boolean myInPreview;
   private ShapeMenuAction.AdaptiveIconShape myAdaptiveIconShape = ShapeMenuAction.AdaptiveIconShape.getDefaultShape();
+  private final RenderListener myRenderListener = this::modelRendered;
+  private RenderIssueProvider myRenderIssueProvider;
 
   public NlDesignSurface(@NotNull Project project, boolean inPreview, @NotNull Disposable parentDisposable) {
     super(project, new NlSelectionModel(), parentDisposable);
@@ -143,7 +147,9 @@ public class NlDesignSurface extends DesignSurface {
   @NotNull
   @Override
   protected SceneManager createSceneManager(@NotNull NlModel model) {
-    return new LayoutlibSceneManager(model, this);
+    LayoutlibSceneManager manager = new LayoutlibSceneManager(model, this);
+    manager.addRenderListener(myRenderListener);
+    return manager;
   }
 
   @Nullable
@@ -488,7 +494,11 @@ public class NlDesignSurface extends DesignSurface {
                                    ? RenderErrorModel.STILL_BUILDING_ERROR_MODEL
                                    : RenderErrorModelFactory
                                      .createErrorModel(NlDesignSurface.this, result, DataManager.getInstance().getDataContext(getIssuePanel()));
-          getIssueModel().setRenderErrorModel(model);
+          if (myRenderIssueProvider != null) {
+            getIssueModel().removeIssueProvider(myRenderIssueProvider);
+          }
+          myRenderIssueProvider = new RenderIssueProvider(model);
+          getIssueModel().addIssueProvider(myRenderIssueProvider);
         });
       }
 
@@ -499,12 +509,12 @@ public class NlDesignSurface extends DesignSurface {
     });
   }
 
-  @Override
-  protected void modelRendered() {
+  private void modelRendered() {
     if (getCurrentSceneView() != null) {
       updateErrorDisplay();
+      repaint();
+      layoutContent();
     }
-    super.modelRendered();
   }
 
   @Override

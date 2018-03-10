@@ -16,6 +16,7 @@
 package org.jetbrains.android.resourceManagers;
 
 import com.android.SdkConstants;
+import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.res.AppResourceRepository;
@@ -40,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static com.google.common.collect.Sets.newHashSetWithExpectedSize;
 
@@ -269,5 +271,11 @@ public class LocalResourceManager extends ResourceManager {
       resourceNames = filtered;
     }
     return resourceNames;
+  }
+
+  @Override
+  protected void forEachLeafResourceRepository(@NotNull Consumer<AbstractResourceRepository> action) {
+    AppResourceRepository repository = AppResourceRepository.getOrCreateInstance(myFacet);
+    repository.forEachLeafResourceRepository(action);
   }
 }

@@ -77,7 +77,7 @@ public class DependenciesTreeRootNode<T extends PsModel> extends AbstractPsReset
     protected void collectDeclaredDependencies(@NotNull PsModule module, @NotNull DependencyCollector collector) {
       if (module instanceof PsAndroidModule) {
         PsAndroidModule androidModule = (PsAndroidModule)module;
-        androidModule.forEachDeclaredDependency(collector::add);
+        androidModule.getDependencies().forEachDeclaredDependency(collector::add);
       }
     }
   }
@@ -124,7 +124,7 @@ public class DependenciesTreeRootNode<T extends PsModel> extends AbstractPsReset
       PsArtifactDependencySpec declaredSpec = dependency.getDeclaredSpec();
       assert declaredSpec != null;
       this.declaredSpec = declaredSpec;
-      resolvedSpec = dependency.getResolvedSpec();
+      resolvedSpec = dependency.getSpec();
     }
 
     @Override

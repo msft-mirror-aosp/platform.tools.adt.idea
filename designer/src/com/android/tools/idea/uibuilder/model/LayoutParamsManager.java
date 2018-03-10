@@ -22,8 +22,8 @@ import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.editors.theme.ResolutionUtils;
-import com.android.tools.idea.res.AppResourceRepository;
-import com.android.tools.idea.res.ResourceHelper;
+import com.android.tools.idea.res.FloatResources;
+import com.android.tools.idea.res.ResourceIdManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.cache.Cache;
@@ -192,9 +192,9 @@ public class LayoutParamsManager {
         return ViewGroup.LayoutParams.WRAP_CONTENT;
     }
 
-    ResourceHelper.TypedValue out = new ResourceHelper.TypedValue();
-    if (ResourceHelper.parseFloatAttribute(value, out, true)) {
-      return ResourceHelper.TypedValue.complexToDimensionPixelSize(out.data, configuration);
+    FloatResources.TypedValue out = new FloatResources.TypedValue();
+    if (FloatResources.parseFloatAttribute(value, out, true)) {
+      return FloatResources.TypedValue.complexToDimensionPixelSize(out.data, configuration);
     }
     return 0;
   }
@@ -393,9 +393,8 @@ public class LayoutParamsManager {
         }
 
         if (resourceValue.getResourceType() == ID) {
-          Integer resolvedId = AppResourceRepository.getOrCreateInstance(model.getFacet()).getResourceId(ID, resourceValue.getName());
           // TODO: Remove this wrapping/unwrapping
-          value = resolvedId.toString();
+          value = String.valueOf(ResourceIdManager.get(model.getModule()).getOrGenerateId(resourceValue.asReference()));
         }
       }
     }

@@ -27,26 +27,29 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import static com.intellij.util.PlatformIcons.LIBRARY_ICON;
 
 public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibraryDependency {
   @NotNull private final List<PsArtifactDependencySpec> myPomDependencies = Lists.newArrayList();
-  @NotNull private PsArtifactDependencySpec myResolvedSpec;
+  @NotNull private PsArtifactDependencySpec mySpec;
 
   @Nullable private final JarLibraryDependency myResolvedModel;
   @Nullable private PsArtifactDependencySpec myDeclaredSpec;
 
   protected PsLibraryJavaDependency(@NotNull PsJavaModule parent,
-                                    @NotNull PsArtifactDependencySpec resolvedSpec,
+                                    @NotNull PsArtifactDependencySpec spec,
                                     @Nullable JarLibraryDependency resolvedModel,
-                                    @Nullable ArtifactDependencyModel parsedModel) {
-    super(parent, parsedModel);
-    myResolvedSpec = resolvedSpec;
+                                    @NotNull Collection<ArtifactDependencyModel> parsedModels) {
+    super(parent, parsedModels);
+    mySpec = spec;
     myResolvedModel = resolvedModel;
-    if (parsedModel != null) {
-      setDeclaredSpec(createSpec(parsedModel));
+    Optional<ArtifactDependencyModel> firstParsedModel = parsedModels.stream().findFirst();
+    if (firstParsedModel.isPresent()) {
+      setDeclaredSpec(createSpec(firstParsedModel.get()));
     }
   }
 
@@ -58,8 +61,8 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
 
   @Override
   @NotNull
-  public PsArtifactDependencySpec getResolvedSpec() {
-    return myResolvedSpec;
+  public PsArtifactDependencySpec getSpec() {
+    return mySpec;
   }
 
   @Override
@@ -72,11 +75,11 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
   public String toText(@NotNull TextType type) {
     switch (type) {
       case PLAIN_TEXT:
-        return myResolvedSpec.toString();
+        return mySpec.toString();
       case FOR_NAVIGATION:
         PsArtifactDependencySpec spec = myDeclaredSpec;
         if (spec == null) {
-          spec = myResolvedSpec;
+          spec = mySpec;
         }
         return spec.toString();
       default:
@@ -97,7 +100,7 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
 
   @Override
   public void setResolvedSpec(@NotNull PsArtifactDependencySpec spec) {
-    myResolvedSpec = spec;
+    mySpec = spec;
   }
 
   @Override
@@ -108,7 +111,7 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
   @Override
   @NotNull
   public String getName() {
-    return myResolvedSpec.getName();
+    return mySpec.getName();
   }
 
   @Override

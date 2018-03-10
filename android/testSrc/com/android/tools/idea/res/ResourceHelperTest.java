@@ -20,6 +20,8 @@ import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
+import com.android.resources.ResourceUrl;
+import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -35,6 +37,7 @@ import java.util.List;
 
 import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.TOOLS_URI;
+import static com.android.tools.idea.res.ResourceHelper.buildResourceId;
 import static com.android.tools.idea.res.ResourceHelper.getResourceName;
 import static com.android.tools.idea.res.ResourceHelper.resolveColor;
 import static com.google.common.truth.Truth.assertThat;
@@ -156,25 +159,25 @@ public class ResourceHelperTest extends AndroidTestCase {
   }
 
   public void testDisabledStateListStates() {
-    ResourceHelper.StateListState disabled = new ResourceHelper.StateListState("value", ImmutableMap.of("state_enabled", false), null);
-    ResourceHelper.StateListState disabledPressed =
-      new ResourceHelper.StateListState("value", ImmutableMap.of("state_enabled", false, "state_pressed", true), null);
-    ResourceHelper.StateListState pressed = new ResourceHelper.StateListState("value", ImmutableMap.of("state_pressed", true), null);
-    ResourceHelper.StateListState enabledPressed =
-      new ResourceHelper.StateListState("value", ImmutableMap.of("state_enabled", true, "state_pressed", true), null);
-    ResourceHelper.StateListState enabled = new ResourceHelper.StateListState("value", ImmutableMap.of("state_enabled", true), null);
-    ResourceHelper.StateListState selected = new ResourceHelper.StateListState("value", ImmutableMap.of("state_selected", true), null);
-    ResourceHelper.StateListState selectedPressed =
-      new ResourceHelper.StateListState("value", ImmutableMap.of("state_selected", true, "state_pressed", true), null);
-    ResourceHelper.StateListState enabledSelectedPressed =
-      new ResourceHelper.StateListState("value", ImmutableMap.of("state_enabled", true, "state_selected", true, "state_pressed", true),
+    StateListState disabled = new StateListState("value", ImmutableMap.of("state_enabled", false), null);
+    StateListState disabledPressed =
+      new StateListState("value", ImmutableMap.of("state_enabled", false, "state_pressed", true), null);
+    StateListState pressed = new StateListState("value", ImmutableMap.of("state_pressed", true), null);
+    StateListState enabledPressed =
+      new StateListState("value", ImmutableMap.of("state_enabled", true, "state_pressed", true), null);
+    StateListState enabled = new StateListState("value", ImmutableMap.of("state_enabled", true), null);
+    StateListState selected = new StateListState("value", ImmutableMap.of("state_selected", true), null);
+    StateListState selectedPressed =
+      new StateListState("value", ImmutableMap.of("state_selected", true, "state_pressed", true), null);
+    StateListState enabledSelectedPressed =
+      new StateListState("value", ImmutableMap.of("state_enabled", true, "state_selected", true, "state_pressed", true),
                                         null);
-    ResourceHelper.StateListState notFocused = new ResourceHelper.StateListState("value", ImmutableMap.of("state_focused", false), null);
-    ResourceHelper.StateListState notChecked = new ResourceHelper.StateListState("value", ImmutableMap.of("state_checked", false), null);
-    ResourceHelper.StateListState checkedNotPressed =
-      new ResourceHelper.StateListState("value", ImmutableMap.of("state_checked", true, "state_pressed", false), null);
+    StateListState notFocused = new StateListState("value", ImmutableMap.of("state_focused", false), null);
+    StateListState notChecked = new StateListState("value", ImmutableMap.of("state_checked", false), null);
+    StateListState checkedNotPressed =
+      new StateListState("value", ImmutableMap.of("state_checked", true, "state_pressed", false), null);
 
-    ResourceHelper.StateList stateList = new ResourceHelper.StateList("stateList", "colors");
+    StateList stateList = new StateList("stateList", "colors");
     stateList.addState(pressed);
     stateList.addState(disabled);
     stateList.addState(selected);
@@ -183,7 +186,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     stateList.addState(disabledPressed);
     assertThat(stateList.getDisabledStates()).containsExactly(disabled, disabledPressed);
 
-    stateList = new ResourceHelper.StateList("stateList", "colors");
+    stateList = new StateList("stateList", "colors");
     stateList.addState(enabled);
     stateList.addState(pressed);
     stateList.addState(selected);
@@ -191,7 +194,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     stateList.addState(disabled);
     assertThat(stateList.getDisabledStates()).containsExactly(pressed, selected, enabledPressed, disabled);
 
-    stateList = new ResourceHelper.StateList("stateList", "colors");
+    stateList = new StateList("stateList", "colors");
     stateList.addState(enabledPressed);
     stateList.addState(pressed);
     stateList.addState(selected);
@@ -201,7 +204,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     stateList.addState(selectedPressed);
     assertThat(stateList.getDisabledStates()).containsExactly(pressed, disabled, selectedPressed);
 
-    stateList = new ResourceHelper.StateList("stateList", "colors");
+    stateList = new StateList("stateList", "colors");
     stateList.addState(enabledSelectedPressed);
     stateList.addState(pressed);
     stateList.addState(selected);
@@ -209,7 +212,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     stateList.addState(selectedPressed);
     assertThat(stateList.getDisabledStates()).containsExactly(disabled, selectedPressed);
 
-    stateList = new ResourceHelper.StateList("stateList", "colors");
+    stateList = new StateList("stateList", "colors");
     stateList.addState(enabledPressed);
     stateList.addState(notChecked);
     stateList.addState(checkedNotPressed);
@@ -245,6 +248,29 @@ public class ResourceHelperTest extends AndroidTestCase {
     assertNull(resolveColor(rr, rv, myModule.getProject()));
   }
 
+  public void testResolve() {
+    PsiFile innerFileLand = myFixture.addFileToProject("res/layout-land/inner.xml", "<LinearLayout/>");
+    PsiFile innerFilePort = myFixture.addFileToProject("res/layout-port/inner.xml", "<LinearLayout/>");
+    String outerFileContent = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+    "<FrameLayout xmlns:newauto=\""+ ResourceNamespace.TODO.getXmlNamespaceUri() +"\">\n" +
+    "\n" +
+    "    <include\n" +
+    "        layout=\"@newauto:layout/inner\"\n" +
+    "        android:layout_width=\"wrap_content\"\n" +
+    "        android:layout_height=\"wrap_content\" />\n" +
+    "\n" +
+    "</FrameLayout>";
+    XmlFile outerFile = (XmlFile)myFixture.addFileToProject("layout/outer.xml", outerFileContent);
+    Configuration configuration = ConfigurationManager.getOrCreateInstance(myFacet).getConfiguration(innerFileLand.getVirtualFile());
+    XmlTag include = outerFile.getRootTag().findFirstSubTag("include");
+    ResourceValue resolved =
+      ResourceHelper.resolve(configuration.getResourceResolver(), ResourceUrl.parse("@newauto:layout/inner"), include);
+    assertEquals(innerFileLand.getVirtualFile().getPath(), resolved.getValue());
+    configuration.setDeviceState(configuration.getDevice().getState("Portrait"));
+    resolved = ResourceHelper.resolve(configuration.getResourceResolver(), ResourceUrl.parse("@newauto:layout/inner"), include);
+    assertEquals(innerFilePort.getVirtualFile().getPath(), resolved.getValue());
+  }
+
   @Language("XML")
   private static final String LAYOUT_FILE =
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
@@ -275,5 +301,10 @@ public class ResourceHelperTest extends AndroidTestCase {
     assertThat(resolver.uriToPrefix(ANDROID_URI)).isEqualTo("framework");
     assertThat(resolver.prefixToUri("newtools")).isEqualTo(TOOLS_URI);
     assertThat(resolver.prefixToUri("framework")).isEqualTo(ANDROID_URI);
+  }
+
+  public void testBuildResourceId() {
+    assertEquals(0x7f_02_ffff, buildResourceId((byte) 0x7f, (byte) 0x02, (short) 0xffff));
+    assertEquals(0x02_02_0001, buildResourceId((byte) 0x02, (byte) 0x02, (short) 0x0001));
   }
 }

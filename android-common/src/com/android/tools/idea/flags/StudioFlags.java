@@ -210,6 +210,11 @@ public final class StudioFlags {
     "If enabled, user can access the \"What's New\" assistant under \"Help\" and \"What's New in Android Studio\"",
     false);
 
+  public static final Flag<Boolean> WHATS_NEW_ASSISTANT_AUTO_SHOW = Flag.create(
+    ASSISTANT, "whats.new.auto.show", "Displays the \"What's New\" assistant on first start",
+    "If enabled, the \"What's New\" assistant will be displayed the first time user opens a new version of Android Studio.",
+    false);
+
   public static final Flag<Boolean> NELE_TARGET_RELATIVE = Flag.create(
     NELE, "target.relative", "Enable the target architecture in relative layout",
     "Enable the new Target architecture in relative layout",
@@ -262,6 +267,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> MIGRATE_TO_APPCOMPAT_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.appcompat.enabled", "Enable the Migrate to AppCompat refactoring feature",
     "If enabled, show the action in the refactoring menu", true);
+  public static final Flag<Boolean> MIGRATE_TO_ANDROID_X_REFACTORING_ENABLED = Flag.create(
+    REFACTORINGS, "migrateto.androidx.enabled", "Enable the Migrate to AndroidX refactoring feature",
+    "If enabled, show the action in the refactoring menu", false);
 
   private static final FlagGroup IOT = new FlagGroup(FLAGS, "iot", "IoT features");
   public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(
