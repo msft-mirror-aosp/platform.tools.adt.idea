@@ -20,7 +20,6 @@ import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
-import com.android.tools.idea.tests.gui.framework.ScreenshotsDuringTest;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
@@ -60,7 +59,6 @@ import static org.junit.Assert.assertTrue;
 public class NewProjectTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-  @Rule public final ScreenshotsDuringTest movie = new ScreenshotsDuringTest();
 
   /**
    * Verify able to create a new project with name containing a space.
@@ -139,7 +137,7 @@ public class NewProjectTest {
    *   1. Module setting is updated.
    *   </pre>
    */
-  @RunIn(TestGroup.QA_UNRELIABLE) // b/62260575
+  @RunIn(TestGroup.QA)
   @Test
   public void changeLibraryModuleSettings() throws Exception {
     newProject("MyTestApp").withMinSdk("24").create(guiTest)

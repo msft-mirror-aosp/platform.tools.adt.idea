@@ -64,6 +64,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myExportCpuTraceEnabled = false;
 
   /**
+   * Can toggle for tests via {@link #enableImportTrace(boolean)}, but each test starts with this defaulted to false.
+   */
+  private boolean myImportCpuTraceEnabled = false;
+
+  /**
    * Toggle for faking jvmti agent support in tests.
    */
   private boolean myJvmtiAgentEnabled = false;
@@ -102,6 +107,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
    * Toggle for faking sessions UI support in tests.
    */
   private boolean mySessionsViewEnabled = true;
+
+  /**
+   * Toggle for faking session import support in tests.
+   */
+  private boolean mySessionsImportEnabled = true;
 
   /**
    * Can toggle for tests via {@link #enableSimpleperf(boolean)}, but each test starts with this defaulted to false.
@@ -209,6 +219,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isImportCpuTraceEnabled() {
+        return myImportCpuTraceEnabled;
+      }
+
+      @Override
       public boolean isJniReferenceTrackingEnabled() { return myIsJniReferenceTrackingEnabled; }
 
       @Override
@@ -244,6 +259,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isSessionsEnabled() {
         return mySessionsViewEnabled;
+      }
+
+      @Override
+      public boolean isSessionImportEnabled() {
+        return mySessionsImportEnabled;
       }
 
       @Override
@@ -377,6 +397,10 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
     mySessionsViewEnabled = enabled;
   }
 
+  public void enableSessionImport(boolean enabled) {
+    mySessionsImportEnabled = enabled;
+  }
+
   public void enableSimpleperf(boolean enabled) {
     mySimpleperfEnabled = enabled;
   }
@@ -387,5 +411,9 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void enableExportTrace(boolean enabled) {
     myExportCpuTraceEnabled = enabled;
+  }
+
+  public void enableImportTrace(boolean enabled) {
+    myImportCpuTraceEnabled = enabled;
   }
 }

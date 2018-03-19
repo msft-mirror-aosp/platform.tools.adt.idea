@@ -16,6 +16,10 @@
 package com.android.tools.adtui.imagediff;
 
 import com.android.tools.adtui.*;
+import com.android.tools.adtui.eventrenderer.EventIconRenderer;
+import com.android.tools.adtui.eventrenderer.KeyboardEventRenderer;
+import com.android.tools.adtui.eventrenderer.SimpleEventRenderer;
+import com.android.tools.adtui.eventrenderer.TouchEventRenderer;
 import com.android.tools.adtui.model.*;
 import com.android.tools.adtui.model.event.*;
 
@@ -37,7 +41,9 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
   }
 
   private void registerAddActivityEvent() {
-    register(new ActivityEventImageDiffEntry("add_activity_event_baseline.png") {
+    // 1% should be a high enough similarity threshold to take into account the difference across OS/JDK when rendering activity name text.
+    float similarityThreshold = 1f;
+    register(new ActivityEventImageDiffEntry("add_activity_event_baseline.png", similarityThreshold) {
       @Override
       protected void generateComponent() {
         // Set the height to a low value to reduce the amount of unused space of the component.
@@ -55,7 +61,9 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
   }
 
   private void registerAddRunningActivityEvent() {
-    register(new ActivityEventImageDiffEntry("add_running_activity_event_baseline.png") {
+    // 1% should be a high enough similarity threshold to take into account the difference across OS/JDK when rendering activity name text.
+    float similarityThreshold = 1f;
+    register(new ActivityEventImageDiffEntry("add_running_activity_event_baseline.png", similarityThreshold) {
       @Override
       protected void generateComponent() {
         // Set the height to a low value to reduce the amount of unused space of the component.
@@ -73,7 +81,9 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
   }
 
   private void registerAddActivityBeforeStartEvent() {
-    register(new ActivityEventImageDiffEntry("add_activity_before_start_event_baseline.png") {
+    // 1% should be a high enough similarity threshold to take into account the difference across OS/JDK when rendering activity name text.
+    float similarityThreshold = 1f;
+    register(new ActivityEventImageDiffEntry("add_activity_before_start_event_baseline.png", similarityThreshold) {
       @Override
       protected void generateComponent() {
         // Set the height to a low value to reduce the amount of unused space of the component.
@@ -92,7 +102,10 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
   }
 
   private void registerMultipleInlineActivitiesEvent() {
-    register(new ActivityEventImageDiffEntry("add_multiple_inline_activities_event_baseline.png") {
+    // 1.5% should be a high enough similarity threshold to take into account the difference across OS/JDK when rendering activity name text.
+    // This threshold is slightly higher than the others on this class because two activity names are rendered.
+    float similarityThreshold = 1.5f;
+    register(new ActivityEventImageDiffEntry("add_multiple_inline_activities_event_baseline.png", similarityThreshold) {
       @Override
       protected void generateComponent() {
         // Set the height to a low value to reduce the amount of unused space of the component.
@@ -163,6 +176,10 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
       super(baselineFilename);
     }
 
+    ActivityEventImageDiffEntry(String baselineFilename, float similarityThreshold) {
+      super(baselineFilename, similarityThreshold);
+    }
+
     @Override
     protected void setUp() {
       myData = new DefaultDataSeries<>();
@@ -202,15 +219,6 @@ class EventEntriesRegistrar extends ImageDiffEntriesRegistrar {
       MOCK_RENDERERS.put(SimpleEventType.TOUCH, new TouchEventRenderer());
       MOCK_RENDERERS.put(SimpleEventType.ROTATION, new EventIconRenderer("/icons/events/rotate-event.png"));
       MOCK_RENDERERS.put(SimpleEventType.KEYBOARD, new KeyboardEventRenderer());
-    }
-
-    /**
-     * Enum that defines what Icon to draw for an event action.
-     */
-    private enum ActionType {
-      TOUCH,
-      ROTATE,
-      KEYBOARD
     }
 
     protected SimpleEventComponent mySimpleEventComponent;

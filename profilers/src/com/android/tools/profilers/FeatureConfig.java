@@ -24,6 +24,7 @@ public interface FeatureConfig {
   boolean isCpuCaptureFilterEnabled();
   boolean isEnergyProfilerEnabled();
   boolean isExportCpuTraceEnabled();
+  boolean isImportCpuTraceEnabled();
   boolean isJniReferenceTrackingEnabled();
   boolean isJvmtiAgentEnabled();
   boolean isLiveAllocationsEnabled();
@@ -32,6 +33,7 @@ public interface FeatureConfig {
   boolean isNetworkRequestPayloadEnabled();
   boolean isNetworkThreadViewEnabled();
   boolean isSessionsEnabled();
+  boolean isSessionImportEnabled();
   boolean isSimpleperfEnabled();
   boolean isStartupCpuProfilingEnabled();
   // Add new features alphabetically instead of at the end of the list

@@ -17,13 +17,13 @@ package com.android.tools.profilers.energy;
 
 import com.android.tools.profiler.proto.EnergyProfiler;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -39,7 +39,30 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
     UNKNOWN,
     WAKE_LOCK,
     ALARM,
-    JOB
+    JOB;
+
+    @NotNull
+    public static Kind from(@NotNull EnergyProfiler.EnergyEvent event) {
+      switch (event.getMetadataCase()) {
+        case WAKE_LOCK_ACQUIRED:
+        case WAKE_LOCK_RELEASED:
+          return WAKE_LOCK;
+
+        case ALARM_SET:
+        case ALARM_CANCELLED:
+          return ALARM;
+
+        case JOB_SCHEDULED:
+        case JOB_STARTED:
+        case JOB_STOPPED:
+        case JOB_FINISHED:
+          return JOB;
+
+        default:
+          getLogger().warn("Unsupported Kind for " + event.getMetadataCase().name());
+          return UNKNOWN;
+      }
+    }
   }
 
   // Non-empty event list that the events share the same id in time order.
@@ -59,15 +82,6 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
     return myEventList.get(0).getTimestamp();
   }
 
-  public long getFinalTimestamp() {
-    if (myEventList.size() <= 1) {
-      return Long.MAX_VALUE;
-    }
-
-    EnergyProfiler.EnergyEvent lastEvent = myEventList.get(myEventList.size() - 1);
-    return lastEvent.getIsTerminal() ? lastEvent.getTimestamp() : Long.MAX_VALUE;
-  }
-
   /**
    * Returns the duration name, which is tag for wake lock, etc.
    */
@@ -78,32 +92,32 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
         // TODO(b/73852076): Handle if the first event item is a released wakelock
         return myEventList.get(0).getWakeLockAcquired().getTag();
       case ALARM_SET:
-        return "alarm" + TimeUnit.NANOSECONDS.toMillis(getInitialTimestamp());
+        if (myEventList.get(0).getAlarmSet().hasListener()) {
+          return myEventList.get(0).getAlarmSet().getListener().getTag();
+        }
+        break;
+      case ALARM_CANCELLED:
+        if (myEventList.get(0).getAlarmCancelled().hasListener()) {
+          return myEventList.get(0).getAlarmCancelled().getListener().getTag();
+        }
+        break;
+      case JOB_SCHEDULED:
+        return String.valueOf(myEventList.get(0).getJobScheduled().getJob().getJobId());
+      case JOB_STARTED:
+        return String.valueOf(myEventList.get(0).getJobStarted().getParams().getJobId());
+      case JOB_STOPPED:
+        return String.valueOf(myEventList.get(0).getJobStopped().getParams().getJobId());
+      case JOB_FINISHED:
+        return String.valueOf(myEventList.get(0).getJobFinished().getParams().getJobId());
       default:
-        return "unspecified";
+        getLogger().warn("First event in duration is " + myEventList.get(0).getMetadataCase().name());
+        break;
     }
+    return "unspecified";
   }
 
-  @NotNull
-  public Kind getKind() {
-    switch (myEventList.get(0).getMetadataCase()) {
-      case WAKE_LOCK_ACQUIRED:
-      case WAKE_LOCK_RELEASED:
-        return Kind.WAKE_LOCK;
-
-      case ALARM_SET:
-      case ALARM_CANCELLED:
-        return Kind.ALARM;
-
-      case JOB_SCHEDULED:
-      case JOB_STARTED:
-      case JOB_STOPPED:
-      case JOB_FINISHED:
-        return Kind.JOB;
-
-      default:
-        return Kind.UNKNOWN;
-    }
+  @NotNull Kind getKind() {
+    return Kind.from(myEventList.get(0));
   }
 
   @NotNull
@@ -131,5 +145,10 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
       }
     }
     return durationMap.values().stream().map(list -> new EnergyDuration(list)).collect(Collectors.toList());
+  }
+
+  @NotNull
+  private static Logger getLogger() {
+    return Logger.getInstance(EnergyDuration.class);
   }
 }

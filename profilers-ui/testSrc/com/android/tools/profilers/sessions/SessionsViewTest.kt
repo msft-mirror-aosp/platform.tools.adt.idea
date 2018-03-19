@@ -15,12 +15,22 @@
  */
 package com.android.tools.profilers.sessions
 
+import com.android.testutils.TestUtils
 import com.android.tools.adtui.model.FakeTimer
+import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.laf.HeadlessListUI
 import com.android.tools.profiler.proto.Common
-import com.android.tools.profilers.FakeGrpcServer
-import com.android.tools.profilers.FakeIdeProfilerServices
-import com.android.tools.profilers.FakeProfilerService
-import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profiler.proto.CpuProfiler
+import com.android.tools.profiler.proto.MemoryProfiler
+import com.android.tools.profiler.protobuf3jarjar.ByteString
+import com.android.tools.profilers.*
+import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact
+import com.android.tools.profilers.cpu.CpuProfilerStage
+import com.android.tools.profilers.cpu.FakeCpuService
+import com.android.tools.profilers.event.FakeEventService
+import com.android.tools.profilers.memory.FakeMemoryService
+import com.android.tools.profilers.memory.HprofSessionArtifact
+import com.android.tools.profilers.network.FakeNetworkService
 import com.google.common.truth.Truth.assertThat
 import org.junit.Before
 import org.junit.Rule
@@ -29,10 +39,21 @@ import java.awt.event.ActionEvent
 
 class SessionsViewTest {
 
+  private val VALID_TRACE_PATH = "tools/adt/idea/profilers-ui/testData/valid_trace.trace"
+
   private val myProfilerService = FakeProfilerService(false)
+  private val myMemoryService = FakeMemoryService()
+  private val myCpuService = FakeCpuService()
 
   @get:Rule
-  var myGrpcServer = FakeGrpcServer("StudioProfilerTestChannel", myProfilerService)
+  var myGrpcChannel = FakeGrpcChannel(
+      "SessionsViewTestChannel",
+      myProfilerService,
+      myMemoryService,
+      myCpuService,
+      FakeEventService(),
+      FakeNetworkService.newBuilder().build()
+  )
 
   private lateinit var myTimer: FakeTimer
   private lateinit var myProfilers: StudioProfilers
@@ -42,9 +63,9 @@ class SessionsViewTest {
   @Before
   fun setup() {
     myTimer = FakeTimer()
-    myProfilers = StudioProfilers(myGrpcServer.client, FakeIdeProfilerServices(), myTimer)
+    myProfilers = StudioProfilers(myGrpcChannel.client, FakeIdeProfilerServices(), myTimer)
     mySessionsManager = myProfilers.sessionsManager
-    mySessionsView = SessionsView(myProfilers)
+    mySessionsView = SessionsView(myProfilers, FakeIdeProfilerComponents())
   }
 
   @Test
@@ -55,24 +76,48 @@ class SessionsViewTest {
     val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
     val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
     val process2 = Common.Process.newBuilder().setPid(20).setState(Common.Process.State.ALIVE).build()
+
+    myProfilerService.setTimestampNs(1)
     mySessionsManager.beginSession(device, process1)
     var session1 = mySessionsManager.selectedSession
     assertThat(sessionArtifacts.size).isEqualTo(1)
-    assertThat(sessionArtifacts.getElementAt(0).session).isEqualTo(session1)
-    assertThat(mySessionsView.sessionsList.selectedIndex).isEqualTo(0)
+    var sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session1)
 
     mySessionsManager.endCurrentSession()
     session1 = mySessionsManager.selectedSession
     assertThat(sessionArtifacts.size).isEqualTo(1)
-    assertThat(sessionArtifacts.getElementAt(0).session).isEqualTo(session1)
-    assertThat(mySessionsView.sessionsList.selectedIndex).isEqualTo(0)
+    sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session1)
 
+    myProfilerService.setTimestampNs(2)
     mySessionsManager.beginSession(device, process2)
     val session2 = mySessionsManager.selectedSession
     assertThat(sessionArtifacts.size).isEqualTo(2)
-    assertThat(sessionArtifacts.getElementAt(0).session).isEqualTo(session2)
-    assertThat(sessionArtifacts.getElementAt(1).session).isEqualTo(session1)
-    assertThat(mySessionsView.sessionsList.selectedIndex).isEqualTo(0)
+    // Sessions are sorted in descending order.
+    sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    var sessionItem1 = sessionArtifacts.getElementAt(1) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session2)
+    assertThat(sessionItem1.session).isEqualTo(session1)
+
+    // Add the heap dump and CPU capture, expand the first session and make sure the artifacts are shown in the list
+    val heapDumpTimestamp = 10L
+    val cpuTraceTimestamp = 20L
+    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(heapDumpTimestamp).setEndTime(heapDumpTimestamp + 1).build()
+    val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder().setFromTimestamp(cpuTraceTimestamp).setToTimestamp(cpuTraceTimestamp + 1).build()
+    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
+    myCpuService.addTraceInfo(cpuTraceInfo)
+    sessionItem0.isExpanded = true
+
+    assertThat(sessionArtifacts.size).isEqualTo(4)
+    sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    val hprofItem = sessionArtifacts.getElementAt(1) as HprofSessionArtifact
+    val cpuCaptureItem = sessionArtifacts.getElementAt(2) as CpuCaptureSessionArtifact
+    sessionItem1 = sessionArtifacts.getElementAt(3) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session2)
+    assertThat(hprofItem.session).isEqualTo(session2)
+    assertThat(cpuCaptureItem.session).isEqualTo(session2)
+    assertThat(sessionItem1.session).isEqualTo(session1)
   }
 
   @Test
@@ -93,15 +138,23 @@ class SessionsViewTest {
 
     myProfilerService.addDevice(device1)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertThat(selectionAction.childrenActionCount).isEqualTo(1)
-    var deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
+    assertThat(selectionAction.childrenActionCount).isEqualTo(2)
+    var deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Loading from file..." }
+    assertThat(deviceAction1.isSelected).isFalse()
+    assertThat(deviceAction1.isEnabled).isTrue()
+    assertThat(deviceAction1.childrenActionCount).isEqualTo(0)
+
+    myProfilerService.addDevice(device1)
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    assertThat(selectionAction.childrenActionCount).isEqualTo(2)
+    deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
     assertThat(deviceAction1.isSelected).isTrue()
     assertThat(deviceAction1.isEnabled).isFalse()
     assertThat(deviceAction1.childrenActionCount).isEqualTo(0)
 
     myProfilerService.addProcess(device1, process1)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertThat(selectionAction.childrenActionCount).isEqualTo(1)
+    assertThat(selectionAction.childrenActionCount).isEqualTo(2)
     deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
     assertThat(deviceAction1.isSelected).isTrue()
     assertThat(deviceAction1.isEnabled).isTrue()
@@ -112,7 +165,7 @@ class SessionsViewTest {
 
     myProfilerService.addProcess(device1, process2)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertThat(selectionAction.childrenActionCount).isEqualTo(1)
+    assertThat(selectionAction.childrenActionCount).isEqualTo(2)
     deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
     assertThat(deviceAction1.isSelected).isTrue()
     assertThat(deviceAction1.isEnabled).isTrue()
@@ -125,7 +178,7 @@ class SessionsViewTest {
     myProfilerService.addDevice(device2)
     myProfilerService.addProcess(device2, process3)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertThat(selectionAction.childrenActionCount).isEqualTo(2)
+    assertThat(selectionAction.childrenActionCount).isEqualTo(3)
     deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
     assertThat(deviceAction1.isSelected).isTrue()
     assertThat(deviceAction1.isEnabled).isTrue()
@@ -201,5 +254,138 @@ class SessionsViewTest {
     stopProfilingButton.doClick()
     assertThat(stopProfilingButton.isEnabled).isFalse()
     assertThat(mySessionsManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
+  }
+
+  @Test
+  fun testImportSessionsFromHprofFile() {
+    val sessionArtifacts = mySessionsView.sessionsList.model
+    assertThat(sessionArtifacts.size).isEqualTo(0)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+    mySessionsManager.beginSession(device, process1)
+    val session1 = mySessionsManager.selectedSession
+    assertThat(sessionArtifacts.size).isEqualTo(1)
+    assertThat(sessionArtifacts.getElementAt(0).session).isEqualTo(session1)
+
+    val session = mySessionsManager.createImportedSession("fake.hprof", Common.SessionMetaData.SessionType.MEMORY_CAPTURE)
+    mySessionsManager.update()
+    mySessionsManager.setSession(session)
+    assertThat(sessionArtifacts.size).isEqualTo(2)
+
+    val selectedSession = mySessionsManager.selectedSession
+    assertThat(session).isEqualTo(selectedSession)
+    assertThat(myProfilers.selectedSessionMetaData.type).isEqualTo(Common.SessionMetaData.SessionType.MEMORY_CAPTURE)
+  }
+
+  @Test
+  fun testSessionItemMouseInteraction() {
+    mySessionsView.sessionsList.ui = HeadlessListUI()
+    mySessionsView.sessionsList.setSize(100, 100)
+    val ui = FakeUi(mySessionsView.sessionsList)
+    val sessionArtifacts = mySessionsView.sessionsList.model
+    assertThat(sessionArtifacts.size).isEqualTo(0)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+    val process2 = Common.Process.newBuilder().setPid(20).setState(Common.Process.State.ALIVE).build()
+    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(10).setEndTime(11).build()
+    val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder().setFromTimestamp(20).setToTimestamp(21).build()
+    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
+    myCpuService.addTraceInfo(cpuTraceInfo)
+
+    myProfilerService.setTimestampNs(1)
+    mySessionsManager.beginSession(device, process1)
+    mySessionsManager.endCurrentSession()
+    val session1 = mySessionsManager.selectedSession
+    myProfilerService.setTimestampNs(2)
+    mySessionsManager.beginSession(device, process2)
+    mySessionsManager.endCurrentSession()
+    val session2 = mySessionsManager.selectedSession
+
+    assertThat(sessionArtifacts.size).isEqualTo(2)
+    // Sessions are sorted in descending order.
+    var sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    var sessionItem1 = sessionArtifacts.getElementAt(1) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session2)
+    assertThat(sessionItem1.session).isEqualTo(session1)
+
+    // Clicking on the second session should select it.
+    assertThat(mySessionsManager.selectedSession).isEqualTo(session2)
+    ui.layout()
+    ui.mouse.click(50, 50)
+    assertThat(mySessionsManager.selectedSession).isEqualTo(session1)
+
+    // Clicking on the arrow region should expand but not select.
+    ui.layout()
+    ui.mouse.click(10, 10)
+    assertThat(mySessionsManager.selectedSession).isEqualTo(session1)
+    assertThat(sessionArtifacts.size).isEqualTo(4)
+    sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    val hprofItem = sessionArtifacts.getElementAt(1) as HprofSessionArtifact
+    val cpuCaptureItem = sessionArtifacts.getElementAt(2) as CpuCaptureSessionArtifact
+    sessionItem1 = sessionArtifacts.getElementAt(3) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session2)
+    assertThat(hprofItem.session).isEqualTo(session2)
+    assertThat(cpuCaptureItem.session).isEqualTo(session2)
+    assertThat(sessionItem1.session).isEqualTo(session1)
+
+    // Clicking again should collapse the session.
+    ui.layout()
+    ui.mouse.click(10, 10)
+    assertThat(mySessionsManager.selectedSession).isEqualTo(session1)
+    assertThat(sessionArtifacts.size).isEqualTo(2)
+    sessionItem0 = sessionArtifacts.getElementAt(0) as SessionItem
+    sessionItem1 = sessionArtifacts.getElementAt(1) as SessionItem
+    assertThat(sessionItem0.session).isEqualTo(session2)
+    assertThat(sessionItem1.session).isEqualTo(session1)
+  }
+
+  @Test
+  fun testCpuItemMouseInteraction() {
+    mySessionsView.sessionsList.ui = HeadlessListUI()
+    mySessionsView.sessionsList.setSize(100, 100)
+    val ui = FakeUi(mySessionsView.sessionsList)
+    val sessionArtifacts = mySessionsView.sessionsList.model
+    assertThat(sessionArtifacts.size).isEqualTo(0)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+    val traceInfoId = 13
+    val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder().setTraceId(traceInfoId).setFromTimestamp(10).setToTimestamp(11).build()
+    myCpuService.addTraceInfo(cpuTraceInfo)
+
+    myProfilerService.setTimestampNs(1)
+    mySessionsManager.beginSession(device, process)
+    mySessionsManager.endCurrentSession()
+    val session = mySessionsManager.selectedSession
+
+    assertThat(sessionArtifacts.size).isEqualTo(1)
+    var sessionItem = sessionArtifacts.getElementAt(0) as SessionItem
+    assertThat(sessionItem.session).isEqualTo(session)
+
+    ui.layout()
+    ui.mouse.click(50, 50) // Click on the session
+    ui.layout()
+    ui.mouse.click(10, 10) // Clicking on the arrow to expand the session artifacts showing the CpuCaptureSessionArtifact
+    assertThat(sessionArtifacts.size).isEqualTo(2)
+    sessionItem = sessionArtifacts.getElementAt(0) as SessionItem
+    val cpuCaptureItem = sessionArtifacts.getElementAt(1) as CpuCaptureSessionArtifact
+    assertThat(sessionItem.session).isEqualTo(session)
+    assertThat(cpuCaptureItem.session).isEqualTo(session)
+
+    // Prepare FakeCpuService to return a valid trace.
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS)
+    myCpuService.setValidTrace(true)
+    val traceBytes = ByteString.copyFrom(TestUtils.getWorkspaceFile(VALID_TRACE_PATH).readBytes())
+    myCpuService.setTrace(traceBytes)
+
+    assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java) // Makes sure we're in monitor stage
+    ui.mouse.click(50, 50) // Clicking on the CpuCaptureSessionArtifact should open CPU profiler and select the capture
+    assertThat(myProfilers.stage).isInstanceOf(CpuProfilerStage::class.java) // Makes sure CPU profiler stage is now open
+    val selectedCapture = (myProfilers.stage as CpuProfilerStage).capture
+    // Makes sure that there is a capture selected and it's the one we clicked.
+    assertThat(selectedCapture).isNotNull()
+    assertThat(selectedCapture!!.traceId).isEqualTo(traceInfoId)
   }
 }

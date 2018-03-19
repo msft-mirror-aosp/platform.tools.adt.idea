@@ -18,10 +18,7 @@ package com.android.tools.idea.gradle.structure.model.java;
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel;
 import com.android.tools.idea.gradle.model.java.JarLibraryDependency;
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec;
-import com.android.tools.idea.gradle.structure.model.PsDependency;
 import com.android.tools.idea.gradle.structure.model.PsLibraryDependency;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,12 +51,6 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
   }
 
   @Override
-  @Nullable
-  public PsArtifactDependencySpec getDeclaredSpec() {
-    return myDeclaredSpec;
-  }
-
-  @Override
   @NotNull
   public PsArtifactDependencySpec getSpec() {
     return mySpec;
@@ -87,24 +78,12 @@ public class PsLibraryJavaDependency extends PsJavaDependency implements PsLibra
     }
   }
 
-  @Override
-  @NotNull
-  public ImmutableCollection<PsDependency> getTransitiveDependencies() {
-    return ImmutableList.of();
-  }
-
   void setDependenciesFromPomFile(@NotNull List<PsArtifactDependencySpec> pomDependencies) {
     myPomDependencies.clear();
     myPomDependencies.addAll(pomDependencies);
   }
 
-  @Override
-  public void setResolvedSpec(@NotNull PsArtifactDependencySpec spec) {
-    mySpec = spec;
-  }
-
-  @Override
-  public void setDeclaredSpec(@NotNull PsArtifactDependencySpec spec) {
+  private void setDeclaredSpec(@NotNull PsArtifactDependencySpec spec) {
     myDeclaredSpec = spec;
   }
 

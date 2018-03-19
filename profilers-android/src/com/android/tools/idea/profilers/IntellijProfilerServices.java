@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.profilers;
 
-import com.android.tools.idea.diagnostics.exception.NoPiiException;
+import com.android.tools.analytics.crash.exception.NoPiiException;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink;
@@ -180,6 +180,11 @@ public class IntellijProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isImportCpuTraceEnabled() {
+        return StudioFlags.PROFILER_IMPORT_CPU_TRACE.get();
+      }
+
+      @Override
       public boolean isJniReferenceTrackingEnabled() {
         return StudioFlags.PROFILER_TRACK_JNI_REFS.get();
       }
@@ -217,6 +222,11 @@ public class IntellijProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isSessionsEnabled() {
         return StudioFlags.PROFILER_SHOW_SESSIONS.get();
+      }
+
+      @Override
+      public boolean isSessionImportEnabled() {
+        return StudioFlags.PROFILER_IMPORT_SESSION.get();
       }
 
       @Override

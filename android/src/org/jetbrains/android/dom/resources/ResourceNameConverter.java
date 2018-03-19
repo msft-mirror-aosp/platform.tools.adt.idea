@@ -7,6 +7,7 @@ import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ValueResourceNameValidator;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.res.AppResourceRepository;
+import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.LocalQuickFixProvider;
 import com.intellij.openapi.module.Module;
@@ -73,20 +74,26 @@ public class ResourceNameConverter extends ResolvingConverter<String> implements
   }
 
   private static Collection<String> getStyleNameVariants(ConvertContext context, GenericAttributeValue element) {
-    final Module module = context.getModule();
+    Module module = context.getModule();
 
     if (module == null) {
       return Collections.emptyList();
     }
+    AndroidFacet facet = AndroidFacet.getInstance(module);
+    if (facet == null) {
+      return Collections.emptyList();
+    }
+
     final LocalResourceManager manager = LocalResourceManager.getInstance(module);
 
     if (manager == null) {
       return Collections.emptyList();
     }
-    final Collection<String> styleNames = manager.getResourceNames(ResourceType.STYLE);
+    AppResourceRepository appResources = ResourceRepositoryManager.getOrCreateInstance(facet).getAppResources(true);
+    final Collection<String> styleNames = appResources.getItemsOfType(ResourceNamespace.TODO, ResourceType.STYLE);
     final List<String> result = new ArrayList<>();
 
-    final String currentValue = element.getStringValue();
+    String currentValue = element.getStringValue();
     for (String name : styleNames) {
       if (currentValue == null || !currentValue.startsWith(name)) {
         result.add(name + '.');

@@ -182,12 +182,32 @@ public final class FakeProfilerService extends ProfilerServiceGrpc.ProfilerServi
       .setStartTimestampEpochMs(request.getRequestTimeEpochMs())
       .setJvmtiEnabled(request.getJvmtiConfig().getAttachAgent())
       .setLiveAllocationEnabled(request.getJvmtiConfig().getLiveAllocationEnabled())
+      .setType(Common.SessionMetaData.SessionType.FULL)
       .build();
     mySessions.put(sessionId, session);
     mySessionMetaDatas.put(sessionId, metadata);
     myAttachAgentCalled = request.getJvmtiConfig().getAttachAgent();
     builder.setSession(session);
     responseObserver.onNext(builder.build());
+    responseObserver.onCompleted();
+  }
+
+  @Override
+  public void importSession(ImportSessionRequest request, StreamObserver<ImportSessionResponse> responseObserver) {
+    mySessions.put(request.getSession().getSessionId(), request.getSession());
+
+    Common.Session session = request.getSession();
+    long sessionId = session.getSessionId();
+    Common.SessionMetaData metadata = Common.SessionMetaData.newBuilder()
+      .setSessionId(sessionId)
+      .setSessionName(request.getSessionName())
+      .setJvmtiEnabled(false)
+      .setLiveAllocationEnabled(false)
+      .setType(request.getSessionType())
+      .build();
+    mySessionMetaDatas.put(sessionId, metadata);
+    myAttachAgentCalled = false;
+    responseObserver.onNext(ImportSessionResponse.newBuilder().build());
     responseObserver.onCompleted();
   }
 

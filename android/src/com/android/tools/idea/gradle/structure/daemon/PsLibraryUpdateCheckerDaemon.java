@@ -178,11 +178,11 @@ public class PsLibraryUpdateCheckerDaemon extends PsDaemon {
         if (module instanceof PsAndroidModule) {
           PsAndroidModule androidModule = (PsAndroidModule)module;
 
-          androidModule.getDependencies().forEachDeclaredDependency(dependency -> {
+          androidModule.getDependencies().forEach(dependency -> {
             if (dependency instanceof PsLibraryDependency) {
               PsLibraryDependency libraryDependency = (PsLibraryDependency)dependency;
-              PsArtifactDependencySpec spec = libraryDependency.getDeclaredSpec();
-              if (spec != null && isNotEmpty(spec.getVersion())) {
+              PsArtifactDependencySpec spec = libraryDependency.getSpec();
+              if (isNotEmpty(spec.getVersion())) {
                 GradleVersion version = GradleVersion.tryParse(spec.getVersion());
                 if (version != null) {
                   ids.add(new LibraryUpdateId(spec.getName(), spec.getGroup()));

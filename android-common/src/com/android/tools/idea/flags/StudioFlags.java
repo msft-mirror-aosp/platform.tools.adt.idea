@@ -83,6 +83,11 @@ public final class StudioFlags {
     "Shows the sessions panel used for managing and navigating profiling data.",
     false);
 
+  public static final Flag<Boolean> PROFILER_IMPORT_SESSION = Flag.create(
+    PROFILER, "import.session", "Enable the session import dialog",
+    "Shows the file open drop down menu for session import.",
+    false);
+
   public static final Flag<Boolean> PROFILER_USE_JVMTI = Flag.create(
     PROFILER, "jvmti", "Enable JVMTI profiling",
     "Use JVMTI for profiling devices with Android O or newer. " +
@@ -97,6 +102,11 @@ public final class StudioFlags {
     PROFILER, "simpleperf", "Enable Simpleperf profiling",
     "Use Simpleperf for CPU profiling on devices with Android O or newer. " +
     "Simpleperf is a native profiler tool built for Android.",
+    true);
+
+  public static final Flag<Boolean> PROFILER_IMPORT_CPU_TRACE = Flag.create(
+    PROFILER, "cpu.import.trace", "Enable CPU trace importing",
+    "Add the option to import CPU trace files when right-clicking the CPU profiler usage chart.",
     true);
 
   public static final Flag<Boolean> PROFILER_EXPORT_CPU_TRACE = Flag.create(
@@ -152,7 +162,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_TRACK_JNI_REFS = Flag.create(
     PROFILER, "jni", "Enable JVMTI-based JNI reference tracking.",
     "For Android O or newer, JNI references are tracked in Memory Profiler and shown in JNI heap.",
-    false);
+    true);
 
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
   public static final Flag<Boolean> NELE_ANIMATIONS_PREVIEW = Flag.create(
@@ -280,6 +290,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> CMAKE_ENABLE_FEATURES_FROM_CLION = Flag
     .create(NDK, "cmakeclionfeatures", "Enable CMake language support from CLion",
             "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
+  public static final Flag<Boolean> LLDB_ASSEMBLY_DEBUGGING = Flag.create(
+    NDK, "debugging.assembly", "Enable assembly debugging",
+    "If enabled, frames without sources will show the assembly of the function and allow breakpoints to be set there", false);
 
   private StudioFlags() {
   }

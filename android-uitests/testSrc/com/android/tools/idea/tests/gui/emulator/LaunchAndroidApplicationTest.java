@@ -83,7 +83,7 @@ public class LaunchAndroidApplicationTest {
   @Test
   public void testRunOnEmulator() throws Exception {
     InstantRunSettings.setShowStatusNotifications(false);
-    guiTest.importSimpleApplication();
+    guiTest.importSimpleLocalApplication();
 
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
 
@@ -121,7 +121,7 @@ public class LaunchAndroidApplicationTest {
    */
   @RunIn(TestGroup.SANITY)
   @Test
-  public void testDebugOnEmulator() throws IOException, ClassNotFoundException, EvaluateException {
+  public void testDebugOnEmulator() throws IOException {
     guiTest.importSimpleLocalApplication();
 
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
@@ -452,7 +452,7 @@ public class LaunchAndroidApplicationTest {
   @RunIn(TestGroup.QA)
   @Test
   public void turnOnOrOffBuildCache() throws Exception {
-    IdeFrameFixture ideFrameFixture = guiTest.importSimpleApplication();
+    IdeFrameFixture ideFrameFixture = guiTest.importSimpleLocalApplication();
 
     File homeDir = new File(SystemProperties.getUserHome());
     File androidHomeDir = new File(homeDir, ".android");

@@ -16,6 +16,7 @@
 package org.jetbrains.android;
 
 import com.android.builder.model.level2.Library;
+import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceFile;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.resources.FolderTypeRelationship;
@@ -25,12 +26,12 @@ import com.android.tools.idea.projectsystem.FilenameConstants;
 import com.android.tools.idea.res.AppResourceRepository;
 import com.android.tools.idea.res.ProjectResourceRepository;
 import com.android.tools.idea.res.ResourceHelper;
+import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.android.tools.lint.detector.api.LintUtils;
 import com.android.utils.HtmlBuilder;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
-import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import com.intellij.find.findUsages.FindUsagesHandler;
 import com.intellij.history.LocalHistory;
@@ -351,10 +352,11 @@ public class AndroidResourceRenameResourceProcessor extends RenamePsiElementProc
                                                    String newName,
                                                    Map<PsiElement, String> allRenames,
                                                    final AndroidFacet facet) {
-    ResourceManager manager = ModuleResourceManagers.getInstance(facet).getLocalResourceManager();
+    LocalResourceManager localResourceManager = ModuleResourceManagers.getInstance(facet).getLocalResourceManager();
+    ResourceRepositoryManager repoManager = ResourceRepositoryManager.getOrCreateInstance(facet);
     XmlTag tag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
     assert tag != null;
-    String type = manager.getValueResourceType(tag);
+    String type = localResourceManager.getValueResourceType(tag);
     assert type != null;
     Project project = tag.getProject();
     DomElement domElement = DomManager.getDomManager(project).getDomElement(tag);
@@ -362,7 +364,7 @@ public class AndroidResourceRenameResourceProcessor extends RenamePsiElementProc
     String name = ((ResourceElement)domElement).getName().getValue();
     assert name != null;
 
-    List<ResourceElement> resources = manager.findValueResources(type, name);
+    List<ResourceElement> resources = localResourceManager.findValueResources(ResourceNamespace.TODO, type, name);
     for (ResourceElement resource : resources) {
       XmlElement xmlElement = resource.getName().getXmlAttributeValue();
       if (!element.getManager().areElementsEquivalent(element, xmlElement)) {
@@ -378,7 +380,7 @@ public class AndroidResourceRenameResourceProcessor extends RenamePsiElementProc
       // We iterate the styles in order to cascade any changes to children down the hierarchy.
 
       // List of styles that will be renamed.
-      HashSet<String> renamedStyles = Sets.newHashSet();
+      HashSet<String> renamedStyles = new HashSet<>();
       renamedStyles.add(name);
 
       final String stylePrefix = name + ".";
@@ -388,8 +390,9 @@ public class AndroidResourceRenameResourceProcessor extends RenamePsiElementProc
         renameCandidates = Collections.emptyList();
       }
       else {
-        renameCandidates = Collections2.filter(manager.getResourceNames(resourceType),
-                                               input -> input.startsWith(stylePrefix));
+        Collection<String> allStyles = repoManager.getAppResources(true).getItemsOfType(ResourceNamespace.TODO, resourceType);
+        renameCandidates = Collections2.filter(allStyles,
+                                               styleName -> styleName.startsWith(stylePrefix));
       }
 
       for (String resourceName : ORDER_BY_LENGTH.sortedCopy(renameCandidates)) {
@@ -401,7 +404,7 @@ public class AndroidResourceRenameResourceProcessor extends RenamePsiElementProc
           continue;
         }
 
-        for (ResourceElement resource : manager.findValueResources(type, resourceName)) {
+        for (ResourceElement resource : localResourceManager.findValueResources(ResourceNamespace.TODO, type, resourceName)) {
           if (!(resource instanceof Style) || ((Style)resource).getParentStyle().getXmlAttributeValue() != null) {
             // This element is not a style or does have an explicit parent so we do not rename it.
             continue;

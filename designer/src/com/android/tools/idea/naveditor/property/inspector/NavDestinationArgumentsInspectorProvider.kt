@@ -31,11 +31,18 @@ import com.android.tools.idea.uibuilder.property.editors.NlTableCellEditor
 import com.intellij.icons.AllIcons
 import com.intellij.ui.InplaceButton
 import com.intellij.ui.JBColor
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.table.JBTable
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.FlowLayout
+import java.awt.Dimension
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
+import java.util.*
 import javax.swing.BorderFactory
 import javax.swing.JPanel
 import javax.swing.JTable
@@ -105,45 +112,49 @@ class NavDestinationArgumentsInspectorProvider : InspectorProvider<NavProperties
       table.rowHeight = NAV_ARGUMENTS_ROW_HEIGHT
       table.name = NAV_ARGUMENTS_COMPONENT_NAME
       table.rowSelectionAllowed = true
+      table.minimumSize = Dimension(0, JBUI.scale(18))
+      table.emptyText.also {
+        it.text = "Click "
+        it.appendText("+", SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
+        it.appendText(" to add Arguments")
+      }
+      val textEditor = TextEditor(surface!!.project, false, NlEditingListener.DEFAULT_LISTENER)
 
+      table.addKeyListener(object : KeyAdapter() {
+        override fun keyReleased(e: KeyEvent?) {
+          when (e?.keyCode) {
+            KeyEvent.VK_DELETE, KeyEvent.VK_BACK_SPACE -> {
+              argumentProperty.deleteRows(table.selectedRows)
+              refresh()
+              tableModel.fireTableDataChanged()
+            }
+            KeyEvent.VK_TAB -> {
+              table.editCellAt(table.selectedRow, table.selectedColumn)
+              textEditor.requestFocus()
+            }
+          }
+        }
+      })
       table.columnModel.getColumn(0).cellRenderer = MyCellRenderer("name")
       table.columnModel.getColumn(1).cellRenderer = MyCellRenderer("default value")
 
-      val nameTextEditor = TextEditor(surface!!.project, false, NlEditingListener.DEFAULT_LISTENER)
-      val defaultValueTextEditor = TextEditor(surface!!.project, false, NlEditingListener.DEFAULT_LISTENER)
+      val cellEditor = object: NlTableCellEditor() {
+        override fun isCellEditable(e: EventObject?): Boolean {
+          return super.isCellEditable(e) && (e !is MouseEvent || e.clickCount == 2)
+        }
+      }
+      cellEditor.init(textEditor, null)
 
-      val nameEditor = NlTableCellEditor()
-      nameEditor.init(nameTextEditor, null)
-      val defaultValueEditor = NlTableCellEditor()
-      defaultValueEditor.init(defaultValueTextEditor, null)
-
-      table.columnModel.getColumn(0).cellEditor = nameEditor
-      table.columnModel.getColumn(1).cellEditor = defaultValueEditor
-
-      table.putClientProperty("terminateEditOnFocusLost", true)
+      table.columnModel.getColumn(0).cellEditor = cellEditor
+      table.columnModel.getColumn(1).cellEditor = cellEditor
 
       panel.add(table, BorderLayout.CENTER)
-      val minus = InplaceButton("Delete Argument", deleteIcon) {
-        table.cellEditor?.stopCellEditing()
-        argumentProperty.deleteRows(table.selectedRows)
-        tableModel.fireTableDataChanged()
-      }
       val plus = InplaceButton("Add Argument", addIcon) {
         table.cellEditor?.stopCellEditing()
         argumentProperty.addRow()
         tableModel.fireTableDataChanged()
       }
-      table.selectionModel.addListSelectionListener {
-        minus.isEnabled = !table.selectedRows.isEmpty()
-      }
-      val plusPanel = JPanel(BorderLayout())
-      val actionPanel = JPanel(FlowLayout())
-      actionPanel.add(minus)
-      actionPanel.add(plus)
-      actionPanel.isOpaque = false
-      plusPanel.add(actionPanel, BorderLayout.EAST)
-
-      inspector.addExpandableComponent("Arguments", null, plusPanel, plusPanel)
+      inspector.addTitle("Arguments", plus)
       inspector.addPanel(panel)
     }
 
@@ -170,17 +181,16 @@ private class MyCellRenderer(emptyText: String) : TableCellRenderer {
   ): Component {
     return rendererComponent.also {
       it.text = (value as? NlProperty)?.value
-      if (isSelected) {
-        it.foreground = table?.selectionForeground
-        it.background = table?.selectionBackground
+      if (isSelected && (table?.hasFocus() == true || table?.isEditing == true)) {
+        it.foreground = table.selectionForeground
+        it.background = table.selectionBackground
       }
       else {
         it.foreground = table?.foreground
-        it.background = table?.background
+        it.background = if (isSelected) UIUtil.getListUnfocusedSelectionBackground() else table?.background
       }
     }
   }
 }
 
-private val deleteIcon = ColoredIconGenerator.generateColoredIcon(AllIcons.General.Remove, JBColor.GRAY.rgb)
 private val addIcon = ColoredIconGenerator.generateColoredIcon(AllIcons.General.Add, JBColor.GRAY.rgb)

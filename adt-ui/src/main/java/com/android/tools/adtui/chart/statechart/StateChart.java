@@ -26,16 +26,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
  * A chart component that renders series of state change events as rectangles.
  */
-public final class StateChart<T> extends MouseAdapterComponent<Long> {
+public final class StateChart<T> extends MouseAdapterComponent<T> {
 
   public enum RenderMode {
     BAR,  // Each state is rendered as a filled rectangle until the next state changed.
@@ -55,15 +55,15 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
   private float myHeightGap;
 
   @NotNull
-  private final HashMap<Rectangle2D.Float, T> myValues;
-
-  @NotNull
   private RenderMode myRenderMode;
 
   @NotNull
   private StateChartConfig<T> myConfig;
 
   private boolean myRender;
+
+  @NotNull
+  private final StateChartTextConverter<T> myTextConverter;
 
   /**
    * @param colors map of a state to corresponding color
@@ -74,24 +74,29 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
   }
 
   public StateChart(@NotNull StateChartModel<T> model, @NotNull Function<T, Color> colorMapping) {
-    this(model, new StateChartConfig<>(new DefaultStateChartReducer<>()), colorMapping);
+    this(model, new StateChartConfig<>(new DefaultStateChartReducer<>()), colorMapping, (val) -> val.toString());
+  }
+
+  public StateChart(@NotNull StateChartModel<T> model, @NotNull Function<T, Color> colorMapping, StateChartTextConverter<T> textConverter) {
+    this(model, new StateChartConfig<>(new DefaultStateChartReducer<>()), colorMapping, textConverter);
   }
 
   @VisibleForTesting
   public StateChart(@NotNull StateChartModel<T> model, @NotNull Map<T, Color> colors, @NotNull StateChartConfig<T> config) {
-    this(model, config, (val) -> colors.get(val));
+    this(model, config, (val) -> colors.get(val), (val) -> val.toString());
   }
 
   @VisibleForTesting
   public StateChart(@NotNull StateChartModel<T> model,
                     @NotNull StateChartConfig<T> config,
-                    @NotNull Function<T, Color> colorMapping) {
+                    @NotNull Function<T, Color> colorMapping,
+                    @NotNull StateChartTextConverter<T> textConverter) {
     super(config.getRectangleHeightRatio(), config.getRectangleMouseOverHeightRatio());
     myColorMapper = colorMapping;
-    myValues = new HashMap<>();
     myRenderMode = RenderMode.BAR;
     myConfig = config;
     myRender = true;
+    myTextConverter = textConverter;
     setFont(AdtUiUtils.DEFAULT_FONT);
     setModel(model);
     setHeightGap(myConfig.getHeightGap());
@@ -142,11 +147,9 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
     float height = 1f / seriesSize;
     float gap = height * myHeightGap;
     setHeightFactor(height);
-    myValues.clear();
 
     int seriesIndex = 0;
-    long rectCount = 0;
-    Set<Long> pastRectangleKeys = getRectangleKeys();
+    clearRectangles();
     for (RangedSeries<T> data : series) {
       double min = data.getXRange().getMin();
       double max = data.getXRange().getMax();
@@ -167,16 +170,13 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
         // Don't draw if this block doesn't intersect with [min..max]
         if (previousValue != null && x >= min) {
           // Draw the previous block.
-          Rectangle2D.Float rect = setRectangleData(rectCount,
-                                                    Math.max(min, previousX),
-                                                    Math.min(max, x),
-                                                    min,
-                                                    max,
-                                                    startHeight + gap * 0.5f,
-                                                    gap);
-          pastRectangleKeys.remove(rectCount);
-          myValues.put(rect, previousValue);
-          rectCount++;
+          setRectangleData(previousValue,
+                           Math.max(min, previousX),
+                           Math.min(max, x),
+                           min,
+                           max,
+                           startHeight + gap * 0.5f,
+                           gap);
         }
 
         // Start a new block.
@@ -190,23 +190,15 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
       }
       // The last data point continues till max
       if (previousX < max && previousValue != null) {
-        Rectangle2D.Float rect = setRectangleData(rectCount,
-                                                  Math.max(min, previousX),
-                                                  max,
-                                                  min,
-                                                  max,
-                                                  startHeight + gap * 0.5f,
-                                                  gap);
-        pastRectangleKeys.remove(rectCount);
-        myValues.put(rect, previousValue);
-        rectCount++;
+        setRectangleData(previousValue,
+                         Math.max(min, previousX),
+                         max,
+                         min,
+                         max,
+                         startHeight + gap * 0.5f,
+                         gap);
       }
       seriesIndex++;
-    }
-
-    for (Long key : pastRectangleKeys) {
-      myValues.remove(getRectangle(key));
-      removeRectangle(key);
     }
 
     addDebugInfo("Render time: %.2fms", (System.nanoTime() - renderTime) / 1000000.f);
@@ -223,14 +215,12 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
     g2d.setFont(getFont());
     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-    assert getRectangleCount() == myValues.size();
-
     List<Shape> transformedShapes = new ArrayList<>(getRectangleCount());
     List<T> transformedValues = new ArrayList<>(getRectangleCount());
     AffineTransform scale = AffineTransform.getScaleInstance(dim.getWidth(), dim.getHeight());
-    for (Long key : getRectangleKeys()) {
-      transformedShapes.add(scale.createTransformedShape(getRectangle(key)));
-      transformedValues.add(myValues.get(getRectangle(key)));
+    for (Rectangle2D.Float rectangle : getRectangles()) {
+      transformedShapes.add(scale.createTransformedShape(rectangle));
+      transformedValues.add(getRectangleValue(rectangle));
     }
     myConfig.getReducer().reduce(transformedShapes, transformedValues);
     assert transformedShapes.size() == transformedValues.size();
@@ -241,8 +231,9 @@ public final class StateChart<T> extends MouseAdapterComponent<Long> {
       g2d.setColor(getColor(value));
       g2d.fill(shape);
       if (myRenderMode == RenderMode.TEXT) {
+        String valueText = myTextConverter.convertToString(value);
         Rectangle2D rect = shape.getBounds2D();
-        String text = AdtUiUtils.shrinkToFit(value.toString(), mDefaultFontMetrics, (float)rect.getWidth() - TEXT_PADDING * 2);
+        String text = AdtUiUtils.shrinkToFit(valueText, mDefaultFontMetrics, (float)rect.getWidth() - TEXT_PADDING * 2);
         if (!text.isEmpty()) {
           g2d.setColor(AdtUiUtils.DEFAULT_FONT_COLOR);
           g2d.drawString(text, (float)(rect.getX() + TEXT_PADDING), (float)(rect.getY() + rect.getHeight() - TEXT_PADDING));

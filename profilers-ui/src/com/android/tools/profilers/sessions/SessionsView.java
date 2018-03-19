@@ -22,25 +22,24 @@ import com.android.tools.adtui.model.stdui.CommonAction;
 import com.android.tools.adtui.stdui.CommonButton;
 import com.android.tools.adtui.stdui.menu.CommonDropDownButton;
 import com.android.tools.profiler.proto.Common;
+import com.android.tools.profilers.IdeProfilerComponents;
 import com.android.tools.profilers.ProfilerAspect;
 import com.android.tools.profilers.StudioProfilers;
-import com.android.tools.profilers.ViewBinder;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.util.ui.JBUI;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.Arrays;
 
 import static com.android.tools.profilers.ProfilerLayout.TOOLBAR_HEIGHT;
 import static com.android.tools.profilers.ProfilerLayout.TOOLBAR_LABEL_BORDER;
 import static com.android.tools.profilers.StudioProfilers.buildDeviceName;
-import static javax.swing.ListSelectionModel.SINGLE_SELECTION;
 
 /**
  * A collapsible panel which lets users see the list of and interact with their profiling sessions.
@@ -58,13 +57,17 @@ public class SessionsView extends AspectObserver {
   @NotNull private final JButton myStopProfilingButton;
   @NotNull private final CommonAction myProcessSelectionAction;
   @NotNull private final CommonDropDownButton myProcessSelectionDropDown;
-  @NotNull private final JList<SessionArtifact> mySessionsList;
+  @NotNull private final SessionsList mySessionsList;
   @NotNull private final DefaultListModel<SessionArtifact> mySessionsListModel;
+
+  @NotNull
+  private final IdeProfilerComponents myIdeProfilerComponents;
 
   private boolean myIsExpanded;
 
-  public SessionsView(@NotNull StudioProfilers profilers) {
+  public SessionsView(@NotNull StudioProfilers profilers, @NotNull IdeProfilerComponents ideProfilerComponents) {
     myProfilers = profilers;
+    myIdeProfilerComponents = ideProfilerComponents;
     mySessionsManager = myProfilers.getSessionsManager();
     // Starts out with a collapsed sessions panel.
     // TODO b\73159126 make this configurable. e.g. save user's previous settings.
@@ -110,23 +113,11 @@ public class SessionsView extends AspectObserver {
       .onChange(ProfilerAspect.PROCESSES, this::refreshProcessDropdown);
 
     mySessionsListModel = new DefaultListModel<>();
-    mySessionsList = new JList<>(mySessionsListModel);
+    mySessionsList = new SessionsList(mySessionsListModel);
     mySessionsList.setMinimumSize(new Dimension(SESSIONS_EXPANDED_MIN_WIDTH, 0));
     mySessionsList.setOpaque(false);
-    mySessionsList.setCellRenderer(new SessionsCellRenderer(this));
-    mySessionsList.setSelectionMode(SINGLE_SELECTION);
-    mySessionsList.addListSelectionListener(new ListSelectionListener() {
-      @Override
-      public void valueChanged(ListSelectionEvent e) {
-        SessionArtifact artifact = mySessionsList.getSelectedValue();
-        if (artifact != null) {
-          artifact.onSelect();
-        }
-      }
-    });
     mySessionsManager.addDependency(this)
       .onChange(SessionAspect.SESSIONS, this::refreshSessions)
-      .onChange(SessionAspect.SELECTED_SESSION, this::refreshSelection)
       .onChange(SessionAspect.PROFILING_SESSION, () -> myStopProfilingButton
         .setEnabled(!Common.Session.getDefaultInstance().equals(mySessionsManager.getProfilingSession())));
     initializeUI();
@@ -234,32 +225,10 @@ public class SessionsView extends AspectObserver {
 
   private void refreshSessions() {
     java.util.List<SessionArtifact> sessionItems = mySessionsManager.getSessionArtifacts();
-
-    SessionArtifact previousSelectedArtifact = mySessionsList.getSelectedValue();
-    Common.Session previousSelectedSession =
-      previousSelectedArtifact != null ? previousSelectedArtifact.getSession() : Common.Session.getDefaultInstance();
-
     mySessionsListModel.clear();
-    int newSelectionIndex = -1;
     for (int i = 0; i < sessionItems.size(); i++) {
       SessionArtifact item = sessionItems.get(i);
       mySessionsListModel.addElement(item);
-      if (previousSelectedSession.equals(item.getSession())) {
-        newSelectionIndex = i;
-      }
-    }
-
-    mySessionsList.setSelectedIndex(newSelectionIndex);
-  }
-
-  private void refreshSelection() {
-    Common.Session selectedSession = mySessionsManager.getSelectedSession();
-    for (int i = 0; i < mySessionsListModel.size(); i++) {
-      SessionArtifact item = mySessionsListModel.get(i);
-      if (selectedSession.equals(item.getSession())) {
-        mySessionsList.setSelectedIndex(i);
-        break;
-      }
     }
   }
 
@@ -270,11 +239,23 @@ public class SessionsView extends AspectObserver {
       myProcessSelectionAction.clear();
       return;
     }
+    myProcessSelectionAction.clear();
+
+    // Add the dropdown action for loading from file
+    if (myProfilers.getIdeServices().getFeatureConfig().isSessionImportEnabled()) {
+      CommonAction loadAction = new CommonAction("Loading from file...", null);
+      loadAction.setAction(() -> {
+        myIdeProfilerComponents
+          .createImportDialog().
+          open(() -> "Open", Arrays.asList("hprof"),
+               file -> myProfilers.getSessionsManager().importSessionFromFile(new File(file.getPath())));
+      });
+      myProcessSelectionAction.addChildrenActions(loadAction);
+    }
 
     Common.Device selectedDevice = myProfilers.getDevice();
     Common.Process selectedProcess = myProfilers.getProcess();
     // Rebuild the action tree.
-    myProcessSelectionAction.clear();
     for (Common.Device device : processMap.keySet()) {
       CommonAction deviceAction = new CommonAction(buildDeviceName(device), null);
       for (Common.Process process : processMap.get(device)) {
@@ -289,28 +270,6 @@ public class SessionsView extends AspectObserver {
       deviceAction.setEnabled(deviceAction.getChildrenActionCount() > 0);
       deviceAction.setSelected(device.equals(selectedDevice));
       myProcessSelectionAction.addChildrenActions(deviceAction);
-    }
-  }
-
-  private static class SessionsCellRenderer implements ListCellRenderer<SessionArtifact> {
-
-    @NotNull private final SessionsView mySessionsView;
-    @NotNull private final ViewBinder<SessionsView, SessionArtifact, SessionArtifactRenderer> myViewBinder;
-
-    public SessionsCellRenderer(@NotNull SessionsView sessionsView) {
-      mySessionsView = sessionsView;
-      myViewBinder = new ViewBinder<>();
-      myViewBinder.bind(SessionItem.class, (p, m) -> new SessionItemRenderer());
-    }
-
-    @Override
-    public Component getListCellRendererComponent(JList<? extends SessionArtifact> list,
-                                                  SessionArtifact item,
-                                                  int index,
-                                                  boolean isSelected,
-                                                  boolean cellHasFocus) {
-      SessionArtifactRenderer renderer = myViewBinder.build(mySessionsView, item);
-      return renderer.generateComponent(list, item, index, isSelected, cellHasFocus);
     }
   }
 }

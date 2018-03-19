@@ -196,8 +196,22 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
   @NotNull
   private final TraceIdsIterator myTraceIdsIterator;
 
+  /**
+   * Whether the stage was initiated in Inspect Trace mode. In this mode, some data might be missing (e.g. thread states and CPU usage in
+   * ART and simpleperf captures), the {@link ProfilerTimeline} is static and just big enough to display a {@link CpuCapture} entirely.
+   * Inspect Trace mode is triggered when importing a CPU trace.
+   */
+  private final boolean myIsInspectTraceMode;
+
   public CpuProfilerStage(@NotNull StudioProfilers profilers) {
+    this(profilers, false);
+  }
+
+  public CpuProfilerStage(@NotNull StudioProfilers profilers, boolean inspectTraceMode) {
     super(profilers);
+    // Only allow inspect trace mode if Import CPU trace flag is enabled.
+    myIsInspectTraceMode = getStudioProfilers().getIdeServices().getFeatureConfig().isImportCpuTraceEnabled() && inspectTraceMode;
+
     myCpuTraceDataSeries = new CpuTraceDataSeries();
     myProfilerModel = new CpuProfilerConfigModel(profilers, this);
 
@@ -266,6 +280,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
   private static Logger getLogger() {
     return Logger.getInstance(CpuProfilerStage.class);
+  }
+
+  public boolean isInspectTraceMode() {
+    return myIsInspectTraceMode;
   }
 
   public boolean hasUserUsedCpuCapture() {
@@ -378,12 +396,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     CpuServiceGrpc.CpuServiceBlockingStub cpuService = getStudioProfilers().getClient().getCpuClient();
     CpuProfilingAppStartRequest request = CpuProfilingAppStartRequest.newBuilder()
       .setSession(getStudioProfilers().getSession())
-      .setConfiguration(CpuProfilerConfiguration.newBuilder()
-                          .setMode(config.getMode())
-                          .setProfilerType(config.getProfilerType())
-                          .setBufferSizeInMb(config.getProfilingBufferSizeInMb())
-                          .setSamplingIntervalUs(config.getProfilingSamplingIntervalUs())
-      )
+      .setConfiguration(config.toProto())
       .setAbiCpuArch(getStudioProfilers().getProcess().getAbiCpuArch())
       .build();
 
@@ -400,9 +413,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
   private void startCapturingCallback(CpuProfilingAppStartResponse response,
                                       ProfilingConfiguration profilingConfiguration) {
     if (response.getStatus().equals(CpuProfilingAppStartResponse.Status.SUCCESS)) {
-      myProfilerModel.setActiveConfig(profilingConfiguration.getProfilerType(), profilingConfiguration.getMode(),
-                                      profilingConfiguration.getProfilingBufferSizeInMb(),
-                                      profilingConfiguration.getProfilingSamplingIntervalUs());
+      myProfilerModel.setActiveConfig(profilingConfiguration);
       setCaptureState(CaptureState.CAPTURING);
       myCaptureStartTimeNs = currentTimeNs();
       myInProgressTraceSeries.clear();
@@ -626,8 +637,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
       // Sets the properties of myActiveConfig
       CpuProfilerConfiguration configuration = response.getConfiguration();
-      myProfilerModel.setActiveConfig(configuration.getProfilerType(), configuration.getMode(), configuration.getBufferSizeInMb(),
-                                      configuration.getSamplingIntervalUs());
+      myProfilerModel.setActiveConfig(ProfilingConfiguration.fromProto(configuration));
     }
     else {
       // otherwise, invalidate capture start time

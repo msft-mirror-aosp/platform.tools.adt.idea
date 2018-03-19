@@ -17,13 +17,10 @@ package com.android.tools.idea.gradle.structure.model.android;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
-import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel;
-import com.android.tools.idea.gradle.dsl.api.dependencies.ModuleDependencyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec;
 import com.android.tools.idea.gradle.structure.model.PsModule;
-import com.android.tools.idea.gradle.structure.model.PsParsedDependencies;
 import com.android.tools.idea.gradle.structure.model.PsProject;
 import com.android.tools.idea.gradle.structure.model.repositories.search.AndroidSdkRepositories;
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepository;
@@ -34,7 +31,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -75,7 +74,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
 
   @Nullable
   public PsBuildType findBuildType(@NotNull String buildType) {
-    return getOrCreateBuildTypeCollection().findElement(buildType, PsBuildType.class);
+    return getOrCreateBuildTypeCollection().findElement(buildType);
   }
 
   public void forEachBuildType(@NotNull Consumer<PsBuildType> consumer) {
@@ -106,7 +105,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
 
   @Nullable
   public PsProductFlavor findProductFlavor(@NotNull String name) {
-    return getOrCreateProductFlavorCollection().findElement(name, PsProductFlavor.class);
+    return getOrCreateProductFlavorCollection().findElement(name);
   }
 
   @NotNull
@@ -120,7 +119,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
 
   @Nullable
   public PsVariant findVariant(@NotNull String name) {
-    return getOrCreateVariantCollection().findElement(name, PsVariant.class);
+    return getOrCreateVariantCollection().findElement(name);
   }
 
   @NotNull
@@ -130,7 +129,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
 
   @NotNull
   private PsAndroidDependencyCollection getOrCreateDependencyCollection() {
-    return myDependencyCollection == null ? myDependencyCollection = new PsAndroidDependencyCollection(this) : myDependencyCollection;
+    return myDependencyCollection == null ? myDependencyCollection = new PsAndroidModuleDependencyCollection(this) : myDependencyCollection;
   }
 
   public @NotNull PsAndroidDependencyCollection getDependencies() {
@@ -139,7 +138,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
 
   @Nullable
   public PsSigningConfig findSigningConfig(@NotNull String signingConfig) {
-    return getOrCreateSigningConfigCollection().findElement(signingConfig, PsSigningConfig.class);
+    return getOrCreateSigningConfigCollection().findElement(signingConfig);
   }
 
   public void forEachSigningConfig(@NotNull Consumer<PsSigningConfig> consumer) {

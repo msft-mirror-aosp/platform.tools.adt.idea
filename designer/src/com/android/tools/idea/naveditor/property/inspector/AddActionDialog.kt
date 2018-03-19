@@ -22,6 +22,7 @@ import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.naveditor.model.*
 import com.android.tools.idea.naveditor.property.editors.getAnimatorsPopupContent
+import com.android.tools.idea.res.ResourceRepositoryManager
 import com.android.tools.idea.uibuilder.property.editors.support.ValueWithDisplayString
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.ui.DialogWrapper
@@ -32,7 +33,6 @@ import org.jetbrains.android.dom.navigation.NavigationSchema
 import org.jetbrains.android.dom.navigation.NavigationSchema.ATTR_ENTER_ANIM
 import org.jetbrains.android.dom.navigation.NavigationSchema.ATTR_EXIT_ANIM
 import org.jetbrains.android.dom.navigation.NavigationSchema.DestinationType.FRAGMENT
-import org.jetbrains.android.resourceManagers.LocalResourceManager
 import java.awt.Font
 import java.awt.event.ItemEvent
 import javax.swing.Action
@@ -69,11 +69,11 @@ open class AddActionDialog(
 
   // Open for testing
   open val enterTransition: String?
-    get() = (dialog.myEnterComboBox.selectedItem as ValueWithDisplayString).value
+    get() = (dialog.myEnterComboBox.selectedItem as ValueWithDisplayString?)?.value
 
   // Open for testing
   open val exitTransition: String?
-    get() = (dialog.myExitComboBox.selectedItem as ValueWithDisplayString).value
+    get() = (dialog.myExitComboBox.selectedItem as ValueWithDisplayString?)?.value
 
   // Open for testing
   open val popTo: String?
@@ -312,19 +312,19 @@ open class AddActionDialog(
 
     dialog.myDestinationComboBox.renderer = destinationRenderer
 
-    val resourceManager = LocalResourceManager.getInstance(model.module)
+    val repoManager = ResourceRepositoryManager.getOrCreateInstance(model.module)
     dialog.myDestinationComboBox.addItemListener { event ->
       dialog.myEnterComboBox.removeAllItems()
       dialog.myExitComboBox.removeAllItems()
       dialog.myEnterComboBox.addItem(ValueWithDisplayString("None", null))
       dialog.myExitComboBox.addItem(ValueWithDisplayString("None", null))
-      val component = (event.item as DestinationListEntry).component
+      val component = (event.item as DestinationListEntry?)?.component
       var isFragment = false
       if (component != null) {
         isFragment = component.destinationType == FRAGMENT
       }
-      if (resourceManager != null) {
-        getAnimatorsPopupContent(resourceManager, isFragment)
+      if (repoManager != null) {
+        getAnimatorsPopupContent(repoManager, isFragment)
           .forEach { item ->
             dialog.myEnterComboBox.addItem(item)
             dialog.myExitComboBox.addItem(item)
@@ -336,7 +336,7 @@ open class AddActionDialog(
       val item = event.item as DestinationListEntry?
       if (event.stateChange == ItemEvent.SELECTED || item == null) {
         if (item != null && item.isReturnToSource) {
-          previousPopTo = dialog.myPopToComboBox.selectedItem as NlComponent
+          previousPopTo = dialog.myPopToComboBox.selectedItem as NlComponent?
           previousInclusive = dialog.myInclusiveCheckBox.isSelected
           dialog.myPopToComboBox.selectedItem = parent
           dialog.myPopToComboBox.isEnabled = false

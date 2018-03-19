@@ -911,10 +911,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     stopCapturing();
     CpuCaptureMetadata metadata = ((FakeFeatureTracker)myServices.getFeatureTracker()).getLastCpuCaptureMetadata();
     assertThat(metadata.getStatus()).isEqualTo(CpuCaptureMetadata.CaptureStatus.PARSING_FAILURE);
-    // Profiling Configurations should remain the same.
-    // However, the config object itself is expected to be different, as we copy it when start capturing.
     ProfilingConfiguration metadataConfig = metadata.getProfilingConfiguration();
-    assertThat(metadataConfig).isNotEqualTo(config);
     assertThat(metadataConfig.getProfilingSamplingIntervalUs()).isEqualTo(10);
     assertThat(metadataConfig.getProfilingBufferSizeInMb()).isEqualTo(15);
     assertThat(metadataConfig.getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
@@ -1155,6 +1152,29 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FAILURE_BALLOON_TEXT);
     assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
     assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+  }
+
+  @Test
+  public void inspectTraceModeOnlyEnabledWhenImportFlagIsSet() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(false);
+
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, true /* inspectTraceMode */);
+    // Import trace flag is not set. Inspect trace mode should be disabled.
+    assertThat(stage.isInspectTraceMode()).isFalse();
+
+    myServices.enableImportTrace(true);
+    stage = new CpuProfilerStage(profilers, true /* inspectTraceMode */);
+    // When the flag is enabled, passing "true" to the constructor will set the stage to inspect trace mode.
+    assertThat(stage.isInspectTraceMode()).isTrue();
+
+    stage = new CpuProfilerStage(profilers, false /* inspectTraceMode */);
+    // Similarly, passing "false" to the constructor will set the stage to normal mode.
+    assertThat(stage.isInspectTraceMode()).isFalse();
+
+    stage = new CpuProfilerStage(profilers);
+    // Not specifying whether the stage is initiated in inspect trace mode is the same as initializing it in normal mode.
+    assertThat(stage.isInspectTraceMode()).isFalse();
   }
 
   private void addAndSetDevice(int featureLevel, String serial) {

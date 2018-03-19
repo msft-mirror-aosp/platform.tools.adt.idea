@@ -307,6 +307,7 @@ public class GradleSyncTest {
   }
 
   // See https://code.google.com/p/android/issues/detail?id=73087
+  @Ignore("b/37109081")
   @RunIn(TestGroup.UNRELIABLE)  // b/37109081
   @Test
   public void withUserDefinedLibraryAttachments() throws IOException {
@@ -658,7 +659,7 @@ public class GradleSyncTest {
     // @formatter:off
     ideFrame.getEditor()
             .open("app/build.gradle")
-            .select("minSdkVersion (19)")
+            .select("minSdkVersion (21)")
             .enterText("23")
             .awaitNotification("Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly.")
             .performActionWithoutWaitingForDisappearance("Sync Now")

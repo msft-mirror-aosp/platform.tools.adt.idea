@@ -84,7 +84,7 @@ public class PsAnalyzerDaemon extends PsDaemon {
       Ref<Boolean> updatesFound = new Ref<>(false);
       if (module instanceof PsAndroidModule) {
         PsAndroidModule androidModule = (PsAndroidModule)module;
-        androidModule.getDependencies().forEachDeclaredDependency(dependency -> {
+        androidModule.getDependencies().forEach(dependency -> {
           if (dependency instanceof PsLibraryDependency) {
             boolean found = checkForUpdates((PsLibraryDependency)dependency);
             if (found) {
@@ -114,22 +114,20 @@ public class PsAnalyzerDaemon extends PsDaemon {
   private boolean checkForUpdates(@NotNull PsLibraryDependency dependency) {
     PsContext context = getContext();
     AvailableLibraryUpdates results = context.getLibraryUpdateCheckerDaemon().getAvailableUpdates();
-    PsArtifactDependencySpec spec = dependency.getDeclaredSpec();
-    if (spec != null) {
-      AvailableLibraryUpdate update = results.findUpdateFor(spec);
-      if (update != null) {
-        String text = String.format("Newer version available: <b>%1$s</b> (%2$s)", update.version, update.repository);
+    PsArtifactDependencySpec spec = dependency.getSpec();
+    AvailableLibraryUpdate update = results.findUpdateFor(spec);
+    if (update != null) {
+      String text = String.format("Newer version available: <b>%1$s</b> (%2$s)", update.version, update.repository);
 
-        PsLibraryDependencyNavigationPath mainPath = new PsLibraryDependencyNavigationPath(dependency);
-        PsIssue issue = new PsIssue(text, mainPath, LIBRARY_UPDATES_AVAILABLE, UPDATE);
+      PsLibraryDependencyNavigationPath mainPath = new PsLibraryDependencyNavigationPath(dependency);
+      PsIssue issue = new PsIssue(text, mainPath, LIBRARY_UPDATES_AVAILABLE, UPDATE);
 
-        PsLibraryDependencyVersionQuickFixPath quickFix =
-          new PsLibraryDependencyVersionQuickFixPath(dependency, update.version, "[Update]");
-        issue.setQuickFixPath(quickFix);
+      PsLibraryDependencyVersionQuickFixPath quickFix =
+        new PsLibraryDependencyVersionQuickFixPath(dependency, update.version, "[Update]");
+      issue.setQuickFixPath(quickFix);
 
-        myIssues.add(issue);
-        return true;
-      }
+      myIssues.add(issue);
+      return true;
     }
     return false;
   }

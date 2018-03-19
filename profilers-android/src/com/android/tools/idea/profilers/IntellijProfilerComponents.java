@@ -18,6 +18,7 @@ package com.android.tools.idea.profilers;
 import com.android.tools.idea.profilers.stacktrace.IntelliJStackTraceView;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.ExportDialog;
+import com.android.tools.profilers.ImportDialog;
 import com.android.tools.profilers.stacktrace.DataViewer;
 import com.android.tools.profilers.stacktrace.LoadingPanel;
 import com.android.tools.profilers.stacktrace.StackTraceModel;
@@ -119,6 +120,12 @@ public class IntellijProfilerComponents implements IdeProfilerComponents {
 
   @NotNull
   @Override
+  public ImportDialog createImportDialog() {
+    return new IntellijImportDialog(myProject);
+  }
+
+  @NotNull
+  @Override
   public DataViewer createFileViewer(@NotNull File file) {
     String fileName = file.getName();
     int dot = fileName.lastIndexOf('.');
@@ -152,7 +159,7 @@ public class IntellijProfilerComponents implements IdeProfilerComponents {
       return IntellijDataViewer.createInvalidViewer();
     }
 
-    return IntellijDataViewer.createEditorViewer(content, FILE_TYPE_MAP.getOrDefault(extension, null));
+    return IntellijDataViewer.createEditorViewer(myProject, content, FILE_TYPE_MAP.getOrDefault(extension, null));
   }
 
   @NotNull

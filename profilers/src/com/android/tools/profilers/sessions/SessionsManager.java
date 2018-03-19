@@ -18,12 +18,17 @@ package com.android.tools.profilers.sessions;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.profiler.proto.Common;
+import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.proto.Profiler.*;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact;
+import com.android.tools.profilers.memory.HprofSessionArtifact;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static com.android.tools.profilers.StudioProfilers.buildSessionName;
 
@@ -32,6 +37,17 @@ import static com.android.tools.profilers.StudioProfilers.buildSessionName;
  * memory heap dump, CPU capture)
  */
 public class SessionsManager extends AspectModel<SessionAspect> {
+
+  /**
+   * An interface for querying artifacts that belong to a session (e.g. heap dump, cpu capture, bookmarks).
+   */
+  private interface ArtifactFetcher {
+    List<SessionArtifact> fetch(@NotNull StudioProfilers profilers,
+                                @NotNull Common.Session session,
+                                @NotNull Common.SessionMetaData sessionMetaData);
+  }
+
+  private static final SessionArtifactComparator ARTIFACT_COMPARATOR = new SessionArtifactComparator();
 
   @NotNull private final StudioProfilers myProfilers;
 
@@ -56,11 +72,28 @@ public class SessionsManager extends AspectModel<SessionAspect> {
    */
   @NotNull private Common.Session myProfilingSession;
 
+  /**
+   * A list of handlers that import sessions based on their file types.
+   */
+  private final Map<String, Consumer<File>> myImportHandlers = new HashMap<>();
+
+  private int importedSessionCount = 0;
+
+  /**
+   * A list of functions that should be called for each {@link Common.Session} for retrieving its data artifacts.
+   */
+  @NotNull
+  private final List<ArtifactFetcher> myArtifactsFetchers;
+
   public SessionsManager(@NotNull StudioProfilers profilers) {
     myProfilers = profilers;
     mySelectedSession = myProfilingSession = Common.Session.getDefaultInstance();
     mySessionItems = new HashMap<>();
     mySessionArtifacts = new ArrayList<>();
+
+    myArtifactsFetchers = new ArrayList<>();
+    myArtifactsFetchers.add(HprofSessionArtifact::getSessionArtifacts);
+    myArtifactsFetchers.add(CpuCaptureSessionArtifact::getSessionArtifacts);
   }
 
   @NotNull
@@ -181,6 +214,61 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   }
 
   /**
+   * Create and a new session with a specific type
+   *
+   * @param sessionName name of the new session
+   * @param sessionType type of the new session
+   * @return the new session
+   */
+  @NotNull
+  public Common.Session createImportedSession(@NotNull String sessionName, @NotNull Common.SessionMetaData.SessionType sessionType) {
+    Common.Session session = Common.Session.newBuilder()
+      .setSessionId(generateUniqueSessionId())
+      .build();
+
+    Profiler.ImportSessionRequest sessionRequest = Profiler.ImportSessionRequest.newBuilder()
+      .setSession(session)
+      .setSessionName(sessionName)
+      .setSessionType(sessionType)
+      .build();
+    myProfilers.getClient().getProfilerClient().importSession(sessionRequest);
+    return session;
+  }
+
+  /**
+   * Register the import handler for a specific extension
+   *
+   * @param extension extension of the file
+   * @param listener  import listener
+   */
+  public void registerImportHandler(@NotNull String extension, @NotNull Consumer<File> handler) {
+    myImportHandlers.put(extension, handler);
+  }
+
+  /**
+   * Import session from file base on its extension
+   *
+   * @param file where the session is imported from
+   */
+  public void importSessionFromFile(@NotNull File file) {
+    int indexOfDot = file.getName().indexOf('.');
+    if (indexOfDot == -1) {
+      return;
+    }
+    String extension = file.getName().substring(indexOfDot + 1).toLowerCase();
+    assert myImportHandlers.get(extension) != null;
+    myImportHandlers.get(extension).accept(file);
+  }
+
+  /**
+   * Return a unique Session ID
+   */
+  private int generateUniqueSessionId() {
+    // TODO: b/74401257 generate session ID in a proper way
+    return ++importedSessionCount;
+  }
+
+  /**
    * Update or add to the list of {@link SessionItem} based on the input list.
    *
    * @param sessions the list of {@link Common.Session} objects that have been added/updated.
@@ -198,9 +286,28 @@ public class SessionsManager extends AspectModel<SessionAspect> {
       }
     });
 
-    // TODO b/67509285 query for the artifacts (e.g. capture objects) associated with each SessionItem as well.
-    mySessionArtifacts = new ArrayList<>(mySessionItems.values());
-    Collections.sort(mySessionArtifacts, Comparator.comparingLong(SessionArtifact::getTimestampNs).reversed());
+    mySessionArtifacts = new ArrayList<>();
+    for (SessionItem item : mySessionItems.values()) {
+      mySessionArtifacts.add(item);
+      List<SessionArtifact> artifacts = new ArrayList<>();
+      myArtifactsFetchers.forEach(fetcher -> artifacts.addAll(fetcher.fetch(myProfilers, item.getSession(), item.getSessionMetaData())));
+      item.setCanExpand(!artifacts.isEmpty());
+      if (item.isExpanded()) {
+        mySessionArtifacts.addAll(artifacts);
+      }
+    }
+    Collections.sort(mySessionArtifacts, ARTIFACT_COMPARATOR);
     changed(SessionAspect.SESSIONS);
+  }
+
+  private static class SessionArtifactComparator implements Comparator<SessionArtifact> {
+    @Override
+    public int compare(SessionArtifact artifact1, SessionArtifact artifact2) {
+      // More recent session should appear at the top.
+      int result =
+        Long.compare(artifact2.getSessionMetaData().getStartTimestampEpochMs(), artifact1.getSessionMetaData().getStartTimestampEpochMs());
+      // Within a session, more recent artifacts should appear at the bottom.
+      return result == 0 ? Long.compare(artifact1.getTimestampNs(), artifact2.getTimestampNs()) : result;
+    }
   }
 }
