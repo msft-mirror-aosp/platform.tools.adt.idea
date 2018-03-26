@@ -18,11 +18,8 @@ package com.android.tools.profilers.cpu;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profiler.proto.CpuProfiler.CpuProfilerType;
-import com.android.tools.profiler.proto.CpuProfiler.CpuProfilingAppStartRequest;
-import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
 
 /**
  * Preferences set when start a profiling session.
@@ -39,8 +36,6 @@ public class ProfilingConfiguration {
   public static final String SIMPLEPERF = "Sampled (Native)";
 
   public static final String ATRACE = "System Trace";
-
-  private static List<ProfilingConfiguration> ourDefaultConfigurations;
 
   /**
    * Name to identify the profiling preference. It should be displayed in the preferences list.
@@ -112,10 +107,6 @@ public class ProfilingConfiguration {
     return myProfilingSamplingIntervalUs;
   }
 
-  public boolean isDefault() {
-    return getDefaultProfilingConfigurations().stream().anyMatch(configuration -> configuration.getName().equals(getName()));
-  }
-
   public int getRequiredDeviceLevel() {
     switch (myProfilerType) {
       // Atrace and simpleperf are supported from Android 8.0 (O)
@@ -133,25 +124,6 @@ public class ProfilingConfiguration {
 
   public void setProfilingSamplingIntervalUs(int profilingSamplingIntervalUs) {
     myProfilingSamplingIntervalUs = profilingSamplingIntervalUs;
-  }
-
-  public static List<ProfilingConfiguration> getDefaultProfilingConfigurations() {
-    if (ourDefaultConfigurations == null) {
-      ProfilingConfiguration artSampled = new ProfilingConfiguration(ART_SAMPLED,
-                                                                     CpuProfilerType.ART,
-                                                                     CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
-      ProfilingConfiguration artInstrumented = new ProfilingConfiguration(ART_INSTRUMENTED,
-                                                                          CpuProfilerType.ART,
-                                                                          CpuProfiler.CpuProfilerConfiguration.Mode.INSTRUMENTED);
-      ProfilingConfiguration simpleperf = new ProfilingConfiguration(SIMPLEPERF,
-                                                                     CpuProfilerType.SIMPLEPERF,
-                                                                     CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
-      ProfilingConfiguration atrace = new ProfilingConfiguration(ATRACE,
-                                                                 CpuProfilerType.ATRACE,
-                                                                 CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
-      ourDefaultConfigurations = ImmutableList.of(artSampled, artInstrumented, simpleperf, atrace);
-    }
-    return ourDefaultConfigurations;
   }
 
   /**
@@ -176,5 +148,35 @@ public class ProfilingConfiguration {
       .setMode(getMode())
       .setSamplingIntervalUs(getProfilingSamplingIntervalUs())
       .setBufferSizeInMb(getProfilingBufferSizeInMb()).build();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof ProfilingConfiguration)) {
+      return false;
+    }
+    ProfilingConfiguration incoming = (ProfilingConfiguration)obj;
+    return StringUtil.equals(getName(), incoming.getName()) &&
+           getProfilerType() == incoming.getProfilerType() &&
+           getMode() == incoming.getMode() &&
+           getProfilingSamplingIntervalUs() == incoming.getProfilingSamplingIntervalUs() &&
+           getProfilingBufferSizeInMb() == incoming.getProfilingBufferSizeInMb();
+  }
+
+  @Override
+  public int hashCode() {
+    int hashCode = 0;
+    if (getName() != null) {
+      hashCode = getName().hashCode();
+    }
+    if (getProfilerType() != null) {
+      hashCode ^= getProfilerType().hashCode();
+    }
+    if (getMode() != null) {
+      hashCode ^= getMode().hashCode();
+    }
+    hashCode ^= getProfilingSamplingIntervalUs();
+    hashCode ^= getProfilingBufferSizeInMb();
+    return hashCode;
   }
 }

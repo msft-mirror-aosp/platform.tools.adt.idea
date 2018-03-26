@@ -20,6 +20,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+import java.util.Map;
+
 public interface GradleFileModel extends GradleDslModel {
   @NotNull
   Project getProject();
@@ -34,4 +37,6 @@ public interface GradleFileModel extends GradleDslModel {
   VirtualFile getVirtualFile();
 
   void applyChanges();
+
+  Map<String, List<BuildModelNotification>> getNotifications();
 }

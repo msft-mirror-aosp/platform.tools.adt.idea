@@ -23,10 +23,7 @@ import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.proto.Profiler.TimeRequest;
 import com.android.tools.profiler.proto.Profiler.TimeResponse;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
-import com.android.tools.profilers.ProfilerAspect;
-import com.android.tools.profilers.ProfilerMonitor;
-import com.android.tools.profilers.StudioProfiler;
-import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.*;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.intellij.openapi.diagnostic.Logger;
 import io.grpc.StatusRuntimeException;
@@ -35,6 +32,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -52,18 +50,34 @@ public class MemoryProfiler extends StudioProfiler {
 
     SessionsManager sessionsManager = myProfilers.getSessionsManager();
     sessionsManager.registerImportHandler("hprof", file -> {
+      long startTimestampEpochMs = System.currentTimeMillis();
+      long fileCreationTime = TimeUnit.MILLISECONDS.toNanos(startTimestampEpochMs);
+      try {
+        BasicFileAttributes attributes = Files.readAttributes(Paths.get(file.getPath()), BasicFileAttributes.class);
+        fileCreationTime = TimeUnit.MILLISECONDS.toNanos(attributes.creationTime().toMillis());
+      }
+      catch (IOException e) {
+        getLogger().info("File creation time not provided, using system time instead...");
+      }
+
       byte[] bytes;
       try {
         bytes = Files.readAllBytes(Paths.get(file.getPath()));
       }
       catch (IOException e) {
-        Logger.getInstance(getClass()).error("Importing Session Failed: can not read from file location...");
+        getLogger().error("Importing Session Failed: can not read from file location...");
         return;
       }
-      Common.Session session = sessionsManager.createImportedSession(file.getName(), Common.SessionMetaData.SessionType.MEMORY_CAPTURE);
-      // Bind the imported session with heap dump data through MemoryClient
+
+      // Heap dump and session share a time range of [dumpTimeStamp, dumpTimeStamp + 1) which contains dumpTimestamp as its only integer point.
+      Common.Session session = sessionsManager
+        .createImportedSession(file.getName(), Common.SessionMetaData.SessionType.MEMORY_CAPTURE, fileCreationTime, fileCreationTime + 1,
+                               startTimestampEpochMs);
+      // Bind the imported session with heap dump data through MemoryClient.
       HeapDumpInfo heapDumpInfo = HeapDumpInfo.newBuilder()
         .setFileName(file.getName())
+        .setStartTime(fileCreationTime)
+        .setEndTime(fileCreationTime + 1)
         .build();
       ImportHeapDumpRequest heapDumpRequest = ImportHeapDumpRequest.newBuilder()
         .setSession(session)
@@ -82,7 +96,16 @@ public class MemoryProfiler extends StudioProfiler {
     });
 
     myProfilers.registerSessionChangeListener(Common.SessionMetaData.SessionType.MEMORY_CAPTURE,
-                                              () -> myProfilers.setStage(new MemoryProfilerStage(myProfilers)));
+                                              () -> {
+                                                MemoryProfilerStage stage = new MemoryProfilerStage(myProfilers);
+                                                myProfilers.setStage(stage);
+                                                stage.setPendingCaptureStartTime(myProfilers.getSession().getStartTimestamp());
+                                                ProfilerTimeline timeline = myProfilers.getTimeline();
+                                                timeline.reset(myProfilers.getSession().getStartTimestamp(),
+                                                               myProfilers.getSession().getEndTimestamp());
+                                                timeline.getViewRange().set(timeline.getDataRange());
+                                                timeline.setIsPaused(true);
+                                              });
   }
 
   @Override

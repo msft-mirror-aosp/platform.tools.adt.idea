@@ -251,13 +251,14 @@ public class MemoryProfilerStageViewTest extends MemoryProfilerTestBase {
     printWriter.close();
 
     // Import heap dump from file
-    sessionsManager.importSessionFromFile(file);
+    assertThat(sessionsManager.importSessionFromFile(file)).isTrue();
     Common.Session session = sessionsManager.getSelectedSession();
     long dumpTime = session.getStartTimestamp();
     DumpDataRequest request = DumpDataRequest.newBuilder()
       .setDumpTime(dumpTime)
       .setSession(session)
       .build();
+    assertThat(myProfilers.getStage()).isInstanceOf(MemoryProfilerStage.class);
     DumpDataResponse response = myProfilers.getClient().getMemoryClient().getHeapDump(request);
 
     assertThat(response.getData()).isEqualTo(ByteString.copyFrom(data, Charset.defaultCharset()));

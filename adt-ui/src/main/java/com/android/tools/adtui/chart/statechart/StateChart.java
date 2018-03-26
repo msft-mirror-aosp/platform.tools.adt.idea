@@ -22,6 +22,7 @@ import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.RangedSeries;
 import com.android.tools.adtui.model.SeriesData;
 import com.android.tools.adtui.model.StateChartModel;
+import com.intellij.ui.ColorUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
@@ -91,7 +92,6 @@ public final class StateChart<T> extends MouseAdapterComponent<T> {
                     @NotNull StateChartConfig<T> config,
                     @NotNull Function<T, Color> colorMapping,
                     @NotNull StateChartTextConverter<T> textConverter) {
-    super(config.getRectangleHeightRatio(), config.getRectangleMouseOverHeightRatio());
     myColorMapper = colorMapping;
     myRenderMode = RenderMode.BAR;
     myConfig = config;
@@ -219,24 +219,37 @@ public final class StateChart<T> extends MouseAdapterComponent<T> {
     List<T> transformedValues = new ArrayList<>(getRectangleCount());
     AffineTransform scale = AffineTransform.getScaleInstance(dim.getWidth(), dim.getHeight());
     for (Rectangle2D.Float rectangle : getRectangles()) {
-      transformedShapes.add(scale.createTransformedShape(rectangle));
+      // Manually scaling the rectangle results in ~6x performance improvement over
+      // calling AffineTransform::createTransformedShape. The reason for this is the shape created is a Point2D.Double
+      // this shape has to support all types of points as such cannot be rendered as efficiently as a
+      // rectangle.
+      transformedShapes.add(new Rectangle2D.Float((float)(rectangle.getX() * scale.getScaleX()),
+                                                  (float)(rectangle.getY() * scale.getScaleY()),
+                                                  (float)(rectangle.getWidth() * scale.getScaleX()),
+                                                  (float)(rectangle.getHeight() * scale.getScaleY())));
       transformedValues.add(getRectangleValue(rectangle));
     }
     myConfig.getReducer().reduce(transformedShapes, transformedValues);
     assert transformedShapes.size() == transformedValues.size();
-
     for (int i = 0; i < transformedShapes.size(); i++) {
       Shape shape = transformedShapes.get(i);
       T value = transformedValues.get(i);
-      g2d.setColor(getColor(value));
+      Rectangle2D rect = shape.getBounds2D();
+      Color color = getColor(value);
+      // If the mouse is over the current rectangle lighten the color a bit to show.
+      if (isMouseOverRectangle(rect)) {
+        color = ColorUtil.brighter(color, 2);
+      }
+      g2d.setColor(color);
       g2d.fill(shape);
       if (myRenderMode == RenderMode.TEXT) {
         String valueText = myTextConverter.convertToString(value);
-        Rectangle2D rect = shape.getBounds2D();
         String text = AdtUiUtils.shrinkToFit(valueText, mDefaultFontMetrics, (float)rect.getWidth() - TEXT_PADDING * 2);
         if (!text.isEmpty()) {
           g2d.setColor(AdtUiUtils.DEFAULT_FONT_COLOR);
-          g2d.drawString(text, (float)(rect.getX() + TEXT_PADDING), (float)(rect.getY() + rect.getHeight() - TEXT_PADDING));
+          float textOffset = (float)(rect.getY() + (rect.getHeight() - mDefaultFontMetrics.getHeight()) / 2.0);
+          textOffset += mDefaultFontMetrics.getAscent();
+          g2d.drawString(text, (float)(rect.getX() + TEXT_PADDING), textOffset);
         }
       }
     }

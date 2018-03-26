@@ -25,6 +25,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.concurrent.TimeUnit;
 
+import static com.android.tools.profilers.ProfilerColors.HOVERED_SESSION_COLOR;
+
 /**
  * A {@link SessionArtifactView} that represents a CPU capture object.
  */
@@ -38,6 +40,9 @@ public class CpuCaptureArtifactView extends SessionArtifactView<CpuCaptureSessio
     // 1st column reserved for expand-collapse row, 2nd column for artifact's icon
     // 1st row for showing name, second row for time.
     myComponent = new JPanel(new TabularLayout("Fit,Fit,*", "Fit,Fit"));
+    if (isHovered()) {
+      myComponent.setBackground(HOVERED_SESSION_COLOR);
+    }
     myComponent.setBorder(isSessionSelected() ?
                           BorderFactory.createCompoundBorder(SELECTED_BORDER, ARTIFACT_PADDING) :
                           BorderFactory.createCompoundBorder(UNSELECTED_BORDER, ARTIFACT_PADDING));
@@ -47,17 +52,20 @@ public class CpuCaptureArtifactView extends SessionArtifactView<CpuCaptureSessio
                                        new Dimension(EXPAND_COLLAPSE_COLUMN_WIDTH, Short.MAX_VALUE));
     myComponent.add(spacer, new TabularLayout.Constraint(0, 0));
 
-    JLabel icon = new JLabel(StudioIcons.Profiler.Sessions.CPU);
+    JLabel icon = new JLabel(artifact.isOngoingCapture()
+                             // TODO(b/74975946): use proper icon for in-progress captures. Maybe animate.
+                             ? StudioIcons.LayoutEditor.Palette.PROGRESS_BAR
+                             : StudioIcons.Profiler.Sessions.CPU);
     icon.setBorder(ARTIFACT_ICON_BORDER);
     myComponent.add(icon, new TabularLayout.Constraint(0, 1));
 
     JLabel artifactName = new JLabel(getArtifact().getName());
-    artifactName.setBorder(ARTIFACT_PADDING);
-    artifactName.setFont(ARTIFACT_TITLE_FONT);
+    artifactName.setBorder(LABEL_PADDING);
+    artifactName.setFont(TITLE_FONT);
     JLabel artifactTime =
       new JLabel(TimeAxisFormatter.DEFAULT.getClockFormattedString(TimeUnit.NANOSECONDS.toMicros(getArtifact().getTimestampNs())));
-    artifactTime.setBorder(ARTIFACT_PADDING);
-    artifactTime.setFont(ARTIFACT_STATUS_FONT);
+    artifactTime.setBorder(LABEL_PADDING);
+    artifactTime.setFont(STATUS_FONT);
     myComponent.add(artifactName, new TabularLayout.Constraint(0, 2));
     myComponent.add(artifactTime, new TabularLayout.Constraint(1, 2));
   }

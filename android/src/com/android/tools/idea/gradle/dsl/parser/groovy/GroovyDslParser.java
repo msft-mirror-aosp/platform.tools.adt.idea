@@ -49,7 +49,6 @@ import com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslEle
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -67,15 +66,18 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlo
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.*;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrIndexProperty;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.types.GrCodeReferenceElement;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 import static com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR;
 import static com.android.tools.idea.gradle.dsl.api.ext.PropertyType.VARIABLE;
+import static com.android.tools.idea.gradle.dsl.model.notifications.NotificationTypeReference.INCOMPLETE_PARSING;
 import static com.android.tools.idea.gradle.dsl.parser.android.AaptOptionsDslElement.AAPT_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.AdbOptionsDslElement.ADB_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement.ANDROID_BLOCK_NAME;
@@ -105,7 +107,7 @@ import static com.android.tools.idea.gradle.dsl.parser.dependencies.Dependencies
 import static com.android.tools.idea.gradle.dsl.parser.elements.BaseCompileOptionsDslElement.COMPILE_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.ensureUnquotedText;
-import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.getInjectionName;
+import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.findInjections;
 import static com.android.tools.idea.gradle.dsl.parser.repositories.FlatDirRepositoryDslElement.FLAT_DIR_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.repositories.MavenCredentialsDslElement.CREDENTIALS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.repositories.MavenRepositoryDslElement.JCENTER_BLOCK_NAME;
@@ -157,9 +159,7 @@ public class GroovyDslParser implements GradleDslParser {
       }
 
       void process(GroovyPsiElement e) {
-        if (!parse(e, myDslFile)) {
-          Logger.getInstance(this.getClass()).info("GroovyDslParser failed at parsing file: " + myPsiFile.getName());
-        }
+        parse(e, myDslFile);
       }
     }));
   }
@@ -201,49 +201,39 @@ public class GroovyDslParser implements GradleDslParser {
     }
 
     // Otherwise resolve the value and then return the resolved text.
-    Collection<GradleReferenceInjection> injections = getInjections(context, literal);
+    Collection<GradleReferenceInjection> injections = getResolvedInjections(context, literal);
     return ensureUnquotedText(GradleReferenceInjection.injectAll(literal, injections));
   }
 
   @Override
   @NotNull
-  public List<GradleReferenceInjection> getInjections(@NotNull GradleDslExpression context, @NotNull PsiElement psiElement) {
-    ApplicationManager.getApplication().assertReadAccessAllowed();
-
-    if (!(psiElement instanceof GrString)) {
-      return Collections.emptyList();
-    }
-
-    List<GradleReferenceInjection> injections = Lists.newArrayList();
-    GrStringInjection[] grStringInjections = ((GrString)psiElement).getInjections();
-    for (GrStringInjection injection : grStringInjections) {
-      if (injection != null) {
-        String name = getInjectionName(injection);
-        if (name != null) {
-          GradleDslElement referenceElement = context.resolveReference(name);
-          if (referenceElement != null) {
-            injections.add(new GradleReferenceInjection(referenceElement, injection, name));
-          }
-        }
-      }
-    }
-    return injections;
+  public List<GradleReferenceInjection> getResolvedInjections(@NotNull GradleDslExpression context, @NotNull PsiElement psiElement) {
+    return findInjections(context, psiElement, false);
   }
 
-  private static boolean parse(@NotNull PsiElement psiElement, @NotNull GradleDslFile gradleDslFile) {
+  @NotNull
+  @Override
+  public List<GradleReferenceInjection> getInjections(@NotNull GradleDslExpression context, @NotNull PsiElement psiElement) {
+    return findInjections(context, psiElement, true);
+  }
+
+  private static void parse(@NotNull PsiElement psiElement, @NotNull GradleDslFile gradleDslFile) {
+    boolean success = false;
     if (psiElement instanceof GrMethodCallExpression) {
-      return parse((GrMethodCallExpression)psiElement, (GradlePropertiesDslElement)gradleDslFile);
+      success = parse((GrMethodCallExpression)psiElement, (GradlePropertiesDslElement)gradleDslFile);
     }
     else if (psiElement instanceof GrAssignmentExpression) {
-      return parse((GrAssignmentExpression)psiElement, (GradlePropertiesDslElement)gradleDslFile);
+      success = parse((GrAssignmentExpression)psiElement, (GradlePropertiesDslElement)gradleDslFile);
     }
     else if (psiElement instanceof GrApplicationStatement) {
-      return parse((GrApplicationStatement)psiElement, (GradlePropertiesDslElement)gradleDslFile);
+      success = parse((GrApplicationStatement)psiElement, (GradlePropertiesDslElement)gradleDslFile);
     }
     else if (psiElement instanceof GrVariableDeclaration) {
-      return parse((GrVariableDeclaration)psiElement, (GradlePropertiesDslElement)gradleDslFile);
+      success = parse((GrVariableDeclaration)psiElement, (GradlePropertiesDslElement)gradleDslFile);
     }
-    return false;
+    if (!success) {
+      gradleDslFile.notification(INCOMPLETE_PARSING).addUnknownElement(psiElement);
+    }
   }
 
   private static boolean parse(@NotNull GrMethodCallExpression expression, @NotNull GradlePropertiesDslElement dslElement) {
@@ -556,6 +546,7 @@ public class GroovyDslParser implements GradleDslParser {
     }
 
     // We have no idea what it is.
+    parentElement.notification(INCOMPLETE_PARSING).addUnknownElement(propertyExpression);
     return new GradleDslUnknownElement(parentElement, propertyExpression, propertyName);
   }
 

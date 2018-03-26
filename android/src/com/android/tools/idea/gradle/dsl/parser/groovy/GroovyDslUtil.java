@@ -16,9 +16,12 @@
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
+import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.intellij.lang.ASTNode;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiNamedElement;
@@ -39,11 +42,14 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplic
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrCommandArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterList;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 import static com.intellij.openapi.util.text.StringUtil.isQuotedString;
 import static com.intellij.openapi.util.text.StringUtil.unquoteString;
@@ -611,7 +617,7 @@ public final class GroovyDslUtil {
   @Nullable
   static PsiElement getPsiElementForAnchor(@NotNull PsiElement parent, @Nullable GradleDslElement dslAnchor) {
     PsiElement anchorAfter = dslAnchor == null ? null : dslAnchor.getPsiElement();
-    if (anchorAfter == null) {
+    if (anchorAfter == null && parent instanceof GrClosableBlock) {
       PsiElement element = parent.getFirstChild();
       // Skip the first non-empty element, this is normally the '{' of a closable block.
       if (element != null) {
@@ -655,5 +661,30 @@ public final class GroovyDslUtil {
       }
     }
     return false;
+  }
+
+  static List<GradleReferenceInjection> findInjections(@NotNull GradleDslExpression context,
+                                                       @NotNull PsiElement psiElement,
+                                                       boolean includeUnresolved) {
+    ApplicationManager.getApplication().assertReadAccessAllowed();
+
+    if (!(psiElement instanceof GrString)) {
+      return Collections.emptyList();
+    }
+
+    List<GradleReferenceInjection> injections = Lists.newArrayList();
+    GrStringInjection[] grStringInjections = ((GrString)psiElement).getInjections();
+    for (GrStringInjection injection : grStringInjections) {
+      if (injection != null) {
+        String name = getInjectionName(injection);
+        if (name != null) {
+          GradleDslElement referenceElement = context.resolveReference(name);
+          if (includeUnresolved || referenceElement != null) {
+            injections.add(new GradleReferenceInjection(context, referenceElement, injection, name));
+          }
+        }
+      }
+    }
+    return injections;
   }
 }

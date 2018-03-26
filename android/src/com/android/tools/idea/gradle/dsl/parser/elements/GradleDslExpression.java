@@ -77,7 +77,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
   public abstract Object getUnresolvedValue();
 
   @Nullable
-  public abstract  <T> T getValue(@NotNull Class<T> clazz);
+  public abstract <T> T getValue(@NotNull Class<T> clazz);
 
   @Nullable
   public abstract <T> T getUnresolvedValue(@NotNull Class<T> clazz);
@@ -95,7 +95,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
       return Collections.emptyList();
     }
     return ApplicationManager.getApplication()
-      .runReadAction((Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getInjections(this, myExpression));
+      .runReadAction((Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getResolvedInjections(this, myExpression));
   }
 
   @Nullable
@@ -222,7 +222,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
     String standardProjectKey = getStandardProjectKey(projectReference);
     if (standardProjectKey != null) { // project(':project:path')
       String modulePath = standardProjectKey.substring(standardProjectKey.indexOf('\'') + 1, standardProjectKey.lastIndexOf('\''));
-      GradleSettingsFile file = dslFile.getDslFileCache().getOrCreateSettingsFile(dslFile.getProject());
+      GradleSettingsFile file = dslFile.getContext().getOrCreateSettingsFile(dslFile.getProject());
       if (file == null) {
         return null;
       }
@@ -483,7 +483,9 @@ public abstract class GradleDslExpression extends GradleDslElement {
     return hasCycle(this, new HashSet<>(), new HashSet<>());
   }
 
-  private static boolean hasCycle(@NotNull GradleDslExpression element, @NotNull Set<GradleDslExpression> seen, @NotNull Set<GradleDslExpression> cycleFree) {
+  private static boolean hasCycle(@NotNull GradleDslExpression element,
+                                  @NotNull Set<GradleDslExpression> seen,
+                                  @NotNull Set<GradleDslExpression> cycleFree) {
     if (element.myHasCycle != ThreeState.UNSURE) {
       return element.myHasCycle == ThreeState.YES;
     }
@@ -493,7 +495,9 @@ public abstract class GradleDslExpression extends GradleDslElement {
     return hasCycle;
   }
 
-  private static boolean checkCycle(@NotNull GradleDslExpression element, @NotNull Set<GradleDslExpression> seen, @NotNull Set<GradleDslExpression> cycleFree) {
+  private static boolean checkCycle(@NotNull GradleDslExpression element,
+                                    @NotNull Set<GradleDslExpression> seen,
+                                    @NotNull Set<GradleDslExpression> cycleFree) {
     if (cycleFree.contains(element) || element.getExpression() == null) {
       return false;
     }
@@ -504,7 +508,8 @@ public abstract class GradleDslExpression extends GradleDslElement {
 
     seen.add(element);
 
-    Collection<GradleReferenceInjection> injections = element.getDslFile().getParser().getInjections(element, element.getExpression());
+    Collection<GradleReferenceInjection> injections =
+      element.getDslFile().getParser().getResolvedInjections(element, element.getExpression());
 
     for (GradleReferenceInjection injection : injections) {
       if (injection.getToBeInjectedExpression() == null) {

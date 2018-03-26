@@ -145,37 +145,31 @@ public final class StudioProfilersTest {
 
   @Test
   public void testLateConnectionOfPreferredProcess() throws Exception {
+    final String PREFERRED_PROCESS = "Preferred";
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
+    profilers.setPreferredProcessName(PREFERRED_PROCESS);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(profilers.getDevice()).isNull();
     assertThat(profilers.getProcess()).isNull();
 
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
+    Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myProfilerService.addDevice(device);
+    myProfilerService.addProcess(device, process);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS); // One second must be enough for new devices to be picked up
 
+    // We are waiting for the preferred process so the process should not be selected.
     assertThat(profilers.getDevice().getSerial()).isEqualTo("FakeDevice");
     assertThat(profilers.getProcess()).isNull();
 
-    Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
-    myProfilerService.addProcess(device, process);
-
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS); // One second must be enough for new devices to be picked up
-
-    assertThat(profilers.getDevice().getSerial()).isEqualTo("FakeDevice");
-    assertThat(profilers.getProcess().getName()).isEqualTo("FakeProcess");
-
-    profilers.setPreferredProcessName("Preferred");
-
-    Common.Process preferred = createProcess(device.getDeviceId(), 20, "Preferred", Common.Process.State.ALIVE);
+    Common.Process preferred = createProcess(device.getDeviceId(), 20, PREFERRED_PROCESS, Common.Process.State.ALIVE);
     myProfilerService.addProcess(device, preferred);
 
     timer.tick(FakeTimer.ONE_SECOND_IN_NS); // One second must be enough for new devices to be picked up
 
-    assertThat(profilers.getDevice().getSerial()).isEqualTo("FakeDevice");
-    assertThat(profilers.getProcess().getName()).isEqualTo("Preferred");
-
+    assertThat(profilers.getDevice()).isEqualTo(device);
+    assertThat(profilers.getProcess()).isEqualTo(preferred);
     assertThat(profilers.getProcesses()).hasSize(2);
     assertThat(profilers.getProcesses()).containsAllIn(ImmutableList.of(process, preferred));
   }
@@ -394,7 +388,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void shouldOpenCpuProfileStageIfStartupProfilingStarted() throws Exception {
+  public void shouldOpenCpuProfileStageIfStartupProfilingStarted() {
     FakeTimer timer = new FakeTimer();
     FakeIdeProfilerServices ideServices = new FakeIdeProfilerServices();
     ideServices.enableStartupCpuProfiling(true);
@@ -404,7 +398,6 @@ public final class StudioProfilersTest {
 
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
-    profilers.setPreferredProcessName(process.getName());
 
     myProfilerService.addDevice(device);
     myProfilerService.addProcess(device, process);
@@ -420,7 +413,30 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testProcessStateChangesShouldNotTriggerStageChange() throws Exception {
+  public void timelineOriginIfStartupProfilingStarted() {
+    FakeTimer timer = new FakeTimer();
+    FakeIdeProfilerServices ideServices = new FakeIdeProfilerServices();
+    ideServices.enableStartupCpuProfiling(true);
+
+    StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), ideServices, timer);
+    myProfilerService.setTimestampNs(TimeUnit.SECONDS.toNanos(42));
+
+    Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
+    Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
+
+    myProfilerService.addDevice(device);
+    myProfilerService.addProcess(device, process);
+    myCpuService.setStartupProfiling(true);
+    myCpuService.setProfilingStartTimestamp(123456789);
+
+    // To make sure that StudioProfilers#update is called, which in a consequence polls devices and processes,
+    // and starts a new session with the preferred process name.
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(profilers.getTimeline().getDataRange().getMin()).isWithin(0.001).of(TimeUnit.NANOSECONDS.toMicros(123456789));
+  }
+
+  @Test
+  public void testProcessStateChangesShouldNotTriggerStageChange() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
@@ -987,6 +1003,68 @@ public final class StudioProfilersTest {
       .setSerial("Serial")
       .build();
     assertThat(StudioProfilers.buildDeviceName(deviceWithSerialInModel)).isEqualTo("Manufacturer Model");
+  }
+
+  @Test
+  public void testSessionViewRangeCaches() {
+    FakeTimer timer = new FakeTimer();
+    StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
+
+    Common.Session finished_session = Common.Session.newBuilder()
+      .setSessionId(1).setStartTimestamp(FakeTimer.ONE_SECOND_IN_NS).setEndTimestamp(FakeTimer.ONE_SECOND_IN_NS * 2).build();
+    Common.SessionMetaData finished_sessin_metadata = Common.SessionMetaData.newBuilder()
+      .setSessionId(1).setType(Common.SessionMetaData.SessionType.FULL).setStartTimestampEpochMs(1).build();
+    Common.Session ongoing_session = Common.Session.newBuilder()
+      .setSessionId(2).setStartTimestamp(0).setEndTimestamp(Long.MAX_VALUE).build();
+    Common.SessionMetaData ongoing_sessin_metadata = Common.SessionMetaData.newBuilder()
+      .setSessionId(2).setType(Common.SessionMetaData.SessionType.FULL).setStartTimestampEpochMs(2).build();
+    myProfilerService.addSession(finished_session, finished_sessin_metadata);
+    myProfilerService.addSession(ongoing_session, ongoing_sessin_metadata);
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(profilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
+
+    // Arbitrary view range min/max to be set for each session
+    long viewRangeMin = TimeUnit.MILLISECONDS.toMicros(1200);
+    long viewRangeMax = TimeUnit.MILLISECONDS.toMicros(1600);
+
+    // selecting an ongoing session should use the default zoom with streaming enabled
+    profilers.getSessionsManager().setSession(ongoing_session);
+    assertThat(profilers.getTimeline().getViewRange().getMin()).isWithin(0).of(-ProfilerTimeline.DEFAULT_VIEW_LENGTH_US);
+    assertThat(profilers.getTimeline().getViewRange().getMax()).isWithin(0).of(0);
+    assertThat(profilers.getTimeline().isStreaming()).isTrue();
+    assertThat(profilers.getTimeline().isPaused()).isFalse();
+    profilers.getTimeline().getViewRange().set(viewRangeMin, viewRangeMax);
+
+    // selecting a finished session without a view range cache should use the entire data range
+    profilers.getSessionsManager().setSession(finished_session);
+    assertThat(profilers.getTimeline().getViewRange().getMin()).isWithin(0).of(TimeUnit.SECONDS.toMicros(1));
+    assertThat(profilers.getTimeline().getViewRange().getMax()).isWithin(0).of(TimeUnit.SECONDS.toMicros(2));
+    assertThat(profilers.getTimeline().isStreaming()).isFalse();
+    assertThat(profilers.getTimeline().isPaused()).isTrue();
+    profilers.getTimeline().getViewRange().set(viewRangeMin, viewRangeMax);
+
+    // Navigate back to the ongoing session should still use the default zoom
+    profilers.getSessionsManager().setSession(ongoing_session);
+    assertThat(profilers.getTimeline().getViewRange().getMin()).isWithin(0).of(-ProfilerTimeline.DEFAULT_VIEW_LENGTH_US);
+    assertThat(profilers.getTimeline().getViewRange().getMax()).isWithin(0).of(0);
+    assertThat(profilers.getTimeline().isStreaming()).isTrue();
+    assertThat(profilers.getTimeline().isPaused()).isFalse();
+
+    // Navigate again to the finished session should use the last view range
+    profilers.getSessionsManager().setSession(finished_session);
+    assertThat(profilers.getTimeline().getViewRange().getMin()).isWithin(0).of(viewRangeMin);
+    assertThat(profilers.getTimeline().getViewRange().getMax()).isWithin(0).of(viewRangeMax);
+    assertThat(profilers.getTimeline().isStreaming()).isFalse();
+    assertThat(profilers.getTimeline().isPaused()).isTrue();
+
+    // Arbitrarily setting the view range to something beyond the data range should force the timeline to clamp to data range.
+    profilers.getTimeline().getViewRange().set(TimeUnit.SECONDS.toMicros(-10), TimeUnit.SECONDS.toMicros(2));
+    profilers.getSessionsManager().setSession(Common.Session.getDefaultInstance());
+    profilers.getSessionsManager().setSession(finished_session);
+    assertThat(profilers.getTimeline().getViewRange().getMin()).isWithin(0).of(TimeUnit.SECONDS.toMicros(1));
+    assertThat(profilers.getTimeline().getViewRange().getMax()).isWithin(0).of(TimeUnit.SECONDS.toMicros(2));
+    assertThat(profilers.getTimeline().isStreaming()).isFalse();
+    assertThat(profilers.getTimeline().isPaused()).isTrue();
   }
 
   private StudioProfilers getProfilersWithDeviceAndProcess() {

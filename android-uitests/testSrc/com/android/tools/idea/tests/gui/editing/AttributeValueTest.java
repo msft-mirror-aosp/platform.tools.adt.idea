@@ -35,18 +35,19 @@ public class AttributeValueTest {
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
 
   @Test
+  @RunIn(TestGroup.UNRELIABLE) // b/75979069
   public void testAttributeValueInput() throws IOException {
     guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleApplication");
     final EditorFixture editor = guiTest.ideFrame().getEditor();
 
     editor.open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.EDITOR);
     editor.moveBetween("<TextView", "");
-    editor.enterText("\nandroid:fontFamily=\"monospace\"");
+    editor.typeText("\nandroid:fontFamily=\"monospace\"");
 
     // No double quotes have been added because of automatic first quote insertion
     assertThat(editor.getCurrentLine().trim()).isEqualTo("android:fontFamily=\"monospace\"");
 
-    editor.enterText("\nandroid:inputT");
+    editor.typeText("\nandroid:inputT");
     editor.invokeAction(EditorFixture.EditorAction.COMPLETE_CURRENT_STATEMENT);
 
     // Invoking completion adds quotes

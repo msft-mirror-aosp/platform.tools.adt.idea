@@ -78,6 +78,23 @@ class VariablesTable(private val project: Project, private val context: PsContex
     }
   }
 
+  fun addVariable(type: ValueType) {
+    val selectedNodes = tree.getSelectedNodes(DefaultMutableTreeNode::class.java, null)
+    if (selectedNodes.isEmpty()) {
+      return
+    }
+    var last = selectedNodes.last()
+    while (last !is ModuleNode) {
+      last = last.parent as DefaultMutableTreeNode
+    }
+
+    val emptyNode = EmptyNode(last.module, type)
+    last.add(emptyNode)
+    (tableModel as DefaultTreeModel).nodesWereInserted(last, IntArray(1) { last.getIndex(emptyNode) })
+    tree.expandPath(TreePath(last.path))
+    editCellAt(tree.getRowForPath(TreePath(emptyNode.path)), 0)
+  }
+
   override fun getCellEditor(row: Int, column: Int): TableCellEditor {
     if (column == NAME) {
       return NameCellEditor(row)
@@ -107,7 +124,7 @@ class VariablesTable(private val project: Project, private val context: PsContex
     override fun isCellEditable(e: EventObject?): Boolean {
       // Do not trigger editing when clicking left of the text, so that editing does not interfere with tree expansion
       val bounds = tree.getRowBounds(row)
-      if ((e as MouseEvent).x < bounds.x) {
+      if (e is MouseEvent && e.x < bounds.x) {
         return false
       }
       return super.isCellEditable(e)
@@ -117,7 +134,7 @@ class VariablesTable(private val project: Project, private val context: PsContex
       // Reproduce the tree element layout (see BasicTreeUI)
       val panel = JPanel()
       panel.layout = BoxLayout(panel, BoxLayout.LINE_AXIS)
-      val nodeBeingEdited = (table as VariablesTable).tree.getPathForRow(row).lastPathComponent as BaseVariableNode
+      val nodeBeingEdited = (table as VariablesTable).tree.getPathForRow(row).lastPathComponent as DefaultMutableTreeNode
       val bounds = tree.getRowBounds(row)
       if (!nodeBeingEdited.isLeaf) {
         val icon = UIUtil.getTreeNodeIcon(tree.isExpanded(row), isSelected, tree.hasFocus())
@@ -160,10 +177,9 @@ class VariablesTable(private val project: Project, private val context: PsContex
       val nodeBeingEdited = (table as VariablesTable).tree.getPathForRow(row).lastPathComponent
       if (nodeBeingEdited is BaseVariableNode) {
         textBox.setVariants(nodeBeingEdited.variable.module.variables.getModuleVariables().map { it.getName() })
-        textBox.text = value
-        return textBox
       }
-      return null
+      textBox.text = value
+      return textBox
     }
 
     override fun getCellEditorValue(): Any = textBox.text
@@ -210,13 +226,13 @@ class VariablesTable(private val project: Project, private val context: PsContex
 
     override fun isCellEditable(node: Any?, column: Int): Boolean {
       return when (column) {
-        NAME -> node is VariableNode || node is MapItemNode
+        NAME -> node is VariableNode || node is MapItemNode || node is EmptyNode || node is EmptyMapItemNode
         UNRESOLVED_VALUE -> {
           if (node is VariableNode) {
             val type = node.variable.valueType
             type != ValueType.MAP && type != ValueType.LIST
           } else {
-            node is BaseVariableNode
+            node is BaseVariableNode || node is EmptyListItemNode
           }
         }
         else -> false
@@ -224,9 +240,47 @@ class VariablesTable(private val project: Project, private val context: PsContex
     }
 
     override fun setValueAt(aValue: Any?, node: Any?, column: Int) {
-      if (aValue !is String || node !is BaseVariableNode) {
+      if (aValue !is String || aValue == getValueAt(node, column)) {
         return
       }
+
+      if (node is EmptyNode && column == NAME) {
+        val variableNode = node.createVariableNode(aValue)
+        val parent = node.parent as MutableTreeNode
+        val index = parent.getIndex(node)
+        val treeModel = tableTree!!.model as DefaultTreeModel
+        treeModel.removeNodeFromParent(node)
+        treeModel.insertNodeInto(variableNode, parent, index)
+        tableTree!!.expandPath(TreePath(variableNode.path))
+        return
+      }
+
+      if (node is EmptyMapItemNode && column == NAME) {
+        val variableNode = node.createVariableNode(aValue) ?: return
+        val parent = node.parent as VariableNode
+        val index = parent.getIndex(node)
+        val treeModel = tableTree!!.model as DefaultTreeModel
+        treeModel.removeNodeFromParent(node)
+        treeModel.insertNodeInto(variableNode, parent, index)
+        treeModel.insertNodeInto(EmptyMapItemNode(parent.variable), parent, index + 1)
+        return
+      }
+
+      if (node is EmptyListItemNode && column == UNRESOLVED_VALUE) {
+        val variableNode = node.createVariableNode(aValue)
+        val parent = node.parent as VariableNode
+        val index = parent.getIndex(node)
+        val treeModel = tableTree!!.model as DefaultTreeModel
+        treeModel.removeNodeFromParent(node)
+        treeModel.insertNodeInto(variableNode, parent, index)
+        treeModel.insertNodeInto(EmptyListItemNode(index + 1, parent.variable), parent, index + 1)
+        return
+      }
+
+      if (node !is BaseVariableNode) {
+        return
+      }
+
       if (column == NAME) {
         node.setName(aValue)
         nodeChanged(node)
@@ -250,15 +304,32 @@ class VariablesTable(private val project: Project, private val context: PsContex
     fun setValue(newValue: String) = variable.setValue(newValue)
   }
 
+  class EmptyNode(val module: PsModule, val type: ValueType) : DefaultMutableTreeNode() {
+    fun createVariableNode(name: String): BaseVariableNode {
+      val property = module.parsedModel!!.ext().findProperty(name)
+      if (type == ValueType.LIST) {
+        property.convertToEmptyList()
+      } else if (type == ValueType.MAP) {
+        property.convertToEmptyMap()
+      }
+      val variable = PsVariable(property, module)
+      return VariableNode(variable)
+    }
+  }
+
   class VariableNode(variable: PsVariable) : BaseVariableNode(variable.getName(), variable) {
     init {
       when (variable.valueType) {
         GradlePropertyModel.ValueType.MAP -> {
           variable.getUnresolvedValue(MAP_TYPE)?.forEach { add(MapItemNode(it.key, PsVariable(it.value, variable.module))) }
+          add(EmptyMapItemNode(variable))
         }
         GradlePropertyModel.ValueType.LIST -> {
-          variable.getUnresolvedValue(LIST_TYPE)
-            ?.forEachIndexed { index, propertyModel -> add(ListItemNode(index, PsVariable(propertyModel, variable.module))) }
+          val list = variable.getUnresolvedValue(LIST_TYPE)
+          if (list != null) {
+            list.forEachIndexed { index, propertyModel -> add(ListItemNode(index, PsVariable(propertyModel, variable.module))) }
+            add(EmptyListItemNode(list.size, variable))
+          }
         }
         else -> {
         }
@@ -326,6 +397,13 @@ class VariablesTable(private val project: Project, private val context: PsContex
     }
   }
 
+  class EmptyListItemNode(val index: Int, private val containingList: PsVariable) : DefaultMutableTreeNode() {
+    fun createVariableNode(value: String): ListItemNode {
+      val newVariable = containingList.addListValue(value)
+      return ListItemNode(index, newVariable)
+    }
+  }
+
   class MapItemNode(val key: String, variable: PsVariable) : BaseVariableNode(key, variable) {
     override fun getUnresolvedValue(expanded: Boolean): String {
       val value = variable.getUnresolvedValue(STRING_TYPE) ?: ""
@@ -346,6 +424,13 @@ class VariablesTable(private val project: Project, private val context: PsContex
     override fun setName(newName: String) {
       setUserObject(newName)
       variable.setName(newName)
+    }
+  }
+
+  class EmptyMapItemNode(private val containingMap: PsVariable) : DefaultMutableTreeNode() {
+    fun createVariableNode(key: String): MapItemNode? {
+      val newVariable = containingMap.addMapValue(key) ?: return null
+      return MapItemNode(key, newVariable)
     }
   }
 }

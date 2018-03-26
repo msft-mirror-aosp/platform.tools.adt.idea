@@ -35,6 +35,7 @@ import org.jetbrains.android.dom.navigation.NavigationSchema.ATTR_EXIT_ANIM
 import org.jetbrains.android.dom.navigation.NavigationSchema.DestinationType.FRAGMENT
 import java.awt.Font
 import java.awt.event.ItemEvent
+import java.awt.event.ItemListener
 import javax.swing.Action
 import javax.swing.JComboBox
 import javax.swing.JComponent
@@ -53,8 +54,14 @@ open class AddActionDialog(
 
   private var previousPopTo: NlComponent? = null
   private var previousInclusive: Boolean = false
+  private var generatedId: String = ""
+
   @VisibleForTesting
   val dialog = AddActionDialogUI()
+
+  // Open for testing
+  open val id: String?
+    get() = dialog.myIdTextField.text
 
   // Open for testing
   open val source: NlComponent
@@ -77,10 +84,7 @@ open class AddActionDialog(
 
   // Open for testing
   open val popTo: String?
-    get() {
-      val component = dialog.myPopToComboBox.selectedItem as NlComponent?
-      return if (component == null) null else stripPlus(component.getAttribute(ANDROID_URI, ATTR_ID))
-    }
+    get() = (dialog.myPopToComboBox.selectedItem as NlComponent?)?.id
 
   // Open for testing
   open val isInclusive: Boolean
@@ -112,6 +116,7 @@ open class AddActionDialog(
       setupFromExisting()
     } else {
       setDefaults(defaultsType)
+      generatedId = dialog.myIdTextField.text
     }
 
     init()
@@ -123,6 +128,20 @@ open class AddActionDialog(
       myOKAction.putValue(Action.NAME, "Update")
       "Update Action"
     }
+
+    val idUpdater = ItemListener {
+      if (dialog.myIdTextField.text == generatedId) {
+        generatedId = generateActionId(source, destination?.id, popTo, isInclusive)
+        dialog.myIdTextField.text = generatedId
+        // once the text is generated, don't show the empty text again.
+        dialog.myIdTextField.emptyText.text = ""
+      }
+    }
+    dialog.myDestinationComboBox.addItemListener(idUpdater)
+    dialog.myPopToComboBox.addItemListener(idUpdater)
+    dialog.myInclusiveCheckBox.addItemListener(idUpdater)
+
+    dialog.myIdTextField.emptyText.text = "generated"
   }
 
   final override fun init() {
@@ -133,7 +152,8 @@ open class AddActionDialog(
     dialog.myDestinationComboBox.addItem(null)
     populateDestinations()
     if (type == Defaults.GLOBAL) {
-      dialog.myFromComboBox.addItem(parent.parent)
+      val sourceNav = parent.parent!!
+      dialog.myFromComboBox.addItem(sourceNav)
       dialog.myFromComboBox.selectedIndex = dialog.myFromComboBox.itemCount - 1
       selectItem(dialog.myDestinationComboBox, { it.component }, parent)
     } else if (type == Defaults.RETURN_TO_SOURCE) {
@@ -141,6 +161,7 @@ open class AddActionDialog(
       dialog.myInclusiveCheckBox.isSelected = true
       selectItem(dialog.myDestinationComboBox, { entry -> entry.isReturnToSource }, true)
     }
+    dialog.myIdTextField.text = generateActionId(source, destination?.id, popTo, isInclusive)
   }
 
   private fun populateDestinations() {
@@ -151,8 +172,7 @@ open class AddActionDialog(
     if (!parent.isRoot) {
       dialog.myDestinationComboBox.addItem(DestinationListEntry(parent.parent))
       byParent[parent.parent]?.forEach { c ->
-        dialog.myDestinationComboBox
-          .addItem(DestinationListEntry(c))
+        dialog.myDestinationComboBox.addItem(DestinationListEntry(c))
       }
     } else {
       // If this is the root, we need to explicitly add it.
@@ -224,6 +244,7 @@ open class AddActionDialog(
     dialog.mySingleTopCheckBox.isSelected = existingAction.singleTop
     dialog.myDocumentCheckBox.isSelected = existingAction.document
     dialog.myClearTaskCheckBox.isSelected = existingAction.clearTask
+    dialog.myIdTextField.text = existingAction.id
   }
 
   private fun <T, U> selectItem(
@@ -384,10 +405,17 @@ open class AddActionDialog(
   }
 
   override fun doValidate(): ValidationInfo? {
-
-    return if (dialog.myDestinationComboBox.selectedItem == null && dialog.myPopToComboBox.selectedItem == null) {
+    return if (destination == null && popTo == null) {
       ValidationInfo("Destination must be set!", dialog.myDestinationComboBox)
-    } else super.doValidate()
+    } else if (id.isNullOrBlank()) {
+      ValidationInfo("ID must be set!", dialog.myIdTextField)
+    } else if (destination != null && destination?.id == null) {
+      ValidationInfo("Destination has no ID", dialog.myDestinationComboBox)
+    } else if (dialog.myPopToComboBox.selectedItem != null && popTo == null) {
+      // TODO: it would be nice if we could just disable those items in the popups, but JComboBox doesn't support disabling items
+      ValidationInfo("Pop To destination has no ID", dialog.myDestinationComboBox)
+    }
+    else super.doValidate()
   }
 
   override fun createActions(): Array<Action> {
@@ -400,17 +428,19 @@ open class AddActionDialog(
 
   @VisibleForTesting
   fun writeUpdatedAction(): NlComponent {
-    return WriteCommandAction.runWriteCommandAction(null, Computable<NlComponent> {
-      val realComponent = existingAction ?: source.createAction()
-      realComponent.actionDestinationId = destination?.id
-      realComponent.enterAnimation = enterTransition
-      realComponent.exitAnimation = exitTransition
-      realComponent.popUpTo = popTo
-      realComponent.inclusive = isInclusive
-      realComponent.singleTop = isSingleTop
-      realComponent.document = isDocument
-      realComponent.clearTask = isClearTask
-      realComponent
+    return WriteCommandAction.runWriteCommandAction(
+        null, Computable<NlComponent> {
+      val actionSetup: NlComponent.() -> Unit = {
+        actionDestinationId = destination?.id
+        enterAnimation = enterTransition
+        exitAnimation = exitTransition
+        popUpTo = popTo
+        inclusive = isInclusive
+        singleTop = isSingleTop
+        document = isDocument
+        clearTask = isClearTask
+      }
+      existingAction?.apply(actionSetup) ?: source.createAction(actionSetup = actionSetup)
     })
   }
 

@@ -17,6 +17,7 @@ package com.android.tools.idea.tests.gui.instantrun;
 
 import com.android.tools.idea.tests.gui.debugger.DebuggerTestBase;
 import com.android.tools.idea.tests.gui.emulator.AvdSpec;
+import com.android.tools.idea.tests.gui.emulator.DeleteAvdsRule;
 import com.android.tools.idea.tests.gui.emulator.EmulatorGenerator;
 import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.*;
@@ -32,6 +33,7 @@ import org.fest.swing.util.PatternTextMatcher;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.RuleChain;
 import org.junit.runner.RunWith;
 
 import javax.swing.*;
@@ -50,7 +52,11 @@ import static org.fest.swing.finder.WindowFinder.findDialog;
 public class InstantRunTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-  @Rule public final EmulatorTestRule emulator = new EmulatorTestRule(false);
+
+  private final EmulatorTestRule emulator = new EmulatorTestRule(false);
+  @Rule public final RuleChain emulatorRules = RuleChain
+    .outerRule(new DeleteAvdsRule())
+    .around(emulator);
 
   private static final String APP_NAME = "app";
   private static final Pattern EMPTY_OUTPUT= Pattern.compile("^$", Pattern.DOTALL);
@@ -97,7 +103,7 @@ public class InstantRunTest {
 
     ExecutionToolWindowFixture.ContentFixture contentFixture = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String pid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String pid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
 
     ideFrameFixture
       .getEditor()
@@ -110,7 +116,7 @@ public class InstantRunTest {
       .click();
 
     contentFixture.waitForOutput(new PatternTextMatcher(HOT_SWAP_OUTPUT), 120);
-    String newPid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String newPid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
     // (Hot swap) Verify the equality of PIDs before and after IR.
     assertThat(pid).isEqualTo(newPid);
   }
@@ -150,7 +156,7 @@ public class InstantRunTest {
 
     ExecutionToolWindowFixture.ContentFixture contentFixture = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String output = contentFixture.getOutput();
+    String output = contentFixture.getOutput(10);
     String pid = extractPidFromOutput(output, RUN_OUTPUT);
 
     ideFrameFixture
@@ -166,9 +172,11 @@ public class InstantRunTest {
       .click();
 
     // Studio takes a few seconds to reset Run tool window contents.
-    Wait.seconds(OUTPUT_RESET_TIMEOUT).expecting("Run tool window output has been reset").until(() -> !contentFixture.getOutput().contains(output));
+    Wait.seconds(OUTPUT_RESET_TIMEOUT)
+      .expecting("Run tool window output has been reset")
+      .until(() -> !contentFixture.getOutput(10).contains(output));
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String newPid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String newPid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
     // (Cold swap) Verify the inequality of PIDs before and after IR
     assertThat(pid).isNotEqualTo(newPid);
   }
@@ -203,7 +211,7 @@ public class InstantRunTest {
 
     ExecutionToolWindowFixture.ContentFixture contentFixture = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String output = contentFixture.getOutput();
+    String output = contentFixture.getOutput(10);
     String pid = extractPidFromOutput(output, RUN_OUTPUT);
 
     ideFrameFixture
@@ -217,9 +225,11 @@ public class InstantRunTest {
       .click();
 
     // Studio takes a few seconds to reset Run tool window contents.
-    Wait.seconds(OUTPUT_RESET_TIMEOUT).expecting("Run tool window output has been reset").until(() -> !contentFixture.getOutput().contains(output));
+    Wait.seconds(OUTPUT_RESET_TIMEOUT)
+      .expecting("Run tool window output has been reset")
+      .until(() -> !contentFixture.getOutput(10).contains(output));
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String newPid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String newPid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
     // (Cold swap) Verify the inequality of PIDs before and after IR
     assertThat(pid).isNotEqualTo(newPid);
   }
@@ -259,8 +269,8 @@ public class InstantRunTest {
 
     ExecutionToolWindowFixture.ContentFixture contentFixture = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String output = contentFixture.getOutput();
-    String pid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String output = contentFixture.getOutput(10);
+    String pid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
 
     ideFrameFixture
       .getEditor()
@@ -273,9 +283,11 @@ public class InstantRunTest {
       .click();
 
     // Studio takes a few seconds to reset Run tool window contents.
-    Wait.seconds(OUTPUT_RESET_TIMEOUT).expecting("Run tool window output has been reset").until(() -> !contentFixture.getOutput().contains(output));
+    Wait.seconds(OUTPUT_RESET_TIMEOUT)
+      .expecting("Run tool window output has been reset")
+      .until(() -> !contentFixture.getOutput(10).contains(output));
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String newPid = extractPidFromOutput(contentFixture.getOutput(), RUN_OUTPUT);
+    String newPid = extractPidFromOutput(contentFixture.getOutput(10), RUN_OUTPUT);
     // (Cold swap) Verify the inequality of PIDs before and after IR
     assertThat(pid).isNotEqualTo(newPid);
   }
@@ -310,7 +322,7 @@ public class InstantRunTest {
       .getRunToolWindow()
       .findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
-    String output = contentFixture.getOutput();
+    String output = contentFixture.getOutput(10);
 
     ideFrameFixture
       .getRunToolWindow()
@@ -318,7 +330,9 @@ public class InstantRunTest {
       .selectDevice(avdName)
       .clickOk();
 
-    Wait.seconds(OUTPUT_RESET_TIMEOUT).expecting("Run tool window output has been reset").until(() -> !contentFixture.getOutput().contains(output));
+    Wait.seconds(OUTPUT_RESET_TIMEOUT)
+      .expecting("Run tool window output has been reset")
+      .until(() -> !contentFixture.getOutput(10).contains(output));
     contentFixture.waitForOutput(new PatternTextMatcher(RUN_OUTPUT), 120);
   }
 
@@ -443,7 +457,7 @@ public class InstantRunTest {
 
     ExecutionToolWindowFixture.ContentFixture contentFixture = ideFrameFixture.getRunToolWindow().findContent(APP_NAME);
     contentFixture.waitForOutput(new PatternTextMatcher(CMAKE_RUN_OUTPUT), 120);
-    String pid = extractPidFromOutput(contentFixture.getOutput(), CMAKE_RUN_OUTPUT);
+    String pid = extractPidFromOutput(contentFixture.getOutput(10), CMAKE_RUN_OUTPUT);
 
     ideFrameFixture
       .getEditor()
@@ -456,7 +470,7 @@ public class InstantRunTest {
       .click();
 
     contentFixture.waitForOutput(new PatternTextMatcher(HOT_SWAP_OUTPUT), 120);
-    String newPid = extractPidFromOutput(contentFixture.getOutput(), CMAKE_RUN_OUTPUT);
+    String newPid = extractPidFromOutput(contentFixture.getOutput(10), CMAKE_RUN_OUTPUT);
     // (Hot swap) Verify the equality of PIDs before and after IR.
     assertThat(pid).isEqualTo(newPid);
   }

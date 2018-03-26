@@ -45,12 +45,12 @@ import org.fest.swing.fixture.JListFixture;
 import org.fest.swing.fixture.JTreeFixture;
 import org.fest.swing.timing.Wait;
 import org.fest.swing.util.TextMatcher;
-import org.fest.util.Lists;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -60,7 +60,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.intellij.util.ui.UIUtil.findComponentOfType;
 import static com.intellij.util.ui.UIUtil.findComponentsOfType;
 import static org.fest.reflect.core.Reflection.method;
-import static org.fest.util.Preconditions.checkNotNull;
 import static org.junit.Assert.fail;
 
 public class ExecutionToolWindowFixture extends ToolWindowFixture {
@@ -93,21 +92,19 @@ public class ExecutionToolWindowFixture extends ToolWindowFixture {
       return matcher.isMatching(output);
     }
 
-    /**
-     * Don't use this method. It does a spin wait for a condition, which may
-     * never happen. This can cause the test to block indefinitely until the
-     * test thread gets interrupted.
-     */
-    @Deprecated
     @NotNull
-    public String getOutput() {
-      ConsoleViewImpl consoleView;
-      while ((consoleView = findVisibleConsoleView()) == null || consoleView.getEditor() == null) {
-        // If our handle has been replaced, find it again.
-        JComponent consoleComponent = getTabComponent("Console");
-        myRobot.click(consoleComponent);
-      }
-      return consoleView.getEditor().getDocument().getText();
+    public String getOutput(long secondsToWait) {
+      Ref<String> outputText = new Ref<>();
+      Wait.seconds(secondsToWait)
+        .expecting("output text to not be null")
+        .until(() -> {
+          String output = pollOutput();
+          if (output != null) {
+            outputText.set(output);
+          }
+          return output != null;
+        });
+      return outputText.get();
     }
 
     @Nullable
@@ -366,10 +363,10 @@ public class ExecutionToolWindowFixture extends ToolWindowFixture {
 
     @NotNull
     private List<ActionButton> getConsoleToolbarButtons() {
-      ConsoleViewImpl consoleView = checkNotNull(findVisibleConsoleView());
+      ConsoleViewImpl consoleView = verifyNotNull(findVisibleConsoleView());
       Container commonAncestor = SwingUtilities.getAncestorOfClass(JBTabs.class, consoleView);
       Container actionToolbar = myRobot.finder().find(commonAncestor, Matchers.byType(ActionToolbarImpl.class));
-      return Lists.newArrayList(myRobot.finder().findAll(actionToolbar, Matchers.byType(ActionButton.class)));
+      return new ArrayList<>(myRobot.finder().findAll(actionToolbar, Matchers.byType(ActionButton.class)));
     }
   }  // End class ContentFixture
 

@@ -21,6 +21,8 @@ import com.android.tools.profilers.cpu.CpuProfilerConfigModel;
 import com.android.tools.profilers.cpu.ProfilingConfiguration;
 import com.android.tools.profilers.stacktrace.CodeNavigator;
 import com.android.tools.profilers.stacktrace.FakeCodeNavigator;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -128,6 +130,7 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private final List<ProfilingConfiguration> myCustomProfilingConfigurations = new ArrayList<>();
 
+  @NotNull private final ProfilerPreferences myPersistentPreferences;
   @NotNull private final ProfilerPreferences myTemporaryPreferences;
 
   /**
@@ -148,6 +151,7 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private String myErrorBalloonUrlText;
 
   public FakeIdeProfilerServices() {
+    myPersistentPreferences = new FakeProfilerPreferences();
     myTemporaryPreferences = new FakeProfilerPreferences();
   }
 
@@ -275,6 +279,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       public boolean isStartupCpuProfilingEnabled() {
         return myStartupCpuProfilingEnabled;
       }
+
+      @Override
+      public boolean isCpuApiTracingEnabled() {
+        return true;
+      }
     };
   }
 
@@ -282,6 +291,12 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   @Override
   public ProfilerPreferences getTemporaryProfilerPreferences() {
     return myTemporaryPreferences;
+  }
+
+  @NotNull
+  @Override
+  public ProfilerPreferences getPersistentProfilerPreferences() {
+    return myPersistentPreferences;
   }
 
   @Override
@@ -311,8 +326,25 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   @Override
-  public List<ProfilingConfiguration> getCpuProfilingConfigurations() {
+  public List<ProfilingConfiguration> getUserCpuProfilerConfigs() {
     return myCustomProfilingConfigurations;
+  }
+
+  @Override
+  public List<ProfilingConfiguration> getDefaultCpuProfilerConfigs() {
+    ProfilingConfiguration artSampled = new ProfilingConfiguration(ProfilingConfiguration.ART_SAMPLED,
+                                                                   CpuProfiler.CpuProfilerType.ART,
+                                                                   CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    ProfilingConfiguration artInstrumented = new ProfilingConfiguration(ProfilingConfiguration.ART_INSTRUMENTED,
+                                                                        CpuProfiler.CpuProfilerType.ART,
+                                                                        CpuProfiler.CpuProfilerConfiguration.Mode.INSTRUMENTED);
+    ProfilingConfiguration simpleperf = new ProfilingConfiguration(ProfilingConfiguration.SIMPLEPERF,
+                                                                   CpuProfiler.CpuProfilerType.SIMPLEPERF,
+                                                                   CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    ProfilingConfiguration atrace = new ProfilingConfiguration(ProfilingConfiguration.ATRACE,
+                                                               CpuProfiler.CpuProfilerType.ATRACE,
+                                                               CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    return ImmutableList.of(artSampled, artInstrumented, simpleperf, atrace);
   }
 
   @NotNull

@@ -30,7 +30,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCpuThread> {
+public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCpuThread, CpuProfilerStage.ThreadState> {
   /**
    * Maps a {@link StateChart} to a {@link EnumColors} helper class to return the proper color object for the {@link StateChart}
    */
@@ -40,6 +40,12 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
   public ThreadCellRenderer(JList<CpuThreadsModel.RangedCpuThread> list, UpdatableManager updatableManager) {
     super(list, updatableManager);
     myColors = new HashMap<>();
+  }
+
+  @Override
+  @NotNull
+  StateChart<CpuProfilerStage.ThreadState> getChartForModel(@NotNull CpuThreadsModel.RangedCpuThread model) {
+    return myStateCharts.get(model.getId()).getChart();
   }
 
   @Override

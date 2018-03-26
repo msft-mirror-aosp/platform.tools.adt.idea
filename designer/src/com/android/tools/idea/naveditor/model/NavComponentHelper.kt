@@ -41,8 +41,8 @@ import java.io.File
  * In order of decreasing precedence:
  * NONE: This tag is either not an action or is invalid.
  * SELF: The destination attribute refers to the action's parent.
+ * GLOBAL: The action's parent is a navigation element.
  * REGULAR: The destination attribute refers to a sibling of the action's parent
- * GLOBAL: The destination attribute refers to one of the action's siblings, and their common parent is a navigation element
  * EXIT: The destination attribute refers to an element that is not under the action's parent's parent.
  */
 enum class ActionType {
@@ -133,14 +133,17 @@ val NlComponent.actionType: ActionType
       return ActionType.SELF
     }
 
+    if (myParent.isNavigation) {
+      return ActionType.GLOBAL
+    }
+
     myParent.parent?.let {
       if (it.containsDestination(actionDestinationId)) {
         return ActionType.REGULAR
       }
     }
 
-    return if (myParent.isNavigation && myParent.containsDestination(actionDestinationId)) ActionType.GLOBAL
-    else ActionType.EXIT
+    return ActionType.EXIT
   }
 
 private fun NlComponent.containsDestination(destinationId: String?): Boolean {
@@ -151,7 +154,7 @@ var NlComponent.actionDestinationId: String? by IdAutoAttributeDelegate(Navigati
 var NlComponent.enterAnimation: String? by StringAutoAttributeDelegate(NavigationSchema.ATTR_ENTER_ANIM)
 var NlComponent.exitAnimation: String? by StringAutoAttributeDelegate(NavigationSchema.ATTR_EXIT_ANIM)
 // TODO: Use IdAutoAttributeDelegate for popUpTo
-var NlComponent.popUpTo: String? by StringAutoAttributeDelegate(NavigationSchema.ATTR_POP_UP_TO)
+var NlComponent.popUpTo: String? by IdAutoAttributeDelegate(NavigationSchema.ATTR_POP_UP_TO)
 var NlComponent.inclusive: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_POP_UP_TO_INCLUSIVE)
 var NlComponent.singleTop: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_SINGLE_TOP)
 var NlComponent.document: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_DOCUMENT)
@@ -172,10 +175,41 @@ val NlComponent.actionDestination: NlComponent?
     return model.components.firstOrNull { it.id == targetId }
   }
 
-fun NlComponent.createAction(destinationId: String? = null): NlComponent {
+/**
+ * [actionSetup] should include everything needed to set the default id (destination, popTo, and popToInclusive).
+ */
+@JvmOverloads
+fun NlComponent.createAction(destinationId: String? = null, actionSetup: NlComponent.() -> Unit = {}): NlComponent {
   val newAction = createChild(NavigationSchema.TAG_ACTION)
   newAction.actionDestinationId = destinationId
+  newAction.actionSetup()
+  // TODO: it would be nice if, when we changed something affecting the below logic and the id hasn't been changed,
+  // we could update the id as a refactoring so references are also updated.
+  newAction.assignId(generateActionId(this, newAction.actionDestinationId, newAction.popUpTo, newAction.inclusive))
   return newAction
+}
+
+fun generateActionId(source: NlComponent, destinationId: String?, popTo: String?, inclusive: Boolean): String {
+  val displaySourceId = source.id ?: source.model.virtualFile.nameWithoutExtension
+  if (destinationId == null) {
+    if (popTo == null) {
+      return ""
+    }
+    if (inclusive) {
+      if (popTo == source.id) {
+        return "action_${displaySourceId}_pop"
+      }
+      return "action_${displaySourceId}_pop_including_${popTo}"
+    }
+  }
+  val effectiveId = destinationId ?: popTo
+  if (effectiveId == source.id) {
+    return "action_${displaySourceId}_self"
+  }
+  if (source.isNavigation) {
+    return "action_global_${effectiveId}"
+  }
+  return "action_${displaySourceId}_to_${effectiveId}"
 }
 
 fun NlComponent.createSelfAction(): NlComponent {
@@ -183,10 +217,10 @@ fun NlComponent.createSelfAction(): NlComponent {
 }
 
 fun NlComponent.createReturnToSourceAction(): NlComponent {
-  val newAction = createAction()
-  newAction.popUpTo = id
-  newAction.inclusive = true
-  return newAction
+  return createAction {
+    popUpTo = parent?.id
+    inclusive = true
+  }
 }
 
 fun NlComponent.setAsStartDestination() {
@@ -211,7 +245,7 @@ private fun NlComponent.createChild(tagName: String): NlComponent {
 val NlComponent.effectiveDestinationId: String?
   get() {
     actionDestinationId?.let { return it }
-    return if (inclusive) null else NlComponent.stripId(popUpTo)
+    return if (inclusive) null else popUpTo
   }
 
 @VisibleForTesting

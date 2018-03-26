@@ -20,6 +20,7 @@ import com.android.tools.profiler.proto.EnergyProfiler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -54,11 +55,11 @@ public final class BatteryModel {
   private final PowerProfile myPowerProfile;
   private final long mySampleIntervalNs;
 
-  private double myCpuTotalPercent;
+  private PowerProfile.CpuCoreUsage[] myLastCpuCoresUsage;
   @NotNull
   private PowerProfile.NetworkType myNetworkType = PowerProfile.NetworkType.NONE;
-  private boolean myIsTransmitting;
-  private boolean myIsReceiving;
+  private long myReceivingBps;
+  private long mySendingBps;
 
   public BatteryModel() {
     this(new PowerProfile.DefaultPowerProfile(), DEFAULT_SAMPLE_INTERVAL_NS);
@@ -101,32 +102,23 @@ public final class BatteryModel {
   public void handleEvent(long timestampNs, @NotNull BatteryModel.Event energyEvent, Object eventArg) {
     switch (energyEvent) {
       case CPU_USAGE:
-        double cpuTotalPercent = (double)eventArg;
-        if (Double.compare(myCpuTotalPercent, cpuTotalPercent) != 0) {
-          myCpuTotalPercent = cpuTotalPercent;
+        PowerProfile.CpuCoreUsage[] cpuCoresUsage = (PowerProfile.CpuCoreUsage[])eventArg;
+        if (!Arrays.equals(myLastCpuCoresUsage, cpuCoresUsage)) {
+          myLastCpuCoresUsage = cpuCoresUsage;
           addNewCpuSample(timestampNs);
         }
         break;
-      case NETWORK_TYPE_CHANGED:
-        PowerProfile.NetworkType networkType = (PowerProfile.NetworkType)eventArg;
-        if (myNetworkType != networkType) {
-          myNetworkType = networkType;
-          addNewNetworkSample(timestampNs);
-        }
-        break;
 
-      case NETWORK_DOWNLOAD:
-        boolean isReceiving = (boolean)eventArg;
-        if (myIsReceiving != isReceiving) {
-          myIsReceiving = isReceiving;
-          addNewNetworkSample(timestampNs);
-        }
-        break;
-      case NETWORK_UPLOAD:
-        boolean isTransmitting = (boolean)eventArg;
-        if (myIsTransmitting != isTransmitting) {
-          myIsTransmitting = isTransmitting;
-          addNewNetworkSample(timestampNs);
+      case NETWORK_USAGE:
+        PowerProfile.NetworkStats networkStats = (PowerProfile.NetworkStats)eventArg;
+        if (myNetworkType != networkStats.myNetworkType ||
+            myReceivingBps != networkStats.myReceivingBps ||
+            mySendingBps != networkStats.mySendingBps) {
+          // TODO(b/75977959): Fix stale data usage below. E.g. when we transition from WIFI to RADIO, we'd have a spike since WIFI much faster than RADIO.
+          myNetworkType = networkStats.myNetworkType;
+          myReceivingBps = networkStats.myReceivingBps;
+          mySendingBps = networkStats.mySendingBps;
+          addNewNetworkSample(timestampNs, new PowerProfile.NetworkStats(myNetworkType, myReceivingBps, mySendingBps));
         }
         break;
     }
@@ -165,15 +157,11 @@ public final class BatteryModel {
   }
 
   private void addNewCpuSample(long timestampNs) {
-    addNewSample(timestampNs, sample -> sample.setCpuUsage(myPowerProfile.getCpuUsage(myCpuTotalPercent)));
+    addNewSample(timestampNs, sample -> sample.setCpuUsage(myPowerProfile.getCpuUsage(myLastCpuCoresUsage)));
   }
 
-  private void addNewNetworkSample(long timestampNs) {
-    addNewSample(timestampNs, sample -> {
-      PowerProfile.NetworkState networkState =
-        (myIsReceiving || myIsTransmitting) ? PowerProfile.NetworkState.ACTIVE : PowerProfile.NetworkState.IDLE;
-      return sample.setNetworkUsage(myPowerProfile.getNetworkUsage(myNetworkType, networkState));
-    });
+  private void addNewNetworkSample(long timestampNs, @NotNull PowerProfile.NetworkStats networkStats) {
+    addNewSample(timestampNs, sample -> sample.setNetworkUsage(myPowerProfile.getNetworkUsage(networkStats)));
   }
 
   private void addNewSample(long timestampNs,
@@ -187,12 +175,18 @@ public final class BatteryModel {
     }
 
     EnergyProfiler.EnergySample newSample = produceNewSample.apply(prevSample.toBuilder().setTimestamp(timestampNs)).build();
-    if (!prevSample.equals(newSample)) {
-      if (prevSample.getTimestamp() == timestampNs) {
-        // This means we had multiple events at the same time. Accumulate them into a single
-        // sample (by replacing the last sample)
-        mySparseSamples.remove(prevSampleIndex);
-        mySparseSamples.add(prevSampleIndex, newSample);
+
+    // We want to compare samples to see if their usage amounts are the same even if they are at
+    // different timestamps. The easiest way to do this is to make a copy of the two samples
+    // with their timestamps stubbed out.
+    EnergyProfiler.EnergySample prevSampleNoTime = prevSample.toBuilder().setTimestamp(0).build();
+    EnergyProfiler.EnergySample newSampleNoTime = newSample.toBuilder().setTimestamp(0).build();
+
+    if (!prevSampleNoTime.equals(newSampleNoTime)) {
+      if (prevSample.getTimestamp() == newSample.getTimestamp()) {
+        // This means we had multiple events occur at the same time. Replace with the latest sample
+        // in that case.
+        mySparseSamples.set(prevSampleIndex, newSample);
       }
       else {
         mySparseSamples.add(prevSampleIndex + 1, newSample);
@@ -210,27 +204,14 @@ public final class BatteryModel {
   public enum Event {
     /**
      * The amount of CPU being used changed.
-     * arg: A double representing total CPU percent, from 0.0 to 1.0
+     * arg: An array of CPU usage {@link PowerProfile.CpuCoreUsage}, each element on a per-core level.
      */
     CPU_USAGE,
 
     /**
-     * The current network type has changed.
-     * arg: A {@link PowerProfile.NetworkType} value.
+     * Something about the network hardware has changed.
+     * arg: A {@link PowerProfile.NetworkStats} value.
      */
-    NETWORK_TYPE_CHANGED,
-
-    /**
-     * The app started/stopped downloading some bytes.
-     * arg: true if downloading, false if stopped.
-     */
-    NETWORK_DOWNLOAD,
-
-    /**
-     * The app started/stopped uploading some bytes.
-     * arg: true if downloading, false if stopped.
-     */
-    NETWORK_UPLOAD,
-
+    NETWORK_USAGE,
   }
 }

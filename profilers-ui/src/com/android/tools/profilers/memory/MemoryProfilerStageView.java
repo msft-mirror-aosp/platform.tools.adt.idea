@@ -103,7 +103,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     myInstanceDetailsSplitter.getDivider().setBorder(DEFAULT_HORIZONTAL_BORDERS);
 
     // Do not initialize the monitor UI if it only contains heap dump data.
-    // In this case, mySelectionComponent is null and we will not build the context menu
+    // In this case, mySelectionComponent is null and we will not build the context menu.
     if (!getStage().isMemoryCaptureOnly()) {
       myChartCaptureSplitter.setFirstComponent(buildMonitorUi());
     }
@@ -180,10 +180,11 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     captureObjectChanged();
     allocationTrackingChanged();
     buildContextMenu(mySelectionComponent);
+  }
 
-    if (getStage().isMemoryCaptureOnly()) {
-      getStage().loadHeapDumpCaptureObject(SwingUtilities::invokeLater);
-    }
+  @Override
+  public boolean isToolbarVisible() {
+    return !getStage().isMemoryCaptureOnly();
   }
 
   @Override
@@ -552,7 +553,9 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     headingPanel.add(toolbar, BorderLayout.WEST);
 
     JPanel buttonToolbar = new JPanel(createToolbarLayout());
-    buttonToolbar.add(getSelectionTimeLabel());
+    if (!getStage().isMemoryCaptureOnly()) {
+      buttonToolbar.add(getSelectionTimeLabel());
+    }
     if (getStage().getStudioProfilers().getIdeServices().getFeatureConfig().isMemoryCaptureFilterEnabled()) {
       CommonToggleButton button = FilterComponent.createFilterToggleButton();
       buttonToolbar.add(new FlatSeparator());

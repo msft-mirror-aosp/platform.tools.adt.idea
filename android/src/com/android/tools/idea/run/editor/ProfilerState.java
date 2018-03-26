@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.run.editor;
 
-import com.android.tools.idea.run.StartupCpuProfilingConfiguration;
+import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.android.tools.idea.run.ValidationError;
 import com.intellij.openapi.util.DefaultJDOMExternalizer;
 import com.intellij.openapi.util.InvalidDataException;
@@ -40,23 +40,12 @@ public class ProfilerState {
   public static final String ENABLE_ADVANCED_PROFILING_NAME = "android.profiler.enabled";
 
   public boolean STARTUP_CPU_PROFILING_ENABLED = false;
-  public String STARTUP_CPU_PROFILING_CONFIGURATION_NAME = StartupCpuProfilingConfiguration.getDefaultConfigs().get(0).getName();
+  public String STARTUP_CPU_PROFILING_CONFIGURATION_NAME = CpuProfilerConfig.Technology.SAMPLED_JAVA.getName();
 
   private boolean PROFILING_OKHTTP_ENABLED = true;
   public static final String ENABLE_ADVANCED_OKHTTP_PROFILING_NAME = "android.profiler.okhttp.enabled";
 
-  private boolean PROFILING_IO_ENABLED = false;
-  public static final String ENABLE_IO_PROFILING_NAME = "android.profiler.io.enabled";
-
   private boolean myCheckAdvancedProfiling;
-
-  @NotNull
-  public StartupCpuProfilingConfiguration getStartupCpuProfilingConfiguration() {
-    StartupCpuProfilingConfiguration config =
-      StartupCpuProfilingConfiguration.getDefaultConfigByName(STARTUP_CPU_PROFILING_CONFIGURATION_NAME);
-    assert config != null;
-    return config;
-  }
 
   /**
    * Reads the state from the {@link Element}, overwriting all member values.
@@ -76,7 +65,6 @@ public class ProfilerState {
     Properties result = new Properties();
     result.setProperty(ENABLE_ADVANCED_PROFILING_NAME, String.valueOf(ADVANCED_PROFILING_ENABLED));
     result.setProperty(ENABLE_ADVANCED_OKHTTP_PROFILING_NAME, String.valueOf(PROFILING_OKHTTP_ENABLED));
-    result.setProperty(ENABLE_IO_PROFILING_NAME, String.valueOf(PROFILING_IO_ENABLED));
     return result;
   }
 

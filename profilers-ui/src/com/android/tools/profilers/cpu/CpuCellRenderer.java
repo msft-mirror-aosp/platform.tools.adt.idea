@@ -20,6 +20,8 @@ import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.StateChartModel;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.profilers.ProfilerColors;
+import com.intellij.util.ui.JBUI;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -34,9 +36,10 @@ import java.util.Map;
 /**
  * Base class for handing CpuCellRendering, this class is used by Renderers that create state charts within
  * a list in the {@link CpuProfilerStageView}
- * @param <T>
+ * @param <T> The first type is the type used for the {@link ListCellRenderer}, this type should match the model used for the List.
+ * @param <K> The second type is the type used for the {@link StateChartData}, this should match the model used for the {@link StateChart}
  */
-public abstract class CpuCellRenderer<T> implements ListCellRenderer<T> {
+public abstract class CpuCellRenderer<T, K> implements ListCellRenderer<T> {
   /**
    * Label to display the thread name on a cell.
    */
@@ -48,10 +51,10 @@ public abstract class CpuCellRenderer<T> implements ListCellRenderer<T> {
   protected int myHoveredIndex = -1;
 
   /**
-   * Maps a thread id to a {@link CpuProfilerStageView.ThreadCellRenderer.StateChartData} containing the chart that should be rendered
+   * Maps an id to a {@link StateChartData} containing the chart info that should be rendered
    * on the cell corresponding to that thread.
    */
-  protected final Map<Integer, StateChartData> myStateCharts;
+  protected final Map<Integer, StateChartData<K>> myStateCharts;
 
   /**
    * {@link UpdatableManager} responsible for managing the threads state charts.
@@ -62,7 +65,7 @@ public abstract class CpuCellRenderer<T> implements ListCellRenderer<T> {
     myLabel = new JLabel();
     myLabel.setFont(AdtUiUtils.DEFAULT_FONT);
     Border rightSeparator = BorderFactory.createMatteBorder(0, 0, 0, 1, ProfilerColors.THREAD_LABEL_BORDER);
-    Border marginLeft = new EmptyBorder(0, 10, 0, 0);
+    Border marginLeft = JBUI.Borders.emptyLeft(10);
     myLabel.setBorder(new CompoundBorder(rightSeparator, marginLeft));
     myLabel.setOpaque(true);
     myUpdatableManager = updatableManager;
@@ -71,10 +74,28 @@ public abstract class CpuCellRenderer<T> implements ListCellRenderer<T> {
       @Override
       public void mouseMoved(MouseEvent e) {
         Point p = new Point(e.getX(), e.getY());
+        int oldHoveredIndex = myHoveredIndex;
         myHoveredIndex = list.locationToIndex(p);
+        // Pass the mouse moved event onto the child statecharts.
+        // First we pass a mouse exited to reset positioning.
+        if (oldHoveredIndex != myHoveredIndex && list.getModel().getSize() > oldHoveredIndex && oldHoveredIndex >= 0) {
+          StateChart<K> chart = getChartForModel(list.getModel().getElementAt(oldHoveredIndex));
+          chart.mouseExited(e);
+        }
+        // Second we pass the updated position of the mouse.
+        if (myHoveredIndex >= 0) {
+          StateChart<K> chart = getChartForModel(list.getModel().getElementAt(myHoveredIndex));
+          chart.mouseMoved(e);
+        }
       }
     });
   }
+
+  /**
+   * Function to translate a model to {@link StateChart}.
+   */
+  @NotNull
+  abstract StateChart<K> getChartForModel(@NotNull T model);
 
   /**
    * Contains a state chart and its corresponding model.

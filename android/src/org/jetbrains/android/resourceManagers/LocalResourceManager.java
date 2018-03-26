@@ -15,7 +15,6 @@
  */
 package org.jetbrains.android.resourceManagers;
 
-import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.resources.ResourceFolderType;
@@ -25,11 +24,13 @@ import com.android.tools.idea.res.ProjectResourceRepository;
 import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.google.common.collect.Multimap;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.fileTypes.StdFileTypes;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
+import com.intellij.util.containers.HashSet;
 import org.jetbrains.android.dom.attrs.AttributeDefinitions;
 import org.jetbrains.android.dom.attrs.AttributeDefinitionsImpl;
 import org.jetbrains.android.dom.resources.Attr;
@@ -40,12 +41,14 @@ import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.AndroidRootUtil;
 import org.jetbrains.android.facet.ResourceFolderManager;
 import org.jetbrains.android.util.AndroidResourceUtil;
+import org.jetbrains.android.util.AndroidUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class LocalResourceManager extends ResourceManager {
   private AttributeDefinitions myAttrDefs;
@@ -74,7 +77,7 @@ public class LocalResourceManager extends ResourceManager {
 
   @Override
   @NotNull
-  public ResourceNamespace getResourceNamespace() {
+  protected ResourceNamespace getResourceNamespace() {
     ResourceRepositoryManager repositoryManager = ResourceRepositoryManager.getOrCreateInstance(myFacet);
     return repositoryManager.getNamespace();
   }
@@ -92,7 +95,7 @@ public class LocalResourceManager extends ResourceManager {
         return true;
       }
     }
-    for (VirtualFile dir1 : getResourceOverlayDirs()) {
+    for (VirtualFile dir1 : AndroidRootUtil.getResourceOverlayDirs(myFacet)) {
       if (dir.equals(dir1)) {
         return true;
       }
@@ -111,12 +114,6 @@ public class LocalResourceManager extends ResourceManager {
   @Override
   public Multimap<String, VirtualFile> getAllResourceDirs() {
     return AppResourceRepository.getOrCreateInstance(myFacet).getAllResourceDirs();
-  }
-
-  @NotNull
-  @Override
-  public VirtualFile[] getResourceOverlayDirs() {
-    return AndroidRootUtil.getResourceOverlayDirs(getFacet());
   }
 
   @Override
@@ -173,6 +170,37 @@ public class LocalResourceManager extends ResourceManager {
     return list;
   }
 
+  @NotNull
+  private List<Pair<Resources, VirtualFile>> getResourceElements() {
+    List<Pair<Resources, VirtualFile>> result = new ArrayList<>();
+    for (VirtualFile file : getAllValueResourceFiles()) {
+      Resources element = AndroidUtils.loadDomElement(myProject, file, Resources.class);
+      if (element != null) {
+        result.add(Pair.create(element, file));
+      }
+    }
+    return result;
+  }
+
+  @NotNull
+  private Set<VirtualFile> getAllValueResourceFiles() {
+    Set<VirtualFile> files = new HashSet<>();
+
+    for (VirtualFile valueResourceDir : getResourceSubdirs(ResourceFolderType.VALUES)) {
+      for (VirtualFile valueResourceFile : valueResourceDir.getChildren()) {
+        if (!valueResourceFile.isDirectory() && valueResourceFile.getFileType().equals(StdFileTypes.XML)) {
+          files.add(valueResourceFile);
+        }
+      }
+    }
+    return files;
+  }
+
+  @NotNull
+  private List<VirtualFile> getResourceSubdirs(@NotNull ResourceFolderType resourceType) {
+    return AndroidResourceUtil.getResourceSubdirs(resourceType, getAllResourceDirs().values());
+  }
+
   public List<Attr> findStyleableAttributesByFieldName(@NotNull String fieldName) {
     int index = fieldName.lastIndexOf('_');
 
@@ -224,22 +252,32 @@ public class LocalResourceManager extends ResourceManager {
     if (fieldName == null) {
       return Collections.emptyList();
     }
-    return findResourcesByFieldName(type, fieldName);
+
+    ResourceRepositoryManager repositoryManager = ResourceRepositoryManager.getInstance(field);
+    if (repositoryManager == null) {
+      return Collections.emptyList();
+    }
+    ResourceNamespace namespace = repositoryManager.getNamespace();
+    return findResourcesByFieldName(namespace, type, fieldName);
   }
 
   @NotNull
-  public List<PsiElement> findResourcesByFieldName(@NotNull String resClassName, @NotNull String fieldName) {
+  public List<PsiElement> findResourcesByFieldName(@NotNull ResourceNamespace namespace, @NotNull String resClassName,
+                                                   @NotNull String fieldName) {
     List<PsiElement> targets = new ArrayList<>();
     if (resClassName.equals(ResourceType.ID.getName())) {
-      targets.addAll(findIdDeclarations(fieldName));
+      targets.addAll(findIdDeclarations(namespace, fieldName));
     }
+
     ResourceFolderType folderType = ResourceFolderType.getTypeByName(resClassName);
     if (folderType != null) {
       targets.addAll(findResourceFiles(folderType, fieldName, false, true));
     }
-    for (ResourceElement element : findValueResources(ResourceNamespace.TODO, resClassName, fieldName, false)) {
+
+    for (ResourceElement element : findValueResources(namespace, resClassName, fieldName, false)) {
       targets.add(element.getName().getXmlAttributeValue());
     }
+
     if (resClassName.equals(ResourceType.ATTR.getName())) {
       for (Attr attr : findAttrs(fieldName)) {
         targets.add(attr.getName().getXmlAttributeValue());
@@ -254,6 +292,17 @@ public class LocalResourceManager extends ResourceManager {
         targets.add(attr.getName().getXmlAttributeValue());
       }
     }
+
     return targets;
+  }
+
+  /**
+   * @deprecated Use {@link #findResourcesByFieldName(ResourceNamespace, String, String)}.
+   * Preserved temporarily for compatibility with the Kotlin plugin.
+   */
+  @Deprecated
+  @NotNull
+  public List<PsiElement> findResourcesByFieldName(@NotNull String resClassName, @NotNull String fieldName) {
+    return findResourcesByFieldName(getResourceNamespace(), resClassName, fieldName);
   }
 }

@@ -16,6 +16,8 @@ package com.android.tools.profilers.energy;
 import com.android.tools.adtui.*;
 import com.android.tools.adtui.chart.linechart.LineChart;
 import com.android.tools.adtui.chart.linechart.LineConfig;
+import com.android.tools.adtui.instructions.InstructionsPanel;
+import com.android.tools.adtui.instructions.TextInstruction;
 import com.android.tools.adtui.model.SelectionListener;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.event.*;
@@ -34,7 +36,7 @@ import static com.android.tools.profilers.ProfilerLayout.*;
 
 public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
 
-  @NotNull private final JBScrollPane myEventsComponent;
+  @NotNull private final JPanel myEventsPanel;
   @NotNull private final EnergyDetailsView myDetailsView;
 
   public EnergyProfilerStageView(@NotNull StudioProfilersView profilersView, @NotNull EnergyProfilerStage energyProfilerStage) {
@@ -47,10 +49,15 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
     JBSplitter verticalSplitter = new JBSplitter(true);
     verticalSplitter.getDivider().setBorder(DEFAULT_HORIZONTAL_BORDERS);
     verticalSplitter.setFirstComponent(buildMonitorUi());
-    EnergyEventsView eventsView = new EnergyEventsView(this);
-    myEventsComponent = new JBScrollPane(eventsView.getComponent());
-    myEventsComponent.setVisible(false);
-    verticalSplitter.setSecondComponent(myEventsComponent);
+
+    myEventsPanel = new JPanel(new TabularLayout("*,Fit", "Fit,*"));
+    myEventsPanel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+    myEventsPanel.add(getSelectionTimeLabel(), new TabularLayout.Constraint(0, 1));
+
+    JComponent eventsView = new EnergyEventsView(this).getComponent();
+    myEventsPanel.add(new JBScrollPane(eventsView), new TabularLayout.Constraint(1, 0, 1, 2));
+    myEventsPanel.setVisible(false);
+    verticalSplitter.setSecondComponent(myEventsPanel);
 
     myDetailsView = new EnergyDetailsView(this);
     myDetailsView.setMinimumSize(new Dimension(JBUI.scale(450), (int) myDetailsView.getMinimumSize().getHeight()));
@@ -117,21 +124,10 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
     lineChart.setRenderOffset(0, (int)LineConfig.DEFAULT_DASH_STROKE.getLineWidth() / 2);
     lineChartPanel.add(lineChart, BorderLayout.CENTER);
 
-    RangeTooltipComponent tooltip =
-      new RangeTooltipComponent(timeline.getTooltipRange(),
-                                timeline.getViewRange(),
-                                timeline.getDataRange(),
-                                getTooltipPanel(),
-                                ProfilerLayeredPane.class);
-
-    tooltip.registerListenersOn(lineChart);
-    eventsView.registerTooltip(tooltip, getStage());
-
     final JPanel axisPanel = new JBPanel(new BorderLayout());
     axisPanel.setOpaque(false);
     final AxisComponent leftAxis = new AxisComponent(getStage().getAxis(), AxisComponent.AxisOrientation.RIGHT);
     leftAxis.setShowAxisLine(false);
-    leftAxis.setShowMax(true);
     leftAxis.setShowUnitAtMax(true);
     leftAxis.setHideTickAtMin(true);
     leftAxis.setMarkerLengths(MARKER_LENGTH, MARKER_LENGTH);
@@ -153,19 +149,34 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
     getStage().getSelectionModel().addListener(new SelectionListener() {
       @Override
       public void selectionCreated() {
-        myEventsComponent.setVisible(true);
+        myEventsPanel.setVisible(true);
       }
 
       @Override
       public void selectionCleared() {
-        myEventsComponent.setVisible(false);
+        myEventsPanel.setVisible(false);
       }
 
       @Override
       public void selectionCreationFailure() {
-        myEventsComponent.setVisible(false);
+        myEventsPanel.setVisible(false);
       }
     });
+
+    selection.addMouseListener(new ProfilerTooltipMouseAdapter(getStage(), () -> new EnergyUsageTooltip(getStage())));
+    RangeTooltipComponent tooltip =
+      new RangeTooltipComponent(timeline.getTooltipRange(),
+                                timeline.getViewRange(),
+                                timeline.getDataRange(),
+                                getTooltipPanel(),
+                                ProfilerLayeredPane.class);
+
+    tooltip.registerListenersOn(selection);
+    eventsView.registerTooltip(tooltip, getStage());
+
+    if (!getStage().hasUserUsedEnergySelection()) {
+      installProfilingInstructions(monitorPanel);
+    }
 
     monitorPanel.add(tooltip, new TabularLayout.Constraint(0, 0));
     monitorPanel.add(selection, new TabularLayout.Constraint(0, 0));
@@ -188,5 +199,15 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
 
   private void updateSelectedDurationView() {
     myDetailsView.setDuration(getStage().getSelectedDuration());
+  }
+
+  private void installProfilingInstructions(@NotNull JPanel parent) {
+    assert parent.getLayout().getClass() == TabularLayout.class;
+    InstructionsPanel panel =
+      new InstructionsPanel.Builder(new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "Select a range to inspect energy events"))
+        .setEaseOut(getStage().getInstructionsEaseOutModel(), instructionPanel -> parent.remove(instructionPanel))
+        .setBackgroundCornerRadius(PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER, PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER)
+        .build();
+    parent.add(panel, new TabularLayout.Constraint(0, 0));
   }
 }

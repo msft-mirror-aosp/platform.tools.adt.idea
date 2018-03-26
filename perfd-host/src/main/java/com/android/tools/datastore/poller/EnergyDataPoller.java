@@ -17,8 +17,11 @@ package com.android.tools.datastore.poller;
 
 import com.android.tools.datastore.database.EnergyTable;
 import com.android.tools.datastore.energy.BatteryModel;
+import com.android.tools.datastore.energy.CpuConfig;
 import com.android.tools.datastore.energy.PowerProfile;
 import com.android.tools.profiler.proto.*;
+import com.android.tools.profiler.proto.CpuProfiler.CpuCoreConfigResponse;
+import com.intellij.openapi.diagnostic.Logger;
 import io.grpc.StatusRuntimeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +33,6 @@ import org.jetbrains.annotations.Nullable;
  * pollers get called first.
  */
 public final class EnergyDataPoller extends PollRunner {
-
   @NotNull private final Common.Session mySession;
   @NotNull private final BatteryModel myBatteryModel;
   @NotNull private final EnergyTable myEnergyTable;
@@ -38,10 +40,13 @@ public final class EnergyDataPoller extends PollRunner {
   private long myDataRequestStartTimestampNs;
   @Nullable
   private CpuProfiler.CpuUsageData myLastData = null;
+  private PowerProfile.NetworkType myLastKnownNetworkType = PowerProfile.NetworkType.NONE;
 
   @NotNull private ProfilerServiceGrpc.ProfilerServiceBlockingStub myProfilerService;
   @NotNull private CpuServiceGrpc.CpuServiceBlockingStub myCpuService;
   @NotNull private NetworkServiceGrpc.NetworkServiceBlockingStub myNetworkService;
+
+  @NotNull private final CpuConfig myCpuConfig;
 
   // TODO: Once we move away from fake data, don't rely on the profilerService anymore
   public EnergyDataPoller(@NotNull Common.Session session,
@@ -61,6 +66,17 @@ public final class EnergyDataPoller extends PollRunner {
     mySession = session;
 
     myDataRequestStartTimestampNs = queryCurrentTime();
+
+    CpuCoreConfigResponse response = CpuCoreConfigResponse.getDefaultInstance();
+    try {
+      // TODO: Test on single core phones to see if they report data via "cpu0" or "cpu".
+      response = myCpuService.getCpuCoreConfig(CpuProfiler.CpuCoreConfigRequest.newBuilder().setDeviceId(session.getDeviceId()).build());
+    }
+    catch (StatusRuntimeException e) {
+      getLog().debug("Unable to parse CPU frequency files.", e);
+    }
+
+    myCpuConfig = new CpuConfig(response);
   }
 
   // TODO: Remove this temporary function once we're not creating fake data anymore
@@ -99,21 +115,19 @@ public final class EnergyDataPoller extends PollRunner {
 
       NetworkProfiler.NetworkDataResponse networkDataResponse = myNetworkService.getData(networkDataRequest);
       for (NetworkProfiler.NetworkProfilerData networkData : networkDataResponse.getDataList()) {
-        if (networkData.getDataCase() == NetworkProfiler.NetworkProfilerData.DataCase.CONNECTIVITY_DATA) {
-          myBatteryModel.handleEvent(networkData.getEndTimestamp(),
-                                     BatteryModel.Event.NETWORK_TYPE_CHANGED,
-                                     PowerProfile.NetworkType.from(networkData.getConnectivityData().getDefaultNetworkType()));
-        }
-        else if (networkData.getDataCase() == NetworkProfiler.NetworkProfilerData.DataCase.SPEED_DATA) {
-          // TODO(b/73487166): We can probably simplify this into one line by converting speedData
-          // directly into a single event type ourselves.
-          NetworkProfiler.SpeedData speedData = networkData.getSpeedData();
-          myBatteryModel.handleEvent(networkData.getEndTimestamp(),
-                                     BatteryModel.Event.NETWORK_DOWNLOAD,
-                                     speedData.getReceived() > 0);
-          myBatteryModel.handleEvent(networkData.getEndTimestamp(),
-                                     BatteryModel.Event.NETWORK_UPLOAD,
-                                     speedData.getSent() > 0);
+        switch (networkData.getDataCase()) {
+          case CONNECTIVITY_DATA:
+            // Don't send an event for connection change. Leave it for the next speed data.
+            myLastKnownNetworkType = PowerProfile.NetworkType.from(networkData.getConnectivityData().getDefaultNetworkType());
+            break;
+          case SPEED_DATA:
+            NetworkProfiler.SpeedData speedData = networkData.getSpeedData();
+            myBatteryModel.handleEvent(networkData.getEndTimestamp(),
+                                       BatteryModel.Event.NETWORK_USAGE,
+                                       new PowerProfile.NetworkStats(myLastKnownNetworkType, speedData.getReceived(), speedData.getSent()));
+            break;
+          default:
+            break;
         }
       }
     }
@@ -135,9 +149,8 @@ public final class EnergyDataPoller extends PollRunner {
           continue;
         }
 
-        double elapsed = (currUsageData.getElapsedTimeInMillisec() - prevUsageData.getElapsedTimeInMillisec());
-        double appPercent = (currUsageData.getAppCpuTimeInMillisec() - prevUsageData.getAppCpuTimeInMillisec()) / elapsed;
-        myBatteryModel.handleEvent(currUsageData.getEndTimestamp(), BatteryModel.Event.CPU_USAGE, appPercent);
+        myBatteryModel.handleEvent(currUsageData.getEndTimestamp(), BatteryModel.Event.CPU_USAGE,
+                                   myCpuConfig.getCpuCoreUsages(prevUsageData, currUsageData));
         prevUsageData = currUsageData;
       }
     }
@@ -151,5 +164,10 @@ public final class EnergyDataPoller extends PollRunner {
     for (EnergyProfiler.EnergyEvent event : myEnergyService.getEvents(request).getEventsList()) {
       myEnergyTable.insertOrReplace(mySession, event);
     }
+  }
+
+  @NotNull
+  private static Logger getLog() {
+    return Logger.getInstance(EnergyDataPoller.class);
   }
 }

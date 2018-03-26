@@ -148,18 +148,24 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
         // The session is live - move the timeline to the current time.
         TimeResponse timeResponse = myClient.getProfilerClient()
           .getCurrentTime(TimeRequest.newBuilder().setDeviceId(mySelectedSession.getDeviceId()).build());
-        myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
-        if (startupCpuProfilingStarted()) {
+
+        ProfilingStateResponse startupCpuProfilingState = getStartupCpuProfilingState();
+        if (startupCpuProfilingState != null) {
+          // TODO(b/75253573): this is a workaround until we get the startup profiling trace aligned with rest of profiling.
+          myTimeline.reset(startupCpuProfilingState.getStartTimestamp(), timeResponse.getTimestampNs());
           setStage(new CpuProfilerStage(this));
+        }
+        else {
+          myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
         }
       }
       else {
         // The session is finished, reset the timeline to include the entire data range.
         myTimeline.reset(mySelectedSession.getStartTimestamp(), mySelectedSession.getEndTimestamp());
-        // We are not streaming so we don't need the view range to have the extra initial buffer if the session's duration is short.
-        // Just set the view range to be the data range.
-        myTimeline.getViewRange().set(myTimeline.getDataRange());
+        // Disable data range update and stream/snap features.
         myTimeline.setIsPaused(true);
+        myTimeline.setStreaming(false);
+        myTimeline.getViewRange().set(mySessionsManager.getSessionPreferredViewRange(mySelectedSession));
       }
 
       // Profilers can query data depending on whether the agent is set. Even though we set the status above, delay until after the session
@@ -445,15 +451,23 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   /**
-   * Checks whether startup CPU Profiling started for the selected session by making RPC call to perfd.
+   * @return {@link ProfilingStateResponse} if startup profiling started, otherwise null.
    */
-  private boolean startupCpuProfilingStarted() {
+  @Nullable
+  private ProfilingStateResponse getStartupCpuProfilingState() {
     if (!getIdeServices().getFeatureConfig().isStartupCpuProfilingEnabled()) {
-      return false;
+      return null;
     }
+
     ProfilingStateResponse response = getClient().getCpuClient()
       .checkAppProfilingState(ProfilingStateRequest.newBuilder().setSession(mySelectedSession).build());
-    return response.getBeingProfiled() && response.getIsStartupProfiling();
+
+    if (response.getBeingProfiled() && response.getIsStartupProfiling()) {
+      return response;
+    }
+    else {
+      return null;
+    }
   }
 
   @NotNull
@@ -466,9 +480,8 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   /**
-   * Chooses a process among all potential candidates starting from the project's app process,
-   * and then the one previously used. If no candidate is available, return the first available
-   * process.
+   * Chooses a process among all potential candidates starting from the project's app process, and then the one previously used. If no
+   * candidate is available and no preferred process has been configured, select the first available process.
    */
   @Nullable
   private Common.Process getPreferredProcess(List<Common.Process> processes) {
@@ -483,6 +496,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
         }
       }
     }
+
     // Next, prefer the one previously used, either selected by user or automatically (even if the process has switched states)
     if (myProcess != null) {
       for (Common.Process process : processes) {
@@ -491,8 +505,9 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
         }
       }
     }
-    // No preferred candidate. Choose a new process.
-    return processes.get(0);
+
+    // No preferred candidate. Choose a new process if we are not already waiting for the preferred process.
+    return myPreferredProcessName == null ? processes.get(0) : null;
   }
 
   @NotNull

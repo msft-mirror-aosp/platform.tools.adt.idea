@@ -17,6 +17,8 @@ package com.android.tools.idea.gradle.structure.model.android;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
+import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel;
+import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec;
@@ -198,8 +200,7 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     // Update/reset the "parsed" model.
     addLibraryDependencyToParsedModel(scopesNames, library);
 
-    // Reset dependencies.
-    myDependencyCollection = null;
+    resetDependencies();
 
     PsArtifactDependencySpec spec = PsArtifactDependencySpec.create(library);
     assert spec != null;
@@ -212,11 +213,49 @@ public class PsAndroidModule extends PsModule implements PsAndroidModel {
     // Update/reset the "parsed" model.
     addModuleDependencyToParsedModel(scopesNames, modulePath);
 
-    // Reset dependencies.
-    myDependencyCollection = null;
+    resetDependencies();
 
     fireModuleDependencyAddedEvent(modulePath);
     setModified(true);
+  }
+
+  @Override
+  public void setLibraryDependencyVersion(@NotNull PsArtifactDependencySpec spec,
+                                          @NotNull String configurationName,
+                                          @NotNull String newVersion) {
+    boolean modified = false;
+    List<PsLibraryAndroidDependency> matchingDependencies =
+      getDependencies()
+        .findLibraryDependencies(spec.getGroup(), spec.getName())
+        .stream()
+        .filter(it -> it.getSpec().equals(spec) && it.getConfigurationNames().contains(configurationName))
+        .collect(Collectors.toList());
+    // Usually there should be only one item in the matchingDependencies list. However, if there are duplicate entries in the config file
+    // it might differ. We update all of them.
+
+    for (PsLibraryAndroidDependency dependency : matchingDependencies) {
+      assert dependency.getParsedModels().size() == 1;
+      for (DependencyModel parsedDependency : dependency.getParsedModels()) {
+        assert parsedDependency instanceof ArtifactDependencyModel;
+        ArtifactDependencyModel artifactDependencyModel = (ArtifactDependencyModel)parsedDependency;
+        artifactDependencyModel.setVersion(newVersion);
+        modified = true;
+      }
+    }
+    if (modified) {
+      resetDependencies();
+      for (PsLibraryAndroidDependency dependency : matchingDependencies) {
+        fireDependencyModifiedEvent(dependency);
+      }
+      setModified(true);
+    }
+  }
+
+  private void resetDependencies() {
+    myDependencyCollection = null;
+    forEachVariant(variant -> variant.forEachArtifact(artifact -> {
+      artifact.resetDependencies();
+    }));
   }
 
   @NotNull

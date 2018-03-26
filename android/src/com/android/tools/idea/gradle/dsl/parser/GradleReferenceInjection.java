@@ -29,22 +29,37 @@ import java.util.Optional;
  * injected and the {@link PsiElement} of the injection. This class is used for both string injections and references.
  */
 public class GradleReferenceInjection {
-  @NotNull
+  @Nullable
   private GradleDslElement myToBeInjected;
   @NotNull
   private PsiElement myPsiInjection;
   @NotNull
+  private GradleDslExpression myOriginElement; // GradleDslElement that contains myPsiInjection.
+  @NotNull
   private String myName; // The name of the injection, e.g "prop1 = "Hello ${world}" -> "world" or "prop1 = hello" -> "hello"
 
-  public GradleReferenceInjection(@NotNull GradleDslElement injection, @NotNull PsiElement psiInjection, @NotNull String name) {
+  public GradleReferenceInjection(@NotNull GradleDslExpression originElement,
+                                  @Nullable GradleDslElement injection,
+                                  @NotNull PsiElement psiInjection,
+                                  @NotNull String name) {
+    myOriginElement = originElement;
     myToBeInjected = injection;
     myPsiInjection = psiInjection;
     myName = name;
   }
 
-  @NotNull
+  public boolean isResolved() {
+    return myToBeInjected != null;
+  }
+
+  @Nullable
   public GradleDslElement getToBeInjected() {
     return myToBeInjected;
+  }
+
+  @NotNull
+  public GradleDslExpression getOriginElement() {
+    return myOriginElement;
   }
 
   /**
@@ -69,7 +84,7 @@ public class GradleReferenceInjection {
 
   /**
    * Injects all given {@code injections} into a given {@link PsiElement}. These {@link GradleReferenceInjection}s should have been
-   * obtained using {@link GradleDslParser#getInjections(GradleDslExpression, PsiElement)}.
+   * obtained using {@link GradleDslParser#getResolvedInjections(GradleDslExpression, PsiElement)}.
    */
   @NotNull
   public static String injectAll(@NotNull PsiElement psiElement, @NotNull Collection<GradleReferenceInjection> injections) {

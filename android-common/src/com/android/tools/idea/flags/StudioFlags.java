@@ -189,9 +189,9 @@ public final class StudioFlags {
     "Enable the continuous rendering of the surface when moving/resizing components.",
     true);
 
-  public static final Flag<Boolean> NELE_WIDGET_ASSISTANT = Flag.create(
-    NELE, "widget.assistant", "Enable the properties panel Widget Assistant",
-    "Enable the Widget Assistant that provides common shortcuts for certain widgets.",
+  public static final Flag<Boolean> NELE_SAMPLE_DATA_UI = Flag.create(
+    NELE, "widget.assistant", "Enable the new Sample Data UI components",
+    "Enable the Sample Data UI to setup tools attributes.",
     false);
 
   public static final Flag<Boolean> NELE_CONVERT_VIEW = Flag.create(
@@ -272,6 +272,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> LAYOUT_INSPECTOR_SUB_VIEW_ENABLED = Flag.create(
     LAYOUT_INSPECTOR, "sub.view", "Enable the sub view feature",
     "If enabled, changes the preview to focus on a component.", true);
+  public static final Flag<Boolean> LAYOUT_INSPECTOR_V2_PROTOCOL_ENABLED = Flag.create(
+    LAYOUT_INSPECTOR, "capture.v2", "Enable using V2 protocol to capture view data",
+    "If enabled, uses V2 protocol to capture view information from device.", false);
 
   private static final FlagGroup REFACTORINGS = new FlagGroup(FLAGS, "refactor", "Refactor menu");
   public static final Flag<Boolean> MIGRATE_TO_APPCOMPAT_REFACTORING_ENABLED = Flag.create(
@@ -292,7 +295,11 @@ public final class StudioFlags {
             "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
   public static final Flag<Boolean> LLDB_ASSEMBLY_DEBUGGING = Flag.create(
     NDK, "debugging.assembly", "Enable assembly debugging",
-    "If enabled, frames without sources will show the assembly of the function and allow breakpoints to be set there", false);
+    "If enabled, frames without sources will show the assembly of the function and allow breakpoints to be set there", true);
+
+  public static final Flag<Boolean> ENABLE_ENHANCED_NATIVE_HEADER_SUPPORT = Flag
+    .create(NDK, "enhancednativeheadersupport", "Enable enhanced native header support",
+            "If enabled, project system view will show a new include node with organized header files", true);
 
   private StudioFlags() {
   }

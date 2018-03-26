@@ -53,7 +53,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework[module, test]",
         "//tools/idea:community-main[module, test]",
         "//tools/base/testutils:studio.testutils[module, test]",
-        "//tools:fest-swing[module, test]",
+        "//tools/swing-testing/fest-swing[module, test]",
         "//tools/idea/java/debugger/openapi:debugger-openapi[module, test]",
         "//tools/idea/platform/analysis-api[module, test]",
         "//tools/idea/platform/platform-api[module, test]",
@@ -110,7 +110,7 @@ java_test(
     size = "large",
     data = COMMON_DATA + glob(["testData/SimpleLocalApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editors.ApkViewerTest"],
-    tags = COMMON_TAGS,
+    tags = COMMON_TAGS + ["manual"],  # b/74906386
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":android-uitests_testlib"],
 )
@@ -132,7 +132,7 @@ java_test(
         "testData/SimpleLocalApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.NewActivityTest"],
-    tags = COMMON_TAGS,
+    tags = COMMON_TAGS + ["manual"],  # b/74910563
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":android-uitests_testlib"],
 )
@@ -179,7 +179,7 @@ java_test(
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BazelStartupSyncTest"],
-    tags = COMMON_TAGS,
+    tags = COMMON_TAGS + ["manual"],  # b/73037396
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":android-uitests_testlib"],
 )

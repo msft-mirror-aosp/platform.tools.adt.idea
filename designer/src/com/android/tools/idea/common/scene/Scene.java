@@ -39,7 +39,6 @@ import com.android.tools.idea.uibuilder.handlers.relative.targets.RelativeAnchor
 import com.android.tools.idea.uibuilder.model.NlSelectionModel;
 import com.android.tools.idea.uibuilder.model.SelectionHandle;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
-import com.android.tools.idea.uibuilder.scene.target.ResizeBaseTarget;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.SceneMode;
 import com.google.common.collect.ImmutableList;
@@ -104,7 +103,7 @@ public class Scene implements SelectionListener, Disposable {
   @NotNull private final SceneHitListener myHitListener;
   @NotNull private final SceneHitListener myFindListener;
   @NotNull private final SceneHitListener mySnapListener;
-  private Target myHitTarget = null;
+  @Nullable private Target myHitTarget = null;
   private Cursor myMouseCursor;
   private SceneComponent myHitComponent;
   ArrayList<SceneComponent> myNewSelectedComponentsOnRelease = new ArrayList<>();
@@ -115,7 +114,7 @@ public class Scene implements SelectionListener, Disposable {
 
   public enum FilterType {ALL, ANCHOR, VERTICAL_ANCHOR, HORIZONTAL_ANCHOR, BASELINE_ANCHOR, NONE, RESIZE}
 
-  private FilterType myFilterTarget = FilterType.NONE;
+  private FilterType myFilterType = FilterType.NONE;
 
   public Scene(@NotNull SceneManager sceneManager, @NotNull DesignSurface surface) {
     myDesignSurface = surface;
@@ -456,10 +455,8 @@ public class Scene implements SelectionListener, Disposable {
       }
       // if the baseline shows, hide all the targets others than ActionTarget, ConstraintDragTarget and ResizeTarget
       if (component.canShowBaseline()) {
-        return (target instanceof ActionTarget) ||
-               (target instanceof ConstraintDragTarget) ||
-               (target instanceof DragBaseTarget) ||
-               (target instanceof ResizeBaseTarget);
+        return (target instanceof ConstraintDragTarget) ||
+               (target instanceof DragBaseTarget);
       }
       return !component.isDragging();
     }
@@ -468,29 +465,26 @@ public class Scene implements SelectionListener, Disposable {
     }
     if (target instanceof ConstraintAnchorTarget) {
       ConstraintAnchorTarget anchor = (ConstraintAnchorTarget)target;
-      if (myFilterTarget == FilterType.BASELINE_ANCHOR) {
+      if (myFilterType == FilterType.BASELINE_ANCHOR) {
         return anchor.getType() == AnchorTarget.Type.BASELINE;
       }
-      if (myFilterTarget == FilterType.VERTICAL_ANCHOR
+      if (myFilterType == FilterType.VERTICAL_ANCHOR
           && anchor.isVerticalAnchor()) {
         return true;
       }
-      if (myFilterTarget == FilterType.HORIZONTAL_ANCHOR
+      if (myFilterType == FilterType.HORIZONTAL_ANCHOR
           && anchor.isHorizontalAnchor()) {
         return true;
       }
-      if (myFilterTarget == FilterType.ANCHOR) {
+      if (myFilterType == FilterType.ANCHOR) {
         return true;
       }
     }
     if (target instanceof RelativeAnchorTarget) {
       RelativeAnchorTarget anchor = (RelativeAnchorTarget) target;
-      if (anchor.isConnectible(myFilterTarget)) {
+      if (anchor.isConnectible(myFilterType)) {
         return true;
       }
-    }
-    if (myFilterTarget == FilterType.RESIZE && target instanceof ResizeBaseTarget) {
-      return true;
     }
     if (target instanceof MultiComponentTarget) {
       return true;
@@ -504,10 +498,7 @@ public class Scene implements SelectionListener, Disposable {
     if (target instanceof GuidelineCycleTarget) {
       return true;
     }
-    if (target instanceof ActionTarget) {
-      return false;
-    }
-    if (myFilterTarget == FilterType.ALL) {
+    if (myFilterType == FilterType.ALL) {
       return true;
     }
     return false;
@@ -677,7 +668,7 @@ public class Scene implements SelectionListener, Disposable {
     mNeedsLayout = NO_LAYOUT;
     myLastMouseX = x;
     myLastMouseY = y;
-    myFilterTarget = FilterType.NONE;
+    myFilterType = FilterType.NONE;
     if (myRoot == null) {
       return;
     }
@@ -689,18 +680,18 @@ public class Scene implements SelectionListener, Disposable {
       if (myHitTarget instanceof ConstraintAnchorTarget) {
         ConstraintAnchorTarget anchor = (ConstraintAnchorTarget)myHitTarget;
         if (anchor.isHorizontalAnchor()) {
-          myFilterTarget = FilterType.HORIZONTAL_ANCHOR;
+          myFilterType = FilterType.HORIZONTAL_ANCHOR;
         }
         else {
-          myFilterTarget = FilterType.VERTICAL_ANCHOR;
+          myFilterType = FilterType.VERTICAL_ANCHOR;
         }
         if (anchor.getType() == AnchorTarget.Type.BASELINE) {
-          myFilterTarget = FilterType.BASELINE_ANCHOR;
+          myFilterType = FilterType.BASELINE_ANCHOR;
         }
       }
       else if (myHitTarget instanceof RelativeAnchorTarget) {
         RelativeAnchorTarget anchor = (RelativeAnchorTarget)myHitTarget;
-        myFilterTarget = anchor.getPreferredFilterType();
+        myFilterType = anchor.getPreferredFilterType();
       }
       myHitTarget.mouseDown(x, y);
       if (myHitTarget instanceof MultiComponentTarget) {
@@ -793,7 +784,7 @@ public class Scene implements SelectionListener, Disposable {
         delegateMouseReleaseToSelection(x, y, myHitListener.getClosestTarget(), myHitTarget.getComponent());
       }
     }
-    myFilterTarget = FilterType.NONE;
+    myFilterType = FilterType.NONE;
     myNewSelectedComponentsOnRelease.clear();
     if (myHitComponent != null && myHitListener.getClosestComponent() == myHitComponent
         && !myNewSelectedComponentsOnRelease.contains(myHitComponent)) {
@@ -955,7 +946,12 @@ public class Scene implements SelectionListener, Disposable {
   }
 
   public FilterType getFilterType() {
-    return myFilterTarget;
+    return myFilterType;
+  }
+
+  @Nullable
+  public Target getInteractingTarget() {
+    return myHitTarget;
   }
 
   @Nullable

@@ -24,6 +24,7 @@ import com.android.tools.adtui.model.RangedSeries;
 import com.android.tools.adtui.model.StateChartModel;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.Color;
 import java.util.concurrent.TimeUnit;
 
 import static com.android.tools.profiler.proto.EnergyProfiler.EnergyEvent;
@@ -35,9 +36,11 @@ public final class EnergyEventStateChart {
    * bar where each stage of its lifetime (sending, receiving, etc.) is highlighted with unique colors.
    */
   private static final EnumColors<EnergyDuration.Kind> DURATION_STATE_ENUM_COLORS = new EnumColors.Builder<EnergyDuration.Kind>(1)
-    .add(EnergyDuration.Kind.ALARM, ENERGY_ALARM)
-    .add(EnergyDuration.Kind.JOB, ENERGY_JOB)
+    .add(EnergyDuration.Kind.ALARM, ENERGY_BACKGROUND)
+    .add(EnergyDuration.Kind.JOB, ENERGY_BACKGROUND)
     .add(EnergyDuration.Kind.WAKE_LOCK, ENERGY_WAKE_LOCK)
+    // TODO(b/74985548): Fix the location request color.
+    .add(EnergyDuration.Kind.LOCATION, Color.GREEN)
     .add(EnergyDuration.Kind.UNKNOWN, TRANSPARENT_COLOR)
     .build();
 
@@ -54,10 +57,8 @@ public final class EnergyEventStateChart {
 
   @NotNull
   public static StateChart<EnergyEvent> create(@NotNull StateChartModel<EnergyEvent> model) {
-    StateChart<EnergyEvent> chart = new StateChart<>(model, evt -> !evt.getIsTerminal()
-                                                                   ? DURATION_STATE_ENUM_COLORS.getColor(EnergyDuration.Kind.from(evt))
-                                                                   : TRANSPARENT_COLOR);
-    chart.detach(); // No mouse handling, because we don't want the event bars to resize on mouse-over
-    return chart;
+    return new StateChart<>(model, evt -> !evt.getIsTerminal()
+                                          ? DURATION_STATE_ENUM_COLORS.getColor(EnergyDuration.Kind.from(evt))
+                                          : TRANSPARENT_COLOR);
   }
 }

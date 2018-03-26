@@ -23,6 +23,8 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.startup.StartupManager;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
@@ -50,10 +52,15 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
     ProfilerClient client = service.getProfilerClient();
     myProfilers = new StudioProfilers(client, new IntellijProfilerServices(myProject));
 
+    // By default, we only auto-profile the app associated with the project.
+    StartupManager.getInstance(project)
+      .runWhenProjectIsInitialized(() -> myProfilers.setPreferredProcessName(getPreferredProcessName(myProject)));
+
     myView = new StudioProfilersView(myProfilers, new IntellijProfilerComponents(myProject));
     myLayeredPane = new ProfilerLayeredPane();
     service.getDataStoreService().setNoPiiExceptionHanlder(myProfilers.getIdeServices()::reportNoPiiException);
     initializeUi();
+    Disposer.register(this, myView);
 
     myProfilers.addDependency(this)
       .onChange(ProfilerAspect.MODE, this::updateToolWindow)
@@ -75,6 +82,9 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
     });
   }
 
+  /**
+   * Sets the profiler's auto-profiling process in case it has been unset.
+   */
   public void profileProject(@NotNull Project project) {
     myProfilers.setPreferredProcessName(getPreferredProcessName(project));
   }

@@ -34,34 +34,39 @@ import com.android.tools.profilers.sessions.SessionsView;
 import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import com.intellij.openapi.keymap.KeymapUtil;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.ui.ThreeComponentsSplitter;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.wm.IdeGlassPane;
+import com.intellij.openapi.wm.IdeGlassPaneUtil;
 import com.intellij.ui.ColoredListCellRenderer;
-import com.intellij.ui.JBSplitter;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.util.ui.JBEmptyBorder;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.update.Activatable;
+import com.intellij.util.ui.update.UiNotifyConnector;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.function.BiFunction;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_BOTTOM_BORDER;
 import static com.android.tools.profilers.ProfilerLayout.TOOLBAR_HEIGHT;
+import static com.android.tools.profilers.sessions.SessionsView.SESSION_EXPANDED_WIDTH;
+import static com.android.tools.profilers.sessions.SessionsView.SESSION_IS_COLLAPSED;
 import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import static java.awt.event.InputEvent.META_DOWN_MASK;
 
-public class StudioProfilersView extends AspectObserver {
+public class StudioProfilersView extends AspectObserver implements Disposable {
   private static final int SHORTCUT_MODIFIER_MASK_NUMBER = SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK;
-  private static final String SHORTCUT_MODIFIER_STRING =
-    KeymapUtil.getKeystrokeText(KeyStroke.getKeyStroke(SystemInfo.isMac ? KeyEvent.VK_META : KeyEvent.VK_CONTROL, 0));
 
   private final StudioProfilers myProfiler;
   private final ViewBinder<StudioProfilersView, Stage, StageView> myBinder;
@@ -69,11 +74,13 @@ public class StudioProfilersView extends AspectObserver {
   private final BorderLayout myLayout;
 
   /**
-   * Splitter between the sessions and main profiler stage panel.
+   * Splitter between the sessions and main profiler stage panel. We use IJ's {@link ThreeComponentsSplitter} as it supports zero-width
+   * divider while still handling mouse resize properly.
    */
-  @NotNull private final JBSplitter mySplitter;
+  @NotNull private final ThreeComponentsSplitter mySplitter;
   private final JPanel myStageComponent;
   private SessionsView mySessionsView;
+  private JPanel myToolbar;
   private JPanel myStageToolbar;
   private JPanel myMonitoringToolbar;
   private JPanel myCommonToolbar;
@@ -89,35 +96,47 @@ public class StudioProfilersView extends AspectObserver {
     myLayout = new BorderLayout();
     myStageComponent = new JPanel(myLayout);
 
-    mySplitter = new JBSplitter(false);
-    mySplitter.setShowDividerIcon(false);
-    mySplitter.setShowDividerControls(false);
-    mySplitter.setDividerWidth(JBUI.scale(2));
-    mySplitter.setSecondComponent(myStageComponent);
+    mySplitter = new ThreeComponentsSplitter();
+    mySplitter.setDividerWidth(0);
+    mySplitter.setDividerMouseZoneSize(-1);
+    mySplitter.setHonorComponentsMinimumSize(true);
+    mySplitter.setLastComponent(myStageComponent);
+    Disposer.register(this, mySplitter);
     if (myProfiler.getIdeServices().getFeatureConfig().isSessionsEnabled()) {
       mySessionsView = new SessionsView(myProfiler, ideProfilerComponents);
-      mySplitter.setFirstComponent(mySessionsView.getComponent());
+      JComponent sessionsComponent = mySessionsView.getComponent();
+      mySplitter.setFirstComponent(sessionsComponent);
+      mySessionsView.addExpandListener(e -> toggleSessionsPanel(false));
+      mySessionsView.addCollapseListener(e -> toggleSessionsPanel(true));
+      boolean initiallyCollapsed =
+        myProfiler.getIdeServices().getPersistentProfilerPreferences().getBoolean(SESSION_IS_COLLAPSED, false);
+      toggleSessionsPanel(initiallyCollapsed);
 
-      // Prevent resize in collapse mode
-      mySplitter.setResizeEnabled(false);
-      // Let the Sessions panel min size govern how much space to reserve on the left.
-      mySplitter.setProportion(0f);
-      mySessionsView.addExpandListener(new ActionListener() {
+      // Track Sessions UI resize event.
+      // The divider mechanism within ThreeComponentsSplitter consumes the mouse event so we cannot use regular mouse listeners on the
+      // splitter itself. Instead, we mirror the logic that the divider uses to capture mouse event and check whether the width of the
+      // sessions UI has changed between mouse press and release. Using Once here to mimic ThreeComponentsSplitter's implementation, as
+      // we only need to add the MousePreprocessor to the glassPane once when the UI shows up.
+      new UiNotifyConnector.Once(mySplitter, new Activatable.Adapter() {
         @Override
-        public void actionPerformed(ActionEvent e) {
-          mySplitter.setResizeEnabled(true);
-          // TODO expand to previous session panel size.
-          mySplitter.revalidate();
-          mySplitter.repaint();
-        }
-      });
-      mySessionsView.addCollapseListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-          mySplitter.setResizeEnabled(false);
-          mySplitter.setProportion(0f);
-          mySplitter.revalidate();
-          mySplitter.repaint();
+        public void showNotify() {
+          IdeGlassPane glassPane = IdeGlassPaneUtil.find(mySplitter);
+          glassPane.addMousePreprocessor(new MouseAdapter() {
+            private int mySessionsUiWidth;
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+              mySessionsUiWidth = sessionsComponent.getWidth();
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+              int width = sessionsComponent.getWidth();
+              if (mySessionsUiWidth != width) {
+                myProfiler.getIdeServices().getPersistentProfilerPreferences().setInt(SESSION_EXPANDED_WIDTH, width);
+              }
+            }
+          }, mySplitter);
         }
       });
     }
@@ -136,6 +155,10 @@ public class StudioProfilersView extends AspectObserver {
     updateStageView();
   }
 
+  @Override
+  public void dispose() {
+  }
+
   @VisibleForTesting
   public <S extends Stage, T extends StageView> void bind(@NotNull Class<S> clazz,
                                                           @NotNull BiFunction<StudioProfilersView, S, T> constructor) {
@@ -147,12 +170,18 @@ public class StudioProfilersView extends AspectObserver {
     return myStageView;
   }
 
+  @VisibleForTesting
+  @NotNull
+  SessionsView getSessionsView() {
+    return mySessionsView;
+  }
+
   private void initializeStageUi() {
-    JPanel toolbar = new JPanel(new BorderLayout());
+    myToolbar = new JPanel(new BorderLayout());
     JPanel leftToolbar = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
 
-    toolbar.setBorder(DEFAULT_BOTTOM_BORDER);
-    toolbar.setPreferredSize(new Dimension(0, TOOLBAR_HEIGHT));
+    myToolbar.setBorder(DEFAULT_BOTTOM_BORDER);
+    myToolbar.setPreferredSize(new Dimension(0, TOOLBAR_HEIGHT));
 
     myCommonToolbar = new JPanel(ProfilerLayout.createToolbarLayout());
     JButton button = new CommonButton(StudioIcons.Common.BACK_ARROW);
@@ -205,26 +234,21 @@ public class StudioProfilersView extends AspectObserver {
       leftToolbar.add(myMonitoringToolbar);
     }
     leftToolbar.add(myCommonToolbar);
-    toolbar.add(leftToolbar, BorderLayout.WEST);
+    myToolbar.add(leftToolbar, BorderLayout.WEST);
 
     JPanel rightToolbar = new JPanel(ProfilerLayout.createToolbarLayout());
-    toolbar.add(rightToolbar, BorderLayout.EAST);
+    myToolbar.add(rightToolbar, BorderLayout.EAST);
     rightToolbar.setBorder(new JBEmptyBorder(0, 0, 0, 2));
 
-    CommonButton endSession;
-    if (myProfiler.getIdeServices().getFeatureConfig().isSessionsEnabled()) {
-      endSession = new CommonButton(StudioIcons.Common.CLOSE);
-    }
-    else {
-      endSession = new CommonButton("End Session");
+    if (!myProfiler.getIdeServices().getFeatureConfig().isSessionsEnabled()) {
+      CommonButton endSession = new CommonButton("End Session");
       endSession.setFont(endSession.getFont().deriveFont(12.f));
       endSession.setBorder(new JBEmptyBorder(4, 7, 4, 7));
+      endSession.addActionListener(event -> myProfiler.stop());
+      endSession.setToolTipText("Stop profiling and close tab");
+      rightToolbar.add(endSession);
+      rightToolbar.add(new FlatSeparator());
     }
-    endSession.addActionListener(event -> myProfiler.stop());
-    endSession.setToolTipText("Stop profiling and close tab");
-    rightToolbar.add(endSession);
-
-    rightToolbar.add(new FlatSeparator());
 
     ProfilerTimeline timeline = myProfiler.getTimeline();
     CommonButton zoomOut = new CommonButton(StudioIcons.Common.ZOOM_OUT);
@@ -313,11 +337,29 @@ public class StudioProfilersView extends AspectObserver {
     toggleToolButtons.run();
 
     myStageToolbar = new JPanel(new BorderLayout());
-    toolbar.add(myStageToolbar, BorderLayout.CENTER);
+    myToolbar.add(myStageToolbar, BorderLayout.CENTER);
 
-    myStageComponent.add(toolbar, BorderLayout.NORTH);
+    myStageComponent.add(myToolbar, BorderLayout.NORTH);
 
     updateStreaming();
+  }
+
+  private void toggleSessionsPanel(boolean isCollapsed) {
+    if (isCollapsed) {
+      mySplitter.setDividerMouseZoneSize(-1);
+      mySessionsView.getComponent().setMinimumSize(mySessionsView.getComponentMinimizeSize(false));
+      // Let the Sessions panel min size govern how much space to reserve on the left.
+      mySplitter.setFirstSize(0);
+    }
+    else {
+      mySplitter.setDividerMouseZoneSize(JBUI.scale(6));
+      mySessionsView.getComponent().setMinimumSize(mySessionsView.getComponentMinimizeSize(true));
+      mySplitter
+        .setFirstSize(myProfiler.getIdeServices().getPersistentProfilerPreferences().getInt(SESSION_EXPANDED_WIDTH, 0));
+    }
+
+    mySplitter.revalidate();
+    mySplitter.repaint();
   }
 
   private void updateStreaming() {
@@ -341,6 +383,7 @@ public class StudioProfilersView extends AspectObserver {
     myStageToolbar.removeAll();
     myStageToolbar.add(myStageView.getToolbar(), BorderLayout.CENTER);
     myStageToolbar.revalidate();
+    myToolbar.setVisible(myStageView.isToolbarVisible());
 
     boolean topLevel = myStageView == null || myStageView.needsProcessSelection();
     myMonitoringToolbar.setVisible(topLevel);

@@ -22,6 +22,7 @@ import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.AxisComponentModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.profiler.proto.EnergyProfiler;
 import com.android.tools.profiler.proto.EnergyProfiler.EnergyEvent;
 import com.android.tools.profilers.BorderlessTableCellRenderer;
 import com.android.tools.profilers.HoverRowTable;
@@ -51,23 +52,19 @@ import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 public final class EnergyEventsView {
 
   /**
-   * Columns of event duration data, including name, kind, timeline etc. Each column meaning varies, for example, the name column for
-   * wake lock is the tag value.
+   * Columns of event duration data.
    */
   enum Column {
-    NAME(0.25, String.class) {
+    EVENT(0.25, String.class) {
       @Override
       Object getValueFrom(@NotNull EnergyDuration data) {
         return data.getName();
       }
     },
-    KIND(0.25, String.class) {
+    DESCRIPTION(0.25, String.class) {
       @Override
       Object getValueFrom(@NotNull EnergyDuration data) {
-        String kindStr = data.getKind().name().replace('_', ' ');
-        // Capitalize first letter because it looks nicer in the table
-        kindStr = kindStr.substring(0, 1).toUpperCase(Locale.US) + kindStr.substring(1).toLowerCase(Locale.US);
-        return kindStr;
+        return data.getDescription();
       }
     },
     TIMELINE(0.5, Long.class) {
@@ -116,8 +113,8 @@ public final class EnergyEventsView {
   }
 
   private void buildEventsTable() {
-    myEventsTable.getColumnModel().getColumn(Column.NAME.ordinal()).setCellRenderer(new BorderlessTableCellRenderer());
-    myEventsTable.getColumnModel().getColumn(Column.KIND.ordinal()).setCellRenderer(new BorderlessTableCellRenderer());
+    myEventsTable.getColumnModel().getColumn(Column.EVENT.ordinal()).setCellRenderer(new BorderlessTableCellRenderer());
+    myEventsTable.getColumnModel().getColumn(Column.DESCRIPTION.ordinal()).setCellRenderer(new BorderlessTableCellRenderer());
     myEventsTable.getColumnModel().getColumn(Column.TIMELINE.ordinal()).setCellRenderer(
       new TimelineRenderer(myEventsTable, myStage.getStudioProfilers().getTimeline().getSelectionRange()));
 
@@ -147,7 +144,14 @@ public final class EnergyEventsView {
       }
       int row = myEventsTable.getSelectedRow();
       if (row >= 0 && row < myEventsTable.getRowCount()) {
-        myStage.setSelectedDuration(myTableModel.getValue(myEventsTable.convertRowIndexToModel(row)));
+        EnergyDuration partialDuration = myTableModel.getValue(myEventsTable.convertRowIndexToModel(row));
+        EnergyProfiler.EnergyEventGroupRequest request = EnergyProfiler.EnergyEventGroupRequest.newBuilder()
+          .setSession(myStage.getStudioProfilers().getSession())
+          .setEventId(partialDuration.getEventList().get(0).getEventId())
+          .build();
+        EnergyDuration completeDuration =
+          new EnergyDuration(myStage.getStudioProfilers().getClient().getEnergyClient().getEventGroup(request).getEventsList());
+        myStage.setSelectedDuration(completeDuration);
       }
     });
   }

@@ -28,8 +28,9 @@ import com.android.tools.profilers.memory.MemoryMonitorTooltip;
 import com.android.tools.profilers.memory.MemoryProfilerStage;
 import com.android.tools.profilers.network.NetworkMonitorTooltip;
 import com.android.tools.profilers.network.NetworkProfilerStage;
+import com.android.tools.profilers.sessions.SessionsView;
 import com.google.common.truth.Truth;
-import com.intellij.ui.JBSplitter;
+import com.intellij.openapi.ui.ThreeComponentsSplitter;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,6 +49,7 @@ public class StudioProfilersViewTest {
   private final FakeProfilerService myService = new FakeProfilerService();
   @Rule public FakeGrpcServer myGrpcChannel = new FakeGrpcServer("StudioProfilerTestChannel", myService);
   private StudioProfilers myProfilers;
+  private FakeIdeProfilerServices myProfilerServices = new FakeIdeProfilerServices();
   private FakeTimer myTimer;
   private StudioProfilersView myView;
   private FakeUi myUi;
@@ -55,9 +57,8 @@ public class StudioProfilersViewTest {
   @Before
   public void setUp() throws Exception {
     myTimer = new FakeTimer();
-    FakeIdeProfilerServices services = new FakeIdeProfilerServices();
-    services.enableEnergyProfiler(true);
-    myProfilers = new StudioProfilers(myGrpcChannel.getClient(), services, myTimer);
+    myProfilerServices.enableEnergyProfiler(true);
+    myProfilers = new StudioProfilers(myGrpcChannel.getClient(), myProfilerServices, myTimer);
     // Make sure a process is selected
     myView = new StudioProfilersView(myProfilers, new FakeIdeProfilerComponents());
     myView.bind(FakeStage.class, FakeView::new);
@@ -304,16 +305,41 @@ public class StudioProfilersViewTest {
     StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), services, timer);
     StudioProfilersView view = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
     JComponent splitter = view.getComponent();
-    assertThat(splitter).isInstanceOf(JBSplitter.class);
-    assertThat(((JBSplitter)splitter).getFirstComponent()).isNull();
+    assertThat(splitter).isInstanceOf(ThreeComponentsSplitter.class);
+    assertThat(((ThreeComponentsSplitter)splitter).getFirstComponent()).isNull();
 
     // Test the true case as well.
     services.enableSessionsView(true);
     profilers = new StudioProfilers(myGrpcChannel.getClient(), services, timer);
     view = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
     splitter = view.getComponent();
-    assertThat(splitter).isInstanceOf(JBSplitter.class);
-    assertThat(((JBSplitter)splitter).getFirstComponent()).isNotNull();
+    assertThat(splitter).isInstanceOf(ThreeComponentsSplitter.class);
+    assertThat(((ThreeComponentsSplitter)splitter).getFirstComponent()).isNotNull();
+  }
+
+  @Test
+  public void testRememberSessionUiStates() {
+    // Check that sessions is initially expanded
+    assertThat(myView.getSessionsView().getCollapsed()).isFalse();
+
+    // Fake a collapse action and re-create the StudioProfilerView, the session UI should now remain collapsed.
+    myView.getSessionsView().getCollapseButton().doClick();
+    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), myProfilerServices, myTimer);
+    StudioProfilersView profilersView = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
+    assertThat(profilersView.getSessionsView().getCollapsed()).isTrue();
+
+    // Fake a resize and re-create the StudioProfilerView, the session UI should maintain the previous dimension
+    profilersView.getSessionsView().getExpandButton().doClick();
+    ThreeComponentsSplitter splitter = (ThreeComponentsSplitter)profilersView.getComponent();
+    assertThat(splitter.getFirstSize()).isEqualTo(SessionsView.getComponentMinimizeSize(true).width);
+    splitter.setSize(1024, 450);
+    FakeUi ui = new FakeUi(splitter);
+    myUi.mouse.drag(splitter.getFirstSize(), 0, 10, 0);
+
+    profilers = new StudioProfilers(myGrpcChannel.getClient(), myProfilerServices, myTimer);
+    profilersView = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
+    assertThat(profilersView.getSessionsView().getCollapsed()).isFalse();
+    assertThat(((ThreeComponentsSplitter)profilersView.getComponent()).getFirstSize()).isEqualTo(splitter.getFirstSize());
   }
 
   public void transitionStage(Stage stage) throws Exception {
