@@ -70,11 +70,17 @@ public class CpuCaptureSessionArtifact implements SessionArtifact {
   @Override
   @NotNull
   public String getName() {
-    return "CPU Trace";
+    return ProfilingConfiguration.getDefaultConfigName(myInfo.getProfilerType());
   }
 
   @Override
   public long getTimestampNs() {
+    // TODO(b/74975946): ongoing captures subtext should "Capturing..." instead of the start timestamp.
+    // For imported traces, we only have an artifact and it should be aligned with session's start time.
+    if (mySessionMetaData.getType() == Common.SessionMetaData.SessionType.CPU_CAPTURE) {
+      return 0;
+    }
+    // Otherwise, calculate the relative timestamp of the capture
     return myInfo.getFromTimestamp() - mySession.getStartTimestamp();
   }
 
@@ -84,6 +90,11 @@ public class CpuCaptureSessionArtifact implements SessionArtifact {
     boolean needsToChangeSession = mySession != myProfilers.getSession();
     if (needsToChangeSession) {
       myProfilers.getSessionsManager().setSession(mySession);
+    }
+
+    if (mySessionMetaData.getType() == Common.SessionMetaData.SessionType.CPU_CAPTURE) {
+      // Sessions created from imported traces handle its selection callback via a session change listener, so we just return early here.
+      return;
     }
 
     // If CPU profiler is not yet open, we need to do it.
@@ -113,6 +124,9 @@ public class CpuCaptureSessionArtifact implements SessionArtifact {
       assert myProfilers.getStage() instanceof CpuProfilerStage;
       ((CpuProfilerStage)myProfilers.getStage()).setAndSelectCapture(myInfo.getTraceId());
     }
+
+    myProfilers.getIdeServices().getFeatureTracker()
+      .trackSessionArtifactSelected(this, myProfilers.getSessionsManager().isSessionAlive());
   }
 
   public boolean isOngoingCapture() {
@@ -123,8 +137,12 @@ public class CpuCaptureSessionArtifact implements SessionArtifact {
                                                           @NotNull Common.Session session,
                                                           @NotNull Common.SessionMetaData sessionMetaData) {
     GetTraceInfoResponse response = profilers.getClient().getCpuClient().getTraceInfo(
-      GetTraceInfoRequest.newBuilder().setSession(session).setFromTimestamp(session.getStartTimestamp())
-        .setToTimestamp(session.getEndTimestamp()).build());
+      GetTraceInfoRequest.newBuilder()
+        .setSession(session)
+        // We need to list imported traces and their timestamps might not be within the session range, so we search for max range.
+        .setFromTimestamp(Long.MIN_VALUE)
+        .setToTimestamp(Long.MAX_VALUE)
+        .build());
 
     List<SessionArtifact> artifacts = new ArrayList<>();
     for (TraceInfo info : response.getTraceInfoList()) {
@@ -139,8 +157,10 @@ public class CpuCaptureSessionArtifact implements SessionArtifact {
         profilers.getClient().getCpuClient().checkAppProfilingState(ProfilingStateRequest.newBuilder().setSession(session).build());
 
       if (profilingStateResponse.getBeingProfiled()) {
-        TraceInfo ongoingTraceInfo =
-          TraceInfo.newBuilder().setFromTimestamp(profilingStateResponse.getStartTimestamp()).build();
+        TraceInfo ongoingTraceInfo = TraceInfo.newBuilder()
+          .setProfilerType(profilingStateResponse.getConfiguration().getProfilerType())
+          .setFromTimestamp(profilingStateResponse.getStartTimestamp())
+          .build();
         artifacts.add(new CpuCaptureSessionArtifact(profilers, session, sessionMetaData, ongoingTraceInfo, true));
       }
     }

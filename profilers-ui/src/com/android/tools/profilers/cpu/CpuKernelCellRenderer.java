@@ -20,6 +20,7 @@ import com.android.tools.adtui.chart.statechart.StateChart;
 import com.android.tools.adtui.model.StateChartModel;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.profilers.ProfilerColors;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.ui.ColorUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,7 +39,8 @@ public class CpuKernelCellRenderer extends CpuCellRenderer<CpuKernelModel.CpuSta
   /**
    * Current process id so we can highlight user process threads as a different color.
    */
-  private final int myProcessId;
+  @VisibleForTesting
+  final int myProcessId;
 
   /**
    * Creates a new {@link CpuKernelCellRenderer}, this cell renderer creates a label, as well as a {@link StateChart} for each element
@@ -73,7 +75,7 @@ public class CpuKernelCellRenderer extends CpuCellRenderer<CpuKernelModel.CpuSta
                                                 boolean cellHasFocus) {
     JPanel panel = new JPanel(new TabularLayout("150px,*", "30px"));
     panel.setBackground(list.getBackground());
-    myLabel.setText(String.format("Cpu (%d)", value.getCpuId()));
+    myLabel.setText(String.format("CPU %d", value.getCpuId()));
     myLabel.setBackground(ProfilerColors.THREAD_LABEL_BACKGROUND);
     myLabel.setForeground(ProfilerColors.THREAD_LABEL_TEXT);
 
@@ -91,16 +93,7 @@ public class CpuKernelCellRenderer extends CpuCellRenderer<CpuKernelModel.CpuSta
     StateChart<CpuThreadInfo> stateChart = getOrCreateStateChart(cpuId, model);
     stateChart.setOpaque(true);
 
-    if (isSelected) {
-      // Cell is selected. Update its background accordingly.
-      panel.setBackground(ProfilerColors.THREAD_SELECTED_BACKGROUND);
-      myLabel.setBackground(ProfilerColors.THREAD_SELECTED_BACKGROUND);
-      myLabel.setForeground(ProfilerColors.SELECTED_THREAD_LABEL_TEXT);
-      // As the state chart is opaque the selected background wouldn't be visible
-      // if we didn't set the opaqueness to false if the cell is selected.
-      stateChart.setOpaque(false);
-    }
-    else if (myHoveredIndex == index) {
+    if (myHoveredIndex == index) {
       // Cell is hovered. Draw the hover overlay over it.
       JPanel overlay = new JPanel();
       overlay.setBackground(ProfilerColors.DEFAULT_HOVER_COLOR);

@@ -90,6 +90,12 @@ public class ProfilerColors {
       .add(CpuProfilerStage.ThreadState.DEAD_CAPTURED,
            Gray.TRANSPARENT,
            Gray.TRANSPARENT)
+      .add(CpuProfilerStage.ThreadState.HAS_ACTIVITY,
+           CPU_USAGE,
+           new JBColor(0x57D9B2, 0x387358))
+      .add(CpuProfilerStage.ThreadState.NO_ACTIVITY,
+           Gray.TRANSPARENT,
+           Gray.TRANSPARENT)
       // TODO: remove UNKNOWN mapping when all states are covered.
       .add(CpuProfilerStage.ThreadState.UNKNOWN,
            new JBColor(0xC1D6F6, 0x5A6E7D),
@@ -219,16 +225,15 @@ public class ProfilerColors {
 
   public static final Color MEMORY_ALLOC_BG = new JBColor(new Color(0xECF2FA), new Color(0x323940));
 
-  /**
-   * TODO(b/74565772): Get actual energy colors from UX. (Currently they're copied from memory)
-   */
-  public static final Color ENERGY_BACKGROUND = new JBColor(new Color(0xFFEE58), new Color(0xFFEE58));
+  public static final Color ENERGY_BACKGROUND = new JBColor(new Color(0xF1B876), new Color(0xFFDFA6));
 
-  public static final Color ENERGY_CPU = new JBColor(new Color(0x56BFEC), new Color(0x2B7DA2));
+  public static final Color ENERGY_CPU = new JBColor(new Color(0xDCD0F3), new Color(0x685A83));
 
-  public static final Color ENERGY_NETWORK = new JBColor(new Color(0x80EDDC), new Color(0x4EA783));
+  public static final Color ENERGY_NETWORK = new JBColor(new Color(0xB39DDB), new Color(0xA78BD8));
 
-  public static final Color ENERGY_WAKE_LOCK = new JBColor(new Color(0xF44271), new Color(0xF44271));
+  public static final Color ENERGY_WAKE_LOCK = new JBColor(new Color(0xF44271), new Color(0xF3596C));
+
+  public static final Color ENERGY_LOCATION = new JBColor(new Color(0x7152A7), new Color(0xDCC8FF));
 
   public static final Color MESSAGE_COLOR = new JBColor(0x787878, 0xC8C8C8);
 

@@ -21,6 +21,7 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.layoutlib.bridge.impl.RenderSessionImpl;
 import com.android.resources.Density;
 import com.android.sdklib.IAndroidTarget;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.model.AndroidModuleInfo;
 import com.android.tools.idea.projectsystem.GoogleMavenArtifactId;
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel;
@@ -98,7 +99,6 @@ import static com.android.tools.idea.rendering.RenderLogger.TAG_STILL_BUILDING;
 import static com.android.tools.idea.res.ResourceHelper.isViewPackageNeeded;
 import static com.android.tools.lint.detector.api.LintUtils.editDistance;
 import static com.android.tools.lint.detector.api.LintUtils.stripIdPrefix;
-import static com.intellij.openapi.util.SystemInfo.JAVA_VERSION;
 
 /**
  * Class that finds {@link RenderErrorModel.Issue}s in a {@link RenderResult}.
@@ -543,17 +543,6 @@ public class RenderErrorContributor {
         .add("java.runtime.version: ").add(SystemInfo.JAVA_RUNTIME_VERSION);
     }
 
-    if (throwable.getMessage().equals("Unable to create temporary file")) {
-      if (JAVA_VERSION.startsWith("1.7.0_")) {
-        int version = Integer.parseInt(JAVA_VERSION.substring(JAVA_VERSION.indexOf('_') + 1));
-        if (version > 0 && version < 45) {
-          builder.newline()
-            .addIcon(HtmlBuilderHelper.getTipIconPath())
-            .add("Tip: This may be caused by using an older version of JDK 1.7.0; try using at least 1.7.0_45 " +
-                 "(you are using " + JAVA_VERSION + ")");
-        }
-      }
-    }
     if (newlineAfter) {
       builder.newline().newline();
     }
@@ -1076,8 +1065,11 @@ public class RenderErrorContributor {
 
       if (CLASS_CONSTRAINT_LAYOUT.isEquals(className)) {
         builder.newline().addNbsps(3);
+        GoogleMavenArtifactId artifact = StudioFlags.NELE_USE_ANDROIDX_DEFAULT.get() ?
+                                         GoogleMavenArtifactId.ANDROIDX_CONSTRAINT_LAYOUT :
+                                         GoogleMavenArtifactId.CONSTRAINT_LAYOUT;
         builder.addLink("Add constraint-layout library dependency to the project",
-                        myLinkManager.createAddDependencyUrl(GoogleMavenArtifactId.CONSTRAINT_LAYOUT));
+                        myLinkManager.createAddDependencyUrl(artifact));
         builder.add(", ");
       }
       if (CLASS_FLEXBOX_LAYOUT.equals(className)) {

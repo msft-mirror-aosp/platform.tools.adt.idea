@@ -15,16 +15,27 @@
  */
 package com.android.tools.profilers.cpu
 
+import com.android.testutils.TestUtils
+import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.FakeTimer
+import com.android.tools.adtui.ui.HideablePanel
+import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.*
+import com.android.tools.profilers.cpu.atrace.AtraceCpuCapture
+import com.android.tools.profilers.cpu.atrace.AtraceParser
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.memory.FakeMemoryService
 import com.android.tools.profilers.network.FakeNetworkService
 import com.android.tools.profilers.stacktrace.ContextMenuItem
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ui.ExpandedItemListCellRendererWrapper
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import javax.swing.JList
+
+// Path to trace file. Used in test to build AtraceParser.
+private const val TOOLTIP_TRACE_DATA_FILE = "tools/adt/idea/profilers-ui/testData/cputraces/atrace.ctrace"
 
 class CpuProfilerStageViewTest {
 
@@ -37,8 +48,10 @@ class CpuProfilerStageViewTest {
   private val myCpuService = FakeCpuService()
 
   @get:Rule
-  val myGrpcChannel = FakeGrpcChannel("CpuCaptureViewTestChannel", myCpuService, myProfilerService,
-      FakeMemoryService(), FakeEventService(), FakeNetworkService.newBuilder().build())
+  val myGrpcChannel = FakeGrpcChannel(
+      "CpuCaptureViewTestChannel", myCpuService, myProfilerService,
+      FakeMemoryService(), FakeEventService(), FakeNetworkService.newBuilder().build()
+  )
 
   private lateinit var myStage: CpuProfilerStage
 
@@ -98,6 +111,54 @@ class CpuProfilerStageViewTest {
     assertThat(items[4]).isEqualTo(ContextMenuItem.SEPARATOR)
     // Check the common menu items are added after "Record" action
     checkCommonProfilersMenuItems(items, 5)
+  }
+
+  @Test
+  fun testCpuCellRendererHasSessionPid() {
+    // Create
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(1234).setState(Common.Process.State.ALIVE).build()
+    // Create a session and a ongoing profiling session.
+    myStage.studioProfilers.sessionsManager.endCurrentSession()
+    myStage.studioProfilers.sessionsManager.beginSession(device, process1)
+    val session = myStage.studioProfilers.sessionsManager.selectedSession;
+    val cpuProfilerStageView = CpuProfilerStageView(myProfilersView, myStage)
+    val treeWalker = TreeWalker(cpuProfilerStageView.component)
+    val cpuTree = treeWalker.descendants().filterIsInstance<JList<CpuKernelModel.CpuState>>().first()
+    // JBList wraps cellRenderer in a ExpandedItemListCellRendererWrapper, so we get this and unwrap our instance.
+    assertThat(cpuTree.cellRenderer).isInstanceOf(ExpandedItemListCellRendererWrapper::class.java)
+    assertThat((cpuTree.cellRenderer as ExpandedItemListCellRendererWrapper<CpuKernelModel.CpuState>).wrappee).isInstanceOf(
+        CpuKernelCellRenderer::class.java
+    )
+    val cpuCell = (cpuTree.cellRenderer as ExpandedItemListCellRendererWrapper<CpuKernelModel.CpuState>).wrappee as CpuKernelCellRenderer
+
+    // Validate that the process we are looking at is the same as the process from the session.
+    assertThat(cpuCell.myProcessId).isEqualTo(session.pid);
+  }
+
+  @Test
+  fun testCpuKernelViewIsExpandedOnAtraceCapture() {
+    // Create default device and process for a default session.
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(1234).setState(Common.Process.State.ALIVE).build()
+    // Create a session and a ongoing profiling session.
+    myStage.studioProfilers.sessionsManager.endCurrentSession()
+    myStage.studioProfilers.sessionsManager.beginSession(device, process1)
+    val session = myStage.studioProfilers.sessionsManager.selectedSession;
+    val cpuProfilerStageView = CpuProfilerStageView(myProfilersView, myStage)
+    val treeWalker = TreeWalker(cpuProfilerStageView.component)
+    // Find our cpu list.
+    val cpuList = treeWalker.descendants().filterIsInstance<JList<CpuKernelModel.CpuState>>().first()
+    val hideablePanel = TreeWalker(cpuList).ancestors().filterIsInstance<HideablePanel>().first()
+    // The panel containing the cpu list should be hidden and collapsed by default.
+    assertThat(hideablePanel.isExpanded).isFalse()
+    assertThat(hideablePanel.isVisible).isFalse()
+    val traceFile = TestUtils.getWorkspaceFile(TOOLTIP_TRACE_DATA_FILE)
+    var capture = AtraceParser(1).parse(traceFile, 0)
+    myStage.capture = capture
+    // After we set a capture it should be visible and expanded.
+    assertThat(hideablePanel.isExpanded).isTrue()
+    assertThat(hideablePanel.isVisible).isTrue()
   }
 
   /**

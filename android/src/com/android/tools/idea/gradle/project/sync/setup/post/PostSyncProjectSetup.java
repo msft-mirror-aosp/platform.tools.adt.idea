@@ -43,6 +43,14 @@ import com.android.tools.idea.templates.TemplateManager;
 import com.android.tools.idea.testartifacts.junit.AndroidJUnitConfiguration;
 import com.android.tools.idea.testartifacts.junit.AndroidJUnitConfigurationType;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.build.DefaultBuildDescriptor;
+import com.intellij.build.SyncViewManager;
+import com.intellij.build.events.EventResult;
+import com.intellij.build.events.Failure;
+import com.intellij.build.events.impl.FailureResultImpl;
+import com.intellij.build.events.impl.FinishBuildEventImpl;
+import com.intellij.build.events.impl.StartBuildEventImpl;
+import com.intellij.build.events.impl.SuccessResultImpl;
 import com.intellij.compiler.options.CompileStepBeforeRun;
 import com.intellij.concurrency.JobLauncher;
 import com.intellij.execution.BeforeRunTask;
@@ -55,6 +63,8 @@ import com.intellij.execution.impl.RunManagerImpl;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.extensions.Extensions;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -62,14 +72,19 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.util.SystemProperties;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.jps.model.serialization.PathMacroUtil;
 
 import java.util.*;
 
+import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.android.tools.idea.gradle.project.build.BuildStatus.SKIPPED;
 import static com.android.tools.idea.gradle.project.sync.ModuleSetupContext.removeSyncContextDataFrom;
+import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
 import static com.android.tools.idea.gradle.variant.conflict.ConflictSet.findConflicts;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_PROJECT_LOADED;
+import static com.intellij.openapi.util.io.FileUtil.toCanonicalPath;
+import static java.lang.System.currentTimeMillis;
 
 public class PostSyncProjectSetup {
   @NotNull private final Project myProject;
@@ -146,7 +161,7 @@ public class PostSyncProjectSetup {
   /**
    * Invoked after a project has been synced with Gradle.
    */
-  public void setUpProject(@NotNull Request request, @NotNull ProgressIndicator progressIndicator) {
+  public void setUpProject(@NotNull Request request, @NotNull ProgressIndicator progressIndicator, @Nullable ExternalSystemTaskId taskId) {
     if (!StudioFlags.NEW_SYNC_INFRA_ENABLED.get()) {
       removeSyncContextDataFrom(myProject);
     }
@@ -179,11 +194,13 @@ public class PostSyncProjectSetup {
       // Notify "sync end" event first, to register the timestamp. Otherwise the cache (ProjectBuildFileChecksums) will store the date of the
       // previous sync, and not the one from the sync that just ended.
       mySyncState.syncFailed("");
+      finishFailedSync(taskId);
       return;
     }
 
     if (!request.skipAndroidPluginUpgrade && myPluginVersionUpgrade.checkAndPerformUpgrade()) {
       // Plugin version was upgraded and a sync was triggered.
+      finishSuccessfulSync(taskId);
       return;
     }
 
@@ -209,6 +226,41 @@ public class PostSyncProjectSetup {
     TemplateManager.getInstance().refreshDynamicTemplateMenu(myProject);
 
     myModuleSetup.setUpModules(null);
+
+    finishSuccessfulSync(taskId);
+  }
+
+  private void finishSuccessfulSync(@Nullable ExternalSystemTaskId taskId) {
+    if (taskId == null) {
+      return;
+    }
+
+    String message = "synced successfully";
+    // Even if the sync was successful it may have warnings or non error messages, need to put in the correct kind of result
+    EventResult result;
+    GradleSyncMessages messages = GradleSyncMessages.getInstance(myProject);
+    List<Failure> failures = messages.showEvents(taskId);
+
+    if (failures.isEmpty()) {
+      result = new SuccessResultImpl();
+    }
+    else {
+      result = new FailureResultImpl(failures);
+    }
+
+    FinishBuildEventImpl finishBuildEvent = new FinishBuildEventImpl(taskId, null, currentTimeMillis(), message, result);
+    ServiceManager.getService(myProject, SyncViewManager.class).onEvent(finishBuildEvent);
+  }
+
+  private void finishFailedSync(@Nullable ExternalSystemTaskId taskId) {
+    if (taskId != null) {
+      String message = "sync failed";
+      GradleSyncMessages messages = GradleSyncMessages.getInstance(myProject);
+      List<Failure> failures = messages.showEvents(taskId);
+      FailureResultImpl failureResult = new FailureResultImpl(failures);
+      FinishBuildEventImpl finishBuildEvent = new FinishBuildEventImpl(taskId, null, currentTimeMillis(), message, failureResult);
+      ServiceManager.getService(myProject, SyncViewManager.class).onEvent(finishBuildEvent);
+    }
   }
 
   public void onCachedModelsSetupFailure(@NotNull Request request) {
@@ -216,7 +268,7 @@ public class PostSyncProjectSetup {
     // version of such interfaces.
     long syncTimestamp = request.lastSyncTimestamp;
     if (syncTimestamp < 0) {
-      syncTimestamp = System.currentTimeMillis();
+      syncTimestamp = currentTimeMillis();
     }
     mySyncState.syncSkipped(syncTimestamp);
     // TODO add a new trigger for this?
@@ -247,7 +299,7 @@ public class PostSyncProjectSetup {
     // Notify "sync end" event first, to register the timestamp. Otherwise the cache (ProjectBuildFileChecksums) will store the date of the
     // previous sync, and not the one from the sync that just ended.
     if (request.usingCachedGradleModels) {
-      long timestamp = System.currentTimeMillis();
+      long timestamp = currentTimeMillis();
       mySyncState.syncSkipped(timestamp);
       GradleBuildState.getInstance(myProject).buildFinished(SKIPPED);
     }
@@ -344,6 +396,24 @@ public class PostSyncProjectSetup {
       return;
     }
     myProjectBuilder.generateSources();
+  }
+
+  /**
+   * Create a new {@link ExternalSystemTaskId} to be used while doing project setup from cache and adds a StartBuildEvent to build view.
+   * @param project
+   * @return
+   */
+  @NotNull
+  public static ExternalSystemTaskId createProjectSetupFromCacheTaskWithStartMessage(Project project) {
+    // Create taskId
+    ExternalSystemTaskId taskId = ExternalSystemTaskId.create(GRADLE_SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project);
+
+    // Create StartBuildEvent
+    String workingDir = toCanonicalPath(getBaseDirPath(project).getPath());
+    DefaultBuildDescriptor buildDescriptor = new DefaultBuildDescriptor(taskId, "Project setup", workingDir, currentTimeMillis());
+    SyncViewManager syncManager = ServiceManager.getService(project, SyncViewManager.class);
+    syncManager.onEvent(new StartBuildEventImpl(buildDescriptor, "reading from cache..."));
+    return taskId;
   }
 
   public static class Request {

@@ -102,22 +102,12 @@ public class GradleSyncIntegrationTest extends GradleSyncIntegrationTestCase {
   }
 
   @Override
-  protected void tearDown() throws Exception {
-    try {
-      myIdeComponents.restore();
-    }
-    finally {
-      super.tearDown();
-    }
-  }
-
-  @Override
   protected boolean useNewSyncInfrastructure() {
     return false;
   }
 
   // https://code.google.com/p/android/issues/detail?id=233038
-  public void /*test*/LoadPlainJavaProject() throws Exception {
+  public void testLoadPlainJavaProject() throws Exception {
     prepareProjectForImport(PURE_JAVA_PROJECT);
     Project project = getProject();
     importProject(project.getName(), getBaseDirPath(project), null);
@@ -407,7 +397,7 @@ public class GradleSyncIntegrationTest extends GradleSyncIntegrationTestCase {
   }
 
   public void testGradleSyncActionAfterFailedSync() {
-    IdeInfo ideInfo = myIdeComponents.mockService(IdeInfo.class);
+    IdeInfo ideInfo = myIdeComponents.mockApplicationService(IdeInfo.class);
     when(ideInfo.isAndroidStudio()).thenReturn(true);
 
     SyncProjectAction action = new SyncProjectAction();

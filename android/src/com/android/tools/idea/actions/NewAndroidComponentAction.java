@@ -18,7 +18,7 @@ package com.android.tools.idea.actions;
 import com.android.tools.idea.model.AndroidModuleInfo;
 import com.android.tools.idea.npw.project.AndroidPackageUtils;
 import com.android.tools.idea.npw.template.ConfigureTemplateParametersStep;
-import com.android.tools.idea.npw.template.RenderTemplateModel;
+import com.android.tools.idea.npw.model.RenderTemplateModel;
 import com.android.tools.idea.npw.template.TemplateHandle;
 import com.android.tools.idea.projectsystem.NamedModuleTemplate;
 import com.android.tools.idea.templates.TemplateManager;
@@ -128,14 +128,14 @@ public class NewAndroidComponentAction extends AnAction {
     Project project = module.getProject();
 
     RenderTemplateModel templateModel = new RenderTemplateModel(
-      module, new TemplateHandle(file), initialPackageSuggestion, moduleTemplates.get(0), "New " + activityDescription);
+      facet, new TemplateHandle(file), initialPackageSuggestion, moduleTemplates.get(0), "New " + activityDescription);
 
     boolean isActivity = isActivityTemplate();
     String dialogTitle = AndroidBundle.message(isActivity ? "android.wizard.new.activity.title" : "android.wizard.new.component.title");
     String stepTitle = AndroidBundle.message(isActivity ? "android.wizard.config.activity.title" : "android.wizard.config.component.title");
 
     ModelWizard.Builder wizardBuilder = new ModelWizard.Builder();
-    wizardBuilder.addStep(new ConfigureTemplateParametersStep(templateModel, stepTitle, moduleTemplates, facet));
+    wizardBuilder.addStep(new ConfigureTemplateParametersStep(templateModel, stepTitle, moduleTemplates));
     ModelWizardDialog dialog = new StudioWizardDialogBuilder(wizardBuilder.build(), dialogTitle).setProject(project).build();
     dialog.show();
 

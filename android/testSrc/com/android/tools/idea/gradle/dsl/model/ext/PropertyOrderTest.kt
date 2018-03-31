@@ -20,11 +20,14 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.*
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.*
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.VARIABLE
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelImpl
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.parser.elements.*
+import com.intellij.testFramework.TestDataFile
+import org.apache.commons.io.FileUtils
 import org.junit.Test
 
 class PropertyOrderTest : GradleFileModelTestCase() {
@@ -822,5 +825,392 @@ class PropertyOrderTest : GradleFileModelTestCase() {
                      def var = System.out.println("Boo")
                    }""".trimIndent()
     verifyFileContents(myBuildFile, expected)
+  }
+
+  @Test
+  fun testWrongOrderNoDependency() {
+    val text = """
+               ext {
+                 prop1 = prop2
+                 prop2 = "hello"
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    run {
+      val firstModel = buildModel.ext().findProperty("prop1")
+      verifyPropertyModel(firstModel, STRING_TYPE, "prop2", REFERENCE, REGULAR, 0, "prop1")
+      val secondModel = buildModel.ext().findProperty("prop2")
+      verifyPropertyModel(secondModel, STRING_TYPE, "hello", STRING, REGULAR, 0, "prop2")
+    }
+  }
+
+  @Test
+  fun testDirectReferenceExtCorrectOrder() {
+    val text = """
+               ext {
+                 prop1 = 10
+                 prop1 = 20
+               }
+
+               android {
+                 defaultConfig {
+                   minSdkVersion prop1
+                 }
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val propertyModel = buildModel.android()!!.defaultConfig().minSdkVersion()
+    verifyPropertyModel(propertyModel, INTEGER_TYPE, 20, INTEGER, REGULAR, 1, "minSdkVersion")
+  }
+
+  @Test
+  fun testAboveExt() {
+    val text = """
+               android {
+                 defaultConfig {
+                   minSdkVersion minSdk
+                   maxSdkVersion maxSdk
+                 }
+               }
+
+               ext {
+                 minSdk 14
+                 maxSdk 18
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    val minSdkModel = buildModel.android()!!.defaultConfig().minSdkVersion()
+    val maxSdkModel = buildModel.android()!!.defaultConfig().maxSdkVersion()
+
+    verifyPropertyModel(minSdkModel, STRING_TYPE, "minSdk", REFERENCE, REGULAR, 0, "minSdkVersion")
+    verifyPropertyModel(maxSdkModel, STRING_TYPE, "maxSdk", REFERENCE, REGULAR, 0, "maxSdkVersion")
+  }
+
+  @Test
+  fun testAboveExtQualifiedReference() {
+    val text = """
+               android {
+                 defaultConfig {
+                   minSdkVersion ext.minSdk
+                   maxSdkVersion ext.maxSdk
+                 }
+               }
+
+               ext {
+                 minSdk 14
+                 maxSdk 18
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    val minSdkModel = buildModel.android()!!.defaultConfig().minSdkVersion()
+    val maxSdkModel = buildModel.android()!!.defaultConfig().maxSdkVersion()
+
+    verifyPropertyModel(minSdkModel, STRING_TYPE, "ext.minSdk", REFERENCE, REGULAR, 0, "minSdkVersion")
+    verifyPropertyModel(maxSdkModel, STRING_TYPE, "ext.maxSdk", REFERENCE, REGULAR, 0, "maxSdkVersion")
+  }
+
+  @Test
+  fun testResolveToLastProperty() {
+    val text = """
+               ext {
+                 def var1 = "hello"
+                 def var1 = "goodbye"
+                 def var2 = "on"
+                 def var2 = "off"
+
+                 greeting = var1
+                 state = var2
+               }
+
+               android {
+                 signingConfigs {
+                   myConfig {
+                     storeFile file(greeting)
+                     storePassword state
+                   }
+                 }
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val configModel = buildModel.android()!!.signingConfigs()[0]!!
+    val fileModel = configModel.storeFile()
+    val passwordModel = configModel.storePassword()
+
+    verifyPropertyModel(fileModel, STRING_TYPE, "goodbye", STRING, REGULAR, 1, "storeFile")
+    verifyPropertyModel(passwordModel.resolve(), STRING_TYPE, "off", STRING, REGULAR, 1, "storePassword")
+  }
+
+  @Test
+  fun testAddPropertyWithExistingDependency() {
+    val text = """
+               ext {
+                 prop  = "hello"
+                 prop2 = prop1
+               }
+               """.trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    val extModel = buildModel.ext()
+
+    run {
+      val propertyModel = extModel.findProperty("prop1")
+      val beforePropModel = extModel.findProperty("prop")
+      val afterPropModel = extModel.findProperty("prop2")
+
+      propertyModel.setValue(ReferenceTo("prop"))
+
+      verifyPropertyModel(propertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+      verifyPropertyModel(beforePropModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 0, "prop")
+      verifyPropertyModel(afterPropModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop2")
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val propertyModel = extModel.findProperty("prop1")
+      val beforePropModel = extModel.findProperty("prop")
+      val afterPropModel = extModel.findProperty("prop2")
+
+      verifyPropertyModel(propertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+      verifyPropertyModel(beforePropModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 0, "prop")
+      verifyPropertyModel(afterPropModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop2")
+    }
+
+    val expected = """
+                   ext {
+                    prop = "hello"
+                    prop1 = prop
+                    prop2 = prop1
+                   }""".trimIndent()
+    verifyFileContents(myBuildFile, expected)
+  }
+
+  @Test
+  fun testChangeValueToOutOfScopeRef() {
+    val text = """
+               ext {
+                 prop1 = 43
+                 prop = 24
+                 prop2 = prop1
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val extModel = buildModel.ext()
+
+    run {
+      val firstPropertyModel = extModel.findProperty("prop")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+
+      secondPropertyModel.setValue(ReferenceTo("prop"))
+
+      verifyPropertyModel(firstPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 1, "prop2")
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val firstPropertyModel = extModel.findProperty("prop")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+
+      verifyPropertyModel(firstPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), INTEGER_TYPE, 24, INTEGER, REGULAR, 1, "prop2")
+    }
+
+    val expected = """
+                   ext {
+                    prop = 24
+                    prop1 = prop
+                    prop2 = prop1
+                   }""".trimIndent()
+    verifyFileContents(myBuildFile, expected)
+  }
+
+  @Test
+  fun testRenameReordersProperties() {
+    val text = """
+               ext {
+                 prop1 = prop
+                 prop2 = prop1
+                 oddOneOut = true
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val extModel =  buildModel.ext()
+
+    run {
+      val firstPropertyModel = extModel.findProperty("oddOneOut")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+
+      firstPropertyModel.rename("prop")
+      verifyPropertyModel(firstPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop2")
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val firstPropertyModel = extModel.findProperty("prop")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+
+      verifyPropertyModel(firstPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop2")
+    }
+
+    val expected = """
+                   ext {
+                    prop = true
+                    prop1 = prop
+                    prop2 = prop1
+                   }""".trimIndent()
+    verifyFileContents(myBuildFile, expected)
+  }
+
+  @Test
+  fun testChangeReferenceValueReordersProperties() {
+    val text = """
+               ext {
+                 prop1 = prop
+                 prop3 = "${'$'}{prop2}"
+                 prop6 = prop
+                 prop4 = prop3
+                 prop5 = prop4
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val extModel = buildModel.ext()
+
+    run {
+      val firstPropertyModel = extModel.findProperty("prop")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+      val fourthPropertyModel = extModel.findProperty("prop3")
+      val fifthPropertyModel = extModel.findProperty("prop4")
+      val sixthPropertyModel = extModel.findProperty("prop5")
+      val seventhPropertyModel = extModel.findProperty("prop6")
+
+      firstPropertyModel.setValue("hello")
+      thirdPropertyModel.setValue("goodbye")
+      seventhPropertyModel.setValue(ReferenceTo("prop5"))
+
+      verifyPropertyModel(firstPropertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 0, "prop2")
+      verifyPropertyModel(fourthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop3")
+      verifyPropertyModel(fifthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop4")
+      verifyPropertyModel(sixthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop5")
+      verifyPropertyModel(seventhPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop6")
+    }
+
+    applyChangesAndReparse(buildModel)
+
+    run {
+      val firstPropertyModel = extModel.findProperty("prop")
+      val secondPropertyModel = extModel.findProperty("prop1")
+      val thirdPropertyModel = extModel.findProperty("prop2")
+      val fourthPropertyModel = extModel.findProperty("prop3")
+      val fifthPropertyModel = extModel.findProperty("prop4")
+      val sixthPropertyModel = extModel.findProperty("prop5")
+      val seventhPropertyModel = extModel.findProperty("prop6")
+
+      verifyPropertyModel(firstPropertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 0, "prop")
+      verifyPropertyModel(secondPropertyModel.resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+      verifyPropertyModel(thirdPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 0, "prop2")
+      verifyPropertyModel(fourthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop3")
+      verifyPropertyModel(fifthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop4")
+      verifyPropertyModel(sixthPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop5")
+      verifyPropertyModel(seventhPropertyModel.resolve(), STRING_TYPE, "goodbye", STRING, REGULAR, 1, "prop6")
+    }
+
+    val expected = """
+                   ext {
+                     prop = 'hello'
+                     prop1 = prop
+                     prop2 = 'goodbye'
+                     prop3 = "${'$'}{prop2}"
+                     prop4 = prop3
+                     prop5 = prop4
+                     prop6 = prop5
+                   }""".trimIndent()
+    verifyFileContents(myBuildFile, expected)
+  }
+
+  @Test
+  fun testAddListDependencyWithExistingIndexReference() {
+    val text = """
+               ext {
+                 prop1 = prop[0]
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val extModel = buildModel.ext()
+    val newListModel = extModel.findProperty("prop")
+    newListModel.convertToEmptyList().addListValue().setValue("hello")
+
+    verifyPropertyModel(extModel.findProperty("prop1").resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+
+    applyChangesAndReparse(buildModel)
+
+    verifyPropertyModel(buildModel.ext().findProperty("prop1").resolve(), STRING_TYPE, "hello", STRING, REGULAR, 1, "prop1")
+  }
+
+  @Test
+  fun testAddMapDependencyWithExistingKeyReference() {
+    val text = """
+               ext {
+                 prop1 = prop.key
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val extModel = buildModel.ext()
+    val newMapModel = extModel.findProperty("prop")
+    newMapModel.convertToEmptyMap().getMapValue("key").setValue(true)
+
+    verifyPropertyModel(extModel.findProperty("prop1").resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop1")
+
+    applyChangesAndReparse(buildModel)
+
+    verifyPropertyModel(buildModel.ext().findProperty("prop1").resolve(), BOOLEAN_TYPE, true, BOOLEAN, REGULAR, 1, "prop1")
+  }
+
+  @Test
+  fun testAddQualifiedDependencyWithExistingReference() {
+    val text = """
+               ext {
+                 prop1 = ext.prop
+               }""".trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val newPropertyModel = buildModel.ext().findProperty("prop")
+    newPropertyModel.setValue("boo")
+
+    verifyPropertyModel(buildModel.ext().findProperty("prop1").resolve(), STRING_TYPE, "boo", STRING, REGULAR, 1, "prop1")
+
+    applyChangesAndReparse(buildModel)
+
+    verifyPropertyModel(buildModel.ext().findProperty("prop1").resolve(), STRING_TYPE, "boo", STRING, REGULAR, 1, "prop1")
   }
 }

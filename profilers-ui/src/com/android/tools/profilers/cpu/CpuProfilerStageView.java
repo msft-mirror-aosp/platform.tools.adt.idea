@@ -186,12 +186,17 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     myCpus = new JBList<>(myStage.getCpuKernelModel());
 
     final OverlayComponent overlay = new OverlayComponent(mySelection);
-    final EventMonitorView eventsView = new EventMonitorView(profilersView, stage.getEventMonitor());
-    eventsView.registerTooltip(myTooltipComponent, getStage());
 
     // "Fit" for the event profiler, "*" for everything else.
     final JPanel details = new JPanel(new TabularLayout("*", "Fit,*"));
     details.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+
+    if (!myStage.isImportTraceMode()) {
+      // We shouldn't display the events monitor while in import trace mode.
+      final EventMonitorView eventsView = new EventMonitorView(profilersView, stage.getEventMonitor());
+      eventsView.registerTooltip(myTooltipComponent, getStage());
+      details.add(eventsView.getComponent(), new TabularLayout.Constraint(0, 0));
+    }
 
     final JPanel overlayPanel = new JBPanel(new BorderLayout());
     configureOverlayPanel(overlayPanel, overlay);
@@ -237,7 +242,6 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     monitorCpuThreadsPanel.add(monitorPanel, new TabularLayout.Constraint(MONITOR_PANEL_ROW, 0));
 
     // Panel that represents all of L2
-    details.add(eventsView.getComponent(), new TabularLayout.Constraint(0, 0));
     details.add(monitorCpuThreadsPanel, new TabularLayout.Constraint(1, 0));
     details.add(myTooltipComponent, new TabularLayout.Constraint(1, 0, 2, 1));
     details.add(timeAxis, new TabularLayout.Constraint(3, 0));
@@ -281,8 +285,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     // Give a padding to the capture. 5% of the view range on each side.
     ProfilerTimeline timeline = myStage.getStudioProfilers().getTimeline();
     double padding = timeline.getViewRange().getLength() * 0.05;
-    // Now makes sure the capture range + padding is within view range.
-    timeline.ensureRangeFitsViewRange(new Range(capture.getRange().getMin() - padding, capture.getRange().getMax() + padding));
+    // Now makes sure the capture range + padding is within view range and in the middle if possible.
+    timeline.adjustRangeCloseToMiddleView(new Range(capture.getRange().getMin() - padding, capture.getRange().getMax() + padding));
   }
 
   /**
@@ -297,7 +301,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     scrollingCpus.setBorder(MONITOR_BORDER);
     scrollingCpus.setViewportView(myCpus);
     myCpus.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
-    myCpus.setCellRenderer(new CpuKernelCellRenderer(myStage.getStudioProfilers().getProcess().getPid(),
+    myCpus.setCellRenderer(new CpuKernelCellRenderer(myStage.getStudioProfilers().getSession().getPid(),
                                                      myStage.getUpdatableManager(), myCpus, myThreads));
 
     // Handle selection.
@@ -329,6 +333,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     // Create hideable panel for CPU list.
     HideablePanel hideableCpus = new HideablePanel.Builder("KERNEL", scrollingCpus)
       .setShowSeparator(false)
+      // We want to keep initially expanded to false because the kernel layout is set to "Fix" by default. As such when
+      // we later change the contents to have elements and expand the view we also want to trigger the StateChangedListener below
+      // to properly set the layout to be expanded. If we set initially expanded to true, then the StateChangedListener will never
+      // get triggered and we will not update our layout.
       .setInitiallyExpanded(false)
       .build();
       hideableCpus.addStateChangedListener((actionEvent) -> {
@@ -348,10 +356,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       public void contentsChanged(ListDataEvent e) {
         boolean hasElements = myCpus.getModel().getSize() != 0;
         hideableCpus.setVisible(hasElements);
-        // If we hide the panel, we want to reset the hideable panel back to collapsed.
-        if (!hasElements) {
-          hideableCpus.setExpanded(false);
-        }
+        hideableCpus.setExpanded(hasElements);
         monitorCpuThreadsPanel.revalidate();
       }
 
@@ -850,6 +855,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
   @Override
   public JComponent getToolbar() {
+    // We shouldn't display the CPU toolbar in import trace mode, so we return an empty panel.
+    if (myStage.isImportTraceMode()) {
+      return new JPanel();
+    }
     JPanel panel = new JPanel(new BorderLayout());
     JPanel toolbar = new JPanel(createToolbarLayout());
 
@@ -864,6 +873,11 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     panel.add(toolbar, BorderLayout.WEST);
     return panel;
+  }
+
+  @Override
+  public boolean navigationControllersEnabled() {
+    return !myStage.isImportTraceMode();
   }
 
   private String formatCaptureLabel(CpuTraceInfo info) {

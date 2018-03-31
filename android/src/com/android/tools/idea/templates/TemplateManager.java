@@ -22,10 +22,10 @@ import com.android.repository.io.FileOpUtils;
 import com.android.tools.idea.actions.NewAndroidComponentAction;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.npw.FormFactor;
-import com.android.tools.idea.npw.module.NewModuleModel;
+import com.android.tools.idea.npw.model.NewModuleModel;
 import com.android.tools.idea.npw.project.AndroidPackageUtils;
 import com.android.tools.idea.npw.template.ChooseActivityTypeStep;
-import com.android.tools.idea.npw.template.RenderTemplateModel;
+import com.android.tools.idea.npw.model.RenderTemplateModel;
 import com.android.tools.idea.npw.template.TemplateHandle;
 import com.android.tools.idea.projectsystem.NamedModuleTemplate;
 import com.android.tools.idea.sdk.AndroidSdks;
@@ -504,12 +504,12 @@ public class TemplateManager {
           String initialPackageSuggestion = AndroidPackageUtils.getPackageForPath(facet, moduleTemplates, targetDirectory);
           Project project = facet.getModule().getProject();
 
-          RenderTemplateModel renderModel = new RenderTemplateModel(module, null, initialPackageSuggestion, moduleTemplates.get(0),
+          RenderTemplateModel renderModel = new RenderTemplateModel(facet, null, initialPackageSuggestion, moduleTemplates.get(0),
             AndroidBundle.message("android.wizard.activity.add", FormFactor.MOBILE.id));
 
           NewModuleModel moduleModel = new NewModuleModel(project);
           ChooseActivityTypeStep chooseActivityTypeStep =
-            new ChooseActivityTypeStep(moduleModel, renderModel, FormFactor.MOBILE, facet, targetDirectory);
+            new ChooseActivityTypeStep(moduleModel, renderModel, FormFactor.MOBILE, targetDirectory);
           ModelWizard wizard = new ModelWizard.Builder().addStep(chooseActivityTypeStep).build();
 
           new StudioWizardDialogBuilder(wizard, "New Android Activity").build().show();

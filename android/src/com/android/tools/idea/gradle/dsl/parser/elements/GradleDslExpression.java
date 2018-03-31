@@ -23,6 +23,7 @@ import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiElement;
@@ -33,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslElement.getStandardProjectKey;
@@ -44,7 +45,6 @@ import static com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile;
  * Represents an expression element.
  */
 public abstract class GradleDslExpression extends GradleDslElement {
-  @NotNull private static final Pattern INDEX_PATTERN = Pattern.compile("\\[(.+?)\\]|(.+?)(?=\\[)");
   @NotNull private static final String SINGLE_QUOTES = "\'";
   @NotNull private static final String DOUBLE_QUOTES = "\"";
 
@@ -59,6 +59,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
     super(parent, psiElement, name);
     myExpression = expression;
     myHasCycle = ThreeState.UNSURE;
+    resolve();
   }
 
   @Nullable
@@ -91,15 +92,11 @@ public abstract class GradleDslExpression extends GradleDslElement {
   @Override
   @NotNull
   public List<GradleReferenceInjection> getResolvedVariables() {
-    if (myExpression == null) {
-      return Collections.emptyList();
-    }
-    return ApplicationManager.getApplication()
-      .runReadAction((Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getResolvedInjections(this, myExpression));
+    return myDependencies.stream().filter(e -> e.isResolved()).collect(Collectors.toList());
   }
 
   @Nullable
-  public GradleDslElement resolveReference(@NotNull String referenceText) {
+  public GradleDslElement resolveReference(@NotNull String referenceText, boolean resolveWithOrder) {
     GradleDslElement searchStartElement = this;
 
     List<String> referenceTextSegments = Splitter.on('.').trimResults().omitEmptyStrings().splitToList(referenceText);
@@ -152,7 +149,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
     else {
       // Search in the file that searchStartElement belongs to.
       referenceTextSegments = referenceTextSegments.subList(index, segmentCount);
-      resolvedElement = resolveReferenceInSameModule(searchStartElement, referenceTextSegments);
+      resolvedElement = resolveReferenceInSameModule(searchStartElement, referenceTextSegments, resolveWithOrder);
     }
 
     GradleDslFile dslFile = searchStartElement.getDslFile();
@@ -179,7 +176,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
    */
   @Nullable
   public <T> T resolveReference(@NotNull String referenceText, @NotNull Class<T> clazz) {
-    GradleDslElement resolvedElement = resolveReference(referenceText);
+    GradleDslElement resolvedElement = resolveReference(referenceText, true);
 
     if (resolvedElement != null) {
       T result = null;
@@ -254,13 +251,14 @@ public abstract class GradleDslExpression extends GradleDslElement {
   @Nullable
   private static GradleDslElement extractElementFromProperties(@NotNull GradlePropertiesDslElement properties,
                                                                @NotNull String name,
-                                                               boolean sameScope) {
+                                                               boolean sameScope,
+                                                               @Nullable GradleDslElement child) {
     // First check if any indexing has been done.
-    Matcher indexMatcher = INDEX_PATTERN.matcher(name);
+    Matcher indexMatcher = GradleNameElement.INDEX_PATTERN.matcher(name);
 
     // If the index matcher doesn't give us anything, just attempt to find the property on the element;
     if (!indexMatcher.find()) {
-      return sameScope ? properties.getElement(name) : properties.getPropertyElement(name);
+      return sameScope ? properties.getElementBefore(child, name) : properties.getPropertyElementBefore(child, name);
     }
 
     // Sanity check
@@ -274,7 +272,8 @@ public abstract class GradleDslExpression extends GradleDslElement {
       return null;
     }
 
-    GradleDslElement element = sameScope ? properties.getElement(elementName) : properties.getPropertyElement(elementName);
+    GradleDslElement element =
+      sameScope ? properties.getElementBefore(child, elementName) : properties.getPropertyElementBefore(child, elementName);
 
     // Construct a list of all of the index parts
     Deque<String> indexParts = new ArrayDeque<>();
@@ -306,6 +305,9 @@ public abstract class GradleDslExpression extends GradleDslElement {
         }
 
         GradleDslExpressionList list = (GradleDslExpressionList)element;
+        if (list.getExpressions().size() <= offset) {
+          return null;
+        }
         element = list.getExpressions().get(offset);
       }
       else if (element instanceof GradleDslExpressionMap) {
@@ -337,42 +339,66 @@ public abstract class GradleDslExpression extends GradleDslElement {
 
   @Nullable
   private static GradleDslElement resolveReferenceOnPropertiesElement(@NotNull GradlePropertiesDslElement properties,
-                                                                      @NotNull List<String> nameParts) {
+                                                                      @NotNull List<String> nameParts,
+                                                                      @Nullable GradleDslElement child) {
     // Go through each of the parts and extract the elements from each of them.
     GradleDslElement element;
     for (int i = 0; i < nameParts.size() - 1; i++) {
       // Only look for variables on the first iteration, otherwise only properties should be accessible.
-      element = extractElementFromProperties(properties, nameParts.get(i), i == 0);
-      // All elements we fine must be property elements on all but the last iteration.
+      element = extractElementFromProperties(properties, nameParts.get(i), i == 0, child);
+      while (element instanceof GradleDslReference) {
+        // Attempt to follow references
+        GradleReferenceInjection injection = ((GradleDslReference)element).getReferenceInjection();
+        if (injection == null) {
+          return null;
+        }
+
+        element = injection.getToBeInjected();
+      }
+
+      // All elements we find must be GradlePropertiesDslElement or references them on all but the last iteration.
       if (element == null || !(element instanceof GradlePropertiesDslElement)) {
         return null;
       }
       properties = (GradlePropertiesDslElement)element;
     }
 
-    return extractElementFromProperties(properties, nameParts.get(nameParts.size() - 1), nameParts.size() == 1);
+    return extractElementFromProperties(properties, nameParts.get(nameParts.size() - 1), nameParts.size() == 1, child);
   }
 
   @Nullable
-  private static GradleDslElement resolveReferenceOnElement(GradleDslElement element, @NotNull List<String> nameParts) {
-    // Find a properties element that contains the property.
+  private static GradleDslElement resolveReferenceOnElement(@NotNull GradleDslElement element,
+                                                            @NotNull List<String> nameParts,
+                                                            boolean resolveWithOrder) {
+    // We need to keep track of the last element we saw to ensure we only check items BEFORE the one we are resolving.
+    GradleDslElement lastElement = null;
+    boolean extChecked = false;
     while (element != null) {
       if (element instanceof GradlePropertiesDslElement) {
-        GradleDslElement propertyElement = resolveReferenceOnPropertiesElement((GradlePropertiesDslElement)element, nameParts);
+        GradleDslElement propertyElement = resolveReferenceOnPropertiesElement((GradlePropertiesDslElement)element, nameParts, lastElement);
         if (propertyElement != null) {
           return propertyElement;
         }
 
-        if (element instanceof GradleDslFile) {
-          ExtDslElement extDslElement = ((GradleDslFile)element).getPropertyElement(EXT_BLOCK_NAME, ExtDslElement.class);
-          if (extDslElement != null) {
-            GradleDslElement extPropertyElement = resolveReferenceOnPropertiesElement(extDslElement, nameParts);
+        // Check if we see a ExtElement before we hit the file. We don't bother checking it again.
+        if (element instanceof ExtDslElement) {
+          extChecked = true;
+        }
+
+        if (element instanceof GradleDslFile && !extChecked) {
+          GradleDslElement extDslElement = ((GradleDslFile)element).getPropertyElementBefore(lastElement, EXT_BLOCK_NAME);
+          if (extDslElement instanceof ExtDslElement) {
+            GradleDslElement extPropertyElement = resolveReferenceOnPropertiesElement((ExtDslElement)extDslElement, nameParts, lastElement);
             if (extPropertyElement != null) {
               return extPropertyElement;
             }
           }
           break;
         }
+      }
+
+      if (resolveWithOrder) {
+        lastElement = element;
       }
       element = element.getParent();
     }
@@ -381,9 +407,11 @@ public abstract class GradleDslExpression extends GradleDslElement {
   }
 
   @Nullable
-  private static GradleDslElement resolveReferenceInSameModule(GradleDslElement startElement, @NotNull List<String> referenceText) {
+  private static GradleDslElement resolveReferenceInSameModule(@NotNull GradleDslElement startElement,
+                                                               @NotNull List<String> referenceText,
+                                                               boolean resolveWithOrder) {
     // Try to resolve in the build.gradle file the startElement is belongs to.
-    GradleDslElement element = resolveReferenceOnElement(startElement, referenceText);
+    GradleDslElement element = resolveReferenceOnElement(startElement, referenceText, resolveWithOrder);
     if (element != null) {
       return element;
     }
@@ -422,7 +450,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
     while (parentDslFile != null) {
       ExtDslElement extDslElement = parentDslFile.getPropertyElement(EXT_BLOCK_NAME, ExtDslElement.class);
       if (extDslElement != null) {
-        GradleDslElement extPropertyElement = resolveReferenceOnPropertiesElement(extDslElement, referenceText);
+        GradleDslElement extPropertyElement = resolveReferenceOnPropertiesElement(extDslElement, referenceText, null);
         if (extPropertyElement != null) {
           return extPropertyElement;
         }
@@ -508,8 +536,7 @@ public abstract class GradleDslExpression extends GradleDslElement {
 
     seen.add(element);
 
-    Collection<GradleReferenceInjection> injections =
-      element.getDslFile().getParser().getResolvedInjections(element, element.getExpression());
+    Collection<GradleReferenceInjection> injections = element.getResolvedVariables();
 
     for (GradleReferenceInjection injection : injections) {
       if (injection.getToBeInjectedExpression() == null) {
@@ -526,5 +553,32 @@ public abstract class GradleDslExpression extends GradleDslElement {
     seen.remove(element);
     cycleFree.add(element);
     return false;
+  }
+
+  @Override
+  protected void resolve() {
+    setupDependencies(myExpression);
+  }
+
+  @NotNull
+  protected List<GradleReferenceInjection> fetchDependencies(@Nullable PsiElement element) {
+    if (element == null) {
+      return ImmutableList.of();
+    }
+    return ApplicationManager.getApplication()
+      .runReadAction((Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getInjections(this, element));
+  }
+
+  protected void setupDependencies(@Nullable PsiElement element) {
+    // Unregister any registered dependencies.
+    myDependencies.stream().filter(e -> e.getToBeInjected() != null).forEach(e -> e.getToBeInjected().unregisterDependent(e));
+    myDependencies.stream().filter(e -> e.getToBeInjected() == null)
+      .forEach(e -> getDslFile().getContext().getDependencyManager().unregisterUnresolvedReference(e));
+    myDependencies.clear();
+    myDependencies.addAll(fetchDependencies(element));
+    // Register any resolved dependencies with the elements they depend on.
+    myDependencies.stream().filter(e -> e.getToBeInjected() != null).forEach(e -> e.getToBeInjected().registerDependent(e));
+    myDependencies.stream().filter(e -> e.getToBeInjected() == null)
+      .forEach(e -> getDslFile().getContext().getDependencyManager().registerUnresolvedReference(e));
   }
 }

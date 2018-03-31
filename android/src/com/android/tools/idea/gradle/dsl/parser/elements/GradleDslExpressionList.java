@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.dsl.parser.elements;
 
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
+import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.google.common.collect.Lists;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents an element which consists a list of {@link GradleDslExpression}s.
@@ -67,16 +69,11 @@ public final class GradleDslExpressionList extends GradleDslElement {
     myUnsavedExpressions.add(expression);
   }
 
-  public void addNewExpression(@NotNull GradleDslExpression expression) {
-    expression.myParent = this;
-    myUnsavedExpressions.add(expression);
-    setModified(true);
-  }
-
   public void addNewExpression(@NotNull GradleDslExpression expression, int index) {
     expression.myParent = this;
     myUnsavedExpressions.add(index, expression);
     setModified(true);
+    updateDependenciesOnAddElement(expression);
   }
 
   @SuppressWarnings("SuspiciousMethodCalls") // We pass in a superclass instance to remove.
@@ -84,6 +81,7 @@ public final class GradleDslExpressionList extends GradleDslElement {
     if (myUnsavedExpressions.remove(element)) {
       setModified(true);
     }
+    updateDependenciesOnRemoveElement(element);
   }
 
   public GradleDslExpression getElementAt(int index) {
@@ -110,6 +108,7 @@ public final class GradleDslExpressionList extends GradleDslElement {
       if (value.equals(expression.getValue())) {
         myUnsavedExpressions.remove(expression);
         setModified(true);
+        updateDependenciesOnRemoveElement(expression);
         return;
       }
     }
@@ -122,6 +121,14 @@ public final class GradleDslExpressionList extends GradleDslElement {
         return;
       }
     }
+  }
+
+  public void replaceExpression(@NotNull GradleDslExpression oldExpression, @NotNull GradleDslExpression newExpression) {
+    assert oldExpression.getFullName().equals(newExpression.getFullName());
+    int index = myUnsavedExpressions.indexOf(oldExpression);
+    assert index != -1;
+    myUnsavedExpressions.set(index, newExpression);
+    updateDependenciesOnReplaceElement(oldExpression, newExpression);
   }
 
   @NotNull
@@ -248,5 +255,11 @@ public final class GradleDslExpressionList extends GradleDslElement {
   private void saveExpressions() {
     myExpressions.clear();
     myExpressions.addAll(myUnsavedExpressions);
+  }
+
+  @Override
+  @NotNull
+  public List<GradleReferenceInjection> getDependencies() {
+    return myUnsavedExpressions.stream().map(GradleDslElement::getDependencies).flatMap(Collection::stream).collect(Collectors.toList());
   }
 }

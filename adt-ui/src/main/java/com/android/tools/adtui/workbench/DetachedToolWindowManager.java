@@ -26,7 +26,6 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.messages.MessageBusConnection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,7 +48,6 @@ public class DetachedToolWindowManager implements ProjectComponent {
   private final Map<FileEditor, WorkBench> myWorkBenchMap;
   private final HashMap<String, DetachedToolWindow> myToolWindowMap;
   private DetachedToolWindowFactory myDetachedToolWindowFactory;
-  private MessageBusConnection myConnection;
   private FileEditor myLastSelectedEditor;
 
   public static DetachedToolWindowManager getInstance(@NotNull Project project) {
@@ -111,16 +109,11 @@ public class DetachedToolWindowManager implements ProjectComponent {
 
   @Override
   public void projectOpened() {
-    myConnection = myProject.getMessageBus().connect(myProject);
-    myConnection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, myEditorManagerListener);
+    myProject.getMessageBus().connect().subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, myEditorManagerListener);
   }
 
   @Override
   public void projectClosed() {
-    if (myConnection != null) {
-      myConnection.disconnect();
-      myConnection = null;
-    }
     for (DetachedToolWindow detachedToolWindow : myToolWindowMap.values()) {
       detachedToolWindow.updateSettingsInAttachedToolWindow();
     }

@@ -39,6 +39,13 @@ import static com.android.tools.profilers.StudioProfilers.buildSessionName;
  * memory heap dump, CPU capture)
  */
 public class SessionsManager extends AspectModel<SessionAspect> {
+  /**
+   * For usage tracking purposes - specify where a session creation was originated from.
+   */
+  public enum SessionCreationSource {
+    MANUAL, // Session is created by user selecting a process from the dropdown.
+    // TODO add enums for sessions created via the toolbar's profile button, or via opening the profiler UI manually
+  }
 
   /**
    * An interface for querying artifacts that belong to a session (e.g. heap dump, cpu capture, bookmarks).
@@ -254,13 +261,13 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   @NotNull
   public Common.Session createImportedSession(@NotNull String sessionName,
                                               @NotNull Common.SessionMetaData.SessionType sessionType,
-                                              long startTimestamp,
-                                              long endTimestamp,
+                                              long startTimestampNs,
+                                              long endTimestampNs,
                                               long startTimestampEpochMs) {
     Common.Session session = Common.Session.newBuilder()
       .setSessionId(generateUniqueSessionId())
-      .setStartTimestamp(startTimestamp)
-      .setEndTimestamp(endTimestamp)
+      .setStartTimestamp(startTimestampNs)
+      .setEndTimestamp(endTimestampNs)
       .build();
 
     Profiler.ImportSessionRequest sessionRequest = Profiler.ImportSessionRequest.newBuilder()
@@ -277,7 +284,7 @@ public class SessionsManager extends AspectModel<SessionAspect> {
    * Register the import handler for a specific extension
    *
    * @param extension extension of the file
-   * @param listener  import listener
+   * @param handler   handles the file imported
    */
   public void registerImportHandler(@NotNull String extension, @NotNull Consumer<File> handler) {
     myImportHandlers.put(extension, handler);
@@ -333,9 +340,7 @@ public class SessionsManager extends AspectModel<SessionAspect> {
       mySessionArtifacts.add(item);
       List<SessionArtifact> artifacts = new ArrayList<>();
       myArtifactsFetchers.forEach(fetcher -> artifacts.addAll(fetcher.fetch(myProfilers, item.getSession(), item.getSessionMetaData())));
-      if (item.isExpanded()) {
-        mySessionArtifacts.addAll(artifacts);
-      }
+      mySessionArtifacts.addAll(artifacts);
     }
     Collections.sort(mySessionArtifacts, ARTIFACT_COMPARATOR);
     changed(SessionAspect.SESSIONS);
@@ -347,8 +352,19 @@ public class SessionsManager extends AspectModel<SessionAspect> {
       // More recent session should appear at the top.
       int result =
         Long.compare(artifact2.getSessionMetaData().getStartTimestampEpochMs(), artifact1.getSessionMetaData().getStartTimestampEpochMs());
-      // Within a session, more recent artifacts should appear at the bottom.
-      return result == 0 ? Long.compare(artifact1.getTimestampNs(), artifact2.getTimestampNs()) : result;
+      if (result != 0) {
+        return result;
+      }
+      // Within a session: a) The session item itself always comes first
+      if (artifact1 instanceof SessionItem) {
+        return -1;
+      }
+      if (artifact2 instanceof SessionItem) {
+        return 1;
+      }
+
+      // b) more recent artifacts should appear at the bottom.
+      return Long.compare(artifact1.getTimestampNs(), artifact2.getTimestampNs());
     }
   }
 }

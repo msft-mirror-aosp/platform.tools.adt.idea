@@ -81,12 +81,12 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_SHOW_SESSIONS = Flag.create(
     PROFILER, "show.session", "Enable the sessions panel",
     "Shows the sessions panel used for managing and navigating profiling data.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_IMPORT_SESSION = Flag.create(
     PROFILER, "import.session", "Enable the session import dialog",
     "Shows the file open drop down menu for session import.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_USE_JVMTI = Flag.create(
     PROFILER, "jvmti", "Enable JVMTI profiling",
@@ -157,7 +157,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_USE_ATRACE = Flag.create(
     PROFILER, "atrace", "Show the atrace option in CPU profiler",
     "Toggles if atrace is a valid option to choose from the CPU profiling dropdown.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_TRACK_JNI_REFS = Flag.create(
     PROFILER, "jni", "Enable JVMTI-based JNI reference tracking.",
@@ -218,17 +218,22 @@ public final class StudioFlags {
   public static final Flag<Boolean> WHATS_NEW_ASSISTANT_ENABLED = Flag.create(
     ASSISTANT, "whats.new.enabled", "Enable the \"What's New\" assistant",
     "If enabled, user can access the \"What's New\" assistant under \"Help\" and \"What's New in Android Studio\"",
-    false);
+    true);
 
   public static final Flag<Boolean> WHATS_NEW_ASSISTANT_AUTO_SHOW = Flag.create(
     ASSISTANT, "whats.new.auto.show", "Displays the \"What's New\" assistant on first start",
     "If enabled, the \"What's New\" assistant will be displayed the first time user opens a new version of Android Studio.",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_TARGET_RELATIVE = Flag.create(
     NELE, "target.relative", "Enable the target architecture in relative layout",
     "Enable the new Target architecture in relative layout",
     true);
+
+  public static final Flag<Boolean> NELE_NEW_PROPERTY_PANEL = Flag.create(
+    NELE, "new.property", "Enable the new Property Panel",
+    "Enable the new Property Panel",
+    false);
 
   private static final FlagGroup RUNDEBUG_GROUP = new FlagGroup(FLAGS, "rundebug", "Run/Debug");
   public static final Flag<Boolean> RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED = Flag.create(
@@ -275,6 +280,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> LAYOUT_INSPECTOR_V2_PROTOCOL_ENABLED = Flag.create(
     LAYOUT_INSPECTOR, "capture.v2", "Enable using V2 protocol to capture view data",
     "If enabled, uses V2 protocol to capture view information from device.", false);
+  public static final Flag<Boolean> LAYOUT_INSPECTOR_EDITING_ENABLED = Flag.create(
+    LAYOUT_INSPECTOR, "ui.editing", "Enable editing ViewNode properties in the properties table.",
+    "If enabled, users can edit properties in the properties table.", false);
 
   private static final FlagGroup REFACTORINGS = new FlagGroup(FLAGS, "refactor", "Refactor menu");
   public static final Flag<Boolean> MIGRATE_TO_APPCOMPAT_REFACTORING_ENABLED = Flag.create(

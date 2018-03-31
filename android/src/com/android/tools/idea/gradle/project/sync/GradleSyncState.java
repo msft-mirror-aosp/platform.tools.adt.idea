@@ -29,7 +29,7 @@ import com.android.tools.idea.gradle.util.GradleVersions;
 import com.android.tools.idea.gradle.variant.view.BuildVariantView;
 import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.project.IndexingSuspender;
-import com.android.tools.lint.detector.api.LintUtils;
+import com.android.tools.lint.detector.api.Lint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Ordering;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
@@ -39,6 +39,7 @@ import com.intellij.notification.NotificationGroup;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
@@ -98,6 +99,9 @@ public class GradleSyncState {
   private long mySyncEndedTimeStamp = -1L;
   private long mySyncFailedTimeStamp = -1L;
   private GradleSyncStats.Trigger myTrigger = TRIGGER_UNKNOWN;
+
+  @GuardedBy("myLock")
+  @Nullable private ExternalSystemTaskId myExternalSystemTaskId;
 
   @NotNull
   public static MessageBusConnection subscribe(@NotNull Project project, @NotNull GradleSyncListener listener) {
@@ -310,8 +314,7 @@ public class GradleSyncState {
 
     // Temporary: Clear resourcePrefix flag in case it was set to false when working with
     // an older model. TODO: Remove this when we no longer support models older than 0.10.
-    //noinspection AssignmentToStaticFieldFromInstanceMethod
-    LintUtils.sTryPrefixLookup = true;
+    Lint.setTryPrefixLookup(true);
 
     GradleVersion gradleVersion = GradleVersions.getInstance().getGradleVersion(myProject);
     String gradleVersionString = gradleVersion != null ? gradleVersion.toString() : "";
@@ -355,6 +358,7 @@ public class GradleSyncState {
     synchronized (myLock) {
       mySyncInProgress = false;
       mySyncSkipped = false;
+      myExternalSystemTaskId = null;
     }
   }
 
@@ -441,6 +445,19 @@ public class GradleSyncState {
     syncPublisher(() -> myMessageBus.syncPublisher(GRADLE_SYNC_TOPIC).setupStarted(myProject));
     AndroidStudioEvent.Builder event = generateSyncEvent(GRADLE_SYNC_SETUP_STARTED);
     UsageTracker.getInstance().log(event);
+  }
+
+  public void setExternalSystemTaskId(@Nullable ExternalSystemTaskId externalSystemTaskId) {
+    synchronized (myLock) {
+      myExternalSystemTaskId = externalSystemTaskId;
+    }
+  }
+
+  @Nullable
+  public ExternalSystemTaskId getExternalSystemTaskId() {
+    synchronized (myLock) {
+      return myExternalSystemTaskId;
+    }
   }
 
   @VisibleForTesting

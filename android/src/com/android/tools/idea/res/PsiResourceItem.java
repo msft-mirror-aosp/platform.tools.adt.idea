@@ -15,9 +15,7 @@
  */
 package com.android.tools.idea.res;
 
-import com.android.annotations.NonNull;
 import com.android.ide.common.rendering.api.*;
-import com.android.ide.common.resources.ResourceFile;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ValueXmlHelper;
 import com.android.ide.common.resources.configuration.DensityQualifier;
@@ -25,163 +23,283 @@ import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.resources.Density;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
+import com.android.resources.ResourceUrl;
 import com.android.tools.idea.AndroidPsiUtils;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.MoreObjects.ToStringHelper;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.xml.XmlTag;
+import com.intellij.reference.SoftReference;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.Collections;
 
 import static com.android.SdkConstants.*;
 
-class PsiResourceItem extends ResourceItem {
-  private final SmartPsiElementPointer<XmlTag> myTagPointer;
-  private final SmartPsiElementPointer<PsiFile> myFilePointer;
-  private final XmlTag myOriginalTag;
+public class PsiResourceItem implements ResourceItem {
+  @NotNull private final String myName;
+  @NotNull private final ResourceType myType;
+  @NotNull private final ResourceNamespace myNamespace;
+  @Nullable private ResourceValue myResourceValue;
+  @Nullable private PsiResourceFile mySource;
+  @Nullable private final SoftReference<XmlTag> myOriginalTag;
+  @NotNull private final SoftReference<PsiFile> myOriginalFile;
+  @Nullable private final Object smartPsiPointerLock;
+  @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
+  @Nullable private SmartPsiElementPointer<XmlTag> myTagPointer; // Guarded by smartPsiPointerLock if that is not null.
+  @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
+  @Nullable private SmartPsiElementPointer<PsiFile> myFilePointer; // Guarded by smartPsiPointerLock if that is not null.
 
-  private PsiResourceItem(@NonNull String name,
-                          @NonNull ResourceType type,
+  private PsiResourceItem(@NotNull String name,
+                          @NotNull ResourceType type,
                           @NotNull ResourceNamespace namespace,
                           @Nullable XmlTag tag,
-                          @NonNull PsiFile file) {
-    // TODO: Actually figure out the namespace.
-    super(name, namespace, type, null, null);
-    myOriginalTag = tag;
-    myTagPointer = tag != null ? SmartPointerManager.createPointer(tag) : null;
-    myFilePointer = SmartPointerManager.createPointer(file);
-  }
+                          @NotNull PsiFile file,
+                          boolean calledFromPsiListener) {
+    myName = name;
+    myType = type;
+    myNamespace = namespace;
 
-  /**
-   * Creates a new PsiResourceItem for a given {@link XmlTag}
-   */
-  @NonNull
-  public static PsiResourceItem forXmlTag(@NonNull String name,
-                                           @NonNull ResourceType type,
-                                           @NotNull ResourceNamespace namespace,
-                                           @NotNull XmlTag tag) {
-    return new PsiResourceItem(name, type, namespace, tag, tag.getContainingFile());
-  }
-
-  /**
-   * Creates a new PsiResourceItem for a given {@link PsiFile}
-   */
-  @NonNull
-  public static PsiResourceItem forFile(@NonNull String name,
-                                           @NonNull ResourceType type,
-                                           @NotNull ResourceNamespace namespace,
-                                           @NotNull PsiFile file) {
-    return new PsiResourceItem(name, type, namespace, null, file);
-  }
-
-  @Override
-  public FolderConfiguration getConfiguration() {
-    PsiResourceFile source = (PsiResourceFile)super.getSource();
-
-    PsiFile file = getPsiFile();
-
-    // Temporary safety workaround
-    if (source == null) {
-      if (file != null) {
-        PsiDirectory parent = file.getParent();
-        if (parent != null) {
-          String name = parent.getName();
-          FolderConfiguration configuration = FolderConfiguration.getConfigForFolder(name);
-          if (configuration != null) {
-            return configuration;
-          }
-        }
-      }
-
-      String qualifiers = getQualifiers();
-      FolderConfiguration fromQualifiers = FolderConfiguration.getConfigForQualifierString(qualifiers);
-      if (fromQualifiers == null) {
-        return new FolderConfiguration();
-      }
-      return fromQualifiers;
+    myOriginalTag = tag == null ? null : new SoftReference<>(tag);
+    myOriginalFile = new SoftReference<>(file);
+    if (calledFromPsiListener) {
+      // Smart pointers have to be created asynchronously to avoid the "Smart pointers shouldn't be created during PSI changes" error.
+      smartPsiPointerLock = new Object();
+      Application application = ApplicationManager.getApplication();
+      application.executeOnPooledThread(() -> application.runReadAction(this::createSmartPointers));
     }
-    return source.getFolderConfiguration();
+    else {
+      smartPsiPointerLock = null; // No locking required.
+      createSmartPointers();
+    }
+  }
+
+  private void createSmartPointers() {
+    SmartPsiElementPointer<XmlTag> tagPointer = myOriginalTag == null ? null : createSmartPointer(myOriginalTag);
+    SmartPsiElementPointer<PsiFile> filePointer = createSmartPointer(myOriginalFile);
+    if (smartPsiPointerLock == null) {
+      myTagPointer = tagPointer;
+      myFilePointer = filePointer;
+    } else {
+      synchronized (smartPsiPointerLock) {
+        myTagPointer = tagPointer;
+        myFilePointer = filePointer;
+      }
+    }
   }
 
   @Nullable
-  @Override
-  public ResourceFile getSource() {
-    ResourceFile source = super.getSource();
-    PsiFile file = getPsiFile();
-    PsiElement parent = source == null && file != null ? AndroidPsiUtils.getPsiParentSafely(file) : null;
+  private static <T extends PsiElement> SmartPsiElementPointer<T> createSmartPointer(@NotNull SoftReference<T> elementReference) {
+    T element = elementReference.get();
+    if (element == null) {
+      return null; // The PSI element has already been garbage collected.
+    }
+    return SmartPointerManager.createPointer(element);
+  }
 
-    if (parent == null || !(parent instanceof PsiDirectory)) {
-      return source;
+  /**
+   * Creates a new PsiResourceItem for a given {@link XmlTag}.
+   *
+   * @param name the name of the resource
+   * @param type the type of the resource
+   * @param namespace the namespace of the resource
+   * @param tag the XML tag to create the resource from
+   * @param calledFromPsiListener true if the method was called from a PSI listener
+   */
+  @NotNull
+  public static PsiResourceItem forXmlTag(@NotNull String name,
+                                          @NotNull ResourceType type,
+                                          @NotNull ResourceNamespace namespace,
+                                          @NotNull XmlTag tag,
+                                          boolean calledFromPsiListener) {
+    return new PsiResourceItem(name, type, namespace, tag, tag.getContainingFile(), calledFromPsiListener);
+  }
+
+  /**
+   * Creates a new PsiResourceItem for a given {@link PsiFile}.
+   *
+   * @param name the name of the resource
+   * @param type the type of the resource
+   * @param namespace the namespace of the resource
+   * @param file the XML file to create the resource from
+   * @param calledFromPsiListener true if the method was called from a PSI listener
+   */
+  @NotNull
+  public static PsiResourceItem forFile(@NotNull String name,
+                                        @NotNull ResourceType type,
+                                        @NotNull ResourceNamespace namespace,
+                                        @NotNull PsiFile file,
+                                        boolean calledFromPsiListener) {
+    return new PsiResourceItem(name, type, namespace, null, file, calledFromPsiListener);
+  }
+
+  @Override
+  @NotNull
+  public String getName() {
+    return myName;
+  }
+
+  @Override
+  @NotNull
+  public ResourceType getType() {
+    return myType;
+  }
+
+  @Override
+  @NotNull
+  public ResourceNamespace getNamespace() {
+    return myNamespace;
+  }
+
+  @Override
+  @Nullable
+  public String getLibraryName() {
+    return null;
+  }
+
+  @Override
+  @NotNull
+  public ResourceReference getReferenceToSelf() {
+    return new ResourceReference(myNamespace, myType, myName);
+  }
+
+  @Override
+  @NotNull
+  public FolderConfiguration getConfiguration() {
+    PsiResourceFile source = getSource();
+    assert source != null : "getConfiguration called on a PsiResourceItem with no source";
+    return source.getFolderConfiguration();
+  }
+
+  @Override
+  @NotNull
+  public String getKey() {
+    String qualifiers = getConfiguration().getQualifierString();
+    if (!qualifiers.isEmpty()) {
+      return getType() + "-" + qualifiers + "/" + getName();
+    }
+
+    return getType() + "/" + getName();
+  }
+
+  @Nullable
+  public PsiResourceFile getSource() {
+    if (mySource != null) {
+      return mySource;
+    }
+
+    PsiFile file = getPsiFile();
+    if (file == null) {
+      return null;
+    }
+
+    PsiElement parent = AndroidPsiUtils.getPsiParentSafely(file);
+
+    if (!(parent instanceof PsiDirectory)) {
+      return null;
     }
 
     String name = ((PsiDirectory)parent).getName();
     ResourceFolderType folderType = ResourceFolderType.getFolderType(name);
-    FolderConfiguration configuration = FolderConfiguration.getConfigForFolder(name);
-    int index = name.indexOf('-');
-    String qualifiers = index == -1 ? "" : name.substring(index + 1);
-    source = new PsiResourceFile(file, Collections.singletonList(this), qualifiers, folderType, configuration);
-    setSource(source);
+    if (folderType == null) {
+      return null;
+    }
 
-    return source;
+    FolderConfiguration configuration = FolderConfiguration.getConfigForFolder(name);
+    if (configuration == null) {
+      return null;
+    }
+
+    PsiFile psiFile = getPsiFile();
+    if (psiFile == null) {
+      return null;
+    }
+
+    // PsiResourceFile constructor sets the source of this item.
+    return new PsiResourceFile(psiFile, Collections.singletonList(this), folderType, configuration);
+  }
+
+  public void setSource(@Nullable PsiResourceFile source) {
+    mySource = source;
   }
 
   /**
    * GETTER WITH SIDE EFFECTS that registers we have taken an interest in this value
    * so that if the value changes we will get a resource changed event fire.
    */
-  @Nullable
   @Override
+  @Nullable
   public ResourceValue getResourceValue() {
-    if (mResourceValue == null) {
-      //noinspection VariableNotUsedInsideIf
-      if (myTagPointer == null) {
+    if (myResourceValue == null) {
+      XmlTag tag = getTag();
+      if (tag == null) {
+        PsiResourceFile source = getSource();
+        assert source != null : "getResourceValue called on a PsiResourceItem with no source";
         // Density based resource value?
         ResourceType type = getType();
         Density density = type == ResourceType.DRAWABLE || type == ResourceType.MIPMAP ? getFolderDensity() : null;
+
+        String path = null;
+        VirtualFile virtualFile = source.getVirtualFile();
+        if (virtualFile != null) {
+          path = VfsUtilCore.virtualToIoFile(virtualFile).getAbsolutePath();
+        }
         if (density != null) {
-          mResourceValue = new DensityBasedResourceValue(getReferenceToSelf(),
-                                                         getSource().getFile().getAbsolutePath(),
-                                                         density,
-                                                         null);
+          myResourceValue = new DensityBasedResourceValue(getReferenceToSelf(), path, density, null);
         } else {
-          mResourceValue = new ResourceValue(getReferenceToSelf(),
-                                             getSource().getFile().getAbsolutePath(),
-                                             null);
+          myResourceValue = new ResourceValue(getReferenceToSelf(), path, null);
         }
       } else {
-        mResourceValue = parseXmlToResourceValue();
+        myResourceValue = parseXmlToResourceValue(tag);
       }
     }
 
-    return mResourceValue;
+    return myResourceValue;
+  }
+
+  @Override
+  @Nullable
+  public File getFile() {
+    PsiFile psiFile = getPsiFile();
+    if (psiFile == null) {
+      return null;
+    }
+
+    VirtualFile virtualFile = psiFile.getVirtualFile();
+    return virtualFile == null ? null : VfsUtilCore.virtualToIoFile(virtualFile);
+  }
+
+  @Override
+  public boolean isFileBased() {
+    return myOriginalTag == null;
   }
 
   @Nullable
   private Density getFolderDensity() {
     FolderConfiguration configuration = getConfiguration();
-    if (configuration != null) {
-      DensityQualifier densityQualifier = configuration.getDensityQualifier();
-      if (densityQualifier != null) {
-        return densityQualifier.getValue();
-      }
+    DensityQualifier densityQualifier = configuration.getDensityQualifier();
+    if (densityQualifier != null) {
+      return densityQualifier.getValue();
     }
     return null;
   }
 
   @Nullable
-  private ResourceValue parseXmlToResourceValue() {
-    assert myTagPointer != null;
-    XmlTag tag = getTag();
-
+  private ResourceValue parseXmlToResourceValue(@Nullable XmlTag tag) {
     if (tag == null || !tag.isValid()) {
       return null;
     }
 
     ResourceValue value;
-    switch (getType()) {
+    switch (myType) {
       case STYLE:
         String parent = getAttributeValue(tag, ATTR_PARENT);
         value = parseStyleValue(tag, new StyleResourceValue(getReferenceToSelf(), parent, null));
@@ -193,7 +311,7 @@ class PsiResourceItem extends ResourceItem {
         value = parseAttrValue(tag, new AttrResourceValue(getReferenceToSelf(), null));
         break;
       case ARRAY:
-          value = parseArrayValue(tag, new ArrayResourceValue(getReferenceToSelf(), null) {
+        value = parseArrayValue(tag, new ArrayResourceValue(getReferenceToSelf(), null) {
           // Allow the user to specify a specific element to use via tools:index
           @Override
           protected int getDefaultIndex() {
@@ -234,34 +352,32 @@ class PsiResourceItem extends ResourceItem {
   }
 
   @Nullable
-  private static String getAttributeValue(@NonNull XmlTag tag, @NonNull String attributeName) {
+  private static String getAttributeValue(@NotNull XmlTag tag, @NotNull String attributeName) {
     return tag.getAttributeValue(attributeName);
   }
 
-  @NonNull
-  private static ResourceValue parseDeclareStyleable(@NonNull XmlTag tag, @NonNull DeclareStyleableResourceValue declareStyleable) {
+  @NotNull
+  private ResourceValue parseDeclareStyleable(@NotNull XmlTag tag, @NotNull DeclareStyleableResourceValue declareStyleable) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (!StringUtil.isEmpty(name)) {
-        // is the attribute in the android namespace?
-        boolean isFrameworkAttr = declareStyleable.isFramework();
-        if (name.startsWith(ANDROID_NS_NAME_PREFIX)) {
-          name = name.substring(ANDROID_NS_NAME_PREFIX_LEN);
-          isFrameworkAttr = true;
+        ResourceUrl url = ResourceUrl.parseAttrReference(name);
+        if (url != null) {
+          ResourceReference resolvedAttr = url.resolve(getNamespace(), ResourceHelper.getNamespaceResolver(tag));
+          if (resolvedAttr != null) {
+            AttrResourceValue attr = parseAttrValue(child, new AttrResourceValue(resolvedAttr, null));
+            declareStyleable.addValue(attr);
+          }
         }
 
-        AttrResourceValue attr = parseAttrValue(child,
-                                                new AttrResourceValue(new ResourceReference(ResourceType.ATTR, name, isFrameworkAttr),
-                                                                      null));
-        declareStyleable.addValue(attr);
       }
     }
 
     return declareStyleable;
   }
 
-  @NonNull
-  private static ResourceValue parseStyleValue(@NonNull XmlTag tag, @NonNull StyleResourceValue styleValue) {
+  @NotNull
+  private static ResourceValue parseStyleValue(@NotNull XmlTag tag, @NotNull StyleResourceValue styleValue) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (!StringUtil.isEmpty(name)) {
@@ -275,8 +391,8 @@ class PsiResourceItem extends ResourceItem {
     return styleValue;
   }
 
-  @NonNull
-  private static AttrResourceValue parseAttrValue(@NonNull XmlTag tag, @NonNull AttrResourceValue attrValue) {
+  @NotNull
+  private static AttrResourceValue parseAttrValue(@NotNull XmlTag tag, @NotNull AttrResourceValue attrValue) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (name != null) {
@@ -296,7 +412,8 @@ class PsiResourceItem extends ResourceItem {
     return attrValue;
   }
 
-  private static ResourceValue parseArrayValue(@NonNull XmlTag tag, @NonNull ArrayResourceValue arrayValue) {
+  @NotNull
+  private static ResourceValue parseArrayValue(@NotNull XmlTag tag, @NotNull ArrayResourceValue arrayValue) {
     for (XmlTag child : tag.getSubTags()) {
       String text = ValueXmlHelper.unescapeResourceString(ResourceHelper.getTextContent(child), true, true);
       arrayValue.addElement(text);
@@ -305,7 +422,8 @@ class PsiResourceItem extends ResourceItem {
     return arrayValue;
   }
 
-  private static ResourceValue parsePluralsValue(@NonNull XmlTag tag, @NonNull PluralsResourceValue value) {
+  @NotNull
+  private static ResourceValue parsePluralsValue(@NotNull XmlTag tag, @NotNull PluralsResourceValue value) {
     for (XmlTag child : tag.getSubTags()) {
       String quantity = child.getAttributeValue(ATTR_QUANTITY);
       if (quantity != null) {
@@ -317,8 +435,8 @@ class PsiResourceItem extends ResourceItem {
     return value;
   }
 
-  @NonNull
-  private static ResourceValue parseValue(@NonNull XmlTag tag, @NonNull ResourceValue value) {
+  @NotNull
+  private static ResourceValue parseValue(@NotNull XmlTag tag, @NotNull ResourceValue value) {
     String text = ResourceHelper.getTextContent(tag);
     text = ValueXmlHelper.unescapeResourceString(text, true, true);
     value.setValue(text);
@@ -326,42 +444,53 @@ class PsiResourceItem extends ResourceItem {
     return value;
   }
 
-  @NonNull
-  private static PsiTextResourceValue parseTextValue(@NonNull XmlTag tag, @NonNull PsiTextResourceValue value) {
+  @NotNull
+  private static PsiTextResourceValue parseTextValue(@NotNull XmlTag tag, @NotNull PsiTextResourceValue value) {
     String text = ResourceHelper.getTextContent(tag);
     text = ValueXmlHelper.unescapeResourceString(text, true, true);
     value.setValue(text);
 
     return value;
-  }
-
-  @Nullable
-  PsiFile getPsiFile() {
-    return myFilePointer.getElement();
-  }
-
-  /** Clears the cached value, if any, and returns true if the value was cleared */
-  public boolean recomputeValue() {
-    if (mResourceValue != null) {
-      // Force recompute in getResourceValue
-      mResourceValue = null;
-      return true;
-    } else {
-      return false;
-    }
   }
 
   @Nullable
   public XmlTag getTag() {
-    return myTagPointer != null ? myTagPointer.getElement() : null;
+    if (smartPsiPointerLock == null) {
+      return myOriginalTag == null ? null : myTagPointer == null ? myOriginalTag.get() : myTagPointer.getElement();
+    } else {
+      synchronized (smartPsiPointerLock) {
+        return myOriginalTag == null ? null : myTagPointer == null ? myOriginalTag.get() : myTagPointer.getElement();
+      }
+    }
+  }
 
+  @Nullable
+  PsiFile getPsiFile() {
+    if (smartPsiPointerLock == null) {
+      return myFilePointer == null ? myOriginalFile.get() : myFilePointer.getElement();
+    } else {
+      synchronized (smartPsiPointerLock) {
+        return myFilePointer == null ? myOriginalFile.get() : myFilePointer.getElement();
+      }
+    }
   }
 
   /**
    * Returns true if this {@link PsiResourceItem} was originally pointing to the given tag.
    */
-  public boolean wasTag(@NonNull XmlTag tag) {
-    return tag == myOriginalTag || tag == getTag();
+  public boolean wasTag(@NotNull XmlTag tag) {
+    return myOriginalTag != null && tag == myOriginalTag.get() || tag == getTag();
+  }
+
+  /** Clears the cached value, if any, and returns true if the value was cleared. */
+  public boolean recomputeValue() {
+    if (myResourceValue == null) {
+      return false;
+    }
+
+    // Force recompute in getResourceValue
+    myResourceValue = null;
+    return true;
   }
 
   @Override
@@ -373,14 +502,24 @@ class PsiResourceItem extends ResourceItem {
 
   @Override
   public int hashCode() {
-    return getName().hashCode();
+    return myName.hashCode();
   }
 
   @Override
   public String toString() {
+    ToStringHelper helper = MoreObjects.toStringHelper(this)
+        .add("name", myName)
+        .add("namespace", myNamespace)
+        .add("type", myType);
     XmlTag tag = getTag();
+    if (tag != null) {
+      helper.add("tag", ResourceHelper.getTextContent(tag));
+    }
     PsiFile file = getPsiFile();
-    return super.toString() + ": " + (tag != null ? ResourceHelper.getTextContent(tag) : "null" + (file != null ? ":" + file.getName() : ""));
+    if (file != null) {
+      helper.add("file", file.getName());
+    }
+    return helper.toString();
   }
 
   private class PsiTextResourceValue extends TextResourceValue {
@@ -392,15 +531,14 @@ class PsiResourceItem extends ResourceItem {
     public String getRawXmlValue() {
       XmlTag tag = getTag();
 
-      if (tag != null && tag.isValid()) {
-        if (!ApplicationManager.getApplication().isReadAccessAllowed()) {
-          return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> tag.getValue().getText());
-        }
-        return tag.getValue().getText();
-      }
-      else {
+      if (tag == null || !tag.isValid()) {
         return getValue();
       }
+
+      if (!ApplicationManager.getApplication().isReadAccessAllowed()) {
+        return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> tag.getValue().getText());
+      }
+      return tag.getValue().getText();
     }
   }
 }

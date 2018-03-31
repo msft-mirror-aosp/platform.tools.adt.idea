@@ -25,8 +25,9 @@ import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.model.TestAndroidModel;
 import com.google.common.collect.ImmutableMap;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
@@ -40,7 +41,6 @@ import java.util.List;
 import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.TOOLS_URI;
 import static com.google.common.truth.Truth.assertThat;
-import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
 
 public class ResourceHelperTest extends AndroidTestCase {
   public void testIsFileBasedResourceType() {
@@ -108,7 +108,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     assertEquals("menu-en-rUS", ResourceHelper.getFolderConfiguration(file2.getVirtualFile()).getFolderName(ResourceFolderType.MENU));
   }
 
-  public void testRGB() {
+  public void testParseColor() {
     Color c = ResourceHelper.parseColor("#0f4");
     assert c != null;
     assertEquals(0xff00ff44, c.getRGB());
@@ -249,12 +249,8 @@ public class ResourceHelperTest extends AndroidTestCase {
   }
 
   public void testResolve() {
-    myFacet.getConfiguration().setModel(TestAndroidModel.namespaced());
     ResourceNamespace appNs = ResourceNamespace.fromPackageName("com.example.app");
-    runWriteCommandAction(getProject(), () -> {
-      myFacet.getManifest().getPackage().setValue(appNs.getPackageName());
-      PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
-    });
+    setProjectNamespace(appNs);
 
     PsiFile innerFileLand = myFixture.addFileToProject("res/layout-land/inner.xml", "<LinearLayout/>");
     PsiFile innerFilePort = myFixture.addFileToProject("res/layout-port/inner.xml", "<LinearLayout/>");
@@ -294,9 +290,7 @@ public class ResourceHelperTest extends AndroidTestCase {
     "</LinearLayout>\n";
 
   public void testGetResourceResolverFromXmlTag_namespacesEnabled() {
-    myFacet.getConfiguration().setModel(TestAndroidModel.namespaced());
-    ResourceNamespace appNs = ResourceNamespace.fromPackageName("com.example.app");
-    runWriteCommandAction(getProject(), () -> myFacet.getManifest().getPackage().setValue(appNs.getPackageName()));
+    setProjectNamespace(ResourceNamespace.fromPackageName("com.example.app"));
 
     XmlFile file = (XmlFile)myFixture.addFileToProject("layout/simple.xml", LAYOUT_FILE);
     XmlTag layout = file.getRootTag();
@@ -313,6 +307,13 @@ public class ResourceHelperTest extends AndroidTestCase {
     assertThat(resolver.uriToPrefix(ANDROID_URI)).isEqualTo("framework");
     assertThat(resolver.prefixToUri("newtools")).isEqualTo(TOOLS_URI);
     assertThat(resolver.prefixToUri("framework")).isEqualTo(ANDROID_URI);
+  }
+
+  private void setProjectNamespace(ResourceNamespace appNs) {
+    CommandProcessor.getInstance().runUndoTransparentAction(() -> ApplicationManager.getApplication().runWriteAction(() -> {
+      myFacet.getConfiguration().setModel(TestAndroidModel.namespaced());
+      myFacet.getManifest().getPackage().setValue(appNs.getPackageName());
+    }));
   }
 
   public void testGetResourceResolverFromXmlTag_namespacesDisabled() {

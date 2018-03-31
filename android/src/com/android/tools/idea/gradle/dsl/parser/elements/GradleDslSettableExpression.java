@@ -43,6 +43,10 @@ public abstract class GradleDslSettableExpression extends GradleDslExpression {
 
   @Override
   public void reset() {
+    if (myUnsavedValue != null) {
+      // Make sure dependencies are correctly setup to the old value.
+      setupDependencies(myExpression);
+    }
     myUnsavedValue = null;
     // Resetting setModified is done by GradleDslElement#resetState.
   }
@@ -52,9 +56,16 @@ public abstract class GradleDslSettableExpression extends GradleDslExpression {
     return myUnsavedValue != null ? myUnsavedValue : myExpression;
   }
 
+  @Override
+  protected void resolve() {
+    setupDependencies(getCurrentElement());
+  }
+
   protected void setUnsavedValue(@Nullable PsiElement element) {
     myUnsavedValue = element;
+    resolve();
     setModified(true);
+    reorder();
   }
 
   protected void checkForValidValue(@NotNull Object value) {

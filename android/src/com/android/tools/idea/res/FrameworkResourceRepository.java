@@ -118,10 +118,18 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
       LOG.warn(e);
     }
 
-    ResourceMerger resourceMerger = new ResourceMerger(0);
-    resourceMerger.setPreserveOriginalItems(true);
-    resourceMerger.addDataSet(resourceSet);
-    repository.getItems().update(resourceMerger);
+    ResourceTable resourceTable = repository.getFullTable();
+    ListMultimap<String, ResourceMergerItem> resourceItems = resourceSet.getDataMap();
+    for (String key : resourceItems.keys()) {
+      List<ResourceMergerItem> items = resourceItems.get(key);
+      for (int i = items.size(); --i >= 0;) {
+        ResourceItem item = items.get(i);
+        ListMultimap<String, ResourceItem> multimap = resourceTable.getOrPutEmpty(item.getNamespace(), item.getType());
+        if (!multimap.containsEntry(item.getName(), item)) {
+          multimap.put(item.getName(), item);
+        }
+      }
+    }
 
     repository.loadPublicResources();
     if (usePersistentCache) {
@@ -160,76 +168,76 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
     File valuesFolder = new File(getResourceDirectory(), SdkConstants.FD_RES_VALUES);
     File publicXmlFile = new File(valuesFolder, "public.xml");
 
-    if (publicXmlFile.exists()) {
-      try (InputStream stream = new BufferedInputStream(new FileInputStream(publicXmlFile))) {
-        KXmlParser parser = new KXmlParser();
-        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
-        parser.setInput(stream, StandardCharsets.UTF_8.name());
+    try (InputStream stream = new BufferedInputStream(new FileInputStream(publicXmlFile))) {
+      KXmlParser parser = new KXmlParser();
+      parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
+      parser.setInput(stream, StandardCharsets.UTF_8.name());
 
-        ResourceType lastType = null;
-        String lastTypeName = "";
-        while (true) {
-          int event = parser.next();
-          if (event == XmlPullParser.START_TAG) {
-            // As of API 15 there are a number of "java-symbol" entries here.
-            if (!parser.getName().equals(SdkConstants.TAG_PUBLIC)) {
-              continue;
-            }
+      ResourceType lastType = null;
+      String lastTypeName = "";
+      while (true) {
+        int event = parser.next();
+        if (event == XmlPullParser.START_TAG) {
+          // As of API 15 there are a number of "java-symbol" entries here.
+          if (!parser.getName().equals(SdkConstants.TAG_PUBLIC)) {
+            continue;
+          }
 
-            String name = null;
-            String typeName = null;
-            for (int i = 0, n = parser.getAttributeCount(); i < n; i++) {
-              String attribute = parser.getAttributeName(i);
+          String name = null;
+          String typeName = null;
+          for (int i = 0, n = parser.getAttributeCount(); i < n; i++) {
+            String attribute = parser.getAttributeName(i);
 
-              if (attribute.equals(SdkConstants.ATTR_NAME)) {
-                name = parser.getAttributeValue(i);
-                if (typeName != null) {
-                  // Skip id attribute processing.
-                  break;
-                }
-              }
-              else if (attribute.equals(SdkConstants.ATTR_TYPE)) {
-                typeName = parser.getAttributeValue(i);
+            if (attribute.equals(SdkConstants.ATTR_NAME)) {
+              name = parser.getAttributeValue(i);
+              if (typeName != null) {
+                // Skip id attribute processing.
+                break;
               }
             }
-
-            if (name != null && typeName != null) {
-              ResourceType type;
-              if (typeName.equals(lastTypeName)) {
-                type = lastType;
-              }
-              else {
-                type = ResourceType.getEnum(typeName);
-                lastType = type;
-                lastTypeName = typeName;
-              }
-
-              if (type != null) {
-                List<ResourceItem> matchingResources = getResourceItems(ANDROID_NAMESPACE, type, name);
-                // Some entries in public.xml point to attributes defined attrs_manifest.xml and therefore
-                // don't match any resources.
-                if (!matchingResources.isEmpty()) {
-                  List<ResourceItem> publicList = myPublicResources.get(type);
-                  if (publicList == null) {
-                    publicList = new ArrayList<>(getMap(type, false).size());
-                    myPublicResources.put(type, publicList);
-                  }
-
-                  publicList.addAll(matchingResources);
-                }
-              }
-              else {
-                LOG.error("Public resource declaration \"" + name + "\" of type " + typeName + " points to unknown resource type.");
-              }
+            else if (attribute.equals(SdkConstants.ATTR_TYPE)) {
+              typeName = parser.getAttributeValue(i);
             }
           }
-          else if (event == XmlPullParser.END_DOCUMENT) {
-            break;
+
+          if (name != null && typeName != null) {
+            ResourceType type;
+            if (typeName.equals(lastTypeName)) {
+              type = lastType;
+            }
+            else {
+              type = ResourceType.getEnum(typeName);
+              lastType = type;
+              lastTypeName = typeName;
+            }
+
+            if (type != null) {
+              List<ResourceItem> matchingResources = getResourceItems(ANDROID_NAMESPACE, type, name);
+              // Some entries in public.xml point to attributes defined attrs_manifest.xml and therefore
+              // don't match any resources.
+              if (!matchingResources.isEmpty()) {
+                List<ResourceItem> publicList = myPublicResources.get(type);
+                if (publicList == null) {
+                  publicList = new ArrayList<>(getMap(type, false).size());
+                  myPublicResources.put(type, publicList);
+                }
+
+                publicList.addAll(matchingResources);
+              }
+            }
+            else {
+              LOG.error("Public resource declaration \"" + name + "\" of type " + typeName + " points to unknown resource type.");
+            }
           }
         }
-      } catch (Exception e) {
-        LOG.error("Can't read and parse public attribute list " + publicXmlFile.getPath(), e);
+        else if (event == XmlPullParser.END_DOCUMENT) {
+          break;
+        }
       }
+    } catch (FileNotFoundException e) {
+      // There is no public.xml. This not considered an error.
+    } catch (Exception e) {
+      LOG.error("Can't read and parse public attribute list " + publicXmlFile.getPath(), e);
     }
 
     // Put unmodifiable list for all resource types in the public resource map.
@@ -336,17 +344,17 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
           for (int k = 0; k < n; k++) {
             Node node = in.readNode();
             ResourceItemType itemType = ResourceItemType.values()[in.readUnsignedByte()];
-            ResourceItem item = null;
+            ResourceMergerItem item = null;
             switch (itemType) {
               case VALUE: {
-                item = new ResourceItem(resourceName, ANDROID_NAMESPACE, resourceType, node, null);
+                item = new ResourceMergerItem(resourceName, ANDROID_NAMESPACE, resourceType, node, null);
                 int fileIndex = in.readUnsignedShort();
                 ResourceFile resourceFile = resourceFiles[fileIndex];
                 resourceFile.addItem(item);
                 break;
               }
               case FILE: {
-                item = new ResourceItem(resourceName, ANDROID_NAMESPACE, resourceType, node, null);
+                item = new ResourceMergerItem(resourceName, ANDROID_NAMESPACE, resourceType, node, null);
                 int folderConfigurationIndex = in.readUnsignedShort();
                 FolderConfiguration folderConfig = folderConfigurations[folderConfigurationIndex];
                 String path = in.readUTF();
@@ -514,14 +522,16 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
       Map<ResourceType, ListMultimap<String, ResourceItem>> mapByType = getMapByType();
       for (ListMultimap<String, ResourceItem> map : mapByType.values()) {
         for (ResourceItem resourceItem : map.values()) {
+          // All items in this repo are ResourceMergerItems (for now).
+          ResourceMergerItem resourceMergerItem = (ResourceMergerItem)resourceItem;
           FolderConfiguration folderConfiguration = resourceItem.getConfiguration();
           if (!folderConfigurationIndexes.containsKey(folderConfiguration)) {
             folderConfigurationIndexes.put(folderConfiguration, folderConfigurations.size());
             folderConfigurations.add(folderConfiguration);
           }
 
-          if (resourceItem.getSourceType() != DataFile.FileType.SINGLE_FILE) {
-            ResourceFile resourceFile = resourceItem.getSource();
+          if (resourceMergerItem.getSourceType() != DataFile.FileType.SINGLE_FILE) {
+            ResourceFile resourceFile = resourceMergerItem.getSource();
             if (resourceFile != null) {
               File file = resourceFile.getFile();
               if (!multiResourceFileIndexes.containsKey(file)) {
@@ -584,11 +594,12 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
 
             out.writeShort(resourceItems.size());
             for (ResourceItem resourceItem : resourceItems) {
-              out.writeNode(resourceItem.getValue());
-              ResourceFile resourceFile = resourceItem.getSource();
+              ResourceMergerItem resourceMergerItem = (ResourceMergerItem)resourceItem;
+              out.writeNode(resourceMergerItem.getValue());
+              ResourceFile resourceFile = resourceMergerItem.getSource();
               assert resourceFile != null;
               ResourceItemType itemType;
-              if (resourceItem.getSourceType() == DataFile.FileType.SINGLE_FILE) {
+              if (resourceItem.isFileBased()) {
                 itemType = ResourceItemType.FILE;
               } else {
                 itemType = ResourceItemType.VALUE;
@@ -1465,7 +1476,7 @@ public final class FrameworkResourceRepository extends FileResourceRepository {
     return exception;
   }
 
-  private enum ResourceItemType {
+  public enum ResourceItemType {
     /** Resource associated with a {@linkplain DataFile.FileType#XML_VALUES} file. */
     VALUE,
     /** Resource associated with a {@linkplain DataFile.FileType#SINGLE_FILE} file. */

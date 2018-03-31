@@ -17,6 +17,7 @@ package com.android.tools.profilers.sessions;
 
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Profiler;
+import com.android.tools.profilers.StudioMonitorStage;
 import com.android.tools.profilers.StudioProfilers;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,7 +29,6 @@ public class SessionItem implements SessionArtifact {
   @NotNull private final StudioProfilers myProfilers;
   @NotNull private Common.Session mySession;
   @NotNull private final Common.SessionMetaData mySessionMetaData;
-  private boolean myIsExpanded;
 
   public SessionItem(@NotNull StudioProfilers profilers, @NotNull Common.Session session) {
     myProfilers = profilers;
@@ -36,8 +36,6 @@ public class SessionItem implements SessionArtifact {
     Profiler.GetSessionMetaDataResponse response = myProfilers.getClient().getProfilerClient()
       .getSessionMetaData(Profiler.GetSessionMetaDataRequest.newBuilder().setSessionId(mySession.getSessionId()).build());
     mySessionMetaData = response.getData();
-    // Sessions are expanded by default.
-    myIsExpanded = true;
   }
 
   @NotNull
@@ -93,25 +91,19 @@ public class SessionItem implements SessionArtifact {
     mySession = session;
   }
 
-  public boolean isExpanded() {
-    return myIsExpanded;
-  }
-
-  public void setExpanded(boolean expanded) {
-    if (myIsExpanded == expanded) {
-      return;
-    }
-
-    myIsExpanded = expanded;
-    /**
-     * The SessionsManager needs to retrieve the additional items that should be included in list as returned via
-     * {@link SessionsManager#getSessionArtifacts()}.
-     */
-    myProfilers.getSessionsManager().update();
-  }
-
   @Override
   public void onSelect() {
-    myProfilers.getSessionsManager().setSession(mySession);
+    if (mySession.equals(myProfilers.getSession())) {
+      // Navigate back to main stage if its SessionType is FULL.
+      if (!myProfilers.getStageClass().equals(StudioMonitorStage.class) &&
+          mySessionMetaData.getType() == Common.SessionMetaData.SessionType.FULL) {
+        myProfilers.setStage(new StudioMonitorStage(myProfilers));
+      }
+    }
+    else {
+      // Navigate to the new Session.
+      myProfilers.getSessionsManager().setSession(mySession);
+    }
+    myProfilers.getIdeServices().getFeatureTracker().trackSessionArtifactSelected(this, myProfilers.getSessionsManager().isSessionAlive());
   }
 }

@@ -23,8 +23,8 @@ import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture
 import com.android.tools.idea.tests.gui.framework.fixture.WelcomeFrameFixture
 import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.GuiTestProjectSystem
 import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.TargetBuildSystem
-import com.google.common.io.Files
 import com.intellij.ide.plugins.PluginManagerCore
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
@@ -45,7 +45,7 @@ class BazelGuiTestProjectSystem : GuiTestProjectSystem {
     // If the uitestignore file exists, then delete the files listed in that file.
     val ignoreFile = File(targetTestDirectory, "bazel.uitestignore")
     if (ignoreFile.exists()) {
-      Files.readLines(ignoreFile, Charsets.UTF_8)
+      ignoreFile.readLines()
         .map { name -> File(targetTestDirectory, name) }
         .forEach { file -> file.delete() }
     }
@@ -55,31 +55,32 @@ class BazelGuiTestProjectSystem : GuiTestProjectSystem {
       .filter { f -> f.exists() && f.name.endsWith(".bazeltestfile") }
       .forEach { f -> f.renameTo(File(f.parent, f.nameWithoutExtension)) }
 
+    val workspaceFile = File(targetTestDirectory, "WORKSPACE")
+    workspaceFile.writeText(injectRuntimeVariables(workspaceFile.readText()))
 
-    val androidSdkRepositoryInfo =
-        """
-android_sdk_repository(
-    name = "androidsdk",
-    path = "${getSdkPath()}"
-)
-        """
-
-    Files.append(androidSdkRepositoryInfo, File(targetTestDirectory, "WORKSPACE"), Charsets.UTF_8)
-    Files.append("startup --host_javabase=" + getJdkPath(), File(targetTestDirectory, ".bazelrc"), Charsets.UTF_8)
+    File(targetTestDirectory, ".bazelrc").appendText("startup --host_javabase=" + getJdkPath())
   }
+
+  private fun injectRuntimeVariables(workspaceFileContent: String) =
+    workspaceFileContent
+      .replace("%ANDROID_SDK_PATH%", getSdkPath())
+      .replace("%LOCAL_TEST_REPOSITORY%", getPrebuiltsRepoPath())
 
   override fun importProject(targetTestDirectory: File, robot: Robot, buildPath: String?) {
     logger.info("Importing project.")
+
+    val checkedBuildPath = buildPath ?: "app/BUILD"
 
     openBazelImportWizard(robot)
       .setWorkspacePath(targetTestDirectory.path)
       .clickNext()
       .setBazelBinaryPath(getBazelBinaryPath())
       .clickNext()
-      .selectGenerateFromBuildFileOptionAndSetPath(buildPath ?: "app/BUILD")
+      .selectGenerateFromBuildFileOptionAndSetPath(checkedBuildPath)
       .clickNext()
-      .uncommentApi27(File(targetTestDirectory, "app/BUILD"))
+      .uncommentApi27(File(targetTestDirectory, checkedBuildPath))
       .clickFinish()
+      .waitForProjectValidation()
   }
 
   override fun requestProjectSync(ideFrameFixture: IdeFrameFixture): GuiTestProjectSystem {
@@ -141,6 +142,16 @@ the location of the project data directory that is assigned during importProject
   private fun getBazelBinaryPath(): String {
     val platformPath = getPlatformPathName() ?: throw RuntimeException("Running test on unsupported platform for bazel")
     return File(TestUtils.getWorkspaceRoot(), "prebuilts/tools/$platformPath/bazel/bazel-real").path
+  }
+
+  private fun getPrebuiltsRepoPath(): String {
+    val prebuiltsRepo = "prebuilts/tools/common/m2/repository"
+    return if (TestUtils.runningFromBazel()) {
+      // Based on EmbeddedDistributionPaths#findAndroidStudioLocalMavenRepoPaths:
+      File(PathManager.getHomePath(), "../../$prebuiltsRepo").absolutePath
+    } else {
+      TestUtils.getWorkspaceFile(prebuiltsRepo).absolutePath
+    }
   }
 
   private fun getJdkPath(): String {

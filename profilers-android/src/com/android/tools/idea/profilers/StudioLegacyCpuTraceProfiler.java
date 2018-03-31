@@ -159,7 +159,7 @@ public class StudioLegacyCpuTraceProfiler implements LegacyCpuTraceProfiler {
   public ProfilingStateResponse checkAppProfilingState(ProfilingStateRequest request) {
     int pid = request.getSession().getPid();
     long nowNs = TimeUnit.MILLISECONDS.toNanos(System.currentTimeMillis());
-    ProfilingStateResponse.Builder responseBuilder = ProfilingStateResponse.newBuilder();
+    ProfilingStateResponse.Builder responseBuilder = ProfilingStateResponse.newBuilder().setCheckTimestamp(nowNs);
     String appPkgName = myDevice.getClientName(pid);
     Client client = appPkgName != null ? myDevice.getClient(appPkgName) : null;
     if (client == null) {

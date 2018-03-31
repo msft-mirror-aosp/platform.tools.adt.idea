@@ -298,7 +298,7 @@ public class AndroidLayoutDomTest extends AndroidDomTestCase {
    * Code completion in views inside a <layout> tag need to pick up default layout parameters.
    */
   public void testDataBindingCompletion4() throws Throwable {
-    toTestFirstCompletion("databinding_completion4.xml", "databinding_completion4_after.xml");
+    toTestCompletion("databinding_completion4.xml", "databinding_completion4_after.xml");
   }
 
   public void testCustomTagCompletion() throws Throwable {
@@ -934,8 +934,7 @@ public class AndroidLayoutDomTest extends AndroidDomTestCase {
     doTestHighlighting();
   }
 
-  // See http://b.android.com/230153
-  public void ignore_testOnClickHighlighting6() throws Throwable {
+  public void testOnClickHighlighting6() throws Throwable {
     // Like testOnClickHighlighting5, but instead of having the activity be found
     // due to a setContentView call, it's declared explicitly with a tools:context
     // attribute instead

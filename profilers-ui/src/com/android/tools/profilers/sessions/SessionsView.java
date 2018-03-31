@@ -26,6 +26,7 @@ import com.android.tools.profilers.IdeProfilerComponents;
 import com.android.tools.profilers.ProfilerAspect;
 import com.android.tools.profilers.StudioProfilers;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
@@ -33,17 +34,20 @@ import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.android.tools.profilers.ProfilerLayout.*;
 import static com.android.tools.profilers.StudioProfilers.buildDeviceName;
+import static javax.swing.ListSelectionModel.SINGLE_SELECTION;
 
 /**
  * A collapsible panel which lets users see the list of and interact with their profiling sessions.
@@ -132,6 +136,10 @@ public class SessionsView extends AspectObserver {
       @Override
       public void actionPerformed(ActionEvent e) {
         mySessionsManager.endCurrentSession();
+        // Unselect the device and process, which avoids them from appearing to be selected in the process selection dropdown even
+        // after the session has stopped.
+        myProfilers.setDevice(null);
+        myProfilers.getIdeServices().getFeatureTracker().trackStopSession();
       }
     });
 
@@ -148,6 +156,16 @@ public class SessionsView extends AspectObserver {
     mySessionsListModel = new DefaultListModel<>();
     mySessionsList = new SessionsList(mySessionsListModel);
     mySessionsList.setOpaque(false);
+    mySessionsList.setSelectionMode(SINGLE_SELECTION);
+    mySessionsList.addListSelectionListener(new ListSelectionListener() {
+      @Override
+      public void valueChanged(ListSelectionEvent e) {
+        SessionArtifact artifact = mySessionsList.getSelectedValue();
+        if (artifact != null) {
+          artifact.onSelect();
+        }
+      }
+    });
     mySessionsManager.addDependency(this)
       .onChange(SessionAspect.SESSIONS, this::refreshSessions)
       .onChange(SessionAspect.PROFILING_SESSION, () -> myStopProfilingButton
@@ -298,7 +316,7 @@ public class SessionsView extends AspectObserver {
       loadAction.setAction(
         () -> myIdeProfilerComponents.createImportDialog().open(
           () -> "Open",
-          Collections.singletonList("hprof"),
+          ImmutableList.of("hprof", "trace"),
           file -> {
             if (!myProfilers.getSessionsManager().importSessionFromFile(new File(file.getPath()))) {
               myIdeProfilerComponents.createUiMessageHandler()
@@ -317,27 +335,31 @@ public class SessionsView extends AspectObserver {
     Common.Device selectedDevice = myProfilers.getDevice();
     Common.Process selectedProcess = myProfilers.getProcess();
     // Rebuild the action tree.
-    Set<Common.Device> devices = processMap.keySet();
+    Set<Common.Device> devices = processMap.keySet().stream()
+      .filter(device -> device.getState() == Common.Device.State.ONLINE).collect(Collectors.toSet());
     if (devices.isEmpty()) {
       CommonAction noDeviceAction = new CommonAction(NO_SUPPORTED_DEVICES, null);
       noDeviceAction.setEnabled(false);
       myProcessSelectionAction.addChildrenActions(noDeviceAction);
     }
     else {
-      for (Common.Device device : processMap.keySet()) {
+      for (Common.Device device : devices) {
         CommonAction deviceAction = new CommonAction(buildDeviceName(device), null);
-        java.util.List<Common.Process> processes = processMap.get(device);
+        java.util.List<Common.Process> processes = processMap.get(device).stream()
+          .filter(process -> process.getState() == Common.Process.State.ALIVE).collect(Collectors.toList());
         if (processes.isEmpty()) {
           CommonAction noProcessAction = new CommonAction(NO_DEBUGGABLE_PROCESSES, null);
           noProcessAction.setEnabled(false);
           deviceAction.addChildrenActions(noProcessAction);
         }
         else {
-          for (Common.Process process : processMap.get(device)) {
+          for (Common.Process process : processes) {
             CommonAction processAction = new CommonAction(process.getName(), null);
             processAction.setAction(() -> {
               myProfilers.setDevice(device);
               myProfilers.setProcess(process);
+              myProfilers.getIdeServices().getFeatureTracker().trackCreateSession(Common.SessionMetaData.SessionType.FULL,
+                                                                                  SessionsManager.SessionCreationSource.MANUAL);
             });
             processAction.setSelected(process.equals(selectedProcess));
             deviceAction.addChildrenActions(processAction);

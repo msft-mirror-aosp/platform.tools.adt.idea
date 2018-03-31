@@ -15,21 +15,26 @@
  */
 package com.android.tools.idea.tests.gui.framework.bazel.fixture
 
-import com.android.tools.idea.tests.gui.framework.GuiTests.findAndClickButtonWhenEnabled
+import com.android.tools.idea.tests.gui.framework.GuiTests.*
 import com.android.tools.idea.tests.gui.framework.fixture.wizard.AbstractWizardFixture
+import com.android.tools.idea.tests.gui.framework.matcher.Matchers
 import com.google.common.base.Verify
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.impl.EditorComponentImpl
+import com.intellij.openapi.options.ConfigurationException
+import com.intellij.openapi.wm.impl.IdeFrameImpl
 import org.fest.swing.core.GenericTypeMatcher
 import org.fest.swing.core.Robot
+import org.fest.swing.exception.WaitTimedOutError
 import org.fest.swing.finder.WindowFinder.findDialog
 import org.fest.swing.fixture.JComboBoxFixture
 import org.fest.swing.fixture.JPanelFixture
 import org.fest.swing.fixture.JRadioButtonFixture
+import org.fest.swing.timing.Wait
+import org.junit.Assert.fail
 import java.io.File
-import javax.swing.JDialog
-import javax.swing.JRadioButton
-import javax.swing.SwingUtilities
+import javax.swing.text.JTextComponent
+import javax.swing.*
 
 class ImportBazelProjectWizardFixture(robot: Robot, target: JDialog) :
     AbstractWizardFixture<ImportBazelProjectWizardFixture>(ImportBazelProjectWizardFixture::class.java, robot, target) {
@@ -39,6 +44,11 @@ class ImportBazelProjectWizardFixture(robot: Robot, target: JDialog) :
   private val logger = Logger.getInstance(id)
 
   companion object {
+    private const val CONTENT_MISMATCH_MESSAGE = "Contents of %s do not match what was entered during project import. Expecting '%s', but found '%s'."
+
+    private fun verifyContentMatches(componentName: String, expecting: Any?, found: Any?) =
+        Verify.verify(expecting == found, CONTENT_MISMATCH_MESSAGE, componentName, expecting.toString(), found.toString())
+
     fun find(robot: Robot): ImportBazelProjectWizardFixture {
       val wizardDialog = findDialog(object : GenericTypeMatcher<JDialog>(JDialog::class.java) {
         override fun isMatching(dialog: JDialog) = dialog.title == "Import Project from Bazel" && dialog.isShowing
@@ -50,35 +60,44 @@ class ImportBazelProjectWizardFixture(robot: Robot, target: JDialog) :
 
   fun setBazelBinaryPath(path: String): ImportBazelProjectWizardFixture {
     logger.info("Setting bazel binary path = $path")
+    waitUntilShowingAndEnabled(robot(), target(), Matchers.byName(JPanel::class.java, "bazel-binary-path-field"), 300)
     val bazelBinaryComboBox = JPanelFixture(robot(), "bazel-binary-path-field").comboBox().replaceText(path)
-    Verify.verify(bazelBinaryComboBox.target().editor.item == path)
+
+    verifyContentMatches("bazel-binary-path-field", path, bazelBinaryComboBox.target().editor.item)
     return this
   }
 
   fun setWorkspacePath(path: String): ImportBazelProjectWizardFixture {
     logger.info("Setting workspace directory = $path")
+    waitUntilShowingAndEnabled(robot(), target(), Matchers.byName(JComboBox::class.java, "workspace-directory-field"), 300)
     val workspaceComboBox = JComboBoxFixture(robot(), "workspace-directory-field").replaceText(path)
-    Verify.verify(workspaceComboBox.target().editor.item == path)
+
+    verifyContentMatches("workspace-directory-field", path, workspaceComboBox.target().editor.item)
     return this
   }
 
   fun selectGenerateFromBuildFileOptionAndSetPath(path: String): ImportBazelProjectWizardFixture {
-    logger.info("Find 'Generate from BUILD file' radio button")
-    val generateFromBuildFileOption = robot().finder().find(object : GenericTypeMatcher<JRadioButton>(JRadioButton::class.java) {
+    val generateFromBuildButtonMatcher = object : GenericTypeMatcher<JRadioButton>(JRadioButton::class.java) {
       override fun isMatching(component: JRadioButton): Boolean {
         return (component.text == "Generate from BUILD file")
       }
-    })
-    JRadioButtonFixture(robot(), generateFromBuildFileOption).click()
+    }
+
+    logger.info("Find 'Generate from BUILD file' radio button")
+    waitUntilShowingAndEnabled(robot(), target(), generateFromBuildButtonMatcher, 300)
+    JRadioButtonFixture(robot(), robot().finder().find(generateFromBuildButtonMatcher)).click()
 
     logger.info("Setting build file path = $path")
+    waitUntilShowingAndEnabled(robot(), target(), Matchers.byName(JComboBox::class.java, "build-file-path-field"), 300)
     val buildFileComboBox = JComboBoxFixture(robot(), "build-file-path-field").replaceText(path)
-    Verify.verify(buildFileComboBox.target().editor.item == path)
+
+    verifyContentMatches("build-file-path-field", path, buildFileComboBox.target().editor.item)
     return this
   }
 
   fun uncommentApi27(buildFile: File): ImportBazelProjectWizardFixture {
     logger.info("Modifying BUILD file content")
+    waitUntilShowingAndEnabled(robot(), target(), Matchers.byType(EditorComponentImpl::class.java), 300)
     val editor = robot().finder().findByType(EditorComponentImpl::class.java)
 
     // Maybe let test configs select which platform to use?
@@ -101,9 +120,33 @@ class ImportBazelProjectWizardFixture(robot: Robot, target: JDialog) :
       SwingUtilities.invokeAndWait {
         val editableText = editor.accessibleContext.accessibleEditableText
         editableText.selectText(selectionStartIndex, selectionEndIndex)
-        assert(editableText.selectedText == toSelect)
+        Verify.verify(editableText.selectedText == toSelect)
         editableText.replaceText(selectionStartIndex, toSelect.length, toPaste)
       }
+    }
+    return this
+  }
+
+  fun waitForProjectValidation(): ImportBazelProjectWizardFixture {
+    Wait.seconds(300).expecting("Project Validation to finish").until {
+      val errorDialog = try {
+        findDialog(
+          Matchers.byTitle(JDialog::class.java, ConfigurationException.DEFAULT_TITLE).andIsShowing()
+        ).withTimeout(1).using(robot())
+      }
+      catch (e: WaitTimedOutError) {
+        null
+      }
+
+      // If an error dialog appears, then we won't be able to import the project since it isn't valid.
+      // In this case, there's no reason to continue the test.
+      if (errorDialog != null) {
+        val errorText = robot().finder().findByType(errorDialog.target(), JTextComponent::class.java).text
+        fail("Project Validation failed:\n$errorText")
+      }
+
+      // Otherwise, keep waiting until the IDE frame is available.
+      robot().finder().findAll(Matchers.byType(IdeFrameImpl::class.java).andIsShowing()).isNotEmpty()
     }
     return this
   }
@@ -113,5 +156,4 @@ class ImportBazelProjectWizardFixture(robot: Robot, target: JDialog) :
     findAndClickButtonWhenEnabled(this, "Finish")
     return this
   }
-
 }

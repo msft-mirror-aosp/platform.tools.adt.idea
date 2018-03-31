@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -1218,26 +1219,102 @@ public class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void inspectTraceModeOnlyEnabledWhenImportFlagIsSet() {
+  public void importTraceModeOnlyEnabledWhenImportAndSessionsFlagsAreSet() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(false);
+    myServices.enableSessionsView(false);
 
-    CpuProfilerStage stage = new CpuProfilerStage(profilers, true /* inspectTraceMode */);
-    // Import trace flag is not set. Inspect trace mode should be disabled.
-    assertThat(stage.isInspectTraceMode()).isFalse();
+    File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace flag is not set. Nor is sessions flag. Inspect trace mode should be disabled.
+    assertThat(stage.isImportTraceMode()).isFalse();
 
     myServices.enableImportTrace(true);
-    stage = new CpuProfilerStage(profilers, true /* inspectTraceMode */);
-    // When the flag is enabled, passing "true" to the constructor will set the stage to inspect trace mode.
-    assertThat(stage.isInspectTraceMode()).isTrue();
+    myServices.enableSessionsView(true);
+    stage = new CpuProfilerStage(profilers, traceFile);
+    // Both flags are enabled, passing a non-null file to the constructor will set the stage to inspect trace mode.
+    assertThat(stage.isImportTraceMode()).isTrue();
 
-    stage = new CpuProfilerStage(profilers, false /* inspectTraceMode */);
-    // Similarly, passing "false" to the constructor will set the stage to normal mode.
-    assertThat(stage.isInspectTraceMode()).isFalse();
+    stage = new CpuProfilerStage(profilers, null);
+    // Similarly, passing null to the constructor will set the stage to normal mode.
+    assertThat(stage.isImportTraceMode()).isFalse();
 
     stage = new CpuProfilerStage(profilers);
     // Not specifying whether the stage is initiated in inspect trace mode is the same as initializing it in normal mode.
-    assertThat(stage.isInspectTraceMode()).isFalse();
+    assertThat(stage.isImportTraceMode()).isFalse();
+
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(false);
+    stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace flag is set, but sessions flag isn't. Inspect trace mode should be disabled.
+    assertThat(stage.isImportTraceMode()).isFalse();
+
+    myServices.enableImportTrace(false);
+    myServices.enableSessionsView(true);
+    stage = new CpuProfilerStage(profilers, traceFile);
+    // Sessions flag is not set, but Import trace flag isn't. Inspect trace mode should be disabled.
+    assertThat(stage.isImportTraceMode()).isFalse();
+  }
+
+  @Test
+  public void corruptedTraceInImportTraceModeShowsABalloon() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(true);
+    File traceFile = CpuProfilerTestUtils.getTraceFile("corrupted_trace.trace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace mode is enabled successfully
+    assertThat(stage.isImportTraceMode()).isTrue();
+
+    // We should show a balloon saying the import has failed
+    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
+    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+  }
+
+  @Test
+  public void captureIsSetWhenOpeningStageInImportTraceMode() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(true);
+    File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace mode is enabled successfully
+    assertThat(stage.isImportTraceMode()).isTrue();
+
+    assertThat(stage.getCapture()).isNotNull();
+    // Check that timeline is now paused and is bounded by the capture range + 5s of right padding.
+    Range captureRange = stage.getCapture().getRange();
+    Range timelineDataRange = profilers.getTimeline().getDataRange();
+    double delta = 0.001;
+    assertThat(timelineDataRange.getMin()).isWithin(delta).of(captureRange.getMin());
+    double timelineEndUs = captureRange.getMax() + TimeUnit.SECONDS.toMicros(5);
+    assertThat(timelineDataRange.getMax()).isWithin(delta).of(timelineEndUs);
+    assertThat(profilers.getTimeline().isPaused()).isTrue();
+  }
+
+  @Test
+  public void threadsDataComesFromCaptureInImportTraceMode() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(true);
+    File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace mode is enabled successfully
+    assertThat(stage.isImportTraceMode()).isTrue();
+
+    CpuCapture capture = stage.getCapture();
+    int captureThreadsCount = capture.getThreads().size();
+    // Check that stage's Threads model has the same size of capture threads list (which is not empty)
+    assertThat(stage.getThreadStates().getSize()).isEqualTo(captureThreadsCount);
+    assertThat(captureThreadsCount).isGreaterThan(0);
+
+    // Now check that capture contains all the threads from the stage's model.
+    for (int i = 0; i < captureThreadsCount; i++) {
+      int tid = stage.getThreadStates().get(i).getThreadId();
+      assertThat(capture.containsThread(tid)).isTrue();
+    }
   }
 
   private void addAndSetDevice(int featureLevel, String serial) {

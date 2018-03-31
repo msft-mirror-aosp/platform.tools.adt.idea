@@ -192,10 +192,10 @@
     </group>
 
     <group id="Android.DeviceExplorer.ActionsToolbar">
-      <action id="Android.DeviceExplorer.GotoSharedPrefsFolder" class="com.android.tools.idea.explorer.actions.GotoSharedPrefsFolderAction" icon="AndroidIcons.DeviceExplorer.SharedPrefs" />
-      <action id="Android.DeviceExplorer.GotoDatabaseFolder" class="com.android.tools.idea.explorer.actions.GotoDatabaseFolderAction" icon="AndroidIcons.DeviceExplorer.DatabaseFolder" />
-      <action id="Android.DeviceExplorer.GotoSdcardFolder" class="com.android.tools.idea.explorer.actions.GotoSdcardFolderAction" icon="AndroidIcons.DeviceExplorer.SdcardFolder" />
-      <action id="Android.DeviceExplorer.Help" class="com.android.tools.idea.explorer.actions.HelpAction" icon="AllIcons.Actions.Help" />
+      <action id="Android.DeviceExplorer.GotoSharedPrefsFolder" class="com.android.tools.idea.explorer.actions.GotoSharedPrefsFolderAction" icon="AndroidIcons.DeviceExplorer.SharedPrefs" text="Navigate to shared preferences holder"/>
+      <action id="Android.DeviceExplorer.GotoDatabaseFolder" class="com.android.tools.idea.explorer.actions.GotoDatabaseFolderAction" icon="AndroidIcons.DeviceExplorer.DatabaseFolder" text="Navigate to database holder" />
+      <action id="Android.DeviceExplorer.GotoSdcardFolder" class="com.android.tools.idea.explorer.actions.GotoSdcardFolderAction" icon="AndroidIcons.DeviceExplorer.SdcardFolder" text="Navigate to SD card holder" />
+      <action id="Android.DeviceExplorer.Help" class="com.android.tools.idea.explorer.actions.HelpAction" icon="AllIcons.Actions.Help" text="Open Device Explorer help" />
     </group>
 
     <group id="Internal.Android" text="Android" popup="true" internal="true">
@@ -204,7 +204,7 @@
       <action internal="true" id="Android.GetAdbAction" class="com.android.tools.idea.ddms.actions.GetAdbAction" />
       <action internal="true" id="Android.TerminateAdbAction" class="com.android.tools.idea.ddms.actions.TerminateAdbAction" />
       <action internal="true" id="Android.GenerateLayoutTestSkeletonAction" class="com.android.tools.idea.uibuilder.actions.GenerateLayoutTestSkeletonAction"/>
-      <action internal="true" id="StatisticsViewer" class="com.android.tools.idea.stats.ShowStatisticsViewerAction"/>
+      <action internal="true" id="StatisticsViewer" class="com.android.tools.idea.stats.ShowStatisticsViewerAction" text="Show statistics viewer"/>
       <action internal="true" id="Android.EditFlags" class="com.android.tools.idea.flags.ShowStudioFlagsDialogAction"/>
       <action internal="true" id="Android.ShowRoomSchema" class="com.android.tools.idea.actions.ShowRoomSchemaAction"/>
       <add-to-group group-id="Internal"/>
@@ -311,6 +311,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
+    <projectViewPane implementation="com.android.tools.idea.navigator.AndroidProjectViewPane"/>
     <projectTaskRunner implementation="com.android.tools.idea.gradle.project.build.AndroidProjectTaskRunner" id="android"
                        order="first, before gradle"/>
     <!-- InstantRunPositionManager overrides and actually replaces PositionManagerImpl,
@@ -619,6 +620,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintButtonOrder" displayName="Button order" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintButtonOrderInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintButtonStyle" displayName="Button should be borderless" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintButtonStyleInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintByteOrderMark" displayName="Byte order mark inside files" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintByteOrderMarkInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintCanvasSize" displayName="Wrong Canvas Size" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintCanvasSizeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintCheckResult" displayName="Ignoring results" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintCheckResultInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintClickableViewAccessibility" displayName="Accessibility in Custom Views" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintClickableViewAccessibilityInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintCommitPrefEdits" displayName="Missing commit() on SharedPreference editor" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintCommitPrefEditsInspection"/>
@@ -723,7 +725,9 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintJavascriptInterface" displayName="Missing @JavascriptInterface on methods" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintJavascriptInterfaceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintJobSchedulerService" displayName="JobScheduler problems" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintJobSchedulerServiceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintKeyboardInaccessibleWidget" displayName="Keyboard inaccessible widget" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintKeyboardInaccessibleWidgetInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintKotlinPropertyAccess" displayName="Kotlin Property Access" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintKotlinPropertyAccessInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintLabelFor" displayName="Missing labelFor attribute" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintLabelForInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintLambdaLast" displayName="Lambda Parameters Last" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintLambdaLastInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintLibraryCustomView" displayName="Custom views in libraries should use res-auto-namespace" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintLibraryCustomViewInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintLintBaseline" displayName="Baseline Issues" bundle="messages.AndroidBundle" enabledByDefault="true" level="INFO" implementationClass="com.android.tools.idea.lint.AndroidLintLintBaselineInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintLocaleFolder" displayName="Wrong locale name" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintLocaleFolderInspection"/>
@@ -767,6 +771,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNewApi" displayName="Calling new methods on older versions" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNewApiInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNewerVersionAvailable" displayName="Newer Library Versions Available" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintNewerVersionAvailableInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNfcTechWhitespace" displayName="Whitespace in NFC tech lists" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNfcTechWhitespaceInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintNoHardKeywords" displayName="No Hard Kotlin Keywords" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintNoHardKeywordsInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNotInterpolated" displayName="Incorrect Interpolation" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNotInterpolatedInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNotSibling" displayName="RelativeLayout Invalid Constraints" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNotSiblingInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintObjectAnimatorBinding" displayName="Incorrect ObjectAnimator Property" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintObjectAnimatorBindingInspection"/>
@@ -862,6 +867,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUniquePermission" displayName="Permission names are not unique" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintUniquePermissionInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnknownId" displayName="Reference to an unknown id" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintUnknownIdInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnknownIdInLayout" displayName="Reference to an id that is not in the current layout" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnknownIdInLayoutInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintUnknownNullness" displayName="Unknown nullness" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnknownNullnessInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnlocalizedSms" displayName="SMS phone number missing country code" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnlocalizedSmsInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnpackedNativeCode" displayName="Missing android:extractNativeLibs manifest attribute" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnpackedNativeCodeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnprotectedSMSBroadcastReceiver" displayName="Unprotected SMS BroadcastReceiver" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnprotectedSMSBroadcastReceiverInspection"/>
@@ -1095,7 +1101,6 @@
     <compiler.buildTargetScopeProvider implementation="org.jetbrains.android.compiler.AndroidBuildTargetScopeProvider"/>
     <buildProcess.parametersProvider implementation="org.jetbrains.android.compiler.AndroidBuildProcessParametersProvider"/>
 
-    <projectViewPane implementation="com.android.tools.idea.navigator.AndroidProjectViewPane"/>
     <treeStructureProvider implementation="com.android.tools.idea.gradle.projectView.AndroidTreeStructureProvider" id="android"/>
     <projectViewNodeDecorator id="android.build.node.decorator" implementation="com.android.tools.idea.gradle.projectView.BuildNodeDecorator"/>
     <projectViewNodeDecorator id="android.module.node.decorator" implementation="com.android.tools.idea.gradle.projectView.ModuleNodeIconDecorator"/>
@@ -1120,6 +1125,7 @@
     <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidTypedIntegerRenderer" />
     <debugger.nodeRenderer implementation="com.android.tools.idea.debug.ArrayMapRenderer" />
     <debugger.nodeRenderer implementation="com.android.tools.idea.debug.SupportArrayMapRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidxSupportArrayMapRenderer" />-
     <debugger.nodeRenderer implementation="com.android.tools.idea.debug.MeasureSpecRenderer" />
 
     <xdebugger.configurableProvider implementation="com.android.tools.idea.logcat.output.LogcatOutputConfigurableProvider" />

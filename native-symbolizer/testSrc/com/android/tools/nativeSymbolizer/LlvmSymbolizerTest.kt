@@ -16,7 +16,10 @@
 package com.android.tools.nativeSymbolizer
 
 import com.android.testutils.TestUtils
+import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.util.io.FileUtil
 import org.junit.Assert
+import org.junit.Assume
 import org.junit.Test
 import java.io.File
 import java.io.IOException
@@ -63,9 +66,38 @@ class LlvmSymbolizerTest {
   @Test
   fun testSymbolizeBinariesBuiltOnWindows() {
     val arch = "arm64"
-    val symLocator = SymbolFilesLocator(mapOf(Pair(arch, setOf(Paths.get(testDataDir, "win").toFile()!!))))
+    val binDir = "win"
+    val symLocator = SymbolFilesLocator(mapOf(Pair(arch, setOf(Paths.get(testDataDir, binDir).toFile()!!))))
     val symbolizer = LlvmSymbolizer(getLlvmSymbolizerPath(), symLocator)
-    val expectedSymbolsFile = Paths.get(testDataDir, "win", EXPECTED_SYMBOLS_FILE_NAME).toFile()
+    val expectedSymbolsFile = Paths.get(testDataDir, binDir, EXPECTED_SYMBOLS_FILE_NAME).toFile()
+    Assert.assertTrue(expectedSymbolsFile.exists())
+    for (line in expectedSymbolsFile.readLines()) {
+      val symParts = line.split('|')
+      val offset = symParts[0].toLong(16)
+      val name = symParts[1]
+      val sourceFile = symParts[2]
+      val lineNumber = symParts[3].toInt()
+      val module = "/data/app/com.someapp.name-abcd09876abds==/lib/arm64/" + LIB_FILE_NAME
+
+      // +1 to get an address within the function, rather than function start address
+      val offsetWithinFunction = offset + 1
+      val symbol = symbolizer.symbolize(arch, module, offsetWithinFunction)!!
+      Assert.assertNotNull(symbol)
+      Assert.assertEquals(name, symbol.name)
+      Assert.assertEquals(symbol.sourceFile.replace('\\', '/'), sourceFile)
+      Assert.assertTrue(symbol.lineNumber >= lineNumber)
+    }
+  }
+
+  @Test
+  fun testSpaceInPath() {
+    val tempDir = FileUtil.createTempDirectory("llvm-symbolizer", "space-test", true)
+    val symbolDir = File(tempDir, "name with a space")
+    FileUtil.copyDir(Paths.get(testDataDir, "win").toFile(), symbolDir)
+    val arch = "arm64"
+    val symLocator = SymbolFilesLocator(mapOf(Pair(arch, setOf(symbolDir))))
+    val symbolizer = LlvmSymbolizer(getLlvmSymbolizerPath(), symLocator)
+    val expectedSymbolsFile = File(symbolDir, EXPECTED_SYMBOLS_FILE_NAME)
     Assert.assertTrue(expectedSymbolsFile.exists())
     for (line in expectedSymbolsFile.readLines()) {
       val symParts = line.split('|')
@@ -109,10 +141,21 @@ class LlvmSymbolizerTest {
   @Test(expected = IOException::class)
   fun testSymbolizerExeMissing() {
     val symLocator = SymbolFilesLocator(getSymDirMap())
-    val notExistingPapth = getLlvmSymbolizerPath().replace("llvm-symbolizer", "not-llvm-symbolizer");
+    val notExistingPapth = getLlvmSymbolizerPath().replace("llvm-symbolizer", "not-llvm-symbolizer")
     val symbolizer = LlvmSymbolizer(notExistingPapth, symLocator)
     symbolizer.symbolize("x86", LIB_FILE_NAME, 11)
     Assert.fail("IOException is expected to be thrown by the line above")
+  }
+
+  @Test
+  fun testLlvmSymbolizerProcFreeze() {
+    Assume.assumeFalse(SystemInfo.isWindows) // Windows doesn't have 'yes'
+    val symLocator = SymbolFilesLocator(getSymDirMap())
+    val yesPath = "yes" // call 'yes' instead llvm-symbolizer to simulate freezing symbolizer
+    val symbolizer = LlvmSymbolizer(yesPath, symLocator, 50)
+    for (addr in 0L..6L) {
+      Assert.assertNull(symbolizer.symbolize("x86", LIB_FILE_NAME, addr))
+    }
   }
 
   @Test

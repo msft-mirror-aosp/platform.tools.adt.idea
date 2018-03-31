@@ -124,6 +124,7 @@ public class NlPropertyTableTest {
       .assertPropertyShowing("visibility", null);
   }
 
+  @RunIn(TestGroup.UNRELIABLE)  // b/77159280
   @Test
   public void testSimpleKeyboardEditingInTable() throws Exception {
     // If this UI test should fail, this is the intention with the test.
@@ -151,7 +152,7 @@ public class NlPropertyTableTest {
     CompletionFixture completions = new CompletionFixture(myFrame);
     completions.waitForCompletionsToShow();
     JTextComponentFixture textEditor = waitForEditorToShow(Wait.seconds(3));
-    type(textEditor, "b");
+    textEditor.enterText("b");
     textEditor.pressAndReleaseKeys(VK_ESCAPE);
     completions.waitForCompletionsToHide();
     textEditor.pressAndReleaseKeys(VK_DOWN);
@@ -160,6 +161,7 @@ public class NlPropertyTableTest {
     assertThat(table.cell(new TableCellInSelectedRow.TableCellBuilder().column(0)).value()).isEqualTo("@android:accessibilityLiveRegion");
   }
 
+  @RunIn(TestGroup.UNRELIABLE)  // b/77160149
   @Test
   public void testSelectCompletionFinishesEditingOfCell() throws Exception {
     // If this UI test should fail, this is the intention with the test.
@@ -186,7 +188,7 @@ public class NlPropertyTableTest {
     CompletionFixture completions = new CompletionFixture(myFrame);
     completions.waitForCompletionsToShow();
     JTextComponentFixture textEditor = waitForEditorToShow(Wait.seconds(3));
-    type(textEditor, "tring/copy");
+    guiTest.robot().typeText("tring/copy");  // TODO: move this and previous few lines to fixtures
 
     textEditor.pressAndReleaseKeys(VK_ENTER);
 
@@ -327,15 +329,5 @@ public class NlPropertyTableTest {
 
   private static Component getFocusOwner() {
     return KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
-  }
-
-  // JTextComponentFixture.enterText doesn't work on some Mac platforms.
-  // This is a workaround that does work on all platforms.
-  private static void type(@NotNull AbstractComponentFixture fixture, @NotNull String value) {
-    Component source = fixture.target();
-    for (int index = 0; index < value.length(); index++) {
-      char character = value.charAt(index);
-      fixture.robot().type(character, source);
-    }
   }
 }

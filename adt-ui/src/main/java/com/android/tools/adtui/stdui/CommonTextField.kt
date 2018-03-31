@@ -34,11 +34,8 @@ open class CommonTextField(val model: CommonTextFieldModel) : JTextField() {
     isOpaque = false
     setFromModel()
 
-    model.addListener(object: ValueChangedListener {
-      override fun valueChanged() {
-        updateFromModel()
-      }
-    })
+    model.addListener(ValueChangedListener { updateFromModel() })
+
     @Suppress("LeakingThis")
     UIUtil.addUndoRedoActions(this)
   }
@@ -59,7 +56,10 @@ open class CommonTextField(val model: CommonTextFieldModel) : JTextField() {
   }
 
   override fun setText(text: String?) {
-    super.setText(text)
-    UIUtil.resetUndoRedoActions(this)
+    // Avoid flickering: Only update if value is different from current value
+    if (!text.equals(super.getText())) {
+      super.setText(text)
+      UIUtil.resetUndoRedoActions(this)
+    }
   }
 }
