@@ -19,8 +19,7 @@ import com.android.tools.idea.gradle.structure.model.meta.ValueDescriptor
 import com.intellij.pom.java.LanguageLevel
 
 fun booleanValues(): List<ValueDescriptor<Boolean>> =
-    listOf(ValueDescriptor(value = false, description = "False"),
-        ValueDescriptor(value = true, description = "True"))
+  listOf(ValueDescriptor(value = false), ValueDescriptor(value = true))
 
 fun installedSdksAsStrings(): List<ValueDescriptor<String>> =
     installedSdksAsInts().map { ValueDescriptor(it.value.toString(), it.description) }

@@ -16,20 +16,23 @@
 package com.android.tools.profilers.cpu;
 
 import com.android.tools.adtui.FilterComponent;
-import com.android.tools.adtui.stdui.CommonTabbedPane;
 import com.android.tools.adtui.RangeTimeScrollBar;
 import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.chart.hchart.HTreeChart;
 import com.android.tools.adtui.chart.hchart.HTreeChartVerticalScrollBar;
 import com.android.tools.adtui.common.ColumnTreeBuilder;
 import com.android.tools.adtui.flat.FlatSeparator;
-import com.android.tools.adtui.stdui.CommonToggleButton;
 import com.android.tools.adtui.instructions.InstructionsPanel;
 import com.android.tools.adtui.instructions.TextInstruction;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.Range;
+import com.android.tools.adtui.stdui.CommonTabbedPane;
+import com.android.tools.adtui.stdui.CommonToggleButton;
 import com.android.tools.perflib.vmtrace.ClockType;
-import com.android.tools.profilers.*;
+import com.android.tools.profiler.proto.CpuProfiler;
+import com.android.tools.profilers.JComboBoxView;
+import com.android.tools.profilers.ProfilerColors;
+import com.android.tools.profilers.ViewBinder;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.nodemodel.CaptureNodeModel;
 import com.android.tools.profilers.cpu.nodemodel.CppFunctionModel;
@@ -52,13 +55,13 @@ import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeWillExpandListener;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.ExpandVetoException;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -70,11 +73,18 @@ import static com.android.tools.profilers.ProfilerLayout.*;
 
 class CpuCaptureView {
   // Note the order of the values in the map defines the order of the tabs in UI.
-  private static final Map<CaptureModel.Details.Type, String> TABS = ImmutableMap.of(
+  private static final Map<CaptureModel.Details.Type, String> DEFAULT_TAB_NAMES = ImmutableMap.of(
     CaptureModel.Details.Type.CALL_CHART, "Call Chart",
     CaptureModel.Details.Type.FLAME_CHART, "Flame Chart",
     CaptureModel.Details.Type.TOP_DOWN, "Top Down",
     CaptureModel.Details.Type.BOTTOM_UP, "Bottom Up");
+
+  // For Atrace captures names from this map will be used in place of default tab names.
+  private static final Map<CaptureModel.Details.Type, String> ATRACE_TAB_NAMES = ImmutableMap.of(
+    CaptureModel.Details.Type.CALL_CHART, "Trace Events");
+
+  // Some of the tab names may be replaced. This list defines the currently active tab names as
+  private final Map<CaptureModel.Details.Type, String> myTabs = new LinkedHashMap<>(DEFAULT_TAB_NAMES);
 
   private static final Map<CaptureModel.Details.Type, Consumer<FeatureTracker>> CAPTURE_TRACKERS = ImmutableMap.of(
     CaptureModel.Details.Type.TOP_DOWN, FeatureTracker::trackSelectCaptureTopDown,
@@ -111,12 +121,6 @@ class CpuCaptureView {
   CpuCaptureView(@NotNull CpuProfilerStageView view) {
     myView = view;
     myTabsPanel = new CommonTabbedPane();
-
-    for (String label : TABS.values()) {
-      myTabsPanel.addTab(label, new JPanel(new BorderLayout()));
-    }
-    myTabsPanel.addChangeListener(this::setCaptureDetailToTab);
-
     JComboBox<ClockType> clockTypeCombo = new ComboBox<>();
     JComboBoxView clockTypes =
       new JComboBoxView<>(clockTypeCombo, view.getStage().getAspect(), CpuProfilerAspect.CLOCK_TYPE,
@@ -126,9 +130,16 @@ class CpuCaptureView {
     CpuCapture capture = myView.getStage().getCapture();
     clockTypeCombo.setEnabled(capture != null && capture.isDualClock());
 
+    if (capture != null && capture.getType() == CpuProfiler.CpuProfilerType.ATRACE) {
+      myTabs.putAll(ATRACE_TAB_NAMES);
+    }
+    for (String label : myTabs.values()) {
+      myTabsPanel.addTab(label, new JPanel(new BorderLayout()));
+    }
+    myTabsPanel.addChangeListener(this::setCaptureDetailToTab);
     myTabsPanel.setOpaque(false);
 
-    myPanel = new JPanel(new TabularLayout("*,Fit", "Fit,*"));
+    myPanel = new JPanel(new TabularLayout("*,Fit-", "Fit-,*"));
     JPanel toolbar = new JPanel(createToolbarLayout());
     toolbar.add(clockTypeCombo);
     toolbar.add(myView.getSelectionTimeLabel());
@@ -141,7 +152,7 @@ class CpuCaptureView {
       myFilterComponent.addOnFilterChange((pattern, model) -> myView.getStage().setCaptureFilter(pattern));
       myFilterComponent.setVisible(false);
       myFilterComponent.setBorder(DEFAULT_BOTTOM_BORDER);
-      myFilterComponent.configureKeyBindingAndFocusBehaviors(myPanel, myFilterComponent, filterButton);
+      FilterComponent.configureKeyBindingAndFocusBehaviors(myPanel, myFilterComponent, filterButton);
     }
 
     myPanel.add(toolbar, new TabularLayout.Constraint(0, 1));
@@ -174,7 +185,7 @@ class CpuCaptureView {
     }
 
     // Update the current selected tab
-    String detailsTypeString = TABS.get(details.getType());
+    String detailsTypeString = myTabs.get(details.getType());
     int currentTabIndex = myTabsPanel.getSelectedIndex();
     if (currentTabIndex < 0 || !myTabsPanel.getTitleAt(currentTabIndex).equals(detailsTypeString)) {
       for (int i = 0; i < myTabsPanel.getTabCount(); ++i) {
@@ -206,7 +217,7 @@ class CpuCaptureView {
     CaptureModel.Details.Type type = null;
     if (myTabsPanel.getSelectedIndex() >= 0) {
       String tabTitle = myTabsPanel.getTitleAt(myTabsPanel.getSelectedIndex());
-      for (Map.Entry<CaptureModel.Details.Type, String> entry : TABS.entrySet()) {
+      for (Map.Entry<CaptureModel.Details.Type, String> entry : myTabs.entrySet()) {
         if (tabTitle.equals(entry.getValue())) {
           type = entry.getKey();
         }
@@ -271,14 +282,15 @@ class CpuCaptureView {
     HTreeChart<CaptureNode> chart = new HTreeChart<>(globalRange, range, orientation);
     chart.setHRenderer(new CaptureNodeHRenderer(type));
     chart.setRootVisible(false);
-
     chart.setHTree(node);
-    CodeNavigator navigator = stageView.getStage().getStudioProfilers().getIdeServices().getCodeNavigator();
-    TreeChartNavigationHandler handler = new TreeChartNavigationHandler(chart, navigator);
-    chart.addMouseListener(handler);
-    stageView.getIdeComponents().createContextMenuInstaller().installNavigationContextMenu(chart, navigator, handler::getCodeLocation);
     CpuChartTooltipView.install(chart, stageView);
 
+    if (stageView.getStage().getCapture() != null && stageView.getStage().getCapture().getType() != CpuProfiler.CpuProfilerType.ATRACE) {
+      CodeNavigator navigator = stageView.getStage().getStudioProfilers().getIdeServices().getCodeNavigator();
+      TreeChartNavigationHandler handler = new TreeChartNavigationHandler(chart, navigator);
+      chart.addMouseListener(handler);
+      stageView.getIdeComponents().createContextMenuInstaller().installNavigationContextMenu(chart, navigator, handler::getCodeLocation);
+    }
     return chart;
   }
 
@@ -339,13 +351,13 @@ class CpuCaptureView {
    * An abstract view for {@link TopDownView} and {@link BottomUpView}.
    * They are almost similar except a few key differences, e.g bottom-up hides its root or lazy loads its children on expand.
    */
-  private static abstract class TreeView extends CaptureDetailsView {
+  private static abstract class TreeView<T extends CpuTreeNode<T>> extends CaptureDetailsView {
     @NotNull protected final JPanel myPanel;
     @NotNull private final AspectObserver myObserver;
     @Nullable protected final JTree myTree;
     @Nullable private final CpuTraceTreeSorter mySorter;
 
-    protected TreeView(@NotNull CpuProfilerStageView stageView, @Nullable CpuTreeModel model) {
+    protected TreeView(@NotNull CpuProfilerStageView stageView, @Nullable CpuTreeModel<T> model) {
       myObserver = new AspectObserver();
       if (model == null) {
         myPanel = getNoDataForThread();
@@ -356,6 +368,7 @@ class CpuCaptureView {
 
       myPanel = new JPanel(new CardLayout());
       // Use JTree instead of IJ's tree, because IJ's tree does not happen border's Insets.
+      //noinspection UndesirableClassUsage
       myTree = new JTree();
       int defaultFontHeight = myTree.getFontMetrics(myTree.getFont()).getHeight();
       myTree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
@@ -458,7 +471,7 @@ class CpuCaptureView {
     }
   }
 
-  private static class TopDownView extends TreeView {
+  private static class TopDownView extends TreeView<TopDownNode> {
     TopDownView(@NotNull CpuProfilerStageView view, @NotNull CaptureModel.TopDown topDown) {
       super(view, topDown.getModel());
       TopDownTreeModel model = topDown.getModel();
@@ -478,7 +491,7 @@ class CpuCaptureView {
     }
   }
 
-  private static class BottomUpView extends TreeView {
+  private static class BottomUpView extends TreeView<BottomUpNode> {
 
     BottomUpView(@NotNull CpuProfilerStageView view, @NotNull CaptureModel.BottomUp bottomUp) {
       super(view, bottomUp.getModel());
@@ -491,13 +504,13 @@ class CpuCaptureView {
       myTree.setRootVisible(false);
       myTree.addTreeWillExpandListener(new TreeWillExpandListener() {
         @Override
-        public void treeWillExpand(TreeExpansionEvent event) throws ExpandVetoException {
+        public void treeWillExpand(TreeExpansionEvent event) {
           DefaultMutableTreeNode node = (DefaultMutableTreeNode)event.getPath().getLastPathComponent();
           ((BottomUpTreeModel)myTree.getModel()).expand(node);
         }
 
         @Override
-        public void treeWillCollapse(TreeExpansionEvent event) throws ExpandVetoException {
+        public void treeWillCollapse(TreeExpansionEvent event) {
         }
       });
 
@@ -533,6 +546,7 @@ class CpuCaptureView {
       // timeline. Users can navigate to other part within the capture by interacting with the call chart UI. When it happens, the timeline
       // selection should be automatically updated.
       Range selectionRange = stageView.getTimeline().getSelectionRange();
+      assert stageView.getStage().getCapture() != null;
       Range captureRange = stageView.getStage().getCapture().getRange();
       myChart = setUpChart(CaptureModel.Details.Type.CALL_CHART, captureRange, selectionRange,
                            myCallChart.getNode(), stageView);

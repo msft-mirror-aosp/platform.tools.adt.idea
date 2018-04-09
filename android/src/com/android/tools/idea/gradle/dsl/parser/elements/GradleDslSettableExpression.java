@@ -26,7 +26,7 @@ import java.math.BigDecimal;
  * Represents a GradleExpression that has a value that can be set/reset. This class stores a tentative value. Subclasses should
  * use {@link #getCurrentElement()} to get the currently tentative or set element or {@link #reset()} return to the previously saved state.
  */
-public abstract class GradleDslSettableExpression extends GradleDslExpression {
+public abstract class GradleDslSettableExpression extends GradleDslSimpleExpression {
   @Nullable private PsiElement myUnsavedValue;
 
   protected GradleDslSettableExpression(@Nullable GradleDslElement parent,
@@ -52,12 +52,12 @@ public abstract class GradleDslSettableExpression extends GradleDslExpression {
   }
 
   @Nullable
-  protected PsiElement getCurrentElement() {
+  public PsiElement getCurrentElement() {
     return myUnsavedValue != null ? myUnsavedValue : myExpression;
   }
 
   @Override
-  protected void resolve() {
+  public void resolve() {
     setupDependencies(getCurrentElement());
   }
 

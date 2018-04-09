@@ -17,7 +17,6 @@ package com.android.tools.idea.naveditor.structure;
 
 import com.android.annotations.Nullable;
 import com.android.annotations.VisibleForTesting;
-import com.android.ide.common.resources.ResourceResolver;
 import com.android.tools.adtui.common.ColoredIconGenerator;
 import com.android.tools.adtui.workbench.*;
 import com.android.tools.idea.common.model.*;
@@ -29,6 +28,7 @@ import com.android.tools.idea.naveditor.surface.NavDesignSurface;
 import com.android.tools.idea.uibuilder.handlers.constraint.drawing.ColorSet;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.DataProvider;
 import com.intellij.openapi.application.Result;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.ui.ColoredListCellRenderer;
@@ -39,6 +39,7 @@ import com.intellij.util.ArrayUtil;
 import com.intellij.util.ui.UIUtil;
 import icons.StudioIcons;
 import org.jetbrains.android.dom.navigation.NavigationSchema;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -61,7 +62,7 @@ import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED;
 /**
  * Left panel for the nav editor, showing a list of available destinations.
  */
-public class DestinationList extends JPanel implements ToolContent<DesignSurface> {
+public class DestinationList extends JPanel implements ToolContent<DesignSurface>, DataProvider {
 
   @VisibleForTesting
   static final String ROOT_NAME = "Root";
@@ -69,7 +70,6 @@ public class DestinationList extends JPanel implements ToolContent<DesignSurface
   @VisibleForTesting
   final DefaultListModel<NlComponent> myListModel = new DefaultListModel<>();
   private NavigationSchema mySchema;
-  private ResourceResolver myResourceResolver;
 
   @VisibleForTesting
   SelectionModel mySelectionModel;
@@ -109,7 +109,7 @@ public class DestinationList extends JPanel implements ToolContent<DesignSurface
           setBackground(UIUtil.getListUnfocusedSelectionBackground());
           mySelectionForeground = UIUtil.getListForeground();
         }
-        append(NavComponentHelperKt.getUiName(component, myResourceResolver));
+        append(NavComponentHelperKt.getUiName(component));
         if (NavComponentHelperKt.isStartDestination(component)) {
           append(" - Start", SimpleTextAttributes.GRAY_ATTRIBUTES);
         }
@@ -213,20 +213,12 @@ public class DestinationList extends JPanel implements ToolContent<DesignSurface
         public void modelChangedOnLayout(@NotNull NlModel model, boolean animate) {
         }
       };
-      myMouseListener = new MouseAdapter() {
-        @Override
-        public void mouseClicked(MouseEvent e) {
-          if (e.getClickCount() == 2) {
-            myDesignSurface.notifyComponentActivate(myList.getSelectedValue());
-          }
-        }
-      };
+      myMouseListener = new DestinationListMouseListener();
       myList.addMouseListener(myMouseListener);
       myModel.addListener(myModelListener);
 
       Configuration configuration = toolContext.getConfiguration();
       assert configuration != null;
-      myResourceResolver = configuration.getResourceResolver();
 
       ColorSet colorSet = SceneContext.get(toolContext.getCurrentSceneView()).getColorSet();
       myList.setBackground(colorSet.getSubduedBackground());
@@ -249,8 +241,7 @@ public class DestinationList extends JPanel implements ToolContent<DesignSurface
     else {
       myBackPanel.setVisible(true);
       NlComponent parent = myDesignSurface.getCurrentNavigation().getParent();
-      // TODO: We are actually occasionally NPE-ing below, I think, though it should be impossible. Investigation is needed.
-      myBackLabel.setText(parent.getParent() == null ? ROOT_NAME : NavComponentHelperKt.getUiName(parent, myResourceResolver));
+      myBackLabel.setText(parent.getParent() == null ? ROOT_NAME : NavComponentHelperKt.getUiName(parent));
     }
   }
 
@@ -333,10 +324,56 @@ public class DestinationList extends JPanel implements ToolContent<DesignSurface
     return this;
   }
 
+  // ---- Implements DataProvider ----
+  @Override
+  public Object getData(@NonNls String dataId) {
+    return myDesignSurface == null ? null : myDesignSurface.getData(dataId);
+  }
+
   public static class DestinationListDefinition extends ToolWindowDefinition<DesignSurface> {
     public DestinationListDefinition() {
       super("Destinations", AllIcons.Toolwindows.ToolWindowHierarchy, "destinations", Side.LEFT, Split.TOP, AutoHide.DOCKED,
             DestinationList::new);
+    }
+  }
+
+  private class DestinationListMouseListener extends MouseAdapter {
+    @Override
+    public void mouseClicked(MouseEvent e) {
+      if (e.getClickCount() == 2) {
+        handleDoubleClick(e);
+      }
+      else {
+        handlePopup(e);
+      }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+      handlePopup(e);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+      handlePopup(e);
+    }
+
+    private void handlePopup(MouseEvent e) {
+      if (e.isPopupTrigger()) {
+        int index = myList.locationToIndex(e.getPoint());
+        if (index != -1) {
+          NlComponent component = myList.getModel().getElementAt(index);
+          myDesignSurface.getActionManager().showPopup(e, component);
+        }
+      }
+    }
+
+    private void handleDoubleClick(@NotNull MouseEvent event) {
+      int index = myList.locationToIndex(event.getPoint());
+      if (index != -1) {
+        NlComponent component = myList.getModel().getElementAt(index);
+        myDesignSurface.notifyComponentActivate(component);
+      }
     }
   }
 }

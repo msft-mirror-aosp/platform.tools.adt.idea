@@ -15,9 +15,11 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
+import com.android.tools.idea.gradle.structure.configurables.ui.toRenderer
 import com.android.tools.idea.gradle.structure.model.VariablesProvider
 import com.android.tools.idea.gradle.structure.model.meta.*
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.AbstractTableCellEditor
@@ -28,6 +30,7 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTable
 import javax.swing.table.DefaultTableModel
+import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableColumnModel
 import kotlin.reflect.KProperty
 
@@ -45,7 +48,7 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
   val statusComponent: JComponent? = null
   private var beingLoaded = false
   protected var tableModel: DefaultTableModel? = null ; private set
-  protected val valueToText: Map<ValueT?, String> = buildValueToTextMap()
+  private val knownValueRenderers: Map<ValueT?, ValueRenderer> = buildKnownValueRenderers(property.getKnownValues(model), null)
 
   protected val table: JBTable = JBTable()
     .apply {
@@ -81,8 +84,6 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
   protected abstract fun addItem()
   protected abstract fun removeItem()
 
-  private fun buildValueToTextMap() = property.getKnownValues(model)?.associate { it.value to it.description } ?: mapOf()
-
   private fun calculateMinRowHeight() = editor(Unit, SimplePropertyStub(), null).component.minimumSize.height
 
   protected fun ParsedValue<ValueT>.toTableModelValue() = Value(this)
@@ -92,38 +93,56 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
    * in [MyCellEditor].
    */
   protected inner class Value(val value: ParsedValue<ValueT>) {
-    override fun toString(): String = value.getText(valueToText)
+    override fun toString(): String = value.getText()
+  }
+
+  inner class MyCellRenderer: TableCellRenderer {
+    override fun getTableCellRendererComponent(table: JTable?,
+                                               value: Any?,
+                                               isSelected: Boolean,
+                                               hasFocus: Boolean,
+                                               row: Int,
+                                               column: Int): Component {
+      @Suppress("UNCHECKED_CAST")
+      val parsedValue = (value as CollectionPropertyEditor<*, *, ValueT>.Value?)?.value ?: ParsedValue.NotSet
+      return SimpleColoredComponent().also { parsedValue.renderTo(it.toRenderer(), knownValueRenderers) }
+    }
+
   }
 
   inner class MyCellEditor : AbstractTableCellEditor() {
     private var currentRow: Int = -1
     private var lastEditor: ModelPropertyEditor<Unit, ValueT>? = null
+    private var lastValue: ParsedValue<ValueT>? = null
     private val bindingProperty = BindingProperty()
 
     override fun getTableCellEditorComponent(table: JTable?, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
       currentRow = row
       val editor = this@CollectionPropertyEditor.editor(Unit, bindingProperty, variablesProvider)
       lastEditor = editor
+      lastValue = null
       return editor.component
     }
 
     override fun stopCellEditing(): Boolean {
-      return super.stopCellEditing().also {
-        if (it) {
-          lastEditor?.updateProperty()
-          currentRow = -1
-          lastEditor?.dispose()
-        }
-      }
+      lastEditor?.updateProperty()
+      lastValue = bindingProperty.getParsedValue(Unit)
+      currentRow = -1
+      lastEditor?.dispose()
+      lastEditor = null
+      fireEditingStopped()
+      return true
     }
 
     override fun cancelCellEditing() {
+      lastValue = lastEditor?.getValue()
       currentRow = -1
       lastEditor?.dispose()
+      lastEditor = null
       super.cancelCellEditing()
     }
 
-    override fun getCellEditorValue(): Any = lastEditor!!.getValue().toTableModelValue()
+    override fun getCellEditorValue(): Any = (lastValue ?: lastEditor!!.getValue()).toTableModelValue()
 
     inner class BindingProperty : ModelSimpleProperty<Unit, ValueT> {
       override val description: String = "Binding Property"
@@ -145,13 +164,13 @@ abstract class CollectionPropertyEditor<ModelT, out ModelPropertyT : ModelCollec
 }
 
 class SimplePropertyStub<ValueT : Any> : ModelSimpleProperty<Unit, ValueT> {
-  override fun getParsedValue(model: Unit): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun getParsedValue(model: Unit): ParsedValue<ValueT> = ParsedValue.NotSet
   override fun setParsedValue(model: Unit, value: ParsedValue<ValueT>) = Unit
   override fun getResolvedValue(model: Unit): ResolvedValue<ValueT> = ResolvedValue.NotResolved()
   override val description: String = ""
   override fun getDefaultValue(model: Unit): ValueT? = null
-  override fun getValue(thisRef: Unit, property: KProperty<*>): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun getValue(thisRef: Unit, property: KProperty<*>): ParsedValue<ValueT> = ParsedValue.NotSet
   override fun setValue(thisRef: Unit, property: KProperty<*>, value: ParsedValue<ValueT>) = Unit
-  override fun parse(value: String): ParsedValue<ValueT> = ParsedValue.NotSet()
+  override fun parse(value: String): ParsedValue<ValueT> = ParsedValue.NotSet
   override fun getKnownValues(model: Unit): List<ValueDescriptor<ValueT>>? = null
 }

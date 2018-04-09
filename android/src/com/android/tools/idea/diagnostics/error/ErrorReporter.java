@@ -17,7 +17,9 @@
 package com.android.tools.idea.diagnostics.error;
 
 import com.android.annotations.Nullable;
-import com.android.tools.analytics.crash.CrashReport;
+import com.android.tools.idea.diagnostics.crash.StudioCrashReport;
+import com.android.tools.idea.diagnostics.crash.StudioExceptionReport;
+import com.android.tools.idea.diagnostics.crash.StudioPerformanceWatcherReport;
 import com.android.tools.idea.diagnostics.crash.StudioCrashReporter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -27,6 +29,7 @@ import com.intellij.diagnostic.ReportMessages;
 import com.intellij.errorreport.bean.ErrorBean;
 import com.intellij.ide.DataManager;
 import com.intellij.idea.IdeaLogger;
+import com.intellij.internal.statistic.analytics.StudioCrashDetails;
 import com.intellij.notification.NotificationListener;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -52,6 +55,7 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ErrorReporter extends ErrorReportSubmitter {
   private static final String FEEDBACK_TASK_TITLE = "Submitting error report";
@@ -152,18 +156,27 @@ public class ErrorReporter extends ErrorReportSubmitter {
     if ("Exception".equals(type)) {
       ImmutableMap<String, String> productData = ImmutableMap.of("md5", (String)map.get("md5"),
                                                                  "summary", (String)map.get("summary"));
-      StudioCrashReporter.getInstance().submit(
-        CrashReport.Builder.createForException(t).addProductData(productData).build());
+      StudioExceptionReport exceptionReport = new StudioExceptionReport.Builder().setThrowable(t).addProductData(productData).build();
+      StudioCrashReporter.getInstance().submit(exceptionReport);
     }
     else if ("ANR".equals(type)) {
-      StudioCrashReporter.getInstance().submit(
-        CrashReport.Builder.createForPerfReport((String)map.get("file"), (String)map.get("threadDump")).build());
+      StudioPerformanceWatcherReport perfReport =
+        new StudioPerformanceWatcherReport.Builder().setFile((String)map.get("file")).setThreadDump((String)map.get("threadDump")).build();
+      StudioCrashReporter.getInstance().submit(perfReport);
     }
     else if ("Crashes".equals(type)) {
       //noinspection unchecked
-      List<String> descriptions = (List<String>)map.get("descriptions");
-      StudioCrashReporter.getInstance().submit(
-        CrashReport.Builder.createForCrashes(descriptions).build());
+      List<StudioCrashDetails> crashDetails = (List<StudioCrashDetails>)map.get("crashDetails");
+      List<String> descriptions = crashDetails.stream().map(details -> details.getDescription()).collect(Collectors.toList());
+      // If at least one report was JVM crash, submit the batch as a JVM crash
+      boolean isJvmCrash = crashDetails.stream().anyMatch(details -> details.isJvmCrash());
+      // As there may be multiple crashes reported together, take the shortest uptime (most of the time there is only
+      // a single crash anyway).
+      long uptimeInMs = crashDetails.stream().mapToLong(details -> details.getUptimeInMs()).min().orElse(-1);
+
+      StudioCrashReport report =
+        new StudioCrashReport.Builder().setDescriptions(descriptions).setIsJvmCrash(isJvmCrash).setUptimeInMs(uptimeInMs).build();
+      StudioCrashReporter.getInstance().submit(report);
     }
     return true;
   }

@@ -30,7 +30,12 @@ abstract class NavToolbarMenu(protected val surface: NavDesignSurface, descripti
   var balloon: Balloon? = null
 
   override fun actionPerformed(e: AnActionEvent) {
-    show(e.inputEvent.source as JComponent)
+    if (balloon?.wasFadedOut() == false) {
+      balloon?.hide()
+    }
+    else {
+      show(e.inputEvent.source as JComponent)
+    }
   }
 
   fun show(component: JComponent) {
@@ -40,6 +45,7 @@ abstract class NavToolbarMenu(protected val surface: NavDesignSurface, descripti
       .setHideOnAction(false)
       .setBlockClicksThroughBalloon(true)
       .setAnimationCycle(200)
+      .setRequestFocus(true)  // Note that this seems non-functional, since it requests focus before the balloon is shown
     surface.currentSceneView?.colorSet?.subduedBackground?.let {
       balloonBuilder.setBorderColor(it)
       balloonBuilder.setFillColor(it)

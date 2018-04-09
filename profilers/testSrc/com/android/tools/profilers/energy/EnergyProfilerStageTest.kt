@@ -89,9 +89,10 @@ class EnergyProfilerStageTest {
   fun getLegends() {
     val energyLegends = myStage.legends
     assertThat(energyLegends.cpuLegend.name).isEqualTo("CPU")
-    assertThat(energyLegends.networkLegend.name).isEqualTo("NETWORK")
+    assertThat(energyLegends.networkLegend.name).isEqualTo("Network")
+    assertThat(energyLegends.locationLegend.name).isEqualTo("Location")
 
-    assertThat(energyLegends.legends).hasSize(2)
+    assertThat(energyLegends.legends).hasSize(3)
   }
 
   @Test
@@ -107,26 +108,28 @@ class EnergyProfilerStageTest {
   @Test
   fun setUsageTooltip() {
     myStage.enter()
-    myStage.tooltip = EnergyUsageTooltip(myStage)
-    assertThat(myStage.tooltip).isInstanceOf(EnergyUsageTooltip::class.java)
-    val tooltip = myStage.tooltip as EnergyUsageTooltip
-    assertThat(tooltip.legends.legends).hasSize(2)
-    assertThat(tooltip.legends.cpuLegend.name).isEqualTo("CPU")
-    assertThat(tooltip.legends.networkLegend.name).isEqualTo("NETWORK")
+    myStage.tooltip = EnergyStageTooltip(myStage)
+    assertThat(myStage.tooltip).isInstanceOf(EnergyStageTooltip::class.java)
+    val tooltip = myStage.tooltip as EnergyStageTooltip
+    assertThat(tooltip.usageLegends.legends).hasSize(3)
+    assertThat(tooltip.usageLegends.cpuLegend.name).isEqualTo("CPU")
+    assertThat(tooltip.usageLegends.networkLegend.name).isEqualTo("Network")
+    assertThat(tooltip.usageLegends.locationLegend.name).isEqualTo("Location")
   }
 
   @Test
   fun setEventTooltip() {
     myStage.enter()
-    myStage.tooltip = EnergyEventTooltip(myStage)
-    assertThat(myStage.tooltip).isInstanceOf(EnergyEventTooltip::class.java)
-    val tooltip = myStage.tooltip as EnergyEventTooltip
-    assertThat(tooltip.legends.legends).hasSize(3)
-    assertThat(tooltip.legends.locationLegend.name).isEqualTo("Location Event")
-    assertThat(tooltip.legends.wakeLockLegend.name).isEqualTo("Wake Locks")
-    assertThat(tooltip.legends.alarmAndJobLegend.name).isEqualTo("Alarms & Jobs")
+    myStage.tooltip = EnergyStageTooltip(myStage)
+    assertThat(myStage.tooltip).isInstanceOf(EnergyStageTooltip::class.java)
+    val tooltip = myStage.tooltip as EnergyStageTooltip
+    assertThat(tooltip.eventLegends.legends).hasSize(3)
+    assertThat(tooltip.eventLegends.locationLegend.name).isEqualTo("Location Event")
+    assertThat(tooltip.eventLegends.wakeLockLegend.name).isEqualTo("Wake Locks")
+    assertThat(tooltip.eventLegends.alarmAndJobLegend.name).isEqualTo("Alarms & Jobs")
   }
 
+  @Test
   fun getEventsModel() {
     val range = myStage.studioProfilers.timeline.viewRange
     val eventSeries = myStage.eventModel.series

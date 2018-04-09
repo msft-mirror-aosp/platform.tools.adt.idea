@@ -215,6 +215,9 @@
     <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.BuildApkAction">
       <add-to-group group-id="BuildMenu" relative-to-action="Android.GenerateSignedApk" anchor="before"/>
     </action>
+    <action id="Android.BuildBundle" class="com.android.tools.idea.gradle.actions.BuildBundleAction">
+      <add-to-group group-id="BuildMenu" relative-to-action="Android.BuildApk" anchor="after"/>
+    </action>
     <action id="Android.AnalyzeApk" class="com.android.tools.idea.apk.viewer.AnalyzeApkAction">
       <add-to-group group-id="BuildMenu" relative-to-action="Android.GenerateSignedApk" anchor="after"/>
     </action>
@@ -299,6 +302,11 @@
       <!-- <add-to-group group-id="RunnerActions" anchor="after" relative-to-action="Run" /> registered in code in AndroidPlugin -->
     </action>
     <action id="Android.Device.Picker.Help" class="com.android.tools.idea.actions.DevicePickerHelpAction"/>
+    <action id="Android.FixAndroidRunConfigurations"
+            class="com.android.tools.idea.gradle.project.FixAndroidRunConfigurationsAction"
+            text="Fix Android Run Configurations"
+            description="Add &quot;Gradle-aware Make&quot; launch task to Android Run Configuration(s) if it is missing">
+    </action>
   </actions>
 
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
@@ -850,6 +858,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintSuspicious0dp" displayName="Suspicious 0dp dimension" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintSuspicious0dpInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintSuspiciousImport" displayName="&apos;import android.R&apos; statement" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintSuspiciousImportInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintSwitchIntDef" displayName="Missing @IntDef in Switch" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintSwitchIntDefInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintSyntheticAccessor" displayName="Synthetic Accessor" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintSyntheticAccessorInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintTestAppLink" displayName="Unmatched URLs" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintTestAppLinkInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintTextFields" displayName="Missing inputType or hint" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintTextFieldsInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintTextViewEdits" displayName="TextView should probably be an EditText instead" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintTextViewEditsInspection"/>
@@ -978,6 +987,7 @@
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.apk.debugging.DexSourceFiles"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.ProjectStructure"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.project.RunConfigurationChecker"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.GradleProjectBuilder"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.PostProjectBuildTasksExecutor"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.BuildSettings"/>
@@ -1112,7 +1122,8 @@
     <gotoRelatedProvider implementation="org.jetbrains.android.AndroidGotoRelatedProvider"/>
     <codeInsight.lineMarkerProvider language="XML" implementationClass="org.jetbrains.android.AndroidLineMarkerProvider"/>
     <codeInsight.lineMarkerProvider language="JAVA" implementationClass="org.jetbrains.android.AndroidLineMarkerProvider"/>
-    <implicitUsageProvider implementation="org.jetbrains.android.AndroidImplicitUsagesProvider"/>
+    <implicitUsageProvider implementation="org.jetbrains.android.AndroidClassMembersImplicitUsagesProvider"/>
+    <implicitUsageProvider implementation="org.jetbrains.android.AndroidXmlnsImplicitUsagesProvider"/>
     <spellchecker.support language="XML" implementationClass="org.jetbrains.android.spellchecker.AndroidXmlSpellcheckingStrategy" order="before xml"/>
     <spellchecker.support language="TEXT" implementationClass="org.jetbrains.android.spellchecker.AndroidTextSpellcheckingStrategy" order="first"/>
     <spellchecker.support language="Properties" implementationClass="org.jetbrains.android.spellchecker.AndroidTextSpellcheckingStrategy" order="first"/>

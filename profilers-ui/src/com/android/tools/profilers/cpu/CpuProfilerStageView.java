@@ -41,12 +41,14 @@ import com.android.tools.profilers.sessions.SessionAspect;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.android.tools.profilers.stacktrace.LoadingPanel;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.JBSplitter;
@@ -64,7 +66,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
@@ -74,6 +75,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS;
@@ -96,10 +98,16 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     HIDEABLE_PANEL_EXPANDED("6*"),
 
     /**
-     * String to represent the threads/kernel view when an element is hidden. This value is used when the {@link HideablePanel} is
+     * String to represent the threads view when an element is hidden. This value is used when the {@link HideablePanel} is
      * collapsed and we need to adjust the size of our layout accordingly.
      */
-    HIDEABLE_PANEL_COLLAPSED("Fit");
+    HIDEABLE_PANEL_COLLAPSED("Fit-"),
+
+    /**
+     * String to represent the kernel view. This string means that the elements preferred size will be used when determining
+     * sizing. As such the panel does not need to change sizing rules when expanding/collapsing.
+     */
+    HIDEABLE_PANEL_FIT("Fit");
 
     private final String myLayoutString;
 
@@ -126,6 +134,20 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
    * Row index of the threads panel in the TabularLayout of the {@code monitorCpuThreadsLayout}.
    */
   private static final int THREADS_PANEL_ROW = 2;
+
+  /**
+   * Default ratio of splitter. The splitter ratio adjust the first elements size relative to the bottom elements size.
+   * A ratio of 1 means only the first element is shown, while a ratio of 0 means only the bottom element is shown.
+   */
+  @VisibleForTesting
+  static final float SPLITTER_DEFAULT_RATIO = 0.5f;
+
+  /**
+   * When we are showing the kernel data we want to increase the size of the kernel and threads view. This in turn reduces
+   * the size of the view used for the CallChart, FlameChart, ect..
+   */
+  @VisibleForTesting
+  static final float KERNEL_VIEW_SPLITTER_RATIO = 0.75f;
 
   private final CpuProfilerStage myStage;
 
@@ -174,7 +196,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     getTooltipBinder().bind(CpuThreadsTooltip.class, CpuThreadsTooltipView::new);
     getTooltipBinder().bind(EventActivityTooltip.class, EventActivityTooltipView::new);
     getTooltipBinder().bind(EventSimpleEventTooltip.class, EventSimpleEventTooltipView::new);
-
+    getTooltipPanel().setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
     myTooltipComponent = new RangeTooltipComponent(timeline.getTooltipRange(),
                                                    timeline.getViewRange(),
                                                    timeline.getDataRange(),
@@ -188,8 +210,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     final OverlayComponent overlay = new OverlayComponent(mySelection);
 
     // "Fit" for the event profiler, "*" for everything else.
-    final JPanel details = new JPanel(new TabularLayout("*", "Fit,*"));
+    final JPanel details = new JPanel(new TabularLayout("*", "Fit-,*"));
     details.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+    // Order matters as such our tooltip component should be first so it draws on top of all elements.
+    details.add(myTooltipComponent, new TabularLayout.Constraint(0, 0, 3, 1));
 
     if (!myStage.isImportTraceMode()) {
       // We shouldn't display the events monitor while in import trace mode.
@@ -198,24 +222,61 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       details.add(eventsView.getComponent(), new TabularLayout.Constraint(0, 0));
     }
 
-    final JPanel overlayPanel = new JBPanel(new BorderLayout());
-    configureOverlayPanel(overlayPanel, overlay);
-
     final JPanel monitorPanel = new JBPanel(new TabularLayout("*", "*"));
     monitorPanel.setOpaque(false);
     monitorPanel.setBorder(MONITOR_BORDER);
+    monitorPanel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+    if (!getStage().hasUserUsedCpuCapture() && !getStage().isImportTraceMode()) {
+      installProfilingInstructions(monitorPanel);
+    }
 
-    final JPanel axisPanel = new JBPanel(new BorderLayout());
-    configureAxisPanel(axisPanel);
+    if (myStage.isImportTraceMode()) {
+      final JPanel tipPanel = new JBPanel(new BorderLayout());
+      configureImportTipPanel(tipPanel);
 
-    final JPanel lineChartPanel = new JBPanel(new BorderLayout());
-    configureLineChart(lineChartPanel, overlay);
+      final AxisComponent timeAxisGuide = new AxisComponent(myStage.getTimeAxisGuide(), AxisComponent.AxisOrientation.BOTTOM);
+      configureImportAxisPanel(timeAxisGuide, monitorPanel);
+
+      final JPanel overlayPanel = new JBPanel(new TabularLayout("*", "*"));
+      configureImportOverlayPanel(overlayPanel, overlay);
+
+      // Order is important
+      monitorPanel.add(timeAxisGuide, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(overlay, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(mySelection, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(tipPanel, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(overlayPanel, new TabularLayout.Constraint(0, 0));
+    }
+    else {
+      final JPanel axisPanel = new JBPanel(new BorderLayout());
+      configureAxisPanel(axisPanel);
+
+      final JPanel legendPanel = new JBPanel(new BorderLayout());
+      configureLegendPanel(legendPanel);
+
+      final JPanel overlayPanel = new JBPanel(new BorderLayout());
+      configureOverlayPanel(overlayPanel, overlay);
+
+      final JPanel lineChartPanel = new JBPanel(new BorderLayout());
+      configureLineChart(lineChartPanel, overlay);
+
+      // Panel that represents the cpu utilization.
+      // Order is important
+      monitorPanel.add(axisPanel, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(legendPanel, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(overlayPanel, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(mySelection, new TabularLayout.Constraint(0, 0));
+      monitorPanel.add(lineChartPanel, new TabularLayout.Constraint(0, 0));
+    }
+
+    JComponent timeAxis = buildTimeAxis(myStage.getStudioProfilers());
+    ProfilerScrollbar scrollbar = new ProfilerScrollbar(timeline, details);
 
     TabularLayout monitorCpuThreadsLayout = new TabularLayout("*");
     // The cpu monitor takes up 40%.
     monitorCpuThreadsLayout.setRowSizing(MONITOR_PANEL_ROW, PanelSpacing.MONITOR_PANEL_SPACING.toString());
     // The CPU list is hidden by default so we use "Fit" making it be 0.
-    monitorCpuThreadsLayout.setRowSizing(KERNEL_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_COLLAPSED.toString());
+    monitorCpuThreadsLayout.setRowSizing(KERNEL_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_FIT.toString());
     // The threads list is expanded and takes up roughly 60%.
     monitorCpuThreadsLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_EXPANDED.toString());
 
@@ -223,27 +284,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     monitorCpuThreadsPanel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
     configureCpuPanel(monitorCpuThreadsPanel, monitorCpuThreadsLayout);
     configureThreadsPanel(monitorCpuThreadsPanel, monitorCpuThreadsLayout);
-
-    final JPanel legendPanel = new JBPanel(new BorderLayout());
-    configureLegendPanel(legendPanel);
-
-    JComponent timeAxis = buildTimeAxis(myStage.getStudioProfilers());
-    ProfilerScrollbar scrollbar = new ProfilerScrollbar(timeline, details);
-
-    if (!getStage().hasUserUsedCpuCapture()) {
-      installProfilingInstructions(monitorPanel);
-    }
-    // Panel that represents the cpu utilization.
-    monitorPanel.add(axisPanel, new TabularLayout.Constraint(0, 0));
-    monitorPanel.add(legendPanel, new TabularLayout.Constraint(0, 0));
-    monitorPanel.add(overlayPanel, new TabularLayout.Constraint(0, 0));
-    monitorPanel.add(mySelection, new TabularLayout.Constraint(0, 0));
-    monitorPanel.add(lineChartPanel, new TabularLayout.Constraint(0, 0));
     monitorCpuThreadsPanel.add(monitorPanel, new TabularLayout.Constraint(MONITOR_PANEL_ROW, 0));
 
     // Panel that represents all of L2
     details.add(monitorCpuThreadsPanel, new TabularLayout.Constraint(1, 0));
-    details.add(myTooltipComponent, new TabularLayout.Constraint(1, 0, 2, 1));
     details.add(timeAxis, new TabularLayout.Constraint(3, 0));
     details.add(scrollbar, new TabularLayout.Constraint(4, 0));
 
@@ -262,7 +306,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     myCaptureStatus = new JLabel("");
     myCaptureStatus.setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(12f));
-    myCaptureStatus.setBorder(new EmptyBorder(0, 5, 0, 0));
+    myCaptureStatus.setBorder(JBUI.Borders.emptyLeft(5));
     myCaptureStatus.setForeground(ProfilerColors.CPU_CAPTURE_STATUS);
 
     myCaptureViewLoading = getProfilersView().getIdeProfilerComponents().createLoadingPanel(-1);
@@ -339,24 +383,26 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       // get triggered and we will not update our layout.
       .setInitiallyExpanded(false)
       .build();
-      hideableCpus.addStateChangedListener((actionEvent) -> {
-        // On expanded set row sizing to initial ratio.
-        if (hideableCpus.isExpanded()) {
-          monitorCpuThreadsLayout.setRowSizing(KERNEL_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_EXPANDED.toString());
-        }
-        else {
-          // On collapse have monitor panel take any left over space.
-          monitorCpuThreadsLayout.setRowSizing(KERNEL_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_COLLAPSED.toString());
-        }
-      });
 
     // Handle when we get CPU data we want to show the cpu list.
     cpuModel.addListDataListener(new ListDataListener() {
       @Override
       public void contentsChanged(ListDataEvent e) {
         boolean hasElements = myCpus.getModel().getSize() != 0;
+        // Lets only show 4 cores max the user can scroll to view the rest.
+        myCpus.setVisibleRowCount(Math.min(4, myCpus.getModel().getSize()));
         hideableCpus.setVisible(hasElements);
         hideableCpus.setExpanded(hasElements);
+        // When the CpuKernelModel is updated we adjust the splitter. The higher the number the more space
+        // the first component occupies. For when we are showing Kernel elements we want to take up more space
+        // than when we are not. As such each time we modify the CpuKernelModel (when a trace is selected) we
+        // adjust the proportion of the splitter accordingly.
+        if (hasElements) {
+          mySplitter.setProportion(KERNEL_VIEW_SPLITTER_RATIO);
+        }
+        else {
+          mySplitter.setProportion(SPLITTER_DEFAULT_RATIO);
+        }
         monitorCpuThreadsPanel.revalidate();
       }
 
@@ -427,6 +473,46 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       .setColors(JBColor.foreground(), null)
       .build();
     myHelpTipPanel.add(infoMessage, BorderLayout.CENTER);
+  }
+
+  @SuppressWarnings("UseJBColor")
+  private void configureImportTipPanel(JPanel panel) {
+    panel.setOpaque(false);
+    panel.setBackground(new Color(0, 0, 0, 0));
+    InstructionsPanel infoMessage = new InstructionsPanel.Builder(
+      new TextInstruction(INFO_MESSAGE_HEADER_FONT, "Cpu usage details unavailable"))
+      .setColors(JBColor.foreground(), null)
+      .build();
+    panel.add(infoMessage);
+  }
+
+  private void configureImportAxisPanel(AxisComponent timeAxisGuide, JPanel monitorPanel) {
+    timeAxisGuide.setShowAxisLine(false);
+    timeAxisGuide.setShowLabels(false);
+    timeAxisGuide.setHideTickAtMin(true);
+    timeAxisGuide.setMarkerColor(ProfilerColors.CPU_AXIS_GUIDE_COLOR);
+    monitorPanel.addComponentListener(new ComponentAdapter() {
+      @Override
+      public void componentResized(ComponentEvent e) {
+        timeAxisGuide.setMarkerLengths(monitorPanel.getHeight(), 0);
+      }
+    });
+  }
+
+  @SuppressWarnings("UseJBColor")
+  private void configureImportOverlayPanel(JPanel overlay, OverlayComponent overlayComponent) {
+    overlay.setOpaque(false);
+    LineChart lineChart = new LineChart(new ArrayList<>());
+    DurationDataRenderer<CpuTraceInfo> traceRenderer =
+      new DurationDataRenderer.Builder<>(getStage().getTraceDurations(), ProfilerColors.CPU_CAPTURE_EVENT)
+        .setDurationBg(CPU_CAPTURE_BACKGROUND)
+        .setLabelProvider(this::formatCaptureLabel)
+        .setLabelColors(ProfilerColors.CPU_DURATION_LABEL_BACKGROUND, Color.BLACK, Color.lightGray, Color.WHITE)
+        .setClickHander(traceInfo -> getStage().setAndSelectCapture(traceInfo.getTraceId()))
+        .build();
+    overlayComponent.addDurationDataRenderer(traceRenderer);
+    lineChart.addCustomRenderer(traceRenderer);
+    overlay.add(lineChart, new TabularLayout.Constraint(0, 0));
   }
 
   private void configureAxisPanel(JPanel axisPanel) {
@@ -579,6 +665,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     lineChart.setTopPadding(Y_AXIS_TOP_MARGIN);
     lineChart.setFillEndGap(true);
 
+    @SuppressWarnings("UseJBColor")
     DurationDataRenderer<CpuTraceInfo> traceRenderer =
       new DurationDataRenderer.Builder<>(getStage().getTraceDurations(), ProfilerColors.CPU_CAPTURE_EVENT)
         .setDurationBg(CPU_CAPTURE_BACKGROUND)
@@ -597,6 +684,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     overlay.addDurationDataRenderer(traceRenderer);
     lineChart.addCustomRenderer(traceRenderer);
 
+    @SuppressWarnings("UseJBColor")
     DurationDataRenderer<DefaultDurationData> inProgressTraceRenderer =
       new DurationDataRenderer.Builder<>(getStage().getInProgressTraceDuration(), ProfilerColors.CPU_CAPTURE_EVENT)
         .setDurationBg(CPU_CAPTURE_BACKGROUND)
@@ -698,13 +786,13 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     ProfilerAction navigateNext =
       new ProfilerAction.Builder("Next capture")
         .setActionRunnable(() -> myStage.navigateNext())
-        .setEnableBooleanSupplier(() -> myStage.getTraceIdsIterator().hasNext())
+        .setEnableBooleanSupplier(() -> !myStage.isImportTraceMode() && myStage.getTraceIdsIterator().hasNext())
         .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, shortcutModifier)).build();
 
     ProfilerAction navigatePrevious =
       new ProfilerAction.Builder("Previous capture")
         .setActionRunnable(() -> myStage.navigatePrevious())
-        .setEnableBooleanSupplier(() -> myStage.getTraceIdsIterator().hasPrevious())
+        .setEnableBooleanSupplier(() -> !myStage.isImportTraceMode() && myStage.getTraceIdsIterator().hasPrevious())
         .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, shortcutModifier)).build();
 
     contextMenuInstaller.installGenericContextMenu(mySelection, navigateNext);
@@ -716,10 +804,13 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
    * Installs the {@link ContextMenuItem} corresponding to the "Export Trace" feature on {@link #mySelection}.
    */
   private void installExportTraceMenuItem(ContextMenuInstaller contextMenuInstaller) {
-    ProfilerAction exportTrace = new ProfilerAction.Builder("Export trace...").setIcon(StudioIcons.Common.EXPORT).build();
+    // Call setEnableBooleanSupplier() on ProfilerAction.Builder to make it easier to test.
+    ProfilerAction exportTrace = new ProfilerAction.Builder("Export trace...").setIcon(StudioIcons.Common.EXPORT)
+                                                                              .setEnableBooleanSupplier(() -> !myStage.isImportTraceMode())
+                                                                              .build();
     contextMenuInstaller.installGenericContextMenu(
       mySelection, exportTrace,
-      x -> getTraceIntersectingWithMouseX(x) != null,
+      x -> exportTrace.isEnabled() && getTraceIntersectingWithMouseX(x) != null,
       x -> getIdeComponents().createExportDialog().open(
         () -> "Export trace as",
         () -> generateTraceName(getTraceIntersectingWithMouseX(x)),
@@ -739,8 +830,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
                                                              ? "Stop recording" : "Record CPU trace")
       .setIcon(() -> myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING
                      ? StudioIcons.Profiler.Toolbar.STOP_RECORDING : StudioIcons.Profiler.Toolbar.RECORD)
-      .setEnableBooleanSupplier(() -> myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING
-                                      || myStage.getCaptureState() == CpuProfilerStage.CaptureState.IDLE)
+      .setEnableBooleanSupplier(() -> !myStage.isImportTraceMode() && (myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING
+                                                                       || myStage.getCaptureState() == CpuProfilerStage.CaptureState.IDLE))
       .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_R, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK))
       .setActionRunnable(() -> capture())
       .build();
@@ -756,7 +847,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     StringBuilder traceName = new StringBuilder("cpu-");
     CpuCapture capture = myStage.getCapture();
     if (capture != null) {
-      String normalizedTraceType = traceInfo.getProfilerType().name().toLowerCase();
+      String normalizedTraceType = StringUtil.toLowerCase(traceInfo.getProfilerType().name());
       traceName.append(normalizedTraceType);
       traceName.append("-");
     }
@@ -831,7 +922,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
                                                   boolean hasFocus) {
       if (value == CpuProfilerStage.CONFIG_SEPARATOR_ENTRY) {
         TitledSeparator separator = new TitledSeparator("");
-        separator.setBorder(new EmptyBorder(0, TitledSeparator.SEPARATOR_LEFT_INSET * -1, 0, TitledSeparator.SEPARATOR_RIGHT_INSET * -1));
+        separator
+          .setBorder(JBUI.Borders.empty(0, TitledSeparator.SEPARATOR_LEFT_INSET * -1, 0, TitledSeparator.SEPARATOR_RIGHT_INSET * -1));
         return separator;
       }
       return super.getListCellRendererComponent(list, value, index, selected, hasFocus);
@@ -888,9 +980,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     if (info.getInitiationType().equals(TraceInitiationType.INITIATED_BY_API)) {
       automatedTextOrEmpty = "(automated) ";
     }
-    String label = String.format("%s%s - %s", automatedTextOrEmpty, TimeAxisFormatter.DEFAULT.getClockFormattedString(min),
-                                 TimeAxisFormatter.DEFAULT.getClockFormattedString(max));
-    return label;
+    return String.format("%s%s - %s", automatedTextOrEmpty, TimeAxisFormatter.DEFAULT.getClockFormattedString(min),
+                         TimeAxisFormatter.DEFAULT.getClockFormattedString(max));
   }
 
   private void updateCaptureState() {

@@ -15,9 +15,11 @@ package com.android.tools.profilers.energy;
 
 import com.android.tools.adtui.model.*;
 import com.android.tools.adtui.model.formatter.EnergyAxisFormatter;
-import com.android.tools.adtui.model.legend.FixedLegend;
+import com.android.tools.adtui.model.formatter.SingleUnitAxisFormatter;
+import com.android.tools.adtui.model.legend.Legend;
 import com.android.tools.adtui.model.legend.LegendComponentModel;
 import com.android.tools.adtui.model.legend.SeriesLegend;
+import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.profiler.proto.EnergyProfiler.EnergyEvent;
 import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
@@ -37,13 +39,14 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
   @NotNull private final DetailedEnergyUsage myDetailedUsage;
   @NotNull private final AxisComponentModel myAxis;
   @NotNull private final EventMonitor myEventMonitor;
-  @NotNull private final EnergyLegends myLegends;
-  @NotNull private final EnergyLegends myTooltipLegends;
-  @NotNull private final EnergyEventLegends myEventLegends;
+  @NotNull private final EnergyUsageLegends myLegends;
+  @NotNull private final EnergyUsageLegends myUsageTooltipLegends;
+  @NotNull private final EnergyEventLegends myEventTooltipLegends;
   @NotNull private final SelectionModel mySelectionModel;
   @NotNull private final EnergyEventsFetcher myFetcher;
   @NotNull private final StateChartModel<EnergyEvent> myEventModel;
   @NotNull private final EaseOutModel myInstructionsEaseOutModel;
+  @NotNull private final Updatable myUpdatable;
 
   // Intentionally local field, to prevent GC from cleaning it and removing weak listeners
   @SuppressWarnings("FieldCanBeLocal") private AspectObserver myAspectObserver = new AspectObserver();
@@ -56,13 +59,13 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     myDetailedUsage = new DetailedEnergyUsage(profilers);
     myAxis = new AxisComponentModel(myDetailedUsage.getUsageRange(), EnergyAxisFormatter.DEFAULT);
     myEventMonitor = new EventMonitor(profilers);
-    myLegends = new EnergyLegends(myDetailedUsage, profilers.getTimeline().getDataRange());
-    myTooltipLegends = new EnergyLegends(myDetailedUsage, profilers.getTimeline().getTooltipRange());
-    myEventLegends = new EnergyEventLegends();
+    myLegends = new EnergyUsageLegends(myDetailedUsage, profilers.getTimeline().getDataRange());
+    myUsageTooltipLegends = new EnergyUsageLegends(myDetailedUsage, profilers.getTimeline().getTooltipRange());
+    myEventTooltipLegends = new EnergyEventLegends(new DetailedEnergyEventsCount(profilers), profilers.getTimeline().getTooltipRange());
     mySelectionModel = new SelectionModel(profilers.getTimeline().getSelectionRange());
     mySelectionModel.setSelectionEnabled(profilers.isAgentAttached());
     profilers.addDependency(myAspectObserver)
-      .onChange(ProfilerAspect.AGENT, () -> mySelectionModel.setSelectionEnabled(profilers.isAgentAttached()));
+             .onChange(ProfilerAspect.AGENT, () -> mySelectionModel.setSelectionEnabled(profilers.isAgentAttached()));
     mySelectionModel.addListener(new SelectionListener() {
       @Override
       public void selectionCreated() {
@@ -77,7 +80,8 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
         setProfilerMode(ProfilerMode.NORMAL);
       }
     });
-    myFetcher = new EnergyEventsFetcher(profilers.getClient().getEnergyClient(), profilers.getSession(), profilers.getTimeline().getSelectionRange());
+    myFetcher =
+      new EnergyEventsFetcher(profilers.getClient().getEnergyClient(), profilers.getSession(), profilers.getTimeline().getSelectionRange());
 
     EnergyEventsDataSeries sourceSeries = new EnergyEventsDataSeries(profilers.getClient(), profilers.getSession());
 
@@ -90,6 +94,8 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     myEventModel.addSeries(new RangedSeries<>(range, new MergedEnergyEventsDataSeries(sourceSeries, EnergyDuration.Kind.LOCATION)));
 
     myInstructionsEaseOutModel = new EaseOutModel(profilers.getUpdater(), PROFILING_INSTRUCTIONS_EASE_OUT_NS);
+
+    myUpdatable = elapsedNs -> getStudioProfilers().getTimeline().getTooltipRange().changed(Range.Aspect.RANGE);
   }
 
   @Override
@@ -100,7 +106,9 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     getStudioProfilers().getUpdater().register(myDetailedUsage);
     getStudioProfilers().getUpdater().register(myEventModel);
     getStudioProfilers().getUpdater().register(myLegends);
-    getStudioProfilers().getUpdater().register(myTooltipLegends);
+    getStudioProfilers().getUpdater().register(myUsageTooltipLegends);
+    getStudioProfilers().getUpdater().register(myEventTooltipLegends);
+    getStudioProfilers().getUpdater().register(myUpdatable);
 
     getStudioProfilers().getIdeServices().getCodeNavigator().addListener(this);
   }
@@ -113,7 +121,9 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     getStudioProfilers().getUpdater().unregister(myDetailedUsage);
     getStudioProfilers().getUpdater().unregister(myEventModel);
     getStudioProfilers().getUpdater().unregister(myLegends);
-    getStudioProfilers().getUpdater().unregister(myTooltipLegends);
+    getStudioProfilers().getUpdater().unregister(myUsageTooltipLegends);
+    getStudioProfilers().getUpdater().unregister(myEventTooltipLegends);
+    getStudioProfilers().getUpdater().unregister(myUpdatable);
 
     getStudioProfilers().getIdeServices().getCodeNavigator().removeListener(this);
   }
@@ -133,7 +143,8 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     return myDetailedUsage;
   }
 
-  @NotNull StateChartModel<EnergyEvent> getEventModel() {
+  @NotNull
+  StateChartModel<EnergyEvent> getEventModel() {
     return myEventModel;
   }
 
@@ -148,18 +159,18 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
   }
 
   @NotNull
-  public EnergyLegends getLegends() {
+  public EnergyUsageLegends getLegends() {
     return myLegends;
   }
 
   @NotNull
-  public EnergyLegends getTooltipLegends() {
-    return myTooltipLegends;
+  public EnergyUsageLegends getUsageTooltipLegends() {
+    return myUsageTooltipLegends;
   }
 
   @NotNull
-  public EnergyEventLegends getEventLegends() {
-    return myEventLegends;
+  public EnergyEventLegends getEventTooltipLegends() {
+    return myEventTooltipLegends;
   }
 
   @NotNull
@@ -172,17 +183,17 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     return myAspect;
   }
 
+  @Nullable
+  public EnergyDuration getSelectedDuration() {
+    return mySelectedDuration;
+  }
+
   public void setSelectedDuration(@Nullable EnergyDuration duration) {
     if (Objects.equals(mySelectedDuration, duration)) {
       return;
     }
     mySelectedDuration = duration;
     myAspect.changed(EnergyProfilerAspect.SELECTED_EVENT_DURATION);
-  }
-
-  @Nullable
-  public EnergyDuration getSelectedDuration() {
-    return mySelectedDuration;
   }
 
   @NotNull
@@ -200,10 +211,11 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
       return ByteString.EMPTY;
     }
 
-    Profiler.BytesRequest request = Profiler.BytesRequest.newBuilder()
-      .setId(id)
-      .setSession(getStudioProfilers().getSession())
-      .build();
+    Profiler.BytesRequest request =
+      Profiler.BytesRequest.newBuilder()
+                           .setId(id)
+                           .setSession(getStudioProfilers().getSession())
+                           .build();
 
     Profiler.BytesResponse response = getStudioProfilers().getClient().getProfilerClient().getBytes(request);
     return response.getContents();
@@ -214,62 +226,81 @@ public class EnergyProfilerStage extends Stage implements CodeNavigator.Listener
     setProfilerMode(ProfilerMode.NORMAL);
   }
 
-  public static class EnergyLegends extends LegendComponentModel {
+  public static class EnergyUsageLegends extends LegendComponentModel {
 
     @NotNull private final SeriesLegend myCpuLegend;
     @NotNull private final SeriesLegend myNetworkLegend;
+    @NotNull private final SeriesLegend myLocationLegend;
 
-    EnergyLegends(DetailedEnergyUsage detailedUsage, Range range) {
+    EnergyUsageLegends(DetailedEnergyUsage detailedUsage, Range range) {
       super(ProfilerMonitor.LEGEND_UPDATE_FREQUENCY_MS);
       myCpuLegend = new SeriesLegend(detailedUsage.getCpuUsageSeries(), EnergyAxisFormatter.DEFAULT, range, "CPU",
                                      Interpolatable.SegmentInterpolator);
-      myNetworkLegend = new SeriesLegend(detailedUsage.getNetworkUsageSeries(), EnergyAxisFormatter.DEFAULT, range, "NETWORK",
+      myNetworkLegend = new SeriesLegend(detailedUsage.getNetworkUsageSeries(), EnergyAxisFormatter.DEFAULT, range, "Network",
                                          Interpolatable.SegmentInterpolator);
+      myLocationLegend = new SeriesLegend(detailedUsage.getLocationUsageSeries(), EnergyAxisFormatter.DEFAULT, range, "Location",
+                                     Interpolatable.SegmentInterpolator);
 
       add(myCpuLegend);
       add(myNetworkLegend);
+      add(myLocationLegend);
     }
 
     @NotNull
-    public SeriesLegend getCpuLegend() {
+    public Legend getCpuLegend() {
       return myCpuLegend;
     }
 
     @NotNull
-    public SeriesLegend getNetworkLegend() {
+    public Legend getNetworkLegend() {
       return myNetworkLegend;
+    }
+
+    @NotNull
+    public SeriesLegend getLocationLegend() {
+      return myLocationLegend;
     }
   }
 
   public static class EnergyEventLegends extends LegendComponentModel {
-    @NotNull private final FixedLegend locationLegend;
-    @NotNull private final FixedLegend wakeLockLegend;
-    @NotNull private final FixedLegend alarmAndJobLegend;
 
-    EnergyEventLegends() {
+    @NotNull private final SeriesLegend myLocationLegend;
+    @NotNull private final SeriesLegend myWakeLockLegend;
+    @NotNull private final SeriesLegend myAlarmAndJobLegend;
+    @NotNull private final Range myRange;
+    @NotNull private final SingleUnitAxisFormatter myFormatter =
+      new SingleUnitAxisFormatter(1, 5, 5, "");
+
+    EnergyEventLegends(@NotNull DetailedEnergyEventsCount eventCount, @NotNull Range range) {
       super(ProfilerMonitor.LEGEND_UPDATE_FREQUENCY_MS);
-      locationLegend = new FixedLegend("Location Event");
-      wakeLockLegend = new FixedLegend("Wake Locks");
-      alarmAndJobLegend = new FixedLegend("Alarms & Jobs");
+      myRange = range;
+      myLocationLegend = createSeriesLegend(eventCount.getLocationCountSeries());
+      myWakeLockLegend = createSeriesLegend(eventCount.getWakeLockCountSeries());
+      myAlarmAndJobLegend = createSeriesLegend(eventCount.getAlarmAndJobCountSeries());
 
-      add(locationLegend);
-      add(wakeLockLegend);
-      add(alarmAndJobLegend);
+      add(myLocationLegend);
+      add(myWakeLockLegend);
+      add(myAlarmAndJobLegend);
+    }
+
+    private SeriesLegend createSeriesLegend(RangedContinuousSeries series) {
+      return new SeriesLegend(series, myFormatter, myRange,
+                              Interpolatable.SegmentInterpolator);
     }
 
     @NotNull
-    public FixedLegend getWakeLockLegend() {
-      return wakeLockLegend;
+    public Legend getWakeLockLegend() {
+      return myWakeLockLegend;
     }
 
     @NotNull
-    public FixedLegend getLocationLegend() {
-      return locationLegend;
+    public Legend getLocationLegend() {
+      return myLocationLegend;
     }
 
     @NotNull
-    public FixedLegend getAlarmAndJobLegend() {
-      return alarmAndJobLegend;
+    public Legend getAlarmAndJobLegend() {
+      return myAlarmAndJobLegend;
     }
   }
 }

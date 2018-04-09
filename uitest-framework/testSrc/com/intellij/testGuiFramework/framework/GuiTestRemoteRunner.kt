@@ -35,7 +35,7 @@ import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.runners.model.FrameworkMethod
 import org.junit.runners.model.InitializationError
 import java.lang.reflect.InvocationTargetException
-import java.util.concurrent.TimeUnit
+import java.net.SocketException
 
 /**
  * [GuiTestRemoteRunner] serves as the JUnit runner on both the server and client side (test classes can only be annotated with one @[RunWith]
@@ -78,11 +78,11 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
     val server = JUnitServerHolder.getServer(notifier)
 
     try {
-      if (!server.isStarted()) {
-        startIdeAndServer(server)
+      if (!server.isRunning()) {
+        server.launchIdeAndStart()
       }
       val jUnitTestContainer = JUnitTestContainer(method.declaringClass, method.name, buildSystem = buildSystem)
-      server.send(TransportMessage(MessageType.RUN_TEST, jUnitTestContainer))
+      server.send(RunTestMessage(jUnitTestContainer))
     }
     catch (e: Exception) {
       SERVER_LOG.error(e)
@@ -92,46 +92,34 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
     }
     var testIsRunning = true
     while(testIsRunning) {
-      val message = server.receive()
-      if (message.content is JUnitInfo && message.content.testClassAndMethodName == JUnitInfo.getClassAndMethodName(description)) {
-        when (message.content.type) {
-          Type.STARTED -> eachNotifier.fireTestStarted()
-          Type.ASSUMPTION_FAILURE -> eachNotifier.addFailedAssumption((message.content.obj as Failure).exception as AssumptionViolatedException)
-          Type.IGNORED -> { eachNotifier.fireTestIgnored(); testIsRunning = false }
-          Type.FAILURE -> eachNotifier.addFailure(message.content.obj as Throwable)
-          Type.FINISHED -> { eachNotifier.fireTestFinished(); testIsRunning = false }
-          else -> throw UnsupportedOperationException("Bad message type from client: $message.content.type")
+      val message = try {
+        server.receive()
+      } catch (e: SocketException) {
+        LOG.warn(e.message)
+        eachNotifier.fireTestIgnored()
+        return
+      }
+      when (message) {
+        is JUnitInfoMessage ->
+          when (message.info.type) {
+            Type.STARTED -> eachNotifier.fireTestStarted()
+            Type.ASSUMPTION_FAILURE -> eachNotifier.addFailedAssumption((message.info.obj as Failure).exception as AssumptionViolatedException)
+            Type.IGNORED -> { eachNotifier.fireTestIgnored(); testIsRunning = false }
+            Type.FAILURE -> eachNotifier.addFailure(message.info.obj as Throwable)
+            Type.FINISHED -> { eachNotifier.fireTestFinished(); testIsRunning = false }
+            else -> throw UnsupportedOperationException("Bad message type from client: $message.content.type")
+          }
+        is RestartIdeMessage -> {
+          val ex = restartIdeAndServer(server, method, message.resumeTest)
+          if (ex != null) {
+            eachNotifier.addFailure(ex)
+            eachNotifier.fireTestFinished()
+            return
+          }
+          server.send(RunTestMessage(JUnitTestContainer(method.declaringClass, method.name, message.index, buildSystem)))
         }
-      }
-      if (message.type == MessageType.RESTART_IDE) {
-        restartIdeAndServer(server, method)
-        sendRunTestCommand(method, server)
-      }
-      if (message.type == MessageType.RESTART_IDE_AND_RESUME) {
-        val additionalInfoLabel = message.content
-        if (additionalInfoLabel !is String) throw Exception("Additional info for a resuming test should have a String type!")
-        val ex = restartIdeAndServer(server, method, true)
-        if (ex != null) {
-          eachNotifier.addFailure(ex)
-          eachNotifier.fireTestFinished()
-          testIsRunning = false
-        } else {
-          sendResumeTestCommand(method, server, additionalInfoLabel)
-        }
-      }
-    }
-  }
 
-  private fun closeIdeAndStopServer (server: JUnitServer) {
-    server.send(TransportMessage(MessageType.CLOSE_IDE))
-    GuiTestLauncher.process?.waitFor(2, TimeUnit.MINUTES)
-    server.stopServer()
-  }
-
-  private fun startIdeAndServer (server: JUnitServer) {
-    GuiTestLauncher.runIde(server.getPort())
-    if (!server.isStarted()) {
-      server.start()
+      }
     }
   }
 
@@ -143,7 +131,7 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
   }
 
   private fun restartIdeAndServer (server: JUnitServer, method: FrameworkMethod, forResume: Boolean = false): Throwable? {
-    closeIdeAndStopServer(server)
+    server.closeIdeAndStop()
     if (forResume) {
       try {
         runBetweenRestartsMethods(method)
@@ -151,18 +139,8 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
         return e.targetException
       }
     }
-    startIdeAndServer(server)
+    server.launchIdeAndStart()
     return null
-  }
-
-  private fun sendRunTestCommand(method: FrameworkMethod, server: JUnitServer) {
-    val jUnitTestContainer = JUnitTestContainer(method.declaringClass, method.name, buildSystem = buildSystem)
-    server.send(TransportMessage(MessageType.RUN_TEST, jUnitTestContainer))
-  }
-
-  private fun sendResumeTestCommand(method: FrameworkMethod, server: JUnitServer, resumeTestLabel: String) {
-    val jUnitTestContainer = JUnitTestContainer(method.declaringClass, method.name, resumeLabel = resumeTestLabel, buildSystem = buildSystem)
-    server.send(TransportMessage(MessageType.RESUME_TEST, jUnitTestContainer))
   }
 
   private fun runOnClientSide(method: FrameworkMethod, notifier: RunNotifier) {
@@ -170,8 +148,7 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
       LOG.info("Starting test: '${testClass.name}.${method.name}'")
       // if IDE has fatal errors from a previous test, request a restart
       if (GuiTests.fatalErrorsFromIde().isNotEmpty()) {
-        val restartIdeMessage = TransportMessage(MessageType.RESTART_IDE, "IDE has fatal errors from previous test, let's start a new instance")
-        GuiTestThread.client?.send(restartIdeMessage) ?: throw Exception("JUnitClient is accidentally null")
+        GuiTestThread.client?.send(RestartIdeMessage()) ?: throw Exception("JUnitClient is accidentally null")
       } else {
           super.runChild(method, notifier)
       }

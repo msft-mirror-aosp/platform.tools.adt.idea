@@ -17,11 +17,14 @@ package com.android.tools.idea.uibuilder.property2
 
 import com.android.tools.adtui.workbench.ToolContent
 import com.android.tools.idea.common.property2.api.EditorProvider
+import com.android.tools.idea.common.property2.api.PropertiesPanel
 import com.android.tools.idea.common.property2.api.PropertiesView
+import com.android.tools.idea.common.property2.impl.ui.registerKeyAction
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.uibuilder.property2.inspector.*
 import com.android.tools.idea.uibuilder.property2.support.NeleControlTypeProvider
 import com.android.tools.idea.uibuilder.property2.support.NeleEnumSupportProvider
+import com.android.tools.idea.uibuilder.property2.support.ToggleShowResolvedValueAction
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import org.jetbrains.android.facet.AndroidFacet
 import java.awt.BorderLayout
@@ -34,20 +37,25 @@ import javax.swing.JPanel
  */
 class NelePropertiesPanelToolContent(facet: AndroidFacet) : JPanel(BorderLayout()), ToolContent<DesignSurface> {
   private val model = NelePropertiesModel(this, facet)
-  private val properties = PropertiesView(model, this)
+  private val view = PropertiesView(model)
+  private val properties = PropertiesPanel(model)
   private val controlTypeProvider = NeleControlTypeProvider()
   private val enumSupportProvider = NeleEnumSupportProvider()
   private val editorProvider = EditorProvider.create(enumSupportProvider, controlTypeProvider)
   private val filterKeyListener = createFilterKeyListener()
+  private val showResolvedValueAction = ToggleShowResolvedValueAction(model)
 
   init {
     add(properties.component, BorderLayout.CENTER)
-    properties.builders.add(IdInspectorBuilder(editorProvider))
-    properties.builders.add(LayoutInspectorBuilder(facet.module.project, editorProvider))
-    properties.builders.add(ViewInspectorBuilder(facet.module.project, editorProvider))
-    properties.builders.add(TextViewInspectorBuilder(editorProvider))
-    properties.builders.add(ProgressBarInspectorBuilder(editorProvider))
-    properties.builders.add(FavoritesInspectorBuilder(editorProvider))
+    properties.addView(view)
+    view.builders.add(IdInspectorBuilder(editorProvider))
+    view.builders.add(LayoutInspectorBuilder(facet.module.project, editorProvider))
+    view.builders.add(ViewInspectorBuilder(facet.module.project, editorProvider))
+    view.builders.add(TextViewInspectorBuilder(editorProvider))
+    view.builders.add(ProgressBarInspectorBuilder(editorProvider))
+    view.builders.add(FavoritesInspectorBuilder(editorProvider))
+    registerKeyAction(showResolvedValueAction, ToggleShowResolvedValueAction.SHORTCUT.firstKeyStroke, "toggleResolvedValues",
+                      WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
   }
 
   override fun setToolContext(toolContext: DesignSurface?) {

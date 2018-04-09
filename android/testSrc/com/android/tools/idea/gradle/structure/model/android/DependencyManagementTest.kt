@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.builder.model.AndroidProject.ARTIFACT_MAIN
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec
+import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.testing.TestProjectPaths.PSD_DEPENDENCY
 import com.intellij.openapi.project.Project
@@ -174,6 +175,41 @@ class DependencyManagementTest : DependencyTestCase() {
       assertThat(lib2.testHasPromotedVersion(), hasItems(false))
       assertThat(lib3.testHasPromotedVersion(), hasItems(false))
       assertThat(lib4.testHasPromotedVersion(), hasItems(false))
+    }
+  }
+
+  fun testRemoveLibraryDependency() {
+    var module = project.findModuleByName("mainModule") as PsAndroidModule
+    val lib10 = module.dependencies.findLibraryDependency("com.example.libs:lib1:1.0")
+    assertThat(lib10, notNullValue())
+    val numberOfMatchingDependencies = 2
+    assertThat(lib10!!.size, equalTo(numberOfMatchingDependencies))
+    var notifications = 0
+    module.add(PsModule.DependenciesChangeListener { if (it is PsModule.DependencyRemovedEvent) notifications++ }, testRootDisposable)
+    lib10.forEach {
+      module.removeDependency(it)
+    }
+    assertThat(module.dependencies.findLibraryDependency("com.example.libs:lib1:1.0"), nullValue())
+    assertThat(notifications, equalTo(numberOfMatchingDependencies))
+
+    run {
+      val resolvedDependencies = module.findVariant("freeRelease")?.findArtifact(ARTIFACT_MAIN)?.dependencies
+      assertThat(resolvedDependencies?.findLibraryDependency("com.example.libs:lib1:1.0"), notNullValue())
+      assertThat(resolvedDependencies?.findLibraryDependency("com.example.libs:lib2:1.0"), notNullValue())
+    }
+
+    project.applyChanges()
+    requestSyncAndWait()
+    reparse()
+
+    module = project.findModuleByName("mainModule") as PsAndroidModule
+    assertThat(module.dependencies.findLibraryDependency("com.example.libs:lib1:1.0"), nullValue())
+    assertThat(module.dependencies.findLibraryDependency("com.example.libs:lib2:1.0"), nullValue())
+
+    run {
+      val resolvedDependencies = module.findVariant("freeRelease")?.findArtifact(ARTIFACT_MAIN)?.dependencies
+      assertThat(resolvedDependencies?.findLibraryDependency("com.example.libs:lib1:1.0"), nullValue())
+      assertThat(resolvedDependencies?.findLibraryDependency("com.example.libs:lib2:1.0"), nullValue())
     }
   }
 

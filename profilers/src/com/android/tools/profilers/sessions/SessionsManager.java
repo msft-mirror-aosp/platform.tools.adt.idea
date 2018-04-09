@@ -140,9 +140,10 @@ public class SessionsManager extends AspectModel<SessionAspect> {
       // The previous view range could contain the initial empty space if the data range is short, just clamp the view range's min to the
       // data range's min in that case.
       viewRangeMin = Math.max(viewRangeMin, cachedRange.getMin());
-      // Previous view range's max should never be grater than the data range's max
-      assert viewRangeMax >= cachedRange.getMax();
-      viewRangeMax = cachedRange.getMax();
+      // If a device is disconnected (e.g. unplugged, the update loop could have put the view range's max over the session's end time,
+      // which is determined by the timestamp of the last TimeResponse we received from the device, simply clamp the max here to be the
+      // session's end time when that happens.
+      viewRangeMax = Math.min(viewRangeMax, cachedRange.getMax());
     }
 
     return new Range(viewRangeMin, viewRangeMax);
@@ -188,18 +189,18 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   /**
    * Request to begin a new session using the input device and process.
    */
-  public void beginSession(@Nullable Common.Device device, @Nullable Common.Process process) {
+  public void beginSession(@NotNull Common.Device device, @Nullable Common.Process process) {
     // We currently don't support more than one profiling session at a time.
     assert Common.Session.getDefaultInstance().equals(myProfilingSession);
 
-    if (device == null || process == null) {
+    // No process is specified, starts a default empty session.
+    if (process == null) {
       setProfilingSession(Common.Session.getDefaultInstance());
       setSession(myProfilingSession);
       return;
     }
 
-    // TODO this part is currently only for backward compatibility
-    // Once we switched to the new device+process dropdown (b/67509466), we should not see offline device and process anymore.
+    // TODO(b/77649021): This part is currently only for backward compatibility.
     if (device.getState() != Common.Device.State.ONLINE || process.getState() != Common.Process.State.ALIVE) {
       return;
     }
@@ -363,8 +364,8 @@ public class SessionsManager extends AspectModel<SessionAspect> {
         return 1;
       }
 
-      // b) more recent artifacts should appear at the bottom.
-      return Long.compare(artifact1.getTimestampNs(), artifact2.getTimestampNs());
+      // b) more recent artifacts should appear at the top.
+      return Long.compare(artifact2.getTimestampNs(), artifact1.getTimestampNs());
     }
   }
 }

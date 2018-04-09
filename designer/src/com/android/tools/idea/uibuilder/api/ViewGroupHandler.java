@@ -23,11 +23,10 @@ import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.scene.ComponentProvider;
 import com.android.tools.idea.common.scene.SceneComponent;
-import com.android.tools.idea.common.scene.TargetProvider;
-import com.android.tools.idea.common.scene.target.Target;
 import com.android.tools.idea.common.surface.Interaction;
 import com.android.tools.idea.uibuilder.model.FillPolicy;
 import com.android.tools.idea.uibuilder.model.SegmentType;
+import com.android.tools.idea.uibuilder.surface.AccessoryPanel;
 import com.android.tools.idea.uibuilder.surface.ScreenView;
 import com.android.xml.XmlBuilder;
 import org.intellij.lang.annotations.Language;
@@ -36,7 +35,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.dnd.DropTargetDropEvent;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -260,5 +258,30 @@ public class ViewGroupHandler extends ViewHandler {
    */
   public Object getComponentTreeChild(@NotNull Object component, int i) {
     return ((NlComponent)component).getChild(i);
+  }
+
+  /**
+   * Returns true if this handler needs an accessory panel
+   * @return
+   */
+  public boolean needsAccessoryPanel(@NotNull AccessoryPanel.Type type) {
+    return false;
+  }
+
+  /**
+   * Returns a AccessoryPanelInterface used as an accessory panel
+   * @param type type of accessory panel
+   * @param parent The NLComponent that triggered the request.
+   * @return
+   */
+  @Nullable
+  public AccessoryPanelInterface createAccessoryPanel(@NotNull AccessoryPanel.Type type,
+                                                      @NotNull NlComponent parent,
+                                                      @NotNull AccessoryPanelVisibility callback) {
+    return null;
+  }
+
+  public interface AccessoryPanelVisibility {
+    void show(@NotNull AccessoryPanel.Type type, boolean show);
   }
 }

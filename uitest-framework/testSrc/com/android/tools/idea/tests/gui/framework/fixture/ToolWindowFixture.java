@@ -32,11 +32,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
-import java.util.concurrent.TimeUnit;
 
 public abstract class ToolWindowFixture {
 
-  private static final int SECONDS_TO_WAIT = 120;
   private static final Logger LOG = Logger.getInstance(ToolWindowFixture.class);
 
   @NotNull protected final String myToolWindowId;
@@ -48,7 +46,7 @@ public abstract class ToolWindowFixture {
     myToolWindowId = toolWindowId;
     myProject = project;
     final Ref<ToolWindow> toolWindowRef = new Ref<>();
-    Wait.seconds(SECONDS_TO_WAIT).expecting("tool window with ID '" + toolWindowId + "' to be found")
+    Wait.seconds(120).expecting("tool window with ID '" + toolWindowId + "' to be found")
       .until(() -> {
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(toolWindowId);
         toolWindowRef.set(toolWindow);
@@ -60,9 +58,10 @@ public abstract class ToolWindowFixture {
 
   @Nullable
   protected Content getContent(@NotNull final String displayName) {
-    activateAndWaitUntilIsVisible();
+    activate();
+    waitUntilIsVisible();
     final Ref<Content> contentRef = new Ref<>();
-    Wait.seconds(SECONDS_TO_WAIT).expecting("content '" + displayName + "' to be found")
+    Wait.seconds(120).expecting("content '" + displayName + "' to be found")
       .until(() -> {
         Content[] contents = getContents();
         for (Content content : contents) {
@@ -78,11 +77,10 @@ public abstract class ToolWindowFixture {
 
   @Nullable
   protected Content getContent(@NotNull final TextMatcher displayNameMatcher) {
-    long startTime = System.currentTimeMillis();
-    activateAndWaitUntilIsVisible(SECONDS_TO_WAIT);
-    long secondsRemaining = SECONDS_TO_WAIT - TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime);
+    activate();
+    waitUntilIsVisible();
     final Ref<Content> contentRef = new Ref<>();
-    Wait.seconds(secondsRemaining).expecting("content matching " + displayNameMatcher.formattedValues() + " to be found")
+    Wait.seconds(120).expecting("content matching " + displayNameMatcher.formattedValues() + " to be found")
       .until(() -> {
         Content[] contents = getContents();
         for (Content content : contents) {
@@ -95,17 +93,6 @@ public abstract class ToolWindowFixture {
         return false;
       });
     return contentRef.get();
-  }
-
-  protected final void activateAndWaitUntilIsVisible() {
-    activateAndWaitUntilIsVisible(SECONDS_TO_WAIT);
-  }
-
-  protected final void activateAndWaitUntilIsVisible(long secondsToWait) {
-    long startTime = System.currentTimeMillis();
-    activate(secondsToWait);
-    long secondsRemaining = secondsToWait - TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime);
-    waitUntilIsVisible(secondsRemaining);
   }
 
   @NotNull
@@ -138,11 +125,11 @@ public abstract class ToolWindowFixture {
     });
   }
 
-  public void activate() {
-    activate(SECONDS_TO_WAIT);
+  public ToolWindowFixture activate() {
+    return activate(120);
   }
 
-  public void activate(long secondsToWait) {
+  public ToolWindowFixture activate(long secondsToWait) {
     Wait.seconds(secondsToWait)
       .expecting("ToolWindow '" + myToolWindowId + "' to be activated")
       .until(() -> {
@@ -152,20 +139,17 @@ public abstract class ToolWindowFixture {
         }
         return isActive;
       });
+    return this;
   }
 
-  protected void waitUntilIsVisible() {
-    waitUntilIsVisible(30);
+  protected ToolWindowFixture waitUntilIsVisible() {
+    return waitUntilIsVisible(30);
   }
 
-  protected void waitUntilIsVisible(long secondsToWait) {
+  protected ToolWindowFixture waitUntilIsVisible(long secondsToWait) {
     Wait.seconds(secondsToWait).expecting("ToolWindow '" + myToolWindowId + "' to be visible")
-      .until(() -> {
-        if (!isActive()) {
-          activate();
-        }
-        return GuiQuery.getNonNull(
-          () -> myToolWindow.isVisible() && myToolWindow.getComponent().isVisible() && myToolWindow.getComponent().isShowing());
-      });
+      .until(() -> GuiQuery.getNonNull(
+        () -> myToolWindow.isVisible() && myToolWindow.getComponent().isVisible() && myToolWindow.getComponent().isShowing()));
+    return this;
   }
 }

@@ -16,7 +16,9 @@
 package com.android.tools.idea.gradle.dsl.model.dependencies;
 
 import com.android.tools.idea.gradle.dsl.api.dependencies.FileDependencyModel;
+import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
+import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder;
 import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import org.jetbrains.annotations.NonNls;
@@ -30,34 +32,34 @@ public class FileDependencyModelImpl extends DependencyModelImpl implements File
   @NonNls public static final String FILES = "files";
 
   @NotNull private String myConfigurationName;
-  @NotNull private final GradleDslExpression myFileDslExpression;
+  @NotNull private final GradleDslSimpleExpression myFileDslExpression;
 
   static Collection<FileDependencyModel> create(@NotNull String configurationName, @NotNull GradleDslMethodCall methodCall) {
     List<FileDependencyModel> result = new ArrayList<>();
     if (FILES.equals(methodCall.getMethodName())) {
-      List<GradleDslElement> arguments = methodCall.getArguments();
+      List<GradleDslExpression> arguments = methodCall.getArguments();
       for (GradleDslElement argument : arguments) {
-        if (argument instanceof GradleDslExpression) {
-          result.add(new FileDependencyModelImpl(configurationName, (GradleDslExpression)argument));
+        if (argument instanceof GradleDslSimpleExpression) {
+          result.add(new FileDependencyModelImpl(configurationName, (GradleDslSimpleExpression)argument));
         }
       }
     }
     return result;
   }
 
-  static void createAndAddToList(@NotNull GradleDslElementList list,
-                                 @NotNull String configurationName,
-                                 @NotNull String file) {
+  static void create(@NotNull GradlePropertiesDslElement parent,
+                     @NotNull String configurationName,
+                     @NotNull String file) {
     GradleNameElement name = GradleNameElement.create(configurationName);
-    GradleDslMethodCall methodCall = new GradleDslMethodCall(list, name, FILES);
+    GradleDslMethodCall methodCall = new GradleDslMethodCall(parent, name, FILES);
     GradleDslLiteral fileDslLiteral = new GradleDslLiteral(methodCall, name);
     fileDslLiteral.setValue(file);
     methodCall.addNewArgument(fileDslLiteral);
-    list.addNewElement(methodCall);
+    parent.setNewElement(methodCall);
   }
 
   private FileDependencyModelImpl(@NotNull String configurationName,
-                                  @NotNull GradleDslExpression fileDslExpression) {
+                                  @NotNull GradleDslSimpleExpression fileDslExpression) {
     myConfigurationName = configurationName;
     myFileDslExpression = fileDslExpression;
   }
@@ -76,14 +78,7 @@ public class FileDependencyModelImpl extends DependencyModelImpl implements File
 
   @Override
   @NotNull
-  public GradleNotNullValue<String> file() {
-    String file = myFileDslExpression.getValue(String.class);
-    assert file != null;
-    return new GradleNotNullValueImpl<>(myFileDslExpression, file);
-  }
-
-  @Override
-  public void setFile(@NotNull String file) {
-    myFileDslExpression.setValue(file);
+  public ResolvedPropertyModel file() {
+    return GradlePropertyModelBuilder.create(myFileDslExpression).asMethod(true).buildResolved();
   }
 }

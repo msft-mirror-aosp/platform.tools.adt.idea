@@ -15,8 +15,10 @@
  */
 package com.intellij.testGuiFramework.remote.server
 
-import com.intellij.testGuiFramework.remote.transport.JUnitTestContainer
-import com.intellij.testGuiFramework.remote.transport.MessageType
+import com.intellij.testGuiFramework.launcher.GuiTestLauncher
+import com.intellij.testGuiFramework.remote.transport.CloseIdeMessage
+import com.intellij.testGuiFramework.remote.transport.MessageFromClient
+import com.intellij.testGuiFramework.remote.transport.MessageFromServer
 import com.intellij.testGuiFramework.remote.transport.TransportMessage
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
@@ -29,9 +31,7 @@ import java.io.ObjectOutputStream
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
-import java.util.*
 import java.util.concurrent.BlockingQueue
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -43,22 +43,21 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
 
   private val SEND_THREAD = "JUnit Server Send Thread"
   private val RECEIVE_THREAD = "JUnit Server Receive Thread"
-  private val postingMessages: BlockingQueue<TransportMessage> = LinkedBlockingQueue()
-  private val receivingMessages: BlockingQueue<TransportMessage> = LinkedBlockingQueue()
-  private val handlers: ArrayList<ServerHandler> = ArrayList()
-  private var failHandler: ((Throwable) -> Unit)? = null
+  private val postingMessages: BlockingQueue<MessageFromServer> = LinkedBlockingQueue()
+  private val receivingMessages: BlockingQueue<MessageFromClient> = LinkedBlockingQueue()
   private val LOG = Logger.getLogger("#com.intellij.testGuiFramework.remote.server.JUnitServerImpl")
 
   private val serverSocket = ServerSocket(0)
   lateinit private var serverSendThread: ServerSendThread
   lateinit private var serverReceiveThread: ServerReceiveThread
   lateinit private var connection: Socket
-  private var isStarted = false
+  private var running = false
 
   lateinit private var objectInputStream: ObjectInputStream
   lateinit private var objectOutputStream: ObjectOutputStream
 
-  private val IDE_STARTUP_TIMEOUT = 180000
+  private val IDE_STARTUP_TIMEOUT = 20000
+  private val MESSAGE_INTERVAL_TIMEOUT = 15L
 
   private val port: Int
 
@@ -69,13 +68,15 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     serverSocket.soTimeout = IDE_STARTUP_TIMEOUT
     notifier.addListener(object : RunListener() {
       override fun testRunFinished(result: Result?) {
-        send(TransportMessage(MessageType.CLOSE_IDE))
+        closeIdeAndStop()
         super.testRunFinished(result)
       }
     })
   }
 
-  override fun start() {
+  private fun start() {
+    postingMessages.clear()
+    receivingMessages.clear()
     connection = serverSocket.accept()
     LOG.info("Server accepted client on port: ${connection.port}")
 
@@ -86,67 +87,28 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     objectInputStream = ObjectInputStream(connection.getInputStream())
     serverReceiveThread = ServerReceiveThread(connection, objectInputStream)
     serverReceiveThread.start()
-    isStarted = true
+    running = true
   }
 
-  override fun isStarted(): Boolean = isStarted
-
-  override fun send(message: TransportMessage) {
+  override fun send(message: MessageFromServer) {
     postingMessages.put(message)
     LOG.info("Add message to send pool: $message ")
   }
 
-  override fun receive(): TransportMessage {
-    return receivingMessages.poll(IDE_STARTUP_TIMEOUT.toLong(), TimeUnit.MILLISECONDS)
-           ?: throw SocketException("Client doesn't respond. Either the test has hanged or IDE crushed.")
-  }
-
-  override fun sendAndWaitAnswer(message: TransportMessage)
-    = sendAndWaitAnswerBase(message)
-
-  override fun sendAndWaitAnswer(message: TransportMessage, timeout: Long, timeUnit: TimeUnit)
-    = sendAndWaitAnswerBase(message, timeout, timeUnit)
-
-  private fun sendAndWaitAnswerBase(message: TransportMessage, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.SECONDS) {
-    val countDownLatch = CountDownLatch(1)
-    val waitHandler = createCallbackServerHandler({ countDownLatch.countDown() }, message.id)
-    addHandler(waitHandler)
-    send(message)
-    if (timeout == 0L)
-      countDownLatch.await()
-    else
-      countDownLatch.await(timeout, timeUnit)
-    removeHandler(waitHandler)
-  }
-
-  override fun addHandler(serverHandler: ServerHandler) {
-    handlers.add(serverHandler)
-  }
-
-  override fun removeHandler(serverHandler: ServerHandler) {
-    handlers.remove(serverHandler)
-  }
-
-  override fun removeAllHandlers() {
-    handlers.clear()
-  }
-
-  override fun setFailHandler(failHandler: (Throwable) -> Unit) {
-    this.failHandler = failHandler
-  }
-
-  override fun isConnected(): Boolean {
-    try {
-      return connection.isConnected
-    }
-    catch (lateInitException: UninitializedPropertyAccessException) {
-      return false
+  override fun receive(): MessageFromClient {
+    val message = receivingMessages.poll(MESSAGE_INTERVAL_TIMEOUT, TimeUnit.SECONDS)
+    if (message != null) {
+      return message
+    } else {
+      closeIdeAndStop()
+      throw SocketException("Server hasn't received a message in $MESSAGE_INTERVAL_TIMEOUT seconds.")
     }
   }
 
-  override fun getPort() = port
+  override fun isRunning(): Boolean = running
 
-  override fun stopServer() {
+  private fun stopServer() {
+    if (!running) return
     serverSendThread.objectOutputStream.close()
     LOG.info("Object output stream closed")
     serverSendThread.interrupt()
@@ -156,15 +118,26 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     serverReceiveThread.interrupt()
     LOG.info("Server Receive Thread joined")
     connection.close()
-    isStarted = false
+    running = false
   }
 
-  private fun createCallbackServerHandler(handler: (TransportMessage) -> Unit, id: Long)
-    = object : ServerHandler() {
-    override fun acceptObject(message: TransportMessage) = message.id == id
-    override fun handleObject(message: TransportMessage) {
-      handler(message)
+  private fun stopClient() {
+    send(CloseIdeMessage())
+    val process = GuiTestLauncher.process
+    if (process != null && !process.waitFor(5, TimeUnit.SECONDS)) {
+      LOG.warn("Client didn't shut down when asked nicely; shutting it down forcibly.")
+      process.destroyForcibly()
     }
+  }
+
+  override fun launchIdeAndStart() {
+    GuiTestLauncher.runIde(port)
+    start()
+  }
+
+  override fun closeIdeAndStop() {
+    stopClient()
+    stopServer()
   }
 
   inner class ServerSendThread(val connection: Socket, val objectOutputStream: ObjectOutputStream) : Thread(SEND_THREAD) {
@@ -172,7 +145,7 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     override fun run() {
       LOG.info("Server Send Thread started")
       try {
-        while (connection.isConnected) {
+        while (!connection.isClosed) {
           val message = postingMessages.take()
           LOG.info("Sending message: $message ")
           objectOutputStream.writeObject(message)
@@ -183,7 +156,6 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
       }
       catch (e: Exception) {
         if (e is InvalidClassException) LOG.error("Probably client is down:", e)
-        failHandler?.invoke(e)
       }
       finally {
         objectOutputStream.close()
@@ -197,18 +169,14 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     override fun run() {
       try {
         LOG.info("Server Receive Thread started")
-        while (connection.isConnected) {
-          val obj = objectInputStream.readObject()
-          LOG.info("Receiving message: $obj")
-          assert(obj is TransportMessage)
-          val message = obj as TransportMessage
+        while (!connection.isClosed) {
+          val message = objectInputStream.readObject() as MessageFromClient
+          LOG.info("Receiving message: $message")
           receivingMessages.put(message)
-          handlers.filter { it.acceptObject(message) }.forEach { it.handleObject(message) }
         }
       }
       catch (e: Exception) {
         if (e is InvalidClassException) LOG.error("Probably serialization error:", e)
-        failHandler?.invoke(e)
       }
     }
   }

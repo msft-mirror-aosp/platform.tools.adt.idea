@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Test;
 
 import java.util.List;
 
@@ -40,6 +41,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * Tests for {@link BuildTypeModelImpl}.
  */
 public class BuildTypeModelTest extends GradleFileModelTestCase {
+  @Test
   public void testBuildTypeBlockWithApplicationStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -93,6 +95,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testBuildTypeBlockWithAssignmentStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -142,6 +145,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testBuildTypeApplicationStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -195,6 +199,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testBuildTypeAssignmentStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -244,6 +249,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testBuildTypeBlockWithOverrideStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -313,6 +319,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.FALSE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testBuildTypeBlockWithAppendStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -351,6 +358,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.resValues());
   }
 
+  @Test
   public void testBuildTypeMapStatements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -367,6 +375,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testRemoveAndResetElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -440,7 +449,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     buildType.versionNameSuffix().delete();
     buildType.zipAlignEnabled().delete();
     assertMissingProperty("applicationIdSuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -452,7 +461,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -483,6 +492,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testEditAndResetLiteralElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -571,6 +581,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.TRUE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testAddAndResetLiteralElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -584,7 +595,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     GradleBuildModel buildModel = getGradleBuildModel();
     BuildTypeModel buildType = getXyzBuildType(buildModel);
     assertMissingProperty("applicationIdSuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -596,7 +607,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -635,7 +646,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
 
     buildModel.resetState();
     assertMissingProperty("applicationIdSuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -647,7 +658,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -655,6 +666,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("zipAlignEnabled", buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testReplaceAndResetListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -695,6 +707,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "qrst", "uvwx")), buildType.resValues());
   }
 
+  @Test
   public void testAddAndResetListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -707,10 +720,10 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
 
     GradleBuildModel buildModel = getGradleBuildModel();
     BuildTypeModel buildType = getXyzBuildType(buildModel);
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("proguardFiles", buildType.proguardFiles());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
 
     buildType.addBuildConfigField("abcd", "efgh", "ijkl");
     buildType.consumerProguardFiles().addListValue().setValue("proguard-android.txt");
@@ -722,12 +735,13 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "qrst", "uvwx")), buildType.resValues());
 
     buildModel.resetState();
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("proguardFiles", buildType.proguardFiles());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
   }
 
+  @Test
   public void testAddToAndResetListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -769,6 +783,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "qrst", "uvwx")), buildType.resValues());
   }
 
+  @Test
   public void testRemoveFromAndResetListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -814,6 +829,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.resValues());
   }
 
+  @Test
   public void testSetAndResetMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -838,6 +854,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("manifestPlaceholders", ImmutableMap.of("key1", "value1", "key2", "value2"), buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testAddAndResetMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -861,6 +878,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("manifestPlaceholders", buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testRemoveAndResetMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -886,6 +904,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testRemoveAndApplyElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -969,7 +988,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(buildType, instanceOf(BuildTypeModelImpl.class));
     assertTrue(((BuildTypeModelImpl)buildType).hasValidPsiElement());
     assertEquals("applicationIdSuffix", "mySuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -981,7 +1000,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -994,7 +1013,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(buildType, instanceOf(BuildTypeModelImpl.class));
     assertTrue(((BuildTypeModelImpl)buildType).hasValidPsiElement());
     assertEquals("applicationIdSuffix", "mySuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -1006,7 +1025,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -1022,7 +1041,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(buildType, instanceOf(BuildTypeModelImpl.class));
     assertTrue(((BuildTypeModelImpl)buildType).hasValidPsiElement());
     assertEquals("applicationIdSuffix", "mySuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -1034,7 +1053,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -1064,6 +1083,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertTrue(android.buildTypes().isEmpty());
   }
 
+  @Test
   public void testEditAndApplyLiteralElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1169,6 +1189,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.FALSE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testAddAndApplyLiteralElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1182,7 +1203,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     GradleBuildModel buildModel = getGradleBuildModel();
     BuildTypeModel buildType = getXyzBuildType(buildModel);
     assertMissingProperty("applicationIdSuffix", buildType.applicationIdSuffix());
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("debuggable", buildType.debuggable());
     assertMissingProperty("embedMicroApp", buildType.embedMicroApp());
@@ -1194,7 +1215,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertMissingProperty("pseudoLocalesEnabled", buildType.pseudoLocalesEnabled());
     assertMissingProperty("renderscriptDebuggable", buildType.renderscriptDebuggable());
     assertMissingProperty("renderscriptOptimLevel", buildType.renderscriptOptimLevel());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
     assertMissingProperty("shrinkResources", buildType.shrinkResources());
     assertMissingProperty("testCoverageEnabled", buildType.testCoverageEnabled());
     assertMissingProperty("useJack", buildType.useJack());
@@ -1265,6 +1286,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertEquals("zipAlignEnabled", Boolean.FALSE, buildType.zipAlignEnabled());
   }
 
+  @Test
   public void testReplaceAndApplyListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1309,6 +1331,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "efgh", "ijkl")), buildType.resValues());
   }
 
+  @Test
   public void testAddAndApplyListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1321,10 +1344,10 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
 
     GradleBuildModel buildModel = getGradleBuildModel();
     BuildTypeModel buildType = getXyzBuildType(buildModel);
-    assertNull("buildConfigFields", buildType.buildConfigFields());
+    assertEmpty("buildConfigFields", buildType.buildConfigFields());
     assertMissingProperty("consumerProguardFiles", buildType.consumerProguardFiles());
     assertMissingProperty("proguardFiles", buildType.proguardFiles());
-    assertNull("resValues", buildType.resValues());
+    assertEmpty("resValues", buildType.resValues());
 
     buildType.addBuildConfigField("abcd", "efgh", "ijkl");
     buildType.consumerProguardFiles().addListValue().setValue("proguard-android.txt");
@@ -1349,6 +1372,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "qrst", "uvwx")), buildType.resValues());
   }
 
+  @Test
   public void testAddToAndApplyListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1406,6 +1430,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.resValues());
   }
 
+  @Test
   public void testRemoveFromAndApplyListElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1455,6 +1480,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     verifyFlavorType("resValues", ImmutableList.of(Lists.newArrayList("mnop", "qrst", "uvwx")), buildType.resValues());
   }
 
+  @Test
   public void testRemoveFromAndApplyListElementsWithSingleElement() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1487,6 +1513,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(android, instanceOf(AndroidModelImpl.class));
   }
 
+  @Test
   public void testSetAndApplyMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1517,6 +1544,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testAddAndApplyMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1546,6 +1574,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testRemoveAndApplyMapElements() throws Exception {
     String text = "android {\n" +
                   "  buildTypes {\n" +
@@ -1576,6 +1605,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
                  buildType.manifestPlaceholders());
   }
 
+  @Test
   public void testReadSigningConfig() throws Exception {
     String text = "android {\n" +
                   "  signingConfigs {\n" +
@@ -1599,6 +1629,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(signingConfigModel.name(), equalTo("myConfig"));
   }
 
+  @Test
   public void testSetSigningConfig() throws Exception {
     String text = "android {\n" +
                   "  signingConfigs {\n" +
@@ -1660,6 +1691,7 @@ public class BuildTypeModelTest extends GradleFileModelTestCase {
     assertThat(signingConfigModel.toSigningConfig().name(), equalTo("myConfig"));
   }
 
+  @Test
   public void testSetSigningConfigFromEmpty() throws Exception {
     String text = "android {\n" +
                   "  signingConfigs {\n" +

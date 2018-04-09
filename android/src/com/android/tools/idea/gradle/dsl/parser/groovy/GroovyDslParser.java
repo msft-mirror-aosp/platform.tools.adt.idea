@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
+import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec;
 import com.android.tools.idea.gradle.dsl.model.GradleBuildModelImpl;
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslParser;
@@ -37,7 +38,6 @@ import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.SubProjectsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement;
-import com.android.tools.idea.gradle.dsl.parser.dependencies.DependencyConfigurationDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
@@ -52,10 +52,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyElementVisitor;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementVisitor;
+import org.jetbrains.plugins.groovy.lang.psi.*;
 import org.jetbrains.plugins.groovy.lang.psi.api.auxiliary.GrListOrMap;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
@@ -118,7 +115,7 @@ import static com.intellij.psi.util.PsiTreeUtil.*;
 
 /**
  * Generic parser to parse .gradle files.
- *
+ * <p>
  * <p>It parses any general application statements or assigned statements in the .gradle file directly and stores them as key value pairs
  * in the {@link GradleBuildModelImpl}. For every closure block section like {@code android{}}, it will create block elements like
  * {@link AndroidModelImpl}. See {@link #getBlockElement(List, GradlePropertiesDslElement)} for all the block elements currently supported
@@ -167,12 +164,13 @@ public class GroovyDslParser implements GradleDslParser {
   @Override
   @Nullable
   public PsiElement convertToPsiElement(@NotNull Object literal) {
+    ApplicationManager.getApplication().assertReadAccessAllowed();
     return GroovyDslUtil.createLiteral(myDslFile, literal);
   }
 
   @Override
   @Nullable
-  public Object extractValue(@NotNull GradleDslExpression context, @NotNull PsiElement literal, boolean resolve) {
+  public Object extractValue(@NotNull GradleDslSimpleExpression context, @NotNull PsiElement literal, boolean resolve) {
     ApplicationManager.getApplication().assertReadAccessAllowed();
 
     if (!(literal instanceof GrLiteral)) {
@@ -206,14 +204,45 @@ public class GroovyDslParser implements GradleDslParser {
   }
 
   @Override
+  @Nullable
+  public PsiElement convertToExcludesBlock(@NotNull List<ArtifactDependencySpec> excludes) {
+    GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(myDslFile.getProject());
+    GrClosableBlock block = factory.createClosureFromText("{\n}");
+    for (ArtifactDependencySpec spec : excludes) {
+      String text = String.format("exclude group: '%s', module: '%s'", spec.getGroup(), spec.getName());
+      block.addBefore(factory.createStatementFromText(text), block.getLastChild());
+      PsiElement lineTerminator = factory.createLineTerminator(1);
+      block.addBefore(lineTerminator, block.getLastChild());
+    }
+    return block;
+  }
+
+  @Override
+  public boolean shouldInterpolate(@NotNull GradleDslElement elementToCheck) {
+    // Get the correct psiElement to check.
+    PsiElement element;
+    if (elementToCheck instanceof GradleDslSettableExpression) {
+      element = ((GradleDslSettableExpression)elementToCheck).getCurrentElement();
+    }
+    else if (elementToCheck instanceof GradleDslSimpleExpression) {
+      element = ((GradleDslSimpleExpression)elementToCheck).getExpression();
+    }
+    else {
+      element = elementToCheck.getPsiElement();
+    }
+
+    return element instanceof GrString;
+  }
+
+  @Override
   @NotNull
-  public List<GradleReferenceInjection> getResolvedInjections(@NotNull GradleDslExpression context, @NotNull PsiElement psiElement) {
+  public List<GradleReferenceInjection> getResolvedInjections(@NotNull GradleDslSimpleExpression context, @NotNull PsiElement psiElement) {
     return findInjections(context, psiElement, false);
   }
 
   @NotNull
   @Override
-  public List<GradleReferenceInjection> getInjections(@NotNull GradleDslExpression context, @NotNull PsiElement psiElement) {
+  public List<GradleReferenceInjection> getInjections(@NotNull GradleDslSimpleExpression context, @NotNull PsiElement psiElement) {
     return findInjections(context, psiElement, true);
   }
 
@@ -257,23 +286,13 @@ public class GroovyDslParser implements GradleDslParser {
 
     GrClosableBlock[] closureArguments = expression.getClosureArguments();
     GrArgumentList argumentList = expression.getArgumentList();
-    if (argumentList.getAllArguments().length > 0) {
+    if (argumentList.getAllArguments().length > 0 || closureArguments.length == 0) {
       // This element is a method call with arguments and an optional closure associated with it.
       // ex: compile("dependency") {}
-      GradleDslExpression methodCall = getMethodCall(dslElement, expression, name, argumentList, name.fullName());
+      GradleDslSimpleExpression methodCall = getMethodCall(dslElement, expression, name, argumentList, name.fullName());
       if (closureArguments.length > 0) {
         methodCall.setParsedClosureElement(getClosureElement(methodCall, closureArguments[0], name));
       }
-      methodCall.setElementType(REGULAR);
-      dslElement.addParsedElement(methodCall);
-      return true;
-    }
-
-    if (argumentList.getAllArguments().length == 0 && closureArguments.length == 0) {
-      // This element is a pure method call, i.e a method call with no arguments and no closure arguments.
-      // ex: jcenter()
-      GradleDslMethodCall methodCall =
-        new GradleDslMethodCall(dslElement, expression, name, expression.getArgumentList(), name.fullName());
       methodCall.setElementType(REGULAR);
       dslElement.addParsedElement(methodCall);
       return true;
@@ -371,12 +390,12 @@ public class GroovyDslParser implements GradleDslParser {
       for (GroovyPsiElement element : arguments) {
         // We need to make sure all of these are GrExpressions, there can be multiple types.
         // We currently can't handle different argument types.
-        if (element instanceof GrExpression) {
+        if (element instanceof GrExpression && !(element instanceof GrClosableBlock)) {
           expressions.add((GrExpression)element);
         }
       }
       if (expressions.size() == 1) {
-        propertyElement = getExpressionElement(blockElement, argumentList, propertyName, expressions.get(0));
+        propertyElement = createExpressionElement(blockElement, argumentList, propertyName, expressions.get(0));
       }
       else {
         propertyElement = getExpressionList(blockElement, argumentList, propertyName, expressions, false);
@@ -388,7 +407,7 @@ public class GroovyDslParser implements GradleDslParser {
       for (GroovyPsiElement element : arguments) {
         // We need to make sure all of these are GrNamedArgument, there can be multiple types.
         // We currently can't handle different argument types.
-        if (element instanceof GrNamedArgument) {
+        if (element instanceof GrNamedArgument && !(element instanceof GrClosableBlock)) {
           namedArguments.add((GrNamedArgument)element);
         }
       }
@@ -408,16 +427,12 @@ public class GroovyDslParser implements GradleDslParser {
     return true;
   }
 
-  @Nullable
-  private GradleDslElement createExpressionElement(@NotNull GradleDslElement parent,
-                                                   @NotNull GroovyPsiElement psiElement,
-                                                   @NotNull GradleNameElement name,
-                                                   @Nullable GrExpression expression) {
-    if (expression == null) {
-      return null;
-    }
-
-    GradleDslElement propertyElement;
+  @NotNull
+  private GradleDslExpression createExpressionElement(@NotNull GradleDslElement parent,
+                                                      @NotNull GroovyPsiElement psiElement,
+                                                      @NotNull GradleNameElement name,
+                                                      @NotNull GrExpression expression) {
+    GradleDslExpression propertyElement;
     if (expression instanceof GrListOrMap) {
       GrListOrMap listOrMap = (GrListOrMap)expression;
       if (listOrMap.isMap()) { // ex: manifestPlaceholders = [activityLabel1:"defaultName1", activityLabel2:"defaultName2"]
@@ -426,6 +441,9 @@ public class GroovyDslParser implements GradleDslParser {
       else { // ex: proguardFiles = ['proguard-android.txt', 'proguard-rules.pro']
         propertyElement = getExpressionList(parent, listOrMap, name, Arrays.asList(listOrMap.getInitializers()), true);
       }
+    }
+    else if (expression instanceof GrClosableBlock) {
+      propertyElement = getClosureElement(parent, (GrClosableBlock)expression, name);
     }
     else {
       propertyElement = getExpressionElement(parent, psiElement, name, expression);
@@ -443,13 +461,14 @@ public class GroovyDslParser implements GradleDslParser {
       if (variable == null) {
         return false;
       }
+      GrExpression init = variable.getInitializerGroovy();
+      if (init == null) {
+        return false;
+      }
 
       GradleNameElement name = GradleNameElement.from(variable);
       GradleDslElement variableElement =
-        createExpressionElement(blockElement, declaration, name, variable.getInitializerGroovy());
-      if (variableElement == null) {
-        return false;
-      }
+        createExpressionElement(blockElement, declaration, name, init);
 
       variableElement.setElementType(VARIABLE);
       blockElement.setParsedElement(variableElement);
@@ -485,9 +504,6 @@ public class GroovyDslParser implements GradleDslParser {
     }
 
     GradleDslElement propertyElement = createExpressionElement(blockElement, assignment, name, right);
-    if (propertyElement == null) {
-      return false;
-    }
     propertyElement.setUseAssignment(true);
     propertyElement.setElementType(REGULAR);
 
@@ -515,12 +531,7 @@ public class GroovyDslParser implements GradleDslParser {
         String methodName = callReferenceExpression.getText();
         if (!methodName.isEmpty()) {
           GrArgumentList argumentList = methodCall.getArgumentList();
-          if (argumentList.getAllArguments().length > 0) {
-            return getMethodCall(parentElement, methodCall, propertyName, argumentList, methodName);
-          }
-          else {
-            return new GradleDslMethodCall(parentElement, propertyExpression, propertyName, methodCall.getArgumentList(), methodName);
-          }
+          return getMethodCall(parentElement, methodCall, propertyName, argumentList, methodName);
         }
       }
     }
@@ -556,36 +567,16 @@ public class GroovyDslParser implements GradleDslParser {
                                             @NotNull GradleNameElement propertyName,
                                             @NotNull GrArgumentList argumentList,
                                             @NotNull String methodName) {
-    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement, propertyName, argumentList, methodName);
-
-    for (GrExpression expression : argumentList.getExpressionArguments()) {
-      if (expression instanceof GrListOrMap) {
-        GrListOrMap listOrMap = (GrListOrMap)expression;
-        if (listOrMap.isMap()) {
-          methodCall
-            .addParsedExpressionMap(
-              getExpressionMap(methodCall, expression, propertyName, Arrays.asList(listOrMap.getNamedArguments()), false));
-        }
-        else {
-          for (GrExpression grExpression : listOrMap.getInitializers()) {
-            GradleDslExpression dslExpression = getExpressionElement(methodCall, expression, propertyName, grExpression);
-            methodCall.addParsedExpression(dslExpression);
-          }
-        }
-      }
-      else if (expression instanceof GrClosableBlock) {
-        methodCall.setParsedClosureElement(getClosureElement(methodCall, (GrClosableBlock)expression, propertyName));
-      }
-      else {
-        GradleDslExpression dslExpression = getExpressionElement(methodCall, expression, propertyName, expression);
-        methodCall.addParsedExpression(dslExpression);
-      }
-    }
+    GradleDslMethodCall methodCall = new GradleDslMethodCall(parentElement, psiElement, propertyName, methodName);
+    GradleDslExpressionList arguments =
+      getExpressionList(methodCall, argumentList, propertyName,
+                        Arrays.asList(argumentList.getExpressionArguments()), false);
+    methodCall.setParsedArgumentList(arguments);
 
     GrNamedArgument[] namedArguments = argumentList.getNamedArguments();
     if (namedArguments.length > 0) {
-      methodCall.addParsedExpressionMap(
-        getExpressionMap(methodCall, argumentList, propertyName, Arrays.asList(namedArguments), false));
+      methodCall.addParsedExpression(
+        getExpressionMap(methodCall, psiElement.getArgumentList(), propertyName, Arrays.asList(namedArguments), false));
     }
 
     return methodCall;
@@ -604,13 +595,13 @@ public class GroovyDslParser implements GradleDslParser {
         GrListOrMap listOrMap = (GrListOrMap)expression;
         if (!listOrMap.isMap()) {
           for (GrExpression grExpression : listOrMap.getInitializers()) {
-            GradleDslExpression dslExpression = getExpressionElement(newExpression, expression, propertyName, grExpression);
+            GradleDslExpression dslExpression = createExpressionElement(newExpression, expression, propertyName, grExpression);
             newExpression.addParsedExpression(dslExpression);
           }
         }
       }
       else {
-        GradleDslExpression dslExpression = getExpressionElement(newExpression, expression, propertyName, expression);
+        GradleDslExpression dslExpression = createExpressionElement(newExpression, expression, propertyName, expression);
         newExpression.addParsedExpression(dslExpression);
       }
     }
@@ -626,8 +617,13 @@ public class GroovyDslParser implements GradleDslParser {
                                                     boolean isLiteral) {
     GradleDslExpressionList expressionList = new GradleDslExpressionList(parentElement, listPsiElement, isLiteral, propertyName);
     for (GrExpression expression : propertyExpressions) {
-      GradleDslExpression expressionElement = getExpressionElement(expressionList, expression, propertyName, expression);
-      expressionList.addParsedExpression(expressionElement);
+      GradleDslExpression expressionElement = createExpressionElement(expressionList, expression, propertyName, expression);
+      if (expressionElement instanceof GradleDslClosure) {
+        // Only the last closure will count.
+        parentElement.setParsedClosureElement((GradleDslClosure)expressionElement);
+      } else {
+        expressionList.addParsedExpression(expressionElement);
+      }
     }
     return expressionList;
   }
@@ -652,7 +648,7 @@ public class GroovyDslParser implements GradleDslParser {
       if (valueExpression == null) {
         continue;
       }
-      GradleDslElement valueElement = getExpressionElement(expressionMap, mapPsiElement, argName, valueExpression);
+      GradleDslElement valueElement = createExpressionElement(expressionMap, mapPsiElement, argName, valueExpression);
       if (valueElement instanceof GradleDslUnknownElement && valueExpression instanceof GrListOrMap) {
         GrListOrMap listOrMap = (GrListOrMap)valueExpression;
         if (listOrMap.isMap()) {
@@ -671,13 +667,7 @@ public class GroovyDslParser implements GradleDslParser {
   private GradleDslClosure getClosureElement(@NotNull GradleDslElement parentElement,
                                              @NotNull GrClosableBlock closableBlock,
                                              @NotNull GradleNameElement propertyName) {
-    GradleDslClosure closureElement;
-    if (parentElement.getParent() instanceof DependenciesDslElement) {
-      closureElement = new DependencyConfigurationDslElement(parentElement, closableBlock, propertyName);
-    }
-    else {
-      closureElement = new GradleDslClosure(parentElement, closableBlock, propertyName);
-    }
+    GradleDslClosure closureElement = new GradleDslClosure(parentElement, closableBlock, propertyName);
     parse(closableBlock, closureElement);
     return closureElement;
   }

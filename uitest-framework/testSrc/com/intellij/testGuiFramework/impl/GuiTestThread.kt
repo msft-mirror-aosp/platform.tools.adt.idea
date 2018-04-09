@@ -15,23 +15,17 @@
  */
 package com.intellij.testGuiFramework.impl
 
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.impl.ApplicationImpl
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testGuiFramework.launcher.GuiTestOptions
 import com.intellij.testGuiFramework.remote.JUnitClientListener
 import com.intellij.testGuiFramework.remote.client.ClientHandler
 import com.intellij.testGuiFramework.remote.client.JUnitClient
 import com.intellij.testGuiFramework.remote.client.JUnitClientImpl
-import com.intellij.testGuiFramework.remote.transport.JUnitTestContainer
-import com.intellij.testGuiFramework.remote.transport.MessageType
-import com.intellij.testGuiFramework.remote.transport.TransportMessage
+import com.intellij.testGuiFramework.remote.transport.*
 import org.junit.runner.JUnitCore
 import org.junit.runner.Request
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import java.io.File
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -47,16 +41,12 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
   companion object {
     val GUI_TEST_THREAD_NAME = "GuiTest Thread"
     var client: JUnitClient? = null
-
-    fun closeIde() {
-      (ApplicationManager.getApplication() as ApplicationImpl).exit(true, true)
-    }
   }
 
   override fun run() {
     client = JUnitClientImpl(host(), port(), createHandlers())
 
-    core.addListener(JUnitClientListener({ jUnitInfo -> client!!.send(TransportMessage(MessageType.JUNIT_INFO, jUnitInfo)) }))
+    core.addListener(JUnitClientListener({ jUnitInfo -> client!!.send(JUnitInfoMessage(jUnitInfo)) }))
 
     try {
       while (true) {
@@ -70,39 +60,25 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
 
   private fun createHandlers(): Array<ClientHandler> {
     val testHandler = object : ClientHandler {
-      override fun accept(message: TransportMessage) = message.type == MessageType.RUN_TEST
+      override fun accept(message: MessageFromServer) = message is RunTestMessage
 
-      override fun handle(message: TransportMessage) {
-        val content = (message.content as JUnitTestContainer)
-        System.setProperty(GuiTestOptions.RESUME_LABEL, GuiTestOptions.FIRST_RUN_RESUME_LABEL)
-        LOG.info("Added test to testQueue: ${content.toString()}")
-        testQueue.add(content)
-      }
-    }
-
-    val testResumeHandler = object : ClientHandler {
-      override fun accept(message: TransportMessage) = message.type == MessageType.RESUME_TEST
-
-      override fun handle(message: TransportMessage) {
-        val content = (message.content as JUnitTestContainer)
-        if (content.resumeLabel.isEmpty()) throw Exception("Cannot resume test without any additional info (label where to resume) in JUnitTestContainer")
-        System.setProperty(GuiTestOptions.RESUME_LABEL, content.resumeLabel)
+      override fun handle(message: MessageFromServer) {
+        val content = (message as RunTestMessage).testContainer
+        System.setProperty(GuiTestOptions.SEGMENT_INDEX, content.segmentIndex.toString())
         LOG.info("Added test to testQueue: $content")
         testQueue.add(content)
       }
     }
 
     val closeHandler = object : ClientHandler {
-      override fun accept(message: TransportMessage) = message.type == MessageType.CLOSE_IDE
+      override fun accept(message: MessageFromServer) = message is CloseIdeMessage
 
-      override fun handle(message: TransportMessage) {
-        client?.send(TransportMessage(MessageType.RESPONSE, null, message.id)) ?: throw Exception(
-            "Unable to handle transport message: \"$message\", because JUnitClient is accidentally null")
-        closeIde()
+      override fun handle(message: MessageFromServer) {
+        client?.stop()
       }
     }
 
-    return arrayOf(testHandler, testResumeHandler, closeHandler)
+    return arrayOf(testHandler, closeHandler)
   }
 
   private fun host(): String = System.getProperty(GuiTestStarter.GUI_TEST_HOST)

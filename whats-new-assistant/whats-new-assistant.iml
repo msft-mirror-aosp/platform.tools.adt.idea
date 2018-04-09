@@ -9,10 +9,10 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="assistant" />
-    <orderEntry type="module" module-name="core-api" />
-    <orderEntry type="module" module-name="android" />
-    <orderEntry type="module" module-name="android-common" />
-    <orderEntry type="module" module-name="platform-impl" />
-    <orderEntry type="module" module-name="flags" />
+    <orderEntry type="module" module-name="intellij.platform.core" />
+    <orderEntry type="module" module-name="intellij.android" />
+    <orderEntry type="module" module-name="intellij.android.common" />
+    <orderEntry type="module" module-name="intellij.platform.ide.impl" />
+    <orderEntry type="module" module-name="intellij.android.flags" />
   </component>
 </module>

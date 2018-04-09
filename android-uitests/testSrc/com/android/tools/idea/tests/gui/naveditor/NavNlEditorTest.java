@@ -20,21 +20,26 @@ import com.android.tools.idea.tests.gui.framework.*;
 import com.android.tools.idea.tests.gui.framework.fixture.CreateResourceFileDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.designer.DesignSurfaceFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlComponentFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlEditorFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.CreateDestinationMenuFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.AddDestinationMenuFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.DestinationListFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.NavDesignSurfaceFixture;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.util.ui.UIUtil;
 import org.fest.swing.driver.BasicJListCellReader;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.awt.event.KeyEvent;
 import java.util.List;
 
 import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.ATTR_LABEL;
 import static com.google.common.truth.Truth.assertThat;
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -83,7 +88,12 @@ public class NavNlEditorTest {
     frame.waitForGradleProjectSyncToFinish();
     layout.waitForRenderToFinish();
 
-    ((NavDesignSurfaceFixture)layout.getSurface()).openAddExistingMenu().selectDestination("fragment_my");
+    AddDestinationMenuFixture menuFixture = ((NavDesignSurfaceFixture)layout.getSurface()).openAddDestinationMenu();
+    assertEquals(4, menuFixture.visibleItemCount());
+    guiTest.robot().enterText("fragment_my");
+    assertEquals(1, menuFixture.visibleItemCount());
+
+    menuFixture.selectDestination("fragment_my");
 
     DestinationListFixture fixture = DestinationListFixture.Companion.create(guiTest.robot());
     fixture.replaceCellReader(new BasicJListCellReader(c -> c.toString()));
@@ -94,6 +104,8 @@ public class NavNlEditorTest {
     guiTest.robot().type('\b');
 
     layout.getAllComponents().forEach(component -> assertNotEquals("main_activity", component.getComponent().getId()));
+
+    ApplicationManager.getApplication().invokeAndWait(() -> UIUtil.dispatchAllInvocationEvents());
 
     List<NlComponent> selectedComponents = fixture.getSelectedComponents();
     assertEquals(selectedComponents.size(), 0);
@@ -112,12 +124,19 @@ public class NavNlEditorTest {
     frame.waitForGradleProjectSyncToFinish();
     layout.waitForRenderToFinish();
 
-    CreateDestinationMenuFixture fixture = ((NavDesignSurfaceFixture)layout.getSurface()).openNewDestinationMenu();
-    fixture.setLabel("my label");
-    fixture.clickCreate();
+    AddDestinationMenuFixture fixture = ((NavDesignSurfaceFixture)layout.getSurface()).openAddDestinationMenu();
+    fixture.clickCreateBlank();
+    try {
+      // click again to make sure the action only actually gets invoked once.
+      // But it might already be hidden, so in that case catch the exception and keep going.
+      fixture.clickCreateBlank();
+    }
+    catch (IllegalStateException e) {
+      // nothing
+    }
 
     assertEquals(1, layout.getSelection().size());
-    assertEquals("my label", layout.getSelection().get(0).getAttribute(ANDROID_URI, ATTR_LABEL));
+    assertEquals("fragment", layout.getSelection().get(0).getAttribute(ANDROID_URI, ATTR_LABEL));
 
     DestinationListFixture destinationListFixture = DestinationListFixture.Companion.create(guiTest.robot());
     List<NlComponent> selectedComponents = destinationListFixture.getSelectedComponents();
@@ -150,5 +169,39 @@ public class NavNlEditorTest {
     NlEditorFixture layout = editor.getLayoutEditor(false);
     layout.waitForRenderToFinish();
     */
+  }
+
+  @Test
+  public void testKeyMappings() throws Exception {
+    IdeFrameFixture frame = guiTest.importProject("Navigation");
+    // Open file as XML and switch to design tab, wait for successful render
+    EditorFixture editor = guiTest.ideFrame().getEditor();
+    editor.open("app/src/main/res/navigation/mobile_navigation.xml", EditorFixture.Tab.DESIGN);
+    NlEditorFixture layout = editor.getLayoutEditor(true);
+
+    // This is separate to catch the case where we have a problem opening the file before sync is complete.
+    frame.waitForGradleProjectSyncToFinish();
+    layout.waitForRenderToFinish();
+
+    DesignSurfaceFixture fixture = layout.getSurface();
+    NlComponentFixture screen = ((NavDesignSurfaceFixture)fixture).findDestination("first_screen");
+    screen.click();
+
+    double scale = fixture.getScale();
+
+    guiTest.robot().pressAndReleaseKey(KeyEvent.VK_MINUS);
+    double zoomOutScale = fixture.getScale();
+    assertTrue(zoomOutScale < scale);
+
+    guiTest.robot().pressKey(KeyEvent.VK_SHIFT);
+    guiTest.robot().pressAndReleaseKey(KeyEvent.VK_PLUS);
+    guiTest.robot().releaseKey(KeyEvent.VK_SHIFT);
+    double zoomInScale = fixture.getScale();
+    assertTrue(zoomInScale >  zoomOutScale);
+
+    guiTest.robot().pressAndReleaseKey(KeyEvent.VK_0);
+    double fitScale = fixture.getScale();
+
+    assertTrue(Math.abs(fitScale - scale) < 0.001);
   }
 }

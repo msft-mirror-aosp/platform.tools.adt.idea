@@ -16,12 +16,15 @@
 package com.android.tools.profilers.cpu
 
 import com.android.testutils.TestUtils
+import com.android.tools.adtui.RangeTooltipComponent
 import com.android.tools.adtui.TreeWalker
+import com.android.tools.adtui.instructions.InstructionsPanel
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.adtui.ui.HideablePanel
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.*
-import com.android.tools.profilers.cpu.atrace.AtraceCpuCapture
+import com.android.tools.profilers.cpu.CpuProfilerStageView.KERNEL_VIEW_SPLITTER_RATIO
+import com.android.tools.profilers.cpu.CpuProfilerStageView.SPLITTER_DEFAULT_RATIO
 import com.android.tools.profilers.cpu.atrace.AtraceParser
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.memory.FakeMemoryService
@@ -29,9 +32,11 @@ import com.android.tools.profilers.network.FakeNetworkService
 import com.android.tools.profilers.stacktrace.ContextMenuItem
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ui.ExpandedItemListCellRendererWrapper
+import com.intellij.ui.JBSplitter
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 import javax.swing.JList
 
 // Path to trace file. Used in test to build AtraceParser.
@@ -114,6 +119,60 @@ class CpuProfilerStageViewTest {
   }
 
   @Test
+  fun contextMenuShouldBeDisabledInImportTraceMode() {
+    // Enable the export trace flag because we are going to test if the export menu item is enabled/disabled.
+    myIdeServices.enableExportTrace(true)
+    // Clear any context menu items added to the service to make sure we'll have only the items created in CpuProfilerStageView
+    myComponents.clearContextMenuItems()
+    // Create a CpuProfilerStageView. We don't need its value, so we don't store it in a variable.
+    CpuProfilerStageView(myProfilersView, myStage)
+    assertThat(myStage.isImportTraceMode).isFalse()
+
+    var items = myComponents.allContextMenuItems
+    assertThat(items).hasSize(12)
+
+    // Check we add CPU specific actions first.
+    assertThat(items[0].text).isEqualTo("Record CPU trace")
+    assertThat(items[0].isEnabled).isTrue()
+
+    assertThat(items[2].text).isEqualTo("Export trace...")
+    assertThat(items[2].isEnabled).isTrue()
+
+    myStage.traceIdsIterator.addTrace(123)  // add a fake trace
+    assertThat(items[4].text).isEqualTo("Next capture")
+    assertThat(items[4].isEnabled).isTrue()
+    assertThat(items[5].text).isEqualTo("Previous capture")
+    assertThat(items[5].isEnabled).isTrue()
+
+    // Enable import trace and sessions view, both of which are required for import-trace-mode.
+    myIdeServices.enableImportTrace(true)
+    myIdeServices.enableSessionsView(true)
+    myStage = CpuProfilerStage(myStage.studioProfilers, File("FakePathToTraceFile.trace"))
+    // Clear any context menu items added to the service to make sure we'll have only the items created in CpuProfilerStageView
+    myComponents.clearContextMenuItems()
+    // Create a CpuProfilerStageView. We don't need its value, so we don't store it in a variable.
+    CpuProfilerStageView(myProfilersView, myStage)
+    assertThat(myStage.isImportTraceMode).isTrue()
+
+    items = myComponents.allContextMenuItems
+    assertThat(items).hasSize(12)
+
+    // Check we add CPU specific actions first.
+    assertThat(items[0].text).isEqualTo("Record CPU trace")
+    assertThat(items[0].isEnabled).isFalse()
+
+    assertThat(items[2].text).isEqualTo("Export trace...")
+    assertThat(items[2].isEnabled).isFalse()
+
+    myStage.traceIdsIterator.addTrace(123)  // add a fake trace
+    assertThat(items[4].text).isEqualTo("Next capture")
+    assertThat(items[4].isEnabled).isFalse()
+    assertThat(items[5].text).isEqualTo("Previous capture")
+    assertThat(items[5].isEnabled).isFalse()
+  }
+
+
+  @Test
   fun testCpuCellRendererHasSessionPid() {
     // Create
     val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
@@ -121,7 +180,7 @@ class CpuProfilerStageViewTest {
     // Create a session and a ongoing profiling session.
     myStage.studioProfilers.sessionsManager.endCurrentSession()
     myStage.studioProfilers.sessionsManager.beginSession(device, process1)
-    val session = myStage.studioProfilers.sessionsManager.selectedSession;
+    val session = myStage.studioProfilers.sessionsManager.selectedSession
     val cpuProfilerStageView = CpuProfilerStageView(myProfilersView, myStage)
     val treeWalker = TreeWalker(cpuProfilerStageView.component)
     val cpuTree = treeWalker.descendants().filterIsInstance<JList<CpuKernelModel.CpuState>>().first()
@@ -133,7 +192,7 @@ class CpuProfilerStageViewTest {
     val cpuCell = (cpuTree.cellRenderer as ExpandedItemListCellRendererWrapper<CpuKernelModel.CpuState>).wrappee as CpuKernelCellRenderer
 
     // Validate that the process we are looking at is the same as the process from the session.
-    assertThat(cpuCell.myProcessId).isEqualTo(session.pid);
+    assertThat(cpuCell.myProcessId).isEqualTo(session.pid)
   }
 
   @Test
@@ -144,7 +203,6 @@ class CpuProfilerStageViewTest {
     // Create a session and a ongoing profiling session.
     myStage.studioProfilers.sessionsManager.endCurrentSession()
     myStage.studioProfilers.sessionsManager.beginSession(device, process1)
-    val session = myStage.studioProfilers.sessionsManager.selectedSession;
     val cpuProfilerStageView = CpuProfilerStageView(myProfilersView, myStage)
     val treeWalker = TreeWalker(cpuProfilerStageView.component)
     // Find our cpu list.
@@ -154,11 +212,49 @@ class CpuProfilerStageViewTest {
     assertThat(hideablePanel.isExpanded).isFalse()
     assertThat(hideablePanel.isVisible).isFalse()
     val traceFile = TestUtils.getWorkspaceFile(TOOLTIP_TRACE_DATA_FILE)
-    var capture = AtraceParser(1).parse(traceFile, 0)
+    val capture = AtraceParser(1).parse(traceFile, 0)
     myStage.capture = capture
     // After we set a capture it should be visible and expanded.
     assertThat(hideablePanel.isExpanded).isTrue()
     assertThat(hideablePanel.isVisible).isTrue()
+
+    // Verify the expanded kernel view adjust the splitter to take up more space.
+    val splitter = treeWalker.descendants().filterIsInstance<JBSplitter>().first()
+    assertThat(splitter.proportion).isWithin(0.0001f).of(KERNEL_VIEW_SPLITTER_RATIO)
+
+    // Verify when we reset the capture our splitter value goes back to default.
+    myStage.capture = null
+    assertThat(splitter.proportion).isWithin(0.0001f).of(SPLITTER_DEFAULT_RATIO)
+  }
+
+  @Test
+  fun testTooltipComponentIsFirstChild() {
+    val cpuProfilerStageView = CpuProfilerStageView(myProfilersView, myStage)
+    val treeWalker = TreeWalker(cpuProfilerStageView.component)
+    val tooltipComponent = treeWalker.descendants().filterIsInstance(RangeTooltipComponent::class.java)[0]
+    assertThat(tooltipComponent.parent.components[0]).isEqualTo(tooltipComponent)
+  }
+
+  @Test
+  fun importTraceModeShouldShowInstructionsPanel() {
+    // Enable import trace and sessions view, both of which are required for import-trace-mode.
+    myIdeServices.enableImportTrace(true)
+    myIdeServices.enableSessionsView(true)
+    var cpuStageView = CpuProfilerStageView(myProfilersView, myStage)
+    var panelList = TreeWalker(cpuStageView.component).descendants().filterIsInstance(InstructionsPanel::class.java).toList()
+    // When we are not in import mode we only have one Instruction panel.
+    // This panel is the panel that appears in the L3 view telling users how to do their recording.
+    // "Click [record icon] to start method profiling"
+    assertThat(panelList).hasSize(1)
+    assertThat((panelList[0] as InstructionsPanel).getRenderInstructionsForComponent(0)).hasSize(3)
+    myStage = CpuProfilerStage(myStage.studioProfilers, File("FakePathToTraceFile.trace"))
+    // Create a CpuProfilerStageView. We don't need its value, so we don't store it in a variable.
+    cpuStageView = CpuProfilerStageView(myProfilersView, myStage)
+    panelList = TreeWalker(cpuStageView.component).descendants().filterIsInstance(InstructionsPanel::class.java).toList()
+    // We cannot get the string due to privacy of InstructionsComponent.
+    // This panel is the panel that appears in the Cpu Usage area indicating we have no cpu usage data.
+    assertThat(panelList).hasSize(1)
+    assertThat((panelList[0] as InstructionsPanel).getRenderInstructionsForComponent(0)).hasSize(1)
   }
 
   /**

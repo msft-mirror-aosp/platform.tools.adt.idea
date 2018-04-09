@@ -41,6 +41,7 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.SystemInfo;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatform;
+import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -125,6 +126,8 @@ public class GraphicsLayoutRenderer {
         throw new UnsupportedLayoutlibException("GraphicsLayoutRenderer requires at least layoutlib version " + MIN_LAYOUTLIB_API_VERSION);
       }
 
+      // We need to make sure that we use a target for rendering when retrieving layoutlib
+      latestTarget = StudioEmbeddedRenderTarget.getCompatibilityTarget(latestTarget);
       layoutLib = platform.getSdkData().getTargetData(latestTarget).getLayoutLibrary(project);
       if (layoutLib == null) {
         throw new InitializationException("getLayoutLibrary() returned null");
@@ -478,7 +481,25 @@ public class GraphicsLayoutRenderer {
 
   @NotNull
   public List<ViewInfo> getRootViews() {
-    return myRenderSession == null ? Collections.emptyList() : myRenderSession.getRootViews();
+    myRenderSessionLock.readLock().lock();
+
+    try {
+      if (myRenderSession == null) {
+        return Collections.emptyList();
+      }
+
+      List<ViewInfo> views = myRenderSession.getRootViews();
+
+      if (views == null) {
+        LOG.warn("The root views from the render session are unexpectedly null");
+        return Collections.emptyList();
+      }
+
+      return views;
+    }
+    finally {
+      myRenderSessionLock.readLock().unlock();
+    }
   }
 
   /**

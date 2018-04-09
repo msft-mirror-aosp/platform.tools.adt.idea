@@ -17,8 +17,10 @@ package com.android.tools.adtui.stdui
 
 import com.android.tools.adtui.model.stdui.CommonTextFieldModel
 import com.android.tools.adtui.model.stdui.ValueChangedListener
+import com.intellij.ui.DocumentAdapter
 import com.intellij.util.ui.UIUtil
 import javax.swing.JTextField
+import javax.swing.event.DocumentEvent
 import javax.swing.text.PlainDocument
 
 /**
@@ -26,15 +28,19 @@ import javax.swing.text.PlainDocument
  *
  * TODO: Add Text Completion.
  */
-open class CommonTextField(val model: CommonTextFieldModel) : JTextField() {
+open class CommonTextField<out M: CommonTextFieldModel>(val editorModel: M) : JTextField() {
 
   init {
     isFocusable = true
     document = PlainDocument()
-    isOpaque = false
     setFromModel()
 
-    model.addListener(ValueChangedListener { updateFromModel() })
+    editorModel.addListener(ValueChangedListener { updateFromModel() })
+    document.addDocumentListener(object: DocumentAdapter() {
+      override fun textChanged(event: DocumentEvent) {
+        editorModel.text = text
+      }
+    })
 
     @Suppress("LeakingThis")
     UIUtil.addUndoRedoActions(this)
@@ -45,9 +51,9 @@ open class CommonTextField(val model: CommonTextFieldModel) : JTextField() {
   }
 
   private fun setFromModel() {
-    text = model.value
-    isEnabled = model.enabled
-    isEditable = model.editable
+    text = editorModel.value
+    isEnabled = editorModel.enabled
+    isEditable = editorModel.editable
   }
 
   override fun updateUI() {

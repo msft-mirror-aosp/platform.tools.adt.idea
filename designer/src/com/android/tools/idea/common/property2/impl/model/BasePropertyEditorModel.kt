@@ -65,6 +65,9 @@ abstract class BasePropertyEditorModel(override val property: PropertyItem) : Pr
     }
   }
 
+  val tooltip: String
+    get() = property.tooltipForValue
+
   override var lineModel: InspectorLineModel? = null
 
   open fun enterKeyPressed() {
@@ -95,11 +98,11 @@ abstract class BasePropertyEditorModel(override val property: PropertyItem) : Pr
   open fun updateValueFromProperty() {
   }
 
-  fun focusGained() {
+  open fun focusGained() {
     hasFocus = true
   }
 
-  fun focusLost(editedValue: String) {
+  open fun focusLost(editedValue: String) {
     hasFocus = false
     if (editedValue != value) {
       value = editedValue

@@ -24,11 +24,12 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents a new expression.
  */
-public final class GradleDslNewExpression extends GradleDslExpression {
+public final class GradleDslNewExpression extends GradleDslSimpleExpression {
   private final @NotNull List<GradleDslExpression> myArguments = Lists.newArrayList();
   private final @NotNull GradleNameElement myInvokedConstructor;
 
@@ -39,7 +40,7 @@ public final class GradleDslNewExpression extends GradleDslExpression {
   }
 
   public void addParsedExpression(@NotNull GradleDslExpression expression) {
-    expression.myParent = this;
+    expression.setParent(this);
     myArguments.add(expression);
   }
 
@@ -50,7 +51,7 @@ public final class GradleDslNewExpression extends GradleDslExpression {
     for (GradleDslExpression argument : myArguments) {
       if (argument instanceof GradleDslReference) {
         // See if the reference is pointing to a list.
-        GradleDslExpressionList listValue = argument.getValue(GradleDslExpressionList.class);
+        GradleDslExpressionList listValue = ((GradleDslReference)argument).getValue(GradleDslExpressionList.class);
         if (listValue != null) {
           result.addAll(listValue.getExpressions());
           continue;
@@ -60,6 +61,12 @@ public final class GradleDslNewExpression extends GradleDslExpression {
     }
 
     return result;
+  }
+
+  @NotNull
+  public List<GradleDslSimpleExpression> getSimpleArguments() {
+    return getArguments().stream().filter(e -> e instanceof GradleDslSimpleExpression).map(e -> (GradleDslSimpleExpression)e).collect(
+      Collectors.toList());
   }
 
   @Override
@@ -72,7 +79,7 @@ public final class GradleDslNewExpression extends GradleDslExpression {
   @Nullable
   public Object getValue() {
     PsiElement psiElement = getPsiElement();
-    return psiElement != null ? psiElement.getText() : null;
+    return psiElement != null ? getPsiText(psiElement) : null;
   }
 
   @Override
@@ -106,7 +113,7 @@ public final class GradleDslNewExpression extends GradleDslExpression {
       return null;
     }
 
-    List<GradleDslExpression> arguments = getArguments();
+    List<GradleDslSimpleExpression> arguments = getSimpleArguments();
     if (arguments.isEmpty()) {
       return null;
     }

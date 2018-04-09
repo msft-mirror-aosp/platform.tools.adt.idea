@@ -15,10 +15,12 @@
  */
 package com.intellij.testGuiFramework.remote.client
 
-import com.intellij.testGuiFramework.impl.GuiTestThread
-import com.intellij.testGuiFramework.remote.transport.MessageType
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.impl.ApplicationImpl
+import com.intellij.testGuiFramework.remote.transport.KeepAliveMessage
+import com.intellij.testGuiFramework.remote.transport.MessageFromClient
+import com.intellij.testGuiFramework.remote.transport.MessageFromServer
 import com.intellij.testGuiFramework.remote.transport.TransportMessage
-import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import java.io.NotSerializableException
 import java.io.ObjectInputStream
@@ -44,7 +46,7 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
   private val clientConnectionTimeout = 60000 //in ms
   private val clientReceiveThread: ClientReceiveThread
   private val clientSendThread: ClientSendThread
-  private val poolOfMessages: BlockingQueue<TransportMessage> = LinkedBlockingQueue()
+  private val poolOfMessages: BlockingQueue<MessageFromClient> = LinkedBlockingQueue()
 
   private val objectInputStream: ObjectInputStream
   private val objectOutputStream: ObjectOutputStream
@@ -83,32 +85,27 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
     handlers.clear()
   }
 
-  override fun send(message: TransportMessage) {
+  override fun send(message: MessageFromClient) {
     poolOfMessages.add(message)
   }
 
-  override fun stopClient() {
-    val clientPort = connection.port
-    LOG.info("Stopping client on port: $clientPort ...")
+  override fun stop() {
     poolOfMessages.clear()
     handlers.clear()
     connection.close()
     keepAliveThread.cancel()
-
-    LOG.info("Stopped client on port: $clientPort")
   }
 
   inner class ClientReceiveThread(val connection: Socket, val objectInputStream: ObjectInputStream) : Thread(RECEIVE_THREAD) {
     override fun run() {
       LOG.info("Starting Client Receive Thread")
       try{
-        while (connection.isConnected) {
-          val obj = objectInputStream.readObject()
-          LOG.info("Received message: $obj")
-          obj as TransportMessage
+        while (!connection.isClosed) {
+          val message = objectInputStream.readObject() as MessageFromServer
+          LOG.info("Received message: $message")
           handlers
-            .filter { it.accept(obj) }
-            .forEach { it.handle(obj) }
+            .filter { it.accept(message) }
+            .forEach { it.handle(message) }
         }
       } catch (e: Exception) {
         LOG.warn("Transport receiving message exception", e)
@@ -122,14 +119,10 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
     override fun run() {
       try {
         LOG.info("Starting Client Send Thread")
-        while (connection.isConnected) {
+        while (!connection.isClosed) {
           val transportMessage = poolOfMessages.take()
           LOG.info("Sending message: $transportMessage")
-          try {
-            objectOutputStream.writeObject(transportMessage)
-          } catch (e: NotSerializableException) {
-            objectOutputStream.writeObject(TransportMessage(transportMessage.type, e, transportMessage.id))
-          }
+          objectOutputStream.writeObject(transportMessage)
         }
       }
       catch(e: InterruptedException) {
@@ -143,21 +136,28 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
 
   inner class KeepAliveThread(val connection: Socket, private val objectOutputStream: ObjectOutputStream) : Thread(KEEP_ALIVE_THREAD) {
     private val myExecutor = Executors.newSingleThreadScheduledExecutor()
+    private var hasCancelled = false
     override fun run() {
       myExecutor.scheduleWithFixedDelay(
         {
-          if (connection.isConnected) {
-            objectOutputStream.writeObject(TransportMessage(MessageType.KEEP_ALIVE))
+          if (!connection.isClosed) {
+            objectOutputStream.writeObject(KeepAliveMessage())
           } else{
-            throw SocketException("Connection is broken")
+            LOG.warn("Connection broken, shutting down client")
+            cancel()
           }
         }, 0L, 5, TimeUnit.SECONDS)
     }
 
     fun cancel() {
-      myExecutor.shutdownNow()
-      objectOutputStream.close()
-      GuiTestThread.closeIde()
+      synchronized(this) {
+        if (!hasCancelled) {
+          hasCancelled = true
+          myExecutor.shutdownNow()
+          objectOutputStream.close()
+          (ApplicationManager.getApplication() as ApplicationImpl).exit(true, true)
+        }
+      }
     }
   }
 

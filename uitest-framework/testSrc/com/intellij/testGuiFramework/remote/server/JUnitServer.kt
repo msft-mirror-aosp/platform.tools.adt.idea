@@ -15,38 +15,22 @@
  */
 package com.intellij.testGuiFramework.remote.server
 
-import com.intellij.testGuiFramework.remote.transport.TransportMessage
-import java.util.concurrent.TimeUnit
+import com.intellij.testGuiFramework.remote.transport.MessageFromClient
+import com.intellij.testGuiFramework.remote.transport.MessageFromServer
 
 /**
  * @author Sergey Karashevich
  */
 interface JUnitServer {
 
-  fun start()
+  fun send(message: MessageFromServer)
 
-  fun isStarted(): Boolean
+  fun receive(): MessageFromClient
 
-  fun send(message: TransportMessage)
+  fun isRunning(): Boolean
 
-  fun receive(): TransportMessage
+  fun launchIdeAndStart()
 
-  fun sendAndWaitAnswer(message: TransportMessage)
-
-  fun sendAndWaitAnswer(message: TransportMessage, timeout: Long, timeUnit: TimeUnit)
-
-  fun addHandler(serverHandler: ServerHandler)
-
-  fun setFailHandler(failHandler: (Throwable) -> Unit)
-
-  fun removeHandler(serverHandler: ServerHandler)
-
-  fun removeAllHandlers()
-
-  fun isConnected(): Boolean
-
-  fun getPort(): Int
-
-  fun stopServer()
+  fun closeIdeAndStop()
 
 }

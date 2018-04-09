@@ -533,6 +533,14 @@ public final class GroovyDslUtil {
       // We want to anchor this off the added mCOMMA node.
       node.addChild(newElement.getNode(), list.getLBrack().getNode().getTreeNext());
     }
+    else if (((GrArgumentList)listElement).getLeftParen() != null) {
+      GrArgumentList list = (GrArgumentList)listElement;
+      final ASTNode anchor = list.getLeftParen().getNode().getTreeNext();
+      if (list.getAllArguments().length != 0) {
+        node.addLeaf(mCOMMA, ",", anchor);
+      }
+      node.addChild(newElement.getNode(), list.getLeftParen().getNode().getTreeNext());
+    }
     else {
       ASTNode anchor = getFirstASTNode(listElement);
       if (anchor != null) {
@@ -644,13 +652,8 @@ public final class GroovyDslUtil {
   }
 
   static boolean needToCreateParent(@NotNull GradleDslElement element) {
-    element = element.getParent();
-    // We have to be careful not to count element lists or maps when checking is the parent has been created.
-    while (element != null && (element instanceof GradleDslElementList)) {
-      element = element.getParent();
-    }
-
-    return element != null && element.getPsiElement() == null;
+    GradleDslElement parent = element.getParent();
+    return parent != null && parent.getPsiElement() == null;
   }
 
   static boolean hasNewLineBetween(@NotNull PsiElement start, @NotNull PsiElement end) {
@@ -663,7 +666,7 @@ public final class GroovyDslUtil {
     return false;
   }
 
-  static List<GradleReferenceInjection> findInjections(@NotNull GradleDslExpression context,
+  static List<GradleReferenceInjection> findInjections(@NotNull GradleDslSimpleExpression context,
                                                        @NotNull PsiElement psiElement,
                                                        boolean includeUnresolved) {
     ApplicationManager.getApplication().assertReadAccessAllowed();

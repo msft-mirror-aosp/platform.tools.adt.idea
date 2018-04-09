@@ -78,9 +78,7 @@ class SessionsManagerTest {
   }
 
   @Test
-  fun testBeginSessionWithNullDeviceOrProcess() {
-    myManager.beginSession(null, null)
-    myManager.beginSession(null, Common.Process.getDefaultInstance())
+  fun testBeginSessionWithNullProcess() {
     myManager.beginSession(Common.Device.getDefaultInstance(), null)
     assertThat(myManager.sessionArtifacts).isEmpty()
     assertThat(myManager.selectedSession).isEqualTo(Common.Session.getDefaultInstance())
@@ -300,11 +298,11 @@ class SessionsManagerTest {
     sessionItems = myManager.sessionArtifacts
     assertThat(sessionItems).hasSize(6)
     sessionItem0 = sessionItems[0] as SessionItem
-    val hprofItem0 = sessionItems[1] as HprofSessionArtifact
-    val cpuCaptureItem0 = sessionItems[2] as CpuCaptureSessionArtifact
+    val cpuCaptureItem0 = sessionItems[1] as CpuCaptureSessionArtifact
+    val hprofItem0 = sessionItems[2] as HprofSessionArtifact
     sessionItem1 = sessionItems[3] as SessionItem
-    val hprofItem1 = sessionItems[4] as HprofSessionArtifact
-    val cpuCaptureItem1 = sessionItems[5] as CpuCaptureSessionArtifact
+    val cpuCaptureItem1 = sessionItems[4] as CpuCaptureSessionArtifact
+    val hprofItem1 = sessionItems[5] as HprofSessionArtifact
 
     assertThat(sessionItem0.session).isEqualTo(session2)
     assertThat(sessionItem0.timestampNs).isEqualTo(0)

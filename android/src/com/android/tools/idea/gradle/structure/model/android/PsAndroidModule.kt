@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec
+import com.android.tools.idea.gradle.structure.model.PsDependency
 import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
@@ -37,7 +38,6 @@ class PsAndroidModule(
   private val gradleModel: AndroidModuleModel,
   parsedModel: GradleBuildModel
 ) : PsModule(parent, resolvedModel, gradlePath, parsedModel), PsAndroidModel {
-
   private var buildTypeCollection: PsBuildTypeCollection? = null
   private var productFlavorCollection: PsProductFlavorCollection? = null
   private var variantCollection: PsVariantCollection? = null
@@ -79,22 +79,9 @@ class PsAndroidModule(
 
   override fun getIcon(): Icon? = getAndroidModuleIcon(gradleModel)
 
-  override fun getGradlePath(): String = super.getGradlePath()!!
-
-  override fun getResolvedModel(): Module = super.getResolvedModel()!!
-
-  override fun getArtifactRepositories(): List<ArtifactRepository> {
-    val repositories = mutableListOf<ArtifactRepository>()
-    populateRepositories(repositories)
-    var repository = AndroidSdkRepositories.getAndroidRepository()
-    if (repository != null) {
-      repositories.add(repository)
-    }
-    repository = AndroidSdkRepositories.getGoogleRepository()
-    if (repository != null) {
-      repositories.add(repository)
-    }
-    return repositories
+  override fun populateRepositories(repositories: MutableList<ArtifactRepository>) {
+    super.populateRepositories(repositories)
+    repositories.addAll(listOfNotNull(AndroidSdkRepositories.getAndroidRepository(), AndroidSdkRepositories.getGoogleRepository()))
   }
 
   // TODO(solodkyy): Return a collection of PsBuildConfiguration instead of strings.
@@ -163,6 +150,15 @@ class PsAndroidModule(
     isModified = true
   }
 
+  override fun removeDependency(dependency: PsDependency) {
+    removeDependencyFromParsedModel(dependency)
+
+    resetDependencies()
+
+    fireDependencyRemovedEvent(dependency)
+    isModified = true
+  }
+
   override fun setLibraryDependencyVersion(
     spec: PsArtifactDependencySpec,
     configurationName: String,
@@ -180,7 +176,7 @@ class PsAndroidModule(
       for (parsedDependency in dependency.parsedModels) {
         assert(parsedDependency is ArtifactDependencyModel)
         val artifactDependencyModel = parsedDependency as ArtifactDependencyModel
-        artifactDependencyModel.setVersion(newVersion)
+        artifactDependencyModel.version().setValue(newVersion)
         modified = true
       }
     }

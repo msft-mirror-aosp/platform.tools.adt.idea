@@ -78,23 +78,20 @@ public class LayoutEditorTest {
   @RunIn(TestGroup.QA)
   @Test
   public void androidVectorDrawableTool() throws Exception {
-    IdeFrameFixture ideFrameFixture = guiTest.importSimpleLocalApplication();
-    AssetStudioWizardFixture assetStudioWizardFixture = guiTest.ideFrame()
+    String contents = guiTest.importSimpleLocalApplication()
       .getProjectView()
       .selectAndroidPane()
       .clickPath(MouseButton.RIGHT_BUTTON, "app")
-      .openFromMenu(AssetStudioWizardFixture::find, "File", "New", "Vector Asset");
-    assetStudioWizardFixture.chooseIcon(ideFrameFixture)
-      .clickOk();
-    assetStudioWizardFixture
+      .openFromMenu(AssetStudioWizardFixture::find, "File", "New", "Vector Asset")
+      .chooseIcon()
+      .clickOk()
       .enableOverrideDefaultSize()
       .setSize(48, 24)
       .setOpacity(50)
       .enableAutoMirror()
       .clickNext()
-      .clickFinish();
-
-    String contents = ideFrameFixture.getEditor()
+      .clickFinish()
+      .getEditor()
       .open("app/src/main/res/drawable/ic_android_black_24dp.xml")
       .getCurrentFileContents();
     assertThat(contents).contains("android:width=\"48dp\"");
@@ -164,9 +161,8 @@ public class LayoutEditorTest {
       .openFromMenu(AssetStudioWizardFixture::find, "File", "New", "Vector Asset")
       .setName("local_library")
       .clickNext()
-      .clickFinish();
-
-    ideFrameFixture.getEditor()
+      .clickFinish()
+      .getEditor()
       .open("app/src/main/res/layout/activity_my.xml", EditorFixture.Tab.DESIGN)
       .getLayoutEditor(true)
       .waitForRenderToFinish()

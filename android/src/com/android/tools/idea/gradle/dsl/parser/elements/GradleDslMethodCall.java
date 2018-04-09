@@ -15,25 +15,19 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 /**
  * Represents a method call expression element.
  */
-public final class GradleDslMethodCall extends GradleDslExpression {
-  private final
-  @NotNull List<GradleDslElement> myArguments = Lists.newArrayList();
-  private final
-  @NotNull List<GradleDslElement> myToBeRemovedArguments = Lists.newArrayList();
-
+public final class GradleDslMethodCall extends GradleDslSimpleExpression {
   /**
    * The name of the method that this method call is invoking.
    * For example:
@@ -42,10 +36,7 @@ public final class GradleDslMethodCall extends GradleDslExpression {
    *   System.out.println('text') -> myMethodName = System.out.println
    */
   @NotNull private String myMethodName;
-
-  @Nullable private GradleDslElement myToBeAddedArgument;
-
-  @Nullable private PsiElement myArgumentListPsiElement;
+  @NotNull private GradleDslExpressionList myArguments;
 
   /**
    * Create a new method call.
@@ -58,104 +49,49 @@ public final class GradleDslMethodCall extends GradleDslExpression {
   public GradleDslMethodCall(@NotNull GradleDslElement parent, @NotNull GradleNameElement name, @NotNull String methodName) {
     super(parent, null, name, null);
     myMethodName = methodName;
+    myArguments = new GradleDslExpressionList(this, name, false);
   }
 
   public GradleDslMethodCall(@NotNull GradleDslElement parent,
                              @NotNull PsiElement methodCall,
                              @NotNull GradleNameElement name,
-                             @NotNull PsiElement argumentListPsiElement,
                              @NotNull String methodName) {
     super(parent, methodCall, name, methodCall);
-    myArgumentListPsiElement = argumentListPsiElement;
     myMethodName = methodName;
+    myArguments = new GradleDslExpressionList(this, name, false);
+  }
+
+  public void setParsedArgumentList(@NotNull GradleDslExpressionList arguments) {
+    myArguments = arguments;
   }
 
   public void addParsedExpression(@NotNull GradleDslExpression expression) {
-    expression.myParent = this;
-    myArguments.add(expression);
-  }
-
-  public void addParsedExpressionMap(@NotNull GradleDslExpressionMap expressionMap) {
-    expressionMap.myParent = this;
-    myArguments.add(expressionMap);
+    myArguments.addParsedExpression(expression);
   }
 
   public void addNewArgument(@NotNull GradleDslExpression argument) {
-    addNewArgumentInternal(argument);
-  }
-
-  public void addNewArgument(@NotNull GradleDslExpressionMap mapArgument) {
-    addNewArgumentInternal(mapArgument);
-  }
-
-  /**
-   * This method should <b>not</b> be called outside of the GradleDslWriter classes.
-   * <p>
-   * If you need to add an argument to this GradleDslMethodCall please use {@link #addNewArgument(GradleDslExpression) addNewArgument}
-   * followed by a call to {@link #apply() apply} to ensure the change is written to the underlying file.
-   */
-  public void commitNewArgument(@NotNull GradleDslElement element) {
-    myArguments.add(element);
-  }
-
-  private void addNewArgumentInternal(@NotNull GradleDslElement argument) {
-    assert argument instanceof GradleDslExpression || argument instanceof GradleDslExpressionMap;
-    // Only adding expression or map arguments to an empty method is supported.
-    // The other combinations are not supported as there is no real use case.
-    if (getArguments().isEmpty()) {
-      myToBeAddedArgument = argument;
-      setModified(true);
-    }
+    myArguments.addNewExpression(argument);
   }
 
   @Nullable
   public PsiElement getArgumentListPsiElement() {
-    return myArgumentListPsiElement;
-  }
-
-  @Nullable
-  public GradleDslElement getToBeAddedArgument() {
-    return myToBeAddedArgument;
+    return myArguments.getPsiElement();
   }
 
   @NotNull
-  public List<GradleDslElement> getArguments() {
-    if (myToBeRemovedArguments.isEmpty() && myToBeAddedArgument == null) {
-      return ImmutableList.copyOf(myArguments);
-    }
+  public List<GradleDslExpression> getArguments() {
+    return myArguments.getExpressions();
+  }
 
-    List<GradleDslElement> result = Lists.newArrayList();
-
-    for (GradleDslElement argument : myArguments) {
-      if (argument instanceof GradleDslReference) {
-        // See if the reference is pointing to a list or map.
-        GradleDslExpressionList listValue = ((GradleDslReference)argument).getValue(GradleDslExpressionList.class);
-        if (listValue != null) {
-          result.addAll(listValue.getExpressions());
-          continue;
-        }
-
-        GradleDslExpressionMap mapValue = ((GradleDslReference)argument).getValue(GradleDslExpressionMap.class);
-        if (mapValue != null) {
-          result.add(mapValue);
-          continue;
-        }
-      }
-      result.add(argument);
-    }
-
-    if (myToBeAddedArgument != null) {
-      result.add(myToBeAddedArgument);
-    }
-
-    result.removeAll(myToBeRemovedArguments);
-    return result;
+  @NotNull
+  public GradleDslExpressionList getArgumentsElement() {
+    return myArguments;
   }
 
   @Override
   @NotNull
   public Collection<GradleDslElement> getChildren() {
-    return getArguments();
+    return new ArrayList<>(getArguments());
   }
 
   @Override
@@ -163,12 +99,13 @@ public final class GradleDslMethodCall extends GradleDslExpression {
   public Object getValue() {
     // If we only have one argument then just return its value. This allows us to correctly
     // parse functions that are used to set properties.
-    if (myArguments.size() == 1 && myArguments.get(0) instanceof GradleDslExpression) {
-      return ((GradleDslExpression)myArguments.get(0)).getValue();
+    List<GradleDslExpression> args = getArguments();
+    if (args.size() == 1 && args.get(0) instanceof GradleDslSimpleExpression) {
+      return ((GradleDslSimpleExpression)args.get(0)).getValue();
     }
 
     PsiElement psiElement = getPsiElement();
-    return psiElement != null ? psiElement.getText() : null;
+    return psiElement != null ? getPsiText(psiElement) : null;
   }
 
   @Override
@@ -202,17 +139,17 @@ public final class GradleDslMethodCall extends GradleDslExpression {
       return null;
     }
 
-    List<GradleDslElement> arguments = getArguments();
+    List<GradleDslExpression> arguments = getArguments();
     if (arguments.isEmpty()) {
       return null;
     }
 
     GradleDslElement pathArgument = arguments.get(0);
-    if (!(pathArgument instanceof GradleDslExpression)) {
+    if (!(pathArgument instanceof GradleDslSimpleExpression)) {
       return null;
     }
 
-    String path = ((GradleDslExpression)pathArgument).getValue(String.class);
+    String path = ((GradleDslSimpleExpression)pathArgument).getValue(String.class);
     if (path == null) {
       return null;
     }
@@ -235,20 +172,20 @@ public final class GradleDslMethodCall extends GradleDslExpression {
       return;
     }
 
-    List<GradleDslElement> arguments = getArguments();
+    List<GradleDslExpression> arguments = getArguments();
     if (arguments.isEmpty()) {
       GradleDslLiteral argument = new GradleDslLiteral(this, GradleNameElement.empty());
       argument.setValue(file.getPath());
-      myToBeAddedArgument = argument;
+      myArguments.addNewExpression(argument);
       return;
     }
 
     GradleDslElement pathArgument = arguments.get(0);
-    if (!(pathArgument instanceof GradleDslExpression)) {
+    if (!(pathArgument instanceof GradleDslSimpleExpression)) {
       return;
     }
 
-    ((GradleDslExpression)pathArgument).setValue(file.getPath());
+    ((GradleDslSimpleExpression)pathArgument).setValue(file.getPath());
   }
 
   @NotNull
@@ -263,33 +200,18 @@ public final class GradleDslMethodCall extends GradleDslExpression {
     return name.isEmpty() ? getMethodName() : name;
   }
 
-  public void remove(GradleDslElement argument) {
-    if (myArguments.contains(argument)) {
-      myToBeRemovedArguments.add(argument);
-      setModified(true);
-    }
+  public void remove(@NotNull GradleDslElement argument) {
+    myArguments.removeElement(argument);
   }
 
   @Override
   protected void apply() {
-    for (GradleDslElement argument : myToBeRemovedArguments) {
-      if (myArguments.remove(argument)) {
-        argument.delete();
-      }
-    }
-
     getDslFile().getWriter().applyDslMethodCall(this);
   }
 
   @Override
   protected void reset() {
-    myToBeAddedArgument = null;
-    myToBeRemovedArguments.clear();
-    for (GradleDslElement argument : myArguments) {
-      if (argument.isModified()) {
-        argument.resetState();
-      }
-    }
+    myArguments.reset();
   }
 
   @Override

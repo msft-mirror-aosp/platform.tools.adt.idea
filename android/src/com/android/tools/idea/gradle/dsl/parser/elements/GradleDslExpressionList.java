@@ -29,9 +29,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Represents an element which consists a list of {@link GradleDslExpression}s.
+ * Represents an element which consists a list of {@link GradleDslSimpleExpression}s.
  */
-public final class GradleDslExpressionList extends GradleDslElement {
+public final class GradleDslExpressionList extends GradleDslElementImpl implements GradleDslExpression {
   @NotNull private final List<GradleDslExpression> myExpressions = Lists.newArrayList();
   @NotNull private final List<GradleDslExpression> myUnsavedExpressions = Lists.newArrayList();
 
@@ -48,7 +48,10 @@ public final class GradleDslExpressionList extends GradleDslElement {
     myIsLiteralList = isLiteralList;
   }
 
-  public GradleDslExpressionList(@NotNull GradleDslElement parent, @NotNull PsiElement psiElement,  boolean isLiteralList, @NotNull GradleNameElement name) {
+  public GradleDslExpressionList(@NotNull GradleDslElement parent,
+                                 @NotNull PsiElement psiElement,
+                                 boolean isLiteralList,
+                                 @NotNull GradleNameElement name) {
     super(parent, psiElement, name);
     myAppendToArgumentListWithOneElement = false;
     myIsLiteralList = isLiteralList;
@@ -64,13 +67,20 @@ public final class GradleDslExpressionList extends GradleDslElement {
   }
 
   public void addParsedExpression(@NotNull GradleDslExpression expression) {
-    expression.myParent = this;
+    expression.setParent(this);
     myExpressions.add(expression);
     myUnsavedExpressions.add(expression);
   }
 
+  public void addNewExpression(@NotNull GradleDslExpression expression) {
+    expression.setParent(this);
+    myUnsavedExpressions.add(expression);
+    setModified(true);
+    updateDependenciesOnAddElement(expression);
+  }
+
   public void addNewExpression(@NotNull GradleDslExpression expression, int index) {
-    expression.myParent = this;
+    expression.setParent(this);
     myUnsavedExpressions.add(index, expression);
     setModified(true);
     updateDependenciesOnAddElement(expression);
@@ -103,8 +113,11 @@ public final class GradleDslExpressionList extends GradleDslElement {
     setModified(true);
   }
 
+  /**
+   * This method does not support removing maps or lists by value. Use removeElement for that.
+   */
   void removeExpression(@NotNull Object value) {
-    for (GradleDslExpression expression : myUnsavedExpressions) {
+    for (GradleDslSimpleExpression expression : getSimpleExpressions()) {
       if (value.equals(expression.getValue())) {
         myUnsavedExpressions.remove(expression);
         setModified(true);
@@ -115,7 +128,7 @@ public final class GradleDslExpressionList extends GradleDslElement {
   }
 
   void replaceExpression(@NotNull Object oldValue, @NotNull Object newValue) {
-    for (GradleDslExpression expression : myUnsavedExpressions) {
+    for (GradleDslSimpleExpression expression : getSimpleExpressions()) {
       if (oldValue.equals(expression.getValue())) {
         expression.setValue(newValue);
         return;
@@ -138,6 +151,12 @@ public final class GradleDslExpressionList extends GradleDslElement {
     return result;
   }
 
+  @NotNull
+  public List<GradleDslSimpleExpression> getSimpleExpressions() {
+    return getExpressions().stream().filter(e -> e instanceof GradleDslSimpleExpression).map(e -> (GradleDslSimpleExpression)e).collect(
+      Collectors.toList());
+  }
+
   public boolean isLiteralList() {
     return myIsLiteralList;
   }
@@ -150,7 +169,7 @@ public final class GradleDslExpressionList extends GradleDslElement {
    * This method should <b>not</b> be called outside of the GradleDslWriter classes.
    * <p>
    * If you need to add expressions to this GradleDslExpressionList please use
-   * {@link #addNewExpression(GradleDslExpression) addNewExpression} followed by a call to {@link #apply() apply}
+   * {@link #addNewExpression(GradleDslSimpleExpression) addNewExpression} followed by a call to {@link #apply() apply}
    * to ensure the changes are written to the underlying file.
    */
   public void commitExpressions(@NotNull PsiElement psiElement) {
@@ -165,13 +184,13 @@ public final class GradleDslExpressionList extends GradleDslElement {
 
   /**
    * Returns the list of values of type {@code clazz}.
-   *
+   * <p>
    * <p>Returns an empty list when there are no elements of type {@code clazz}.
    */
   @NotNull
   public <E> List<GradleNotNullValue<E>> getValues(Class<E> clazz) {
     List<GradleNotNullValue<E>> result = Lists.newArrayList();
-    for (GradleDslExpression expression : getExpressions()) {
+    for (GradleDslSimpleExpression expression : getSimpleExpressions()) {
       if (expression instanceof GradleDslReference) {
         // See if the reference itself is pointing to a list.
         GradleDslExpressionList referenceList = expression.getValue(GradleDslExpressionList.class);
@@ -213,7 +232,8 @@ public final class GradleDslExpressionList extends GradleDslElement {
           // See GroovyDslUtil#shouldAddToListInternal for why this workaround is needed.
           if (i > 0) {
             expression.setPsiElement(myUnsavedExpressions.get(i - 1).getExpression());
-          } else {
+          }
+          else {
             expression.setPsiElement(psiElement);
           }
           expression.applyChanges();
@@ -261,5 +281,11 @@ public final class GradleDslExpressionList extends GradleDslElement {
   @NotNull
   public List<GradleReferenceInjection> getDependencies() {
     return myUnsavedExpressions.stream().map(GradleDslElement::getDependencies).flatMap(Collection::stream).collect(Collectors.toList());
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getExpression() {
+    return getPsiElement();
   }
 }

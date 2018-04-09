@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.structure.model;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
+import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.MavenRepositoryModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel;
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepository;
@@ -120,6 +121,17 @@ public abstract class PsModule extends PsChildModel {
     }
   }
 
+  protected void removeDependencyFromParsedModel(@NotNull PsDependency dependency) {
+    GradleBuildModel parsedModel = getParsedModel();
+    if (parsedModel != null) {
+      for (DependencyModel dependencyParsedModel : dependency.getParsedModels()) {
+        getParsedModel().dependencies().remove(dependencyParsedModel);
+      }
+
+      getParsedDependencies().reset(getParsedModel());
+    }
+  }
+
   public void add(@NotNull DependenciesChangeListener listener, @NotNull Disposable parentDisposable) {
     myDependenciesChangeEventDispatcher.addListener(listener, parentDisposable);
   }
@@ -134,6 +146,10 @@ public abstract class PsModule extends PsChildModel {
 
   public void fireDependencyModifiedEvent(@NotNull PsDependency dependency) {
     myDependenciesChangeEventDispatcher.getMulticaster().dependencyChanged(new DependencyModifiedEvent(dependency));
+  }
+
+  public void fireDependencyRemovedEvent(@NotNull PsDependency dependency) {
+    myDependenciesChangeEventDispatcher.getMulticaster().dependencyChanged(new DependencyRemovedEvent(dependency));
   }
 
   @Nullable
@@ -153,13 +169,13 @@ public abstract class PsModule extends PsChildModel {
   }
 
   @NotNull
-  public List<ArtifactRepository> getArtifactRepositories() {
+  public final List<ArtifactRepository> getArtifactRepositories() {
     List<ArtifactRepository> repositories = Lists.newArrayList();
     populateRepositories(repositories);
     return repositories;
   }
 
-  protected final void populateRepositories(@NotNull List<ArtifactRepository> repositories) {
+  protected void populateRepositories(@NotNull List<ArtifactRepository> repositories) {
     GradleBuildModel parsedModel = getParsedModel();
     if (parsedModel != null) {
       for (RepositoryModel repositoryModel : parsedModel.repositories().repositories()) {
@@ -225,6 +241,7 @@ public abstract class PsModule extends PsChildModel {
 
   public abstract void addLibraryDependency(@NotNull String library, @NotNull List<String> scopesNames);
   public abstract void addModuleDependency(@NotNull String modulePath, @NotNull List<String> scopesNames);
+  public abstract void removeDependency(@NotNull PsDependency dependency);
   public abstract void setLibraryDependencyVersion(@NotNull PsArtifactDependencySpec spec,
                                                    @NotNull String configurationName,
                                                    @NotNull String newVersion);
@@ -266,6 +283,19 @@ public abstract class PsModule extends PsChildModel {
     @NotNull private final PsDependency myDependency;
 
     DependencyModifiedEvent(@NotNull PsDependency dependency) {
+      myDependency = dependency;
+    }
+
+    @NotNull
+    public PsDependency getDependency() {
+      return myDependency;
+    }
+  }
+
+  public static class DependencyRemovedEvent implements DependencyChangedEvent {
+    @NotNull private final PsDependency myDependency;
+
+    DependencyRemovedEvent(@NotNull PsDependency dependency) {
       myDependency = dependency;
     }
 

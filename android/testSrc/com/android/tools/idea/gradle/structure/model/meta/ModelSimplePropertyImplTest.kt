@@ -18,13 +18,13 @@ package com.android.tools.idea.gradle.structure.model.meta
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
-import com.android.tools.idea.gradle.dsl.parser.java.print
 import com.android.tools.idea.gradle.structure.model.helpers.parseBoolean
 import com.android.tools.idea.gradle.structure.model.helpers.parseInt
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
+import org.junit.Test
 
 class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
 
@@ -51,7 +51,7 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
 
   private fun <T : Any> ModelSimpleProperty<Model, T>.testValue() = (getParsedValue(Model) as? ParsedValue.Set.Parsed<T>)?.value
   private fun <T : Any> ModelSimpleProperty<Model, T>.testSetValue(value: T?) =
-    setParsedValue(Model, if (value != null) ParsedValue.Set.Parsed(value = value) else ParsedValue.NotSet())
+    setParsedValue(Model, if (value != null) ParsedValue.Set.Parsed(value = value) else ParsedValue.NotSet)
 
   private fun <T : Any> ModelSimpleProperty<Model, T>.testSetReference(value: String) =
     setParsedValue(Model, ParsedValue.Set.Parsed(dslText = DslText(DslMode.REFERENCE, value), value = null))
@@ -59,6 +59,7 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
   private fun <T : Any> ModelSimpleProperty<Model, T>.testSetInterpolatedString(value: String) =
     setParsedValue(Model, ParsedValue.Set.Parsed(dslText = DslText(DslMode.INTERPOLATED_STRING, value), value = null))
 
+  @Test
   fun testPropertyValues() {
     val text = """
                ext {
@@ -94,6 +95,7 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
     assertThat(propOtherExpression2.testValue(), nullValue())
   }
 
+  @Test
   fun testWritePropertyValues() {
     val text = """
                ext {

@@ -14,9 +14,10 @@
 package com.android.tools.idea.gradle.dsl.parser;
 
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
-import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpression;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSimpleExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,7 +26,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Represents an injection of one value into another. This class links the {@link GradleDslExpression} that needs to be
+ * Represents an injection of one value into another. This class links the {@link GradleDslSimpleExpression} that needs to be
  * injected and the {@link PsiElement} of the injection. This class is used for both string injections and references.
  */
 public class GradleReferenceInjection {
@@ -34,11 +35,11 @@ public class GradleReferenceInjection {
   @NotNull
   private PsiElement myPsiInjection;
   @NotNull
-  private GradleDslExpression myOriginElement; // GradleDslElement that contains myPsiInjection.
+  private GradleDslSimpleExpression myOriginElement; // GradleDslElement that contains myPsiInjection.
   @NotNull
   private String myName; // The name of the injection, e.g "prop1 = "Hello ${world}" -> "world" or "prop1 = hello" -> "hello"
 
-  public GradleReferenceInjection(@NotNull GradleDslExpression originElement,
+  public GradleReferenceInjection(@NotNull GradleDslSimpleExpression originElement,
                                   @Nullable GradleDslElement injection,
                                   @NotNull PsiElement psiInjection,
                                   @NotNull String name) {
@@ -62,18 +63,18 @@ public class GradleReferenceInjection {
   }
 
   @NotNull
-  public GradleDslExpression getOriginElement() {
+  public GradleDslSimpleExpression getOriginElement() {
     return myOriginElement;
   }
 
   /**
-   * Returns a {@link GradleDslExpression} if the element to be injected is one, otherwise returns null.
-   * The case where that element will not be a {@link GradleDslExpression} will be when we have a reference
+   * Returns a {@link GradleDslSimpleExpression} if the element to be injected is one, otherwise returns null.
+   * The case where that element will not be a {@link GradleDslSimpleExpression} will be when we have a reference
    * to a {@link GradleDslExpressionMap} or {@link GradleDslExpressionList}.
    */
   @Nullable
-  public GradleDslExpression getToBeInjectedExpression() {
-    return (myToBeInjected instanceof GradleDslExpression) ? (GradleDslExpression)myToBeInjected : null;
+  public GradleDslSimpleExpression getToBeInjectedExpression() {
+    return (myToBeInjected instanceof GradleDslSimpleExpression) ? (GradleDslSimpleExpression)myToBeInjected : null;
   }
 
   @NotNull
@@ -88,31 +89,33 @@ public class GradleReferenceInjection {
 
   /**
    * Injects all given {@code injections} into a given {@link PsiElement}. These {@link GradleReferenceInjection}s should have been
-   * obtained using {@link GradleDslParser#getResolvedInjections(GradleDslExpression, PsiElement)}.
+   * obtained using {@link GradleDslParser#getResolvedInjections(GradleDslSimpleExpression, PsiElement)}.
    */
   @NotNull
   public static String injectAll(@NotNull PsiElement psiElement, @NotNull Collection<GradleReferenceInjection> injections) {
     StringBuilder builder = new StringBuilder();
-    for (PsiElement element : psiElement.getChildren()) {
-      // Reference equality intended
-      Optional<GradleReferenceInjection> filteredInjection =
-        injections.stream().filter(injection -> element == injection.getPsiInjection()).findFirst();
-      if (filteredInjection.isPresent()) {
-        GradleDslExpression expression = filteredInjection.get().getToBeInjectedExpression();
-        if (expression == null) {
-          // If this injection has no expression then we are trying to inject a string or map,
-          // in this case just use the raw text from the PsiElement instead.
-          builder.append(element.getText());
-          continue;
-        }
+    ApplicationManager.getApplication().runReadAction(() -> {
+      for (PsiElement element : psiElement.getChildren()) {
+        // Reference equality intended
+        Optional<GradleReferenceInjection> filteredInjection =
+          injections.stream().filter(injection -> element == injection.getPsiInjection()).findFirst();
+        if (filteredInjection.isPresent()) {
+          GradleDslSimpleExpression expression = filteredInjection.get().getToBeInjectedExpression();
+          if (expression == null) {
+            // If this injection has no expression then we are trying to inject a string or map,
+            // in this case just use the raw text from the PsiElement instead.
+            builder.append(element.getText());
+            continue;
+          }
 
-        Object value = expression.getValue();
-        builder.append(value == null ? "" : value);
+          Object value = expression.getValue();
+          builder.append(value == null ? "" : value);
+        }
+        else {
+          builder.append(element.getText());
+        }
       }
-      else {
-        builder.append(element.getText());
-      }
-    }
+    });
     return builder.toString();
   }
 }

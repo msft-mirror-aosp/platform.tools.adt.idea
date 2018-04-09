@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.*;
+import static com.android.tools.idea.gradle.dsl.api.ext.PropertyType.FAKE;
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.*;
 
 public class GradlePropertyModelImpl implements GradlePropertyModel {
@@ -55,10 +56,9 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     myTransforms.add(DEFAULT_TRANSFORM);
 
     GradleDslElement parent = element.getParent();
-    assert parent != null &&
-           (parent instanceof GradlePropertiesDslElement ||
+    assert (parent instanceof GradlePropertiesDslElement ||
             parent instanceof GradleDslExpressionList ||
-            parent instanceof GradleDslElementList) : "Property found to be invalid, this should never happen!";
+            parent instanceof GradleDslMethodCall) : "Property found to be invalid, this should never happen!";
     myPropertyHolder = parent;
 
     myPropertyType = myElement.getElementType();
@@ -172,7 +172,11 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   public String getName() {
     if (myElement != null && myPropertyHolder instanceof GradleDslExpressionList) {
       GradleDslExpressionList list = (GradleDslExpressionList)myPropertyHolder;
-      return String.valueOf(list.findIndexOf(myElement));
+      int index = list.findIndexOf(myElement);
+      if (index != -1) {
+        // This is the case if the element is a FakeElement
+        return String.valueOf(index);
+      }
     }
 
     return myName;
@@ -347,7 +351,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     }
 
     // Check that the element should actually be renamed.
-    if (myPropertyHolder instanceof GradleDslExpressionList) {
+    if (myPropertyHolder instanceof GradleDslExpressionList || myPropertyHolder instanceof GradleDslMethodCall) {
       throw new IllegalStateException("Can't rename list values!");
     }
 
@@ -359,6 +363,14 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Override
   public String toString() {
     return getValue(STRING_TYPE);
+  }
+
+  @NotNull
+  @Override
+  public String forceString() {
+    String s = toString();
+    assert s != null;
+    return s;
   }
 
   @Nullable
@@ -411,8 +423,8 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
       // This check ensures that methods we care about, i.e targetSdkVersion(12) are not classed as unknown.
       return UNKNOWN;
     }
-    else if (element instanceof GradleDslExpression) {
-      GradleDslExpression expression = (GradleDslExpression)element;
+    else if (element instanceof GradleDslSimpleExpression) {
+      GradleDslSimpleExpression expression = (GradleDslSimpleExpression)element;
       Object value = expression.getValue();
       if (value instanceof Boolean) {
         return BOOLEAN;
@@ -425,6 +437,9 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
       }
       else if (value instanceof BigDecimal) {
         return BIG_DECIMAL;
+      }
+      else if (value == null) {
+        return NONE;
       }
       else {
         return UNKNOWN;
@@ -466,14 +481,14 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
         if (element.getPsiElement() == null) {
           return null;
         }
-        value = element.getPsiElement().getText();
+        value = GradleDslElementImpl.getPsiText(element.getPsiElement());
       }
       else {
         value = element.getFullName();
       }
     }
     else {
-      GradleDslExpression expression = (GradleDslExpression)element;
+      GradleDslSimpleExpression expression = (GradleDslSimpleExpression)element;
 
       value = resolved ? expression.getValue() : expression.getUnresolvedValue();
     }
@@ -506,6 +521,10 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     if (newElement == myElement) {
       // No need to bind
       return;
+    }
+
+    if (myElement != null && myElement.getElementType() == FAKE) {
+      throw new UnsupportedOperationException("Can't bind from a fake element!");
     }
 
     replaceElement(myPropertyHolder, myElement, newElement);

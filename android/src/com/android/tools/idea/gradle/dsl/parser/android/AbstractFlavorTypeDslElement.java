@@ -29,8 +29,8 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
   @Override
   public void addParsedElement(@NotNull GradleDslElement element) {
     String property = element.getName();
-    if (property.equals("consumerProguardFiles") && element instanceof GradleDslExpression) {
-      addAsParsedDslExpressionList((GradleDslExpression)element);
+    if (property.equals("consumerProguardFiles") && element instanceof GradleDslSimpleExpression) {
+      addAsParsedDslExpressionList((GradleDslSimpleExpression)element);
       return;
     }
 
@@ -47,15 +47,6 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
       if (listElement.getExpressions().size() != 3 || listElement.getValues(String.class).size() != 3) {
         return;
       }
-
-      GradleDslElementList elementList = getPropertyElement("resValue", GradleDslElementList.class);
-      if (elementList == null) {
-        GradleNameElement name = GradleNameElement.create("resValue");
-        elementList = new GradleDslElementList(this, name);
-        setParsedElement(elementList);
-      }
-      elementList.addParsedElement(element);
-      return;
     }
 
     super.addParsedElement(element);

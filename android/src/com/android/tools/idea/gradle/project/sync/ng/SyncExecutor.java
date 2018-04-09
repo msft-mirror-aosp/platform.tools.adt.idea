@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.sync.ng;
 
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.sync.common.CommandLineArgs;
 import com.android.tools.idea.gradle.project.sync.errors.SyncErrorHandlerManager;
 import com.google.common.annotations.VisibleForTesting;
@@ -34,10 +35,10 @@ import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings;
 import java.util.Collections;
 import java.util.List;
 
+import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.android.tools.idea.gradle.project.sync.ng.GradleSyncProgress.notifyProgress;
 import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
 import static com.android.tools.idea.gradle.util.GradleUtil.getOrCreateGradleExecutionSettings;
-import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType.RESOLVE_PROJECT;
 import static org.gradle.tooling.GradleConnector.newCancellationTokenSource;
 import static org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper.prepare;
@@ -47,23 +48,26 @@ class SyncExecutor {
   @NotNull private final CommandLineArgs myCommandLineArgs;
   @NotNull private final SyncErrorHandlerManager myErrorHandlerManager;
   @NotNull private final ExtraGradleSyncModelsManager myExtraModelsManager;
+  @NotNull private final SelectedVariantCollector mySelectedVariantCollector;
 
   @NotNull private final GradleExecutionHelper myHelper = new GradleExecutionHelper();
 
   SyncExecutor(@NotNull Project project) {
     this(project, ExtraGradleSyncModelsManager.getInstance(), new CommandLineArgs(true /* apply Java library plugin */),
-         new SyncErrorHandlerManager(project));
+         new SyncErrorHandlerManager(project), new SelectedVariantCollector(project));
   }
 
   @VisibleForTesting
   SyncExecutor(@NotNull Project project,
                @NotNull ExtraGradleSyncModelsManager extraModelsManager,
                @NotNull CommandLineArgs commandLineArgs,
-               @NotNull SyncErrorHandlerManager errorHandlerManager) {
+               @NotNull SyncErrorHandlerManager errorHandlerManager,
+               @NotNull SelectedVariantCollector selectedVariantCollector) {
     myProject = project;
     myCommandLineArgs = commandLineArgs;
     myErrorHandlerManager = errorHandlerManager;
     myExtraModelsManager = extraModelsManager;
+    mySelectedVariantCollector = selectedVariantCollector;
   }
 
   void syncProject(@NotNull ProgressIndicator indicator, @NotNull SyncExecutionCallback callback) {
@@ -75,29 +79,7 @@ class SyncExecutor {
 
     GradleExecutionSettings executionSettings = getOrCreateGradleExecutionSettings(myProject);
     Function<ProjectConnection, Void> syncFunction = connection -> {
-      SyncAction syncAction = new SyncAction(myExtraModelsManager.getAndroidModelTypes(), myExtraModelsManager.getJavaModelTypes());
-      BuildActionExecuter<SyncProjectModels> executor = connection.action(syncAction);
-
-      List<String> commandLineArgs = myCommandLineArgs.get(myProject);
-
-      // We try to avoid passing JVM arguments, to share Gradle daemons between Gradle sync and Gradle build.
-      // If JVM arguments from Gradle sync are different than the ones from Gradle build, Gradle won't reuse daemons. This is bad because
-      // daemons are expensive (memory-wise) and slow to start.
-      ExternalSystemTaskId id = createId(myProject);
-      prepare(executor, id, executionSettings, new GradleSyncNotificationListener(indicator), Collections.emptyList() /* JVM args */,
-              commandLineArgs, connection);
-
-      CancellationTokenSource cancellationTokenSource = newCancellationTokenSource();
-      executor.withCancellationToken(cancellationTokenSource.token());
-
-      try {
-        SyncProjectModels models = executor.run();
-        callback.setDone(models, id);
-      }
-      catch (RuntimeException e) {
-        myErrorHandlerManager.handleError(e);
-        callback.setRejected(e);
-      }
+      syncProject(connection, executionSettings, indicator, callback);
       return null;
     };
 
@@ -107,6 +89,47 @@ class SyncExecutor {
     catch (Throwable e) {
       callback.setRejected(e);
     }
+  }
+
+  private void syncProject(@NotNull ProjectConnection connection,
+                           @NotNull GradleExecutionSettings executionSettings,
+                           @NotNull ProgressIndicator indicator,
+                           @NotNull SyncExecutionCallback callback) {
+    SyncAction syncAction = createSyncAction();
+    BuildActionExecuter<SyncProjectModels> executor = connection.action(syncAction);
+
+    List<String> commandLineArgs = myCommandLineArgs.get(myProject);
+
+    // We try to avoid passing JVM arguments, to share Gradle daemons between Gradle sync and Gradle build.
+    // If JVM arguments from Gradle sync are different than the ones from Gradle build, Gradle won't reuse daemons. This is bad because
+    // daemons are expensive (memory-wise) and slow to start.
+    ExternalSystemTaskId id = createId(myProject);
+    prepare(executor, id, executionSettings, new GradleSyncNotificationListener(indicator), Collections.emptyList() /* JVM args */,
+            commandLineArgs, connection);
+
+    CancellationTokenSource cancellationTokenSource = newCancellationTokenSource();
+    executor.withCancellationToken(cancellationTokenSource.token());
+
+    try {
+      SyncProjectModels models = executor.run();
+      callback.setDone(models, id);
+    }
+    catch (RuntimeException e) {
+      myErrorHandlerManager.handleError(e);
+      callback.setRejected(e);
+    }
+  }
+
+  @VisibleForTesting
+  @NotNull
+  SyncAction createSyncAction() {
+    SyncActionOptions options = new SyncActionOptions();
+    options.setSingleVariantSyncEnabled(StudioFlags.SINGLE_VARIANT_SYNC_ENABLED.get());
+    if (options.isSingleVariantSyncEnabled()) {
+      SelectedVariants selectedVariants = mySelectedVariantCollector.collectSelectedVariants();
+      options.setSelectedVariants(selectedVariants);
+    }
+    return new SyncAction(myExtraModelsManager.getAndroidModelTypes(), myExtraModelsManager.getJavaModelTypes(), options);
   }
 
   @NotNull

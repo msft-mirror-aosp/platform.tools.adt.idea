@@ -34,9 +34,15 @@ import java.util.List;
  * on power profiles</a>, which this class aims to emulate.
  */
 public interface PowerProfile {
+  String GPS_PROVIDER = "gps";
+  String NETWORK_PROVIDER = "network";
+  String PASSIVE_PROVIDER = "passive";
+
   int getCpuUsage(@NotNull CpuCoreUsage[] usages);
 
   int getNetworkUsage(@NotNull NetworkStats networkStats);
+
+  int getLocationUsage(@NotNull LocationStats locationStats);
 
   enum NetworkType {
     WIFI,
@@ -56,31 +62,26 @@ public interface PowerProfile {
     }
   }
 
-  enum NetworkState {
-    /**
-     * The network is in a low power state
-     */
-    IDLE,
+  enum LocationType {
+    NONE,
+    PASSIVE,
+    NETWORK,
+    GPS_ACQUIRE,
+    GPS;
 
-    /**
-     * The network is currently looking for endpoints to connect to.
-     */
-    SCANNING,
-
-    /**
-     * The network is in a high power state and ready to send (radio only).
-     */
-    READY,
-
-    /**
-     * The network is actively receiving data.
-     */
-    RECEIVING,
-
-    /**
-     * The network is actively sending data.
-     */
-    SENDING,
+    @NotNull
+    public static LocationType from(@NotNull String protoLocationProvider) {
+      switch (protoLocationProvider) {
+        case GPS_PROVIDER:
+          return GPS;
+        case NETWORK_PROVIDER:
+          return NETWORK;
+        case PASSIVE_PROVIDER:
+          return PASSIVE;
+        default:
+          return NONE;
+      }
+    }
   }
 
   /**
@@ -97,7 +98,7 @@ public interface PowerProfile {
         return 0;
       }
 
-      double totalMilliAmps = 7.201; // Base power consumption for a suspended + idle CPU.
+      double totalMilliAmps = 0.0;
       List<CpuCoreUsage> usagesList = Arrays.asList(usages);
       Collections.sort(usagesList, Comparator.comparingInt(o -> o.myMaxFrequencyKhz));
 
@@ -112,7 +113,7 @@ public interface PowerProfile {
         double f3 = f2 * fMhz;
 
         // Approximately add CPU active cost and cluster active costs (approximately 6mA per category).
-        if (fMhz * 1000 > MIN_CORE_FREQ_KHZ) {
+        if (core.myAppUsage > 0.0) {
           if (!cpuActivationAdded) {
             cpuActivationAdded = true;
             totalMilliAmps += 17.757;
@@ -148,7 +149,7 @@ public interface PowerProfile {
       }
 
       if (networkStats.myReceivingBps == 0 && networkStats.mySendingBps == 0) {
-        return 1;
+        return 0;
       }
 
       int usage = 0;
@@ -167,6 +168,24 @@ public interface PowerProfile {
                  : fitBps(10, 190, networkStats.mySendingBps, 200000);
       }
       return usage;
+    }
+
+    @Override
+    public int getLocationUsage(@NotNull LocationStats locationStats) {
+      // TODO(b/77588320): Change this to actually charge for the duration the GPS is on.
+      // For initial version, we'll reshape (90mA * duration) into a single spike over the sample period.
+      switch (locationStats.myLocationType) {
+        case GPS:
+          return (int)(90 * (double)locationStats.myDurationNs / (double)locationStats.mySampleIntervalNs);
+        case GPS_ACQUIRE:
+          return 90;
+        case NETWORK:
+          return (int)(30 * (double)locationStats.myDurationNs / (double)locationStats.mySampleIntervalNs);
+        case PASSIVE:
+          // fall through
+        default:
+          return 0;
+      }
     }
 
     @VisibleForTesting
@@ -239,6 +258,28 @@ public interface PowerProfile {
       myNetworkType = type;
       myReceivingBps = receivingBps;
       mySendingBps = sendingBps;
+    }
+  }
+
+  final class LocationEvent {
+    public final int myEventId;
+    public final LocationType myLocationType;
+
+    public LocationEvent(int id, @NotNull LocationType type) {
+      myEventId = id;
+      myLocationType = type;
+    }
+  }
+
+  final class LocationStats {
+    public final LocationType myLocationType;
+    public final long myDurationNs;
+    public final long mySampleIntervalNs;
+
+    public LocationStats(@NotNull LocationType type, long durationNs, long sampleIntervalNs) {
+      myLocationType = type;
+      myDurationNs = durationNs;
+      mySampleIntervalNs = sampleIntervalNs;
     }
   }
 }

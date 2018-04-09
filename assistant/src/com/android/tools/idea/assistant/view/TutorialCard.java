@@ -121,7 +121,7 @@ public class TutorialCard extends CardViewPanel {
     c.insets = JBUI.insetsBottom(5);
 
     JBLabel title = new JBLabel(myTutorial.getLabel());
-    title.setFont(title.getFont().deriveFont(Font.BOLD, 16F));
+    title.setFont(title.getFont().deriveFont(Font.PLAIN, 24F));
     title.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
     if (myTutorial.getIcon() != null) {
       title.setIcon(myTutorial.getIcon());
@@ -143,7 +143,7 @@ public class TutorialCard extends CardViewPanel {
     c.gridy++;
 
     // Add extra padding for tutorial steps.
-    c.insets = JBUI.insets(0, 5, 5, 5);
+    c.insets = JBUI.insets(0, 5, 0, 5);
 
     if (myIsStepByStep) {
       contents.add(new TutorialStep(myTutorial.getSteps().get(myStepIndex), myStepIndex, myListener, myProject, myHideStepIndex), c);

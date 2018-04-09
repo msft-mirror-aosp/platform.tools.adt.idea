@@ -184,10 +184,10 @@ public class PsiResourceItem implements ResourceItem {
   public String getKey() {
     String qualifiers = getConfiguration().getQualifierString();
     if (!qualifiers.isEmpty()) {
-      return getType() + "-" + qualifiers + "/" + getName();
+      return myType.getName() + '-' + qualifiers + '/' + myName;
     }
 
-    return getType() + "/" + getName();
+    return myType.getName() + '/' + myName;
   }
 
   @Nullable
@@ -196,13 +196,12 @@ public class PsiResourceItem implements ResourceItem {
       return mySource;
     }
 
-    PsiFile file = getPsiFile();
-    if (file == null) {
+    PsiFile psiFile = getPsiFile();
+    if (psiFile == null) {
       return null;
     }
 
-    PsiElement parent = AndroidPsiUtils.getPsiParentSafely(file);
-
+    PsiElement parent = AndroidPsiUtils.getPsiParentSafely(psiFile);
     if (!(parent instanceof PsiDirectory)) {
       return null;
     }
@@ -215,11 +214,6 @@ public class PsiResourceItem implements ResourceItem {
 
     FolderConfiguration configuration = FolderConfiguration.getConfigForFolder(name);
     if (configuration == null) {
-      return null;
-    }
-
-    PsiFile psiFile = getPsiFile();
-    if (psiFile == null) {
       return null;
     }
 
@@ -247,15 +241,12 @@ public class PsiResourceItem implements ResourceItem {
         ResourceType type = getType();
         Density density = type == ResourceType.DRAWABLE || type == ResourceType.MIPMAP ? getFolderDensity() : null;
 
-        String path = null;
         VirtualFile virtualFile = source.getVirtualFile();
-        if (virtualFile != null) {
-          path = VfsUtilCore.virtualToIoFile(virtualFile).getAbsolutePath();
-        }
+        String path = virtualFile == null ? null : VfsUtilCore.virtualToIoFile(virtualFile).getAbsolutePath();
         if (density != null) {
-          myResourceValue = new DensityBasedResourceValue(getReferenceToSelf(), path, density, null);
+          myResourceValue = new DensityBasedResourceValue(myNamespace, myType, myName, path, density, null);
         } else {
-          myResourceValue = new ResourceValue(getReferenceToSelf(), path, null);
+          myResourceValue = new ResourceValue(myNamespace, myType, myName, path, null);
         }
       } else {
         myResourceValue = parseXmlToResourceValue(tag);
@@ -302,16 +293,16 @@ public class PsiResourceItem implements ResourceItem {
     switch (myType) {
       case STYLE:
         String parent = getAttributeValue(tag, ATTR_PARENT);
-        value = parseStyleValue(tag, new StyleResourceValue(getReferenceToSelf(), parent, null));
+        value = parseStyleValue(tag, new StyleResourceValue(myNamespace, myType, myName, parent, null));
         break;
       case DECLARE_STYLEABLE:
-        value = parseDeclareStyleable(tag, new DeclareStyleableResourceValue(getReferenceToSelf(), null, null));
+        value = parseDeclareStyleable(tag, new DeclareStyleableResourceValue(myNamespace, myType, myName, null, null));
         break;
       case ATTR:
-        value = parseAttrValue(tag, new AttrResourceValue(getReferenceToSelf(), null));
+        value = parseAttrValue(tag, new AttrResourceValue(myNamespace, myType, myName, null));
         break;
       case ARRAY:
-        value = parseArrayValue(tag, new ArrayResourceValue(getReferenceToSelf(), null) {
+        value = parseArrayValue(tag, new ArrayResourceValue(myNamespace, myType, myName, null) {
           // Allow the user to specify a specific element to use via tools:index
           @Override
           protected int getDefaultIndex() {
@@ -324,7 +315,7 @@ public class PsiResourceItem implements ResourceItem {
         });
         break;
       case PLURALS:
-        value = parsePluralsValue(tag, new PluralsResourceValue(getReferenceToSelf(), null, null) {
+        value = parsePluralsValue(tag, new PluralsResourceValue(myNamespace, myType, myName, null, null) {
           // Allow the user to specify a specific quantity to use via tools:quantity
           @Override
           public String getValue() {
@@ -340,10 +331,10 @@ public class PsiResourceItem implements ResourceItem {
         });
         break;
       case STRING:
-        value = parseTextValue(tag, new PsiTextResourceValue(getReferenceToSelf(), null, null, null));
+        value = parseTextValue(tag, new PsiTextResourceValue(myNamespace, myType, myName, null, null, null));
         break;
       default:
-        value = parseValue(tag, new ResourceValue(getReferenceToSelf(), null));
+        value = parseValue(tag, new ResourceValue(myNamespace, myType, myName, null));
         break;
     }
 
@@ -369,7 +360,6 @@ public class PsiResourceItem implements ResourceItem {
             declareStyleable.addValue(attr);
           }
         }
-
       }
     }
 
@@ -399,11 +389,10 @@ public class PsiResourceItem implements ResourceItem {
         String value = getAttributeValue(child, ATTR_VALUE);
         if (value != null) {
           try {
-            // Integer.decode/parseInt can't deal with hex value > 0x7FFFFFFF so we
-            // use Long.decode instead.
-            attrValue.addValue(name, (int)(long)Long.decode(value));
+            // Use Long.decode to deal with hexadecimal values greater than 0x7FFFFFFF.
+            attrValue.addValue(name, Long.decode(value).intValue());
           } catch (NumberFormatException e) {
-            // pass, we'll just ignore this value
+            // Ignore the invalid value.
           }
         }
       }
@@ -488,7 +477,7 @@ public class PsiResourceItem implements ResourceItem {
       return false;
     }
 
-    // Force recompute in getResourceValue
+    // Force recompute in getResourceValue.
     myResourceValue = null;
     return true;
   }
@@ -523,8 +512,9 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   private class PsiTextResourceValue extends TextResourceValue {
-    public PsiTextResourceValue(ResourceReference reference, String textValue, String rawXmlValue, String libraryName) {
-      super(reference, textValue, rawXmlValue, libraryName);
+    public PsiTextResourceValue(@NotNull ResourceNamespace namespace, @NotNull ResourceType type, @NotNull String name,
+                                @Nullable String textValue, @Nullable String rawXmlValue, @Nullable String libraryName) {
+      super(namespace, type, name, textValue, rawXmlValue, libraryName);
     }
 
     @Override
@@ -535,10 +525,11 @@ public class PsiResourceItem implements ResourceItem {
         return getValue();
       }
 
-      if (!ApplicationManager.getApplication().isReadAccessAllowed()) {
-        return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> tag.getValue().getText());
+      if (ApplicationManager.getApplication().isReadAccessAllowed()) {
+        return tag.getValue().getText();
       }
-      return tag.getValue().getText();
+
+      return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> tag.getValue().getText());
     }
   }
 }

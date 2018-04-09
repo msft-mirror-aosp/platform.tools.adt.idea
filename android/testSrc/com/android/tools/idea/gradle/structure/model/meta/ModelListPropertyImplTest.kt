@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
+import org.junit.Test
 
 class ModelListPropertyImplTest : GradleFileModelTestCase() {
 
@@ -48,7 +49,7 @@ class ModelListPropertyImplTest : GradleFileModelTestCase() {
 
   private fun <T : Any> ModelPropertyCore<Unit, T>.testValue() = (getParsedValue(Unit) as? ParsedValue.Set.Parsed<T>)?.value
   private fun <T : Any> ModelPropertyCore<Unit, T>.testSetValue(value: T?) =
-    setParsedValue(Unit, if (value != null) ParsedValue.Set.Parsed(value = value) else ParsedValue.NotSet())
+    setParsedValue(Unit, if (value != null) ParsedValue.Set.Parsed(value = value) else ParsedValue.NotSet)
 
   private fun <T : Any> ModelPropertyCore<Unit, T>.testSetReference(value: String) =
     setParsedValue(Unit, ParsedValue.Set.Parsed(dslText = DslText(DslMode.REFERENCE, value), value = null))
@@ -56,6 +57,7 @@ class ModelListPropertyImplTest : GradleFileModelTestCase() {
   private fun <T : Any> ModelPropertyCore<Unit, T>.testSetInterpolatedString(value: String) =
     setParsedValue(Unit, ParsedValue.Set.Parsed(dslText = DslText(DslMode.INTERPOLATED_STRING, value), value = null))
 
+  @Test
   fun testPropertyValues() {
     val text = """
                ext {
@@ -92,6 +94,7 @@ class ModelListPropertyImplTest : GradleFileModelTestCase() {
     validateValues(propListRef)
   }
 
+  @Test
   fun testWritePropertyValues() {
     val text = """
                ext {
@@ -136,6 +139,7 @@ class ModelListPropertyImplTest : GradleFileModelTestCase() {
     verify(buildModel.ext())
   }
 
+  @Test
   fun testAddRemoveValues() {
     val text = """
                ext {
@@ -182,6 +186,7 @@ class ModelListPropertyImplTest : GradleFileModelTestCase() {
     verify(buildModel.ext())
   }
 
+  @Test
   fun testInsertRemoveValues() {
     val text = """
                ext {

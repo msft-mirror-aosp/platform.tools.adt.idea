@@ -152,4 +152,9 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
       tree.selectionPath = TreePath(treeModel.getPathToRoot(node))
     }
   }
+
+  // This override prevents this class from inheriting setHistory implementations from both MasterDetailsComponent and Place.Navigator
+  override fun setHistory(history: com.intellij.ui.navigation.History) {
+    myHistory = history
+  }
 }

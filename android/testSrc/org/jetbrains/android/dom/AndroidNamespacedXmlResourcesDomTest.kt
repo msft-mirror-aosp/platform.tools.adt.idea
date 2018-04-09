@@ -15,13 +15,13 @@
  */
 package org.jetbrains.android.dom
 
-import com.android.builder.model.AaptOptions
 import com.android.builder.model.AndroidProject
 import com.android.tools.idea.model.TestAndroidModel
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.goToElementAtCaret
 import com.android.tools.idea.testing.highlightedAs
 import com.google.common.truth.Truth.assertThat
+import com.intellij.codeInsight.daemon.impl.analysis.XmlUnusedNamespaceInspection
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
 import com.intellij.openapi.application.runUndoTransparentWriteAction
@@ -61,23 +61,18 @@ class AndroidNamespacedXmlResourcesDomTest : AndroidTestCase() {
     myFixture.enableInspections(
       AndroidDomInspection::class.java,
       AndroidUnknownAttributeInspection::class.java,
-      AndroidElementNotAllowedInspection::class.java
+      AndroidElementNotAllowedInspection::class.java,
+      XmlUnusedNamespaceInspection::class.java
     )
 
     runUndoTransparentWriteAction {
       myFacet.run {
-        configuration.model = TestAndroidModel(
-          namespacing = AaptOptions.Namespacing.REQUIRED
-        )
-
+        configuration.model = TestAndroidModel.namespaced(this)
         manifest!!.`package`.value = "com.example.app"
       }
 
       AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!.run {
-        configuration.model = TestAndroidModel(
-          namespacing = AaptOptions.Namespacing.REQUIRED
-        )
-
+        configuration.model = TestAndroidModel.namespaced(this)
         manifest!!.`package`.value = "com.example.lib"
       }
     }
@@ -185,7 +180,7 @@ class AndroidNamespacedXmlResourcesDomTest : AndroidTestCase() {
     val values = myFixture.addFileToProject(
       "res/values/values.xml",
       """
-        <resources xmlns:lib="http://schemas.android.com/apk/res/com.example.lib" xmlns:a="http://schemas.android.com/apk/res/android">
+        <resources xmlns:lib="http://schemas.android.com/apk/res/com.example.lib">
           <string name="some_string">Some string</string>
           <string name="app_string">@${caret}lib:string/hello</string>
         </resources>
@@ -197,7 +192,7 @@ class AndroidNamespacedXmlResourcesDomTest : AndroidTestCase() {
     myFixture.renameElementAtCaret("newName")
     myFixture.checkResult(
       """
-        <resources xmlns:newName="http://schemas.android.com/apk/res/com.example.lib" xmlns:a="http://schemas.android.com/apk/res/android">
+        <resources xmlns:newName="http://schemas.android.com/apk/res/com.example.lib">
           <string name="some_string">Some string</string>
           <string name="app_string">@${caret}newName:string/hello</string>
         </resources>
@@ -207,7 +202,7 @@ class AndroidNamespacedXmlResourcesDomTest : AndroidTestCase() {
     myFixture.goToElementAtCaret()
     myFixture.checkResult(
       """
-        <resources xmlns:${caret}newName="http://schemas.android.com/apk/res/com.example.lib" xmlns:a="http://schemas.android.com/apk/res/android">
+        <resources xmlns:${caret}newName="http://schemas.android.com/apk/res/com.example.lib">
           <string name="some_string">Some string</string>
           <string name="app_string">@newName:string/hello</string>
         </resources>

@@ -825,7 +825,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Starting capturing should display in progress duration, it will be displayed when
     // myStage.getInProgressTraceDuration() contains exactly one element corresponding to unfinished duration.
     assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(1);
-    assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries().get(0).value.getDuration()).isEqualTo(Long.MAX_VALUE);
+    assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries().get(0).value.getDurationUs()).isEqualTo(Long.MAX_VALUE);
     myCpuService.setValidTrace(true);
     stopCapturing();
     assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(0);
@@ -1282,16 +1282,15 @@ public class CpuProfilerStageTest extends AspectObserver {
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
     // Import trace mode is enabled successfully
     assertThat(stage.isImportTraceMode()).isTrue();
-
-    assertThat(stage.getCapture()).isNotNull();
-    // Check that timeline is now paused and is bounded by the capture range + 5s of right padding.
+    ProfilerTimeline timeline = stage.getStudioProfilers().getTimeline();
     Range captureRange = stage.getCapture().getRange();
-    Range timelineDataRange = profilers.getTimeline().getDataRange();
-    double delta = 0.001;
-    assertThat(timelineDataRange.getMin()).isWithin(delta).of(captureRange.getMin());
-    double timelineEndUs = captureRange.getMax() + TimeUnit.SECONDS.toMicros(5);
-    assertThat(timelineDataRange.getMax()).isWithin(delta).of(timelineEndUs);
-    assertThat(profilers.getTimeline().isPaused()).isTrue();
+    double expansionAmount = ((long)(captureRange.getLength() * CpuProfilerStage.IMPORTED_TRACE_VIEW_EXPAND_PERCENTAGE));
+    assertThat(timeline.isPaused()).isTrue();
+    assertThat((long)timeline.getDataRange().getMin()).isEqualTo((long)captureRange.getMin());
+    assertThat((long)(timeline.getDataRange().getMax() - expansionAmount)).isEqualTo((long)(captureRange.getMax()));
+    // Need 1 because of floating point percision rounding error on large numbers.
+    assertThat(timeline.getViewRange().getMin() + expansionAmount).isWithin(1).of(timeline.getDataRange().getMin());
+    assertThat(stage.getCapture()).isNotNull();
   }
 
   @Test

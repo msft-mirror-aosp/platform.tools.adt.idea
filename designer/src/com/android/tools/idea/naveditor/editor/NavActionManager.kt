@@ -17,16 +17,17 @@ package com.android.tools.idea.naveditor.editor
 
 import com.android.tools.idea.common.actions.*
 import com.android.tools.idea.common.editor.ActionManager
-import com.android.tools.idea.common.editor.ActionsToolbar
 import com.android.tools.idea.common.model.NlComponent
-import com.android.tools.idea.common.surface.ZoomType
+import com.android.tools.idea.common.surface.DesignSurfaceShortcut
 import com.android.tools.idea.naveditor.actions.*
-import com.android.tools.idea.naveditor.model.getUiName
 import com.android.tools.idea.naveditor.model.isDestination
 import com.android.tools.idea.naveditor.model.isNavigation
+import com.android.tools.idea.naveditor.model.uiName
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.IdeActions
+import org.jetbrains.android.dom.navigation.NavActionElement
 import javax.swing.JComponent
 
 /**
@@ -34,12 +35,13 @@ import javax.swing.JComponent
  */
 // Open for testing only
 open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesignSurface>(surface) {
-  private val gotoComponentAction: GotoComponentAction = GotoComponentAction(surface)
-
-  private val createDestinationMenu by lazy { CreateDestinationMenu(mySurface) }
+  private val gotoComponentAction: AnAction = GotoComponentAction(surface)
+  private val zoomInAction: AnAction = DesignSurfaceShortcut.ZOOM_IN.registerForAction(ZoomInAction(surface), surface)
+  private val zoomOutAction: AnAction = DesignSurfaceShortcut.ZOOM_OUT.registerForAction(ZoomOutAction(surface), surface)
+  private val zoomToFitAction: AnAction = DesignSurfaceShortcut.ZOOM_FIT.registerForAction(ZoomToFitAction(surface), surface)
 
   // Open for testing only
-  open val addExistingDestinationMenu by lazy { AddExistingDestinationMenu(mySurface) }
+  open val addDestinationMenu by lazy { AddDestinationMenu(mySurface) }
 
   override fun registerActionsShortcuts(component: JComponent) {
     ActionManager.registerAction(gotoComponentAction, IdeActions.ACTION_GOTO_DECLARATION, component)
@@ -73,9 +75,9 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
   }
 
   private fun addSurfaceGroup(group: DefaultActionGroup) {
-    group.add(ZoomInAction(mySurface))
-    group.add(ZoomOutAction(mySurface))
-    group.add(ZoomToFitAction(mySurface))
+    group.add(zoomInAction)
+    group.add(zoomOutAction)
+    group.add(zoomToFitAction)
 
     group.addSeparator()
     group.add(gotoComponentAction)
@@ -86,7 +88,8 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
     component: NlComponent,
     actionManager: com.intellij.openapi.actionSystem.ActionManager
   ) {
-    group.add(ActivateComponentAction(if (component.isNavigation) "Open" else "Edit", mySurface, component))
+    val activateComponentAction = ActivateComponentAction(if (component.isNavigation) "Open" else "Edit", mySurface, component)
+    group.add(activateComponentAction)
 
     group.addSeparator()
     group.add(createAddActionGroup(component))
@@ -102,10 +105,15 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
 
   private fun createAddActionGroup(component: NlComponent): DefaultActionGroup {
     val group = DefaultActionGroup("Add Action", true)
-    mySurface?.configuration?.resourceResolver?.let { group.add(ToDestinationAction(mySurface, component, it)) }
-    group.add(ToSelfAction(mySurface, component))
-    group.add(ReturnToSourceAction(mySurface, component))
-    group.add(AddGlobalAction(mySurface, component))
+
+    val enabled = mySurface.schema.getDestinationSubtags(component.tagName).containsKey(NavActionElement::class.java)
+    if (enabled) {
+      group.add(ToDestinationAction(mySurface, component))
+      group.add(ToSelfAction(mySurface, component))
+      group.add(ReturnToSourceAction(mySurface, component))
+      group.add(AddGlobalAction(mySurface, component))
+    }
+
     return group
   }
 
@@ -115,12 +123,11 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
     val currentNavigation = mySurface.currentNavigation
     group.add(AddToNewGraphAction(mySurface, components))
 
-    val resolver = mySurface?.configuration?.resourceResolver
-
-    if (resolver != null && currentNavigation.childCount > 0) {
+    val subnavs = currentNavigation.children.filter { it.isNavigation && !components.contains(it) }
+    if (!subnavs.isEmpty()) {
       group.addSeparator()
-      for (graph in currentNavigation.children.filter { it.isNavigation && !components.contains(it) }) {
-        group.add(AddToExistingGraphAction(mySurface, components, graph.getUiName(resolver), graph))
+      for (graph in subnavs) {
+        group.add(AddToExistingGraphAction(mySurface, components, graph.uiName, graph))
       }
     }
 
@@ -135,7 +142,6 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
     toolbar: Boolean
   ) {
     // This is called whenever the selection changes, but since our contents are static they can be cached.
-    group.add(createDestinationMenu)
-    group.add(addExistingDestinationMenu)
+    group.add(addDestinationMenu)
   }
 }

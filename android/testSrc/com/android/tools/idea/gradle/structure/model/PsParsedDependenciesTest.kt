@@ -19,8 +19,10 @@ import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyMode
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import org.hamcrest.CoreMatchers.hasItems
 import org.junit.Assert.assertThat
+import org.junit.Test
 
 class PsParsedDependenciesTest : GradleFileModelTestCase() {
+  @Test
   fun testParsedDependencies() {
     writeToBuildFile(
       """
@@ -37,7 +39,7 @@ class PsParsedDependenciesTest : GradleFileModelTestCase() {
     val dependencies = mutableListOf<ArtifactDependencyModel>()
     parsedDependencies.forEachLibraryDependency { dependencies.add(it) }
     assertThat(
-      dependencies.map { it.compactNotation().value() to it.configurationName() },
+      dependencies.map { it.compactNotation() to it.configurationName() },
       hasItems(
         "com.android.support:appcompat-v7:+" to "api",
         "com.example.libs:lib1:1.0" to "implementation",
@@ -47,6 +49,7 @@ class PsParsedDependenciesTest : GradleFileModelTestCase() {
     )
   }
 
+  @Test
   fun testFindLibraries() {
     writeToBuildFile(
       """
@@ -62,7 +65,7 @@ class PsParsedDependenciesTest : GradleFileModelTestCase() {
     val parsedDependencies = PsParsedDependencies(gradleBuildModel)
     val lib1 = parsedDependencies.findLibraryDependencies("com.example.libs", "lib1")
     assertThat(
-      lib1.map { it.compactNotation().value() to it.configurationName() },
+      lib1.map { it.compactNotation() to it.configurationName() },
       hasItems(
         "com.example.libs:lib1:1.0" to "implementation",
         "com.example.libs:lib1:1.0" to "debugImplementation",

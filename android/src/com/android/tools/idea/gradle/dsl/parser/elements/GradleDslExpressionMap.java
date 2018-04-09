@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
+import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
+import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder;
 import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
 import com.google.common.collect.Maps;
 import com.intellij.psi.PsiElement;
@@ -25,9 +27,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 
 /**
- * Represents an element which consists of a map from properties of type {@link String} and values of type {@link GradleDslExpression}.
+ * Represents an element which consists of a map from properties of type {@link String} and values of type {@link GradleDslSimpleExpression}.
  */
-public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
+public final class GradleDslExpressionMap extends GradlePropertiesDslElement implements GradleDslExpression {
 
   public GradleDslExpressionMap(@Nullable GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, null, name);
@@ -68,8 +70,8 @@ public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
     Map<String, GradleNotNullValue<V>> result = Maps.newLinkedHashMap();
     for (Map.Entry<String, GradleDslElement> entry : getPropertyElements().entrySet()) {
       GradleDslElement propertyElement = entry.getValue();
-      if (propertyElement instanceof GradleDslExpression) {
-        V value = ((GradleDslExpression)propertyElement).getValue(clazz);
+      if (propertyElement instanceof GradleDslSimpleExpression) {
+        V value = ((GradleDslSimpleExpression)propertyElement).getValue(clazz);
         if (value != null) {
           result.put(entry.getKey(), new GradleNotNullValueImpl<>(propertyElement, value));
         }
@@ -92,5 +94,11 @@ public final class GradleDslExpressionMap extends GradlePropertiesDslElement {
 
   public boolean isLiteralMap() {
     return myUseAssignment;
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getExpression() {
+    return getPsiElement();
   }
 }

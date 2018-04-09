@@ -15,29 +15,36 @@
  */
 package com.android.tools.idea.gradle.dsl.model.ext;
 
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.DefaultTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.SingleArgumentMethodTransform;
+import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.REFERENCE;
+
 public class PropertyUtil {
   @NonNls private static final String FILE_METHOD_NAME = "file";
 
   @NotNull
-  public static GradleDslExpression createOrReplaceBasicExpression(@NotNull GradleDslElement parent,
-                                                                   @Nullable GradleDslElement oldElement,
-                                                                   @NotNull Object value,
-                                                                   @NotNull GradleNameElement name) {
+  public static GradleDslSimpleExpression createOrReplaceBasicExpression(@NotNull GradleDslElement parent,
+                                                                         @Nullable GradleDslElement oldElement,
+                                                                         @NotNull Object value,
+                                                                         @NotNull GradleNameElement name) {
     boolean isReference = value instanceof ReferenceTo;
 
     // Check if we can reuse the element.
     if (!isReference && oldElement instanceof GradleDslLiteral ||
         isReference && oldElement instanceof GradleDslReference) {
-      GradleDslExpression expression = (GradleDslExpression)oldElement;
+      GradleDslSimpleExpression expression = (GradleDslSimpleExpression)oldElement;
       expression.setValue(value);
       return expression;
     }
@@ -46,7 +53,7 @@ public class PropertyUtil {
         name = oldElement.getNameElement();
       }
 
-      GradleDslExpression newElement;
+      GradleDslSimpleExpression newElement;
       if (!isReference) {
         newElement = new GradleDslLiteral(parent, name);
       }
@@ -78,17 +85,11 @@ public class PropertyUtil {
         list.replaceExpression((GradleDslExpression)oldElement, (GradleDslExpression)newElement);
       }
       else {
-        list.addNewExpression((GradleDslExpression)newElement, list.getExpressions().size());
+        list.addNewExpression((GradleDslSimpleExpression)newElement, list.getExpressions().size());
       }
     }
-    else if (holder instanceof GradleDslElementList) {
-      GradleDslElementList list = (GradleDslElementList)holder;
-      if (oldElement != null) {
-        list.replaceElement(oldElement, newElement);
-      }
-      else {
-        list.addNewElement(newElement);
-      }
+    else if (holder instanceof GradleDslMethodCall) {
+      throw new UnsupportedOperationException("Replacing elements in argument lists is not currently supported");
     }
     else {
       throw new IllegalStateException("Property holder has unknown type, " + holder);
@@ -96,6 +97,13 @@ public class PropertyUtil {
   }
 
   public static void removeElement(@NotNull GradleDslElement element) {
+    if (element instanceof FakeElement) {
+      // Fake elements don't actually exist in the tree and therefore can't be removed from
+      // their holders.
+      ((FakeElement)element).delete();
+      return;
+    }
+
     GradleDslElement holder = element.getParent();
 
     if (holder instanceof GradlePropertiesDslElement) {
@@ -105,13 +113,52 @@ public class PropertyUtil {
       GradleDslExpressionList list = (GradleDslExpressionList)holder;
       list.removeElement(element);
     }
-    else {
-      assert holder instanceof GradleDslElementList;
-      GradleDslElementList elementList = (GradleDslElementList)holder;
-      elementList.removeElement(element);
+    else if (holder instanceof GradleDslMethodCall) {
+      GradleDslMethodCall methodCall = (GradleDslMethodCall)holder;
+      methodCall.remove(element);
+    } else {
+      throw new IllegalStateException("Property holder has unknown type, " + holder);
     }
   }
 
+  @NotNull
   public static final PropertyTransform DEFAULT_TRANSFORM = new DefaultTransform();
+  @NotNull
   public static final PropertyTransform FILE_TRANSFORM = new SingleArgumentMethodTransform(FILE_METHOD_NAME);
+
+  @NotNull
+  public static GradlePropertyModelImpl resolveModel(@NotNull GradlePropertyModelImpl model) {
+    Set<GradlePropertyModel> seenModels = new HashSet<>();
+
+    while (model.getValueType() == REFERENCE && !seenModels.contains(model)) {
+      if (model.getDependencies().isEmpty()) {
+        return model;
+      }
+      seenModels.add(model);
+      model = model.dependencies().get(0);
+    }
+    return model;
+  }
+
+  /**
+   * Follows references as the DslElement level to obtain the resulting element.
+   *
+   * @param expression expression to start at
+   * @return resolved expression
+   */
+  @NotNull
+  public static GradleDslSimpleExpression resolveElement(@NotNull GradleDslSimpleExpression expression) {
+    while (expression instanceof GradleDslReference && !expression.hasCycle()) {
+      GradleReferenceInjection injection = ((GradleDslReference)expression).getReferenceInjection();
+      if (injection == null) {
+        return expression;
+      }
+      GradleDslSimpleExpression next = injection.getToBeInjectedExpression();
+      if (next == null) {
+        return expression;
+      }
+      expression = next;
+    }
+    return expression;
+  }
 }

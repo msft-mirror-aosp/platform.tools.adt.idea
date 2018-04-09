@@ -346,8 +346,8 @@ private fun RenderResources.resolveColor(colorValue: ResourceValue?, project: Pr
   val state = states[states.size - 1]
 
   val stateColor = parseColor(state.value) ?: resolveColor(findResValue(state.value, false), project, depth + 1) ?: return null
-  try {
-    return makeColorWithAlpha(stateColor, state.alpha)
+  return try {
+    makeColorWithAlpha(stateColor, state.alpha)
   } catch (e: NumberFormatException) {
     // If the alpha value is not valid, Android uses 1.0
     LOG.warn(
@@ -356,7 +356,7 @@ private fun RenderResources.resolveColor(colorValue: ResourceValue?, project: Pr
         stateList.fileName
       )
     )
-    return stateColor
+    stateColor
   }
 }
 
@@ -718,7 +718,7 @@ fun getCompletionFromTypes(
   var frameworkResources: AbstractResourceRepository? = null
   if (androidPlatform != null) {
     val targetData = androidPlatform.sdkData.getTargetData(androidPlatform.target)
-    frameworkResources = targetData.getFrameworkResources(true)
+    frameworkResources = targetData.getFrameworkResources(false)
   }
 
   val resources = Lists.newArrayListWithCapacity<String>(500)
@@ -982,5 +982,39 @@ fun AbstractResourceRepository.getResourceItems(
         !visibilityLookup.isPrivate(patchedType, name)
       }
     }
+  }
+}
+
+/** Checks if the given [ResourceItem] is available in XML resources in the given [AndroidFacet]. */
+fun ResourceItem.isAccessibleInXml(facet: AndroidFacet): Boolean {
+  return isAccessible(namespace, type, name, facet)
+}
+
+/** Checks if the given [ResourceValue] is available in XML resources in the given [AndroidFacet]. */
+fun ResourceValue.isAccessibleInXml(facet: AndroidFacet): Boolean {
+  return isAccessible(namespace, resourceType, name, facet)
+}
+
+/** Checks if the given [ResourceItem] is available in Java or Kotlin code in the given [AndroidFacet]. */
+fun ResourceItem.isAccessibleInCode(facet: AndroidFacet): Boolean {
+  return isAccessibleInXml(facet) // TODO(b/74324283): implement the third visibility level.
+}
+
+/** Checks if the given [ResourceValue] is available in Java or Kotlin code in the given [AndroidFacet]. */
+fun ResourceValue.isAccessibleInCode(facet: AndroidFacet): Boolean {
+  return isAccessibleInXml(facet) // TODO(b/74324283): implement the third visibility level.
+}
+
+/**
+ * Temporary implementation of the accessibility checks, which ignores the "call site" and assumes only public resources can be accessed.
+ *
+ * TODO(b/74324283): Build the concept of visibility level and scope (private to a given library/module) into repositories, items and values.
+ */
+private fun isAccessible(namespace: ResourceNamespace, type: ResourceType, name: String, facet: AndroidFacet): Boolean {
+  val repoManager = ResourceRepositoryManager.getOrCreateInstance(facet)
+  return if (namespace == ResourceNamespace.ANDROID) {
+    (repoManager.getFrameworkResources(false) as FrameworkResourceRepository).isPublic(type, name)
+  } else {
+    !repoManager.resourceVisibility.isPrivate(type, name)
   }
 }

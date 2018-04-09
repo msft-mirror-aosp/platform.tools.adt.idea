@@ -96,7 +96,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PROFILER_ENERGY_PROFILER_ENABLED = Flag.create(
     PROFILER, "energy", "Enable Energy profiling",
-    "Enable the new energy profiler. It monitors battery usage of the selected app.", false);
+    "Enable the new energy profiler. It monitors battery usage of the selected app.", true);
 
   public static final Flag<Boolean> PROFILER_USE_SIMPLEPERF = Flag.create(
     PROFILER, "simpleperf", "Enable Simpleperf profiling",
@@ -107,7 +107,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_IMPORT_CPU_TRACE = Flag.create(
     PROFILER, "cpu.import.trace", "Enable CPU trace importing",
     "Add the option to import CPU trace files when right-clicking the CPU profiler usage chart.",
-    true);
+    false);
 
   public static final Flag<Boolean> PROFILER_EXPORT_CPU_TRACE = Flag.create(
     PROFILER, "cpu.export.trace", "Enable CPU trace exporting",
@@ -117,7 +117,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_STARTUP_CPU_PROFILING = Flag.create(
     PROFILER, "startup.cpu.profiling", "Enable startup CPU Profiling",
     "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_CPU_API_TRACING = Flag.create(
     PROFILER, "cpu.api.tracing", "Enable CPU API Tracing",
@@ -245,8 +245,20 @@ public final class StudioFlags {
     "When provisioning devices and launching Instant Apps, use the AIA SDK library JAR to perform these functions if available",
     false);
 
+  public static final Flag<Boolean> RUNDEBUG_ANDROID_BUILD_BUNDLE_ENABLED = Flag.create(
+    RUNDEBUG_GROUP, "android.bundle.build.enabled", "Enable the Build Bundle action",
+    "If enabled, the \"Build Bundle(s)\" menu item is enabled. " +
+    "Changing the value of this flag requires restarting Android Studio.",
+    false);
+
 
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
+  public static final Flag<Boolean> FIX_ANDROID_RUN_CONFIGURATIONS_ENABLED = Flag.create(
+    GRADLE_IDE, "gradle.run.configuration.fix.enabled",
+    "Check Android Run Configurations contains the \"Gradle-aware Make\" task and fix them",
+    "When a project is loaded, automatically add a \"Gradle-aware Make\" task to each Run Configuration if the task is missing" ,
+    true);
+
   public static final Flag<Boolean> GRADLE_INVOCATIONS_INDEXING_AWARE = Flag.create(
     GRADLE_IDE, "indexing.aware", "Execute gradle actions in indexing-aware mode",
     "Make Gradle actions and IDE indexing mutually exclusive to allow better utilisation of machine resources.",
@@ -257,6 +269,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> NEW_PSD_ENABLED = Flag.create(
     GRADLE_IDE, "new.psd", "Enable new \"Project Structure\" dialog",
     "Turns on the new \"Project Structure\" dialog.", false);
+  public static final Flag<Boolean> SINGLE_VARIANT_SYNC_ENABLED = Flag.create(
+    GRADLE_IDE, "single.variant.sync", "Enable new \"Single-Variant Sync\"",
+    "Turns on Single-Variant Sync.", false);
 
   private static final FlagGroup SQLITE_VIEWER = new FlagGroup(FLAGS, "sqlite.viewer", "SQLite Viewer");
   public static final Flag<Boolean> SQLITE_VIEWER_ENABLED = Flag.create(

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
-import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
@@ -25,8 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Represents a literal element.
@@ -54,12 +51,6 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
     myUnsavedConfigBlock = configBlock;
   }
 
-  @Nullable
-  public String getRawText() {
-    PsiElement element = getCurrentElement();
-    return element == null ? null : element.getText();
-  }
-
   @Override
   @Nullable
   public Object getValue() {
@@ -68,7 +59,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
       return null;
     }
     return ApplicationManager.getApplication()
-      .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, true));
+                             .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, true));
   }
 
   @Override
@@ -79,7 +70,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
       return null;
     }
     return ApplicationManager.getApplication()
-      .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, false));
+                             .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, false));
   }
 
   @Nullable
@@ -95,7 +86,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   @Nullable
   public <T> T getValue(@NotNull Class<T> clazz) {
     Object value = getValue();
-    if (value != null && clazz.isInstance(value)) {
+    if (value != null && clazz.isAssignableFrom(value.getClass())) {
       return clazz.cast(value);
     }
     return null;
@@ -105,7 +96,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   @Nullable
   public <T> T getUnresolvedValue(@NotNull Class<T> clazz) {
     Object value = getUnresolvedValue();
-    if (value != null && clazz.isInstance(value)) {
+    if (value != null && clazz.isAssignableFrom(value.getClass())) {
       return clazz.cast(value);
     }
     return null;
@@ -114,7 +105,9 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   @Override
   public void setValue(@NotNull Object value) {
     checkForValidValue(value);
-    setUnsavedValue(getDslFile().getParser().convertToPsiElement(value));
+    PsiElement element =
+      ApplicationManager.getApplication().runReadAction((Computable<PsiElement>)() -> getDslFile().getParser().convertToPsiElement(value));
+    setUnsavedValue(element);
     valueChanged();
   }
 
@@ -147,7 +140,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   }
 
   @Override
-  protected void delete() {
+  public void delete() {
     getDslFile().getWriter().deleteDslLiteral(this);
   }
 
