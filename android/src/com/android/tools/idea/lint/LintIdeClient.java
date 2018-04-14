@@ -18,12 +18,15 @@ package com.android.tools.idea.lint;
 import com.android.annotations.NonNull;
 import com.android.builder.model.AndroidProject;
 import com.android.builder.model.LintOptions;
+import com.android.ide.common.repository.GradleCoordinate;
 import com.android.ide.common.repository.GradleVersion;
 import com.android.ide.common.repository.ResourceVisibilityLookup;
+import com.android.ide.common.repository.SdkMavenRepository;
 import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.manifmerger.Actions;
 import com.android.repository.Revision;
+import com.android.repository.api.RemotePackage;
 import com.android.sdklib.BuildToolInfo;
 import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.tools.idea.editors.manifest.ManifestUtils;
@@ -32,6 +35,8 @@ import com.android.tools.idea.model.MergedManifest;
 import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.res.*;
 import com.android.tools.idea.sdk.IdeSdks;
+import com.android.tools.idea.sdk.progress.StudioLoggerProgressIndicator;
+import com.android.tools.idea.templates.IdeDeprecatedSdkRegistry;
 import com.android.tools.idea.templates.IdeGoogleMavenRepository;
 import com.android.tools.lint.checks.ApiLookup;
 import com.android.tools.lint.client.api.*;
@@ -87,8 +92,10 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static com.android.ide.common.repository.GoogleMavenRepository.MAVEN_GOOGLE_CACHE_DIR_KEY;
+import static com.android.tools.lint.checks.DeprecatedSdkRegistryKt.DEPRECATED_SDK_CACHE_DIR_KEY;
 import static com.android.tools.lint.detector.api.TextFormat.RAW;
 
 /**
@@ -368,6 +375,32 @@ public class LintIdeClient extends LintClient implements Disposable {
     };
   }
 
+  @NotNull
+  @Override
+  public GradleVisitor getGradleVisitor() {
+    return new LintIdeGradleVisitor();
+  }
+
+  @Nullable
+  @Override
+  public GradleVersion getHighestKnownVersion(@NonNull GradleCoordinate coordinate,
+                                              @Nullable Predicate<GradleVersion> filter) {
+    AndroidSdkHandler sdkHandler = getSdk();
+    if (sdkHandler == null) {
+      return null;
+    }
+    StudioLoggerProgressIndicator logger = new StudioLoggerProgressIndicator(getClass());
+    RemotePackage sdkPackage = SdkMavenRepository.findLatestRemoteVersion(coordinate, sdkHandler, filter, logger);
+    if (sdkPackage != null) {
+      GradleCoordinate found = SdkMavenRepository.getCoordinateFromSdkPath(sdkPackage.getPath());
+      if (found != null) {
+        return found.getVersion();
+      }
+    }
+
+    return null;
+  }
+
   @NonNull
   @Override
   public List<File> getJavaClassFolders(@NonNull com.android.tools.lint.detector.api.Project project) {
@@ -557,6 +590,11 @@ public class LintIdeClient extends LintClient implements Disposable {
     if (MAVEN_GOOGLE_CACHE_DIR_KEY.equals(name)) {
       // Share network cache with existing implementation
       return IdeGoogleMavenRepository.INSTANCE.getCacheDir();
+    }
+
+    if (DEPRECATED_SDK_CACHE_DIR_KEY.equals(name)) {
+      // Share network cache with existing implementation
+      return IdeDeprecatedSdkRegistry.INSTANCE.getCacheDir();
     }
 
     final String path = ourSystemPath != null ? ourSystemPath : (ourSystemPath = PathUtil.getCanonicalPath(PathManager.getSystemPath()));
@@ -939,11 +977,11 @@ public class LintIdeClient extends LintClient implements Disposable {
       AndroidFacet facet = AndroidFacet.getInstance(module);
       if (facet != null) {
         if (includeLibraries) {
-          return AppResourceRepository.getOrCreateInstance(facet);
+          return ResourceRepositoryManager.getAppResources(facet);
         } else if (includeModuleDependencies) {
-          return ProjectResourceRepository.getOrCreateInstance(facet);
+          return ResourceRepositoryManager.getProjectResources(facet);
         } else {
-          return ModuleResourceRepository.getOrCreateInstance(facet);
+          return ResourceRepositoryManager.getModuleResources(facet);
         }
       }
     }

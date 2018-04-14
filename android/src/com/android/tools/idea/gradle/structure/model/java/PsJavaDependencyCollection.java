@@ -16,17 +16,14 @@
 package com.android.tools.idea.gradle.structure.model.java;
 
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel;
-import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel;
 import com.android.tools.idea.gradle.model.java.JarLibraryDependency;
 import com.android.tools.idea.gradle.project.model.JavaModuleModel;
 import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec;
 import com.android.tools.idea.gradle.structure.model.PsModelCollection;
 import com.android.tools.idea.gradle.structure.model.PsParsedDependencies;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import org.gradle.tooling.model.GradleModuleVersion;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -52,9 +49,11 @@ class PsJavaDependencyCollection implements PsModelCollection<PsJavaDependency> 
         PsArtifactDependencySpec spec = PsArtifactDependencySpec.create(moduleVersion);
         List<ArtifactDependencyModel>
           parsed = parsedDependencies.findLibraryDependencies(moduleVersion.getGroup(), moduleVersion.getName());
-        PsLibraryJavaDependency dependency =
-          new PsLibraryJavaDependency(myParent, spec, libraryDependency, parsed);
-        myLibraryDependenciesBySpec.put(spec.toString(), dependency);
+        if (!parsed.isEmpty()) {
+          PsLibraryJavaDependency dependency =
+            new PsLibraryJavaDependency(myParent, spec, libraryDependency, parsed.stream().findFirst().orElse(null));
+          myLibraryDependenciesBySpec.put(spec.toString(), dependency);
+        }
       }
     }
   }
@@ -76,23 +75,5 @@ class PsJavaDependencyCollection implements PsModelCollection<PsJavaDependency> 
   private static void forEachDeclaredDependency(@NotNull Map<String, ? extends PsJavaDependency> dependenciesBySpec,
                                                 @NotNull Consumer<PsJavaDependency> consumer) {
     dependenciesBySpec.values().stream().filter(PsJavaDependency::isDeclared).forEach(consumer);
-  }
-
-  void addLibraryDependency(@NotNull PsArtifactDependencySpec spec, @Nullable ArtifactDependencyModel parsedModel) {
-    PsLibraryJavaDependency dependency = myLibraryDependenciesBySpec.get(spec.toString());
-    if (dependency == null) {
-      dependency =
-        new PsLibraryJavaDependency(myParent, spec, null, parsedModel != null ? ImmutableList.of(parsedModel) : ImmutableList.of());
-      myLibraryDependenciesBySpec.put(spec.toString(), dependency);
-    }
-    else {
-      updateDependency(dependency, parsedModel);
-    }
-  }
-
-  private static void updateDependency(@NotNull PsJavaDependency dependency, @Nullable DependencyModel parsedModel) {
-    if (parsedModel != null) {
-      dependency.addParsedModel(parsedModel);
-    }
   }
 }

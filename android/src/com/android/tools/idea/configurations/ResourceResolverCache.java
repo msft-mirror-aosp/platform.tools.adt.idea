@@ -23,13 +23,13 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.ResourceValueMap;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.ide.common.resources.configuration.LocaleQualifier;
-import com.android.ide.common.util.LazyUnionMap;
+import com.android.ide.common.util.DisjointUnionMap;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.idea.rendering.Locale;
 import com.android.tools.idea.rendering.multi.CompatibilityRenderTarget;
-import com.android.tools.idea.res.AppResourceRepository;
+import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.tools.idea.res.ResourceIdManager;
 import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.android.utils.SparseArray;
@@ -96,7 +96,7 @@ public class ResourceResolverCache {
                                               @NotNull String themeStyle,
                                               @NotNull FolderConfiguration fullConfiguration) {
     // Are caches up to date?
-    final AppResourceRepository resources = AppResourceRepository.getOrCreateInstance(myManager.getModule());
+    final LocalResourceRepository resources = ResourceRepositoryManager.getAppResources(myManager.getModule());
     if (resources == null) {
       return ResourceResolver.create(Collections.emptyMap(), null);
     }
@@ -139,7 +139,7 @@ public class ResourceResolverCache {
 
       // Resource Resolver
       Map<ResourceNamespace, Map<ResourceType, ResourceValueMap>> allResources =
-        new LazyUnionMap<>(Collections.singletonMap(ResourceNamespace.ANDROID, frameworkResources), configuredAppRes.rowMap());
+          new DisjointUnionMap<>(Collections.singletonMap(ResourceNamespace.ANDROID, frameworkResources), configuredAppRes.rowMap());
 
       assert themeStyle.startsWith(PREFIX_RESOURCE_REF) : themeStyle;
 

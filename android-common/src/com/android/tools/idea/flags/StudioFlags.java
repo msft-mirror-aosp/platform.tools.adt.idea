@@ -173,12 +173,6 @@ public final class StudioFlags {
     NELE, "animated.motion.layout", "Show preview animations toolbar for MotionLayout",
     "Show an animations bar that allows playback of MotionLayout animations.",
     false);
-
-  public static final Flag<Boolean> NELE_SAMPLE_DATA = Flag.create(
-    NELE, "mock.data", "Enable \"Sample Data\" for the layout editor",
-    "Enables the use of @sample references in the tools namespace to use sample data.",
-    true);
-
   public static final Flag<Boolean> NELE_MOCKUP_EDITOR = Flag.create(
     NELE, "mockup.editor", "Enable the Mockup Editor",
     "Enable the Mockup Editor to ease the creation of Layouts from a design file.",
@@ -192,7 +186,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_SAMPLE_DATA_UI = Flag.create(
     NELE, "widget.assistant", "Enable the new Sample Data UI components",
     "Enable the Sample Data UI to setup tools attributes.",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_CONVERT_VIEW = Flag.create(
     NELE, "convert.view", "Enable the Convert View Action",
@@ -305,7 +299,7 @@ public final class StudioFlags {
     "If enabled, show the action in the refactoring menu", true);
   public static final Flag<Boolean> MIGRATE_TO_ANDROID_X_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.androidx.enabled", "Enable the Migrate to AndroidX refactoring feature",
-    "If enabled, show the action in the refactoring menu", false);
+    "If enabled, show the action in the refactoring menu", true);
 
   private static final FlagGroup IOT = new FlagGroup(FLAGS, "iot", "IoT features");
   public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(

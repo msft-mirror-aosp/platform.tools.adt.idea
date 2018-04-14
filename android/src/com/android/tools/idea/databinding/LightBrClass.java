@@ -16,10 +16,7 @@
 package com.android.tools.idea.databinding;
 
 import com.android.ide.common.resources.DataBindingResourceType;
-import com.android.tools.idea.res.DataBindingInfo;
-import com.android.tools.idea.res.LocalResourceRepository;
-import com.android.tools.idea.res.ModuleResourceRepository;
-import com.android.tools.idea.res.PsiDataBindingResourceItem;
+import com.android.tools.idea.res.*;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.psi.*;
@@ -44,7 +41,6 @@ import java.util.Set;
  * The light class that represents a data binding BR file
  */
 public class LightBrClass extends AndroidLightClassBase {
-  private static final String BINDABLE_QUALIFIED_NAME = "android.databinding.Bindable";
   private final AndroidFacet myFacet;
   private CachedValue<PsiField[]> myFieldCache;
   @NotNull
@@ -65,7 +61,7 @@ public class LightBrClass extends AndroidLightClassBase {
           PsiField[] doCompute() {
             Project project = facet.getModule().getProject();
             PsiElementFactory elementFactory = PsiElementFactory.SERVICE.getInstance(project);
-            LocalResourceRepository moduleResources = ModuleResourceRepository.findExistingInstance(facet);
+            LocalResourceRepository moduleResources = ResourceRepositoryManager.getOrCreateInstance(facet).getModuleResources(false);
             if (moduleResources == null) {
               return defaultValue();
             }
@@ -103,7 +99,8 @@ public class LightBrClass extends AndroidLightClassBase {
 
   private Set<String> collectVariableNamesFromBindables() {
     JavaPsiFacade facade = JavaPsiFacade.getInstance(myFacet.getModule().getProject());
-    PsiClass aClass = facade.findClass(BINDABLE_QUALIFIED_NAME, myFacet.getModule().getModuleWithDependenciesAndLibrariesScope(false));
+    DataBindingMode mode = ModuleDataBinding.getInstance(myFacet).getDataBindingMode();
+    PsiClass aClass = facade.findClass(mode.bindable, myFacet.getModule().getModuleWithDependenciesAndLibrariesScope(false));
     if (aClass == null) {
       return null;
     }

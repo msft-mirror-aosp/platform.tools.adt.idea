@@ -19,15 +19,13 @@ import android.databinding.tool.reflection.Callable;
 import android.databinding.tool.reflection.ModelClass;
 import android.databinding.tool.reflection.ModelMethod;
 import com.android.ide.common.resources.DataBindingResourceType;
+import com.android.tools.idea.databinding.DataBindingMode;
 import com.android.tools.idea.databinding.DataBindingUtil;
 import com.android.tools.idea.databinding.ModuleDataBinding;
 import com.android.tools.idea.lang.databinding.model.PsiModelClass;
 import com.android.tools.idea.lang.databinding.model.PsiModelMethod;
 import com.android.tools.idea.lang.databinding.psi.*;
-import com.android.tools.idea.res.DataBindingInfo;
-import com.android.tools.idea.res.LocalResourceRepository;
-import com.android.tools.idea.res.ModuleResourceRepository;
-import com.android.tools.idea.res.PsiDataBindingResourceItem;
+import com.android.tools.idea.res.*;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.util.TextRange;
@@ -62,7 +60,7 @@ public class DataBindingXmlReferenceContributor extends PsiReferenceContributor 
     if (module != null) {
       AndroidFacet facet = AndroidFacet.getInstance(module);
       if (facet != null && ModuleDataBinding.getInstance(facet).isEnabled()) {
-        LocalResourceRepository moduleResources = ModuleResourceRepository.getOrCreateInstance(facet);
+        LocalResourceRepository moduleResources = ResourceRepositoryManager.getModuleResources(facet);
         PsiFile topLevelFile = InjectedLanguageUtil.getTopLevelFile(element);
         if (topLevelFile != null) {
           String name = topLevelFile.getName();
@@ -91,8 +89,8 @@ public class DataBindingXmlReferenceContributor extends PsiReferenceContributor 
         Module module = ModuleUtilCore.findModuleForPsiElement(element);
         if (module != null) {
           AndroidFacet facet = AndroidFacet.getInstance(module);
-          if (facet != null && ModuleDataBinding.getInstance(facet).isEnabled()) {
-            LocalResourceRepository moduleResources = ModuleResourceRepository.getOrCreateInstance(facet);
+          if (facet != null && ModuleDataBinding.getInstance(facet).getDataBindingMode() != DataBindingMode.NONE) {
+            LocalResourceRepository moduleResources = ResourceRepositoryManager.getModuleResources(facet);
             PsiFile topLevelFile = InjectedLanguageUtil.getTopLevelFile(element);
             if (topLevelFile != null) {
               if (topLevelFile.getFileType() == DbFileType.INSTANCE) {

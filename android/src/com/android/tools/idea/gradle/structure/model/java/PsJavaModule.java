@@ -100,18 +100,9 @@ public class PsJavaModule extends PsModule {
 
     // Reset dependencies.
     myDependencyCollection = null;
-    PsJavaDependencyCollection dependencyCollection = getOrCreateDependencyCollection();
 
     PsArtifactDependencySpec spec = PsArtifactDependencySpec.create(library);
     assert spec != null;
-
-    PsParsedDependencies parsedDependencies = getParsedDependencies();
-    List<ArtifactDependencyModel> matchingParsedDependencies =
-      parsedDependencies.findLibraryDependencies(spec.getGroup(), spec.getName());
-    for (ArtifactDependencyModel parsedDependency : matchingParsedDependencies) {
-      dependencyCollection.addLibraryDependency(spec, parsedDependency);
-    }
-
     fireLibraryDependencyAddedEvent(spec);
     setModified(true);
   }
@@ -122,7 +113,7 @@ public class PsJavaModule extends PsModule {
   }
 
   @Override
-  public void removeDependency(@NotNull PsDependency dependency) {
+  public void removeDependency(@NotNull PsDeclaredDependency dependency) {
     throw new UnsupportedOperationException();
   }
 

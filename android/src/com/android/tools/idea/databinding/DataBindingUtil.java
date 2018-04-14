@@ -24,12 +24,8 @@ import com.android.tools.idea.lang.databinding.DbFile;
 import com.android.tools.idea.lang.databinding.psi.DbTokenTypes;
 import com.android.tools.idea.lang.databinding.psi.PsiDbConstantValue;
 import com.android.tools.idea.lang.databinding.psi.PsiDbDefaults;
-import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.MergedManifest;
-import com.android.tools.idea.res.DataBindingInfo;
-import com.android.tools.idea.res.LocalResourceRepository;
-import com.android.tools.idea.res.ModuleResourceRepository;
-import com.android.tools.idea.res.PsiDataBindingResourceItem;
+import com.android.tools.idea.res.*;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.application.ApplicationManager;
@@ -108,7 +104,7 @@ public class DataBindingUtil {
   public static boolean invalidateAllSources(DataBindingProjectComponent component) {
     boolean invalidated = false;
     for (AndroidFacet facet : component.getDataBindingEnabledFacets()) {
-      LocalResourceRepository moduleResources = ModuleResourceRepository.getOrCreateInstance(facet);
+      LocalResourceRepository moduleResources = ResourceRepositoryManager.getModuleResources(facet);
       Map<String, DataBindingInfo> dataBindingResourceFiles = moduleResources.getDataBindingResourceFiles();
       if (dataBindingResourceFiles == null) {
         continue;
@@ -216,7 +212,8 @@ public class DataBindingUtil {
       } else if (SdkConstants.VIEW_INCLUDE.equals(elementName)) {
         return getViewClassNameFromInclude(tag, facet);
       } else if (SdkConstants.VIEW_STUB.equals(elementName)) {
-        return SdkConstants.DATA_BINDING_VIEW_STUB_PROXY;
+        DataBindingMode mode = ModuleDataBinding.getInstance(facet).getDataBindingMode();
+        return mode.viewStubProxy;
       }
       return SdkConstants.WIDGET_PKG_PREFIX + elementName;
     } else {
@@ -238,7 +235,7 @@ public class DataBindingUtil {
     if (layout == null) {
       return null;
     }
-    LocalResourceRepository moduleResources = ModuleResourceRepository.findExistingInstance(facet);
+    LocalResourceRepository moduleResources = ResourceRepositoryManager.getOrCreateInstance(facet).getModuleResources(false);
     if (moduleResources == null) {
       return null;
     }

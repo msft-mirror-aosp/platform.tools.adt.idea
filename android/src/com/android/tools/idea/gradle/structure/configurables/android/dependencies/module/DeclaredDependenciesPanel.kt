@@ -17,7 +17,7 @@ package com.android.tools.idea.gradle.structure.configurables.android.dependenci
 
 import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.configurables.android.dependencies.details.ModuleDependencyDetails
-import com.android.tools.idea.gradle.structure.configurables.android.dependencies.details.SingleLibraryDependencyDetails
+import com.android.tools.idea.gradle.structure.configurables.android.dependencies.details.SingleDeclaredLibraryDependencyDetails
 import com.android.tools.idea.gradle.structure.configurables.android.dependencies.module.treeview.DependencySelection
 import com.android.tools.idea.gradle.structure.configurables.issues.IssuesViewer
 import com.android.tools.idea.gradle.structure.configurables.issues.SingleModuleIssuesRenderer
@@ -26,6 +26,7 @@ import com.android.tools.idea.gradle.structure.configurables.ui.SelectionChangeL
 import com.android.tools.idea.gradle.structure.configurables.ui.dependencies.AbstractDependenciesPanel
 import com.android.tools.idea.gradle.structure.configurables.ui.dependencies.DeclaredDependenciesTableView
 import com.android.tools.idea.gradle.structure.daemon.PsAnalyzerDaemon
+import com.android.tools.idea.gradle.structure.model.PsDeclaredDependency
 import com.android.tools.idea.gradle.structure.model.PsIssue
 import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidDependency
@@ -111,7 +112,7 @@ internal class DeclaredDependenciesPanel(
   private fun createPlaceName(moduleName: String): String = "dependencies.$moduleName.place"
 
   private fun initializeDependencyDetails() {
-    addDetails(SingleLibraryDependencyDetails())
+    addDetails(SingleDeclaredLibraryDependencyDetails())
     addDetails(ModuleDependencyDetails(context, true))
   }
 
@@ -226,7 +227,7 @@ internal class DeclaredDependenciesPanel(
             "Remove Dependency",
             Messages.getQuestionIcon()
           ) == Messages.YES) {
-          module.removeDependency(dependency)
+          module.removeDependency(dependency as PsDeclaredDependency)
           dependenciesTable.selectFirstRow()
         }
       }

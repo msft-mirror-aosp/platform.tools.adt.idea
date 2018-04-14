@@ -49,6 +49,15 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
     super.setUp();
   }
 
+  @Override
+  protected void tearDown() throws Exception {
+    try {
+      SampleDataResourceItem.invalidateCache();
+    } finally {
+      super.tearDown();
+    }
+  }
+
   @NotNull
   private static Collection<ResourceItem> onlyProjectSources(@NotNull SampleDataResourceRepository repo) {
     return repo.getMap(RES_AUTO, ResourceType.SAMPLE_DATA, true).values();
@@ -275,8 +284,8 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
     myFixture.addFileToProject("sampledata/images/image2.png", "\n");
     myFixture.addFileToProject("sampledata/images/image3.png", "\n");
 
-    List<ResourceItem> items = AppResourceRepository.getOrCreateInstance(myFacet)
-                                                    .getResourceItems(ResourceNamespace.TODO, ResourceType.SAMPLE_DATA);
+    LocalResourceRepository repository = ResourceRepositoryManager.getAppResources(myFacet);
+    List<ResourceItem> items = repository.getResourceItems(ResourceNamespace.TODO, ResourceType.SAMPLE_DATA);
     assertSize(1, items);
     assertEquals("images", items.get(0).getName());
     SampleDataResourceItem item = (SampleDataResourceItem)items.get(0);
