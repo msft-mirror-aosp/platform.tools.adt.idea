@@ -27,7 +27,7 @@ import com.android.ide.common.resources.AbstractResourceRepository
 import com.android.ide.common.resources.AbstractResourceRepository.MAX_RESOURCE_INDIRECTION
 import com.android.ide.common.resources.ResourceFile
 import com.android.ide.common.resources.ResourceItem
-import com.android.ide.common.resources.ResourceMergerItem.*
+import com.android.ide.common.resources.ResourceItem.*
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.ide.common.xml.AndroidManifestParser
 import com.android.io.FileWrapper
@@ -35,7 +35,10 @@ import com.android.resources.*
 import com.android.tools.idea.AndroidPsiUtils
 import com.android.tools.idea.databinding.DataBindingUtil
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
-import com.android.tools.lint.detector.api.LintUtils
+import com.android.tools.lint.detector.api.computeResourceName
+import com.android.tools.lint.detector.api.computeResourcePrefix
+import com.android.tools.lint.detector.api.getBaseName
+import com.android.tools.lint.detector.api.stripIdPrefix
 import com.google.common.collect.Lists
 import com.google.common.collect.Sets
 import com.intellij.openapi.application.ApplicationManager
@@ -47,6 +50,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
@@ -157,7 +161,7 @@ fun getResourceName(file: VirtualFile): String {
   // Note that we use getBaseName here rather than {@link VirtualFile#getNameWithoutExtension}
   // because that method uses lastIndexOf('.') rather than indexOf('.') -- which means that
   // for a nine patch drawable it would include ".9" in the resource name
-  return LintUtils.getBaseName(file.name)
+  return getBaseName(file.name)
 }
 
 /**
@@ -173,7 +177,7 @@ fun getResourceName(file: PsiFile): String {
   // We're replicating that code here rather than just calling
   // getResourceName(file.getVirtualFile());
   // since file.getVirtualFile can return null
-  return LintUtils.getBaseName(file.name)
+  return getBaseName(file.name)
 }
 
 fun getFolderType(file: PsiFile?): ResourceFolderType? {
@@ -238,6 +242,18 @@ fun getResourceVariations(file: VirtualFile?, includeSelf: Boolean): List<Virtua
   }
 
   return variations
+}
+
+/**
+ * Returns the [VirtualFile] representing the source of the given resource item, or null
+ * if the source of the resource item is unknown or there is no VirtualFile for it.
+ */
+fun ResourceItem.getSourceAsVirtualFile(): VirtualFile? {
+  if (this is PsiResourceItem) {
+    return psiFile?.virtualFile
+  }
+  val path = source?.nativePath
+  return if (path == null) null else StandardFileSystems.local().findFileByPath(path)
 }
 
 /**
@@ -676,9 +692,9 @@ fun prependResourcePrefix(module: Module?, name: String?, folderType: ResourceFo
   }
   val facet = AndroidFacet.getInstance(module) ?: return name
   val androidModel = AndroidModuleModel.get(facet) ?: return name
-  val resourcePrefix = LintUtils.computeResourcePrefix(androidModel.androidProject) ?: return name
+  val resourcePrefix = computeResourcePrefix(androidModel.androidProject) ?: return name
   return if (name != null) {
-    if (name.startsWith(resourcePrefix)) name else LintUtils.computeResourceName(resourcePrefix, name, folderType)
+    if (name.startsWith(resourcePrefix)) name else computeResourceName(resourcePrefix, name, folderType)
   } else {
     resourcePrefix
   }
@@ -749,7 +765,7 @@ fun findIdsInFile(file: PsiFile): Set<String> {
     override fun visitElement(element: PsiElement) {
       super.visitElement(element)
       if (element is XmlTag) {
-        val id = LintUtils.stripIdPrefix(element.getAttributeValue(ATTR_ID, ANDROID_URI))
+        val id = stripIdPrefix(element.getAttributeValue(ATTR_ID, ANDROID_URI))
         if (!id.isEmpty()) {
           ids.add(id)
         }
@@ -779,8 +795,8 @@ private fun addFrameworkItems(
   val items = frameworkResources.getPublicResourcesOfType(type)
   for (item in items) {
     if (!includeFileResources) {
-      val sourceFile = item.file
-      if (sourceFile != null && !sourceFile.parent.startsWith(FD_RES_VALUES)) {
+      val dirName = item.source?.parentFileName
+      if (dirName != null && !dirName.startsWith(FD_RES_VALUES)) {
         continue
       }
     }

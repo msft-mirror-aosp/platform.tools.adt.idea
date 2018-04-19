@@ -58,6 +58,7 @@ iml_module(
     # do not sort: must match IML order
     test_runtime_deps = ["//tools/adt/idea/adt-branding:intellij.android.adt.branding"],
     test_srcs = ["testSrc"],
+    test_tags = ["slow"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
@@ -82,6 +83,6 @@ iml_module(
         "//tools/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/adt-testutils[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
-        "//tools/adt/idea/android:intellij.android[module, test]",
+        "//tools/adt/idea/android:intellij.android.core[module, test]",
     ],
 )

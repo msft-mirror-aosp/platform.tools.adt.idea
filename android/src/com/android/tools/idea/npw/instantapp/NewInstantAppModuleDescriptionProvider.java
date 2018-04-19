@@ -22,7 +22,7 @@ import com.android.tools.idea.npw.template.TemplateHandle;
 import com.android.tools.idea.templates.TemplateManager;
 import com.android.tools.idea.templates.TemplateMetadata;
 import com.android.tools.idea.wizard.model.SkippableWizardStep;
-import icons.AndroidIcons;
+import icons.StudioIllustrations;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import static com.android.tools.idea.npw.model.NewProjectModel.getSuggestedProjectPackage;
+import static com.android.tools.idea.templates.Template.ANDROID_MODULE_TEMPLATE;
 import static com.android.tools.idea.templates.Template.CATEGORY_APPLICATION;
 import static org.jetbrains.android.util.AndroidBundle.message;
 
@@ -48,20 +49,20 @@ public class NewInstantAppModuleDescriptionProvider implements ModuleDescription
     @NotNull private TemplateMetadata myTemplateMetadata;
 
     FeatureTemplateGalleryEntry() {
-      myTemplateFile = TemplateManager.getInstance().getTemplateFile(CATEGORY_APPLICATION, "Android Module");
+      myTemplateFile = TemplateManager.getInstance().getTemplateFile(CATEGORY_APPLICATION, ANDROID_MODULE_TEMPLATE);
       myTemplateMetadata = new TemplateHandle(myTemplateFile).getMetadata();
     }
 
     @Nullable
     @Override
     public Icon getIcon() {
-      return AndroidIcons.ModuleTemplates.FeatureModule;
+      return StudioIllustrations.ModuleTemplates.FEATURE_MODULE;
     }
 
     @NotNull
     @Override
     public String getName() {
-      return message("android.wizard.module.new.featuremodule");
+      return message("android.wizard.module.new.feature.module");
     }
 
     @Nullable
@@ -116,7 +117,7 @@ public class NewInstantAppModuleDescriptionProvider implements ModuleDescription
     @Nullable
     @Override
     public Icon getIcon() {
-      return AndroidIcons.ModuleTemplates.InstantAppModule;
+      return StudioIllustrations.ModuleTemplates.INSTANT_APP_MODULE;
     }
 
     @NotNull

@@ -237,4 +237,36 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
         return "n/a";
     }
   }
+
+  @NotNull
+  public static String getMetadataName(EnergyProfiler.EnergyEvent.MetadataCase metadataCase) {
+    switch (metadataCase) {
+      case WAKE_LOCK_ACQUIRED:
+        return "Acquired";
+      case WAKE_LOCK_RELEASED:
+        return "Released";
+      case ALARM_SET:
+        return "Set";
+      case ALARM_FIRED:
+        return "Triggered";
+      case ALARM_CANCELLED:
+        return "Cancelled";
+      case JOB_SCHEDULED:
+        return "Scheduled";
+      case JOB_STARTED:
+        return "Started";
+      case JOB_STOPPED:
+        return "Stopped";
+      case JOB_FINISHED:
+        return "Finished";
+      case LOCATION_UPDATE_REQUESTED:
+        return "Requested";
+      case LOCATION_CHANGED:
+        return "Location Updated";
+      case LOCATION_UPDATE_REMOVED:
+        return "Request Removed";
+      default:
+        return "";
+    }
+  }
 }

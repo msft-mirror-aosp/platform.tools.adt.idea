@@ -37,6 +37,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -170,7 +171,6 @@ public class IntelliJStackTraceView extends AspectObserver implements StackTrace
       });
   }
 
-  @Override
   public void installNavigationContextMenu(@NotNull ContextMenuInstaller contextMenuInstaller) {
     contextMenuInstaller.installNavigationContextMenu(myListView, myModel.getCodeNavigator(), () -> {
       int index = myListView.getSelectedIndex();
@@ -191,6 +191,18 @@ public class IntelliJStackTraceView extends AspectObserver implements StackTrace
   @Override
   public JComponent getComponent() {
     return myScrollPane;
+  }
+
+  public void addListSelectionListener(@NotNull ListSelectionListener listener) {
+    myListView.addListSelectionListener(listener);
+  }
+
+  public void clearSelection() {
+    myListView.clearSelection();
+  }
+
+  public int getSelectedIndex() {
+    return myListView.getSelectedIndex();
   }
 
   @VisibleForTesting
@@ -256,7 +268,6 @@ public class IntelliJStackTraceView extends AspectObserver implements StackTrace
 
     private void renderNativeStackFrame(@NotNull CodeElement codeElement, boolean selected) {
       setIcon(PlatformIcons.METHOD_ICON);
-      SimpleTextAttributes textAttribute = selected || codeElement.isInUserCode() ? REGULAR_ATTRIBUTES : GRAY_ATTRIBUTES;
       CodeLocation location = codeElement.getCodeLocation();
 
       StringBuilder methodBuilder = new StringBuilder();
@@ -268,7 +279,7 @@ public class IntelliJStackTraceView extends AspectObserver implements StackTrace
       methodBuilder.append(location.getMethodName());
       methodBuilder.append("(" + String.join(",", location.getMethodParameters()) + ") ");
       String methodName = methodBuilder.toString();
-      append(methodName, textAttribute, methodName);
+      append(methodName, REGULAR_ATTRIBUTES, methodName);
 
       if (!Strings.isNullOrEmpty(location.getFileName())) {
         String sourceLocation = Paths.get(location.getFileName()).getFileName().toString();
@@ -276,7 +287,7 @@ public class IntelliJStackTraceView extends AspectObserver implements StackTrace
           sourceLocation += ":" + String.valueOf(location.getLineNumber() + 1);
         }
 
-        append(sourceLocation, textAttribute, sourceLocation);
+        append(sourceLocation, REGULAR_ATTRIBUTES, sourceLocation);
       }
 
       String moduleName = " " + Paths.get(location.getNativeModuleName()).getFileName().toString();

@@ -29,6 +29,7 @@ import com.android.tools.profilers.cpu.nodemodel.SingleNameModel;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,6 +47,11 @@ import java.util.concurrent.TimeUnit;
 public class SimpleperfTraceParser implements TraceParser {
 
   /**
+   * Magic string that should appear in the very beginning of the simpleperf trace.
+   */
+  private static final String MAGIC = "SIMPLEPERF";
+
+  /**
    * When the name of a function (symbol) is not found in the symbol table, the symbol_id field is set to -1.
    */
   private static final int INVALID_SYMBOL_ID = -1;
@@ -56,6 +62,16 @@ public class SimpleperfTraceParser implements TraceParser {
    * "/data/app/com.google.sample.tunnel-qpKipbnc0pE6uQs6gxAmbQ=="
    */
   private static final String DATA_APP_DIR = "/data/app";
+
+  /**
+   * Maximum number of characters of a native thread name.
+   */
+  private static final int THREAD_NAME_CHAR_LIMIT = 15;
+
+  /**
+   * Version of the trace file to be parsed. Should be obtained from the file itself.
+   */
+  private int myTraceVersion;
 
   /**
    * Maps a file id to its correspondent {@link SimpleperfReport.File}.
@@ -98,15 +114,22 @@ public class SimpleperfTraceParser implements TraceParser {
    */
   private List<String> myEventTypes;
 
+  private String myAppPackageName;
+
   /**
    * Prefix (up to the app name) of the /data/app subfolder corresponding to the app being profiled. For example:
    * "/data/app/com.google.sample.tunnel".
    */
-  @NotNull
-  private final String myAppDataFolderPrefix;
+  private String myAppDataFolderPrefix;
 
-  public SimpleperfTraceParser(@NotNull String applicationId) {
-    myAppDataFolderPrefix = String.format("%s/%s", DATA_APP_DIR, applicationId);
+  /**
+   * Name of the main thread of the application if it can be inferred from the trace file. The main thread name should match the application
+   * package name. However, native thread names are limited to {@link #THREAD_NAME_CHAR_LIMIT} characters, so the resulting name might be a
+   * substring of the application package name.
+   */
+  private String myMainThreadName;
+
+  public SimpleperfTraceParser() {
     myFiles = new HashMap<>();
     mySamples = new ArrayList<>();
     myCaptureTrees = new HashMap<>();
@@ -151,7 +174,12 @@ public class SimpleperfTraceParser implements TraceParser {
   public CpuCapture parse(File trace, int traceId) throws IOException {
     parseTraceFile(trace);
     parseSampleData();
-    return new CpuCapture(this, traceId, CpuProfiler.CpuProfilerType.SIMPLEPERF);
+    if (myMainThreadName == null) {
+      return new CpuCapture(this, traceId, CpuProfiler.CpuProfilerType.SIMPLEPERF);
+    }
+    else {
+      return new CpuCapture(this, traceId, CpuProfiler.CpuProfilerType.SIMPLEPERF, myMainThreadName);
+    }
   }
 
   @Override
@@ -162,6 +190,10 @@ public class SimpleperfTraceParser implements TraceParser {
   @Override
   public Map<CpuThreadInfo, CaptureNode> getCaptureTrees() {
     return myCaptureTrees;
+  }
+
+  String getMainThreadName() {
+    return myMainThreadName;
   }
 
   @Override
@@ -187,6 +219,8 @@ public class SimpleperfTraceParser implements TraceParser {
 
   /**
    * Parses the trace file, which should have the following format:
+   * char magic[10] = "SIMPLEPERF";
+   * LittleEndian16(version) = 1;
    * LittleEndian32(record_size_0)
    * SimpleperfReport.Record (having record_size_0 bytes)
    * LittleEndian32(record_size_1)
@@ -201,6 +235,9 @@ public class SimpleperfTraceParser implements TraceParser {
   @VisibleForTesting
   void parseTraceFile(File trace) throws IOException {
     ByteBuffer buffer = byteBufferFromFile(trace, ByteOrder.LITTLE_ENDIAN);
+    verifyMagicNumber(buffer);
+    parseVersionNumber(buffer);
+
     // Read the first record size
     int recordSize = buffer.getInt();
 
@@ -233,6 +270,8 @@ public class SimpleperfTraceParser implements TraceParser {
         case META_INFO:
           SimpleperfReport.MetaInfo info = record.getMetaInfo();
           myEventTypes = info.getEventTypeList();
+          myAppPackageName = info.getAppPackageName();
+          myAppDataFolderPrefix = String.format("%s/%s", DATA_APP_DIR, myAppPackageName);
           break;
         default:
           getLog().warn("Unexpected record data type " + record.getRecordDataCase());
@@ -245,6 +284,25 @@ public class SimpleperfTraceParser implements TraceParser {
     if (mySamples.size() != mySampleCount) {
       // TODO: create a trace file to test this exception is thrown when it should.
       throw new IllegalStateException("Samples count doesn't match the number of samples read.");
+    }
+  }
+
+  /**
+   * Parses the next 16-bit number of the given {@link ByteBuffer} as the trace version.
+   */
+  private void parseVersionNumber(ByteBuffer buffer) {
+    myTraceVersion = buffer.getShort();
+  }
+
+  /**
+   * Verifies the first 10 characters of the given {@link ByteBuffer} are {@code SIMPLEPERF}.
+   * Throws an {@link IllegalStateException} otherwise.
+   */
+  private static void verifyMagicNumber(ByteBuffer buffer) {
+    byte[] magic = new byte[MAGIC.length()];
+    buffer.get(magic);
+    if (!(new String(magic)).equals(MAGIC)) {
+      throw new IllegalStateException("Simpleperf trace could not be parsed due to magic number mismatch.");
     }
   }
 
@@ -263,7 +321,7 @@ public class SimpleperfTraceParser implements TraceParser {
     // Split the samples per thread.
     Map<Integer, List<SimpleperfReport.Sample>> threadSamples = splitSamplesPerThread();
 
-    // Process the sampels for each thread
+    // Process the samples for each thread
     for (Map.Entry<Integer, List<SimpleperfReport.Sample>> threadSamplesEntry : threadSamples.entrySet()) {
       parseThreadSamples(threadSamplesEntry.getKey(), threadSamplesEntry.getValue());
     }
@@ -311,7 +369,11 @@ public class SimpleperfTraceParser implements TraceParser {
 
     // Add a root node to represent the thread itself.
     long firstTimestamp = threadSamples.get(0).getTime();
-    CaptureNode root = createCaptureNode(new SingleNameModel(myThreads.get(threadId)), firstTimestamp);
+    String threadName = myThreads.get(threadId);
+    CaptureNode root = createCaptureNode(new SingleNameModel(threadName), firstTimestamp);
+    if (isMainThread(threadName)) {
+      myMainThreadName = threadName;
+    }
     root.setDepth(0);
     myCaptureTrees.put(new CpuThreadInfo(threadId, myThreads.get(threadId)), root);
 
@@ -337,6 +399,17 @@ public class SimpleperfTraceParser implements TraceParser {
     updateAncestorsEndTime(lastTimestamp, lastVisitedNode);
     // update the root timestamp
     setNodeEndTime(root, lastTimestamp);
+  }
+
+  /**
+   * Whether the given thread name is equal to the application's or is a substring of it and is capped by {@link #THREAD_NAME_CHAR_LIMIT}.
+   */
+  private boolean isMainThread(@NotNull String threadName) {
+    assert myAppPackageName != null;
+    if (threadName.equals(myAppPackageName)) {
+      return true;
+    }
+    return threadName.length() == THREAD_NAME_CHAR_LIMIT && myAppPackageName.contains(threadName);
   }
 
   /**
@@ -428,8 +501,8 @@ public class SimpleperfTraceParser implements TraceParser {
       String methodName = fileNameFromPath(symbolFile.getPath()) + "+" + hexAddress;
       return new NoSymbolModel(methodName);
     }
-    // Otherwise, read the method from the symbol table and parse it into a CaptureNodeModel.
-    // User's code symbols come from files located inside the app's directory, therefore we check if the symbol path has the same prefix of such directory.
+    // Otherwise, read the method from the symbol table and parse it into a CaptureNodeModel. User's code symbols come from
+    // files located inside the app's directory, therefore we check if the symbol path has the same prefix of such directory.
     boolean isUserWritten = symbolFile.getPath().startsWith(myAppDataFolderPrefix);
     return NodeNameParser.parseNodeName(symbolFile.getSymbol(symbolId), isUserWritten);
   }

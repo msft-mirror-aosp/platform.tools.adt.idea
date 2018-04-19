@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
+import com.android.annotations.VisibleForTesting;
+import com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +39,7 @@ public final class GradleDslMethodCall extends GradleDslSimpleExpression {
    */
   @NotNull private String myMethodName;
   @NotNull private GradleDslExpressionList myArguments;
+  private final boolean myIsConstructor;
 
   /**
    * Create a new method call.
@@ -49,16 +52,32 @@ public final class GradleDslMethodCall extends GradleDslSimpleExpression {
   public GradleDslMethodCall(@NotNull GradleDslElement parent, @NotNull GradleNameElement name, @NotNull String methodName) {
     super(parent, null, name, null);
     myMethodName = methodName;
-    myArguments = new GradleDslExpressionList(this, name, false);
+    myArguments = new GradleDslExpressionList(this, GradleNameElement.empty(), false);
+    myIsConstructor = false;
   }
 
   public GradleDslMethodCall(@NotNull GradleDslElement parent,
                              @NotNull PsiElement methodCall,
                              @NotNull GradleNameElement name,
+                             @NotNull String methodName,
+                             boolean isConstructor) {
+    super(parent, methodCall, name, methodCall);
+    myMethodName = methodName;
+    myArguments = new GradleDslExpressionList(this, GradleNameElement.empty(), false);
+    myIsConstructor = isConstructor;
+  }
+
+  // Test constructor allowing for null PsiElements.
+  @VisibleForTesting
+  public GradleDslMethodCall(@NotNull GradleDslElement parent,
+                             @Nullable PsiElement methodCall,
+                             @NotNull GradleNameElement name,
+                             boolean isConstructor,
                              @NotNull String methodName) {
     super(parent, methodCall, name, methodCall);
     myMethodName = methodName;
-    myArguments = new GradleDslExpressionList(this, name, false);
+    myArguments = new GradleDslExpressionList(this, GradleNameElement.empty(), false);
+    myIsConstructor = isConstructor;
   }
 
   public void setParsedArgumentList(@NotNull GradleDslExpressionList arguments) {
@@ -71,6 +90,14 @@ public final class GradleDslMethodCall extends GradleDslSimpleExpression {
 
   public void addNewArgument(@NotNull GradleDslExpression argument) {
     myArguments.addNewExpression(argument);
+  }
+
+  public void replaceArgument(@NotNull GradleDslExpression oldElement, @NotNull GradleDslExpression newElement) {
+    myArguments.replaceExpression(oldElement, newElement);
+  }
+
+  public boolean isConstructor() {
+    return myIsConstructor;
   }
 
   @Nullable
@@ -135,26 +162,8 @@ public final class GradleDslMethodCall extends GradleDslSimpleExpression {
 
   @Nullable
   private File getFileValue() {
-    if (!myMethodName.equals("file")) {
-      return null;
-    }
-
-    List<GradleDslExpression> arguments = getArguments();
-    if (arguments.isEmpty()) {
-      return null;
-    }
-
-    GradleDslElement pathArgument = arguments.get(0);
-    if (!(pathArgument instanceof GradleDslSimpleExpression)) {
-      return null;
-    }
-
-    String path = ((GradleDslSimpleExpression)pathArgument).getValue(String.class);
-    if (path == null) {
-      return null;
-    }
-
-    return new File(path);
+    String path = PropertyUtil.getFileValue(this);
+    return path == null ? null : new File(path);
   }
 
   @Override
@@ -165,6 +174,24 @@ public final class GradleDslMethodCall extends GradleDslSimpleExpression {
     // TODO: Add support to set the full method definition as a String.
 
     valueChanged();
+  }
+
+  @Nullable
+  @Override
+  public Object getRawValue() {
+    return getUnresolvedValue();
+  }
+
+  @NotNull
+  @Override
+  public GradleDslMethodCall copy() {
+    assert myParent != null;
+    GradleDslMethodCall methodCall = new GradleDslMethodCall(myParent, GradleNameElement.copy(myName), myMethodName);
+    Object v = getRawValue();
+    if (v != null) {
+      methodCall.setValue(v);
+    }
+    return methodCall;
   }
 
   private void setFileValue(@NotNull File file) {

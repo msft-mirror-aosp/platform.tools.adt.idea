@@ -28,6 +28,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
+import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.NONE;
+
 public class DependenciesModelImpl extends GradleDslBlockModel implements DependenciesModel {
   public DependenciesModelImpl(@NotNull DependenciesDslElement dslElement) {
     super(dslElement);
@@ -47,13 +49,19 @@ public class DependenciesModelImpl extends GradleDslBlockModel implements Depend
       if (element instanceof GradleDslMethodCall) {
         GradleDslMethodCall methodCall = (GradleDslMethodCall)element;
         if (methodCall.getMethodName().equals(ModuleDependencyModelImpl.PROJECT)) {
-          dependencies.addAll(ModuleDependencyModelImpl.create(configurationName, methodCall));
+          ModuleDependencyModel model = ModuleDependencyModelImpl.create(configurationName, methodCall);
+          if (model != null && model.path().getValueType() != NONE) {
+            dependencies.add(model);
+          }
         }
         else if (methodCall.getMethodName().equals(FileDependencyModelImpl.FILES)) {
           dependencies.addAll(FileDependencyModelImpl.create(configurationName, methodCall));
         }
         else if (methodCall.getMethodName().equals(FileTreeDependencyModelImpl.FILE_TREE)) {
-          dependencies.addAll(FileTreeDependencyModelImpl.create(configurationName, methodCall));
+          FileTreeDependencyModel model = FileTreeDependencyModelImpl.create(myDslElement, methodCall, configurationName);
+          if (model != null && model.dir().getValueType() != NONE) {
+            dependencies.add(model);
+          }
         }
       }
     }
@@ -133,7 +141,10 @@ public class DependenciesModelImpl extends GradleDslBlockModel implements Depend
   public List<ModuleDependencyModel> modules() {
     List<ModuleDependencyModel> dependencies = Lists.newArrayList();
     for (GradleDslElement element : myDslElement.getPropertyElements(GradleDslMethodCall.class)) {
-      dependencies.addAll(ModuleDependencyModelImpl.create(element.getName(), (GradleDslMethodCall)element));
+      ModuleDependencyModel model = ModuleDependencyModelImpl.create(element.getName(), (GradleDslMethodCall)element);
+      if (model != null && model.path().getValueType() != NONE) {
+        dependencies.add(model);
+      }
     }
     return dependencies;
   }
@@ -154,7 +165,10 @@ public class DependenciesModelImpl extends GradleDslBlockModel implements Depend
   public List<FileTreeDependencyModel> fileTrees() {
     List<FileTreeDependencyModel> dependencies = Lists.newArrayList();
     for (GradleDslMethodCall element : myDslElement.getPropertyElements(GradleDslMethodCall.class)) {
-      dependencies.addAll(FileTreeDependencyModelImpl.create(element.getName(), element));
+      FileTreeDependencyModel model = FileTreeDependencyModelImpl.create(myDslElement, element, element.getName());
+      if (model != null && model.dir().getValueType() != NONE) {
+        dependencies.add(model);
+      }
     }
     return dependencies;
   }
@@ -177,7 +191,7 @@ public class DependenciesModelImpl extends GradleDslBlockModel implements Depend
   public List<FileDependencyModel> files() {
     List<FileDependencyModel> dependencies = Lists.newArrayList();
     for (GradleDslMethodCall element : myDslElement.getPropertyElements(GradleDslMethodCall.class)) {
-          dependencies.addAll(FileDependencyModelImpl.create(element.getName(), element));
+      dependencies.addAll(FileDependencyModelImpl.create(element.getName(), element));
     }
     return dependencies;
   }

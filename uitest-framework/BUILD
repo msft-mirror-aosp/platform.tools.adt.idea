@@ -21,7 +21,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "//tools/base/common:studio.android.sdktools.common[module, test]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/idea/platform/platform-api:intellij.platform.ide[module, test]",
         "//tools/idea/platform/platform-impl:intellij.platform.ide.impl[module, test]",
         "//tools/swing-testing/fest-swing[module, test]",
@@ -39,7 +39,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/studio/google/cloud/testing/test-recorder[module, test]",
-        "//tools/base/flags:studio.intellij.android.flags[module, test]",
+        "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
         "//tools/base/perf-logger:studio.perf-logger[module, test]",
         "//tools/adt/idea/project-system[module, test]",

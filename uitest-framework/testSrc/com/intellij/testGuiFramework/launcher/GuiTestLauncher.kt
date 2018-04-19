@@ -15,10 +15,14 @@
  */
 package com.intellij.testGuiFramework.launcher
 
+import com.android.testutils.TestUtils
+import com.android.testutils.TestUtils.getWorkspaceRoot
+import com.android.tools.tests.IdeaTestSuiteBase
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.testGuiFramework.impl.GuiTestStarter
+import com.intellij.testGuiFramework.remote.server.JUnitServerHolder
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.jetbrains.jps.model.JpsElementFactory
@@ -28,9 +32,13 @@ import org.jetbrains.jps.model.module.JpsModule
 import org.jetbrains.jps.model.serialization.JpsModelSerializationDataService
 import org.jetbrains.jps.model.serialization.JpsProjectLoader
 import java.io.File
+import java.io.FileOutputStream
 import java.net.URL
 import java.nio.file.Paths
 import java.util.*
+import java.util.jar.Attributes
+import java.util.jar.JarOutputStream
+import java.util.jar.Manifest
 import kotlin.concurrent.thread
 
 /**
@@ -55,6 +63,7 @@ object GuiTestLauncher {
   private val LOG = Logger.getLogger("#com.intellij.testGuiFramework.launcher.GuiTestLauncher")
 
   var process: Process? = null
+  private var vmOptionsFile: File? = null
 
   private const val TEST_GUI_FRAMEWORK_MODULE_NAME = "intellij.android.guiTestFramework"
   private const val STUDIO_UITESTS_MAIN_MODULE_NAME = "intellij.android.guiTests"
@@ -85,69 +94,104 @@ object GuiTestLauncher {
     if (path == "undefined") {
       startIdeProcess(createArgs(port))
     } else {
-      startIdeProcess(createArgsByPath(path, port))
+      if (vmOptionsFile == null) {
+        vmOptionsFile = createAugmentedVMOptionsFile(File(GuiTestOptions.getVmOptionsFilePath()), port)
+      }
+      startIdeProcess(createArgsByPath(path))
     }
   }
 
   private fun startIdeProcess(args: List<String>) {
-    thread(start = true, name = "IdeaTestThread") {
-      process = ProcessBuilder().inheritIO().command(args).start()
+    val processBuilder = ProcessBuilder().inheritIO().command(args)
+    vmOptionsFile?.let {
+      processBuilder.environment()["STUDIO_VM_OPTIONS"] = it.canonicalPath
     }
+    process = processBuilder.start()
   }
 
+  /**
+   * Creates a copy of the given VM options file in the temp directory, appending the options to set the application starter and port.
+   * This is necessary to run the IDE via a native launcher, which doesn't accept command-line arguments.
+   */
+  private fun createAugmentedVMOptionsFile(originalFile: File, port: Int) =
+    FileUtil.createTempFile("studio_uitests.vmoptions", "", true).apply {
+      FileUtil.writeToFile(this, """${originalFile.readText()}
+-Didea.gui.test.port=$port
+-Didea.application.starter.command=${GuiTestStarter.COMMAND_NAME}""")
+    }
+
   private fun createArgs(port: Int): List<String> {
+    if (TestUtils.runningFromBazel()) {
+      buildBazelClasspathJar()
+    }
     val args = listOf<String>()
         .plus(getCurrentJavaExec())
-        .plus(getVmOptions())
+        .plus(getVmOptions(port))
         .plus("-classpath")
         .plus(getFullClasspath(STUDIO_UITESTS_MAIN_MODULE_NAME))
         .plus(MAIN_CLASS_NAME)
-        .plus(GuiTestStarter.COMMAND_NAME)
-        .plus("port=$port")
     return args
   }
 
-  private fun createArgsByPath(path: String, port: Int): List<String> = listOf(path, GuiTestStarter.COMMAND_NAME, "port=$port")
+  private fun createArgsByPath(path: String): List<String> = listOf(path)
 
   /**
    * Default VM options to start IntelliJ IDEA (or IDEA-based IDE). To customize options use com.intellij.testGuiFramework.launcher.GuiTestOptions
    */
-  private fun getVmOptions(): List<String> {
+  private fun getVmOptions(port: Int): List<String> {
     // TODO(b/77341383): avoid having to sync manually with studio64.vmoptions
-    var options = mutableListOf<String>()
+    var options = listOf(
       /* studio64.vmoptions */
-      .plus("-Xms256m")
-      .plus("-Xmx1280m")
-      .plus("-XX:ReservedCodeCacheSize=240m")
-      .plus("-XX:+UseConcMarkSweepGC")
-      .plus("-XX:SoftRefLRUPolicyMSPerMB=50")
-      .plus("-Dsun.io.useCanonCaches=false")
-      .plus("-Djava.net.preferIPv4Stack=true")
-      .plus("-Djna.nosys=true")
-      .plus("-Djna.boot.library.path=")
-      .plus("-XX:MaxJavaStackTraceDepth=-1")
-      .plus("-XX:+HeapDumpOnOutOfMemoryError")
-      .plus("-XX:-OmitStackTraceInFastThrow")
-      .plus("-ea")
-      .plus("-Dawt.useSystemAAFontSettings=lcd")
-      .plus("-Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine")
+      "-Xms256m",
+      "-Xmx1280m",
+      "-XX:ReservedCodeCacheSize=240m",
+      "-XX:+UseConcMarkSweepGC",
+      "-XX:SoftRefLRUPolicyMSPerMB=50",
+      "-Dsun.io.useCanonCaches=false",
+      "-Djava.net.preferIPv4Stack=true",
+      "-Djna.nosys=true",
+      "-Djna.boot.library.path=",
+      "-XX:MaxJavaStackTraceDepth=-1",
+      "-XX:+HeapDumpOnOutOfMemoryError",
+      "-XX:-OmitStackTraceInFastThrow",
+      "-ea",
+      "-Dawt.useSystemAAFontSettings=lcd",
+      "-Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine",
       /* studio.sh options */
-      .plus("-Xbootclasspath/p:${GuiTestOptions.getBootClasspath()}")
-      .plus("-Didea.platform.prefix=AndroidStudio")
-      .plus("-Didea.jre.check=true")
+      "-Xbootclasspath/p:${GuiTestOptions.getBootClasspath()}",
+      "-Didea.platform.prefix=AndroidStudio",
+      "-Didea.jre.check=true",
       /* testing-specific options */
-      .plus("-Didea.config.path=${GuiTestOptions.getConfigPath()}")
-      .plus("-Didea.system.path=${GuiTestOptions.getSystemPath()}")
-      .plus("-Dplugin.path=${GuiTestOptions.getPluginPath()}")
-      .plus("-Ddisable.android.first.run=true")
-      .plus("-Ddisable.config.import=true")
+      "-Didea.config.path=${GuiTestOptions.getConfigPath()}",
+      "-Didea.system.path=${GuiTestOptions.getSystemPath()}",
+      "-Dplugin.path=${GuiTestOptions.getPluginPath()}",
+      "-Ddisable.android.first.run=true",
+      "-Ddisable.config.import=true",
+      "-Didea.application.starter.command=${GuiTestStarter.COMMAND_NAME}",
+      "-Didea.gui.test.port=$port")
     /* debugging options */
     if (GuiTestOptions.isDebug()) {
-      options = options.plus("-Didea.debug.mode=true")
-        .plus("-Xdebug")
-        .plus("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=${GuiTestOptions.getDebugPort()}")
+      options += "-Didea.debug.mode=true"
+      options += "-Xdebug"
+      options += "-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=${GuiTestOptions.getDebugPort()}"
+    }
+    if (TestUtils.runningFromBazel()) {
+      options += "-Didea.home=${IdeaTestSuiteBase.createTmpDir("tools/idea")}"
+      options += "-Dgradle.user.home=${IdeaTestSuiteBase.createTmpDir("home")}"
+      options += "-DANDROID_SDK_HOME=${IdeaTestSuiteBase.createTmpDir(".android")}"
+      options += "-Dlayoutlib.thread.timeout=60000"
+      options += "-Dresolve.descriptors.in.resources=true"
+      options += "-Dstudio.dev.jdk=${getJdkPathForGradle()}"
     }
     return options
+  }
+
+  private fun getJdkPathForGradle(): String? {
+    val jdk = File(getWorkspaceRoot(), "prebuilts/studio/jdk")
+    if (jdk.exists()) {
+      return File(jdk, "BUILD").toPath().toRealPath().toFile().getParentFile().absolutePath
+    }
+    return null
   }
 
   private fun getCurrentJavaExec(): String {
@@ -163,9 +207,13 @@ object GuiTestLauncher {
    * return union of classpaths for current test (get from classloader) and classpaths of main and testGuiFramework modules*
    */
   private fun getFullClasspath(moduleName: String): String {
-    val classpath = getExtendedClasspath(moduleName)
-    classpath.addAll(getTestClasspath())
-    return classpath.toList().joinToString(separator = ":")
+    if (TestUtils.runningFromBazel()) {
+      return TestUtils.getWorkspaceFile("classpath.jar").canonicalPath
+    } else {
+      val classpath = getExtendedClasspath(moduleName)
+      classpath.addAll(getTestClasspath())
+      return classpath.toList().joinToString(separator = ":")
+    }
   }
 
   private fun getTestClasspath(): List<File> {
@@ -188,6 +236,23 @@ object GuiTestLauncher {
     resultSet.addAll(module.getClasspath())
     resultSet.addAll(testGuiFrameworkModule.getClasspath())
     return resultSet
+  }
+
+  private fun buildBazelClasspathJar() {
+    if (TestUtils.runningFromBazel()) {
+      val jars = getTestClasspath()
+      val classpath = StringBuilder().apply {
+        for (jar in jars) {
+          append("file:" + jar.absolutePath.replace(" ", "%20") + " ")
+        }
+      }
+
+      val manifest = Manifest()
+      manifest.mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
+      manifest.mainAttributes[Attributes.Name.CLASS_PATH] = classpath.toString()
+
+      JarOutputStream(FileOutputStream(File(TestUtils.getWorkspaceRoot(), "classpath.jar")), manifest).use {}
+    }
   }
 
   private fun List<JpsModule>.module(moduleName: String): JpsModule? =

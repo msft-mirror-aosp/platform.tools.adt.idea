@@ -15,9 +15,16 @@
  */
 package org.jetbrains.android;
 
+import com.android.ide.common.rendering.api.ResourceNamespace;
+import com.android.resources.ResourceType;
+import com.android.tools.idea.res.LocalResourceRepository;
+import com.android.tools.idea.res.ResourceRepositoryManager;
+import com.android.tools.idea.res.ResourcesTestsUtil;
+import com.android.utils.FileUtils;
 import com.intellij.codeInsight.TargetElementUtil;
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
@@ -28,6 +35,7 @@ import org.jetbrains.android.dom.AndroidValueResourcesTest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 
@@ -189,6 +197,41 @@ public class AndroidGotoDeclarationHandlerTest extends AndroidTestCase {
                  "               ~|~~~~~~              \n",
                  describeElements(getDeclarationsFrom(file))
     );
+  }
+
+  public void testGotoAarResourceFromCode() throws Exception {
+    myFixture.copyFileToProject("R.java", "gen/p1/p2/R.java");
+
+    File aarDir = ResourcesTestsUtil.addAarDependency(myModule);
+    File stylesXml = FileUtils.join(aarDir, "values", "styles.xml");
+    FileUtils.createFile(stylesXml,
+                         "<resources>\n" +
+                         "<style name=\"LibStyle\"></style>\n" +
+                         "<declare-styleable name=\"LibStyleable\">\n" +
+                         "  <attr name=\"libAttr\" format=\"string\" />\n" +
+                         "</declare-styleable>\n" +
+                         "</resources>\n");
+    // For whatever reason, calling this makes VFS correctly see the contents of the file.
+    VfsUtil.findFileByIoFile(stylesXml, true);
+
+    // Sanity check.
+    LocalResourceRepository appResources = ResourceRepositoryManager.getAppResources(myFacet);
+    assertSize(1, appResources.getResourceItems(
+      ResourceNamespace.RES_AUTO, ResourceType.STYLE, "LibStyle"));
+    assertSize(1, appResources.getResourceItems(
+      ResourceNamespace.RES_AUTO, ResourceType.ATTR, "libAttr"));
+
+    VirtualFile file = myFixture.copyFileToProject(BASE_PATH + "GotoAarStyle.java", "src/p1/p2/GotoAarStyle.java");
+    assertEquals("values/styles.xml:2:\n" +
+                 "  <style name=\"LibStyle\"></style>\n" +
+                 "              ~|~~~~~~~~~        \n",
+                 describeElements(getDeclarationsFrom(file)));
+
+    file = myFixture.copyFileToProject(BASE_PATH + "GotoAarStyleableAttr.java", "src/p1/p2/GotoAarStyleableAttr.java");
+    assertEquals("values/styles.xml:4:\n" +
+                 "  <attr name=\"libAttr\" format=\"string\" />\n" +
+                 "             ~|~~~~~~~~                  \n",
+                 describeElements(getDeclarationsFrom(file)));
   }
 
   @Nullable

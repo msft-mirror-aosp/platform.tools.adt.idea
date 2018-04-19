@@ -64,6 +64,7 @@ import com.intellij.util.ui.UIUtil;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import sun.swing.SwingUtilities2;
 
 import javax.swing.*;
 import javax.swing.event.ListDataEvent;
@@ -185,11 +186,11 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     ProfilerTimeline timeline = getTimeline();
 
     stage.getAspect().addDependency(this)
-      .onChange(CpuProfilerAspect.CAPTURE_STATE, this::updateCaptureState)
-      .onChange(CpuProfilerAspect.CAPTURE_SELECTION, this::updateCaptureSelection)
-      .onChange(CpuProfilerAspect.SELECTED_THREADS, this::updateThreadSelection)
-      .onChange(CpuProfilerAspect.CAPTURE_DETAILS, this::updateCaptureDetails)
-      .onChange(CpuProfilerAspect.CAPTURE_ELAPSED_TIME, this::updateCaptureElapsedTime);
+         .onChange(CpuProfilerAspect.CAPTURE_STATE, this::updateCaptureState)
+         .onChange(CpuProfilerAspect.CAPTURE_SELECTION, this::updateCaptureSelection)
+         .onChange(CpuProfilerAspect.SELECTED_THREADS, this::updateThreadSelection)
+         .onChange(CpuProfilerAspect.CAPTURE_DETAILS, this::updateCaptureDetails)
+         .onChange(CpuProfilerAspect.CAPTURE_ELAPSED_TIME, this::updateCaptureElapsedTime);
 
     getTooltipBinder().bind(CpuUsageTooltip.class, CpuUsageTooltipView::new);
     getTooltipBinder().bind(CpuKernelTooltip.class, CpuKernelTooltipView::new);
@@ -336,7 +337,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   /**
    * This function handles the layout and rendering of the cpu kernel panel. This panel represents
    * each core found in an atrace file and the state associated with each core.
-   * @param monitorCpuThreadsPanel panel that is assumed to contain the Kernel list, as well as the Threads List.
+   *
+   * @param monitorCpuThreadsPanel  panel that is assumed to contain the Kernel list, as well as the Threads List.
    * @param monitorCpuThreadsLayout the layout of the panel containing the two list.
    */
   private void configureCpuPanel(JPanel monitorCpuThreadsPanel, TabularLayout monitorCpuThreadsLayout) {
@@ -344,8 +346,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     JScrollPane scrollingCpus = new MyScrollPane();
     scrollingCpus.setBorder(MONITOR_BORDER);
     scrollingCpus.setViewportView(myCpus);
+    scrollingCpus.addMouseWheelListener(new CpuMouseWheelListener(monitorCpuThreadsPanel));
     myCpus.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
-    myCpus.setCellRenderer(new CpuKernelCellRenderer(myStage.getStudioProfilers().getSession().getPid(),
+    myCpus.setCellRenderer(new CpuKernelCellRenderer(getStage().getStudioProfilers().getIdeServices().getFeatureConfig(),
+                                                     myStage.getStudioProfilers().getSession().getPid(),
                                                      myStage.getUpdatableManager(), myCpus, myThreads));
 
     // Handle selection.
@@ -462,14 +466,16 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   }
 
   private void configureHelpTipPanel() {
+    FontMetrics headerMetrics = SwingUtilities2.getFontMetrics(myHelpTipPanel, INFO_MESSAGE_HEADER_FONT);
+    FontMetrics bodyMetrics = SwingUtilities2.getFontMetrics(myHelpTipPanel, INFO_MESSAGE_DESCRIPTION_FONT);
     InstructionsPanel infoMessage = new InstructionsPanel.Builder(
-      new TextInstruction(INFO_MESSAGE_HEADER_FONT, "Thread details unavailable"),
+      new TextInstruction(headerMetrics, "Thread details unavailable"),
       new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
-      new TextInstruction(INFO_MESSAGE_DESCRIPTION_FONT, "Click the record button "),
+      new TextInstruction(bodyMetrics, "Click the record button "),
       new IconInstruction(StudioIcons.Profiler.Toolbar.RECORD, PROFILING_INSTRUCTIONS_ICON_PADDING, null),
-      new TextInstruction(INFO_MESSAGE_DESCRIPTION_FONT, " to start CPU profiling"),
+      new TextInstruction(bodyMetrics, " to start CPU profiling"),
       new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
-      new TextInstruction(INFO_MESSAGE_DESCRIPTION_FONT, "or select a capture in the timeline."))
+      new TextInstruction(bodyMetrics, "or select a capture in the timeline."))
       .setColors(JBColor.foreground(), null)
       .build();
     myHelpTipPanel.add(infoMessage, BorderLayout.CENTER);
@@ -480,7 +486,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     panel.setOpaque(false);
     panel.setBackground(new Color(0, 0, 0, 0));
     InstructionsPanel infoMessage = new InstructionsPanel.Builder(
-      new TextInstruction(INFO_MESSAGE_HEADER_FONT, "Cpu usage details unavailable"))
+      new TextInstruction(SwingUtilities2.getFontMetrics(panel, INFO_MESSAGE_HEADER_FONT), "Cpu usage details unavailable"))
       .setColors(JBColor.foreground(), null)
       .build();
     panel.add(infoMessage);
@@ -564,6 +570,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
   private void configureThreadsPanel(JPanel threadsPanel, TabularLayout threadsMonitorPanelLayout) {
     final JScrollPane scrollingThreads = new MyScrollPane();
+    scrollingThreads.addMouseWheelListener(new CpuMouseWheelListener(threadsPanel));
+
     // TODO(b/62447834): Make a decision on how we want to handle thread selection.
     myThreads.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -633,19 +641,19 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       .setShowSeparator(false)
       .build();
     hideablePanel.addStateChangedListener((actionEvent) -> {
-        // On expanded set row sizing to initial ratio.
-        if (hideablePanel.isExpanded()) {
-          threadsMonitorPanelLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_EXPANDED.toString());
-        }
-        else {
-          // On collapse have monitor panel take any left over space.
-          threadsMonitorPanelLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_COLLAPSED.toString());
-        }
-      });
+      // On expanded set row sizing to initial ratio.
+      if (hideablePanel.isExpanded()) {
+        threadsMonitorPanelLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_EXPANDED.toString());
+      }
+      else {
+        // On collapse have monitor panel take any left over space.
+        threadsMonitorPanelLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_COLLAPSED.toString());
+      }
+    });
     // Clear border set by default on the hideable panel.
-    hideablePanel.setBorder(new JBEmptyBorder(0,0,0,0));
+    hideablePanel.setBorder(new JBEmptyBorder(0, 0, 0, 0));
     hideablePanel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
-    threads.setBorder(new JBEmptyBorder(0,0,0,0));
+    threads.setBorder(new JBEmptyBorder(0, 0, 0, 0));
     threadsPanel.add(hideablePanel, new TabularLayout.Constraint(THREADS_PANEL_ROW, 0));
   }
 
@@ -781,7 +789,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
    * Installs both {@link ContextMenuItem} corresponding to the CPU capture navigation feature on {@link #mySelection}.
    */
   private void installCaptureNavigationMenuItems(ContextMenuInstaller contextMenuInstaller) {
-    int shortcutModifier = (SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK) | SHIFT_DOWN_MASK;
+    int shortcutModifier = AdtUiUtils.getActionMask() | SHIFT_DOWN_MASK;
 
     ProfilerAction navigateNext =
       new ProfilerAction.Builder("Next capture")
@@ -832,7 +840,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
                      ? StudioIcons.Profiler.Toolbar.STOP_RECORDING : StudioIcons.Profiler.Toolbar.RECORD)
       .setEnableBooleanSupplier(() -> !myStage.isImportTraceMode() && (myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING
                                                                        || myStage.getCaptureState() == CpuProfilerStage.CaptureState.IDLE))
-      .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_R, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK))
+      .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_R, AdtUiUtils.getActionMask()))
       .setActionRunnable(() -> capture())
       .build();
 
@@ -899,9 +907,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     Icon recordIcon = UIUtil.isUnderDarcula()
                       ? IconUtil.darker(StudioIcons.Profiler.Toolbar.RECORD, 3)
                       : IconUtil.brighter(StudioIcons.Profiler.Toolbar.RECORD, 3);
-    InstructionsPanel panel = new InstructionsPanel.Builder(new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "Click "),
+    FontMetrics metrics = SwingUtilities2.getFontMetrics(parent, PROFILING_INSTRUCTIONS_FONT);
+    InstructionsPanel panel = new InstructionsPanel.Builder(new TextInstruction(metrics, "Click "),
                                                             new IconInstruction(recordIcon, PROFILING_INSTRUCTIONS_ICON_PADDING, null),
-                                                            new TextInstruction(PROFILING_INSTRUCTIONS_FONT, " to start method profiling"))
+                                                            new TextInstruction(metrics, " to start method profiling"))
       .setEaseOut(getStage().getInstructionsEaseOutModel(), instructionsPanel -> parent.remove(instructionsPanel))
       .setBackgroundCornerRadius(PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER, PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER)
       .build();
@@ -960,11 +969,19 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     toolbar.add(myCaptureStatus);
 
     SessionsManager sessions = getStage().getStudioProfilers().getSessionsManager();
-    sessions.addDependency(this).onChange(SessionAspect.SELECTED_SESSION, () -> myCaptureButton.setEnabled(sessions.isSessionAlive()));
-    myCaptureButton.setEnabled(sessions.isSessionAlive());
+    sessions.addDependency(this).onChange(SessionAspect.SELECTED_SESSION, () -> myCaptureButton.setEnabled(shouldEnableCaptureButton()));
+    myCaptureButton.setEnabled(shouldEnableCaptureButton());
 
     panel.add(toolbar, BorderLayout.WEST);
     return panel;
+  }
+
+  /**
+   * Should enable the capture button for recording and stopping only when session is alive and no API-initiated tracing is
+   * in progress.
+   */
+  private boolean shouldEnableCaptureButton() {
+    return myStage.getStudioProfilers().getSessionsManager().isSessionAlive() && !myStage.isApiInitiatedTracingInProgress();
   }
 
   @Override
@@ -976,11 +993,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     Range range = getStage().getStudioProfilers().getTimeline().getDataRange();
     long min = (long)(info.getRange().getMin() - range.getMin());
     long max = (long)(info.getRange().getMax() - range.getMin());
-    String automatedTextOrEmpty = "";
-    if (info.getInitiationType().equals(TraceInitiationType.INITIATED_BY_API)) {
-      automatedTextOrEmpty = "(automated) ";
-    }
-    return String.format("%s%s - %s", automatedTextOrEmpty, TimeAxisFormatter.DEFAULT.getClockFormattedString(min),
+    return String.format("%s - %s", TimeAxisFormatter.DEFAULT.getClockFormattedString(min),
                          TimeAxisFormatter.DEFAULT.getClockFormattedString(max));
   }
 
@@ -1054,8 +1067,9 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       clearSelection();
       myCaptureView = null;
     }
-    else if (myStage.getCaptureState() == CpuProfilerStage.CaptureState.IDLE) {
-      // Capture has finished. Create a CpuCaptureView to display it.
+    else if ((myStage.getCaptureState() == CpuProfilerStage.CaptureState.IDLE)
+             || (myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING)) {
+      // Capture has finished parsing. Create a CpuCaptureView to display it.
       myCaptureView = new CpuCaptureView(this);
       mySplitter.setSecondComponent(myCaptureView.getComponent());
       ensureCaptureInViewRange();
@@ -1065,12 +1079,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   private void updateCaptureElapsedTime() {
     if (myStage.getCaptureState() == CpuProfilerStage.CaptureState.CAPTURING) {
       long elapsedTimeUs = myStage.getCaptureElapsedTimeUs();
-      String automatedTextOrEmpty = "";
-      if (myStage.getCaptureInitiationType().equals(TraceInitiationType.INITIATED_BY_API)) {
-        automatedTextOrEmpty = " (automated)";
-      }
       String text =
-        String.format("Recording%s - %s", automatedTextOrEmpty, TimeAxisFormatter.DEFAULT.getClockFormattedString(elapsedTimeUs));
+        String.format("Recording - %s", TimeAxisFormatter.DEFAULT.getClockFormattedString(elapsedTimeUs));
       myCaptureStatus.setText(text);
     }
   }
@@ -1126,6 +1136,34 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       // Overrides it because, when not on mac, JBViewport adds the width of the scrollbar to the right inset of the border,
       // which would consequently misplace the threads state chart.
       return new JViewport();
+    }
+  }
+
+  /**
+   * Class to help dispatch mouse events that would otherwise be consumed by the JScrollPane.
+   * Refer to implementation in {@link javax.swing.plaf.basic.BasicScrollPaneUI.Handler#mouseWheelMoved}
+   * Note: We cannot override the {@link JScrollPane#processMouseEvent} method as dispatching an event
+   * to the view will result in a loop since our controls do not consume events.
+   */
+  private static class CpuMouseWheelListener implements MouseWheelListener {
+    @NotNull
+    private final JComponent myDispatchComponent;
+
+    public CpuMouseWheelListener(@NotNull JComponent dispatchComponent) {
+      myDispatchComponent = dispatchComponent;
+    }
+
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent e) {
+      // If we have the modifier keys down then pass the event on to the parent control. Otherwise
+      // the JScrollPane will consume the event.
+      boolean isMenuKeyDown = AdtUiUtils.isActionKeyDown(e);
+      // The shift key modifier is used when making the determination if we are panning vs scrolling vertically when the mouse
+      // wheel is triggered.
+      boolean isShiftKeyDown = e.isShiftDown();
+      if (isMenuKeyDown || isShiftKeyDown) {
+        myDispatchComponent.dispatchEvent(e);
+      }
     }
   }
 }

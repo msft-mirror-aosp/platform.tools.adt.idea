@@ -36,6 +36,7 @@ import com.android.tools.idea.editors.theme.preview.ThemePreviewComponent;
 import com.android.tools.idea.editors.theme.ui.ResourceComponent;
 import com.android.tools.idea.res.ResourceNotificationManager;
 import com.android.tools.idea.res.ResourceNotificationManager.ResourceChangeListener;
+import com.android.tools.idea.ui.MaterialColors;
 import com.google.common.collect.*;
 import com.intellij.find.FindManager;
 import com.intellij.openapi.Disposable;
@@ -440,7 +441,8 @@ public class ThemeEditorComponent extends Splitter implements Disposable {
   }
 
   private void initializeModulesCombo(@Nullable String defaultModuleName) {
-    final ImmutableList<Module> modules = ThemeEditorUtils.findAndroidModules(myProject);
+    final ImmutableList<Module> modules = ThemeEditorUtils.findAndroidModules(myProject)
+      .collect(ImmutableList.toImmutableList());
     assert !modules.isEmpty() : "Theme Editor shouldn't be launched in a project with no Android modules";
 
     Module defaultModule = null;
@@ -453,10 +455,10 @@ public class ThemeEditorComponent extends Splitter implements Disposable {
     }
 
     if (defaultModule == null) {
-      myModuleComboModel = new MutableCollectionComboBoxModel<Module>(modules);
+      myModuleComboModel = new MutableCollectionComboBoxModel<>(modules);
     }
     else {
-      myModuleComboModel = new MutableCollectionComboBoxModel<Module>(modules, defaultModule);
+      myModuleComboModel = new MutableCollectionComboBoxModel<>(modules, defaultModule);
     }
     myPanel.setModuleModel(myModuleComboModel);
   }

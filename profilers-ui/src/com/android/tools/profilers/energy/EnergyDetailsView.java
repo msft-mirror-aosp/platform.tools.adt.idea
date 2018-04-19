@@ -16,12 +16,14 @@
 package com.android.tools.profilers.energy;
 
 import com.android.tools.adtui.TabularLayout;
-import com.android.tools.adtui.stdui.CommonTabbedPane;
+import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.profilers.CloseButton;
 import com.android.tools.profilers.ProfilerColors;
 import com.intellij.openapi.ui.VerticalFlowLayout;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.JBEmptyBorder;
+import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,7 +37,7 @@ public class EnergyDetailsView extends JPanel {
 
   @NotNull private final EnergyCallstackView myCallstackView;
   @NotNull private final EnergyDetailsOverview myDetailsOverview;
-  @NotNull private final CommonTabbedPane myTabsPanel;
+  @NotNull private final JLabel myTitleLabel;
 
   public EnergyDetailsView(@NotNull EnergyProfilerStageView stageView) {
     super(new BorderLayout());
@@ -47,21 +49,31 @@ public class EnergyDetailsView extends JPanel {
     // where main contents span the whole area and a close button fits into the top right
     JPanel rootPanel = new JPanel(new TabularLayout("*,Fit-", "Fit-,*"));
 
-    myTabsPanel = new CommonTabbedPane();
+    JPanel titlePanel = new JPanel(new BorderLayout());
+    titlePanel.setBorder(AdtUiUtils.DEFAULT_BOTTOM_BORDER);
+    myTitleLabel = new JLabel();
+    myTitleLabel.setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(12.0f));
+    myTitleLabel.setBorder(new JBEmptyBorder(6, 10, 6, 3));
+    titlePanel.add(myTitleLabel, BorderLayout.WEST);
+
     myDetailsOverview = new EnergyDetailsOverview();
     myCallstackView = new EnergyCallstackView(stageView);
-    JPanel detailsPanel = new JPanel(new VerticalFlowLayout());
+    JPanel detailsPanel = new JPanel(new VerticalFlowLayout(0, JBUI.scale(5)));
+    detailsPanel.setBorder(new JBEmptyBorder(0, 10, 0, 5));
     detailsPanel.add(myDetailsOverview);
     detailsPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
     detailsPanel.add(myCallstackView);
     detailsPanel.setBackground(ProfilerColors.DEFAULT_BACKGROUND);
     myDetailsOverview.setBackground(null);
     myCallstackView.setBackground(null);
-    myTabsPanel.addTab("Details", new JBScrollPane(detailsPanel));
+    JBScrollPane detailsScrollPane = new JBScrollPane(detailsPanel);
+    detailsScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
     CloseButton closeButton = new CloseButton(e -> stageView.getStage().setSelectedDuration(null));
+    closeButton.setAlignmentY(CENTER_ALIGNMENT);
     rootPanel.add(closeButton, new TabularLayout.Constraint(0, 1));
-    rootPanel.add(myTabsPanel, new TabularLayout.Constraint(0, 0, 2, 2));
+    rootPanel.add(titlePanel, new TabularLayout.Constraint(0, 0, 1, 2));
+    rootPanel.add(detailsPanel, new TabularLayout.Constraint(1, 0, 1, 2));
     add(rootPanel);
   }
 
@@ -73,9 +85,8 @@ public class EnergyDetailsView extends JPanel {
     setVisible(duration != null && !duration.getEventList().isEmpty());
     myDetailsOverview.setDuration(duration);
     myCallstackView.setDuration(duration);
-    if (duration != null) {
-      myTabsPanel.setTitleAt(0, duration.getKind().getDisplayName() + " Details");
-    }
+    myTitleLabel.setText(duration != null ? duration.getKind().getDisplayName() + " Details" : "");
+
     revalidate();
     repaint();
   }

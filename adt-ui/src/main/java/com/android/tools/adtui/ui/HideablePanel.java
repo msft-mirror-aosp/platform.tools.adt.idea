@@ -37,6 +37,7 @@ import java.util.function.Consumer;
 public class HideablePanel extends JPanel {
   private static final Border HIDEABLE_PANEL_BORDER = new JBEmptyBorder(0, 10, 0, 15);
   private static final Border HIDEABLE_CONTENT_BORDER = new JBEmptyBorder(0, 12, 0, 5);
+  private static final int TITLE_RIGHT_PADDING = 3;
 
   private boolean myExpanded;
   private final JComponent myChild;
@@ -50,8 +51,8 @@ public class HideablePanel extends JPanel {
     myStateChangeListeners = new EventListenerList();
     myTitlePanel = new JPanel(new TabularLayout("Fit-,*,Fit-"));
     myLabel = setupTitleBar(builder);
-    myChild.setBorder(HIDEABLE_CONTENT_BORDER);
-    setBorder(HIDEABLE_PANEL_BORDER);
+    myChild.setBorder(builder.myContentBorder == null ? HIDEABLE_CONTENT_BORDER : builder.myContentBorder);
+    setBorder(builder.myPanelBorder == null ? HIDEABLE_PANEL_BORDER : builder.myPanelBorder);
     add(myChild, BorderLayout.CENTER);
 
     // Set expanded state to not initial state so we trigger
@@ -80,11 +81,11 @@ public class HideablePanel extends JPanel {
     myTitlePanel.add(label, new TabularLayout.Constraint(0, 0));
     // If we have a separator we want it to be centered vertically so we wrap it in a panel.
     if (builder.myShowSeparator) {
-      JPanel verticalAlignPanel = new JPanel(new BorderLayout());
+      JPanel verticalAlignPanel = new JPanel(new TabularLayout("*", "*,Fit,*"));
       // The separator panel background should inherit the parent component's background.
       verticalAlignPanel.setBackground(null);
-      verticalAlignPanel.add(new JSeparator(), BorderLayout.CENTER);
-      verticalAlignPanel.setBorder(BorderFactory.createEmptyBorder(2, 6, 0, 3));
+      verticalAlignPanel.add(new JSeparator(), new TabularLayout.Constraint(1, 0));
+      verticalAlignPanel.setBorder(new JBEmptyBorder(0, 10, 0, builder.myTitleRightPadding));
       myTitlePanel.add(verticalAlignPanel, new TabularLayout.Constraint(0, 1));
     }
     // If we have a north east component we add that last it will only take up as much space as it needs.
@@ -144,8 +145,11 @@ public class HideablePanel extends JPanel {
     @NotNull JComponent myContent;
     @Nullable JComponent myNorthEastComponent;
     @Nullable Consumer<Boolean> myOnStateChangedConsumer;
+    @Nullable Border myContentBorder;
+    @Nullable Border myPanelBorder;
     boolean myShowSeparator = true;
     boolean myInitiallyExpanded = true;
+    int myTitleRightPadding = TITLE_RIGHT_PADDING;
 
     public Builder(@NotNull String title, @NotNull JComponent content) {
       myTitle = title;
@@ -176,6 +180,33 @@ public class HideablePanel extends JPanel {
     @NotNull
     public Builder setShowSeparator(boolean show) {
       myShowSeparator = show;
+      return this;
+    }
+
+    /**
+     * Sets the content child component's border inside the hideable panel.
+     */
+    @NotNull
+    public Builder setContentBorder(@NotNull Border border) {
+      myContentBorder = border;
+      return this;
+    }
+
+    /**
+     * Sets this hideable panel's border.
+     */
+    @NotNull
+    public Builder setPanelBorder(@NotNull Border border) {
+      myPanelBorder = border;
+      return this;
+    }
+
+    /**
+     * Sets the title bar padding on the right.
+     */
+    @NotNull
+    public Builder setTitleRightPadding(int rightPadding) {
+      myTitleRightPadding = rightPadding;
       return this;
     }
 

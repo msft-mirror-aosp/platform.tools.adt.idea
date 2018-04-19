@@ -19,6 +19,7 @@ import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.SampleDataResourceValue;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
+import com.android.ide.common.util.PathString;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.res.SampleDataResourceItem;
 import com.google.common.collect.Iterables;
@@ -29,7 +30,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -68,7 +68,7 @@ public abstract class ResourceChooserItem {
   }
 
   @Nullable
-  public File getFile() {
+  public PathString getFile() {
     return null;
   }
 
@@ -161,15 +161,15 @@ public abstract class ResourceChooserItem {
 
     @Override
     @Nullable
-    public File getFile() {
-      return !myResourceItems.isEmpty() ? myResourceItems.get(0).getFile() : null;
+    public PathString getFile() {
+      return !myResourceItems.isEmpty() ? myResourceItems.get(0).getSource() : null;
     }
 
     @Override
     @Nullable
     public String getPath() {
-      File file = getFile();
-      return file != null ? file.getPath() : null;
+      PathString file = getFile();
+      return file != null ? file.getNativePath() : null;
     }
 
     @Override
@@ -177,9 +177,9 @@ public abstract class ResourceChooserItem {
     public String getFileForQualifiers(String qualifiers) {
       for (ResourceItem item : myResourceItems) {
         if (qualifiers.equals(item.getConfiguration().getQualifierString())) {
-          File file = item.getFile();
+          PathString file = item.getSource();
           if (file != null) {
-            return file.getPath();
+            return file.getNativePath();
           }
         }
       }
@@ -291,17 +291,22 @@ public abstract class ResourceChooserItem {
 
   public static class SampleDataItem extends ResourceChooserItem {
     @NotNull private final SampleDataResourceItem myItem;
+    private int myIndex = -1;
 
     public SampleDataItem(@NotNull SampleDataResourceItem item) {
       super(ResourceType.SAMPLE_DATA, item.getName());
-
       myItem = item;
+    }
+
+    @NotNull
+    public SampleDataResourceItem getResourceItem() {
+      return myItem;
     }
 
     @NotNull
     @Override
     public String getResourceUrl() {
-      return TOOLS_SAMPLE_PREFIX + myName;
+      return TOOLS_SAMPLE_PREFIX + myName + ((myIndex >= 0) ? "[" + myIndex + "]" : "");
     }
 
     @Override
@@ -321,14 +326,28 @@ public abstract class ResourceChooserItem {
       return value;
     }
 
+    /**
+     * Set the selected value index to specify the. If index < 0,
+     * {@link #getResourceUrl()} will return the default url (values of this item will be used
+     * sequentially), otherwise the index of the value will be added to the url.
+     *
+     * @throws IndexOutOfBoundsException if index is greater than the number of values in this item.
+     */
+    public void setValueIndex(int index) {
+      if (index >= getSampleDataResourceValue().getValueAsLines().size()) {
+        throw new IndexOutOfBoundsException();
+      }
+      myIndex = index;
+    }
+
     @NotNull
     @Override
     public List<Pair<FolderConfiguration, String>> getQualifiersAndValues() {
       FolderConfiguration folderConfiguration = new FolderConfiguration();
       return getSampleDataResourceValue().getValueAsLines().stream()
-        .limit(10)
-        .map((string) -> Pair.create(folderConfiguration, string))
-        .collect(Collectors.toList());
+                                         .limit(10)
+                                         .map((string) -> Pair.create(folderConfiguration, string))
+                                         .collect(Collectors.toList());
     }
 
     @NotNull

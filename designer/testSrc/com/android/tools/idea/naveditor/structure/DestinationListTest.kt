@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.naveditor.structure
 
+import com.android.tools.adtui.swing.FakeKeyboard
+import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.laf.HeadlessListUI
 import com.android.tools.idea.common.SyncNlModel
-import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.naveditor.NavModelBuilderUtil
@@ -57,12 +59,10 @@ class DestinationListTest : NavTestCase() {
         }
       }
     }
-    val def = DestinationList.DestinationListDefinition()
-    _list = def.factory.create() as DestinationList
     val surface = model.surface
     val sceneView = NavView(surface as NavDesignSurface, surface.sceneManager!!)
     `when`<SceneView>(surface.getCurrentSceneView()).thenReturn(sceneView)
-    list.setToolContext(surface)
+    _list = DestinationList(project, surface)
   }
 
   override fun tearDown() {
@@ -76,9 +76,6 @@ class DestinationListTest : NavTestCase() {
   }
 
   fun testSelection() {
-    val def = DestinationList.DestinationListDefinition()
-    val list = def.factory.create() as DestinationList
-    list.setToolContext(model.surface)
     var selection = ImmutableList.of(model.find("fragment1")!!)
     val modelSelectionModel = model.surface.selectionModel
     modelSelectionModel.setSelection(selection)
@@ -111,9 +108,6 @@ class DestinationListTest : NavTestCase() {
   }
 
   fun testSubflow() {
-    val def = DestinationList.DestinationListDefinition()
-    val list = def.factory.create() as DestinationList
-    list.setToolContext(model.surface)
     var selection = ImmutableList.of(model.find("subnav")!!)
     val modelSelectionModel = model.surface.selectionModel
     modelSelectionModel.setSelection(selection)
@@ -134,15 +128,13 @@ class DestinationListTest : NavTestCase() {
       }.also { root = it }
     }
     val model = modelBuilder.build()
-    val def = DestinationList.DestinationListDefinition()
-    val list = def.factory.create() as DestinationList
 
     val sceneView = NavView(model.surface as NavDesignSurface, model.surface.sceneManager!!)
     `when`<SceneView>(model.surface.currentSceneView).thenReturn(sceneView)
-    list.setToolContext(model.surface)
+    val list = DestinationList(project, model.surface as NavDesignSurface)
 
-
-    assertEquals(ImmutableList.of(model.find("fragment1")!!, model.find("fragment2")!!), Collections.list(list.myListModel.elements()))
+    assertEquals(ImmutableList.of(model.find("fragment1")!!, model.find("fragment2")!!),
+                 Collections.list(list.myUnderlyingModel.elements()))
 
     root!!.fragment("fragment3")
     modelBuilder.updateModel(model)
@@ -150,7 +142,7 @@ class DestinationListTest : NavTestCase() {
 
 
     assertEquals(ImmutableList.of(model.find("fragment1")!!, model.find("fragment2")!!, model.find("fragment3")!!),
-        Collections.list(list.myListModel.elements()))
+        Collections.list(list.myUnderlyingModel.elements()))
 
     // Verify that modifications that don't add or remove components don't cause the selection to change
     val fragment3 = ImmutableList.of(model.find("fragment3")!!)
@@ -180,49 +172,6 @@ class DestinationListTest : NavTestCase() {
     verify(actionManager).showPopup(event, nlComponent)
   }
 
-  fun testBack() {
-    val model = model("nav.xml") {
-      navigation("root") {
-        navigation("subnav", label = "sub nav") {
-          navigation("subsubnav", label = "sub sub nav")
-        }
-      }
-    }
-
-    val def = DestinationList.DestinationListDefinition()
-    val list = def.factory.create() as DestinationList
-    val surface = model.surface as NavDesignSurface
-    val sceneView = NavView(surface, surface.sceneManager!!)
-    `when`<SceneView>(surface.currentSceneView).thenReturn(sceneView)
-    list.setToolContext(surface)
-
-    var root: NlComponent = model.components[0]!!
-    `when`(surface.currentNavigation).thenReturn(root)
-    surface.selectionModel.setSelection(ImmutableList.of(root))
-    surface.selectionModel.clear()
-
-    assertFalse(list.myBackPanel.isVisible)
-
-    root = root.getChild(0)!!
-    `when`(surface.currentNavigation).thenReturn(root)
-    surface.selectionModel.setSelection(ImmutableList.of(root))
-    surface.selectionModel.clear()
-
-    assertTrue(list.myBackPanel.isVisible)
-    assertEquals(DestinationList.ROOT_NAME, list.myBackLabel.text)
-
-    list.goBack()
-    verify(surface).currentNavigation = root.parent!!
-
-    root = root.getChild(0)!!
-    `when`(surface.currentNavigation).thenReturn(root)
-    surface.selectionModel.setSelection(ImmutableList.of(root))
-    surface.selectionModel.clear()
-
-    assertTrue(list.myBackPanel.isVisible)
-    assertEquals("subnav", list.myBackLabel.text)
-  }
-
   fun testRendering() {
     val model = model("nav.xml") {
       navigation("root", startDestination = "fragment2") {
@@ -234,12 +183,10 @@ class DestinationListTest : NavTestCase() {
         include("navigation")
       }
     }
-    val def = DestinationList.DestinationListDefinition()
-    val list = def.factory.create() as DestinationList
     val surface = model.surface
     val sceneView = NavView(surface as NavDesignSurface, surface.sceneManager!!)
     `when`<SceneView>(surface.getCurrentSceneView()).thenReturn(sceneView)
-    list.setToolContext(surface)
+    val list = DestinationList(project, surface)
 
     assertEquals(6, list.myList.itemsCount)
 
@@ -257,5 +204,36 @@ class DestinationListTest : NavTestCase() {
     assertEquals(StudioIcons.NavEditor.Tree.NESTED_GRAPH, result["nav1"])
     assertEquals(StudioIcons.NavEditor.Tree.NESTED_GRAPH, result["nav2"])
     assertEquals(StudioIcons.NavEditor.Tree.INCLUDE_GRAPH, result["nav"])
+  }
+
+  fun testKeyStartsFiltering() {
+    var called = false
+    list.setStartFiltering { called = true }
+
+    val ui = FakeUi(list)
+    list.myList.ui = HeadlessListUI()
+    ui.keyboard.setFocus(list.myList)
+    ui.keyboard.type(FakeKeyboard.Key.A)
+    assertTrue(called)
+  }
+
+  fun testFilter() {
+    val model = model("nav.xml") {
+      navigation("root", startDestination = "fragment2") {
+        fragment("fragment1", label = "fragmentLabel")
+        fragment("fragment2")
+        activity("activity")
+        navigation("nav1", label = "navName")
+        navigation("nav2")
+        include("navigation")
+      }
+    }
+    val surface = model.surface
+    val sceneView = NavView(surface as NavDesignSurface, surface.sceneManager!!)
+    `when`<SceneView>(surface.getCurrentSceneView()).thenReturn(sceneView)
+    val list = DestinationList(project, surface)
+
+    list.setFilter("nav")
+    assertEquals(3, list.myList.itemsCount)
   }
 }

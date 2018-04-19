@@ -19,6 +19,7 @@ import com.android.tools.adtui.chart.linechart.LineConfig;
 import com.android.tools.adtui.instructions.InstructionsPanel;
 import com.android.tools.adtui.instructions.TextInstruction;
 import com.android.tools.adtui.model.SelectionListener;
+import com.android.tools.profiler.proto.EnergyProfiler;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.event.*;
 import com.intellij.ui.JBSplitter;
@@ -26,9 +27,11 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
+import sun.swing.SwingUtilities2;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.concurrent.TimeUnit;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS;
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_VERTICAL_BORDERS;
@@ -71,7 +74,7 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
     getComponent().add(splitter, BorderLayout.CENTER);
 
     getStage().getAspect().addDependency(this)
-      .onChange(EnergyProfilerAspect.SELECTED_EVENT_DURATION, this::updateSelectedDurationView);
+              .onChange(EnergyProfilerAspect.SELECTED_EVENT_DURATION, this::updateSelectedDurationView);
   }
 
   @NotNull
@@ -177,6 +180,24 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
         myEventsPanel.setVisible(false);
       }
     });
+    // Clears the selected duration when the new selection range does not overlap with it.
+    selection.addSelectionUpdatedListener(selectionRange -> {
+      if (getStage().getSelectedDuration() != null) {
+        EnergyDuration selectedDuration = getStage().getSelectedDuration();
+        long detailsStartUs = TimeUnit.NANOSECONDS.toMicros(selectedDuration.getEventList().get(0).getTimestamp());
+        long detailsEndUs = detailsStartUs;
+        if (detailsEndUs < selectionRange.getMin()) {
+          // Updates the end timestamp when last event is not terminal at the details select time. When a new selection range happened,
+          // the previous opened details could have terminated and the end time is not Long.MAX_VALUE.
+          selectedDuration = getStage().updateDuration(selectedDuration);
+          EnergyProfiler.EnergyEvent lastEvent = selectedDuration.getEventList().get(selectedDuration.getEventList().size() - 1);
+          detailsEndUs = lastEvent.getIsTerminal() ? TimeUnit.NANOSECONDS.toMicros(lastEvent.getTimestamp()) : Long.MAX_VALUE;
+        }
+        if (selectionRange.getMax() < detailsStartUs || selectionRange.getMin() > detailsEndUs) {
+          getStage().setSelectedDuration(null);
+        }
+      }
+    });
 
     JComponent minibar = new EnergyEventMinibar(this).getComponent();
 
@@ -188,11 +209,13 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
       installProfilingInstructions(monitorPanel);
     }
 
+    getProfilersView().installCommonMenuItems(selection);
+
     monitorPanel.add(axisPanel, new TabularLayout.Constraint(0, 0));
     monitorPanel.add(legendPanel, new TabularLayout.Constraint(0, 0));
     monitorPanel.add(lineChartPanel, new TabularLayout.Constraint(0, 0));
 
-    JPanel stagePanel = new JPanel(new TabularLayout("*", "*,50px"));
+    JPanel stagePanel = new JPanel(new TabularLayout("*", "*,Fit"));
     stagePanel.add(monitorPanel, new TabularLayout.Constraint(0, 0));
     stagePanel.add(minibar, new TabularLayout.Constraint(1, 0));
     layout.setRowSizing(1, "*");
@@ -216,7 +239,8 @@ public class EnergyProfilerStageView extends StageView<EnergyProfilerStage> {
   private void installProfilingInstructions(@NotNull JPanel parent) {
     assert parent.getLayout().getClass() == TabularLayout.class;
     InstructionsPanel panel =
-      new InstructionsPanel.Builder(new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "Select a range to inspect energy events"))
+      new InstructionsPanel.Builder(
+        new TextInstruction(SwingUtilities2.getFontMetrics(parent, PROFILING_INSTRUCTIONS_FONT), "Select a range to inspect energy events"))
         .setEaseOut(getStage().getInstructionsEaseOutModel(), instructionPanel -> parent.remove(instructionPanel))
         .setBackgroundCornerRadius(PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER, PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER)
         .build();

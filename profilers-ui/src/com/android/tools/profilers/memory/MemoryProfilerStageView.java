@@ -49,6 +49,7 @@ import com.intellij.util.ui.UIUtil;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import sun.swing.SwingUtilities2;
 
 import javax.swing.*;
 import java.awt.*;
@@ -126,7 +127,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
       new ProfilerAction.Builder("Force garbage collection")
         .setIcon(myForceGarbageCollectionButton.getIcon())
         .setActionRunnable(() -> myForceGarbageCollectionButton.doClick(0))
-        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_G, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK)).build();
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_G, AdtUiUtils.getActionMask())).build();
     myForceGarbageCollectionButton.setToolTipText(myForceGarbageCollectionAction.getDefaultToolTipText());
 
 
@@ -140,7 +141,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
       new ProfilerAction.Builder("Dump Java heap")
         .setIcon(myHeapDumpButton.getIcon())
         .setActionRunnable(() -> myHeapDumpButton.doClick(0))
-        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_H, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK)).build();
+        .setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_H, AdtUiUtils.getActionMask())).build();
     myHeapDumpButton.setToolTipText(myHeapDumpAction.getDefaultToolTipText());
 
     myCaptureElapsedTime = new JLabel("");
@@ -163,13 +164,13 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
         .setIcon(StudioIcons.Profiler.Toolbar.RECORD)
         .setEnableBooleanSupplier(() -> !getStage().isTrackingAllocations())
         .setActionRunnable(() -> myAllocationButton.doClick(0)).
-        setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_R, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK)).build();
+        setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_R, AdtUiUtils.getActionMask())).build();
     myStopAllocationAction =
       new ProfilerAction.Builder("Stop recording")
         .setIcon(StudioIcons.Profiler.Toolbar.STOP_RECORDING)
         .setEnableBooleanSupplier(() -> getStage().isTrackingAllocations())
         .setActionRunnable(() -> myAllocationButton.doClick(0)).
-        setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_S, SystemInfo.isMac ? META_DOWN_MASK : CTRL_DOWN_MASK)).build();
+        setKeyStrokes(KeyStroke.getKeyStroke(KeyEvent.VK_S, AdtUiUtils.getActionMask())).build();
 
     getStage().getAspect().addDependency(this)
       .onChange(MemoryProfilerAspect.CURRENT_LOADING_CAPTURE, this::captureObjectChanged)
@@ -515,25 +516,26 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
                         ? IconUtil.darker(StudioIcons.Profiler.Toolbar.HEAP_DUMP, 6)
                         : IconUtil.brighter(StudioIcons.Profiler.Toolbar.HEAP_DUMP, 6);
     RenderInstruction[] instructions;
+    FontMetrics metrics = SwingUtilities2.getFontMetrics(parent, PROFILING_INSTRUCTIONS_FONT);
     if (getStage().useLiveAllocationTracking()) {
       RenderInstruction[] liveAllocInstructions = {
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "Select a range to inspect allocations"),
+        new TextInstruction(metrics, "Select a range to inspect allocations"),
         new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "or click "),
+        new TextInstruction(metrics, "or click "),
         new IconInstruction(heapDumpIcon, PROFILING_INSTRUCTIONS_ICON_PADDING, null),
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, " for a heap dump")
+        new TextInstruction(metrics, " for a heap dump")
       };
       instructions = liveAllocInstructions;
     }
     else {
       RenderInstruction[] legacyInstructions = {
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "Click "),
+        new TextInstruction(metrics, "Click "),
         new IconInstruction(recordIcon, PROFILING_INSTRUCTIONS_ICON_PADDING, null),
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, " to record allocations"),
+        new TextInstruction(metrics, " to record allocations"),
         new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, "or "),
+        new TextInstruction(metrics, "or "),
         new IconInstruction(heapDumpIcon, PROFILING_INSTRUCTIONS_ICON_PADDING, null),
-        new TextInstruction(PROFILING_INSTRUCTIONS_FONT, " for a heap dump")
+        new TextInstruction(metrics, " for a heap dump")
       };
       instructions = legacyInstructions;
     }

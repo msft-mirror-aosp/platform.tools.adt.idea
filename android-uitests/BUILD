@@ -26,6 +26,7 @@ COMMON_TAGS = [
     "no_mac",
     "no_windows",
     "cpu:3",
+    "slow",
 ]
 
 iml_module(
@@ -49,7 +50,7 @@ iml_module(
         "//tools/idea/.idea/libraries:JUnit4[test]",
         "//tools/idea/.idea/libraries:truth[test]",
         "//tools/idea/.idea/libraries:layoutlib[test]",
-        "//tools/adt/idea/android:intellij.android[module, test]",
+        "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/idea:intellij.idea.community.main[module, test]",
@@ -66,7 +67,7 @@ iml_module(
         "//tools/idea/xml/dom-openapi:intellij.xml.dom[module, test]",
         "//tools/idea/platform/xdebugger-impl:intellij.platform.debugger.impl[module, test]",
         "//tools/adt/idea/designer:intellij.android.designer[module, test]",
-        "//tools/base/flags:studio.intellij.android.flags[module, test]",
+        "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/analytics-library/shared:analytics-shared[module]",
         "//tools/analytics-library/tracker:analytics-tracker[module]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module, test]",
@@ -180,7 +181,10 @@ java_test(
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BazelStartupSyncTest"],
-    tags = COMMON_TAGS,
+    tags = COMMON_TAGS + [
+        "manual",  # b/73358558
+        "no_psq",  # b/73037396
+    ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
@@ -197,7 +201,10 @@ java_test(
         "testData/SimpleBazelApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editing.AswbGotoDeclarationTest"],
-    tags = COMMON_TAGS + ["manual"],
+    tags = COMMON_TAGS + [
+        "manual",  # b/73358558
+        "no_psq",
+    ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
@@ -329,6 +336,17 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.kotlin.CodeConversionFromJavaToKotlinTest"],
     tags = COMMON_TAGS + ["manual"],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "CompileWithJava8Test",
+    data = COMMON_DATA + glob([
+        "testData/MinSdk24App/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.java8.CompileWithJava8Test"],
+    tags = COMMON_TAGS + ["no_psq"],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )

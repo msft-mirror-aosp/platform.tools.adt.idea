@@ -21,6 +21,7 @@ import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ResourceResolver;
+import com.android.ide.common.util.PathString;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
@@ -39,13 +40,11 @@ import com.android.tools.idea.javadoc.AndroidJavaDocRenderer;
 import com.android.tools.idea.rendering.HtmlBuilderHelper;
 import com.android.tools.idea.rendering.RenderTask;
 import com.android.tools.idea.res.*;
+import com.android.tools.idea.ui.MaterialColors;
 import com.android.tools.idea.ui.resourcechooser.groups.ResourceChooserGroup;
 import com.android.tools.idea.ui.resourcechooser.groups.ResourceChooserGroups;
 import com.android.tools.idea.ui.resourcechooser.icons.IconFactory;
-import com.android.tools.idea.ui.resourcechooser.preview.EditResourcePanel;
-import com.android.tools.idea.ui.resourcechooser.preview.ResourceDrawablePanel;
-import com.android.tools.idea.ui.resourcechooser.preview.ResourceEditorTab;
-import com.android.tools.idea.ui.resourcechooser.preview.ResourceTablePanel;
+import com.android.tools.idea.ui.resourcechooser.preview.*;
 import com.android.tools.idea.ui.resourcechooser.util.SimpleTabUI;
 import com.android.utils.HtmlBuilder;
 import com.google.common.collect.ImmutableMap;
@@ -120,7 +119,7 @@ import static com.android.SdkConstants.*;
 
 /**
  * Resource Chooser, with previews. Based on ResourceDialog in the android-designer.
- * <P>
+ * <p>
  * TODO: Perform validation (such as cyclic layout resource detection for layout selection)
  */
 public class ChooseResourceDialog extends DialogWrapper {
@@ -487,7 +486,8 @@ public class ChooseResourceDialog extends DialogWrapper {
         type = resValue.getResourceType();
       }
       // panel is null if the reference is incorrect, e.g. "@sdfgsdfgs" (user error).
-      if (type != null) {
+      // Also Sample Data does not have it's own panel and it's included as part of other panels.
+      if (type != null && type != ResourceType.SAMPLE_DATA) {
         panel = getPanel(myTabbedPane, type);
         if (panel != null) {
           if (myTabbedPane != null) {
@@ -1289,6 +1289,7 @@ public class ChooseResourceDialog extends DialogWrapper {
     private static final String EDITOR = "Editor";
     private static final String DRAWABLE = "Bitmap";
     private static final String TABLE = "Table";
+    private static final String SAMPLE_DRAWABLE = "Sample Data";
 
     @NotNull public final JBSplitter myComponent;
     @Nullable private TreeGrid<ResourceChooserItem> myList;
@@ -1299,6 +1300,7 @@ public class ChooseResourceDialog extends DialogWrapper {
     private JTextPane myHtmlTextArea;
     private EditResourcePanel myEditorPanel;
     @Nullable private ResourceDrawablePanel myDrawablePanel;
+    @Nullable private SampleDrawablePanel mySampleImagePanel;
     @Nullable private ResourceTablePanel myTablePanel;
 
     private ResourceComponent myReferenceComponent;
@@ -1324,7 +1326,7 @@ public class ChooseResourceDialog extends DialogWrapper {
       CompletableFuture.runAsync(() -> {
         List<ResourceChooserGroup> groups = Lists.newArrayListWithCapacity(4);
         if (showSampleDataPicker && StudioFlags.NELE_SAMPLE_DATA_UI.get()) {
-          ResourceChooserGroup sampleDataItems = ResourceChooserGroups.createSampleDataGroup(myType, myFacet);
+          ResourceChooserGroup sampleDataItems = ResourceChooserGroups.createSampleDataGroup(type, myFacet);
           if (!sampleDataItems.isEmpty()) {
             groups.add(sampleDataItems);
           }
@@ -1339,7 +1341,7 @@ public class ChooseResourceDialog extends DialogWrapper {
         if (!frameworkItems.isEmpty()) {
           groups.add(frameworkItems);
         }
-        ResourceChooserGroup themeItems = ResourceChooserGroups.createThemeAttributesGroup(myType, myFacet, attrs);
+        ResourceChooserGroup themeItems = ResourceChooserGroups.createThemeAttributesGroup(type, myFacet, attrs);
         if (!themeItems.isEmpty()) {
           groups.add(themeItems);
         }
@@ -1351,10 +1353,10 @@ public class ChooseResourceDialog extends DialogWrapper {
         myComponent.setFirstComponent(firstComponent);
         Disposer.dispose(animationDisposable);
       }, PooledThreadExecutor.INSTANCE)
-        .thenRunAsync(() -> {
-          updateFilter();
-          select(mySelectedValue);
-        }, EdtExecutorService.getInstance());
+                       .thenRunAsync(() -> {
+                         updateFilter();
+                         select(mySelectedValue);
+                       }, EdtExecutorService.getInstance());
 
       myPreviewPanel = new JPanel(new CardLayout());
       myPreviewPanel.setPreferredSize(JBUI.size(400, 600));
@@ -1583,6 +1585,16 @@ public class ChooseResourceDialog extends DialogWrapper {
       CardLayout layout = (CardLayout)myPreviewPanel.getLayout();
       myDrawablePanel.select(item);
       layout.show(myPreviewPanel, DRAWABLE);
+    }
+
+    private void showSampleItem(@NotNull ResourceChooserItem.SampleDataItem item) {
+      if (mySampleImagePanel == null) {
+        mySampleImagePanel = new SampleDrawablePanel(myFacet.getModule());
+        myPreviewPanel.add(mySampleImagePanel, SAMPLE_DRAWABLE);
+      }
+      mySampleImagePanel.select(item);
+      CardLayout layout = (CardLayout)myPreviewPanel.getLayout();
+      layout.show(myPreviewPanel, SAMPLE_DRAWABLE);
     }
 
     private void showTableItem(ResourceChooserItem item) {
@@ -1854,6 +1866,13 @@ public class ChooseResourceDialog extends DialogWrapper {
         return;
       }
 
+      if (element.getType() == ResourceType.SAMPLE_DATA
+          && element instanceof ResourceChooserItem.SampleDataItem
+          && ((ResourceChooserItem.SampleDataItem)element).getResourceItem().getContentType() == SampleDataResourceItem.ContentType.IMAGE) {
+        showSampleItem((ResourceChooserItem.SampleDataItem)element);
+        return;
+      }
+
       switch (myType) {
         case DRAWABLE:
         case MIPMAP:
@@ -1900,7 +1919,7 @@ public class ChooseResourceDialog extends DialogWrapper {
 
           if (stateList.getType() != myStateListPickerPanel.getLocationSettings().getType()) {
             Logger.getInstance(ChooseResourceDialog.class)
-              .warn("StateList type mismatch " + stateList.getType() + " " + myStateListPickerPanel.getLocationSettings().getType());
+                  .warn("StateList type mismatch " + stateList.getType() + " " + myStateListPickerPanel.getLocationSettings().getType());
             showPreview(getSelectedItem(), false);
             return;
           }
@@ -1990,17 +2009,15 @@ public class ChooseResourceDialog extends DialogWrapper {
     }
 
     private void setLocationFromResourceItem(@NotNull ResourceItem item) {
-      if (item.getFile() == null) {
-        assert false : "item.getFile can not be null when selecting a resource item";
+      VirtualFile virtualFile = ResourceHelper.getSourceAsVirtualFile(item);
+      if (virtualFile == null) {
+        assert false : "Item's source can not be null when selecting a resource item";
         return;
       }
-
-      VirtualFile file = LocalFileSystem.getInstance().findFileByIoFile(item.getFile());
-      assert file != null;
       // TODO as we only show variants that are specific to the folderType, and we have different folderTypes for different Editor tabs, reset does not always work.
       // TODO CreateXmlResourcePanel should show all variants irrespective of folderType and we should have just 1 CreateXmlResourcePanel per EditResourcePanel.
       for (ResourceEditorTab editor : myEditorPanel.getAllTabs()) {
-        editor.getLocationSettings().resetFromFile(file, myModule.getProject());
+        editor.getLocationSettings().resetFromFile(virtualFile, myModule.getProject());
       }
     }
 

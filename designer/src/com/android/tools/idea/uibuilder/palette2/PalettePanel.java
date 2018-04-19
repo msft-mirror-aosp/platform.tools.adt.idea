@@ -27,6 +27,7 @@ import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.configurations.Configuration;
+import com.android.tools.idea.model.AndroidModuleInfo;
 import com.android.tools.idea.uibuilder.actions.ComponentHelpAction;
 import com.android.tools.idea.common.api.DragType;
 import com.android.tools.idea.common.api.InsertType;
@@ -362,7 +363,7 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
       AndroidFacet facet = AndroidFacet.getInstance(module);
       assert facet != null;
       myLayoutType = designSurface.getLayoutType();
-      myDataModel.setLayoutType(facet, myLayoutType);
+      myDataModel.setLayoutType(facet, myLayoutType, AndroidModuleInfo.getInstance(facet).getBuildSdkVersion());
       if (myDataModel.getCategoryListModel().hasExplicitGroups()) {
         setCategoryListVisible(true);
         myCategoryList.setSelectedIndex(0);

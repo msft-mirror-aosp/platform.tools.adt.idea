@@ -101,6 +101,7 @@ public class Template {
   public static final String CATEGORY_PROJECTS = "gradle-projects";
   public static final String CATEGORY_OTHER = "other";
   public static final String CATEGORY_APPLICATION = "Application";
+  public static final String ANDROID_MODULE_TEMPLATE = "Android Module";
 
   /**
    * Highest supported format; templates with a higher number will be skipped
@@ -236,15 +237,20 @@ public class Template {
       Map<String, Object> paramMap = context.getParamMap();
       Object kotlinSupport = paramMap.get(ATTR_KOTLIN_SUPPORT);
       Object kotlinVersion = paramMap.get(ATTR_KOTLIN_VERSION);
-      UsageTracker.getInstance().log(
+      AndroidStudioEvent.Builder aseBuilder =
         AndroidStudioEvent.newBuilder()
-          .setCategory(EventCategory.TEMPLATE)
-          .setKind(AndroidStudioEvent.EventKind.TEMPLATE_RENDER)
-          .setTemplateRenderer(titleToTemplateRenderer(title))
-          .setKotlinSupport(
-            KotlinSupport.newBuilder()
-              .setIncludeKotlinSupport(kotlinSupport instanceof Boolean ? (Boolean)kotlinSupport : false)
-              .setKotlinSupportVersion(kotlinVersion instanceof String ? (String)kotlinVersion : "unknown")));
+                          .setCategory(EventCategory.TEMPLATE)
+                          .setKind(AndroidStudioEvent.EventKind.TEMPLATE_RENDER)
+                          .setTemplateRenderer(titleToTemplateRenderer(title))
+                          .setKotlinSupport(
+                            KotlinSupport.newBuilder()
+                                         .setIncludeKotlinSupport(kotlinSupport instanceof Boolean ? (Boolean)kotlinSupport : false)
+                                         .setKotlinSupportVersion(kotlinVersion instanceof String ? (String)kotlinVersion : "unknown"));
+      UsageTracker.getInstance().log(aseBuilder);
+      if (paramMap.get(ATTR_HAS_INSTANT_APP_WRAPPER) instanceof Boolean && (Boolean) paramMap.get(ATTR_HAS_INSTANT_APP_WRAPPER)) {
+        aseBuilder.setTemplateRenderer(TemplateRenderer.ANDROID_INSTANT_APP_PROJECT);
+        UsageTracker.getInstance().log(aseBuilder);
+      }
     }
 
     if (context.shouldReformat()) {
@@ -262,7 +268,7 @@ public class Template {
     switch (title) {
       case "":
         return TemplateRenderer.UNKNOWN_TEMPLATE_RENDERER;
-      case "Android Module":
+      case ANDROID_MODULE_TEMPLATE:
         return TemplateRenderer.ANDROID_MODULE;
       case "Android Project":
         return TemplateRenderer.ANDROID_PROJECT;
@@ -330,6 +336,10 @@ public class Template {
         return TemplateRenderer.BASIC_ACTIVITIY;
       case "App Widget":
         return TemplateRenderer.APP_WIDGET;
+      case "Instant App Project":
+        return TemplateRenderer.ANDROID_INSTANT_APP_PROJECT;
+      case "Instant App":
+        return TemplateRenderer.ANDROID_INSTANT_APP_MODULE;
       default:
         return TemplateRenderer.CUSTOM_TEMPLATE_RENDERER;
     }

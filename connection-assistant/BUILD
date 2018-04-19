@@ -36,10 +36,10 @@ iml_module(
         "//tools/base/usb-devices:studio.usb-devices[module]",
         "//tools/base/common:studio.android.sdktools.common[module]",
         "//tools/base/ddmlib:studio.android.sdktools.ddmlib[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/android-adb[module]",
         "//tools/idea/platform/platform-api:intellij.platform.ide[module]",
-        "//tools/base/flags:studio.intellij.android.flags[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
     ],
 )
 
@@ -55,6 +55,7 @@ iml_module(
         "//tools/base/templates",
     ],
     test_srcs = ["testSrc"],
+    test_tags = ["slow"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
@@ -78,10 +79,10 @@ iml_module(
         "//tools/base/usb-devices:studio.usb-devices[module]",
         "//tools/base/common:studio.android.sdktools.common[module]",
         "//tools/base/ddmlib:studio.android.sdktools.ddmlib[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/android-adb[module]",
         "//tools/idea/platform/platform-api:intellij.platform.ide[module]",
-        "//tools/base/flags:studio.intellij.android.flags[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/idea/.idea/libraries:mockito[test]",
         "//tools/idea/.idea/libraries:truth[test]",
         "//tools/idea/platform/testFramework:intellij.platform.testFramework[module, test]",

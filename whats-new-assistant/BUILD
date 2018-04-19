@@ -21,10 +21,10 @@ iml_module(
     deps = [
         "//tools/adt/idea/assistant[module]",
         "//tools/idea/platform/core-api:intellij.platform.core[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/idea/platform/platform-impl:intellij.platform.ide.impl[module]",
-        "//tools/base/flags:studio.intellij.android.flags[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
     ],
 )
 
@@ -40,6 +40,7 @@ iml_module(
         "//tools/base/templates",
     ],
     test_srcs = ["testSrc"],
+    test_tags = ["slow"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
@@ -55,10 +56,10 @@ iml_module(
     deps = [
         "//tools/adt/idea/assistant[module]",
         "//tools/idea/platform/core-api:intellij.platform.core[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/idea/platform/platform-impl:intellij.platform.ide.impl[module]",
-        "//tools/base/flags:studio.intellij.android.flags[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/idea/.idea/libraries:KotlinJavaRuntime",
         "//tools/idea/.idea/libraries:mockito[test]",
         "//tools/idea/.idea/libraries:truth[test]",

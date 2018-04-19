@@ -15,6 +15,7 @@
  */
 package com.android.tools.adtui
 
+import com.android.tools.adtui.common.secondaryPanelBackground
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
@@ -23,7 +24,9 @@ import com.intellij.openapi.util.registry.Registry
 import com.intellij.ui.JBColor
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import java.awt.Point
+import java.awt.Rectangle
 import javax.swing.JComponent
 
 /**
@@ -42,7 +45,8 @@ class LightCalloutPopup(
   fun show(
     content: JComponent,
     parentComponent: JComponent,
-    location: Point
+    location: Point,
+    position: Balloon.Position = Balloon.Position.below
   ) {
 
     // Let's cancel any previous balloon shown by this instance of ScenePopup
@@ -59,12 +63,15 @@ class LightCalloutPopup(
         override fun onClosed(event: LightweightWindowEvent?) {
           if (event?.isOk == true) {
             closedCallback?.invoke()
-          } else {
+          }
+          else {
             cancelCallBack?.invoke()
           }
         }
       })
-      show(RelativePoint(parentComponent, location), Balloon.Position.above)
+
+      val relativePoint = RelativePoint(parentComponent, location)
+      show(relativePoint, position)
     }
   }
 
@@ -78,9 +85,9 @@ class LightCalloutPopup(
 
   private fun createPopup(component: JComponent) =
     JBPopupFactory.getInstance().createBalloonBuilder(component)
-      .setFillColor(JBColor.WHITE)
+      .setFillColor(secondaryPanelBackground)
       .setBorderColor(JBColor.border())
-      .setBorderInsets(JBUI.insets(2))
+      .setBorderInsets(JBUI.insets(1))
       .setAnimationCycle(Registry.intValue("ide.tooltip.animationCycle"))
       .setShowCallout(true)
       .setPositionChangeYShift(2)
@@ -89,4 +96,18 @@ class LightCalloutPopup(
       .setRequestFocus(true)
       .setDialogMode(false)
       .createBalloon()
+}
+
+private val emptyRectangle = Rectangle(0, 0, 0, 0)
+
+/**
+ * Return true if there is enough space in the application window below [location]
+ * in the [parentComponent] coordinates to show [content].
+ */
+fun canShowBelow(parentComponent: JComponent,
+                 location: Point,
+                 content: JComponent): Boolean {
+  val relativePoint = RelativePoint(parentComponent, location)
+  val windowBounds = UIUtil.getWindow(parentComponent)?.bounds ?: emptyRectangle
+  return relativePoint.screenPoint.y + content.preferredSize.height < windowBounds.y + windowBounds.height
 }

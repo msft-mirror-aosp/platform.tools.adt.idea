@@ -104,6 +104,7 @@ public class StudioIcons {
       public static final Icon CARD_VIEW = load("/studio/icons/layout-editor/palette/card-view.png"); // 16x16
       public static final Icon CHECK_BOX = load("/studio/icons/layout-editor/palette/check-box.png"); // 16x16
       public static final Icon CHECKED_TEXT_VIEW = load("/studio/icons/layout-editor/palette/checked-text-view.png"); // 16x16
+      public static final Icon CHIP_GROUP = load("/studio/icons/layout-editor/palette/chip-group.png"); // 16x16
       public static final Icon CHIP = load("/studio/icons/layout-editor/palette/chip.png"); // 16x16
       public static final Icon CHRONOMETER = load("/studio/icons/layout-editor/palette/chronometer.png"); // 16x16
       public static final Icon COLLAPSING_TOOLBAR_LAYOUT = load("/studio/icons/layout-editor/palette/collapsing-toolbar-layout.png"); // 16x16
@@ -216,6 +217,7 @@ public class StudioIcons {
       public static final Icon TEXT_STYLE_ITALIC = load("/studio/icons/layout-editor/properties/text-style-italic.png"); // 16x16
       public static final Icon TEXT_STYLE_UPPERCASE = load("/studio/icons/layout-editor/properties/text-style-uppercase.png"); // 16x16
       public static final Icon TOGGLE_PROPERTIES = load("/studio/icons/layout-editor/properties/toggle-properties.png"); // 16x16
+      public static final Icon TOOLS_ATTRIBUTE = load("/studio/icons/layout-editor/properties/tools-attribute.png"); // 12x12
     }
 
     public static class Toolbar {

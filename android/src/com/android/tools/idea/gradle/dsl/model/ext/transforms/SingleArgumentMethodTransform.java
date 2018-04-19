@@ -16,32 +16,48 @@
 package com.android.tools.idea.gradle.dsl.model.ext.transforms;
 
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
-import com.android.tools.idea.gradle.dsl.parser.elements.*;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpression;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
+import com.intellij.util.containers.hash.HashSet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.*;
-import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.createOrReplaceBasicExpression;
+import java.util.Arrays;
+import java.util.Set;
+
+import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType;
+import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.*;
 
 /**
  * <p>This transform used for single argument method calls which have a preceding property name.</p>
- *
+ * <p>
  * <p>For example this transforms will allow a {@link GradlePropertyModel} to work on the &lt;value&gt; within:</p>
- *   <code>storeFile file(&lt;value&gt;)</code><br>
+ * <code>storeFile file(&lt;value&gt;)</code><br>
  * or<br>
- *   <code>storePassword System.console().readLine(&lt;value&gt;)</code><br>
- *
+ * <code>storePassword System.console().readLine(&lt;value&gt;)</code><br>
+ * <p>
  * <p>Note: It does not work when there is no preceding property name such as:</p>
- *   <code>jcenter()</code><br>
- *
+ * <code>jcenter()</code><br>
+ * <p>
  * <p>When no arguments are present the resulting {@link ValueType} of the model will be {@link ValueType#NONE}.</p>
  */
 public class SingleArgumentMethodTransform extends PropertyTransform {
   @NotNull
-  private String myMethodName;
+  private final Set<String> myRecognizedNames = new HashSet<>();
+  @NotNull
+  private final String myWriteBackName;
 
   public SingleArgumentMethodTransform(@NotNull String methodName) {
-    myMethodName = methodName;
+    myRecognizedNames.add(methodName);
+    myWriteBackName = methodName;
+  }
+
+  public SingleArgumentMethodTransform(@NotNull String methodName, @NotNull String... methodNames) {
+    myRecognizedNames.addAll(Arrays.asList(methodNames));
+    myRecognizedNames.add(methodName);
+    myWriteBackName = methodName;
   }
 
   @Override
@@ -51,17 +67,16 @@ public class SingleArgumentMethodTransform extends PropertyTransform {
       return true;
     }
 
-    if (!(e instanceof GradleDslMethodCall)) {
-      return false;
+    if (e instanceof GradleDslMethodCall) {
+      GradleDslMethodCall methodCall = (GradleDslMethodCall)e;
+      if (!myRecognizedNames.contains(methodCall.getMethodName()) ||
+          methodCall.getArguments().isEmpty()) {
+        return false;
+      }
+      return true;
     }
 
-    GradleDslMethodCall methodCall = (GradleDslMethodCall)e;
-    if (!methodCall.getMethodName().equals(myMethodName) ||
-        methodCall.getArguments().isEmpty()) {
-      return false;
-    }
-
-    return true;
+    return false;
   }
 
   @Nullable
@@ -73,7 +88,6 @@ public class SingleArgumentMethodTransform extends PropertyTransform {
   }
 
   /**
-   *
    * @param holder     the parent of the property being represented by the {@link GradlePropertyModel}
    * @param oldElement the old element being represented by the {@link GradlePropertyModel}, if this is {@code null} then the
    *                   {@link GradleDslElement} returned will have to be created, otherwise it may be possible to reuse some elements
@@ -84,31 +98,42 @@ public class SingleArgumentMethodTransform extends PropertyTransform {
    */
   @NotNull
   @Override
-  public GradleDslElement bind(@NotNull GradleDslElement holder,
-                               @Nullable GradleDslElement oldElement,
-                               @NotNull Object value,
-                               @NotNull String name) {
+  public GradleDslExpression bind(@NotNull GradleDslElement holder,
+                                  @Nullable GradleDslElement oldElement,
+                                  @NotNull Object value,
+                                  @NotNull String name) {
+    return createBasicExpression(holder, value, GradleNameElement.empty());
+  }
+
+  @Override
+  @NotNull
+  public GradleDslExpression replace(@NotNull GradleDslElement holder,
+                                     @Nullable GradleDslElement oldElement,
+                                     @NotNull GradleDslExpression newElement,
+                                     @NotNull String name) {
     GradleDslMethodCall methodCall;
-    GradleNameElement nameElement = GradleNameElement.create(name);
     if (oldElement instanceof GradleDslMethodCall) {
       // This cast is safe, we are guaranteed to have test(e) return true.
       methodCall = (GradleDslMethodCall)oldElement;
-      if (methodCall.getMethodName().equals(myMethodName)) {
+      if (myRecognizedNames.contains(methodCall.getMethodName())) {
         GradleDslElement baseElement = transform(oldElement);
-        if (baseElement != null) {
-          GradleDslSimpleExpression newBaseElement = createOrReplaceBasicExpression(methodCall, baseElement, value, nameElement);
-          if (baseElement != newBaseElement) {
-            methodCall.remove(baseElement);
-            methodCall.addNewArgument(newBaseElement);
-          }
-          return oldElement;
-        }
+        replaceElement(methodCall, baseElement, newElement);
+        return methodCall;
       }
     }
 
-    methodCall = new GradleDslMethodCall(holder, nameElement, myMethodName);
-    GradleDslSimpleExpression argument = createOrReplaceBasicExpression(methodCall, null, value, nameElement);
-    methodCall.addNewArgument(argument);
+    GradleNameElement nameElement = GradleNameElement.create(name);
+    methodCall = new GradleDslMethodCall(holder, nameElement, myWriteBackName);
+    methodCall.addNewArgument(newElement);
+    replaceElement(holder, oldElement, methodCall);
     return methodCall;
+  }
+
+  @Override
+  @Nullable
+  public GradleDslElement delete(@NotNull GradleDslElement holder, @NotNull GradleDslElement oldElement,
+                                 @NotNull GradleDslElement transformedElement) {
+    removeElement(oldElement);
+    return null;
   }
 }

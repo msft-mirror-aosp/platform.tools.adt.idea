@@ -21,10 +21,10 @@ iml_module(
     deps = [
         "//tools/idea/platform/platform-api:intellij.platform.ide[module]",
         "//tools/adt/idea/project-system[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/idea/.idea/libraries:KotlinJavaRuntime",
-        "//tools/base/apkparser/analyzer:studio.intellij.android.analyzer[module]",
+        "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer[module]",
         "//tools/idea/platform/lang-api:intellij.platform.lang[module]",
         "//tools/analytics-library/protos:analytics-protos[module]",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common[module]",
@@ -64,10 +64,11 @@ iml_module(
         "//tools/adt/idea/adt-branding:intellij.android.adt.branding",
     ],
     test_srcs = ["testSrc"],
+    test_tags = ["slow"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//tools/adt/idea/android:intellij.android[module, test]",
+        "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/project-system[module, test]",
         "//tools/adt/idea/project-system-gradle[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",

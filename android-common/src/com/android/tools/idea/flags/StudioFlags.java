@@ -62,8 +62,13 @@ public final class StudioFlags {
     false);
 
   public static final Flag<Boolean> NPW_DYNAMIC_APPS = Flag.create(
-    NPW, "dynamic.apps", "New Project/Module Dynamic Apps flow",
-    "Use new Dynamic Apps flow when creating a New Mobile Project/Module",
+    NPW, "dynamic.apps", "New Dynamic App Project flow",
+    "Use new Dynamic App flow when creating a New Mobile Project",
+    false);
+
+  public static final Flag<Boolean> NPW_DYNAMIC_APP_MODULE = Flag.create(
+    NPW, "dynamic.app.module", "New Dynamic App Module flow",
+    "Adds entry in File > New Module to create a new Dynamic App Module",
     false);
 
   public static final Flag<Boolean> NPW_USE_HOME_FOLDER_AS_EXTRA_TEMPLATE_ROOT_FOLDER = Flag.create(
@@ -107,7 +112,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_IMPORT_CPU_TRACE = Flag.create(
     PROFILER, "cpu.import.trace", "Enable CPU trace importing",
     "Add the option to import CPU trace files when right-clicking the CPU profiler usage chart.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_EXPORT_CPU_TRACE = Flag.create(
     PROFILER, "cpu.export.trace", "Enable CPU trace exporting",
@@ -122,7 +127,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_CPU_API_TRACING = Flag.create(
     PROFILER, "cpu.api.tracing", "Enable CPU API Tracing",
     "Support method tracing through APIs from android.os.Debug.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_SHOW_THREADS_VIEW = Flag.create(
     PROFILER, "threads.view", "Show network threads view",
@@ -163,6 +168,12 @@ public final class StudioFlags {
     PROFILER, "jni", "Enable JVMTI-based JNI reference tracking.",
     "For Android O or newer, JNI references are tracked in Memory Profiler and shown in JNI heap.",
     true);
+
+  public static final Flag<Boolean> PROFILER_PERFORMANCE_MONITORING = Flag.create(
+    PROFILER, "performance.monitoring", "Enable Profiler Performance Monitoring Options",
+    "Toggles if profiler performance metrics options are enabled.",
+    false
+  );
 
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
   public static final Flag<Boolean> NELE_ANIMATIONS_PREVIEW = Flag.create(
@@ -237,7 +248,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNDEBUG_USE_AIA_SDK_LIBRARY = Flag.create(
     RUNDEBUG_GROUP, "instantapps.sdklib.enabled", "Use external SDK library to launch Instant Apps",
     "When provisioning devices and launching Instant Apps, use the AIA SDK library JAR to perform these functions if available",
-    false);
+    true);
 
   public static final Flag<Boolean> RUNDEBUG_ANDROID_BUILD_BUNDLE_ENABLED = Flag.create(
     RUNDEBUG_GROUP, "android.bundle.build.enabled", "Enable the Build Bundle action",

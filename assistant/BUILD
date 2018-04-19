@@ -20,7 +20,7 @@ iml_module(
     deps = [
         "//tools/idea/platform/extensions:intellij.platform.extensions[module]",
         "//tools/idea/platform/core-api:intellij.platform.core[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/idea/platform/editor-ui-api:intellij.platform.editor[module]",
         "//tools/idea/platform/platform-api:intellij.platform.ide[module]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
@@ -44,6 +44,7 @@ iml_module(
         "//tools/base/templates",
     ],
     test_srcs = ["testSrc"],
+    test_tags = ["slow"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
@@ -59,7 +60,7 @@ iml_module(
     deps = [
         "//tools/idea/platform/extensions:intellij.platform.extensions[module]",
         "//tools/idea/platform/core-api:intellij.platform.core[module]",
-        "//tools/adt/idea/android:intellij.android[module]",
+        "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/idea/platform/editor-ui-api:intellij.platform.editor[module]",
         "//tools/idea/platform/platform-api:intellij.platform.ide[module]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",

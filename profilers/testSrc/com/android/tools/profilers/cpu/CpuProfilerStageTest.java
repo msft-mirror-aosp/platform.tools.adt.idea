@@ -15,15 +15,13 @@
  */
 package com.android.tools.profilers.cpu;
 
-import com.android.tools.adtui.model.AspectObserver;
-import com.android.tools.adtui.model.FakeTimer;
-import com.android.tools.adtui.model.Range;
-import com.android.tools.adtui.model.SeriesData;
+import com.android.tools.adtui.model.*;
 import com.android.tools.perflib.vmtrace.ClockType;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
 import com.android.tools.profilers.*;
+import com.android.tools.profilers.analytics.FilterMetadata;
 import com.android.tools.profilers.cpu.atrace.AtraceParser;
 import com.android.tools.profilers.cpu.atrace.CpuKernelTooltip;
 import com.android.tools.profilers.event.FakeEventService;
@@ -42,6 +40,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -664,25 +663,33 @@ public class CpuProfilerStageTest extends AspectObserver {
   @Test
   public void testElapsedTime() {
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    // When there is no capture in progress, elapsed time is set to Long.MAX_VALUE.
-    // As a result CpuProfilerStage#getCaptureElapsedTimeUs should return a negative value.
-    assertThat(myStage.getCaptureElapsedTimeUs()).isLessThan((long)0);
+    // Before we capture, elapsed time should be unset (default set to 0)
+    assertThat(myStage.getCaptureElapsedTimeUs()).isEqualTo(0);
 
     // Start capturing
     startCapturingSuccess();
     // Increment 3 seconds on data range
     Range dataRange = myStage.getStudioProfilers().getTimeline().getDataRange();
-    dataRange.setMax(dataRange.getMax() + TimeUnit.SECONDS.toMicros(3));
+    double currentMax = dataRange.getMax() + TimeUnit.SECONDS.toMicros(3);
+    dataRange.setMax(currentMax);
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
-
     // Check that we're capturing for three seconds
     assertThat(myStage.getCaptureElapsedTimeUs()).isEqualTo(TimeUnit.SECONDS.toMicros(3));
 
     myCpuService.setValidTrace(true);
     stopCapturing();
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    // Capture has finished. CpuProfilerStage#getCaptureElapsedTimeUs should return a negative value.
-    assertThat(myStage.getCaptureElapsedTimeUs()).isLessThan((long)0);
+
+    currentMax += TimeUnit.SECONDS.toMicros(2);
+    dataRange.setMax(currentMax);
+    // Start capturing again, this time for 10 seconds
+    startCapturingSuccess();
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+    currentMax += TimeUnit.SECONDS.toMicros(10);
+    dataRange.setMax(currentMax);
+
+    // Check that we're capturing for 10 seconds.
+    assertThat(myStage.getCaptureElapsedTimeUs()).isEqualTo(TimeUnit.SECONDS.toMicros(10));
   }
 
   @Test
@@ -775,7 +782,7 @@ public class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void exitingStateAndEnteringAgainShouldPreserveCaptureState() throws IOException {
+  public void exitingStageAndEnteringAgainShouldPreserveCaptureState() throws IOException {
     assertThat(myCpuService.getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
     ProfilingConfiguration config1 = new ProfilingConfiguration("My Config",
                                                                 CpuProfiler.CpuProfilerType.SIMPLEPERF,
@@ -806,6 +813,85 @@ public class CpuProfilerStageTest extends AspectObserver {
       ((FakeFeatureTracker)myServices.getFeatureTracker()).getLastCpuCaptureMetadata().getProfilingConfiguration();
     assertThat(trackedConfig.getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.SIMPLEPERF);
     assertThat(trackedConfig.getMode()).isEqualTo(CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+  }
+
+  @Test
+  public void apiInitiatedCaptureShouldShowSpecialConfig() throws IOException {
+    assertThat(myCpuService.getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
+    ProfilingConfiguration config1 = new ProfilingConfiguration("My Config",
+                                                                CpuProfiler.CpuProfilerType.SIMPLEPERF,
+                                                                CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    myStage.setProfilingConfiguration(config1);
+
+    // Verify non-API-initiated config before the API tracing starts.
+    assertThat(myStage.getProfilingConfiguration()).isEqualTo(config1);
+    assertThat(myStage.getProfilingConfigurations().size()).isGreaterThan(1);
+
+    // API-initiated tracing starts.
+    CpuProfiler.CpuProfilerConfiguration apiTracingconfig =
+      CpuProfiler.CpuProfilerConfiguration.newBuilder().setProfilerType(CpuProfiler.CpuProfilerType.ART).build();
+    long startTimestamp = 100;
+    myCpuService.setOngoingCaptureConfiguration(apiTracingconfig, startTimestamp, CpuProfiler.TraceInitiationType.INITIATED_BY_API);
+    myStage.updateProfilingState();
+
+    // Verify the configuration is set to the special config properly.
+    assertThat(myStage.getProfilingConfiguration().getName()).isEqualTo("Debug API (Java)");
+    assertThat(myStage.getProfilingConfiguration().getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
+    assertThat(myStage.getProfilingConfigurations().size()).isEqualTo(1);
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+
+    // API-initiated tracing ends.
+    myCpuService.setAppBeingProfiled(false);
+    myStage.updateProfilingState();
+
+    // Verify the configuration is set back to the config before API-initiated tracing.
+    assertThat(myStage.getProfilingConfiguration()).isEqualTo(config1);
+    assertThat(myStage.getProfilingConfigurations().size()).isGreaterThan(1);
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
+  }
+
+  @Test
+  public void apiInitiatedCaptureShouldPreserveNonIdelNonCapturingState() {
+    myStage.setCaptureState(CpuProfilerStage.CaptureState.PARSING);
+
+    // API-initiated tracing starts.
+    CpuProfiler.CpuProfilerConfiguration apiTracingconfig =
+      CpuProfiler.CpuProfilerConfiguration.newBuilder().setProfilerType(CpuProfiler.CpuProfilerType.ART).build();
+    long startTimestamp = 100;
+    myCpuService.setOngoingCaptureConfiguration(apiTracingconfig, startTimestamp, CpuProfiler.TraceInitiationType.INITIATED_BY_API);
+
+    // Verify the parsing state isn't changed due to API tracing.
+    myStage.updateProfilingState();
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.PARSING);
+
+    // Simulate the parsing of prior capture (the one being parsed when entering the test) is done.
+    myStage.setCaptureState(CpuProfilerStage.CaptureState.IDLE);
+
+    // Verify API-initiated tracing is shown as capturing.
+    myStage.updateProfilingState();
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+  }
+
+  @Test
+  public void apiInitiatedCaptureRespectCpuApiTracingFlag() {
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
+
+    // API-initiated tracing starts.
+    CpuProfiler.CpuProfilerConfiguration apiTracingconfig =
+      CpuProfiler.CpuProfilerConfiguration.newBuilder().setProfilerType(CpuProfiler.CpuProfilerType.ART).build();
+    long startTimestamp = 100;
+    myCpuService.setOngoingCaptureConfiguration(apiTracingconfig, startTimestamp, CpuProfiler.TraceInitiationType.INITIATED_BY_API);
+
+    // Verify that when cpu.api.tracing is off, an API-initiated tracing doesn't update stage's capture state.
+    myServices.enableCpuApiTracing(false);
+    myStage.getStudioProfilers().getUpdater().onTick(1);
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
+
+    // Verify that when cpu.api.tracing is on, an API-initiated tracing does update stage's capture state.
+    myServices.enableCpuApiTracing(true);
+    CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
+    stage.getStudioProfilers().getUpdater().onTick(1);
+    assertThat(stage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
   }
 
   @Test
@@ -850,6 +936,26 @@ public class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
+  public void configurationShouldBeTheOnGoingProfilingAfterExitAndEnter() {
+    ProfilingConfiguration testConfig = new ProfilingConfiguration(ProfilingConfiguration.SIMPLEPERF,
+                                                                         CpuProfiler.CpuProfilerType.SIMPLEPERF,
+                                                                         CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    myStage.setProfilingConfiguration(testConfig);
+    startCapturingSuccess();
+    assertThat(myStage.getProfilingConfiguration()).isEqualTo(testConfig);
+    myStage.exit();
+
+    // Enter CpuProfilerStage again.
+    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), myServices, myTimer);
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    CpuProfilerStage newStage = new CpuProfilerStage(profilers);
+    newStage.getStudioProfilers().setStage(newStage);
+
+    assertThat(newStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+    assertThat(newStage.getProfilingConfiguration()).isEqualTo(testConfig);
+  }
+
+  @Test
   public void selectARangeWithNoCapturesShouldKeepCurrentCaptureSelected() {
     assertThat(myStage.getCapture()).isNull();
     captureSuccessfully();
@@ -874,6 +980,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Capture with FAKE_TRACE_ID doesn't exist yet. myStage.getCapture(...) will parse it.
     CpuCapture capture = myStage.getCaptureFuture(FakeCpuService.FAKE_TRACE_ID).get();
     assertThat(capture).isNotNull();
+    myStage.setCaptureState(CpuProfilerStage.CaptureState.IDLE);
 
     captureSuccessfully();
     // Capture should be the same as the one obtained by myStage.getCapture(...),
@@ -895,6 +1002,66 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Capture should be the same as the one created by stopCapturing(),
     // because we should not parse the trace into another CpuCapture object.
     assertThat(myStage.getCaptureFuture(FakeCpuService.FAKE_TRACE_ID).get()).isEqualTo(capture);
+  }
+
+  @Test
+  public void getCaptureFutureShouldSetStateToParsing() {
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
+    assertThat(myStage.getProfilerMode()).isEqualTo(ProfilerMode.NORMAL);
+
+    myCpuService.setStopProfilingStatus(CpuProfiler.CpuProfilingAppStopResponse.Status.SUCCESS);
+    myCpuService.setValidTrace(true);
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS);
+    myStage.getCaptureFuture(FakeCpuService.FAKE_TRACE_ID);
+
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.PARSING);
+    assertThat(myStage.getProfilerMode()).isEqualTo(ProfilerMode.EXPANDED);
+  }
+
+  @Test
+  public void setCaptureWhileCapturingShouldParseAndReturnToCapturing() {
+    // Start capturing
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS);
+    int traceId1 = 1;
+    myCpuService.setTraceId(traceId1);
+    myStage.startCapturing();
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+
+    // Sequence of states that should happen when selecting a different capture while capturing. We should parse the selected capture and
+    // then go back to the capturing state.
+    Iterator<CpuProfilerStage.CaptureState> captureStates = Iterators.forArray(CpuProfilerStage.CaptureState.PARSING,
+                                                                               CpuProfilerStage.CaptureState.CAPTURING);
+    // Listen to CAPTURE_STATE changes and check if the new state is equal to what we expect.
+    AspectObserver observer = new AspectObserver();
+    myStage.getAspect().addDependency(observer).onChange(
+      CpuProfilerAspect.CAPTURE_STATE, () -> assertThat(myStage.getCaptureState()).isEqualTo(captureStates.next()));
+
+    // Select another capture
+    int traceId2 = 2;
+    myCpuService.setTraceId(traceId2);
+    myStage.setAndSelectCapture(traceId2);
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+  }
+
+  @Test
+  public void setCaptureWhileIdleShouldParseAndReturnToIdle() {
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
+
+    // Sequence of states that should happen when selecting a capture while idle. We should parse the selected capture an then go back
+    // to the idle state.
+    Iterator<CpuProfilerStage.CaptureState> captureStates = Iterators.forArray(CpuProfilerStage.CaptureState.PARSING,
+                                                                               CpuProfilerStage.CaptureState.IDLE);
+    // Listen to CAPTURE_STATE changes and check if the new state is equal to what we expect.
+    AspectObserver observer = new AspectObserver();
+    myStage.getAspect().addDependency(observer).onChange(
+      CpuProfilerAspect.CAPTURE_STATE, () -> assertThat(myStage.getCaptureState()).isEqualTo(captureStates.next()));
+
+    // Select a capture
+    int traceId1 = 1;
+    myCpuService.setTraceId(traceId1);
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS);
+    myStage.setAndSelectCapture(traceId1);
+    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
   }
 
   @Test
@@ -1316,6 +1483,50 @@ public class CpuProfilerStageTest extends AspectObserver {
     }
   }
 
+  @Test
+  public void captureAlwaysSelectedInImportTraceMode() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(true);
+    File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    // Import trace mode is enabled successfully
+    assertThat(stage.isImportTraceMode()).isTrue();
+
+    CpuCapture capture = stage.getCapture();
+    assertThat(myStage.getStudioProfilers().getTimeline().getSelectionRange().getMin()).isEqualTo(capture.getRange().getMin());
+    assertThat(myStage.getStudioProfilers().getTimeline().getSelectionRange().getMax()).isEqualTo(capture.getRange().getMax());
+    // Pretend to clear the selection from UI.
+    myStage.getSelectionModel().clear();
+    assertThat(myStage.getStudioProfilers().getTimeline().getSelectionRange().getMin()).isEqualTo(capture.getRange().getMin());
+    assertThat(myStage.getStudioProfilers().getTimeline().getSelectionRange().getMax()).isEqualTo(capture.getRange().getMax());
+  }
+
+  @Test
+  public void testCaptureFilterFeatureTrack() {
+    final FakeFeatureTracker tracker = (FakeFeatureTracker)myServices.getFeatureTracker();
+
+    // Capture a trace to apply filter on.
+    captureSuccessfully();
+
+    myStage.setCaptureFilter(Pattern.compile(""), new FilterModel());
+
+    FilterMetadata filterMetadata = tracker.getLastFilterMetadata();
+    assertThat(filterMetadata).isNotNull();
+    assertThat(filterMetadata.getFilterTextLength()).isEqualTo(0);
+    assertThat(filterMetadata.getFeaturesUsed()).isEqualTo(0);
+
+    // Test with some filter features and non empty text
+    FilterModel filterModel = new FilterModel();
+    filterModel.setIsMatchCase(true);
+    filterModel.setIsRegex(true);
+    myStage.setCaptureFilter(Pattern.compile("some"), filterModel);
+    filterMetadata = tracker.getLastFilterMetadata();
+    assertThat(filterMetadata).isNotNull();
+    assertThat(filterMetadata.getFilterTextLength()).isEqualTo(4);
+    assertThat(filterMetadata.getFeaturesUsed()).isEqualTo(FilterMetadata.MATCH_CASE | FilterMetadata.IS_REGEX);
+  }
+
   private void addAndSetDevice(int featureLevel, String serial) {
     int deviceId = serial.hashCode();
     Common.Device device = Common.Device.newBuilder()
@@ -1348,6 +1559,8 @@ public class CpuProfilerStageTest extends AspectObserver {
       // First, the main executor is going to be called to execute stopCapturingCallback,
       // which should set the capture state to PARSING
       assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.PARSING);
+      // Whenever the capture is being parsed, profiler mode should be set to EXPANDED
+      assertThat(myStage.getProfilerMode()).isEqualTo(ProfilerMode.EXPANDED);
       // Then, the next time the main executor is called, it will parse the capture successfully
       // and set the capture state to IDLE
       myServices.setOnExecute(() -> {

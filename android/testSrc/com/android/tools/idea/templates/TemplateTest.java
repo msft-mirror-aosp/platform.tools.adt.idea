@@ -181,6 +181,7 @@ public class TemplateTest extends AndroidGradleTestCase {
     if ("WatchFaceService".equals(templateName)) return true; // See https://b.corp.google.com/issues/65062154
     if ("GoogleAdMobAdsActivity".equals(templateName)) return true;  // b/72260139
     if ("GoogleMapsActivity".equals(templateName)) return true;  // b/72260139
+    if ("SliceProvider".equals(templateName)) return true;  // b/78197770
     return false;
   }
 
@@ -393,6 +394,21 @@ public class TemplateTest extends AndroidGradleTestCase {
   @TemplateCheck
   public void testNewProjectWithEmptyActivity() throws Exception {
     checkCreateTemplate("activities", "EmptyActivity", true);
+  }
+
+  @TemplateCheck
+  public void testNewViewModelActivity() throws Exception {
+    checkCreateTemplate("activities", "ViewModelActivity", false);
+  }
+
+  @TemplateCheck
+  public void testNewViewModelActivityWithKotlin() throws Exception {
+    checkCreateTemplate("activities", "ViewModelActivity", false, withKotlin);
+  }
+
+  @TemplateCheck
+  public void testNewProjectWithViewModelActivity() throws Exception {
+    checkCreateTemplate("activities", "ViewModelActivity", true);
   }
 
   @TemplateCheck
@@ -622,6 +638,24 @@ public class TemplateTest extends AndroidGradleTestCase {
     checkCreateTemplate("other", "ContentProvider", false, withKotlin);
   }
 
+
+  @TemplateCheck
+  public void testNewSliceProvider() throws Exception {
+    // TODO: This template requires API 28. Temporarily disabled until out of preview.
+    // TODO: (Consider adding preview SDK support to this suite.)
+    //myApiSensitiveTemplate = false;
+    //checkCreateTemplate("other", "SliceProvider", false);
+  }
+
+
+  @TemplateCheck
+  public void testNewSliceProviderWithKotlin() throws Exception {
+    // TODO: This template requires API 28. Temporarily disabled until out of preview.
+    // TODO: (Consider adding preview SDK support to this suite.)
+    //myApiSensitiveTemplate = false;
+    //checkCreateTemplate("other", "SliceProvider", false, withKotlin);
+  }
+
   @TemplateCheck
   public void testNewCustomView() throws Exception {
     myApiSensitiveTemplate = false;
@@ -686,6 +720,18 @@ public class TemplateTest extends AndroidGradleTestCase {
   public void testNewBlankFragmentWithKotlin() throws Exception {
     myApiSensitiveTemplate = false;
     checkCreateTemplate("other", "BlankFragment", false, withKotlin);
+  }
+
+  @TemplateCheck
+  public void testNewViewModelFragment() throws Exception {
+    myApiSensitiveTemplate = false;
+    checkCreateTemplate("other", "ViewModelFragment");
+  }
+
+  @TemplateCheck
+  public void testNewViewModelFragmentWithKotlin() throws Exception {
+    myApiSensitiveTemplate = false;
+    checkCreateTemplate("other", "ViewModelFragment", false, withKotlin);
   }
 
   @TemplateCheck
@@ -778,6 +824,12 @@ public class TemplateTest extends AndroidGradleTestCase {
   public void testNewLayoutResourceFile() throws Exception {
     myApiSensitiveTemplate = false;
     checkCreateTemplate("other", "LayoutResourceFile");
+  }
+
+  @TemplateCheck
+  public void testNewAppActionsResourceFile() throws Exception {
+    myApiSensitiveTemplate = false;
+    checkCreateTemplate("other", "AppActionsResourceFile");
   }
 
   @TemplateCheck

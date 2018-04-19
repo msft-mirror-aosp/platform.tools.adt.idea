@@ -37,6 +37,7 @@ import com.intellij.util.ui.JBUI.Borders
 import com.intellij.util.ui.JBUI.scale
 import org.jetbrains.android.facet.AndroidFacet
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.util.*
 import javax.swing.*
 
@@ -113,11 +114,12 @@ class ImageViewAssistant(
   }
 
   private fun createItemList() = DrawableGrid(nlComponent.model.facet.module,
-                                              DefaultListModel<ResourceValue>()).apply {
+                                              DefaultListModel<ResourceValue>(),
+                                              IMAGE_SIZE,
+                                              ITEM_COUNT.toLong()).apply {
     isOpaque = false
     isEnabled = originalValue != null && !isSampleValueAll(originalValue)
     visibleRowCount = 3
-    drawableSize = IMAGE_SIZE
     addListSelectionListener { _ ->
       applySampleItem(selectedSampleItem, if (useAll) -1 else selectedIndex)
     }
@@ -141,6 +143,7 @@ class ImageViewAssistant(
       isEditable = false
       isOpaque = false
       selectedItem = selected
+      preferredSize = Dimension(itemList.preferredSize.width - useAllCheckBox.preferredSize.width, preferredSize.height)
       selectedSampleItem = sampleItemsWithNull[selectedIndex]
       displayResourceValues(selectedSampleItem, -1)
       addActionListener { event ->

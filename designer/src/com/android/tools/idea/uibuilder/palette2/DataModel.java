@@ -16,7 +16,9 @@
 package com.android.tools.idea.uibuilder.palette2;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.common.model.NlLayoutType;
+import com.android.tools.idea.projectsystem.GoogleMavenArtifactId;
 import com.android.tools.idea.uibuilder.palette.NlPaletteModel;
 import com.android.tools.idea.uibuilder.palette.Palette;
 import com.google.common.collect.Lists;
@@ -28,6 +30,7 @@ import com.intellij.util.ui.UIUtil;
 import org.jetbrains.android.dom.navigation.NavigationSchema;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 import java.util.ArrayList;
@@ -58,6 +61,7 @@ public class DataModel {
   private NlLayoutType myLayoutType;
   private Palette myPalette;
   private Palette.Group myCurrentSelectedGroup;
+  private AndroidVersion myVersion;
 
   public DataModel(@NotNull DependencyManager dependencyManager) {
     myListModel = new CategoryListModel();
@@ -72,9 +76,15 @@ public class DataModel {
     // This filter will hide or display the androidx.* components in the palette depending on whether the
     // project supports the androidx libraries.
     Condition<Palette.Item> androidxFilter = item -> {
-      boolean isAndroidxTag = item.getTagName().startsWith(ANDROIDX_PKG) ||
-        item.getTagName().startsWith(MATERIAL2_PKG);
-      boolean isOldSupportLibTag = !isAndroidxTag && item.getTagName().startsWith(ANDROID_SUPPORT_PKG_PREFIX);
+      String tagName = item.getTagName();
+      if (tagName.startsWith(MATERIAL1_PKG)) {
+        return useMaterial1();
+      }
+      if (tagName.startsWith(MATERIAL2_PKG)) {
+        return !useMaterial1() || ("new-m2".equals(item.getInfo()) && atLeastApi28());
+      }
+      boolean isAndroidxTag = tagName.startsWith(ANDROIDX_PKG) || tagName.startsWith(MATERIAL2_PKG);
+      boolean isOldSupportLibTag = !isAndroidxTag && tagName.startsWith(ANDROID_SUPPORT_PKG_PREFIX);
       if (!isAndroidxTag && !isOldSupportLibTag) {
         return true;
       }
@@ -95,7 +105,7 @@ public class DataModel {
     return myItemModel;
   }
 
-  public void setLayoutType(@NotNull AndroidFacet facet, @NotNull NlLayoutType layoutType) {
+  public void setLayoutType(@NotNull AndroidFacet facet, @NotNull NlLayoutType layoutType, @Nullable AndroidVersion version) {
     if (myLayoutType.equals(layoutType)) {
       return;
     }
@@ -103,6 +113,7 @@ public class DataModel {
     myPalette = paletteModel.getPalette(layoutType);
     myLayoutType = layoutType;
     myDependencyManager.setPalette(myPalette, facet.getModule());
+    myVersion = version;
     update();
   }
 
@@ -239,5 +250,15 @@ public class DataModel {
 
   private void updateItemModel(@NotNull List<Palette.Item> items) {
     UIUtil.invokeLaterIfNeeded(() -> myItemModel.update(items));
+  }
+
+  private boolean useMaterial1() {
+    return !atLeastApi28() ||
+           (myDependencyManager.dependsOn(GoogleMavenArtifactId.DESIGN) &&
+           !myDependencyManager.dependsOn(GoogleMavenArtifactId.ANDROIDX_DESIGN));
+  }
+
+  private boolean atLeastApi28() {
+    return myVersion != null && myVersion.getFeatureLevel() > AndroidVersion.VersionCodes.O_MR1;
   }
 }

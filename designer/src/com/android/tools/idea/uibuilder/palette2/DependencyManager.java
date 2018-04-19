@@ -16,10 +16,9 @@
 package com.android.tools.idea.uibuilder.palette2;
 
 import com.android.ide.common.repository.GradleCoordinate;
-import com.android.support.AndroidxNameUtils;
 import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.GoogleMavenArtifactId;
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.uibuilder.palette.Palette;
 import com.android.tools.idea.util.DependencyManagementUtil;
 import com.intellij.openapi.Disposable;
@@ -27,8 +26,11 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
-import javax.swing.JComponent;
-import java.util.*;
+import javax.swing.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.android.tools.idea.projectsystem.ProjectSystemSyncUtil.PROJECT_SYSTEM_SYNC_TOPIC;
@@ -41,7 +43,7 @@ import static com.android.tools.idea.projectsystem.ProjectSystemSyncUtil.PROJECT
  * a missing dependency via the {@link #needsLibraryLoad(Palette.Item)} method.
  *
  * The set of missing dependencies is recomputed each time the project is synced (in case new dependencies have
- * been added to the palette's module) and each time the associated palette changes (see {@link #setPalette(Palette, Module)}).
+ * been added to the palette's module) and each time the associated palette changes (see {@link #setPalette}).
  */
 public class DependencyManager {
   private final Project myProject;
@@ -63,6 +65,10 @@ public class DependencyManager {
 
   public boolean needsLibraryLoad(@NotNull Palette.Item item) {
     return myMissingLibraries.contains(item.getGradleCoordinateId());
+  }
+
+  public boolean dependsOn(@NotNull GoogleMavenArtifactId artifactId) {
+    return DependencyManagementUtil.dependsOn(myModule, artifactId);
   }
 
   private boolean checkForNewMissingDependencies() {

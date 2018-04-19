@@ -17,10 +17,7 @@ package com.android.tools.idea.tests.gui.uibuilder;
 
 import android.view.View;
 import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.tests.gui.framework.BuildSpecificGuiTestRunner;
-import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.RunIn;
-import com.android.tools.idea.tests.gui.framework.TestGroup;
+import com.android.tools.idea.tests.gui.framework.*;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.MessagesFixture;
@@ -51,6 +48,7 @@ import static org.junit.Assert.assertNotNull;
 @Parameterized.UseParametersRunnerFactory(BuildSpecificGuiTestRunner.Factory.class)
 public class NlEditorTest {
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final ScreenshotsDuringTest movieRule = new ScreenshotsDuringTest();
 
   @Parameterized.Parameters(name="{0}")
   public static TargetBuildSystem.BuildSystem[] data() {
@@ -90,7 +88,7 @@ public class NlEditorTest {
    *   1. The added component shows up in the xml
    * </pre>
    */
-  @RunIn(TestGroup.SANITY)
+  @RunIn(TestGroup.QA_UNRELIABLE)  // b/77856035
   @TargetBuildSystem({TargetBuildSystem.BuildSystem.GRADLE, TargetBuildSystem.BuildSystem.BAZEL})
   @Test
   public void basicLayoutEdit() throws Exception {
@@ -126,7 +124,9 @@ public class NlEditorTest {
       .moveBetween("deps = [", "")
       .enterText("\n\":bogus_dependency\",");
 
-    guiTest.testSystem().requestProjectSync(guiTest.ideFrame());
+    guiTest.testSystem()
+           .requestProjectSync(guiTest.ideFrame())
+           .waitForProjectSyncToStart(guiTest.ideFrame());
 
     // Open design editor while sync is in progress. We should see a loading panel
     // while the sync is taking place. Then, once the sync fails, the loading

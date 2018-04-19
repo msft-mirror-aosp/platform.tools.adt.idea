@@ -42,7 +42,7 @@ import static org.jetbrains.android.util.AndroidBundle.message;
 
 public final class NewJavaModuleModel extends WizardModel {
   @NotNull private final Project myProject;
-  @NotNull final private TemplateHandle myTemplateHandle;
+  @NotNull private final TemplateHandle myTemplateHandle;
 
   @NotNull private final StringProperty myLibraryName = new StringValueProperty("lib");
   @NotNull private final StringProperty myPackageName = new StringValueProperty();

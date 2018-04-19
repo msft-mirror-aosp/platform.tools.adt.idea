@@ -49,6 +49,7 @@ public final class GradlePropertiesFile extends GradleDslFile {
   }
 
   @Override
+  @NotNull
   public List<GradleDslElement> getContainedElements(boolean includeProperties) {
     return new ArrayList<>(getPropertyElements().values());
   }
@@ -129,6 +130,20 @@ public final class GradlePropertiesFile extends GradleDslFile {
     public void setValue(@NotNull Object value) {
       myValue = value;
       valueChanged();
+    }
+
+    @Nullable
+    @Override
+    public Object getRawValue() {
+      return getUnresolvedValue();
+    }
+
+    @NotNull
+    @Override
+    public GradleDslSimpleExpression copy() {
+      GradlePropertyElement element = new GradlePropertyElement(myParent, GradleNameElement.copy(myName));
+      element.myValue = myValue;
+      return element;
     }
 
     @Override
