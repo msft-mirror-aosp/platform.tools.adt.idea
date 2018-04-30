@@ -18,9 +18,8 @@ package org.jetbrains.android.exportSignedPackage;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.repository.GradleVersion;
-import com.android.tools.idea.gradle.plugin.AndroidPluginGeneration;
-import com.android.tools.idea.gradle.plugin.AndroidPluginVersionUpdater;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
+import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.intellij.ide.passwordSafe.PasswordSafe;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.ide.wizard.CommitStepException;
@@ -55,7 +54,6 @@ import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 import static com.intellij.openapi.ui.DialogWrapper.CANCEL_EXIT_CODE;
 
 /**
@@ -91,6 +89,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   private JBLabel myKeyStorePasswordLabel;
   private JBLabel myKeyAliasLabel;
   private JBLabel myKeyPasswordLabel;
+  private JPanel myExportKeyPanel;
 
   private final ExportSignedPackageWizard myWizard;
   private final boolean myUseGradleForSigning;
@@ -150,10 +149,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     myCloseAndUpdateLink.addHyperlinkListener(new HyperlinkListener() {
       @Override
       public void hyperlinkUpdate(HyperlinkEvent e) {
-        GradleVersion gradleVersion = GradleVersion.parse(GRADLE_LATEST_VERSION);
-        GradleVersion pluginVersion = GradleVersion.parse(AndroidPluginGeneration.ORIGINAL.getLatestKnownVersion());
-        AndroidPluginVersionUpdater updater = AndroidPluginVersionUpdater.getInstance(project);
-        updater.updatePluginVersion(pluginVersion, gradleVersion);
+        DynamicAppUtils.promptUserForGradleUpdate(project);
         myWizard.close(CANCEL_EXIT_CODE);
       }
     });
@@ -167,7 +163,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     super._init();
     updateSelection(mySelection);
 
-    if(myWizard.getTargetType().equals("bundle")) {
+    if(myWizard.getTargetType().equals(ExportSignedPackageWizard.BUNDLE)) {
       final GenerateSignedApkSettings settings = GenerateSignedApkSettings.getInstance(myWizard.getProject());
       myExportKeysCheckBox.setSelected(settings.EXPORT_PRIVATE_KEY);
       myGoogleAppSigningLabel.setHyperlinkText(" (needed to enroll your app in ",
@@ -185,19 +181,18 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
 
   private void updateSelection(@Nullable AndroidFacet selectedItem) {
     mySelection = selectedItem;
-    showGradleError(!isGradleValid(myWizard.getTargetType()));
+    showGradleError(!isGradleValid(myWizard.getTargetType(), myWizard.getProject()));
   }
 
 
-  private boolean isGradleValid(@Nullable String targetType) {
+  private boolean isGradleValid(@Nullable String targetType, @NotNull Project project) {
     // all gradle versions are valid unless targetType is bundle
-    if (targetType == null || !targetType.equals("bundle")) {
+    if (!targetType.equals(ExportSignedPackageWizard.BUNDLE)) {
       return true;
     }
 
     if (mySelection == null) return true;
-    GradleVersion version = AndroidModuleModel.get(mySelection).getModelVersion();
-    return version.isAtLeastIncludingPreviews(3, 2, 0);
+    return DynamicAppUtils.supportsBundleTask(mySelection.getModule());
   }
 
   private void showGradleError(boolean showError) {
@@ -213,6 +208,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     myKeyPasswordLabel.setVisible(!showError);
     myKeyAliasLabel.setVisible(!showError);
     myKeyStorePathLabel.setVisible(!showError);
+    myExportKeyPanel.setVisible(!showError);
 
     // gradle error fields
     myGradlePanel.setVisible(showError);
@@ -272,7 +268,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
 
   @Override
   protected void commitForNext() throws CommitStepException {
-    if (!isGradleValid(myWizard.getTargetType())) {
+    if (!isGradleValid(myWizard.getTargetType(), myWizard.getProject())) {
       throw new CommitStepException(AndroidBundle.message("android.export.package.bundle.gradle.error"));
     }
 
@@ -315,9 +311,11 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     final boolean rememberPasswords = myRememberPasswordCheckBox.isSelected();
     settings.REMEMBER_PASSWORDS = rememberPasswords;
 
-    final boolean exportPrivateKey = myExportKeysCheckBox.isSelected();
-    settings.EXPORT_PRIVATE_KEY = exportPrivateKey;
-    myWizard.setExportPrivateKey(exportPrivateKey);
+    if (myWizard.getTargetType().equals(ExportSignedPackageWizard.BUNDLE)) {
+      final boolean exportPrivateKey = myExportKeysCheckBox.isSelected();
+      settings.EXPORT_PRIVATE_KEY = exportPrivateKey;
+      myWizard.setExportPrivateKey(exportPrivateKey);
+    }
 
     final String keyStorePasswordKey = makePasswordKey(KEY_STORE_PASSWORD_KEY, keyStoreLocation, null);
     final String keyPasswordKey = makePasswordKey(KEY_PASSWORD_KEY, keyStoreLocation, keyAlias);
