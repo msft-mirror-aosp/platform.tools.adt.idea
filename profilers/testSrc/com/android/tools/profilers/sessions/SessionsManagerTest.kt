@@ -29,6 +29,7 @@ import com.android.tools.profilers.cpu.FakeCpuService
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.memory.FakeMemoryService
 import com.android.tools.profilers.memory.HprofSessionArtifact
+import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact
 import com.android.tools.profilers.network.FakeNetworkService
 import com.google.common.truth.Truth.assertThat
 import org.junit.Before
@@ -46,25 +47,27 @@ class SessionsManagerTest {
   val myThrown = ExpectedException.none()
   @get:Rule
   var myGrpcChannel = FakeGrpcChannel(
-      "SessionsManagerTestChannel",
-      myProfilerService,
-      myMemoryService,
-      myCpuService,
-      FakeEventService(),
-      FakeNetworkService.newBuilder().build()
+    "SessionsManagerTestChannel",
+    myProfilerService,
+    myMemoryService,
+    myCpuService,
+    FakeEventService(),
+    FakeNetworkService.newBuilder().build()
   )
 
+  private lateinit var myTimer: FakeTimer
   private lateinit var myProfilers: StudioProfilers
   private lateinit var myManager: SessionsManager
   private lateinit var myObserver: SessionsAspectObserver
 
   @Before
   fun setup() {
+    myTimer = FakeTimer()
     myObserver = SessionsAspectObserver()
     myProfilers = StudioProfilers(
         myGrpcChannel.client,
         FakeIdeProfilerServices(),
-        FakeTimer()
+        myTimer
     )
     myManager = myProfilers.sessionsManager
     myManager.addDependency(myObserver)
@@ -306,22 +309,31 @@ class SessionsManagerTest {
 
     val heapDumpTimestamp = 10L
     val cpuTraceTimestamp = 20L
+    val legacyAllocationsInfoTimestamp = 30L
+    val liveAllocationsInfoTimestamp = 40L
     val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(heapDumpTimestamp).setEndTime(heapDumpTimestamp + 1).build()
     val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder().setFromTimestamp(cpuTraceTimestamp).setToTimestamp(cpuTraceTimestamp + 1).build()
+    var allocationInfos = MemoryProfiler.MemoryData.newBuilder()
+      .addAllocationsInfo(MemoryProfiler.AllocationsInfo.newBuilder().setStartTime(legacyAllocationsInfoTimestamp).setEndTime(
+        legacyAllocationsInfoTimestamp + 1).setLegacy(true).build())
+      .addAllocationsInfo(MemoryProfiler.AllocationsInfo.newBuilder().setStartTime(liveAllocationsInfoTimestamp).build())
+      .build()
     myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
+    myMemoryService.setMemoryData(allocationInfos)
     myCpuService.addTraceInfo(cpuTraceInfo)
     myManager.update()
 
-    // Sessions should now be expandable and expanded by default
     // The Hprof and CPU capture artifacts are now included and sorted in ascending order
     sessionItems = myManager.sessionArtifacts
-    assertThat(sessionItems).hasSize(6)
+    assertThat(sessionItems).hasSize(8)
     sessionItem0 = sessionItems[0] as SessionItem
-    val cpuCaptureItem0 = sessionItems[1] as CpuCaptureSessionArtifact
-    val hprofItem0 = sessionItems[2] as HprofSessionArtifact
-    sessionItem1 = sessionItems[3] as SessionItem
-    val cpuCaptureItem1 = sessionItems[4] as CpuCaptureSessionArtifact
-    val hprofItem1 = sessionItems[5] as HprofSessionArtifact
+    val legacyAllocationsItem0 = sessionItems[1] as LegacyAllocationsSessionArtifact
+    val cpuCaptureItem0 = sessionItems[2] as CpuCaptureSessionArtifact
+    val hprofItem0 = sessionItems[3] as HprofSessionArtifact
+    sessionItem1 = sessionItems[4] as SessionItem
+    val legacyAllocationsItem1 = sessionItems[5] as LegacyAllocationsSessionArtifact
+    val cpuCaptureItem1 = sessionItems[6] as CpuCaptureSessionArtifact
+    val hprofItem1 = sessionItems[7] as HprofSessionArtifact
 
     assertThat(sessionItem0.session).isEqualTo(session2)
     assertThat(sessionItem0.timestampNs).isEqualTo(0)
@@ -329,12 +341,127 @@ class SessionsManagerTest {
     assertThat(hprofItem0.timestampNs).isEqualTo(heapDumpTimestamp - session2Timestamp)
     assertThat(cpuCaptureItem0.session).isEqualTo(session2)
     assertThat(cpuCaptureItem0.timestampNs).isEqualTo(cpuTraceTimestamp - session2Timestamp)
+    assertThat(legacyAllocationsItem0.session).isEqualTo(session2)
+    assertThat(legacyAllocationsItem0.timestampNs).isEqualTo(legacyAllocationsInfoTimestamp - session2Timestamp)
     assertThat(sessionItem1.session).isEqualTo(session1)
     assertThat(sessionItem1.timestampNs).isEqualTo(0)
     assertThat(hprofItem1.session).isEqualTo(session1)
     assertThat(hprofItem1.timestampNs).isEqualTo(heapDumpTimestamp - session1Timestamp)
     assertThat(cpuCaptureItem1.session).isEqualTo(session1)
     assertThat(cpuCaptureItem1.timestampNs).isEqualTo(cpuTraceTimestamp - session1Timestamp)
+    assertThat(legacyAllocationsItem1.session).isEqualTo(session1)
+    assertThat(legacyAllocationsItem1.timestampNs).isEqualTo(legacyAllocationsInfoTimestamp - session1Timestamp)
+  }
+
+  @Test
+  fun testSessionsAspectOnlyTriggeredWithChanges() {
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(0)
+
+    myManager.beginSession(device, process1)
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(1)
+
+    // Triggering update with the same data should not fire the aspect.
+    myManager.update()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(1)
+
+    val heapDumpTimestamp = 10L
+    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(heapDumpTimestamp).setEndTime(heapDumpTimestamp + 1).build()
+    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
+    myManager.update()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(2)
+    // Repeated update should not fire the aspect.
+    myManager.update()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(2)
+
+    val cpuTraceTimestamp = 20L
+    val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder().setFromTimestamp(cpuTraceTimestamp).setToTimestamp(cpuTraceTimestamp + 1).build()
+    myCpuService.addTraceInfo(cpuTraceInfo)
+    myManager.update()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(3)
+    // Repeated update should not fire the aspect.
+    myManager.update()
+    assertThat(myObserver.sessionsChangedCount).isEqualTo(3)
+  }
+
+  fun testDeleteProfilingSession() {
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setDeviceId(1).setState(Common.Process.State.ALIVE).build()
+    val process2 = Common.Process.newBuilder().setPid(20).setDeviceId(1).setState(Common.Process.State.ALIVE).build()
+    val process3 = Common.Process.newBuilder().setPid(30).setDeviceId(1).setState(Common.Process.State.ALIVE).build()
+    myProfilerService.addDevice(device)
+    myProfilerService.addProcess(device, process1)
+    myProfilerService.addProcess(device, process2)
+    myProfilerService.addProcess(device, process3)
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    // Create a finished session and a ongoing profiling session.
+    myManager.endCurrentSession()
+    val session1 = myManager.selectedSession
+    myProfilers.process = process2
+    val session2 = myManager.selectedSession
+
+    // Selects the first session so the profiling session is unselected, then delete the profiling session
+    myManager.setSession(session1)
+    assertThat(myManager.profilingSession).isEqualTo(session2)
+    assertThat(myManager.selectedSession).isEqualTo(session1)
+    assertThat(myManager.isSessionAlive).isFalse()
+
+    myManager.deleteSession(session2)
+    assertThat(myManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
+    assertThat(myManager.selectedSession).isEqualTo(session1)
+    assertThat(myManager.isSessionAlive).isFalse()
+    assertThat(myProfilers.device).isNull()
+    assertThat(myManager.sessionArtifacts.size).isEqualTo(1)
+    assertThat(myManager.sessionArtifacts[0].session).isEqualTo(session1)
+
+    // Begin another profiling session and delete it while it is still selected
+    myProfilers.device = device
+    myProfilers.process = process3
+    val session3 = myManager.selectedSession
+    assertThat(myManager.profilingSession).isEqualTo(session3)
+    assertThat(myManager.selectedSession).isEqualTo(session3)
+    assertThat(myManager.isSessionAlive).isTrue()
+
+    myManager.deleteSession(session3)
+    assertThat(myManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
+    assertThat(myManager.selectedSession).isEqualTo(Common.Session.getDefaultInstance())
+    assertThat(myManager.isSessionAlive).isFalse()
+    assertThat(myProfilers.device).isNull()
+    assertThat(myManager.sessionArtifacts.size).isEqualTo(1)
+    assertThat(myManager.sessionArtifacts[0].session).isEqualTo(session1)
+  }
+
+  @Test
+  fun testDeleteUnselectedSession() {
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setDeviceId(1).setState(Common.Process.State.ALIVE).build()
+    val process2 = Common.Process.newBuilder().setPid(20).setDeviceId(1).setState(Common.Process.State.ALIVE).build()
+    myProfilerService.addDevice(device)
+    myProfilerService.addProcess(device, process1)
+    myProfilerService.addProcess(device, process2)
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    // Create a finished session and a ongoing profiling session.
+    myManager.endCurrentSession()
+    val session1 = myManager.selectedSession
+    myProfilers.process = process2
+    val session2 = myManager.selectedSession
+    assertThat(myManager.profilingSession).isEqualTo(session2)
+    assertThat(myManager.selectedSession).isEqualTo(session2)
+    assertThat(myManager.isSessionAlive).isTrue()
+    assertThat(myProfilers.device).isEqualTo(device)
+    assertThat(myProfilers.process).isEqualTo(process2)
+
+    myManager.deleteSession(session1)
+    assertThat(myManager.profilingSession).isEqualTo(session2)
+    assertThat(myManager.selectedSession).isEqualTo(session2)
+    assertThat(myManager.isSessionAlive).isTrue()
+    assertThat(myProfilers.device).isEqualTo(device)
+    assertThat(myProfilers.process).isEqualTo(process2)
+    assertThat(myManager.sessionArtifacts.size).isEqualTo(1)
+    assertThat(myManager.sessionArtifacts[0].session).isEqualTo(session2)
   }
 
   private class SessionsAspectObserver : AspectObserver() {

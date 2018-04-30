@@ -21,9 +21,11 @@ import com.android.tools.adtui.model.Range;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.proto.Profiler.*;
+import com.android.tools.profiler.protobuf3jarjar.GeneratedMessageV3;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact;
 import com.android.tools.profilers.memory.HprofSessionArtifact;
+import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,6 +33,7 @@ import java.io.File;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.android.tools.profilers.StudioProfilers.buildSessionName;
 
@@ -116,6 +119,7 @@ public class SessionsManager extends AspectModel<SessionAspect> {
 
     myArtifactsFetchers = new ArrayList<>();
     myArtifactsFetchers.add(HprofSessionArtifact::getSessionArtifacts);
+    myArtifactsFetchers.add(LegacyAllocationsSessionArtifact::getSessionArtifacts);
     myArtifactsFetchers.add(CpuCaptureSessionArtifact::getSessionArtifacts);
   }
 
@@ -143,7 +147,11 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   }
 
   public boolean isSessionAlive() {
-    return mySelectedSession.getEndTimestamp() == Long.MAX_VALUE;
+    return isSessionAlive(mySelectedSession);
+  }
+
+  public static boolean isSessionAlive(@NotNull Common.Session session) {
+    return session.getEndTimestamp() == Long.MAX_VALUE;
   }
 
   @NotNull
@@ -279,6 +287,27 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     }
   }
 
+  public void deleteSession(@NotNull Common.Session session) {
+    assert mySessionItems.containsKey(session.getSessionId()) && mySessionItems.get(session.getSessionId()).getSession().equals(session);
+
+    // Selected session can change after we stop profiling so caching the value first.
+    boolean sessionIsSelectedSession = mySelectedSession.equals(session);
+    if (myProfilingSession.equals(session)) {
+      // Route to StudioProfiler to set a null device, which will stop the session properly.
+      myProfilers.setDevice(null);
+    }
+
+    // When deleting a currently selected session, set the session back to default so the profilers will go to the null stage.
+    if (sessionIsSelectedSession) {
+      setSessionInternal(Common.Session.getDefaultInstance());
+    }
+
+    DeleteSessionRequest request = DeleteSessionRequest.newBuilder().setSessionId(session.getSessionId()).build();
+    myProfilers.getClient().getProfilerClient().deleteSession(request);
+    mySessionItems.remove(session.getSessionId());
+    updateSessionItems(Collections.emptyList());
+  }
+
   /**
    * Create and a new session with a specific type
    *
@@ -351,12 +380,18 @@ public class SessionsManager extends AspectModel<SessionAspect> {
    * @param sessions the list of {@link Common.Session} objects that have been added/updated.
    */
   private void updateSessionItems(@NotNull List<Common.Session> sessions) {
+    List previousProtos = mySessionArtifacts.stream().map(artifact -> artifact.getArtifactProto()).collect(Collectors.toList());
+
     // Note: we only add to a growing list of sessions at the moment.
     sessions.forEach(session -> {
       SessionItem sessionItem = mySessionItems.get(session.getSessionId());
       if (sessionItem == null) {
         Profiler.GetSessionMetaDataResponse response = myProfilers.getClient().getProfilerClient()
-                                                                  .getSessionMetaData(Profiler.GetSessionMetaDataRequest.newBuilder().setSessionId(session.getSessionId()).build());
+                                                                  .getSessionMetaData(Profiler.GetSessionMetaDataRequest.newBuilder()
+                                                                                                                        .setSessionId(
+                                                                                                                          session
+                                                                                                                            .getSessionId())
+                                                                                                                        .build());
         Common.SessionMetaData metadata = response.getData();
         sessionItem = new SessionItem(myProfilers, session, metadata);
 
@@ -368,15 +403,22 @@ public class SessionsManager extends AspectModel<SessionAspect> {
       }
     });
 
-    mySessionArtifacts = new ArrayList<>();
+    List<SessionArtifact> sessionArtifacts = new ArrayList<>();
     for (SessionItem item : mySessionItems.values()) {
-      mySessionArtifacts.add(item);
+      sessionArtifacts.add(item);
       List<SessionArtifact> artifacts = new ArrayList<>();
       myArtifactsFetchers.forEach(fetcher -> artifacts.addAll(fetcher.fetch(myProfilers, item.getSession(), item.getSessionMetaData())));
-      mySessionArtifacts.addAll(artifacts);
+      sessionArtifacts.addAll(artifacts);
     }
-    Collections.sort(mySessionArtifacts, ARTIFACT_COMPARATOR);
-    changed(SessionAspect.SESSIONS);
+    Collections.sort(sessionArtifacts, ARTIFACT_COMPARATOR);
+
+    List newProtos = sessionArtifacts.stream().map(artifact -> artifact.getArtifactProto()).collect(Collectors.toList());
+    if (!previousProtos.equals(newProtos)) {
+      mySessionArtifacts.forEach(artifact -> myProfilers.getUpdater().unregister(artifact));
+      mySessionArtifacts = sessionArtifacts;
+      changed(SessionAspect.SESSIONS);
+      mySessionArtifacts.forEach(artifact -> myProfilers.getUpdater().register(artifact));
+    }
   }
 
   private static class SessionArtifactComparator implements Comparator<SessionArtifact> {

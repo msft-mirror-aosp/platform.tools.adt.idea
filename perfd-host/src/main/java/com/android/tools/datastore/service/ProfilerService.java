@@ -25,6 +25,7 @@ import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Profiler.*;
 import com.android.tools.profiler.proto.ProfilerServiceGrpc;
 import com.google.common.collect.Maps;
+import com.intellij.openapi.diagnostic.Logger;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
@@ -50,6 +51,10 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
     myService = service;
     myFetchExecutor = fetchExecutor;
     myTable = new ProfilerTable();
+  }
+
+  private static Logger getLogger() {
+    return Logger.getInstance(ProfilerService.class);
   }
 
   @Override
@@ -121,6 +126,7 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
     }
     else {
       BeginSessionResponse response = client.beginSession(request);
+      getLogger().info("Session (ID " + response.getSession().getSessionId() + ") begins.");
       // TODO (b/67508808) re-investigate whether we should use a poller to update the session instead.
       // The downside is we will have a delay before getSessions will see the data
       myTable.insertOrUpdateSession(response.getSession(),
@@ -136,6 +142,7 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
 
   @Override
   public void endSession(EndSessionRequest request, StreamObserver<EndSessionResponse> responseObserver) {
+    getLogger().info("Session (ID " + request.getSessionId() + ") ends.");
     DeviceId deviceId = DeviceId.of(request.getDeviceId());
     ProfilerServiceGrpc.ProfilerServiceBlockingStub client = myService.getProfilerClient(deviceId);
     if (client == null) {
@@ -166,6 +173,14 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
   @Override
   public void getSessions(GetSessionsRequest request, StreamObserver<GetSessionsResponse> responseObserver) {
     responseObserver.onNext(myTable.getSessions());
+    responseObserver.onCompleted();
+  }
+
+  @Override
+  public void deleteSession(DeleteSessionRequest request, StreamObserver<DeleteSessionResponse> responseObserver) {
+    // TODO (b\67509712): properly delete all data related to the session.
+    myTable.deleteSession(request.getSessionId());
+    responseObserver.onNext(DeleteSessionResponse.getDefaultInstance());
     responseObserver.onCompleted();
   }
 

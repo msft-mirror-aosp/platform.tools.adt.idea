@@ -19,8 +19,10 @@ package org.jetbrains.android.exportSignedPackage;
 import com.android.annotations.VisibleForTesting;
 import com.android.builder.model.AndroidProject;
 import com.android.builder.model.Variant;
+import com.android.prefs.AndroidLocation;
 import com.android.sdklib.BuildToolInfo;
 import com.android.tools.idea.gradle.actions.GoToApkLocationTask;
+import com.android.tools.idea.gradle.actions.GoToBundleLocationTask;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
@@ -96,7 +98,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
   private String myApkPath;
   private boolean myV1Signature;
   private boolean myV2Signature;
-  private String myTargetType;
+  @NotNull private String myTargetType = APK;
 
   // build type, list of flavors and gradle signing info are valid only for Gradle projects
   private String myBuildType;
@@ -194,7 +196,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
         }
 
         // should have been set by previous steps
-        if (myBuildType == null || myFlavors == null || myTargetType == null) {
+        if (myBuildType == null || myFlavors == null) {
           getLog().error("Unable to find required information. Please check the previous steps are completed.");
           return;
         }
@@ -218,7 +220,11 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
         assert myProject != null;
 
         GradleBuildInvoker gradleBuildInvoker = GradleBuildInvoker.getInstance(myProject);
-        gradleBuildInvoker.add(new GoToApkLocationTask(appModulesToOutputs, "Generate Signed APK"));
+        if (myTargetType.equals(BUNDLE)) {
+          gradleBuildInvoker.add(new GoToBundleLocationTask(myProject, appModulesToOutputs, "Generate Signed Bundle"));
+        } else {
+          gradleBuildInvoker.add(new GoToApkLocationTask(appModulesToOutputs, "Generate Signed APK"));
+        }
         gradleBuildInvoker.executeTasks(new File(rootProjectPath), gradleTasks, projectProperties);
 
         if (myExportPrivateKey) {
@@ -232,7 +238,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
             myEncryptionTool.run(myGradleSigningInfo.keyStoreFilePath,
                                  myGradleSigningInfo.keyAlias,
                                  GOOGLE_PUBLIC_KEY,
-                                 generatePrivateKeyPath(apkDirectory).getPath(),
+                                 generatePrivateKeyPath().getPath(),
                                  myGradleSigningInfo.keyStorePassword,
                                  myGradleSigningInfo.keyPassword
             );
@@ -431,6 +437,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
     myTargetType = targetType;
   }
 
+  @NotNull
   public String getTargetType() {
     return myTargetType;
   }
@@ -513,8 +520,9 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
   }
 
   @NotNull
-  private File generatePrivateKeyPath(@NotNull File apkDirectory) {
-    return new File(apkDirectory, ENCRYPTED_PRIVATE_KEY_FILE);
+  private File generatePrivateKeyPath() throws AndroidLocation.AndroidLocationException {
+    String androidDir = AndroidLocation.getFolder();
+    return new File(androidDir, ENCRYPTED_PRIVATE_KEY_FILE);
   }
 
   private void showErrorInDispatchThread(@NotNull final String message) {

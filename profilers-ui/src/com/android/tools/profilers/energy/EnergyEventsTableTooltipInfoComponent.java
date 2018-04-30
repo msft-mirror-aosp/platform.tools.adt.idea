@@ -21,6 +21,7 @@ import com.android.tools.adtui.instructions.NewRowInstruction;
 import com.android.tools.adtui.instructions.RenderInstruction;
 import com.android.tools.adtui.instructions.TextInstruction;
 import com.android.tools.profiler.proto.EnergyProfiler;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -124,7 +125,7 @@ public class EnergyEventsTableTooltipInfoComponent extends AnimatedComponent {
       long triggerTimeMs = TimeUnit.NANOSECONDS.toMillis(firstEvent.getTimestamp());
       myInstructions.add(new TextInstruction(BOLD_FONT_METRICS, "Created"));
       myInstructions.add(new TextInstruction(mDefaultFontMetrics, ": " + myModel.getDateFormattedString(triggerTimeMs)));
-      myInstructions.add(new TextInstruction(ITALIC_FONT_METRICS, " (" + myModel.getFormattedString(triggerTimeUs) + ")"));
+      myInstructions.add(new TextInstruction(ITALIC_FONT_METRICS, " (" + myModel.getSimplifiedClockFormattedString(triggerTimeUs) + ")"));
       myInstructions.add(new NewRowInstruction(VERTICAL_MARGIN_PX));
 
       long frequency = TimeUnit.MILLISECONDS.toMicros(firstEvent.getAlarmSet().getIntervalMs());
@@ -159,7 +160,7 @@ public class EnergyEventsTableTooltipInfoComponent extends AnimatedComponent {
           myInstructions.add(new TextInstruction(BOLD_FONT_METRICS, "Next scheduled"));
           myInstructions.add(new TextInstruction(mDefaultFontMetrics,
                                                  ": " + myModel.getDateFormattedString(TimeUnit.MICROSECONDS.toMillis(scheduledTimeUs))));
-          myInstructions.add(new TextInstruction(ITALIC_FONT_METRICS, " (" + myModel.getFormattedString(scheduledTimeUs) + ")"));
+          myInstructions.add(new TextInstruction(ITALIC_FONT_METRICS, " (" + myModel.getSimplifiedClockFormattedString(scheduledTimeUs) + ")"));
           myInstructions.add(new NewRowInstruction(VERTICAL_MARGIN_PX));
         }
       }
@@ -182,6 +183,12 @@ public class EnergyEventsTableTooltipInfoComponent extends AnimatedComponent {
         }
       }
     }
+  }
+
+  @VisibleForTesting
+  @NotNull
+  List<RenderInstruction> getInstructions() {
+    return myInstructions;
   }
 
   @Override

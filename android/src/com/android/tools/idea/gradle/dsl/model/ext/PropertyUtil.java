@@ -18,8 +18,8 @@ package com.android.tools.idea.gradle.dsl.model.ext;
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.DefaultTransform;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.FileTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
-import com.android.tools.idea.gradle.dsl.model.ext.transforms.SingleArgumentMethodTransform;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import org.jetbrains.annotations.NonNls;
@@ -135,7 +135,7 @@ public class PropertyUtil {
   @NotNull
   public static final PropertyTransform DEFAULT_TRANSFORM = new DefaultTransform();
   @NotNull
-  public static final PropertyTransform FILE_TRANSFORM = new SingleArgumentMethodTransform(FILE_METHOD_NAME);
+  public static final PropertyTransform FILE_TRANSFORM = new FileTransform();
 
   @NotNull
   public static GradlePropertyModelImpl resolveModel(@NotNull GradlePropertyModelImpl model) {

@@ -33,42 +33,6 @@ public class BuildTypesTest {
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
 
   /**
-   * Verifies addition of new build types
-   * <p>This is run to qualify releases. Please involve the test team in substantial changes.
-   * <p>TT ID: 532c9d6c-18eb-49ea-99b0-be64dbecd5e1
-   * <pre>
-   *   Test Steps:
-   *   1. Open the project structure dialog
-   *   2. Select a module
-   *   3. Click the Build Types tab
-   *   4. Create new Build Type and name it newBuildType
-   *   5. Set properties debuggable and version Name Suffix to valid values
-   *   Verification:
-   *   1. Open the build.gradle file for that module and verify
-   *   entries for build types to contain new build type added.
-   *   2. Verify the properties in the file match the values
-   *   set in the project structure flavor dialog
-   * </pre>
-   */
-  @RunIn(TestGroup.SANITY)
-  @Test
-  public void addNewBuildType() throws Exception {
-    String gradleFileContents = guiTest.importSimpleLocalApplication()
-      .openFromMenu(ProjectStructureDialogFixture::find, "File", "Project Structure...")
-      .selectConfigurable("app")
-      .selectBuildTypesTab()
-      .setName("newBuildType")
-      .setDebuggable("true")
-      .setVersionNameSuffix("suffix")
-      .clickOk()
-      .getEditor()
-      .open("/app/build.gradle")
-      .getCurrentFileContents();
-    assertThat(gradleFileContents)
-      .containsMatch("newBuildType \\{\\n[\\s]*debuggable true\\n[\\s]*versionNameSuffix 'suffix'\\n[\\s]*\\}");
-  }
-
-  /**
    * Verifies that an existing build type can be updated.
    * <p>This is run to qualify releases. Please involve the test team in substantial changes.
    * <p>TT ID: 50840081-9584-4e66-9333-6a50902b5853

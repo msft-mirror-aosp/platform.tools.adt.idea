@@ -16,23 +16,9 @@
 package com.android.tools.idea.gradle.dsl.api.android.splits;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
-import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel;
 import org.jetbrains.annotations.NotNull;
 
-public interface AbiModel extends GradleDslModel {
-  @NotNull
-  ResolvedPropertyModel enable();
-
-  @NotNull
-  ResolvedPropertyModel exclude();
-
-  @NotNull
-  ResolvedPropertyModel include();
-
-  void addReset();
-
-  void removeReset();
-
+public interface AbiModel extends BaseSplitOptionsModel {
   @NotNull
   ResolvedPropertyModel universalApk();
 }

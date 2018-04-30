@@ -116,7 +116,7 @@ public class GroovyDslWriter implements GradleDslWriter {
       return null; // Avoid creation of an empty block statement.
     }
 
-    String statementText = element.getFullName();
+    String statementText = maybeTrimForParent(element.getNameElement(), element.getParent());
     if (element.isBlockElement()) {
       statementText += " {\n}\n";
     }
@@ -167,7 +167,8 @@ public class GroovyDslWriter implements GradleDslWriter {
       addedElement = parentPsiElement.addAfter(statement, anchor);
       if (anchorAfter != null) {
         parentPsiElement.addBefore(lineTerminator, addedElement);
-      } else {
+      }
+      else {
         parentPsiElement.addAfter(lineTerminator, addedElement);
         GrClosableBlock parentBlock = (GrClosableBlock)parentPsiElement;
         if (parentBlock.getRBrace() != null && !hasNewLineBetween(parentBlock.getLBrace(), parentBlock.getRBrace())) {
@@ -194,6 +195,7 @@ public class GroovyDslWriter implements GradleDslWriter {
         element.setPsiElement(addedElement);
       }
     }
+
     return element.getPsiElement();
   }
 
@@ -207,7 +209,7 @@ public class GroovyDslWriter implements GradleDslWriter {
     PsiElement parent = psiElement.getParent();
     psiElement.delete();
 
-    deleteIfEmpty(parent);
+    maybeDeleteIfEmpty(parent, element);
 
     // Now we have deleted all empty PsiElements in the Psi tree, we also need to make sure
     // to clear any invalid PsiElements in the GradleDslElement tree otherwise we will
@@ -269,7 +271,7 @@ public class GroovyDslWriter implements GradleDslWriter {
     }
     PsiElement parent = expression.getParent();
     expression.delete();
-    deleteIfEmpty(parent);
+    maybeDeleteIfEmpty(parent, literal);
     removePsiIfInvalid(literal);
   }
 
@@ -320,7 +322,7 @@ public class GroovyDslWriter implements GradleDslWriter {
     }
     PsiElement parent = expression.getParent();
     expression.delete();
-    deleteIfEmpty(parent);
+    maybeDeleteIfEmpty(parent, reference);
     removePsiIfInvalid(reference);
   }
 
@@ -335,16 +337,28 @@ public class GroovyDslWriter implements GradleDslWriter {
       return null;
     }
 
+    GradleDslElement anchorAfter = methodCall.getAnchor();
+
+    // If the parent doesn't have a psi element, the anchor will be used to create the parent in getParentPsi.
+    // In this case we want to be placed in the newly made parent so we ignore our anchor.
+    if (needToCreateParent(methodCall)) {
+      anchorAfter = null;
+    }
+
     PsiElement parentPsiElement = methodCall.getParent().create();
     if (parentPsiElement == null) {
       return null;
     }
 
+    PsiElement anchor = getPsiElementForAnchor(parentPsiElement, anchorAfter);
+
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(parentPsiElement.getProject());
     String statementText =
-      (!methodCall.getFullName().isEmpty() ? methodCall.getFullName() + " " : "") + methodCall.getMethodName() + "()";
+      (!methodCall.getFullName().isEmpty() ? maybeTrimForParent(methodCall.getNameElement(), methodCall.getParent()) + " " : "") +
+      maybeTrimForParent(GradleNameElement.fake(methodCall.getMethodName()), methodCall.getParent()) +
+      "()";
     GrStatement statement = factory.createStatementFromText(statementText);
-    PsiElement addedElement = parentPsiElement.addBefore(statement, parentPsiElement.getLastChild());
+    PsiElement addedElement = parentPsiElement.addAfter(statement, anchor);
 
     if (addedElement instanceof GrApplicationStatement) {
       GrExpression[] expressionArguments = ((GrApplicationStatement)addedElement).getArgumentList().getExpressionArguments();
@@ -363,6 +377,11 @@ public class GroovyDslWriter implements GradleDslWriter {
     if (addedElement instanceof GrMethodCallExpression) {
       methodCall.setPsiElement(addedElement);
       methodCall.getArgumentsElement().setPsiElement(((GrMethodCallExpression)addedElement).getArgumentList());
+
+      if (methodCall.getUnsavedClosure() != null) {
+        createAndAddClosure(methodCall.getUnsavedClosure(), methodCall);
+      }
+
       return methodCall.getPsiElement();
     }
 
@@ -373,6 +392,9 @@ public class GroovyDslWriter implements GradleDslWriter {
   public void applyDslMethodCall(@NotNull GradleDslMethodCall element) {
     maybeUpdateName(element);
     element.getArgumentsElement().applyChanges();
+    if (element.getUnsavedClosure() != null) {
+      createAndAddClosure(element.getUnsavedClosure(), element);
+    }
   }
 
   @Override

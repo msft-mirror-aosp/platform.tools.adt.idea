@@ -43,7 +43,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.intellij.ide.DeleteProvider;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.actionSystem.DataContext;
+import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
@@ -203,6 +206,7 @@ public class NavDesignSurface extends DesignSurface {
     AtomicBoolean didAdd = new AtomicBoolean(false);
     ApplicationManager.getApplication().invokeAndWait(
       () -> didAdd.set(DependencyManagementUtil.addDependencies(
+        // TODO: check for and add androidx dependency when it's released
         facet.getModule(), ImmutableList.of(GoogleMavenArtifactId.NAVIGATION_FRAGMENT), true, false, true).isEmpty()));
     return didAdd.get();
   }
@@ -305,8 +309,18 @@ public class NavDesignSurface extends DesignSurface {
   }
 
   @Override
+  protected double getMaxScale() {
+    return isEmpty() ? 1.0 : 3.0;
+  }
+
+  @Override
   public boolean canZoomToFit() {
     return !isEmpty();
+  }
+
+  @Override
+  protected double getFitScale(boolean fitInto) {
+    return Math.min(super.getFitScale(fitInto), 1.0);
   }
 
   private boolean isEmpty() {
@@ -505,5 +519,13 @@ public class NavDesignSurface extends DesignSurface {
     }
     myCurrentNavigation = match;
     zoomToFit();
+  }
+
+  @Override
+  public Object getData(String dataId) {
+    if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId)) {
+      return new NavDesignSurfaceActionHandler(this);
+    }
+    return super.getData(dataId);
   }
 }

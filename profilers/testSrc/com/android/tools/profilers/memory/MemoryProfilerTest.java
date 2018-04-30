@@ -18,8 +18,10 @@ package com.android.tools.profilers.memory;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.model.FakeTimer;
 import com.android.tools.adtui.model.Range;
+import com.android.tools.perflib.heap.SnapshotBuilder;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.MemoryProfiler.AllocationsInfo;
+import com.android.tools.profiler.proto.MemoryProfiler.HeapDumpInfo;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryData;
 import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profilers.*;
@@ -31,9 +33,11 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 import static com.android.tools.profilers.FakeProfilerService.FAKE_DEVICE_ID;
+import static org.junit.Assert.assertArrayEquals;
 
 public class MemoryProfilerTest {
   private static final int FAKE_PID = 111;
@@ -79,19 +83,14 @@ public class MemoryProfilerTest {
     myIdeProfilerServices.enableLiveAllocationTracking(true);
     setupODeviceAndProcess();
 
-    Range dataRequestRange = myMemoryService.getLastRequestedDataRange();
     Truth.assertThat(myStudioProfiler.isAgentAttached()).isFalse();
     Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(0);
-    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(TimeUnit.SECONDS.toNanos(0));
-    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(TimeUnit.SECONDS.toNanos(0));
 
     // Advance the timer to select the device + process
     myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.ATTACHED);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     Truth.assertThat(myStudioProfiler.isAgentAttached()).isTrue();
     Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(2);
-    Truth.assertThat(dataRequestRange.getMin()).isWithin(0).of(0);
-    Truth.assertThat(dataRequestRange.getMax()).isWithin(0).of(0);
   }
 
   @Test
@@ -137,6 +136,27 @@ public class MemoryProfilerTest {
     Truth.assertThat(myStudioProfiler.isAgentAttached()).isTrue();
     // Allocation tracking should have been called to stop.
     Truth.assertThat(myMemoryService.getTrackAllocationCount()).isEqualTo(3);
+  }
+
+  @Test
+  public void testSaveHeapDumpToFile() {
+    long startTimeNs = 3;
+    long endTimeNs = 8;
+    HeapDumpInfo dumpInfo = HeapDumpInfo.newBuilder().setStartTime(startTimeNs).setEndTime(endTimeNs).build();
+    // Load in a simple Snapshot and verify the MemoryObject hierarchy:
+    // - 1 holds reference to 2
+    // - single root object in default heap
+    SnapshotBuilder snapshotBuilder = new SnapshotBuilder(2, 0, 0)
+      .addReferences(1, 2)
+      .addRoot(1);
+    byte[] buffer = snapshotBuilder.getByteBuffer();
+    myMemoryService.setExplicitSnapshotBuffer(buffer);
+    myMemoryService.setExplicitDumpDataStatus(com.android.tools.profiler.proto.MemoryProfiler.DumpDataResponse.Status.SUCCESS);
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    MemoryProfiler.saveHeapDumpToFile(myStudioProfiler.getClient().getMemoryClient(), ProfilersTestData.SESSION_DATA, dumpInfo, baos,
+                                      myStudioProfiler.getIdeServices().getFeatureTracker());
+    assertArrayEquals(buffer, baos.toByteArray());
   }
 
   private void setupODeviceAndProcess() {

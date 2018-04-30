@@ -168,7 +168,8 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
     return "n/a";
   }
 
-  @NotNull Kind getKind() {
+  @NotNull
+  public Kind getKind() {
     return Kind.from(myEventList.get(0));
   }
 
@@ -268,5 +269,13 @@ public final class EnergyDuration implements Comparable<EnergyDuration> {
       default:
         return "";
     }
+  }
+
+  /**
+   * Returns the first non-empty trace id from the events list, if absent returns empty string.
+   */
+  @NotNull
+  public String getCalledByTraceId() {
+    return getEventList().stream().filter(e -> !e.getTraceId().isEmpty()).map(e -> e.getTraceId()).findFirst().orElse("");
   }
 }

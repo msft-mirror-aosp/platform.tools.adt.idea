@@ -16,17 +16,32 @@
 package com.android.tools.profilers.cpu;
 
 import com.android.tools.profiler.proto.Common;
+import com.android.tools.profiler.proto.CpuProfiler.CpuProfilerType;
 import com.android.tools.profiler.proto.CpuProfiler.CpuStartRequest;
 import com.android.tools.profiler.proto.CpuProfiler.CpuStopRequest;
+import com.android.tools.profiler.proto.CpuProfiler.TraceInfo;
 import com.android.tools.profilers.ProfilerMonitor;
 import com.android.tools.profilers.ProfilerTimeline;
 import com.android.tools.profilers.StudioProfiler;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.cpu.atrace.AtraceExporter;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +62,10 @@ public class CpuProfiler extends StudioProfiler {
       registerImportedSessionListener();
       registerTraceImportHandler();
     }
+  }
+
+  private static Logger getLogger() {
+    return Logger.getInstance(CpuProfiler.class);
   }
 
   /**
@@ -71,8 +90,7 @@ public class CpuProfiler extends StudioProfiler {
     SessionsManager sessionsManager = myProfilers.getSessionsManager();
     sessionsManager.registerImportHandler("trace", file -> {
       long startTimestampEpochMs = System.currentTimeMillis();
-      // Session start time should be the import time
-      long startTimestampNs = TimeUnit.MILLISECONDS.toNanos(startTimestampEpochMs);
+      long startTimestampNs = getImportedSessionStartTimestampNs(file, startTimestampEpochMs);
       // The end timestamp is going to be updated once the capture is parsed. When starting the session (before parsing a trace), set it to
       // be one minute from the begin time, as it is a reasonable length for a "default" timeline that can be displayed if parsing fails
       // and before the parsing happens.
@@ -98,6 +116,24 @@ public class CpuProfiler extends StudioProfiler {
     });
   }
 
+  /**
+   * Returns the start timestamp, in nanoseconds, of the imported trace session. First, we try to get the trace file creation time.
+   * If there is an error to obtain it, we fallback to the session start time.
+   */
+  private static long getImportedSessionStartTimestampNs(File trace, long sessionStartTimestampEpochMs) {
+    Path tracePath = Paths.get(trace.getPath());
+    try {
+      BasicFileAttributes attributes = Files.readAttributes(tracePath, BasicFileAttributes.class);
+      return attributes.creationTime().to(TimeUnit.NANOSECONDS);
+    }
+    catch (IOException e) {
+      getLogger().warn("Trace file creation time could not be read. Falling back to session start time.");
+    }
+
+    // If the file creation time can not be obtained, use the session epoch start time as a fallback
+    return TimeUnit.MICROSECONDS.toNanos(sessionStartTimestampEpochMs);
+  }
+
   @Nullable
   public File getTraceFile(Common.Session session) {
     return mySessionTraceFiles.get(session.getSessionId());
@@ -118,5 +154,42 @@ public class CpuProfiler extends StudioProfiler {
   public void stopProfiling(Common.Session session) {
     // TODO: handle different status of the response
     myProfilers.getClient().getCpuClient().stopMonitoringApp(CpuStopRequest.newBuilder().setSession(session).build());
+  }
+
+  /**
+   * Copies the content of the trace file corresponding to a {@link TraceInfo} to a given {@link FileOutputStream}.
+   */
+  static void saveCaptureToFile(@NotNull TraceInfo info, @NotNull FileOutputStream outputStream) {
+    // Copy temp trace file to the output stream.
+    try (FileInputStream input = new FileInputStream(info.getTraceFilePath())) {
+      // Atrace Format = [HEADER|ZlibData][HEADER|ZlibData]
+      // Systrace Expected format = [HEADER|ZlipData]
+      // As such exporting the file raw Systrace will only read the first header/data chunk.
+      // Atrace captures come over as several parts combined into one file. As such we need an exporter
+      // to handle converting the format to a format that Systrace can support. The reason for the multi-part file
+      // is because Atrace dumps a compressed data file every X interval and this file represents the concatenation of all
+      // the individual dumps.
+      if (info.getProfilerType() == com.android.tools.profiler.proto.CpuProfiler.CpuProfilerType.ATRACE) {
+        AtraceExporter.export(input, outputStream);
+      }
+      else {
+        FileUtil.copy(input, outputStream);
+      }
+    }
+    catch (IOException exception) {
+      getLogger().warn("Failed to export CPU trace file:\n" + exception);
+    }
+  }
+
+  /**
+   * Generate a default name for a trace to be exported. The name suggested is based on the current timestamp and the capture type.
+   */
+  @NotNull
+  static String generateCaptureFileName(@NotNull CpuProfilerType profilerType) {
+    StringBuilder traceName = new StringBuilder(String.format("cpu-%s-", StringUtil.toLowerCase(profilerType.name())));
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+    traceName.append(LocalDateTime.now().format(formatter));
+    traceName.append(".trace");
+    return traceName.toString();
   }
 }

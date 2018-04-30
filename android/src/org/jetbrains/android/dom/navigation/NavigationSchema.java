@@ -77,6 +77,8 @@ public class NavigationSchema implements Disposable {
   public static final String ATTR_CLEAR_TASK = "clearTask";
   public static final String ATTR_ENTER_ANIM = "enterAnim";
   public static final String ATTR_EXIT_ANIM = "exitAnim";
+  public static final String ATTR_POP_ENTER_ANIM = "popEnterAnim";
+  public static final String ATTR_POP_EXIT_ANIM = "popExitAnim";
   public static final String ATTR_ACTION = "action";
   public static final String ATTR_DATA = "data";
   public static final String ATTR_DATA_PATTERN = "dataPattern";
@@ -115,7 +117,7 @@ public class NavigationSchema implements Disposable {
   public static final String ENABLE_NAV_PROPERTY = "enable.nav.editor";
 
   public static boolean enableNavigationEditor() {
-    return Boolean.getBoolean(ENABLE_NAV_PROPERTY);
+    return !"false".equals(System.getProperty(ENABLE_NAV_PROPERTY));
   }
 
   /**

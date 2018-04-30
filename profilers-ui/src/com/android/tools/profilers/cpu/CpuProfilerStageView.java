@@ -31,10 +31,8 @@ import com.android.tools.adtui.model.SeriesData;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.stdui.CommonButton;
 import com.android.tools.adtui.ui.HideablePanel;
-import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profiler.proto.CpuProfiler.TraceInitiationType;
 import com.android.tools.profilers.*;
-import com.android.tools.profilers.cpu.atrace.AtraceExporter;
 import com.android.tools.profilers.cpu.atrace.CpuKernelTooltip;
 import com.android.tools.profilers.event.*;
 import com.android.tools.profilers.sessions.SessionAspect;
@@ -47,8 +45,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.JBSplitter;
@@ -71,18 +67,13 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS;
 import static com.android.tools.profilers.ProfilerColors.CPU_CAPTURE_BACKGROUND;
 import static com.android.tools.profilers.ProfilerLayout.*;
-import static java.awt.event.InputEvent.*;
+import static java.awt.event.InputEvent.SHIFT_DOWN_MASK;
 
 public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   private enum PanelSpacing {
@@ -358,6 +349,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       @Override
       public void mouseClicked(MouseEvent e) {
         cpuKernelRunningStateSelected(cpuModel);
+        getStage().getStudioProfilers().getIdeServices().getFeatureTracker().trackSelectCpuKernelElement();
       }
     });
 
@@ -397,6 +389,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
         myCpus.setVisibleRowCount(Math.min(4, myCpus.getModel().getSize()));
         hideableCpus.setVisible(hasElements);
         hideableCpus.setExpanded(hasElements);
+        hideableCpus.setTitle(String.format("KERNEL (%d)", myCpus.getModel().getSize()));
         // When the CpuKernelModel is updated we adjust the splitter. The higher the number the more space
         // the first component occupies. For when we are showing Kernel elements we want to take up more space
         // than when we are not. As such each time we modify the CpuKernelModel (when a trace is selected) we
@@ -424,6 +417,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     // Clear border set by default on the hideable panel.
     hideableCpus.setBorder(JBUI.Borders.empty());
     hideableCpus.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+    hideableCpus.addStateChangedListener(
+      (e) -> getStage().getStudioProfilers().getIdeServices().getFeatureTracker().trackToggleCpuKernelHideablePanel());
     scrollingCpus.setBorder(JBUI.Borders.empty());
     monitorCpuThreadsPanel.add(hideableCpus, new TabularLayout.Constraint(KERNEL_PANEL_ROW, 0));
   }
@@ -574,7 +569,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     // TODO(b/62447834): Make a decision on how we want to handle thread selection.
     myThreads.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
+    myThreads.setBorder(null);
+    myThreads.setCellRenderer(new ThreadCellRenderer(myThreads, myStage.getUpdatableManager()));
+    myThreads.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+    scrollingThreads.setBorder(null);
     CpuThreadsModel model = myStage.getThreadStates();
     myThreads.addListSelectionListener((e) -> {
       int selectedIndex = myThreads.getSelectedIndex();
@@ -601,8 +599,6 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     scrollingThreads.setBorder(MONITOR_BORDER);
     scrollingThreads.setViewportView(myThreads);
-    myThreads.setCellRenderer(new ThreadCellRenderer(myThreads, myStage.getUpdatableManager()));
-    myThreads.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
 
     myTooltipComponent.registerListenersOn(myThreads);
     myThreads.addMouseListener(new ProfilerTooltipMouseAdapter(myStage, () -> new CpuThreadsTooltip(myStage)));
@@ -641,6 +637,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       .setShowSeparator(false)
       .build();
     hideablePanel.addStateChangedListener((actionEvent) -> {
+      getStage().getStudioProfilers().getIdeServices().getFeatureTracker().trackToggleCpuThreadsHideablePanel();
       // On expanded set row sizing to initial ratio.
       if (hideablePanel.isExpanded()) {
         threadsMonitorPanelLayout.setRowSizing(THREADS_PANEL_ROW, PanelSpacing.HIDEABLE_PANEL_EXPANDED.toString());
@@ -651,8 +648,24 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       }
     });
     // Clear border set by default on the hideable panel.
-    hideablePanel.setBorder(new JBEmptyBorder(0, 0, 0, 0));
+    hideablePanel.setBorder(JBUI.Borders.customLine(ProfilerColors.CPU_AXIS_GUIDE_COLOR, 2, 0, 0, 0));
     hideablePanel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
+    myThreads.getModel().addListDataListener(new ListDataListener() {
+      @Override
+      public void intervalAdded(ListDataEvent e) {
+
+      }
+
+      @Override
+      public void intervalRemoved(ListDataEvent e) {
+
+      }
+
+      @Override
+      public void contentsChanged(ListDataEvent e) {
+        hideablePanel.setTitle(String.format("THREADS (%d)", myThreads.getModel().getSize()));
+      }
+    });
     threads.setBorder(new JBEmptyBorder(0, 0, 0, 0));
     threadsPanel.add(hideablePanel, new TabularLayout.Constraint(THREADS_PANEL_ROW, 0));
   }
@@ -821,12 +834,10 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       x -> exportTrace.isEnabled() && getTraceIntersectingWithMouseX(x) != null,
       x -> getIdeComponents().createExportDialog().open(
         () -> "Export trace as",
-        () -> generateTraceName(getTraceIntersectingWithMouseX(x)),
+        () -> CpuProfiler.generateCaptureFileName(getTraceIntersectingWithMouseX(x).getProfilerType()),
         () -> "trace",
         file -> getStage().getStudioProfilers().getIdeServices().saveFile(
-          file,
-          (output) -> exportTraceFile(output, getTraceIntersectingWithMouseX(x)),
-          null)));
+          file, (output) -> CpuProfiler.saveCaptureToFile(getTraceIntersectingWithMouseX(x).getTraceInfo(), output), null)));
     contextMenuInstaller.installGenericContextMenu(mySelection, ContextMenuItem.SEPARATOR);
   }
 
@@ -846,51 +857,6 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     contextMenuInstaller.installGenericContextMenu(mySelection, record);
     contextMenuInstaller.installGenericContextMenu(mySelection, ContextMenuItem.SEPARATOR);
-  }
-
-  /**
-   * Generate a default name for a trace to be exported. The name suggested is based on the current timestamp and the capture type.
-   */
-  private String generateTraceName(CpuTraceInfo traceInfo) {
-    StringBuilder traceName = new StringBuilder("cpu-");
-    CpuCapture capture = myStage.getCapture();
-    if (capture != null) {
-      String normalizedTraceType = StringUtil.toLowerCase(traceInfo.getProfilerType().name());
-      traceName.append(normalizedTraceType);
-      traceName.append("-");
-    }
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
-    traceName.append(LocalDateTime.now().format(formatter));
-    traceName.append(".trace");
-    return traceName.toString();
-  }
-
-  /**
-   * Copies the content of the trace file corresponding to a {@link CpuTraceInfo} to a given {@link FileOutputStream}.
-   */
-  private static void exportTraceFile(FileOutputStream output, CpuTraceInfo traceInfo) {
-    // Export trace file action is only called when "Export trace..." is enabled and that only happens with non-null traces
-    assert traceInfo != null;
-
-    // Copy temp trace file to the output stream.
-    try (FileInputStream input = new FileInputStream(traceInfo.getTraceFilePath())) {
-      // Atrace Format = [HEADER|ZlibData][HEADER|ZlibData]
-      // Systrace Expected format = [HEADER|ZlipData]
-      // As such exporting the file raw Systrace will only read the first header/data chunk.
-      // Atrace captures come over as several parts combined into one file. As such we need an exporter
-      // to handle converting the format to a format that Systrace can support. The reason for the multi-part file
-      // is because Atrace dumps a compressed data file every X interval and this file represents the concatenation of all
-      // the individual dumps.
-      if (traceInfo.getProfilerType() == CpuProfiler.CpuProfilerType.ATRACE) {
-        AtraceExporter.export(input, output);
-      }
-      else {
-        FileUtil.copy(input, output);
-      }
-    }
-    catch (IOException e) {
-      getLogger().warn("Failed to export CPU trace file:\n" + e);
-    }
   }
 
   /**

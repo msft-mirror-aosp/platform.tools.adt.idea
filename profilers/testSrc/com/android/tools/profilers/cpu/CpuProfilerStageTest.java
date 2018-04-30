@@ -772,11 +772,13 @@ public class CpuProfilerStageTest extends AspectObserver {
 
     myServices.setNativeProfilingConfigurationPreferred(false);
     myStage = new CpuProfilerStage(myStage.getStudioProfilers());
+    myStage.enter();
     // ART Sampled should be the default configuration when there is no preference for a native config.
     assertThat(myStage.getProfilingConfiguration().getName()).isEqualTo(ProfilingConfiguration.ART_SAMPLED);
 
     myServices.setNativeProfilingConfigurationPreferred(true);
     myStage = new CpuProfilerStage(myStage.getStudioProfilers());
+    myStage.enter();
     // Simpleperf should be the default configuration when a native config is preferred.
     assertThat(myStage.getProfilingConfiguration().getName()).isEqualTo(ProfilingConfiguration.SIMPLEPERF);
   }
@@ -816,7 +818,7 @@ public class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void apiInitiatedCaptureShouldShowSpecialConfig() throws IOException {
+  public void apiInitiatedCaptureShouldShowSpecialConfig() {
     assertThat(myCpuService.getProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
     ProfilingConfiguration config1 = new ProfilingConfiguration("My Config",
                                                                 CpuProfiler.CpuProfilerType.SIMPLEPERF,
@@ -890,8 +892,71 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Verify that when cpu.api.tracing is on, an API-initiated tracing does update stage's capture state.
     myServices.enableCpuApiTracing(true);
     CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
+    stage.enter();
     stage.getStudioProfilers().getUpdater().onTick(1);
     assertThat(stage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+  }
+
+  @Test
+  public void apiInitiatedCaptureUsageTracking() {
+    int traceId1 = 1;
+    String fileName1 = "file1.trace";
+    int traceId2 = 2;
+    String fileName2 = "file2.trace";
+    int traceId3 = 3;
+    String fileName3 = "";
+
+    // Trace 1: not API-initiated. Shouldn't have API-tracing usage.
+    CpuProfiler.TraceInfo traceInfo1 = CpuProfiler.TraceInfo.newBuilder()
+                                                            .setTraceId(traceId1)
+                                                            .setTraceFilePath(fileName1)
+                                                            .setInitiationType(CpuProfiler.TraceInitiationType.INITIATED_BY_UI)
+                                                            .build();
+
+    // Trace 2: API-initiated with a valid given trace path.
+    CpuProfiler.TraceInfo traceInfo2 = CpuProfiler.TraceInfo.newBuilder()
+                                                            .setTraceId(traceId2)
+                                                            .setTraceFilePath(fileName2)
+                                                            .setInitiationType(CpuProfiler.TraceInitiationType.INITIATED_BY_API)
+                                                            .build();
+
+    // Trace 3: API-initiated without a valid given trace path.
+    CpuProfiler.TraceInfo traceInfo3 = CpuProfiler.TraceInfo.newBuilder()
+                                                            .setTraceId(traceId3)
+                                                            .setTraceFilePath(fileName3)
+                                                            .setInitiationType(CpuProfiler.TraceInitiationType.INITIATED_BY_API)
+                                                            .build();
+
+    final FakeFeatureTracker featureTracker = (FakeFeatureTracker)myServices.getFeatureTracker();
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS);
+
+    myCpuService.addTraceInfo(traceInfo1);
+    myStage.getStudioProfilers().getUpdater().onTick(1);
+    assertThat(featureTracker.getApiTracingUsageCount()).isEqualTo(0);
+
+    myCpuService.addTraceInfo(traceInfo2);
+    myStage.getStudioProfilers().getUpdater().onTick(1);
+    assertThat(featureTracker.getApiTracingUsageCount()).isGreaterThan(0);
+    assertThat(featureTracker.getLastCpuAPiTracingPathProvided()).isTrue();
+
+    myCpuService.addTraceInfo(traceInfo3);
+    myStage.getStudioProfilers().getUpdater().onTick(1);
+    assertThat(featureTracker.getLastCpuAPiTracingPathProvided()).isFalse();
+  }
+
+  @Test
+  public void testStartupProfilingUsageTracking() {
+    final FakeFeatureTracker featureTracker = (FakeFeatureTracker)myServices.getFeatureTracker();
+
+    ProfilingConfiguration config = new ProfilingConfiguration("MyConfig", CpuProfiler.CpuProfilerType.ART,
+                                                               CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    myStage.exit();
+
+    myCpuService.setOngoingCaptureConfiguration(config.toProto(), 0, CpuProfiler.TraceInitiationType.INITIATED_BY_STARTUP);
+    CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
+    assertThat(featureTracker.getLastCpuStartupProfilingConfig()).isNull();
+    stage.enter();
+    assertThat(featureTracker.getLastCpuStartupProfilingConfig()).isEqualTo(config);
   }
 
   @Test
@@ -952,6 +1017,24 @@ public class CpuProfilerStageTest extends AspectObserver {
     newStage.getStudioProfilers().setStage(newStage);
 
     assertThat(newStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
+    assertThat(newStage.getProfilingConfiguration()).isEqualTo(testConfig);
+  }
+
+  @Test
+  public void configurationShouldBeTheLastSelectedOneAfterExitAndEnter() {
+    ProfilingConfiguration testConfig = new ProfilingConfiguration(ProfilingConfiguration.SIMPLEPERF,
+                                                                   CpuProfiler.CpuProfilerType.SIMPLEPERF,
+                                                                   CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
+    myStage.setProfilingConfiguration(testConfig);
+    assertThat(myStage.getProfilingConfiguration()).isEqualTo(testConfig);
+    myStage.exit();
+
+    // Enter CpuProfilerStage again.
+    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), myServices, myTimer);
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    CpuProfilerStage newStage = new CpuProfilerStage(profilers);
+    newStage.getStudioProfilers().setStage(newStage);
+
     assertThat(newStage.getProfilingConfiguration()).isEqualTo(testConfig);
   }
 
@@ -1428,8 +1511,14 @@ public class CpuProfilerStageTest extends AspectObserver {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
     myServices.enableSessionsView(true);
+
+    FakeFeatureTracker tracker = (FakeFeatureTracker)myServices.getFeatureTracker();
+    // Sanity check to verify the last import trace status was not set yet
+    assertThat(tracker.getLastImportTraceStatus()).isNull();
+
     File traceFile = CpuProfilerTestUtils.getTraceFile("corrupted_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    stage.enter();
     // Import trace mode is enabled successfully
     assertThat(stage.isImportTraceMode()).isTrue();
 
@@ -1438,6 +1527,29 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TEXT);
     assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
     assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+
+    // We should track failed imports
+    assertThat(tracker.getLastCpuProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.UNSPECIFIED_PROFILER);
+    assertThat(tracker.getLastImportTraceStatus()).isFalse();
+  }
+
+  @Test
+  public void importAtraceFileShouldShowABalloon() {
+    StudioProfilers profilers = myStage.getStudioProfilers();
+    myServices.enableImportTrace(true);
+    myServices.enableSessionsView(true);
+    myServices.enableAtrace(true);
+    File traceFile = CpuProfilerTestUtils.getTraceFile("atrace.ctrace");
+    CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    stage.enter();
+    // Import trace mode is enabled successfully
+    assertThat(stage.isImportTraceMode()).isTrue();
+
+    // We should show a balloon saying the import has failed
+    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_ATRACE_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.PARSING_ATRACE_NOT_SUPPORTED_URL);
+    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.PARSING_ATRACE_NOT_SUPPORTED_TEXT);
   }
 
   @Test
@@ -1445,8 +1557,14 @@ public class CpuProfilerStageTest extends AspectObserver {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
     myServices.enableSessionsView(true);
+
+    FakeFeatureTracker tracker = (FakeFeatureTracker)myServices.getFeatureTracker();
+    // Sanity check to verify the last import trace status was not set yet
+    assertThat(tracker.getLastImportTraceStatus()).isNull();
+
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    stage.enter();
     // Import trace mode is enabled successfully
     assertThat(stage.isImportTraceMode()).isTrue();
     ProfilerTimeline timeline = stage.getStudioProfilers().getTimeline();
@@ -1455,9 +1573,13 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(timeline.isPaused()).isTrue();
     assertThat((long)timeline.getDataRange().getMin()).isEqualTo((long)captureRange.getMin());
     assertThat((long)(timeline.getDataRange().getMax() - expansionAmount)).isEqualTo((long)(captureRange.getMax()));
-    // Need 1 because of floating point percision rounding error on large numbers.
+    // Need 1 because of floating point precision rounding error on large numbers.
     assertThat(timeline.getViewRange().getMin() + expansionAmount).isWithin(1).of(timeline.getDataRange().getMin());
     assertThat(stage.getCapture()).isNotNull();
+
+    // We should track successful imports
+    assertThat(tracker.getLastCpuProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.ART);
+    assertThat(tracker.getLastImportTraceStatus()).isTrue();
   }
 
   @Test
@@ -1467,6 +1589,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     myServices.enableSessionsView(true);
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    stage.enter();
     // Import trace mode is enabled successfully
     assertThat(stage.isImportTraceMode()).isTrue();
 
@@ -1490,6 +1613,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     myServices.enableSessionsView(true);
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
+    stage.enter();
     // Import trace mode is enabled successfully
     assertThat(stage.isImportTraceMode()).isTrue();
 

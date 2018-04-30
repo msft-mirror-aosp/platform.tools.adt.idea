@@ -46,6 +46,7 @@ public class StudioIcons {
     public static final Icon ERROR = load("/studio/icons/common/error.png"); // 16x16
     public static final Icon EXPORT = load("/studio/icons/common/export.png"); // 16x16
     public static final Icon FILTER = load("/studio/icons/common/filter.png"); // 16x16
+    public static final Icon HELP = load("/studio/icons/common/help.png"); //  16x16
     public static final Icon IMPORT_DATA = load("/studio/icons/common/import-data.png"); // 16x16
     public static final Icon INFO_INLINE_SELECTED = load("/studio/icons/common/info-inline-selected.png"); // 16x16
     public static final Icon INFO_INLINE = load("/studio/icons/common/info-inline.png"); // 16x16
@@ -72,6 +73,11 @@ public class StudioIcons {
     public static final Icon ZOOM_ACTUAL = load("/studio/icons/common/zoom-actual.png"); // 16x16
     public static final Icon ZOOM_IN = load("/studio/icons/common/zoom-in.png"); // 16x16
     public static final Icon ZOOM_OUT = load("/studio/icons/common/zoom-out.png"); // 16x16
+  }
+
+  public static class Cursors {
+    public static final Icon GRAB = load("/studio/icons/cursors/grab.png"); // 20x20
+    public static final Icon GRABBING = load("/studio/icons/cursors/grabbing.png"); // 20x20
   }
 
   public static class DeviceExplorer {
@@ -312,6 +318,20 @@ public class StudioIcons {
       public static final Icon WRAP_HEIGHT = load("/studio/icons/layout-editor/toolbar/wrap-height.png"); // 16x16
       public static final Icon WRAP_WIDTH = load("/studio/icons/layout-editor/toolbar/wrap-width.png"); // 16x16
     }
+  }
+
+  public static class MotionLayoutUI {
+    public static final Icon ADD_KEYFRAME = load("/studio/icons/layout-editor/motion/add-keyframe.png"); // 16x16
+    public static final Icon CIRCLE_PLAY = load("/studio/icons/layout-editor/motion/circle-play.png"); // 16x16
+    public static final Icon BACKWARD = load("/studio/icons/layout-editor/motion/skip-previous.png"); // 16x16
+    public static final Icon PLAY = load("/studio/icons/layout-editor/motion/play.png"); // 16x16
+    public static final Icon FORWARD = load("/studio/icons/layout-editor/motion/skip-next.png"); // 16x16
+    public static final Icon LOOP = load("/studio/icons/layout-editor/motion/loop.png"); // 16x16
+    public static final Icon VIEW = load("/studio/icons/layout-editor/motion/motion_view_icon.png"); // 16x16
+    public static final Icon CHART = load("/studio/icons/layout-editor/motion/chart-line.png"); // 16x16
+    public static final Icon START = load("/studio/icons/layout-editor/motion/start-graphic.png"); // 16x16
+    public static final Icon END = load("/studio/icons/layout-editor/motion/end-graphic.png"); // 16x16
+    public static final Icon PAUSE = load("/studio/icons/layout-editor/motion/pause.png"); // 16x16
   }
 
   public static class LayoutInspector {

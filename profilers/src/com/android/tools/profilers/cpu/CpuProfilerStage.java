@@ -87,6 +87,15 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
                                                           "selected is a valid trace. Alternatively, try importing another file, or ";
 
   @VisibleForTesting
+  static final String PARSING_ATRACE_FAILURE_BALLOON_TEXT = "Importing trace files you create using atrace is not yet supported. ";
+
+  @VisibleForTesting
+  static final String PARSING_ATRACE_NOT_SUPPORTED_TEXT = "Learn More";
+
+  @VisibleForTesting
+  static final String PARSING_ATRACE_NOT_SUPPORTED_URL = "https://d.android.com/r/studio-ui/import-atrace-support.html";
+
+  @VisibleForTesting
   static final String CAPTURE_START_FAILURE_BALLOON_TITLE = "Recording failed to start";
   @VisibleForTesting
   static final String CAPTURE_START_FAILURE_BALLOON_TEXT = "Try recording again, or ";
@@ -230,12 +239,19 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
    */
   private final boolean myIsImportTraceMode;
 
+  /**
+   * The imported trace file, it is only used when the stage was initiated in Import Trace mode, otherwise null.
+   */
+  @Nullable
+  private File myImportedTrace;
+
   public CpuProfilerStage(@NotNull StudioProfilers profilers) {
     this(profilers, null);
   }
 
   public CpuProfilerStage(@NotNull StudioProfilers profilers, @Nullable File importedTrace) {
     super(profilers);
+    myImportedTrace = importedTrace;
     // Only allow import trace mode if Import CPU trace and sessions flag are enabled.
     myIsImportTraceMode = getStudioProfilers().getIdeServices().getFeatureConfig().isImportCpuTraceEnabled()
                           && getStudioProfilers().getIdeServices().getFeatureConfig().isSessionsEnabled()
@@ -280,10 +296,6 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     myCaptureState = CaptureState.IDLE;
     myCaptureElapsedTimeUpdatable = new CaptureElapsedTimeUpdatable();
     myCaptureStateUpdatable = new CpuCaptureStateUpdatable(() -> updateProfilingState());
-    // Calling updateProfilingState() in constructor makes sure the member fields are in a known predictable state.
-
-    updateProfilingState();
-    myProfilerConfigModel.updateProfilingConfigurations();
 
     myCaptureModel = new CaptureModel(this);
     myUpdatableManager = new UpdatableManager(getStudioProfilers().getUpdater());
@@ -308,6 +320,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
             if (candidateToSelect == null || trace.getRange().getMax() > candidateToSelect.getRange().getMax()) {
               candidateToSelect = trace;
             }
+            // Track usage for API-initiated tracing.
+            // TODO(b/72832167): When more tracing APIs are supported, update the tracking logic.
+            getStudioProfilers().getIdeServices().getFeatureTracker()
+                                .trackCpuApiTracing(false, !trace.getTraceFilePath().equals(""), -1, -1, -1);
           }
         }
         // Update xRange's min to the latest end point we have seen. When we query next time, we want new traces only; not all traces.
@@ -319,10 +335,6 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
         setAndSelectCapture(candidateToSelect.getTraceId());
       }
     });
-    if (myIsImportTraceMode) {
-      // When in import trace mode, immediately import the trace from the given file and set the resulting capture.
-      parseAndSelectImportedTrace(importedTrace);
-    }
   }
 
   private static Logger getLogger() {
@@ -471,6 +483,17 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     getStudioProfilers().getIdeServices().getFeatureTracker().trackEnterStage(getClass());
 
     getStudioProfilers().addDependency(this).onChange(ProfilerAspect.DEVICES, myProfilerConfigModel::updateProfilingConfigurations);
+
+    // This actions are here instead of in the constructor, because only after this method the UI (i.e {@link CpuProfilerStageView}
+    // will be visible to the user. As well as, the feature tracking will link the correct stage to the events that happened
+    // during this actions.
+    updateProfilingState();
+    myProfilerConfigModel.updateProfilingConfigurations();
+    if (myIsImportTraceMode) {
+      assert myImportedTrace != null;
+      // When in import trace mode, immediately import the trace from the given file and set the resulting capture.
+      parseAndSelectImportedTrace(myImportedTrace);
+    }
   }
 
   @Override
@@ -685,6 +708,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
           saveTraceInfo(CpuCaptureParser.IMPORTED_TRACE_ID, parsedCapture);
           myTraceIdsIterator.addTrace(CpuCaptureParser.IMPORTED_TRACE_ID);
         }
+        // Track import trace success
+        getStudioProfilers().getIdeServices().getFeatureTracker().trackImportTrace(parsedCapture.getType(), true);
       }
       else {
         setCaptureState(CaptureState.PARSING_FAILURE);
@@ -692,12 +717,30 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
           .showErrorBalloon(PARSING_FILE_FAILURE_BALLOON_TITLE, PARSING_FILE_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL, REPORT_A_BUG_TEXT);
         // PARSING_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
         setCaptureState(CaptureState.IDLE);
+        // Track import trace failure
+        // TODO (b/78557952): try to get the profiler type from the trace, which should be possible as long as it has a valid header.
+        getStudioProfilers().getIdeServices().getFeatureTracker().trackImportTrace(CpuProfilerType.UNSPECIFIED_PROFILER, false);
       }
     };
 
     // Parsing is in progress. Handle it asynchronously and set the capture afterwards using the main executor.
     capture.handleAsync((parsedCapture, exception) -> {
-      parsingCallback.accept(parsedCapture);
+      // We need to handle the special case of failing to parse atrace files because we don't fully support importing them.
+      // TODO (b/74526422): remove this when adding full support for importing atrace captures
+      boolean exceptionThrownByAtraceImport = exception != null && exception.getCause() != null
+                                              && exception.getCause().getMessage().equals(CpuCaptureParser.ATRACE_IMPORT_FAILURE_MESSAGE);
+      if (exceptionThrownByAtraceImport) {
+        // Parsing failed because we tried to parse an atrace capture before fully supporting it. Inform that to users.
+        setCaptureState(CaptureState.PARSING_FAILURE);
+        getStudioProfilers().getIdeServices().showErrorBalloon(PARSING_FILE_FAILURE_BALLOON_TITLE, PARSING_ATRACE_FAILURE_BALLOON_TEXT,
+                                                               PARSING_ATRACE_NOT_SUPPORTED_URL, PARSING_ATRACE_NOT_SUPPORTED_TEXT);
+        // PARSING_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
+        setCaptureState(CaptureState.IDLE);
+    }
+      else {
+        // The callback is responsible for handling the general case.
+        parsingCallback.accept(parsedCapture);
+      }
       return parsedCapture;
     }, getStudioProfilers().getIdeServices().getMainExecutor());
 
@@ -825,8 +868,13 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     ProfilingStateResponse response = checkProfilingState();
 
     if (response.getBeingProfiled()) {
+      ProfilingConfiguration configuration = ProfilingConfiguration.fromProto(response.getConfiguration());
       // Update capture state only if it was idle to avoid disrupting state that's invisible to device such as STOPPING.
       if (myCaptureState == CaptureState.IDLE) {
+        if (response.getInitiationType() == TraceInitiationType.INITIATED_BY_STARTUP) {
+          getStudioProfilers().getIdeServices().getFeatureTracker().trackCpuStartupProfiling(configuration);
+        }
+
         // Set myInProgressTraceInitiationType before calling setCaptureState() because the latter may fire an
         // aspect that depends on the former.
         myInProgressTraceInitiationType = response.getInitiationType();
@@ -847,8 +895,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
         }
         else {
           // Updates myProfilerConfigModel to the ongoing profiler configuration.
-          CpuProfilerConfiguration configuration = response.getConfiguration();
-          myProfilerConfigModel.setProfilingConfiguration(ProfilingConfiguration.fromProto(configuration));
+          myProfilerConfigModel.setProfilingConfiguration(configuration);
         }
       }
     }

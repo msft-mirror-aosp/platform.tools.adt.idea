@@ -16,13 +16,12 @@
 package com.android.tools.idea.gradle.dsl.model.ext.transforms
 
 import com.android.tools.idea.gradle.dsl.model.GradleBuildModelImpl
+import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.parser.elements.*
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile
 import org.hamcrest.CoreMatchers.equalTo
-import org.hamcrest.Matcher
 import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.core.Is.`is`
 import org.junit.Test
 
 
@@ -33,6 +32,12 @@ open class TransformTestCase : GradleFileModelTestCase() {
     // everything to be set up before we can call getGradleBuildModel().
     writeToBuildFile("")
     (gradleBuildModel as GradleBuildModelImpl).dslFile
+  }
+
+  protected fun GradleDslBlockModel.dslElement(): GradlePropertiesDslElement {
+    val field = GradleDslBlockModel::class.java.getDeclaredField("myDslElement")
+    field.isAccessible = true
+    return field.get(this) as GradlePropertiesDslElement
   }
 
   /**
@@ -60,10 +65,14 @@ open class TransformTestCase : GradleFileModelTestCase() {
   protected fun createMethodCall(methodName: String,
                                  statement: String = "unusedStatement",
                                  parent: GradleDslElement = gradleDslFile): GradleDslMethodCall {
-    return GradleDslMethodCall(gradleDslFile, GradleNameElement.create(statement.copy()), methodName.copy())
+    return GradleDslMethodCall(parent, GradleNameElement.create(statement.copy()), methodName.copy())
   }
 
   protected fun createExpressionMap(name : GradleNameElement = GradleNameElement.empty()) : GradleDslExpressionMap {
     return GradleDslExpressionMap(gradleDslFile, name, false)
+  }
+
+  protected fun createClosure(parent: GradleDslElement) : GradleDslClosure {
+    return GradleDslClosure(parent, null, GradleNameElement.empty())
   }
 }

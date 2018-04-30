@@ -23,7 +23,10 @@ import com.android.tools.adtui.common.EnumColors;
 import com.android.tools.adtui.model.StateChartModel;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.profilers.ProfilerColors;
+import com.android.tools.profilers.ProfilerLayout;
+import com.intellij.util.ui.JBDimension;
 import com.intellij.util.ui.JBUI;
+import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -58,10 +61,13 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
                                                 boolean isSelected,
                                                 boolean cellHasFocus) {
     JPanel panel = new JPanel(new TabularLayout("150px,*", "*"));
-    panel.setPreferredSize(new Dimension(panel.getPreferredSize().width, JBUI.scale(SIZE_IN_PIXELS)));
+    panel.setBorder(ProfilerLayout.CPU_THREADS_BORDER);
+    panel.setPreferredSize(JBDimension.create(panel.getPreferredSize()).withHeight(ProfilerLayout.CPU_THREADS_LINE_HEIGHT));
     panel.setBackground(list.getBackground());
 
     myLabel.setText(value.getName());
+    myLabel.setIcon(null);
+    myLabel.setBorder(JBUI.Borders.emptyLeft(StudioIcons.Menu.MENU.getIconWidth() + myLabel.getIconTextGap()));
     myLabel.setBackground(ProfilerColors.THREAD_LABEL_BACKGROUND);
     myLabel.setForeground(ProfilerColors.THREAD_LABEL_TEXT);
 
@@ -71,11 +77,6 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
     // recalculating the render states. This causes the rendering time to be substantially improved.
     int tid = value.getThreadId();
     StateChartModel<CpuProfilerStage.ThreadState> model = value.getModel();
-    if (myStateCharts.containsKey(tid) && !model.equals(myStateCharts.get(tid).getModel())) {
-      // The model associated to the tid has changed. That might have happened because the tid was recycled and
-      // assigned to another thread. The current model needs to be unregistered.
-      myUpdatableManager.unregister(myStateCharts.get(tid).getModel());
-    }
     StateChart<CpuProfilerStage.ThreadState> stateChart = getOrCreateStateChart(tid, model);
     stateChart.setOpaque(true);
     stateChart.setBorder(null);
@@ -90,11 +91,14 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
       myLabel.setForeground(ProfilerColors.SELECTED_THREAD_LABEL_TEXT);
       stateChart.setBorder(JBUI.Borders.customLine(ProfilerColors.CPU_THREAD_SELECTED_BACKGROUND, 2));
     }
-    else if (myHoveredIndex == index) {
+    if (myHoveredIndex == index) {
       // Cell is hovered. Draw the hover overlay over it.
       JPanel overlay = new JPanel();
       overlay.setBackground(ProfilerColors.DEFAULT_HOVER_COLOR);
       panel.add(overlay, new TabularLayout.Constraint(0, 0, 2));
+      // Draw drag icon next to label
+      myLabel.setBorder(JBUI.Borders.empty());
+      myLabel.setIcon(StudioIcons.Menu.MENU);
     }
 
     panel.add(myLabel, new TabularLayout.Constraint(0, 0));
@@ -123,11 +127,9 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
                          }
                        });
     StateChartData<CpuProfilerStage.ThreadState> data = new StateChartData<>(stateChart, model);
-    // Our size in pixels is 19 and we want a 3 pixel gap.
-    stateChart.setHeightGap(3.0f / SIZE_IN_PIXELS);
+    stateChart.setHeightGap(0.0f); // Default config sets this to 0.5f;
     myStateCharts.put(tid, data);
     myColors.put(stateChart, enumColors);
-    myUpdatableManager.register(model);
     return stateChart;
   }
 }

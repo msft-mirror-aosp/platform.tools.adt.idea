@@ -29,10 +29,10 @@ COMMON_TAGS = [
     "slow",
 ]
 
+# managed by go/iml_to_build
 iml_module(
     name = "intellij.android.guiTests",
     iml_files = ["intellij.android.guiTests.iml"],
-    tags = ["managed"],
     # do not sort: must match IML order
     test_runtime_deps = [
         "//tools/idea/platform/credential-store:intellij.platform.credentialStore",
@@ -79,6 +79,7 @@ iml_module(
         "//tools/adt/idea/uitest-framework-gradle[module, test]",
         "//tools/adt/idea/uitest-framework-bazel[module, test]",
         "//tools/idea/platform/testFramework:intellij.platform.testFramework[module, test]",
+        "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver[module, test]",
     ],
 )
 
@@ -182,7 +183,6 @@ java_test(
     ]) + glob(["testData/LayoutLocalTest/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BazelStartupSyncTest"],
     tags = COMMON_TAGS + [
-        "manual",  # b/73358558
         "no_psq",  # b/73037396
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
@@ -202,7 +202,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editing.AswbGotoDeclarationTest"],
     tags = COMMON_TAGS + [
-        "manual",  # b/73358558
+        "manual",  # b/78573145
         "no_psq",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
@@ -351,12 +351,110 @@ java_test(
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+java_test(
+    name = "InferNullityTest",
+    data = COMMON_DATA + glob([
+        "testData/Nullity/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editors.InferNullityTest"],
+    tags = COMMON_TAGS + ["no_psq"],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "CreateDefaultActivityTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:data/res",
+    ] + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.CreateDefaultActivityTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "GenerateApkWithReleaseVariantTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.instantapp.GenerateApkWithReleaseVariantTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "ModifyMinSdkAndSyncTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.gradle.ModifyMinSdkAndSyncTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "CreateNewAppModuleWithDefaultsTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.gradle.CreateNewAppModuleWithDefaultsTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "CreateNewLibraryModuleWithDefaultsTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.gradle.CreateNewLibraryModuleWithDefaultsTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "AddNewBuildTypeTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AddNewBuildTypeTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
 genrule(
     name = "aswb_plugin",
     srcs = ["@blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip"],
     outs = [
         "aswb/aspect/WORKSPACE",
         "aswb/aspect/BUILD.bazel",
+        "aswb/aspect/artifacts.bzl",
         "aswb/aspect/intellij_info_bundled.bzl",
         "aswb/aspect/intellij_info_impl.bzl",
         "aswb/aspect/java_classpath.bzl",

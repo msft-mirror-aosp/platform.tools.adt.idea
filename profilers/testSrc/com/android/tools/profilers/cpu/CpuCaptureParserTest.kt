@@ -16,11 +16,12 @@
 package com.android.tools.profilers.cpu
 
 import com.android.testutils.TestUtils
+import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.CpuProfiler
 import com.android.tools.profiler.protobuf3jarjar.ByteString
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilersTestData
-import com.android.tools.profilers.cpu.atrace.AtraceCpuCapture
+import com.android.tools.profilers.cpu.CpuCaptureParser.ATRACE_IMPORT_FAILURE_MESSAGE
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.fail
 import org.junit.Test
@@ -132,7 +133,8 @@ class CpuCaptureParserTest {
   fun profilerTypeMustBeSpecified() {
     val parser = CpuCaptureParser(FakeIdeProfilerServices())
     val traceBytes = CpuProfilerTestUtils.traceFileToByteString("simpleperf.trace")
-    val futureCapture = parser.parse(ProfilersTestData.SESSION_DATA, ANY_TRACE_ID, traceBytes, CpuProfiler.CpuProfilerType.UNSPECIFIED_PROFILER)!!
+    val futureCapture = parser.parse(ProfilersTestData.SESSION_DATA, ANY_TRACE_ID, traceBytes,
+                                     CpuProfiler.CpuProfilerType.UNSPECIFIED_PROFILER)!!
 
     try {
       futureCapture.get()
@@ -181,7 +183,7 @@ class CpuCaptureParserTest {
   }
 
   @Test
-  fun parsingAtraceFilesShouldProduceCpuCaptureIfFlagEnabled() {
+  fun parsingAtraceFilesShouldCompleteExceptionallyIfFlagEnabled() {
     val services = FakeIdeProfilerServices()
     val parser = CpuCaptureParser(services)
     val traceFile = CpuProfilerTestUtils.getTraceFile("atrace_processid_1.ctrace")
@@ -189,17 +191,18 @@ class CpuCaptureParserTest {
     // First, try to parse the capture with the flag disabled.
     services.enableAtrace(false)
     var futureCapture = parser.parse(traceFile)!!
-    var capture = futureCapture.get()
+    val capture = futureCapture.get()
+    assertThat(futureCapture.isCompletedExceptionally).isFalse()
     assertThat(capture).isNull()
 
     // Now enable the flag and try to parse it again.
     services.enableAtrace(true)
     futureCapture = parser.parse(traceFile)!!
-    capture = futureCapture.get()
-    assertThat(capture).isNotNull()
-    assertThat(capture.traceId).isEqualTo(CpuCaptureParser.IMPORTED_TRACE_ID)
-    // Atrace capture should be instance of AtraceCpuCapture
-    assertThat(capture).isInstanceOf(AtraceCpuCapture::class.java)
+    assertThat(futureCapture.isCompletedExceptionally).isTrue()
+    futureCapture.exceptionally({ ex ->
+                                  assertThat(ex.message).isEqualTo(ATRACE_IMPORT_FAILURE_MESSAGE)
+                                  null
+                                })
   }
 
   @Test

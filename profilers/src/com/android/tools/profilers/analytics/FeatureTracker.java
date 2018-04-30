@@ -16,8 +16,12 @@
 package com.android.tools.profilers.analytics;
 
 import com.android.tools.profiler.proto.Common;
+import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profilers.Stage;
+import com.android.tools.profilers.analytics.energy.EnergyEventMetadata;
+import com.android.tools.profilers.analytics.energy.EnergyRangeMetadata;
 import com.android.tools.profilers.cpu.CpuCaptureMetadata;
+import com.android.tools.profilers.cpu.ProfilingConfiguration;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
 import org.jetbrains.annotations.NotNull;
@@ -138,6 +142,25 @@ public interface FeatureTracker {
    * Track the user capturing a method trace.
    */
   void trackCaptureTrace(@NotNull CpuCaptureMetadata cpuCaptureMetadata);
+
+  /**
+   * Track the user importing a method trace.
+   */
+  void trackImportTrace(@NotNull CpuProfiler.CpuProfilerType profilerType, boolean success);
+
+  /**
+   * Track the startup CPU profiling that was started with the given {@param configuration}.
+   */
+  void trackCpuStartupProfiling(@NotNull ProfilingConfiguration configuration);
+
+  /**
+   * @param sampling     True if using sampling; false if using instrumentation.
+   * @param pathProvided A trace path is given and not null (we don't log the path as it might contain PII).
+   * @param bufferSize   Buffer size as a given API argument (-1 if unavailable).
+   * @param flags        Flags as a given API argument (-1 if unavailable).
+   * @param intervalUs   Sampling interval as a given API argument (-1 if unavailable).
+   */
+  public void trackCpuApiTracing(boolean sampling, boolean pathProvided, int bufferSize, int flags, int intervalUs);
 
   /**
    * Track the user clicking on one of the threads in the thread list.
@@ -271,4 +294,30 @@ public interface FeatureTracker {
    * Track when the user uses the filter component in the profilers.
    */
   void trackFilterMetadata(@NotNull FilterMetadata filterMetadata);
+
+  /**
+   * Track when the user selects a thread via the cpu kernel list.
+   */
+  void trackSelectCpuKernelElement();
+
+  /**
+   * Track when a user expands or collapses the cpu kernel view.
+   */
+  void trackToggleCpuKernelHideablePanel();
+
+  /**
+   * Track when a user expands or collapses the cpu threads view.
+   */
+  void trackToggleCpuThreadsHideablePanel();
+
+  /**
+   * Track additional data when a user selects a range while in the energy profiler. Note that this
+   * event is sent in addition to a generic range selection event.
+   */
+  void trackSelectEnergyRange(@NotNull EnergyRangeMetadata rangeMetadata);
+
+  /**
+   * Track additional data when a user selects an energy event to see its details.
+   */
+  void trackSelectEnergyEvent(@NotNull EnergyEventMetadata eventMetadata);
 }

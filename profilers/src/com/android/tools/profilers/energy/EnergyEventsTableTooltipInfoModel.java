@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.energy;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
@@ -35,14 +36,19 @@ public class EnergyEventsTableTooltipInfoModel extends AspectModel<EnergyEventsT
 
   @NotNull final private Range myGlobalRange;
   @NotNull final private TimeAxisFormatter myFormatter = new TimeAxisFormatter(1, 4, 1);
-  final private long systemTimeDelta;
+  final private long mySystemTimeDelta;
 
   @Nullable private EnergyDuration myDuration;
   @Nullable private EnergyProfiler.EnergyEvent myCurrentSelectedEvent;
 
-  public EnergyEventsTableTooltipInfoModel(@NotNull Range globalRange) {
+  @VisibleForTesting
+  EnergyEventsTableTooltipInfoModel(@NotNull Range globalRange, long systemTimeDelta) {
     myGlobalRange = globalRange;
-    systemTimeDelta = TimeUnit.MICROSECONDS.toMillis((long)myGlobalRange.getMax()) - System.currentTimeMillis();
+    mySystemTimeDelta = systemTimeDelta;
+  }
+
+  public EnergyEventsTableTooltipInfoModel(@NotNull Range globalRange) {
+    this(globalRange, TimeUnit.MICROSECONDS.toMillis((long)globalRange.getMax()) - System.currentTimeMillis());
   }
 
   public void update(@NotNull EnergyDuration duration, @NotNull Range range) {
@@ -92,11 +98,11 @@ public class EnergyEventsTableTooltipInfoModel extends AspectModel<EnergyEventsT
 
   public String getDateFormattedString(long timestampMs) {
     DateFormat timeFormat = new SimpleDateFormat("hh:mm a");
-    return timeFormat.format(new Date(timestampMs - systemTimeDelta));
+    return timeFormat.format(new Date(timestampMs - mySystemTimeDelta));
   }
 
-  public String getFormattedString(double timestampUs) {
-    return myFormatter.getClockFormattedString((long)(timestampUs - myGlobalRange.getMin()));
+  public String getSimplifiedClockFormattedString(long timestampUs) {
+    return myFormatter.getSimplifiedClockFormattedString(timestampUs - (long)myGlobalRange.getMin());
   }
 
   public String getFormattedDuration(long timestampUs) {
@@ -109,7 +115,7 @@ public class EnergyEventsTableTooltipInfoModel extends AspectModel<EnergyEventsT
     }
     EnergyProfiler.EnergyEvent firstEvent = myDuration.getEventList().get(0);
     EnergyProfiler.EnergyEvent lastEvent = myDuration.getEventList().get(myDuration.getEventList().size() - 1);
-    String startTime = getFormattedString(TimeUnit.NANOSECONDS.toMicros(firstEvent.getTimestamp()));
+    String startTime = getSimplifiedClockFormattedString(TimeUnit.NANOSECONDS.toMicros(firstEvent.getTimestamp()));
     String unknownString;
     switch (myDuration.getKind()) {
       case WAKE_LOCK:
@@ -123,7 +129,7 @@ public class EnergyEventsTableTooltipInfoModel extends AspectModel<EnergyEventsT
     }
 
     String endTime =
-      lastEvent.getIsTerminal() ? getFormattedString(TimeUnit.NANOSECONDS.toMicros(lastEvent.getTimestamp())) : unknownString;
+      lastEvent.getIsTerminal() ? getSimplifiedClockFormattedString(TimeUnit.NANOSECONDS.toMicros(lastEvent.getTimestamp())) : unknownString;
     return startTime + " - " + endTime;
   }
 

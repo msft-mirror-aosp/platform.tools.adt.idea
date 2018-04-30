@@ -24,22 +24,19 @@ import com.android.tools.profiler.proto.CpuProfiler
 import com.android.tools.profiler.proto.MemoryProfiler
 import com.android.tools.profiler.protobuf3jarjar.ByteString
 import com.android.tools.profilers.*
-import com.android.tools.profilers.cpu.CpuCaptureArtifactView
-import com.android.tools.profilers.cpu.CpuProfilerStage
-import com.android.tools.profilers.cpu.FakeCpuService
-import com.android.tools.profilers.cpu.ProfilingConfiguration
+import com.android.tools.profilers.cpu.*
 import com.android.tools.profilers.event.FakeEventService
-import com.android.tools.profilers.memory.FakeCaptureObjectLoader
-import com.android.tools.profilers.memory.FakeMemoryService
-import com.android.tools.profilers.memory.HprofArtifactView
-import com.android.tools.profilers.memory.MemoryProfilerStage
+import com.android.tools.profilers.memory.*
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
+import com.android.tools.profilers.memory.adapters.LegacyAllocationCaptureObject
 import com.android.tools.profilers.network.FakeNetworkService
 import com.google.common.truth.Truth.assertThat
+import org.jetbrains.concurrency.all
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.awt.event.ActionEvent
+import java.util.concurrent.TimeUnit
 
 class SessionsViewTest {
 
@@ -401,15 +398,16 @@ class SessionsViewTest {
     val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
     val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
     val traceInfoId = 13
+
     val cpuTraceInfo = CpuProfiler.TraceInfo.newBuilder()
       .setTraceId(traceInfoId)
-      .setFromTimestamp(10)
-      .setToTimestamp(11)
+      .setFromTimestamp(TimeUnit.MINUTES.toNanos(1))
+      .setToTimestamp(TimeUnit.MINUTES.toNanos(2))
       .setProfilerType(CpuProfiler.CpuProfilerType.SIMPLEPERF)
       .build()
     myCpuService.addTraceInfo(cpuTraceInfo)
 
-    myProfilerService.setTimestampNs(1)
+    myProfilerService.setTimestampNs(0)
     mySessionsManager.beginSession(device, process)
     mySessionsManager.endCurrentSession()
     val session = mySessionsManager.selectedSession
@@ -421,6 +419,7 @@ class SessionsViewTest {
     assertThat(cpuCaptureItem.artifact.session).isEqualTo(session)
     assertThat(cpuCaptureItem.artifact.isOngoingCapture).isFalse()
     assertThat(cpuCaptureItem.artifact.name).isEqualTo(ProfilingConfiguration.SIMPLEPERF_ARTIFACT)
+    assertThat(cpuCaptureItem.artifact.subtitle).isEqualTo("00:01:00.000")
 
     // Prepare FakeCpuService to return a valid trace.
     myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS)
@@ -465,6 +464,7 @@ class SessionsViewTest {
     assertThat(cpuCaptureItem.artifact.session).isEqualTo(session)
     assertThat(cpuCaptureItem.artifact.isOngoingCapture).isTrue()
     assertThat(cpuCaptureItem.artifact.name).isEqualTo(ProfilingConfiguration.ATRACE)
+    assertThat(cpuCaptureItem.artifact.subtitle).isEqualTo(SessionArtifact.CAPTURING_SUBTITLE)
 
     assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java) // Makes sure we're in monitor stage
     // Selecting on the CpuCaptureSessionArtifact should open CPU profiler and select the capture
@@ -478,7 +478,7 @@ class SessionsViewTest {
   }
 
   @Test
-  fun testMemoryItemSelection() {
+  fun testMemoryHeapDumpSelection() {
     val sessionsPanel = mySessionsView.sessionsPanel
     sessionsPanel.setSize(200, 200)
     val ui = FakeUi(sessionsPanel)
@@ -486,8 +486,8 @@ class SessionsViewTest {
     val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
     val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
 
-    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(10).setEndTime(11).build();
-    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo);
+    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(10).setEndTime(11).build()
+    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
 
     myProfilerService.setTimestampNs(1)
     mySessionsManager.beginSession(device, process)
@@ -500,17 +500,9 @@ class SessionsViewTest {
     assertThat(sessionItem.artifact.session).isEqualTo(session)
     assertThat(hprofItem.artifact.session).isEqualTo(session)
 
-    myMemoryService.setExplicitHeapDumpInfo(10, 11)
     myMemoryService.setExplicitSnapshotBuffer(ByteArray(0))
     myMemoryService.setExplicitHeapDumpStatus(MemoryProfiler.TriggerHeapDumpResponse.Status.SUCCESS)
-    myMemoryService.setExplicitDumpDataStatus(MemoryProfiler.DumpDataResponse.Status.SUCCESS);
-    // Because we do not provide valid data for heap dump, memory stage would fail to load and set selectedCapture back to null.
-    // To prevent the loading function from getting called, we register the session change listener with a FakeCaptureObjectLoader.
-    myProfilers.registerSessionChangeListener(
-      Common.SessionMetaData.SessionType.MEMORY_CAPTURE, {
-      myProfilers.stage = MemoryProfilerStage(myProfilers, FakeCaptureObjectLoader())
-    }
-    )
+    myMemoryService.setExplicitDumpDataStatus(MemoryProfiler.DumpDataResponse.Status.SUCCESS)
 
     // Makes sure we're in monitor stage.
     assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java)
@@ -521,5 +513,106 @@ class SessionsViewTest {
     assertThat(myProfilers.stage).isInstanceOf(MemoryProfilerStage::class.java)
     // Makes sure a HeapDumpCaptureObject is loaded.
     assertThat((myProfilers.stage as MemoryProfilerStage).selectedCapture).isInstanceOf(HeapDumpCaptureObject::class.java)
+  }
+
+  @Test
+  fun testMemoryOngoingHeapDumpItemSelection() {
+    val sessionsPanel = mySessionsView.sessionsPanel
+    sessionsPanel.setSize(200, 200)
+    val ui = FakeUi(sessionsPanel)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+
+    val heapDumpInfo = MemoryProfiler.HeapDumpInfo.newBuilder().setStartTime(10).setEndTime(Long.MAX_VALUE).build()
+    myMemoryService.addExplicitHeapDumpInfo(heapDumpInfo)
+
+    mySessionsManager.beginSession(device, process)
+    val session = mySessionsManager.selectedSession
+
+    assertThat(sessionsPanel.componentCount).isEqualTo(2)
+    var sessionItem = sessionsPanel.getComponent(0) as SessionItemView
+    var hprofItem = sessionsPanel.getComponent(1) as HprofArtifactView
+    assertThat(sessionItem.artifact.session).isEqualTo(session)
+    assertThat(hprofItem.artifact.session).isEqualTo(session)
+
+    assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java) // Makes sure we're in monitor stage
+    // Selecting on the HprofSessionArtifact should open Memory profiler.
+    ui.layout()
+    ui.mouse.click(hprofItem.bounds.x + 1, hprofItem.bounds.y + 1)
+    // Makes sure memory profiler stage is now open.
+    assertThat(myProfilers.stage).isInstanceOf(MemoryProfilerStage::class.java)
+    // Makes sure that there is no capture selected.
+    assertThat((myProfilers.stage as MemoryProfilerStage).selectedCapture).isNull()
+    assertThat(myProfilers.timeline.isStreaming).isTrue()
+  }
+
+  @Test
+  fun testMemoryLegacyAllocationsSelection() {
+    val sessionsPanel = mySessionsView.sessionsPanel
+    sessionsPanel.setSize(200, 200)
+    val ui = FakeUi(sessionsPanel)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+
+    var allocationInfo = MemoryProfiler.MemoryData.newBuilder()
+      .addAllocationsInfo(MemoryProfiler.AllocationsInfo.newBuilder().setStartTime(10).setEndTime(11).setLegacy(true).build())
+      .build()
+    myMemoryService.setMemoryData(allocationInfo)
+
+    mySessionsManager.beginSession(device, process)
+    mySessionsManager.endCurrentSession()
+    val session = mySessionsManager.selectedSession
+
+    assertThat(sessionsPanel.componentCount).isEqualTo(2)
+    var sessionItem = sessionsPanel.getComponent(0) as SessionItemView
+    var allocationItem = sessionsPanel.getComponent(1) as LegacyAllocationsArtifactView
+    assertThat(sessionItem.artifact.session).isEqualTo(session)
+    assertThat(allocationItem.artifact.session).isEqualTo(session)
+
+    // Makes sure we're in monitor stage.
+    assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java)
+    // Selecting on the HprofSessionArtifact should open Memory profiler and select the capture.
+    ui.layout()
+    ui.mouse.click(allocationItem.bounds.x + 1, allocationItem.bounds.y + 1)
+    // Makes sure memory profiler stage is now open.
+    assertThat(myProfilers.stage).isInstanceOf(MemoryProfilerStage::class.java)
+    // Makes sure a HeapDumpCaptureObject is loaded.
+    assertThat((myProfilers.stage as MemoryProfilerStage).selectedCapture).isInstanceOf(LegacyAllocationCaptureObject::class.java)
+  }
+
+  @Test
+  fun testMemoryOngoingLegacyAllocationsSelection() {
+    val sessionsPanel = mySessionsView.sessionsPanel
+    sessionsPanel.setSize(200, 200)
+    val ui = FakeUi(sessionsPanel)
+
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+
+    var allocationInfo = MemoryProfiler.MemoryData.newBuilder()
+      .addAllocationsInfo(MemoryProfiler.AllocationsInfo.newBuilder().setStartTime(10).setEndTime(Long.MAX_VALUE).setLegacy(true).build())
+      .build()
+    myMemoryService.setMemoryData(allocationInfo)
+
+    mySessionsManager.beginSession(device, process)
+    val session = mySessionsManager.selectedSession
+
+    assertThat(sessionsPanel.componentCount).isEqualTo(2)
+    var sessionItem = sessionsPanel.getComponent(0) as SessionItemView
+    var allocationItem = sessionsPanel.getComponent(1) as LegacyAllocationsArtifactView
+    assertThat(sessionItem.artifact.session).isEqualTo(session)
+    assertThat(allocationItem.artifact.session).isEqualTo(session)
+
+    assertThat(myProfilers.stage).isInstanceOf(StudioMonitorStage::class.java) // Makes sure we're in monitor stage
+    // Selecting on the HprofSessionArtifact should open Memory profiler.
+    ui.layout()
+    ui.mouse.click(allocationItem.bounds.x + 1, allocationItem.bounds.y + 1)
+    // Makes sure memory profiler stage is now open.
+    assertThat(myProfilers.stage).isInstanceOf(MemoryProfilerStage::class.java)
+    // Makes sure that there is no capture selected.
+    assertThat((myProfilers.stage as MemoryProfilerStage).selectedCapture).isNull()
+    assertThat(myProfilers.timeline.isStreaming).isTrue()
   }
 }

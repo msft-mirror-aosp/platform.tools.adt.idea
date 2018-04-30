@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.dsl.parser.groovy;
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.intellij.lang.ASTNode;
@@ -47,6 +48,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterList;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -59,7 +61,7 @@ import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
 import static org.jetbrains.plugins.groovy.lang.psi.util.GrStringUtil.*;
 
 public final class GroovyDslUtil {
-
+  @Nullable
   static GroovyPsiElement ensureGroovyPsi(@Nullable PsiElement element) {
     if (element == null) {
       return null;
@@ -145,14 +147,27 @@ public final class GroovyDslUtil {
     return true;
   }
 
-  static void deleteIfEmpty(@Nullable PsiElement element) {
+  static void maybeDeleteIfEmpty(@Nullable PsiElement element, @NotNull GradleDslElement dslElement) {
+    GradleDslElement parentDslElement = dslElement.getParent();
+    if (parentDslElement instanceof GradleDslExpressionList && !((GradleDslExpressionList)parentDslElement).shouldBeDeleted() ||
+        parentDslElement instanceof GradleDslExpressionMap  && !((GradleDslExpressionMap)parentDslElement).shouldBeDeleted()) {
+      // Don't delete parent if empty.
+      return;
+    }
+    deleteIfEmpty(element);
+  }
+
+  private static void deleteIfEmpty(@Nullable PsiElement element) {
     if (element == null) {
       return;
     }
 
     PsiElement parent = element.getParent();
 
-    if (element instanceof GrAssignmentExpression) {
+    if (!element.isValid()) {
+      // Skip deleting
+    }
+    else if (element instanceof GrAssignmentExpression) {
       if (((GrAssignmentExpression)element).getRValue() == null) {
         element.delete();
       }
@@ -228,6 +243,15 @@ public final class GroovyDslUtil {
       GrVariable variable = (GrVariable)element;
       if (variable.getInitializerGroovy() == null) {
         variable.delete();
+      }
+    }
+    else if (element instanceof GrListOrMap) {
+      GrListOrMap listOrMap = (GrListOrMap)element;
+      if (listOrMap.isMap() && listOrMap.getNamedArguments().length == 0) {
+        listOrMap.delete();
+      }
+      else if (listOrMap.getInitializers().length == 0) {
+        listOrMap.delete();
       }
     }
 
@@ -492,6 +516,26 @@ public final class GroovyDslUtil {
     return parentPsiElement;
   }
 
+  static String maybeTrimForParent(@NotNull GradleNameElement name, @Nullable GradleDslElement parent) {
+    if (parent == null) {
+      return name.fullName();
+    }
+
+    List<String> parts = new ArrayList<>(name.fullNameParts());
+    if (parts.isEmpty()) {
+      return name.fullName();
+    }
+    String lastNamePart = parts.remove(parts.size() - 1);
+    List<String> parentParts = Splitter.on(".").splitToList(parent.getQualifiedName());
+    int i = 0;
+    while (i < parentParts.size() && !parts.isEmpty() && parentParts.get(i).equals(parts.get(0))) {
+      parts.remove(0);
+      i++;
+    }
+    parts.add(lastNamePart);
+    return GradleNameElement.createNameFromParts(parts);
+  }
+
   /**
    * This method is required to work out whether a GradleDslReference or GradleDslLiteral is an internal value in a map.
    * This allows us to add the PsiElement into the correct position, note: due to the PsiElements Api we have to add the
@@ -689,5 +733,21 @@ public final class GroovyDslUtil {
       }
     }
     return injections;
+  }
+
+  static void createAndAddClosure(@NotNull GradleDslClosure closure, @NotNull GradleDslElement element) {
+    GroovyPsiElement psiElement = ensureGroovyPsi(element.getPsiElement());
+    if (psiElement == null) {
+      return;
+    }
+
+    GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
+    GrClosableBlock block = factory.createClosureFromText("{ }");
+    psiElement.addAfter(factory.createWhiteSpace(), psiElement.getLastChild());
+    PsiElement newElement = psiElement.addAfter(block, psiElement.getLastChild());
+    closure.setPsiElement(newElement);
+    closure.applyChanges();
+    element.setParsedClosureElement(closure);
+    element.setNewClosureElement(null);
   }
 }

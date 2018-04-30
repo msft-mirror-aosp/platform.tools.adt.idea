@@ -16,6 +16,7 @@
 package com.android.tools.profilers.memory;
 
 import com.android.tools.adtui.model.Range;
+import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.MemoryProfiler.HeapDumpInfo;
 import com.android.tools.profiler.proto.MemoryProfiler.ListDumpInfosRequest;
@@ -24,14 +25,17 @@ import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.android.tools.profilers.memory.MemoryProfiler.saveHeapDumpToFile;
+
 /**
  * An artifact representation of a memory heap dump.
  */
-public final class HprofSessionArtifact implements SessionArtifact {
+public final class HprofSessionArtifact implements SessionArtifact<HeapDumpInfo> {
 
   @NotNull private final StudioProfilers myProfilers;
   @NotNull private final Common.Session mySession;
@@ -46,6 +50,12 @@ public final class HprofSessionArtifact implements SessionArtifact {
     mySession = session;
     mySessionMetaData = sessionMetaData;
     myInfo = info;
+  }
+
+  @NotNull
+  @Override
+  public HeapDumpInfo getArtifactProto() {
+    return myInfo;
   }
 
   @NotNull
@@ -72,9 +82,25 @@ public final class HprofSessionArtifact implements SessionArtifact {
     return "Heap Dump";
   }
 
+  @NotNull
+  public String getSubtitle() {
+    if (mySessionMetaData.getType() == Common.SessionMetaData.SessionType.MEMORY_CAPTURE) {
+      return SessionArtifact.getDisplayTime(TimeUnit.NANOSECONDS.toMillis(mySession.getStartTimestamp()));
+    }
+    else {
+      return isOngoingCapture()
+             ? CAPTURING_SUBTITLE
+             : TimeAxisFormatter.DEFAULT.getClockFormattedString(TimeUnit.NANOSECONDS.toMicros(getTimestampNs()));
+    }
+  }
+
   @Override
   public long getTimestampNs() {
     return myInfo.getStartTime() - mySession.getStartTimestamp();
+  }
+
+  public boolean isOngoingCapture() {
+    return myInfo.getEndTime() == Long.MAX_VALUE;
   }
 
   @Override
@@ -91,26 +117,38 @@ public final class HprofSessionArtifact implements SessionArtifact {
       myProfilers.setStage(new MemoryProfilerStage(myProfilers));
     }
 
-    // Adjust the view range to fit the capture object.
-    assert myProfilers.getStage() instanceof MemoryProfilerStage;
-    MemoryProfilerStage stage = (MemoryProfilerStage)myProfilers.getStage();
     long startTimestamp = TimeUnit.NANOSECONDS.toMicros(myInfo.getStartTime());
     long endTimestamp = TimeUnit.NANOSECONDS.toMicros(myInfo.getEndTime());
-    Range captureRange = new Range(startTimestamp, endTimestamp);
-    myProfilers.getTimeline().adjustRangeCloseToMiddleView(captureRange);
+    if (isOngoingCapture()) {
+      SessionArtifact.navigateTimelineToOngoingCapture(myProfilers.getTimeline(), startTimestamp);
+    }
+    else {
+      // Adjust the view range to fit the capture object.
+      assert myProfilers.getStage() instanceof MemoryProfilerStage;
+      MemoryProfilerStage stage = (MemoryProfilerStage)myProfilers.getStage();
+      Range captureRange = new Range(startTimestamp, endTimestamp);
+      myProfilers.getTimeline().adjustRangeCloseToMiddleView(captureRange);
 
-    // Finally, we set and select the capture in the MemoryProfilerStage, which should be the current stage of StudioProfilers.
-    ((MemoryProfilerStage)myProfilers.getStage()).getSelectionModel().set(captureRange.getMin(), captureRange.getMax());
+      // Finally, we set and select the capture in the MemoryProfilerStage, which should be the current stage of StudioProfilers.
+      stage.getSelectionModel().set(captureRange.getMin(), captureRange.getMax());
+    }
+
     myProfilers.getIdeServices().getFeatureTracker().trackSessionArtifactSelected(this, myProfilers.getSessionsManager().isSessionAlive());
+  }
+
+  void saveToFile(@NotNull OutputStream outputStream) {
+    saveHeapDumpToFile(myProfilers.getClient().getMemoryClient(), mySession, myInfo, outputStream,
+                       myProfilers.getIdeServices().getFeatureTracker());
   }
 
   public static List<SessionArtifact> getSessionArtifacts(@NotNull StudioProfilers profilers,
                                                           @NotNull Common.Session session,
                                                           @NotNull Common.SessionMetaData sessionMetaData) {
     ListHeapDumpInfosResponse response = profilers.getClient().getMemoryClient()
-      .listHeapDumpInfos(
-        ListDumpInfosRequest.newBuilder().setSession(session).setStartTime(session.getStartTimestamp())
-          .setEndTime(session.getEndTimestamp()).build());
+                                                  .listHeapDumpInfos(
+                                                    ListDumpInfosRequest.newBuilder().setSession(session)
+                                                                        .setStartTime(session.getStartTimestamp())
+                                                                        .setEndTime(session.getEndTimestamp()).build());
 
     List<SessionArtifact> artifacts = new ArrayList<>();
     for (HeapDumpInfo info : response.getInfosList()) {

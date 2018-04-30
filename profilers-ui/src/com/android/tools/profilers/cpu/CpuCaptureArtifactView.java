@@ -15,14 +15,15 @@
  */
 package com.android.tools.profilers.cpu;
 
-import com.android.tools.adtui.TabularLayout;
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.profilers.ProfilerAction;
 import com.android.tools.profilers.sessions.SessionArtifactView;
+import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A {@link SessionArtifactView} that represents a CPU capture object.
@@ -31,33 +32,27 @@ public class CpuCaptureArtifactView extends SessionArtifactView<CpuCaptureSessio
 
   public CpuCaptureArtifactView(@NotNull ArtifactDrawInfo artifactDrawInfo, @NotNull CpuCaptureSessionArtifact artifact) {
     super(artifactDrawInfo, artifact);
-
-    // 1st column for artifact's icon, 2nd column for texts
-    // 1st row for showing name, second row for time.
-    setLayout(new TabularLayout("Fit-,*", "Fit-,Fit-"));
-
-    JLabel icon = new JLabel(artifact.isOngoingCapture()
-                             // TODO(b/74975946): use proper icon for in-progress captures. Maybe animate.
-                             ? StudioIcons.LayoutEditor.Palette.PROGRESS_BAR
-                             : StudioIcons.Profiler.Sessions.CPU);
-    icon.setBorder(ARTIFACT_ICON_BORDER);
-    add(icon, new TabularLayout.Constraint(0, 0));
-
-    JLabel artifactName = new JLabel(getArtifact().getName());
-    artifactName.setBorder(LABEL_PADDING);
-    artifactName.setFont(TITLE_FONT);
-    JLabel artifactTime =
-      new JLabel(TimeAxisFormatter.DEFAULT.getClockFormattedString(TimeUnit.NANOSECONDS.toMicros(getArtifact().getTimestampNs())));
-    artifactTime.setBorder(LABEL_PADDING);
-    artifactTime.setFont(STATUS_FONT);
-    add(artifactName, new TabularLayout.Constraint(0, 1));
-    add(artifactTime, new TabularLayout.Constraint(1, 1));
   }
 
   @Override
-  protected void selectedSessionChanged() {
-    setBorder(isSessionSelected() ?
-              BorderFactory.createCompoundBorder(SELECTED_BORDER, ARTIFACT_PADDING) :
-              BorderFactory.createCompoundBorder(UNSELECTED_BORDER, ARTIFACT_PADDING));
+  protected JComponent buildComponent() {
+    return buildCaptureArtifactView(getArtifact().getName(), getArtifact().getSubtitle(), StudioIcons.Profiler.Sessions.CPU,
+                                    getArtifact().isOngoingCapture());
+  }
+
+  @Override
+  protected List<ContextMenuItem> getContextMenus() {
+    ProfilerAction action = new ProfilerAction.Builder("Export...")
+      .setEnableBooleanSupplier(() -> !getArtifact().isOngoingCapture())
+      .setActionRunnable(() -> {
+        getSessionsView().getIdeProfilerComponents().createExportDialog().open(
+          () -> "Export As",
+          () -> CpuProfiler.generateCaptureFileName(getArtifact().getArtifactProto().getProfilerType()),
+          () -> "trace",
+          file -> getArtifact().getProfilers().getIdeServices().saveFile(file, outputStream -> CpuProfiler
+            .saveCaptureToFile(getArtifact().getArtifactProto(), outputStream), null));
+      })
+      .build();
+    return Collections.singletonList(action);
   }
 }

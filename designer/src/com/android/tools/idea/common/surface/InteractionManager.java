@@ -220,7 +220,6 @@ public class InteractionManager {
     }
     myHoverTimer.removeActionListener(myListener);
     myHoverTimer.stop();
-    myIsListening = false;
   }
 
   /**

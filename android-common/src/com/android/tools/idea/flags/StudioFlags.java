@@ -69,7 +69,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_DYNAMIC_APP_MODULE = Flag.create(
     NPW, "dynamic.app.module", "New Dynamic App Module flow",
     "Adds entry in File > New Module to create a new Dynamic App Module",
-    false);
+    true);
 
   public static final Flag<Boolean> NPW_USE_HOME_FOLDER_AS_EXTRA_TEMPLATE_ROOT_FOLDER = Flag.create(
     NPW, "home.template.root", "Use .android folder as a Template Root Folder",
@@ -184,6 +184,10 @@ public final class StudioFlags {
     NELE, "animated.motion.layout", "Show preview animations toolbar for MotionLayout",
     "Show an animations bar that allows playback of MotionLayout animations.",
     false);
+  public static final Flag<Boolean> NELE_MOTION_LAYOUT_EDITOR = Flag.create(
+    NELE, "animated.motion.editor", "Show motion editor for MotionLayout",
+    "Show the motion editor UI for MotionLayout.",
+    false);
   public static final Flag<Boolean> NELE_MOCKUP_EDITOR = Flag.create(
     NELE, "mockup.editor", "Enable the Mockup Editor",
     "Enable the Mockup Editor to ease the creation of Layouts from a design file.",
@@ -254,7 +258,7 @@ public final class StudioFlags {
     RUNDEBUG_GROUP, "android.bundle.build.enabled", "Enable the Build Bundle action",
     "If enabled, the \"Build Bundle(s)\" menu item is enabled. " +
     "Changing the value of this flag requires restarting Android Studio.",
-    false);
+    true);
 
 
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
@@ -310,7 +314,7 @@ public final class StudioFlags {
     "If enabled, show the action in the refactoring menu", true);
   public static final Flag<Boolean> MIGRATE_TO_ANDROID_X_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.androidx.enabled", "Enable the Migrate to AndroidX refactoring feature",
-    "If enabled, show the action in the refactoring menu", false);
+    "If enabled, show the action in the refactoring menu", true);
 
   private static final FlagGroup IOT = new FlagGroup(FLAGS, "iot", "IoT features");
   public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(

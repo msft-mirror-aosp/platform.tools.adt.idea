@@ -1,11 +1,11 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 
+# managed by go/iml_to_build
 iml_module(
     name = "whats-new-assistant",
     srcs = ["src"],
     iml_files = ["whats-new-assistant.iml"],
     resources = ["resources"],
-    tags = ["managed"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
@@ -25,13 +25,15 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/idea/platform/platform-impl:intellij.platform.ide.impl[module]",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
+        "//tools/analytics-library/tracker:analytics-tracker[module]",
+        "//tools/analytics-library/protos:analytics-protos[module]",
     ],
 )
 
+# managed by go/iml_to_build
 iml_module(
     name = "whats-new-assistant-test",
     iml_files = ["whats-new-assistant-test.iml"],
-    tags = ["managed"],
     test_class = "com.android.tools.idea.whatsnew.assistant.WhatsNewAssistantTestSuite",
     test_data = [
         "//prebuilts/studio/sdk:platforms/latest",

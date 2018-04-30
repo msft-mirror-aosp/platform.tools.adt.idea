@@ -32,8 +32,10 @@ import com.android.tools.idea.naveditor.model.ActionType;
 import com.android.tools.idea.naveditor.model.NavComponentHelperKt;
 import com.android.tools.idea.naveditor.model.NavCoordinate;
 import com.android.tools.idea.naveditor.scene.decorator.NavSceneDecoratorFactory;
+import com.android.tools.idea.naveditor.scene.layout.DummyAlgorithm;
 import com.android.tools.idea.naveditor.scene.layout.ManualLayoutAlgorithm;
 import com.android.tools.idea.naveditor.scene.layout.NavSceneLayoutAlgorithm;
+import com.android.tools.idea.naveditor.scene.layout.NewDestinationLayoutAlgorithm;
 import com.android.tools.idea.naveditor.scene.targets.NavScreenTargetProvider;
 import com.android.tools.idea.naveditor.scene.targets.NavigationTargetProvider;
 import com.android.tools.idea.naveditor.surface.NavDesignSurface;
@@ -85,8 +87,8 @@ public class NavSceneManager extends SceneManager {
   private final NavScreenTargetProvider myScreenTargetProvider;
   private final NavigationTargetProvider myNavigationTargetProvider;
 
-  // TODO: enable layout algorithm switching
-  @SuppressWarnings("CanBeFinal") private NavSceneLayoutAlgorithm myLayoutAlgorithm;
+  private final List<NavSceneLayoutAlgorithm> myLayoutAlgorithms;
+  private final NavSceneLayoutAlgorithm mySavingLayoutAlgorithm;
 
   private SceneDecoratorFactory myDecoratorFactory;
 
@@ -96,8 +98,10 @@ public class NavSceneManager extends SceneManager {
     super(model, surface);
     createSceneView();
     NavigationSchema schema = getSchema();
-    myLayoutAlgorithm = new ManualLayoutAlgorithm(model.getModule());
-    myScreenTargetProvider = new NavScreenTargetProvider(myLayoutAlgorithm, schema);
+    myLayoutAlgorithms =
+      ImmutableList.of(new NewDestinationLayoutAlgorithm(), new ManualLayoutAlgorithm(model.getModule()), new DummyAlgorithm(schema));
+    mySavingLayoutAlgorithm = myLayoutAlgorithms.stream().filter(algorithm -> algorithm.canSave()).findFirst().orElse(null);
+    myScreenTargetProvider = new NavScreenTargetProvider();
     myNavigationTargetProvider = new NavigationTargetProvider(surface);
 
     updateHierarchy(getModel(), null);
@@ -286,7 +290,7 @@ public class NavSceneManager extends SceneManager {
 
   /**
    * Global actions are children of the root navigation in the NlComponent tree, but we want their scene components to be children of
-   * the scene component of their destination. This method reparents the scene components of the global actions.
+   * the scene component of their destination. This method re-parents the scene components of the global actions.
    */
   private void moveGlobalActions(@NotNull SceneComponent root) {
     Map<String, SceneComponent> destinationMap = new HashMap<>();
@@ -337,7 +341,18 @@ public class NavSceneManager extends SceneManager {
 
   private void layoutAll(@NotNull SceneComponent root) {
     root.flatten().filter(component -> component.getParent() != null).forEach(component -> component.setPosition(0, 0));
-    root.flatten().filter(component -> component.getParent() != null).forEach(myLayoutAlgorithm::layout);
+    root.flatten().filter(component -> component.getParent() != null).forEach(component -> {
+      for (NavSceneLayoutAlgorithm algorithm : myLayoutAlgorithms) {
+        if (algorithm.layout(component)) {
+          // If the algorithm that laid out the component can't persist the position, assume the position hasn't been persisted and
+          // needs to be
+          if (!algorithm.canSave()) {
+            save(component);
+          }
+          break;
+        }
+      }
+    });
 
     HashSet<String> connectedActionSources = new HashSet<>();
     HashSet<String> connectedActionDestinations = new HashSet<>();
@@ -371,6 +386,26 @@ public class NavSceneManager extends SceneManager {
 
       layoutGlobalActions(component, globalActions, connectedActionDestinations.contains(id));
       layoutExitActions(component, exitActions, connectedActionSources.contains(id));
+    }
+  }
+
+  public void save(@NotNull SceneComponent component) {
+    if (mySavingLayoutAlgorithm != null) {
+      mySavingLayoutAlgorithm.save(component);
+    }
+  }
+
+  @Nullable
+  public Object getPositionData(@NotNull SceneComponent component) {
+    if (mySavingLayoutAlgorithm != null) {
+      return mySavingLayoutAlgorithm.getPositionData(component);
+    }
+    return null;
+  }
+
+  public void restorePositionData(@NotNull SceneComponent component, @NotNull Object positionData) {
+    if (mySavingLayoutAlgorithm != null) {
+      mySavingLayoutAlgorithm.restorePositionData(component, positionData);
     }
   }
 

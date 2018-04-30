@@ -15,7 +15,10 @@
  */
 package com.intellij.testGuiFramework.remote.server
 
+import com.android.tools.idea.tests.gui.framework.GuiTests
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testGuiFramework.launcher.GuiTestLauncher
+import com.intellij.testGuiFramework.launcher.GuiTestOptions
 import com.intellij.testGuiFramework.remote.transport.CloseIdeMessage
 import com.intellij.testGuiFramework.remote.transport.MessageFromClient
 import com.intellij.testGuiFramework.remote.transport.MessageFromServer
@@ -25,9 +28,11 @@ import org.apache.log4j.Logger
 import org.junit.runner.Result
 import org.junit.runner.notification.RunListener
 import org.junit.runner.notification.RunNotifier
+import java.io.File
 import java.io.InvalidClassException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
@@ -47,7 +52,7 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   private val receivingMessages: BlockingQueue<MessageFromClient> = LinkedBlockingQueue()
   private val LOG = Logger.getLogger("#com.intellij.testGuiFramework.remote.server.JUnitServerImpl")
 
-  private val serverSocket = ServerSocket(0)
+  private val serverSocket = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
   lateinit private var serverSendThread: ServerSendThread
   lateinit private var serverReceiveThread: ServerReceiveThread
   lateinit private var connection: Socket
@@ -56,7 +61,7 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   lateinit private var objectInputStream: ObjectInputStream
   lateinit private var objectOutputStream: ObjectOutputStream
 
-  private val IDE_STARTUP_TIMEOUT = 20000
+  private val IDE_STARTUP_TIMEOUT = 40000
   private val MESSAGE_INTERVAL_TIMEOUT = 15L
 
   private val port: Int
@@ -77,8 +82,9 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   private fun start() {
     postingMessages.clear()
     receivingMessages.clear()
+    val startTime = System.currentTimeMillis()
     connection = serverSocket.accept()
-    LOG.info("Server accepted client on port: ${connection.port}")
+    LOG.info("Server accepted client on port: ${connection.port} after ${System.currentTimeMillis() - startTime}ms")
 
     objectOutputStream = ObjectOutputStream(connection.getOutputStream())
     serverSendThread = ServerSendThread(connection, objectOutputStream)
@@ -131,6 +137,9 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   }
 
   override fun launchIdeAndStart() {
+    val configDir = GuiTests.getConfigDirPath()
+    FileUtil.delete(configDir)
+    FileUtil.ensureExists(configDir)
     GuiTestLauncher.runIde(port)
     start()
   }

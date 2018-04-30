@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
-import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
-import com.android.tools.idea.gradle.dsl.model.values.GradleNotNullValueImpl;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.google.common.collect.Lists;
 import com.intellij.psi.PsiElement;
@@ -36,6 +34,12 @@ public final class GradleDslExpressionList extends GradleDslElementImpl implemen
   @NotNull private final List<GradleDslExpression> myUnsavedExpressions = Lists.newArrayList();
 
   private final boolean myAppendToArgumentListWithOneElement;
+  // This boolean controls whether of not the empty list element should be deleted on a call to delete in one of
+  // its children. For non-literal lists (e.g merges "merge1", "merge2") #shouldBeDeleted() always returns true since we
+  // never want to preserve these lists. However literal lists (e.g merges = ['merge1', 'merge2']) should only be deleted
+  // if the #delete() method on the list element is called, not when there are no more elements left. This is due to
+  // merges = [] possibly having important semantic meaning.
+  private boolean myShouldBeDeleted;
 
   // Is this GradleDslExpressionList being used as an actual list. This is used when creating the element to
   // work out whether we need to wrap this list in brackets. For example expression lists are used for literals lists
@@ -157,6 +161,11 @@ public final class GradleDslExpressionList extends GradleDslElementImpl implemen
       Collectors.toList());
   }
 
+  @NotNull
+  public <T> List<T> getLiterals(@NotNull Class<T> clazz) {
+    return getSimpleExpressions().stream().map(e -> e.getValue(clazz)).filter(e -> e != null).collect(Collectors.toList());
+  }
+
   public boolean isLiteralList() {
     return myIsLiteralList;
   }
@@ -182,35 +191,16 @@ public final class GradleDslExpressionList extends GradleDslElementImpl implemen
     saveExpressions();
   }
 
-  /**
-   * Returns the list of values of type {@code clazz}.
-   * <p>
-   * <p>Returns an empty list when there are no elements of type {@code clazz}.
-   */
-  @NotNull
-  public <E> List<GradleNotNullValue<E>> getValues(Class<E> clazz) {
-    List<GradleNotNullValue<E>> result = Lists.newArrayList();
-    for (GradleDslSimpleExpression expression : getSimpleExpressions()) {
-      if (expression instanceof GradleDslReference) {
-        // See if the reference itself is pointing to a list.
-        GradleDslExpressionList referenceList = expression.getValue(GradleDslExpressionList.class);
-        if (referenceList != null) {
-          result.addAll(referenceList.getValues(clazz));
-          continue;
-        }
-      }
-      E value = expression.getValue(clazz);
-      if (value != null) {
-        result.add(new GradleNotNullValueImpl<>(expression, value));
-      }
-    }
-    return result;
-  }
-
   @Override
   @Nullable
   public PsiElement create() {
     return getDslFile().getWriter().createDslExpressionList(this);
+  }
+
+  @Override
+  public void delete() {
+    myShouldBeDeleted = true;
+    super.delete();
   }
 
   @Override
@@ -287,5 +277,9 @@ public final class GradleDslExpressionList extends GradleDslElementImpl implemen
   @Nullable
   public PsiElement getExpression() {
     return getPsiElement();
+  }
+
+  public boolean shouldBeDeleted() {
+    return !isLiteralList() || myShouldBeDeleted;
   }
 }

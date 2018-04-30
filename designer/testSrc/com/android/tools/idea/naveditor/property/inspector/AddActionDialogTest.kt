@@ -14,10 +14,8 @@
 package com.android.tools.idea.naveditor.property.inspector
 
 import com.android.SdkConstants.AUTO_URI
-import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.naveditor.NavModelBuilderUtil.navigation
 import com.android.tools.idea.naveditor.NavTestCase
-import com.android.tools.idea.naveditor.structure.DestinationList
 import com.intellij.ui.TitledSeparator
 import com.intellij.util.ui.UIUtil
 import org.jetbrains.android.dom.navigation.NavigationSchema
@@ -38,6 +36,7 @@ class AddActionDialogTest : NavTestCase() {
             withAttribute(AUTO_URI, NavigationSchema.ATTR_ENTER_ANIM, "@anim/fade_in")
             withAttribute(AUTO_URI, NavigationSchema.ATTR_POP_UP_TO, "@id/f2")
             withAttribute(AUTO_URI, NavigationSchema.ATTR_CLEAR_TASK, "true")
+            withAttribute(AUTO_URI, NavigationSchema.ATTR_POP_ENTER_ANIM, "@anim/fade_out")
           }
         }
         fragment("f2")
@@ -52,6 +51,36 @@ class AddActionDialogTest : NavTestCase() {
     dialog.close(0)
     assertEquals(model.find("f2"), dialog.destination)
     assertEquals("@anim/fade_in", dialog.enterTransition)
+    assertEquals("@anim/fade_out", dialog.popEnterTransition)
+    assertTrue(dialog.isClearTask)
+    assertEquals(model.find("f1"), dialog.source)
+    assertEquals("f2", dialog.popTo)
+    assertEquals("a1", dialog.id)
+  }
+
+  fun testExistingPop() {
+    val model = model("nav.xml") {
+      navigation {
+        fragment("f1") {
+          action("a1", popUpTo = "f2") {
+            withAttribute(AUTO_URI, NavigationSchema.ATTR_ENTER_ANIM, "@anim/fade_in")
+            withAttribute(AUTO_URI, NavigationSchema.ATTR_CLEAR_TASK, "true")
+            withAttribute(AUTO_URI, NavigationSchema.ATTR_POP_ENTER_ANIM, "@anim/fade_out")
+          }
+        }
+        fragment("f2")
+      }
+    }
+
+    val dialog = AddActionDialog(
+      AddActionDialog.Defaults.NORMAL,
+      model.find("a1"),
+      model.find("f1")!!
+    )
+    dialog.close(0)
+    assertEquals("f2", dialog.popTo)
+    assertEquals("@anim/fade_in", dialog.enterTransition)
+    assertEquals("@anim/fade_out", dialog.popEnterTransition)
     assertTrue(dialog.isClearTask)
     assertEquals(model.find("f1"), dialog.source)
     assertEquals("f2", dialog.popTo)
@@ -88,17 +117,13 @@ class AddActionDialogTest : NavTestCase() {
     assertEquals(6, dialog.myDestinationComboBox.itemCount)
     assertTrue(dialog.myDestinationComboBox.isEnabled)
 
-    assertEquals(null, dialog.myEnterComboBox.getItemAt(0).value)
-    assertEquals("@anim/fade_in", dialog.myEnterComboBox.getItemAt(1).value)
-    assertEquals("@anim/fade_out", dialog.myEnterComboBox.getItemAt(2).value)
-    assertEquals("@animator/test1", dialog.myEnterComboBox.getItemAt(3).value)
-    assertEquals(4, dialog.myEnterComboBox.itemCount)
-
-    assertEquals(null, dialog.myExitComboBox.getItemAt(0).value)
-    assertEquals("@anim/fade_in", dialog.myExitComboBox.getItemAt(1).value)
-    assertEquals("@anim/fade_out", dialog.myExitComboBox.getItemAt(2).value)
-    assertEquals("@animator/test1", dialog.myExitComboBox.getItemAt(3).value)
-    assertEquals(4, dialog.myExitComboBox.itemCount)
+    for (combo in arrayOf(dialog.myEnterComboBox, dialog.myExitComboBox, dialog.myPopEnterComboBox, dialog.myPopExitComboBox)) {
+      assertEquals(null, combo.getItemAt(0).value)
+      assertEquals("@anim/fade_in", combo.getItemAt(1).value)
+      assertEquals("@anim/fade_out", combo.getItemAt(2).value)
+      assertEquals("@animator/test1", combo.getItemAt(3).value)
+      assertEquals(4, combo.itemCount)
+    }
 
     assertEquals(null, dialog.myPopToComboBox.getItemAt(0))
     assertEquals("f1", dialog.myPopToComboBox.getItemAt(1).component?.id)
@@ -134,6 +159,8 @@ class AddActionDialogTest : NavTestCase() {
     assertTrue(dialog.myInclusiveCheckBox.isSelected)
     assertFalse(dialog.myInclusiveCheckBox.isEnabled)
     assertEquals("action_f1_pop", dialog.myIdTextField.text)
+    assertTrue(dialog.myPopEnterComboBox.isEnabled)
+    assertTrue(dialog.myPopExitComboBox.isEnabled)
 
     dialogWrapper.close(0)
   }
@@ -185,6 +212,12 @@ class AddActionDialogTest : NavTestCase() {
     dialog.myDestinationComboBox.selectedIndex = 3
     assertTrue(dialog.myInclusiveCheckBox.isSelected)
     assertTrue(dialog.myInclusiveCheckBox.isEnabled)
+
+    // Select "source" and then "None" and verify popTo is reenabled
+    dialog.myDestinationComboBox.selectedIndex = 1
+    assertFalse(dialog.myPopToComboBox.isEnabled)
+    dialog.myDestinationComboBox.selectedIndex = 0
+    assertTrue(dialog.myPopToComboBox.isEnabled)
 
     dialogWrapper.close(0)
   }

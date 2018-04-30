@@ -29,6 +29,7 @@ import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.run.MakeBeforeRunTaskProvider;
 import com.android.tools.idea.gradle.run.PostBuildModel;
 import com.android.tools.idea.gradle.run.PostBuildModelProvider;
+import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.run.editor.*;
 import com.android.tools.idea.run.tasks.InstantRunNotificationTask;
@@ -58,10 +59,7 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.util.DefaultJDOMExternalizer;
-import com.intellij.openapi.util.InvalidDataException;
-import com.intellij.openapi.util.Pair;
-import com.intellij.openapi.util.WriteExternalException;
+import com.intellij.openapi.util.*;
 import com.intellij.util.xmlb.annotations.Transient;
 import org.jdom.Element;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -640,6 +638,22 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
                                                          boolean waitForDebugger,
                                                          @NotNull LaunchStatus launchStatus);
 
+  @NotNull
+  protected ApkProvider createGradleApkProvider(@NotNull AndroidFacet facet,
+                                                @NotNull ApplicationIdProvider applicationIdProvider,
+                                                boolean test,
+                                                @NotNull List<AndroidDevice> targetDevices) {
+    Computable<GradleApkProvider.OutputKind> outputKindProvider = () -> {
+      if (DynamicAppUtils.useSelectApksFromBundleBuilder(facet.getModule(), this, targetDevices)) {
+        return GradleApkProvider.OutputKind.AppBundleOutputModel;
+      }
+      else {
+        return GradleApkProvider.OutputKind.Default;
+      }
+    };
+    return new GradleApkProvider(facet, applicationIdProvider, myOutputProvider, test, outputKindProvider);
+  }
+
   public boolean monitorRemoteProcess() {
     return true;
   }
@@ -678,6 +692,11 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     AndroidVersion version = device.getVersion();
     if (!InstantRunManager.isInstantRunCapableDeviceVersion(version)) {
       return API_TOO_LOW_FOR_INSTANT_RUN;
+    }
+
+    // If using app bundle, IR is not supported
+    if (DynamicAppUtils.useSelectApksFromBundleBuilder(module, this, targetDevices)) {
+      return USES_APP_BUNDLE_OUTPUT;
     }
 
     IDevice targetDevice = MakeBeforeRunTaskProvider.getLaunchedDevice(device);

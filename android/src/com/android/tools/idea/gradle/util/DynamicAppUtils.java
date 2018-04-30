@@ -18,25 +18,34 @@ package com.android.tools.idea.gradle.util;
 import com.android.builder.model.AndroidProject;
 import com.android.builder.model.AppBundleProjectBuildOutput;
 import com.android.builder.model.AppBundleVariantBuildOutput;
+import com.android.ide.common.repository.GradleVersion;
 import com.android.sdklib.AndroidVersion;
+import com.android.tools.idea.gradle.plugin.AndroidPluginGeneration;
+import com.android.tools.idea.gradle.plugin.AndroidPluginVersionUpdater;
 import com.android.tools.idea.gradle.project.ProjectStructure;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.run.PostBuildModel;
 import com.android.tools.idea.gradle.run.PostBuildModelProvider;
+import com.android.tools.idea.run.AndroidAppRunConfigurationBase;
 import com.android.tools.idea.run.AndroidBundleRunConfiguration;
 import com.android.tools.idea.run.AndroidDevice;
 import com.android.tools.idea.run.ApkFileUnit;
 import com.android.tools.idea.run.ApkInfo;
+import com.android.utils.HtmlBuilder;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.intellij.execution.configurations.RunConfiguration;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
+import org.jetbrains.android.exportSignedPackage.ChooseBundleOrApkStep;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,6 +56,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 
 /**
  * Various utility methods to navigate through various parts (dynamic features, base split, etc.)
@@ -65,6 +76,24 @@ public class DynamicAppUtils {
     return getDependentFeatureModules(module.getProject(), androidModule.getAndroidProject());
   }
 
+  /**
+   * Returns the Base Module of the specified dynamic feature {@link Module module}, or null if none is found.
+   */
+  @Nullable
+  public static Module getBaseFeature(@NotNull Module module) {
+    String gradlePath = getGradlePath(module);
+    if (gradlePath == null) {
+      return null;
+    }
+
+    return Arrays.stream(ModuleManager.getInstance(module.getProject()).getModules())
+      .filter(baseModule -> {
+        AndroidModuleModel baseModel = AndroidModuleModel.get(baseModule);
+        return baseModel != null && baseModel.getAndroidProject().getDynamicFeatures().contains(gradlePath);
+      })
+      .findFirst()
+      .orElse(null);
+  }
   /**
    * Returns the list of dynamic feature {@link Module modules} that depend on this base module.
    */
@@ -118,6 +147,38 @@ public class DynamicAppUtils {
       return false;
     }
     return !StringUtil.isEmpty(androidModule.getSelectedVariant().getMainArtifact().getBundleTaskName());
+  }
+
+  public static void promptUserForGradleUpdate(@NotNull Project project) {
+    HtmlBuilder builder = new HtmlBuilder();
+    builder.openHtmlBody();
+    builder.add("Building Android App Bundles requires you to update to the latest version of the Android Gradle Plugin.");
+    builder.newline();
+    builder.addLink("Learn More", ChooseBundleOrApkStep.DOC_URL);
+    builder.newline();
+    builder.newline();
+    builder.add("App bundles allow you to support multiple device configurations from a single build artifact.");
+    builder.newline();
+    builder.add("App stores that support the bundle format use it to build and sign your APKs for you, and");
+    builder.newline();
+    builder.add("serve those APKs to users as needed.");
+    builder.newline();
+    builder.newline();
+    builder.closeHtmlBody();
+    final int updateButtonIndex = 1;
+    int result = Messages.showDialog(project,
+                                     builder.getHtml(),
+                                     "Update the Android Gradle Plugin",
+                                     new String[]{Messages.CANCEL_BUTTON, "Update"},
+                                     updateButtonIndex /* Default button */,
+                                     AllIcons.General.WarningDialog);
+
+    if (result == updateButtonIndex) {
+      GradleVersion gradleVersion = GradleVersion.parse(GRADLE_LATEST_VERSION);
+      GradleVersion pluginVersion = GradleVersion.parse(AndroidPluginGeneration.ORIGINAL.getLatestKnownVersion());
+      AndroidPluginVersionUpdater updater = AndroidPluginVersionUpdater.getInstance(project);
+      updater.updatePluginVersion(pluginVersion, gradleVersion);
+    }
   }
 
   /**
@@ -193,6 +254,14 @@ public class DynamicAppUtils {
       return true;
     }
 
+    if (configuration instanceof AndroidAppRunConfigurationBase) {
+      AndroidAppRunConfigurationBase androidConfiguration = (AndroidAppRunConfigurationBase)configuration;
+      if (androidConfiguration.DEPLOY_APK_FROM_BUNDLE) {
+        Preconditions.checkArgument(androidConfiguration.DEPLOY);
+        return true;
+      }
+    }
+
     // If any device is pre-L *and* module has a dynamic feature, we need to use the bundle tool
     if (targetDevices.stream().anyMatch(device -> device.getVersion().getFeatureLevel() < AndroidVersion.VersionCodes.LOLLIPOP) &&
         !getDependentFeatureModules(module).isEmpty()) {
@@ -200,6 +269,23 @@ public class DynamicAppUtils {
     }
 
     return false;
+  }
+
+  /**
+   * Returns {@code true} if we should collect the list of languages of the target devices
+   * when deploying an app.
+   */
+  public static boolean shouldCollectListOfLanguages(@NotNull Module module,
+                                                     @NotNull RunConfiguration configuration,
+                                                     @NotNull List<AndroidDevice> targetDevices) {
+    // Don't collect if not using the bundle tool
+    if (!useSelectApksFromBundleBuilder(module, configuration, targetDevices)) {
+      return false;
+    }
+
+    // Only collect if all devices are L or later devices, because pre-L devices don't support split apks, meaning
+    // they don't support install on demand, meaning all languages should be installed.
+    return targetDevices.stream().allMatch(device -> device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.LOLLIPOP);
   }
 
 
@@ -215,20 +301,31 @@ public class DynamicAppUtils {
         if (model.getAndroidProject().getProjectType() != AndroidProject.PROJECT_TYPE_DYNAMIC_FEATURE) {
           return null;
         }
-
-        // Find the gradle path of the module
-        GradleFacet facet = GradleFacet.getInstance(module);
-        if (facet == null) {
+        String gradlePath = getGradlePath(module);
+        if (gradlePath == null) {
           return null;
         }
-        GradleModuleModel gradleModel = facet.getGradleModuleModel();
-        if (gradleModel == null) {
-          return null;
-        }
-        return Pair.create(gradleModel.getGradlePath(), module);
+        return Pair.create(gradlePath, module);
       })
       .filter(Objects::nonNull)
       .collect(Collectors.toMap(p -> p.first, p -> p.second, DynamicAppUtils::handleModuleAmbiguity));
+  }
+
+  /**
+   * Find the gradle path of the module
+   * @return The path of the specified module, or null if it can't retrieve it.
+   */
+  @Nullable
+  private static String getGradlePath(@NotNull Module module) {
+    GradleFacet facet = GradleFacet.getInstance(module);
+    if (facet == null) {
+      return null;
+    }
+    GradleModuleModel gradleModel = facet.getGradleModuleModel();
+    if (gradleModel == null) {
+      return null;
+    }
+    return gradleModel.getGradlePath();
   }
 
   @NotNull

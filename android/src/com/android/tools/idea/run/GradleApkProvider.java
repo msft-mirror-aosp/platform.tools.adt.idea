@@ -43,6 +43,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ui.configuration.ProjectSettingsService;
 import com.intellij.openapi.util.Computable;
+import org.gradle.internal.impldep.org.jetbrains.annotations.TestOnly;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.annotations.NotNull;
@@ -110,6 +111,12 @@ public class GradleApkProvider implements ApkProvider {
     myTest = test;
     myOutputKindProvider = outputKindProvider;
   }
+
+  @TestOnly
+  OutputKind getOutputKind() { return myOutputKindProvider.compute(); }
+
+  @TestOnly
+  boolean isTest() { return myTest; }
 
   @Override
   @NotNull
@@ -413,7 +420,9 @@ public class GradleApkProvider implements ApkProvider {
   public List<ValidationError> validate() {
     AndroidModuleModel androidModuleModel = AndroidModuleModel.get(myFacet);
     assert androidModuleModel != null; // This is a Gradle project, there must be an AndroidGradleModel.
+    // Note: Instant apps and app bundles outputs are assumed to be signed
     if (androidModuleModel.getAndroidProject().getProjectType() == PROJECT_TYPE_INSTANTAPP ||
+        myOutputKindProvider.compute() == OutputKind.AppBundleOutputModel ||
         androidModuleModel.getMainArtifact().isSigned()) {
       return ImmutableList.of();
     }
