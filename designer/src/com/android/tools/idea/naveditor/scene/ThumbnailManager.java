@@ -17,20 +17,26 @@ package com.android.tools.idea.naveditor.scene;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tools.idea.configurations.Configuration;
-import com.android.tools.idea.rendering.*;
+import com.android.tools.idea.rendering.RenderLogger;
+import com.android.tools.idea.rendering.RenderResult;
+import com.android.tools.idea.rendering.RenderService;
+import com.android.tools.idea.rendering.RenderTask;
 import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.util.Key;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.reference.SoftReference;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.AndroidFacetScopedService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.ide.PooledThreadExecutor;
 
+import java.awt.image.BufferedImage;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -40,9 +46,9 @@ import java.util.concurrent.ExecutionException;
 public class ThumbnailManager extends AndroidFacetScopedService {
   private static final Key<ThumbnailManager> KEY = Key.create(ThumbnailManager.class.getName());
 
-  private final Table<XmlFile, Configuration, ImagePool.Image> myImages = HashBasedTable.create();
-  private final Table<XmlFile, Configuration, Long> myRenderVersions = HashBasedTable.create();
-  private final Table<XmlFile, Configuration, Long> myRenderModStamps = HashBasedTable.create();
+  private final Table<VirtualFile, Configuration, SoftReference<BufferedImage>> myImages = HashBasedTable.create();
+  private final Table<VirtualFile, Configuration, Long> myRenderVersions = HashBasedTable.create();
+  private final Table<VirtualFile, Configuration, Long> myRenderModStamps = HashBasedTable.create();
   private final LocalResourceRepository myResourceRepository;
 
   @NotNull
@@ -66,8 +72,10 @@ public class ThumbnailManager extends AndroidFacetScopedService {
   }
 
   @Nullable
-  public CompletableFuture<ImagePool.Image> getThumbnail(@NotNull XmlFile file, @NotNull Configuration configuration) {
-    ImagePool.Image cached = myImages.get(file, configuration);
+  public CompletableFuture<BufferedImage> getThumbnail(@NotNull XmlFile xmlFile, @NotNull Configuration configuration) {
+    VirtualFile file = xmlFile.getVirtualFile();
+    SoftReference<BufferedImage> cachedReference = myImages.get(file, configuration);
+    BufferedImage cached = cachedReference != null ? cachedReference.get() : null;
     long version = myResourceRepository.getModificationCount();
     long modStamp = file.getModificationStamp();
     if (cached != null
@@ -78,14 +86,14 @@ public class ThumbnailManager extends AndroidFacetScopedService {
 
     RenderService renderService = RenderService.getInstance(getFacet());
     RenderLogger logger = renderService.createLogger();
-    RenderTask task = createTask(file, configuration, renderService, logger);
-    CompletableFuture<ImagePool.Image> result = new CompletableFuture<>();
+    RenderTask task = createTask(xmlFile, configuration, renderService, logger);
+    CompletableFuture<BufferedImage> result = new CompletableFuture<>();
     if (task != null) {
       ListenableFuture<RenderResult> renderResult = task.render();
       renderResult.addListener(() -> {
         try {
-          ImagePool.Image image = renderResult.get().getRenderedImage();
-          myImages.put(file, configuration, image);
+          BufferedImage image = renderResult.get().getRenderedImage().getCopy();
+          myImages.put(file, configuration, new SoftReference<>(image));
           myRenderVersions.put(file, configuration, version);
           myRenderModStamps.put(file, configuration, modStamp);
           result.complete(image);
