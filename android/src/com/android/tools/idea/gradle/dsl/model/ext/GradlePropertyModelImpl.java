@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.*;
 import static com.android.tools.idea.gradle.dsl.api.ext.PropertyType.FAKE;
-import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.DEFAULT_TRANSFORM;
+import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.*;
 
 public class GradlePropertyModelImpl implements GradlePropertyModel {
   @Nullable protected GradleDslElement myElement;
@@ -57,7 +57,6 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
 
     GradleDslElement parent = element.getParent();
     assert (parent instanceof GradlePropertiesDslElement ||
-            parent instanceof GradleDslExpressionList ||
             parent instanceof GradleDslMethodCall) : "Property found to be invalid, this should never happen!";
     myPropertyHolder = parent;
 
@@ -115,8 +114,8 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
       GradleDslExpressionList list = (GradleDslExpressionList)element;
       if (list.getExpressions().size() == 1) {
         GradleDslExpression expression = list.getElementAt(0);
-        if (expression instanceof GradleDslReference) {
-          GradleDslReference reference = (GradleDslReference)expression;
+        if (expression instanceof GradleDslLiteral && ((GradleDslLiteral)expression).isReference()) {
+          GradleDslLiteral reference = (GradleDslLiteral)expression;
           GradleReferenceInjection injection = reference.getReferenceInjection();
           if (injection != null) {
             return injection.getToBeInjected();
@@ -356,6 +355,29 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     return element.getPsiElement();
   }
 
+  @Nullable
+  @Override
+  public PsiElement getExpressionPsiElement() {
+    return getExpressionPsiElement(false);
+  }
+
+  @Nullable
+  @Override
+  public PsiElement getFullExpressionPsiElement() {
+    return getExpressionPsiElement(true);
+  }
+
+  @Nullable
+  private PsiElement getExpressionPsiElement(boolean fullExpression) {
+    // We don't use the transform here
+    GradleDslElement element = fullExpression ? myElement : getElement();
+    if (element instanceof GradleDslExpression) {
+      return ((GradleDslExpression)element).getExpression();
+    }
+
+    return element == null ? null : element.getPsiElement();
+  }
+
   @Override
   public void rename(@NotNull String name) {
     // If we have no backing element then just alter the name that we will change.
@@ -379,6 +401,29 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     element.rename(name);
     // myName needs to be consistent with the elements name.
     myName = myElement.getName();
+  }
+
+  @Override
+  public boolean isModified() {
+    GradleDslElement element = myElement;
+    if (element != null) {
+      if (element instanceof FakeElement) {
+        // FakeElements need special handling as they are not connected to the tree doe findOriginalElement will be null.
+        return isFakeElementModified((FakeElement)element);
+      }
+
+      GradleDslElement originalElement = findOriginalElement(myPropertyHolder, element);
+      return originalElement == null || isElementModified(originalElement, element);
+    }
+
+    GradlePropertiesDslElement holder;
+    if (myPropertyHolder instanceof GradleDslMethodCall) {
+      holder = ((GradleDslMethodCall)myPropertyHolder).getArgumentsElement();
+    }
+    else {
+      holder = (GradlePropertiesDslElement)myPropertyHolder;
+    }
+    return holder.getOriginalElementForNameAndType(myName, myPropertyType) != null;
   }
 
   @Override
@@ -435,7 +480,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     else if (element instanceof GradleDslExpressionList) {
       return LIST;
     }
-    else if (element instanceof GradleDslReference) {
+    else if (element instanceof GradleDslLiteral && ((GradleDslLiteral)element).isReference()) {
       return REFERENCE;
     }
     else if ((element instanceof GradleDslMethodCall &&
@@ -491,7 +536,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     else if (valueType == REFERENCE) {
       // For references only display the reference text for both resolved and unresolved values.
       // Users should follow the reference to obtain the value.
-      GradleDslReference ref = (GradleDslReference)element;
+      GradleDslLiteral ref = (GradleDslLiteral)element;
       String refText = ref.getReferenceText();
       value = refText == null ? null : typeReference.castTo(refText);
     }
@@ -519,8 +564,7 @@ public class GradlePropertyModelImpl implements GradlePropertyModel {
     }
 
     T result = typeReference.castTo(value);
-    // Attempt to cast to a string if requested. But only do this for unresolved values,
-    // or when my type is BOOLEAN, STRING or INTEGER.
+    // Attempt to cast to a string if requested. But only do this for unresolved values.
     if (result == null && typeReference.getType().equals(String.class)) {
       result = typeReference.castTo(value.toString());
     }

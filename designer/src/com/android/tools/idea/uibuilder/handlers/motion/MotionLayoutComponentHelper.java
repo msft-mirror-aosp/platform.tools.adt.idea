@@ -26,11 +26,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class MotionLayoutComponentHelper {
-  private NlComponent myTransitionLayoutComponent;
+
   private Method myCallSetTransitionPosition;
   private Method myGetMaxTimeMethod;
   private Method mySetKeyframePositionMethod;
   private Method motionLayoutAccess;
+  private Method mySetAttributesMethod;
+  private Method myGetKeyframeMethod;
+  private Method mySetKeyframeMethod;
+  private Method myGetPositionKeyframeMethod;
+  private Method myGetKeyframeAtLocationMethod;
 
   public static final int PATH_PERCENT = 0;
   public static final int PATH_PERPENDICULAR = 1;
@@ -39,19 +44,217 @@ public class MotionLayoutComponentHelper {
   public static final int VERTICAL_PATH_X = 4;
   public static final int VERTICAL_PATH_Y = 5;
 
+  private final Object myDesignTool;
+  private final NlComponent myMotionLayoutComponent;
+
   public MotionLayoutComponentHelper(@NotNull NlComponent component) {
-    myTransitionLayoutComponent = component;
+    ViewInfo info = NlComponentHelperKt.getViewInfo(component);
+    if (info == null) {
+      myDesignTool = null;
+      myMotionLayoutComponent = null;
+      return;
+    }
+    Object instance = info.getViewObject();
+    if (instance == null) {
+      myDesignTool = null;
+      myMotionLayoutComponent = null;
+      return;
+    }
+    Object designInstance = null;
+    try {
+      Method accessor = instance.getClass().getMethod("getDesignTool");
+      if (accessor != null) {
+        try {
+          designInstance = RenderService.runRenderAction(() -> accessor.invoke(instance));
+        }
+        catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    catch (NoSuchMethodException e) {
+      e.printStackTrace();
+    }
+    myMotionLayoutComponent = component;
+    myDesignTool = designInstance;
+  }
+
+  public Object getKeyframeAtLocation(Object view, float x, float y) {
+    if (myDesignTool == null) {
+      return null;
+    }
+    if (myGetKeyframeAtLocationMethod == null) {
+      try {
+        myGetKeyframeAtLocationMethod = myDesignTool.getClass().getMethod("getKeyframeAtLocation",
+                                                                      Object.class, float.class, float.class);
+      }
+      catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    }
+
+    if (myGetKeyframeAtLocationMethod != null) {
+      try {
+        return RenderService.runRenderAction(() -> {
+          try {
+            return myGetKeyframeAtLocationMethod.invoke(myDesignTool, view, x, y);
+          }
+          catch (Exception e) {
+            myGetKeyframeAtLocationMethod = null;
+            e.printStackTrace();
+          }
+          return null;
+        });
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    return null;
+  }
+
+  public boolean getPositionKeyframe(Object keyframe, Object view, float x, float y, String[] attributes, float[] values) {
+    if (myDesignTool == null) {
+      return false;
+    }
+    if (myGetPositionKeyframeMethod == null) {
+      try {
+        myGetPositionKeyframeMethod = myDesignTool.getClass().getMethod("getPositionKeyframe",
+                                                            Object.class, Object.class, float.class, float.class,
+                                                            String[].class, float[].class);
+      }
+      catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    }
+
+    if (myGetPositionKeyframeMethod != null) {
+      try {
+        return RenderService.runRenderAction(() -> {
+          try {
+            return myGetPositionKeyframeMethod.invoke(myDesignTool, keyframe, view, x, y, attributes, values);
+          }
+          catch (Exception e) {
+            myGetPositionKeyframeMethod = null;
+            e.printStackTrace();
+          }
+          return false;
+        }) == Boolean.TRUE;
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    return false;
+  }
+
+  public Object getKeyframe(int type, int target, int position) {
+    if (myDesignTool == null) {
+      return null;
+    }
+    if (myGetKeyframeMethod == null) {
+      try {
+        myGetKeyframeMethod = myDesignTool.getClass().getMethod("getKeyframe",
+                                                              int.class, int.class, int.class);
+      }
+      catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    }
+
+    if (myGetKeyframeMethod != null) {
+      try {
+        return RenderService.runRenderAction(() -> {
+          try {
+            return myGetKeyframeMethod.invoke(myDesignTool, type, target, position);
+          }
+          catch (Exception e) {
+            myGetKeyframeMethod = null;
+            e.printStackTrace();
+          }
+          return null;
+        });
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    return null;
+  }
+
+  public void setKeyframe(Object keyframe, String tag, Object value) {
+    if (myDesignTool == null) {
+      return;
+    }
+    if (mySetKeyframeMethod == null) {
+      try {
+        mySetKeyframeMethod = myDesignTool.getClass().getMethod("setKeyframe",
+                                                            Object.class, String.class, Object.class);
+      }
+      catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    }
+
+    if (mySetKeyframeMethod != null) {
+      try {
+        RenderService.runRenderAction(() -> {
+          try {
+            mySetKeyframeMethod.invoke(myDesignTool, keyframe, tag, value);
+          }
+          catch (Exception e) {
+            mySetKeyframeMethod = null;
+            e.printStackTrace();
+          }
+        });
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  public void setAttributes(int dpiValue, String constraintSetId, Object view, Object attributes) {
+    if (myDesignTool == null) {
+      return;
+    }
+    if (mySetAttributesMethod == null) {
+      try {
+        mySetAttributesMethod = myDesignTool.getClass().getMethod("setAttributes",
+                                                             int.class, String.class, Object.class, Object.class);
+      }
+      catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    }
+    if (mySetAttributesMethod != null) {
+      try {
+        RenderService.runRenderAction(() -> {
+          try {
+            mySetAttributesMethod.invoke(myDesignTool, dpiValue, constraintSetId, view, attributes);
+          }
+          catch (Exception e) {
+            mySetAttributesMethod = null;
+            e.printStackTrace();
+          }
+        });
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   boolean setKeyframePosition(Object view, int position, int type, float x, float y) {
-    ViewInfo info = NlComponentHelperKt.getViewInfo(myTransitionLayoutComponent);
-    if (info == null) {
+    if (myDesignTool == null) {
       return false;
     }
-    Object instance = info.getViewObject();
     if (mySetKeyframePositionMethod == null) {
       try {
-        mySetKeyframePositionMethod = instance.getClass().getMethod("setKeyFramePosition",
+        mySetKeyframePositionMethod = myDesignTool.getClass().getMethod("setKeyFramePosition",
                                                                     Object.class, int.class, int.class, float.class, float.class);
       }
       catch (NoSuchMethodException e) {
@@ -63,9 +266,9 @@ public class MotionLayoutComponentHelper {
       try {
         RenderService.runRenderAction(() -> {
           try {
-            didUpdate[0] = (boolean)mySetKeyframePositionMethod.invoke(instance, view, Integer.valueOf(position),
+            didUpdate[0] = (boolean)mySetKeyframePositionMethod.invoke(myDesignTool, view, Integer.valueOf(position),
                                                                        Integer.valueOf(type), Float.valueOf(x), Float.valueOf(y));
-            NlModel model = myTransitionLayoutComponent.getModel();
+            NlModel model = myMotionLayoutComponent.getModel();
             model.notifyLiveUpdate(false);
           }
           catch (Exception e) {
@@ -81,27 +284,25 @@ public class MotionLayoutComponentHelper {
     return didUpdate[0];
   }
 
-  private void setTransitionPosition(Object instance, float position) {
-    try {
-      myCallSetTransitionPosition = instance.getClass().getMethod("setToolPosition", float.class);
-    }
-    catch (NoSuchMethodException e) {
-      e.printStackTrace();
-      myCallSetTransitionPosition = null;
+  private boolean setTransitionPosition(float position) {
+    if (myDesignTool == null) {
+      return false;
     }
     if (myCallSetTransitionPosition == null) {
       try {
-        myCallSetTransitionPosition = instance.getClass().getMethod("setToolPosition", float.class);
+        myCallSetTransitionPosition = myDesignTool.getClass().getMethod("setToolPosition", float.class);
       }
       catch (NoSuchMethodException e) {
         e.printStackTrace();
+        myCallSetTransitionPosition = null;
+        return false;
       }
     }
     if (myCallSetTransitionPosition != null) {
       try {
         RenderService.runRenderAction(() -> {
           try {
-            myCallSetTransitionPosition.invoke(instance, Float.valueOf(position));
+            myCallSetTransitionPosition.invoke(myDesignTool, Float.valueOf(position));
           }
           catch (ClassCastException | IllegalAccessException | InvocationTargetException e) {
             myCallSetTransitionPosition = null;
@@ -113,38 +314,31 @@ public class MotionLayoutComponentHelper {
         e.printStackTrace();
       }
     }
+    if (myCallSetTransitionPosition == null) {
+      return false;
+    }
+    return true;
   }
 
-  public boolean setValue(float value) {
-    ViewInfo info = NlComponentHelperKt.getViewInfo(myTransitionLayoutComponent);
-    if (info == null) {
+  public boolean setProgress(float value) {
+    if (myDesignTool == null) {
       return false;
     }
-    Object instance = info.getViewObject();
-    try {
-      //        RenderService.runRenderAction(() -> {
-      setTransitionPosition(instance, value);
-      //        });
-    }
-    catch (Exception e) {
-      e.printStackTrace();
+    if (!setTransitionPosition(value)) {
       return false;
     }
-    NlModel model = myTransitionLayoutComponent.getModel();
+    NlModel model = myMotionLayoutComponent.getModel();
     model.notifyLiveUpdate(false);
     return true;
   }
 
   public long getMaxTimeMs() {
-    ViewInfo info = NlComponentHelperKt.getViewInfo(myTransitionLayoutComponent);
-    if (info == null) {
+    if (myDesignTool == null) {
       return 0;
     }
-
-    Object instance = info.getViewObject();
     if (myGetMaxTimeMethod == null) {
       try {
-        myGetMaxTimeMethod = instance.getClass().getMethod("getTransitionTimeMs");
+        myGetMaxTimeMethod = myDesignTool.getClass().getMethod("getTransitionTimeMs");
       }
       catch (NoSuchMethodException e) {
         e.printStackTrace();
@@ -155,7 +349,7 @@ public class MotionLayoutComponentHelper {
       try {
         return RenderService.runRenderAction(() -> {
           try {
-            return (long)myGetMaxTimeMethod.invoke(instance);
+            return (long)myGetMaxTimeMethod.invoke(myDesignTool);
           }
           catch (IllegalAccessException | InvocationTargetException e) {
             myGetMaxTimeMethod = null;
@@ -172,16 +366,13 @@ public class MotionLayoutComponentHelper {
     return 0;
   }
 
-
   public int motionLayoutAccess(int cmd, String type, Object view, float[] in, int inLength, float[] out, int outLength) {
-    ViewInfo info = NlComponentHelperKt.getViewInfo(myTransitionLayoutComponent);
-    if (info == null) {
+    if (myDesignTool == null) {
       return -1;
     }
-    Object instance = info.getViewObject();
     if (motionLayoutAccess == null) {
       try {
-        motionLayoutAccess = instance.getClass().getMethod("designAccess", int.class, String.class, Object.class, float[].class, int.class,
+        motionLayoutAccess = myDesignTool.getClass().getMethod("designAccess", int.class, String.class, Object.class, float[].class, int.class,
                                                            float[].class, int.class);
       }
       catch (NoSuchMethodException e) {
@@ -190,7 +381,7 @@ public class MotionLayoutComponentHelper {
       }
     }
     try {
-      return (int)motionLayoutAccess.invoke(instance, cmd, type, view, in, inLength, out, outLength);
+      return (int)motionLayoutAccess.invoke(myDesignTool, cmd, type, view, in, inLength, out, outLength);
     }
     catch (IllegalAccessException | InvocationTargetException e) {
       myGetMaxTimeMethod = null;

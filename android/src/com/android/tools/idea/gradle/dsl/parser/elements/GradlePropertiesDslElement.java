@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.isPropertiesElementOrMap;
 import static com.android.tools.idea.gradle.dsl.model.notifications.NotificationTypeReference.PROPERTY_PLACEMENT;
 import static com.android.tools.idea.gradle.dsl.parser.elements.ElementState.*;
 
@@ -64,10 +65,10 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   private void addPropertyInternal(@NotNull GradleDslElement element, @NotNull ElementState state) {
     if (this instanceof ExtDslElement && state == TO_BE_ADDED) {
       int index = reorderAndMaybeGetNewIndex(element);
-      myProperties.addElementAtIndex(element, state, index);
+      myProperties.addElementAtIndex(element, state, index, false);
     }
     else {
-      myProperties.addElement(element, state);
+      myProperties.addElement(element, state, state == EXISTING);
     }
 
     if (state == TO_BE_ADDED) {
@@ -76,7 +77,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   private void addPropertyInternal(int index, @NotNull GradleDslElement element, @NotNull ElementState state) {
-    myProperties.addElementAtIndex(element, state, index);
+    myProperties.addElementAtIndex(element, state, index, state == EXISTING);
     if (state == TO_BE_ADDED) {
       updateDependenciesOnAddElement(element);
     }
@@ -102,9 +103,6 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   private ElementState replacePropertyInternal(@NotNull GradleDslElement element, @NotNull GradleDslElement newElement) {
-    // Make sure the properties have the same name.
-    assert newElement.getFullName().equals(element.getFullName());
-
     updateDependenciesOnReplaceElement(element, newElement);
 
     ElementState oldState = myProperties.replaceElement(element, newElement);
@@ -133,7 +131,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
           continue;
         }
       }
-      else if (newProperty instanceof GradlePropertiesDslElement) {
+      else if (isPropertiesElementOrMap(newProperty)) {
         // If the element we are trying to add a GradlePropertiesDslElement that doesn't exist, create it.
         GradlePropertiesDslElement createdElement =
           getDslFile().getParser().getBlockElement(Arrays.asList(entry.getKey().split("\\.")), this);
@@ -151,7 +149,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   /**
    * Sets or replaces the given {@code property} value with the give {@code element}.
-   * <p>
+   *
    * <p>This method should be used when the given {@code property} is defined using an assigned statement.
    */
   public void setParsedElement(@NotNull GradleDslElement element) {
@@ -161,7 +159,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   /**
    * Sets or replaces the given {@code property} value with the given {@code element}.
-   * <p>
+   *
    * <p>This method should be used when the given {@code property} is defined using an application statement. As the application statements
    * can have different meanings like append vs replace for list elements, the sub classes can override this method to do the right thing
    * for any given property.
@@ -173,7 +171,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   /**
    * Sets or replaces the given {@code property} value with the given {@code element}.
-   * <p>
+   *
    * <p>This method should be used when the given {@code property} would reset the effect of the other property. Ex: {@code reset()} method
    * in android.splits.abi block will reset the effect of the previously defined {@code includes} element.
    */
@@ -272,6 +270,11 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   @NotNull
+  public List<GradleDslElement> getAllElements() {
+    return myProperties.getElementsWhere(ANY_FILTER);
+  }
+
+  @NotNull
   private Map<String, GradleDslElement> getElementsWhere(@NotNull Predicate<ElementList.ElementItem> predicate) {
     Map<String, GradleDslElement> results = new LinkedHashMap<>();
     List<GradleDslElement> elements = myProperties.getElementsWhere(predicate);
@@ -287,17 +290,8 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
     return getElementsWhere(predicate).get(name);
   }
 
-  /**
-   * Method to check whether a given property string is nested. A property counts as nested if it has move than one component
-   * seperated dots ('.').
-   */
-  private static boolean isPropertyNested(@NotNull String property) {
-    return property.contains(".");
-  }
-
   @Nullable
   public GradleDslElement getVariableElement(@NotNull String property) {
-    assert !isPropertyNested(property);
     return getElementWhere(property, VARIABLE_FILTER);
   }
 
@@ -307,19 +301,16 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
    */
   @Nullable
   public GradleDslElement getPropertyElement(@NotNull String property) {
-    assert !isPropertyNested(property);
     return getElementWhere(property, PROPERTY_FILTER);
   }
 
   @Nullable
   public GradleDslElement getElement(@NotNull String property) {
-    assert !isPropertyNested(property);
     return getElementWhere(property, ANY_FILTER);
   }
 
   @Nullable
   public GradleDslElement getPropertyElementBefore(@Nullable GradleDslElement element, @NotNull String property) {
-    assert !isPropertyNested(property);
     if (element == null) {
       return getElementWhere(property, PROPERTY_FILTER);
     }
@@ -330,7 +321,6 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   @Nullable
   GradleDslElement getElementBefore(@Nullable GradleDslElement element, @NotNull String property) {
-    assert !isPropertyNested(property);
     if (element == null) {
       return getElementWhere(property, ANY_FILTER);
     }
@@ -366,13 +356,33 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
     return myProperties.getElementsWhere(e -> e.myElement.getName().equals(propertyName) && PROPERTY_FILTER.test(e));
   }
 
+  @NotNull
+  public List<GradleDslElement> getOriginalElements() {
+    return myProperties.myElements.stream().filter(e -> e.myExistsOnFile).map(e -> e.myElement).collect(Collectors.toList());
+  }
+
+  @Nullable
+  public GradleDslElement getOriginalElementForNameAndType(@NotNull String name, @NotNull PropertyType type) {
+    return myProperties.myElements.stream().filter(
+      e -> e.myElement.getName().equals(name) && e.myExistsOnFile && e.myElement.getElementType() == type).map(e -> e.myElement)
+                                  .reduce((a, b) -> b).orElse(null);
+  }
+
+  /**
+   * @return all the current elements with the state TO_BE_ADDED or EXISTING.
+   */
+  @NotNull
+  public List<GradleDslElement> getCurrentElements() {
+    return myProperties.myElements.stream().filter(e -> e.myElementState == TO_BE_ADDED || e.myElementState == EXISTING)
+                                  .map(e -> e.myElement).collect(Collectors.toList());
+  }
+
   /**
    * Adds the given element to the to-be added elements list, which are applied when {@link #apply()} method is invoked
    * or discarded when the {@lik #resetState()} method is invoked.
    */
   @NotNull
   public GradleDslElement setNewElement(@NotNull GradleDslElement newElement) {
-    assert !newElement.getName().isEmpty();
     newElement.setParent(this);
     addPropertyInternal(newElement, TO_BE_ADDED);
     setModified(true);
@@ -380,7 +390,6 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   public void addNewElementAt(int index, @NotNull GradleDslElement newElement) {
-    assert !newElement.getName().isEmpty();
     newElement.setParent(this);
     addPropertyInternal(index, newElement, TO_BE_ADDED);
     setModified(true);
@@ -388,14 +397,13 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   @VisibleForTesting
   public void moveElementTo(int index, @NotNull GradleDslElement newElement) {
-    assert !newElement.getName().isEmpty();
     assert newElement.getParent() == this;
     myProperties.moveElementToIndex(newElement, index);
   }
 
   @NotNull
   public GradleDslElement replaceElement(@NotNull GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
-    assert !oldElement.getName().isEmpty() && !newElement.getName().isEmpty();
+    newElement.setParent(this);
     List<GradlePropertiesDslElement> holders = new ArrayList<>();
     holders.add(this);
     holders.addAll(oldElement.getHolders());
@@ -479,9 +487,9 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
   /**
    * Marks the given {@code property} for removal.
-   * <p>
+   *
    * <p>The actual property will be removed from Gradle file when {@link #apply()} method is invoked.
-   * <p>
+   *
    * <p>The property will be un-marked for removal when {@link #reset()} method is invoked.
    */
   public GradlePropertiesDslElement removeProperty(@NotNull String property) {
@@ -525,7 +533,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   @Override
   @NotNull
   public Collection<GradleDslElement> getChildren() {
-    return getPropertyElements().values();
+    return getAllElements();
   }
 
   @Override
@@ -539,7 +547,11 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
       result.addAll(getVariableElements().values());
     }
 
-    List<GradlePropertiesDslElement> holders = getPropertyElements(GradlePropertiesDslElement.class);
+    // We don't want to include lists and maps in this.
+    List<GradlePropertiesDslElement> holders =
+      getPropertyElements(GradlePropertiesDslElement.class).stream().filter(e -> !(e instanceof GradleDslExpression))
+                                                           .collect(Collectors.toList());
+
     holders.forEach(e -> result.addAll(e.getContainedElements(includeProperties)));
     return result;
   }
@@ -630,10 +642,14 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
     private static class ElementItem {
       @NotNull private GradleDslElement myElement;
       @NotNull private ElementState myElementState;
+      // Whether or not this element item exists in THIS DSL file. While element state == EXISTING implies this is true,
+      // the reserve doesn't apply.
+      private boolean myExistsOnFile;
 
-      private ElementItem(@NotNull GradleDslElement element, @NotNull ElementState state) {
+      private ElementItem(@NotNull GradleDslElement element, @NotNull ElementState state, boolean existsOnFile) {
         myElement = element;
         myElementState = state;
+        myExistsOnFile = existsOnFile;
       }
     }
 
@@ -685,12 +701,12 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
       return lastElement;
     }
 
-    private void addElement(@NotNull GradleDslElement newElement, @NotNull ElementState state) {
-      myElements.add(new ElementItem(newElement, state));
+    private void addElement(@NotNull GradleDslElement newElement, @NotNull ElementState state, boolean onFile) {
+      myElements.add(new ElementItem(newElement, state, onFile));
     }
 
-    private void addElementAtIndex(@NotNull GradleDslElement newElement, @NotNull ElementState state, int index) {
-      myElements.add(getRealIndex(index, newElement), new ElementItem(newElement, state));
+    private void addElementAtIndex(@NotNull GradleDslElement newElement, @NotNull ElementState state, int index, boolean onFile) {
+      myElements.add(getRealIndex(index, newElement), new ElementItem(newElement, state, onFile));
     }
 
     // Note: The index position is calculated AFTER the element has been removed from the list.
@@ -756,7 +772,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
           if (oldState == APPLIED || oldState == HIDDEN) {
             newState = oldState;
           }
-          myElements.add(i, new ElementItem(newElement, newState));
+          myElements.add(i, new ElementItem(newElement, newState, false));
           return oldState;
         }
       }

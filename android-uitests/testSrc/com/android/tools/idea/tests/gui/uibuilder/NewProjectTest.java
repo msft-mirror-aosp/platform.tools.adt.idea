@@ -36,6 +36,7 @@ import com.intellij.openapi.roots.LanguageLevelModuleExtensionImpl;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.pom.java.LanguageLevel;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.fest.swing.timing.Wait;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
@@ -55,7 +56,7 @@ import static org.fest.swing.core.MouseButton.RIGHT_BUTTON;
 import static org.junit.Assert.assertTrue;
 
 @RunIn(TestGroup.PROJECT_WIZARD)
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class NewProjectTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
@@ -113,7 +114,7 @@ public class NewProjectTest {
       .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .chooseModuleType("Android Library")
       .clickNextToStep("Android Library")
-      .setModuleName("library-module")
+      .setModuleName("library_module")
       .clickFinish()
       .waitForGradleProjectSyncToFinish(Wait.seconds(30));
 
@@ -122,7 +123,7 @@ public class NewProjectTest {
     String gradleFileContents = guiTest.ideFrame()
       .getProjectView()
       .selectProjectPane()
-      .clickPath(RIGHT_BUTTON, "MyTestApp", "library-module")
+      .clickPath(RIGHT_BUTTON, "MyTestApp", "library_module")
       .openFromMenu(ProjectStructureDialogFixture::find, "Open Module Settings")
       .selectPropertiesTab()
       .setCompileSdkVersion("API 24: Android 7.0 (Nougat)")
@@ -132,7 +133,7 @@ public class NewProjectTest {
       .setTargetCompatibility("1.7")
       .clickOk()
       .getEditor()
-      .open("/library-module/build.gradle")
+      .open("/library_module/build.gradle")
       .getCurrentFileContents();
 
     assertThat(gradleFileContents).contains("compileSdkVersion 24");

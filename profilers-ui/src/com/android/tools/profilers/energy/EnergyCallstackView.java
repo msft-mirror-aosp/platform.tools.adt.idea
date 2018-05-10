@@ -15,14 +15,14 @@
  */
 package com.android.tools.profilers.energy;
 
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.adtui.common.AdtUiUtils;
+import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.adtui.ui.HideablePanel;
 import com.android.tools.profiler.proto.EnergyProfiler;
 import com.android.tools.profilers.stacktrace.StackTraceGroup;
 import com.android.tools.profilers.stacktrace.StackTraceModel;
 import com.android.tools.profilers.stacktrace.StackTraceView;
 import com.intellij.openapi.ui.VerticalFlowLayout;
-import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBEmptyBorder;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
@@ -68,16 +68,15 @@ public final class EnergyCallstackView extends JPanel {
       // Sets a border on the ListView so the horizontal scroll bar doesn't hide the bottom of the content. Also the ListView cannot resize
       // properly when the scroll pane resize, wrap it in a JPanel. So move the list view out of the original scroll pane.
       if (traceComponent instanceof JScrollPane) {
-        traceComponent = (JComponent) ((JScrollPane)traceComponent).getViewport().getComponent(0);
+        traceComponent = (JComponent)((JScrollPane)traceComponent).getViewport().getComponent(0);
         traceComponent.setBorder(new JBEmptyBorder(0, 0, 12, 0));
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.add(traceComponent, BorderLayout.CENTER);
         wrapperPanel.setBackground(traceComponent.getBackground());
-        traceComponent = new JBScrollPane(wrapperPanel,
-                                          ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        traceComponent = AdtUiUtils.createNestedVScrollPane(wrapperPanel);
       }
 
-      String time = TimeAxisFormatter.DEFAULT.getClockFormattedString(TimeUnit.NANOSECONDS.toMicros(event.getTimestamp() - startTimeNs));
+      String time = TimeFormatter.getFullClockString(TimeUnit.NANOSECONDS.toMicros(event.getTimestamp() - startTimeNs));
       String description = time + "&nbsp;&nbsp;" + EnergyDuration.getMetadataName(event.getMetadataCase());
       HideablePanel hideablePanel = new HideablePanel.Builder(description, traceComponent)
         .setContentBorder(new JBEmptyBorder(5, 0, 0, 0))
@@ -93,7 +92,7 @@ public final class EnergyCallstackView extends JPanel {
     }
 
     JLabel label = new JLabel("<html><b>Callstacks</b>: " + callstackList.size() + "</html>");
-    label.setBorder(new JBEmptyBorder(0, 0, 5, 0));
+    label.setBorder(new JBEmptyBorder(0, 0, 4, 0));
     add(label);
     callstackList.forEach(c -> add(c));
   }

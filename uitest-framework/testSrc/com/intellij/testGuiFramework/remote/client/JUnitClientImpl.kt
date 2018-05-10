@@ -98,19 +98,19 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
 
   inner class ClientReceiveThread(val connection: Socket, val objectInputStream: ObjectInputStream) : Thread(RECEIVE_THREAD) {
     override fun run() {
-      LOG.warn("Starting Client Receive Thread")
       try{
         while (!connection.isClosed) {
           val message = objectInputStream.readObject() as MessageFromServer
-          LOG.warn("Received message: $message")
+          LOG.info("Received message: $message")
           handlers
             .filter { it.accept(message) }
             .forEach { it.handle(message) }
         }
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
         LOG.warn("Transport receiving message exception", e)
       } finally {
         objectInputStream.close()
+        this@JUnitClientImpl.stop()
       }
     }
   }
@@ -118,10 +118,9 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
   inner class ClientSendThread(val connection: Socket, val objectOutputStream: ObjectOutputStream) : Thread(SEND_THREAD) {
     override fun run() {
       try {
-        LOG.warn("Starting Client Send Thread")
         while (!connection.isClosed) {
           val transportMessage = poolOfMessages.take()
-          LOG.warn("Sending message: $transportMessage")
+          LOG.info("Sending message: $transportMessage")
           objectOutputStream.writeObject(transportMessage)
         }
       }
@@ -130,6 +129,7 @@ class JUnitClientImpl(val host: String, val port: Int, initHandlers: Array<Clien
       }
       finally {
         objectOutputStream.close()
+        this@JUnitClientImpl.stop()
       }
     }
   }

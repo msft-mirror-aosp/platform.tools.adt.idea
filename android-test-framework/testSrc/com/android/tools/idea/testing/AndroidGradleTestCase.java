@@ -88,6 +88,7 @@ import static com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile;
 import static com.intellij.pom.java.LanguageLevel.JDK_1_8;
 import static com.intellij.testFramework.PlatformTestCase.synchronizeTempDirVfs;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.jetbrains.android.util.AndroidCommonUtils.getStackTrace;
 
 /**
  * Base class for unit tests that operate on Gradle projects
@@ -498,10 +499,8 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
 
   private static void checkStatus(@NotNull SyncListener syncListener) {
     if (!syncListener.success) {
-      String cause = syncListener.failureMessage;
-      if (isEmpty(cause)) {
-        cause = "<Unknown>";
-      }
+      String cause =
+        !syncListener.isSyncFinished() ? "<Timed out>" : isEmpty(syncListener.failureMessage) ? "<Unknown>" : syncListener.failureMessage;
       fail(cause);
     }
   }
@@ -584,7 +583,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
 
     boolean syncSkipped;
     boolean success;
-    String failureMessage;
+    @Nullable String failureMessage;
 
     SyncListener() {
       myLatch = new CountDownLatch(1);
@@ -604,7 +603,7 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
 
     @Override
     public void syncFailed(@NotNull Project project, @NotNull String errorMessage) {
-      failureMessage = errorMessage;
+      failureMessage = !errorMessage.isEmpty() ? errorMessage : "No errorMessage at:\n" + getStackTrace(new Throwable());
       myLatch.countDown();
     }
 
@@ -614,6 +613,10 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase {
 
     public boolean isSyncSkipped() {
       return syncSkipped;
+    }
+
+    public boolean isSyncFinished() {
+      return success || failureMessage != null;
     }
   }
 }

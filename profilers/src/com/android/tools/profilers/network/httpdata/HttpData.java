@@ -17,12 +17,16 @@ package com.android.tools.profilers.network.httpdata;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedMap;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.vfs.CharsetToolkit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.*;
 
 /**
@@ -159,28 +163,45 @@ public class HttpData {
    */
   @NotNull
   public static String getUrlName(@NotNull String url) {
-    URI uri = URI.create(url);
-    String name = uri.getPath() != null ? StringUtil.trimTrailing(uri.getPath(), '/') : "";
-    if (name.isEmpty()) {
-      return uri.getHost();
-    }
-    name = name.lastIndexOf('/') != -1 ? name.substring(name.lastIndexOf('/') + 1) : name;
-    if (uri.getQuery() != null) {
-      name += "?" + uri.getQuery();
-    }
-
-    // URL might be encoded an arbitrarily deep number of times. Keep decoding until we peel away the final layer.
-    // Usually this is only expected to loop once or twice.
-    // See more: http://stackoverflow.com/questions/3617784/plus-signs-being-replaced-for-252520
     try {
+      // Run encode on the incoming url once, just in case, as this can prevent URI.create from
+      // throwing a syntax exception in some cases. This encode will be decoded, below.
+      URI uri = URI.create(URLEncoder.encode(url, CharsetToolkit.UTF8));
+      String name = uri.getPath() != null ? StringUtil.trimTrailing(uri.getPath(), '/') : "";
+      if (name.isEmpty()) {
+        return uri.getHost();
+      }
+      name = name.lastIndexOf('/') != -1 ? name.substring(name.lastIndexOf('/') + 1) : name;
+      if (uri.getQuery() != null) {
+        name += "?" + uri.getQuery();
+      }
+
+      // URL might be encoded an arbitrarily deep number of times. Keep decoding until we peel away the final layer.
+      // Usually this is only expected to loop once or twice.
+      // See more: http://stackoverflow.com/questions/3617784/plus-signs-being-replaced-for-252520
       String lastName;
       do {
         lastName = name;
-        name = URLDecoder.decode(name, "UTF-8");
-      } while (!name.equals(lastName));
-    } catch (Exception ignored) {
+        name = URLDecoder.decode(name, CharsetToolkit.UTF8);
+      }
+      while (!name.equals(lastName));
+      return name;
     }
-    return name;
+    catch (UnsupportedEncodingException | IllegalArgumentException ignored) {
+      // If here, it most likely means the url we are tracking is invalid in some way (formatting
+      // or encoding). We try to recover gracefully by employing a simpler, less sophisticated
+      // approach - return all text after the last slash. Keep in mind that this fallback
+      // case should rarely, if ever, be used in practice.
+
+      // url.length() - 2 eliminates the case where the last character in the URL is a slash
+      // e.g. "www.example.com/name/" -> "name/", not ""
+      int lastSlash = url.lastIndexOf('/', url.length() - 2);
+      if (lastSlash >= 0) {
+        return url.substring(lastSlash + 1);
+      }
+
+      return url;
+    }
   }
 
   @Override
@@ -281,12 +302,16 @@ public class HttpData {
     private static final String FIELD_CONTENT_TYPE = "content-type";
     public static final String FIELD_CONTENT_LENGTH = "content-length";
 
+    /**
+     * Returns the fields map with the keys sorted by the {@link String.CASE_INSENSITIVE_ORDER}. If the map contains an entry with a
+     * capitalized key /Content-Length/, it returns the same value for a lower case key /content-length/.
+     */
     @NotNull
-    public abstract ImmutableMap<String, String> getFields();
+    public abstract ImmutableSortedMap<String, String> getFields();
 
     @NotNull
     public String getField(@NotNull String key) {
-      return getFields().getOrDefault(key.toLowerCase(), "");
+      return getFields().getOrDefault(key, "");
     }
 
     @NotNull
@@ -313,7 +338,7 @@ public class HttpData {
       Arrays.stream(fields.split("\\n")).filter(line -> !line.trim().isEmpty()).forEach(line -> {
         String[] keyAndValue = line.split("=", 2);
         assert keyAndValue.length == 2 : String.format("Unexpected http header field (%s)", line);
-        fieldsMap.put(keyAndValue[0].trim().toLowerCase(), StringUtil.trimEnd(keyAndValue[1].trim(), ';'));
+        fieldsMap.put(keyAndValue[0].trim(), StringUtil.trimEnd(keyAndValue[1].trim(), ';'));
       });
       return fieldsMap;
     }
@@ -323,13 +348,13 @@ public class HttpData {
     private static final String STATUS_CODE_NAME = "response-status-code";
     public static final int NO_STATUS_CODE = -1;
 
-    @NotNull private final ImmutableMap<String, String> myFields;
+    @NotNull private final ImmutableSortedMap<String, String> myFields;
     private int myStatusCode = NO_STATUS_CODE;
 
     ResponseHeader(String fields) {
       fields = fields.trim();
       if (fields.isEmpty()) {
-        myFields = ImmutableMap.of();
+        myFields = new ImmutableSortedMap.Builder<String, String>(String.CASE_INSENSITIVE_ORDER).build();
         return;
       }
 
@@ -353,11 +378,11 @@ public class HttpData {
       Map<String, String> fieldsMap = parseHeaderFields(fields);
 
       if (fieldsMap.containsKey(STATUS_CODE_NAME)) {
-         String statusCode = fieldsMap.remove(STATUS_CODE_NAME);
+        String statusCode = fieldsMap.remove(STATUS_CODE_NAME);
         myStatusCode = Integer.parseInt(statusCode);
       }
       assert myStatusCode != -1 : String.format("Unexpected http response (%s)", fields);
-      myFields = ImmutableMap.copyOf(fieldsMap);
+      myFields = new ImmutableSortedMap.Builder<String, String>(String.CASE_INSENSITIVE_ORDER).putAll(fieldsMap).build();
     }
 
     public int getStatusCode() {
@@ -366,21 +391,21 @@ public class HttpData {
 
     @NotNull
     @Override
-    public ImmutableMap<String, String> getFields() {
+    public ImmutableSortedMap<String, String> getFields() {
       return myFields;
     }
   }
 
   public static final class RequestHeader extends Header {
-    @NotNull private final ImmutableMap<String, String> myFields;
+    @NotNull private final ImmutableSortedMap<String, String> myFields;
 
     RequestHeader(String fields) {
-      myFields = ImmutableMap.copyOf(parseHeaderFields(fields));
+      myFields = new ImmutableSortedMap.Builder<String, String>(String.CASE_INSENSITIVE_ORDER).putAll(parseHeaderFields(fields)).build();
     }
 
     @NotNull
     @Override
-    public ImmutableMap<String, String> getFields() {
+    public ImmutableSortedMap<String, String> getFields() {
       return myFields;
     }
   }

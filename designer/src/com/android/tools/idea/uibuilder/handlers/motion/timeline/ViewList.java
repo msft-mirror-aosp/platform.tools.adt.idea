@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.handlers.motion.timeline;
 
+import com.android.tools.adtui.common.StudioColorsKt;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.JBPopupListener;
@@ -22,10 +23,13 @@ import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.util.ui.EmptyIcon;
+import com.intellij.util.ui.JBEmptyBorder;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
+import icons.StudioIcons;
 
 import javax.swing.*;
-import javax.swing.border.MatteBorder;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
 import javax.swing.event.TreeSelectionEvent;
@@ -42,30 +46,12 @@ import java.util.HashSet;
 import static com.android.tools.idea.uibuilder.handlers.motion.timeline.TimeLineIcons.ADD_KEYFRAME;
 
 class ViewList extends JPanel implements Gantt.ChartElement {
-  private static final int TREE_PANEL_WIDTH = JBUI.scale(170);
   DefaultMutableTreeNode myRootNode = new DefaultMutableTreeNode();
   JTree myTree = new Tree(myRootNode);
   Chart myChart;
   boolean myInternal;
-  private Color myBackground;
 
-  Icon mySpacerIcon = new Icon() {
-
-    @Override
-    public void paintIcon(Component c, Graphics g, int x, int y) {
-    }
-
-    @Override
-    public int getIconWidth() {
-      return 0;
-    }
-
-    @Override
-    public int getIconHeight() {
-      return Chart.ourGraphHeight;
-    }
-  };
-
+  private static final Icon mySpacerIcon = JBUI.scale(EmptyIcon.create(0, 0));
 
   JPanel myAddPanel = new JPanel(null) {
     @Override
@@ -94,7 +80,7 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     myTree.setRootVisible(false);
     myTree.setCellRenderer(cellRenderer);
     update(Reason.CONSTRUCTION);
-    setBorder(new MatteBorder(0, 0, 0, 1, Color.BLACK));
+    setBorder(JBUI.Borders.customLine(StudioColorsKt.getBorder(), 0, 0, 0, 1));
     myChart.add(this);
     myAddPanel.add(myAddButton);
     myAddButton.setUI(new BasicButtonUI());
@@ -148,11 +134,11 @@ class ViewList extends JPanel implements Gantt.ChartElement {
         createKeyFrame(displayedList.getSelectedIndex());
       }
     };
-    JBPopup popup = JBPopupFactory.getInstance()
-                                  .createListPopupBuilder(displayedList)
-                                  .setTitle("Create KeyFrame")
-                                  .addListener(listener)
-                                  .createPopup();
+    JBPopup popup =
+      JBPopupFactory.getInstance()
+                    .createListPopupBuilder(displayedList)
+                    .setTitle("Create KeyFrame")
+                    .addListener(listener).createPopup();
 
     JComponent component = ((JComponent)e.getSource());
 
@@ -165,7 +151,7 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     String name = v.myName;
     MotionSceneModel model = v.mKeyFrames.myModel;
     int fpos = (int)(myChart.getTimeCursorMs() * 100 / myChart.myAnimationTotalTimeMs);
-    String type = (new String[]{"KeyPositionCartesian", "KeyPositionPath", "KeyAttributes", "KeyCycles"})[frameType];
+    String type = (new String[]{"KeyPositionCartesian", "KeyPositionPath", "KeyAttributes", "KeyCycle"})[frameType];
 
     v.mKeyFrames.myModel.createKeyFrame(type, fpos, name);
   }
@@ -193,69 +179,29 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     protected AbstractLayoutCache.NodeDimensions createNodeDimensions() {
       return new NodeDimensionsHandler() {
         @Override
-        public Rectangle getNodeDimensions(
-          Object value, int row, int depth, boolean expanded,
-          Rectangle size) {
-          Rectangle dimensions = super.getNodeDimensions(value, row,
-                                                         depth, expanded, size);
-          dimensions.width =
-            getWidth() - getRowX(row, depth) - 1;
+        public Rectangle getNodeDimensions(Object value, int row, int depth, boolean expanded, Rectangle size) {
+          Rectangle dimensions = super.getNodeDimensions(value, row, depth, expanded, size);
+          dimensions.width = getWidth() - getRowX(row, depth) - 1;
           return dimensions;
         }
       };
     }
 
     @Override
-    protected void paintHorizontalLine(Graphics g, JComponent c,
-                                       int y, int left, int right) {
+    protected void paintHorizontalLine(Graphics g, JComponent c, int y, int left, int right) {
       // do nothing.
     }
 
     @Override
-    protected void paintVerticalPartOfLeg(Graphics g, Rectangle clipBounds,
-                                          Insets insets, TreePath path) {
+    protected void paintVerticalPartOfLeg(Graphics g, Rectangle clipBounds, Insets insets, TreePath path) {
       // do nothing.
     }
   }
 
-  TreeCellRenderer cellRenderer = new DefaultTreeCellRenderer() {
-
-    @Override
-    public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
-                                                  boolean expanded, boolean leaf, int row, boolean hasFocus) {
-      DefaultMutableTreeNode node = (DefaultMutableTreeNode)value;
-
-      JComponent c = (JComponent)super
-        .getTreeCellRendererComponent(tree, (node.getChildCount() == 0) ? "" : value, sel, expanded, leaf, row, hasFocus);
-
-      Object root = tree.getModel().getRoot();
-
-      c.setOpaque(true);
-     // c.setBackground(myBackground);
-      setIcon(TimeLineIcons.EMPTY);
-
-      if (root.equals(node)) {
-        return c;
-      }
-
-      if (node.getParent() == root) {
-        setIcon(TimeLineIcons.VIEW);
-      }
-      if (node instanceof GraphMode) {
-        setIcon(mySpacerIcon);
-      }
-      if (sel) {
-        setBackground(Color.LIGHT_GRAY);
-      }
-      setText(node.getUserObject().toString());
-
-      return c;
-    }
-  };
+  TreeCellRenderer cellRenderer = new MyDefaultTreeCellRenderer();
 
   @Override
   public void setBackground(Color bg) {
-    myBackground = bg;
     super.setBackground(bg);
     if (myAddButton != null) {
       myAddPanel.setBackground(bg);
@@ -263,8 +209,6 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     if (myTree != null) {
       myTree.setBackground(bg);
     }
-
-
   }
 
   /* ========================================================== */
@@ -332,6 +276,7 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     // TODO change a graph to be size of graph I want
     // TODO Change graph to be size from here
     if (reason == Reason.SELECTION_CHANGED) {
+      updateSizes();
       return;
     }
     if (reason == Reason.ZOOM) {
@@ -356,6 +301,20 @@ class ViewList extends JPanel implements Gantt.ChartElement {
       }
     }
     int count = myRootNode.getChildCount();
+
+    updateSizes();
+
+    TreePath[] selection = myTree.getSelectionPaths();
+    if (selection != null && selection.length > 0 && selection[0].getPath().length > 1) {
+      mySelectedView = (ViewNode)(selection[0].getPath()[1]);
+    }
+    else {
+      mySelectedView = null;
+    }
+    myAddPanel.doLayout();
+  }
+
+  private void updateSizes() {
 
     int viewNo = 0;
     Gantt.ViewElement viewElement = null;
@@ -395,14 +354,6 @@ class ViewList extends JPanel implements Gantt.ChartElement {
         }
       }
     }
-    TreePath[] selection = myTree.getSelectionPaths();
-    if (selection != null && selection.length > 0 && selection[0].getPath().length > 1) {
-      mySelectedView = (ViewNode)(selection[0].getPath()[1]);
-    }
-    else {
-      mySelectedView = null;
-    }
-    myAddPanel.doLayout();
   }
 
   void reload() {
@@ -424,5 +375,52 @@ class ViewList extends JPanel implements Gantt.ChartElement {
     }
 
     model.reload();
+  }
+
+  private static class MyDefaultTreeCellRenderer extends DefaultTreeCellRenderer {
+    public static final JBEmptyBorder TEXT_PADDING_BORDER = JBUI.Borders.empty(2, 0);
+
+    MyDefaultTreeCellRenderer() {
+      setBorder(TEXT_PADDING_BORDER);
+      setBackgroundNonSelectionColor(StudioColorsKt.getSecondaryPanelBackground());
+    }
+
+    @Override
+    public Component getTreeCellRendererComponent(JTree tree,
+                                                  Object value,
+                                                  boolean sel,
+                                                  boolean expanded,
+                                                  boolean leaf,
+                                                  int row,
+                                                  boolean hasFocus) {
+      DefaultMutableTreeNode node = (DefaultMutableTreeNode)value;
+
+      JComponent c =
+        (JComponent)super.getTreeCellRendererComponent(tree, (node.getChildCount() == 0) ? "" : value, sel, expanded, leaf, row, hasFocus);
+
+      Object root = tree.getModel().getRoot();
+
+      if (root.equals(node)) {
+        setIcon(EmptyIcon.ICON_0);
+        return c;
+      }
+
+      Object userObject = node.getUserObject();
+      if (userObject instanceof Gantt.ViewElement) {
+        setIcon(((Gantt.ViewElement)userObject).getIcon());
+      }
+      else if (node.getParent() == root) {
+        setIcon(StudioIcons.LayoutEditor.Palette.VIEW);
+      }
+      else if (node instanceof GraphMode) {
+        setIcon(mySpacerIcon);
+      }
+      else {
+        setIcon(EmptyIcon.ICON_0);
+      }
+      setText(userObject.toString());
+      setBackgroundSelectionColor(UIUtil.getTreeSelectionBackground(hasFocus));
+      return c;
+    }
   }
 }

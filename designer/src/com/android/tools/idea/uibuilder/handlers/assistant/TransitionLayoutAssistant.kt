@@ -23,7 +23,7 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import java.awt.BorderLayout
 import javax.swing.JPanel
 
-class TransitionLayoutAssistantPanel(val designSurface: DesignSurface, val component: NlComponent, val close: (Boolean) -> Unit) :
+class MotionLayoutAssistantPanel(val designSurface: DesignSurface, val component: NlComponent, val close: (Boolean) -> Unit) :
     JPanel() {
   val toolbar: AnimationToolbar
 
@@ -36,7 +36,7 @@ class TransitionLayoutAssistantPanel(val designSurface: DesignSurface, val compo
       val sceneManager = designSurface.sceneManager as? LayoutlibSceneManager
       if (sceneManager != null) {
         sceneManager.setElapsedFrameTimeMs(timeMs)
-        helper.setValue((timeMs - 500L) / maxTimeMs.toFloat())
+        helper.setProgress((timeMs - 500L) / maxTimeMs.toFloat())
       }
     }, 16, 500L, maxTimeMs + 500L)
     add(toolbar)

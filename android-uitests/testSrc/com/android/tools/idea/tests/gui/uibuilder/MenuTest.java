@@ -25,6 +25,7 @@ import com.android.tools.idea.tests.gui.framework.fixture.designer.NlComponentFi
 import com.android.tools.idea.tests.gui.framework.fixture.designer.NlEditorFixture;
 import com.android.tools.idea.tests.gui.framework.GuiTestFileUtils;
 import com.android.tools.idea.tests.util.WizardUtils;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.fest.swing.fixture.JListFixture;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
@@ -41,7 +42,7 @@ import java.nio.file.Path;
 
 import static org.junit.Assert.*;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public final class MenuTest {
   @Language("XML")
   @SuppressWarnings("XmlUnusedNamespaceDeclaration")
@@ -158,9 +159,9 @@ public final class MenuTest {
                       "    xmlns:tools=\"http://schemas.android.com/tools\">\n" +
                       "    <item\n" +
                       "        android:id=\"@+id/app_bar_search\"\n" +
-                      "        android:actionViewClass=\"android.widget.SearchView\"\n" +
                       "        android:icon=\"@drawable/ic_search_black_24dp\"\n" +
                       "        android:title=\"Search\"\n" +
+                      "        app:actionViewClass=\"android.widget.SearchView\"\n" +
                       "        app:showAsAction=\"always\" />\n" +
                       "    <item\n" +
                       "        android:id=\"@+id/action_settings\"\n" +

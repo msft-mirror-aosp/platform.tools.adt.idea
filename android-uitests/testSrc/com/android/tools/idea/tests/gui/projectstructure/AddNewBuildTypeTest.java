@@ -20,14 +20,14 @@ import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.projectstructure.ProjectStructureDialogFixture;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static com.google.common.truth.Truth.assertThat;
 
-@RunIn(TestGroup.PROJECT_SUPPORT)
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class AddNewBuildTypeTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
@@ -50,7 +50,7 @@ public class AddNewBuildTypeTest {
    *   set in the project structure flavor dialog
    * </pre>
    */
-  @RunIn(TestGroup.SANITY)
+  @RunIn(TestGroup.SANITY_BAZEL)
   @Test
   public void addNewBuildType() throws Exception {
     String gradleFileContents = guiTest.importSimpleLocalApplication()

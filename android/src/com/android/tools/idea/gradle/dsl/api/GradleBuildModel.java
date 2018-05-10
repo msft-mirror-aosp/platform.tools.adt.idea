@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel;
+import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -31,21 +32,39 @@ import java.util.List;
 import java.util.Set;
 
 public interface GradleBuildModel extends GradleFileModel {
+  /**
+   * Obtains an instance of {@link GradleBuildModel} for the given projects root build.gradle file.
+   * Care should be taken when calling this method repeatedly since it runs over the whole PSI tree in order to build the model.
+   * In most cases if you want to use this method you should use {@link ProjectBuildModel} instead since it prevents files from being
+   * parsed more than once and ensures changes in applied files are mirrored by any model obtained from the it.
+   */
   @Nullable
   static GradleBuildModel get(@NotNull Project project) {
     return GradleModelProvider.get().getBuildModel(project);
   }
 
+  /**
+   * Obtains an instance of {@link GradleBuildModel} for the given modules build.gradle file.
+   * Care should be taken when calling this method repeatedly since it runs over the whole PSI tree in order to build the model.
+   */
   @Nullable
   static GradleBuildModel get(@NotNull Module module) {
     return GradleModelProvider.get().getBuildModel(module);
   }
 
+  /**
+   * Obtains an instance of {@link GradleBuildModel} by parsing the given file.
+   * Care should be taken when calling this method repeatedly since it runs over the whole PSI tree in order to build the model.
+   */
   @NotNull
   static GradleBuildModel parseBuildFile(@NotNull VirtualFile file, @NotNull Project project) {
     return GradleModelProvider.get().parseBuildFile(file, project);
   }
 
+  /**
+   * Obtains an instance of {@link GradleBuildModel} by parsing the given file.
+   * Care should be taken when calling this method repeatedly since it runs over the whole PSI tree in order to build the model.
+   */
   @NotNull
   static GradleBuildModel parseBuildFile(@NotNull VirtualFile file,
                                          @NotNull Project project,
@@ -53,8 +72,16 @@ public interface GradleBuildModel extends GradleFileModel {
     return GradleModelProvider.get().parseBuildFile(file, project, moduleName);
   }
 
+  /**
+   * DO NOT USE. Use {#plugins()} instead. This method is required to keep plugin compatibility with the android plugin 3.1 and below.
+   * This method may be removed in the future.
+   */
+  @Deprecated
   @NotNull
-  List<PluginModel> appliedPlugins();
+  List<GradleNotNullValue<String>> appliedPlugins();
+
+  @NotNull
+  List<PluginModel> plugins();
 
   PluginModel applyPlugin(@NotNull String plugin);
 

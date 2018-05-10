@@ -83,19 +83,19 @@ class GradleModuleSystem(val module: Module, @TestOnly private val mavenReposito
         .mapNotNull { GoogleMavenArtifactId.forCoordinate(it) }
   }
 
-  override fun getDeclaredVersion(artifactId: GoogleMavenArtifactId): GoogleMavenArtifactVersion? {
-    // Check for compile dependencies from the gradle build file
-    val configurationName = GradleUtil.mapConfigurationName(CommonConfigurationNames.COMPILE, GradleUtil.getAndroidGradleModelVersionInUse(module), false)
+  override fun getResolvedDependency(coordinate: GradleCoordinate): GradleCoordinate? {
+    // Check for android library dependencies from the build model
+    val androidModuleModel = AndroidModuleModel.get(module) ?: throw DependencyManagementException(
+      "Could not find android module model for module $module",
+      DependencyManagementException.ErrorCodes.BUILD_SYSTEM_NOT_READY)
 
-    return GradleBuildModel.get(module)?.let {
-      it.dependencies().artifacts(configurationName)
-          .filter { artifactId.toString() == "${it.group()}:${it.name().forceString()}" }
-          .map { parseDependencyVersion(it.version().toString()) }
-          .firstOrNull()
-    }
+    return androidModuleModel.selectedMainCompileLevel2Dependencies.androidLibraries
+      .asSequence()
+      .mapNotNull { GradleCoordinate.parseCoordinateString(it.artifactAddress) }
+      .find { it.matches(coordinate) }
   }
 
-  override fun getDeclaredDependency(coordinate: GradleCoordinate): GradleCoordinate? {
+  override fun getRegisteredDependency(coordinate: GradleCoordinate): GradleCoordinate? {
     // Check for compile dependencies from the gradle build file
     val configurationName = GradleUtil.mapConfigurationName(CommonConfigurationNames.COMPILE,
                                                             GradleUtil.getAndroidGradleModelVersionInUse(module), false)
@@ -105,6 +105,10 @@ class GradleModuleSystem(val module: Module, @TestOnly private val mavenReposito
         .mapNotNull { GradleCoordinate.parseCoordinateString("${it.group()}:${it.name().forceString()}:${it.version()}") }
         .find { it.matches(coordinate) }
     }
+  }
+
+  override fun registerDependency(coordinate: GradleCoordinate) {
+    GradleDependencyManager.getInstance(module.project).addDependenciesWithoutSync(module, Collections.singletonList(coordinate))
   }
 
   override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> {

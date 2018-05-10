@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.handlers.motion.timeline;
 
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 
@@ -31,6 +32,9 @@ import java.text.DecimalFormat;
  * Provides the TimeLine panel
  */
 public class Gantt extends JPanel implements GanttCommands {
+
+  public static final int HEADER_HEIGHT = JBUI.scale(30);
+
   GanttController myGanttController = new GanttController();
   private Chart myChart = new Chart(this);
   private ViewList myViewList = new ViewList(myChart);
@@ -40,7 +44,6 @@ public class Gantt extends JPanel implements GanttCommands {
   TrackControls myTrackControls = new TrackControls(myChart);
   JTextField myDuration;
   private DecimalFormat myFormat = new DecimalFormat("####.00");
-
 
   private MotionSceneModel myMotionSceneModel;
   private JLabel myTitleLabel;
@@ -52,6 +55,7 @@ public class Gantt extends JPanel implements GanttCommands {
     myScrollPane.setColumnHeaderView(myColumnHead);
     myScrollPane.setRowHeaderView(myViewList);
     myScrollPane.setCorner(ScrollPaneConstants.UPPER_LEFT_CORNER, myTrackControls);
+    myScrollPane.setBorder(JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0));
     JViewport viewPort = myScrollPane.getViewport();
     viewPort.setScrollMode(JViewport.BLIT_SCROLL_MODE);
     viewPort.setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
@@ -60,7 +64,6 @@ public class Gantt extends JPanel implements GanttCommands {
     myChart.myContainerHeight = myScrollPane.getViewport().getHeight();
     myChart.myContainerWidth = myScrollPane.getViewport().getWidth();
     setBackground(Chart.ourSecondaryPanelBackground);
-
     setup();
     if (listener != null) {
       listener.onInit(this);
@@ -83,12 +86,15 @@ public class Gantt extends JPanel implements GanttCommands {
         repaint();
       }
 
+      private float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(value, max));
+      }
+
       @Override
       public void mouseDragged(MouseEvent e) {
         int pos = e.getX();
-        myChart.setTimeCursorMs((pos - myChart.myChartLeftInset) / myChart.myPixelsPerMs);
-        myChart.setTimeCursorMs(Math.max(0, myChart.getTimeCursorMs()));
-        myChart.setTimeCursorMs(Math.min(myChart.myAnimationTotalTimeMs, myChart.getTimeCursorMs()));
+        float timeCursorMs = (pos - myChart.myChartLeftInset) / myChart.myPixelsPerMs;
+        myChart.setTimeCursorMs(clamp(timeCursorMs, 0, myChart.myAnimationTotalTimeMs));
         float percent = myChart.getTimeCursorMs() / myChart.myAnimationTotalTimeMs;
 
         JViewport viewPort = (JViewport)SwingUtilities.getAncestorOfClass(JViewport.class, myRowGraphc);
@@ -107,11 +113,26 @@ public class Gantt extends JPanel implements GanttCommands {
         }
         repaint();
       }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        // quantize on mouse up
+        float pos = ((int)(100 * myChart.getTimeCursorMs() / myChart.getAnimationTotalTimeMs())) / 100f;
+        float timeCursorMs  = pos * myChart.getAnimationTotalTimeMs();
+        myChart.setTimeCursorMs(clamp(timeCursorMs, 0, myChart.myAnimationTotalTimeMs));
+        float percent = myChart.getTimeCursorMs() / myChart.myAnimationTotalTimeMs;
+        myGanttController.framePosition(percent);
+        repaint();
+      }
     };
 
     myColumnHead.addMouseMotionListener(timeLineMouse);
     myColumnHead.addMouseWheelListener(timeLineMouse);
     myColumnHead.addMouseListener(timeLineMouse);
+
+    // Require some extra vertical space such that we initially show a few lines in the chart.
+    Dimension min = getMinimumSize();
+    setMinimumSize(new Dimension(min.width, 2 * min.height));
   }
 
   void selectionChanged() {
@@ -124,6 +145,21 @@ public class Gantt extends JPanel implements GanttCommands {
 
   public MotionSceneModel.KeyFrame getSelectedKey(String id) {
     return myChart.mySelectedKeyFrame;
+  }
+
+  public void clearSelectedKey() {
+    myChart.mySelectedKeyFrame = null;
+  }
+
+  public MotionSceneModel.TransitionTag getTransitionTag( ) {
+    if (myChart.myModel == null) {
+      return null;
+    }
+    return myChart.myModel.getTransitionTag(0);
+  }
+
+  public MotionSceneModel.OnSwipeTag getOnSwipeTag( ) {
+    return myChart.myModel.getOnSwipeTag();
   }
 
   static class IntFilter extends DocumentFilter {
@@ -337,6 +373,10 @@ public class Gantt extends JPanel implements GanttCommands {
     @Override
     public String toString() {
       return myName;
+    }
+
+    public Icon getIcon() {
+      return mKeyFrames.getIcon();
     }
 
     ViewElement(String name) {

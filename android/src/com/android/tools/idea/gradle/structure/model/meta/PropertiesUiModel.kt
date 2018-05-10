@@ -39,29 +39,36 @@ interface PropertyUiModel<in ModelT, out PropertyT> {
   /**
    * Creates a property editor bound to a property of [model] which described by this model.
    */
-  fun createEditor(project: PsProject, module: PsModule, model: ModelT): ModelPropertyEditor<ModelT, PropertyT>
+  fun createEditor(project: PsProject, module: PsModule, model: ModelT): ModelPropertyEditor<PropertyT>
 }
 
 typealias
-    PropertyEditorFactory<ModelT, ModelPropertyT, PropertyT> =
-      (ModelT, ModelPropertyT, VariablesProvider?) -> ModelPropertyEditor<ModelT, PropertyT>
+  PropertyEditorFactory<ModelPropertyCoreT, ModelPropertyContextT, PropertyT> =
+  (ModelPropertyCoreT, ModelPropertyContextT, VariablesProvider?) -> ModelPropertyEditor<PropertyT>
 
 /**
  * Creates a UI property model describing how to represent [property] for editing.
  *
- * @param editorFactory the function to create an editor bound to an instance of [property] a model of type [ModelT]
+ * @param editorFactory the function to create an editor bound to [property]
  */
-inline fun <ModelT, reified PropertyT : Any, ModelPropertyT : ModelProperty<ModelT, PropertyT>> uiProperty(
+fun <ModelT, PropertyT : Any, ValueT : Any, ModelPropertyCoreT,
+  ModelPropertyT : ModelProperty<Nothing?, ModelT, PropertyT, ValueT, ModelPropertyCoreT>> uiProperty(
   property: ModelPropertyT,
-  noinline editorFactory: PropertyEditorFactory<ModelT, ModelPropertyT, PropertyT>
+  editorFactory: PropertyEditorFactory<ModelPropertyCoreT, ModelPropertyContext<ValueT>, PropertyT>
 ): PropertyUiModel<ModelT, *> =
-  PropertyUiModelImpl(property, editorFactory)
+  PropertyUiModelImpl(property, editorFactory, null)
 
-class PropertyUiModelImpl<in ModelT, PropertyT : Any, out ModelPropertyT : ModelProperty<ModelT, PropertyT>>(
+class PropertyUiModelImpl<in ContextT, in ModelT, PropertyT : Any, ValueT : Any,
+  out ModelPropertyCoreT, out ModelPropertyT : ModelProperty<ContextT, ModelT, PropertyT, ValueT, ModelPropertyCoreT>>(
   private val property: ModelPropertyT,
-  private val editorFactory: PropertyEditorFactory<ModelT, ModelPropertyT, PropertyT>
+  private val editorFactory: PropertyEditorFactory<ModelPropertyCoreT, ModelPropertyContext<ValueT>, PropertyT>,
+  private val context: ContextT
 ) : PropertyUiModel<ModelT, PropertyT> {
   override val propertyDescription: String = property.description
-  override fun createEditor(project: PsProject, module: PsModule, model: ModelT): ModelPropertyEditor<ModelT, PropertyT> =
-    editorFactory(model, property, module.variables)
+  override fun createEditor(project: PsProject, module: PsModule, model: ModelT)
+    : ModelPropertyEditor<PropertyT> {
+    val boundProperty = property.bind(model)
+    val boundContext = property.bindContext(context, model)
+    return editorFactory(boundProperty, boundContext, module.variables)
+  }
 }

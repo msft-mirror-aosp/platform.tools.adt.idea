@@ -17,9 +17,11 @@ package com.android.tools.profilers;
 
 import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.TooltipComponent;
+import com.android.tools.adtui.TreeWalker;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.Range;
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.adtui.model.formatter.TimeFormatter;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.util.ui.JBEmptyBorder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,15 +29,14 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import java.awt.*;
 
+import static com.android.tools.profilers.ProfilerFonts.H3_FONT;
+
 public abstract class ProfilerTooltipView extends AspectObserver {
   @NotNull
   private final ProfilerTimeline myTimeline;
 
   @NotNull
-  private final String myTitle;
-
-  @NotNull
-  protected final JLabel myHeadingLabel;
+  private final JLabel myHeadingLabel;
 
   @Nullable
   private JComponent myTooltipContent;
@@ -46,24 +47,26 @@ public abstract class ProfilerTooltipView extends AspectObserver {
 
   private int myMaximumWidth = 0;
 
-  protected ProfilerTooltipView(@NotNull ProfilerTimeline timeline, @NotNull String title) {
+  protected ProfilerTooltipView(@NotNull ProfilerTimeline timeline) {
     myTimeline = timeline;
-    myTitle = title;
-
     myHeadingLabel = new JLabel();
     myHeadingLabel.setForeground(ProfilerColors.TOOLTIP_TEXT);
-    myFont = myHeadingLabel.getFont().deriveFont(ProfilerLayout.TOOLTIP_FONT_SIZE);
+    myFont = H3_FONT;
     myMaximumLabelHeight = myHeadingLabel.getFontMetrics(myFont).getHeight();
     myHeadingLabel.setFont(myFont);
-    timeline.getTooltipRange().addDependency(this).onChange(Range.Aspect.RANGE, this::timeChanged);
+    timeline.getTooltipRange().addDependency(this).onChange(Range.Aspect.RANGE, this::updateHeader);
   }
 
-  protected void timeChanged() {
+  @VisibleForTesting
+  public String getHeadingText() {
+    return myHeadingLabel.getText();
+  }
+
+  private void updateHeader() {
     Range range = myTimeline.getTooltipRange();
     if (!range.isEmpty()) {
-      String time = TimeAxisFormatter.DEFAULT
-        .getFormattedString(myTimeline.getDataRange().getLength(), range.getMin() - myTimeline.getDataRange().getMin(), true);
-      myHeadingLabel.setText(String.format("%s at %s", myTitle, time));
+      String time = TimeFormatter.getSemiSimplifiedClockString((long)(range.getMin() - myTimeline.getDataRange().getMin()));
+      myHeadingLabel.setText(time);
       updateMaximumLabelDimensions();
     }
     else {
@@ -92,13 +95,16 @@ public abstract class ProfilerTooltipView extends AspectObserver {
     myHeadingLabel.setMinimumSize(new Dimension(myMaximumWidth, myMaximumLabelHeight));
     updateMaximumLabelDimensions();
 
-    TooltipPanel tooltipPanel = new TooltipPanel(new TabularLayout("*", "Fit-,10px,*"));
+    TooltipPanel tooltipPanel = new TooltipPanel(new TabularLayout("*", "Fit-,8px,*"));
     tooltipPanel.add(myHeadingLabel, new TabularLayout.Constraint(0, 0));
     tooltipPanel.add(myTooltipContent, new TabularLayout.Constraint(2, 0));
     tooltipPanel.setForeground(ProfilerColors.TOOLTIP_TEXT);
     tooltipPanel.setBackground(ProfilerColors.TOOLTIP_BACKGROUND);
     tooltipPanel.setBorder(new JBEmptyBorder(10, 10, 10, 10));
-    timeChanged();
+    updateHeader();
+
+    // Loop all the child components and set the background color so each tooltip doesn't need to do this individually.
+    new TreeWalker(tooltipPanel).descendantStream().forEach((component -> component.setBackground(tooltipPanel.getBackground())));
 
     return tooltipPanel;
   }

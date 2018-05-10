@@ -16,6 +16,8 @@
 package com.android.tools.idea.projectsystem.gradle
 
 import com.android.builder.model.AndroidProject.PROJECT_TYPE_APP
+import com.android.ide.common.repository.GoogleMavenRepository
+import com.android.ide.common.repository.GradleCoordinate
 import com.android.tools.apk.analyzer.AaptInvoker
 import com.android.tools.idea.gradle.project.GradleProjectInfo
 import com.android.tools.idea.gradle.project.build.GradleProjectBuilder
@@ -25,15 +27,17 @@ import com.android.tools.idea.projectsystem.*
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.templates.GradleFilePsiMerger
 import com.android.tools.idea.templates.GradleFileSimpleMerger
+import com.android.tools.idea.templates.IdeGoogleMavenRepository
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import org.jetbrains.annotations.TestOnly
 import java.nio.file.Path
 
-class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
+class GradleProjectSystem(val project: Project, @TestOnly private val mavenRepository: GoogleMavenRepository = IdeGoogleMavenRepository) : AndroidProjectSystem {
   private val mySyncManager: ProjectSystemSyncManager = GradleProjectSystemSyncManager(project)
 
   override fun getSyncManager(): ProjectSystemSyncManager = mySyncManager
@@ -75,5 +79,15 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
 
   override fun getModuleSystem(module: Module): AndroidModuleSystem {
     return GradleModuleSystem(module)
+  }
+
+  override fun getAvailableDependency(coordinate: GradleCoordinate, includePreview: Boolean): GradleCoordinate? {
+    val foundVersion = mavenRepository.findVersion(coordinate, null, includePreview) ?: return null
+    val candidateCoordinate = GradleCoordinate.parseCoordinateString("${coordinate.groupId}:${coordinate.artifactId}:$foundVersion")
+                              ?: return null
+    if (candidateCoordinate.matches(coordinate)) {
+      return candidateCoordinate
+    }
+    return null
   }
 }

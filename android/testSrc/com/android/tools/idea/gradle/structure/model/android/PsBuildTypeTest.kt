@@ -29,8 +29,8 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
   private fun <T> ResolvedValue<T>.asTestValue(): T? = (this as? ResolvedValue.Set<T>)?.resolved
   private fun <T> ParsedValue<T>.asTestValue(): T? = (this as? ParsedValue.Set.Parsed<T>)?.value
   private fun <T> ParsedValue<T>.asUnparsedValue(): String? =
-    (this as? ParsedValue.Set.Parsed<T>)?.takeIf { it.dslText?.mode == DslMode.OTHER_UNPARSED_DSL_TEXT }?.dslText?.text
-  private fun <T : Any> T.asParsed(): ParsedValue<T> = ParsedValue.Set.Parsed(value = this)
+    ((this as? ParsedValue.Set.Parsed<T>)?.dslText as? DslText.OtherUnparsedDslText)?.text
+  private fun <T : Any> T.asParsed(): ParsedValue<T> = ParsedValue.Set.Parsed(this, DslText.Literal)
 
   fun testProperties() {
     loadProject(TestProjectPaths.PSD_SAMPLE)
@@ -44,20 +44,21 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     val buildType = appModule.findBuildType("release")
     assertThat(buildType, notNullValue()); buildType!!
 
-    val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.getValue(buildType)
-    val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.getValue(buildType)
+    val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.bind(buildType).getValue()
+    val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.bind(buildType).getValue()
     // TODO(b/70501607): Decide on val embedMicroApp = PsBuildType.BuildTypeDescriptors.embedMicroApp.getValue(buildType)
-    val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.getValue(buildType)
-    val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.getValue(buildType)
-    val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.getValue(buildType)
+    val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.bind(buildType).getValue()
+    val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.bind(buildType).getValue()
+    val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.bind(buildType).getValue()
     // TODO(b/70501607): Decide on val pseudoLocalesEnabled = PsBuildType.BuildTypeDescriptors.pseudoLocalesEnabled.getValue(buildType)
-    val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.getValue(buildType)
-    val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.getValue(buildType)
-    // TODO(b/70501607): Decide on val testCoverageEnabled = PsBuildType.BuildTypeDescriptors.testCoverageEnabled.getValue(buildType)
-    val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.getValue(buildType)
-    val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.getValue(buildType)
-    val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType).map { it.getValue(Unit) }
-    val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.getValue(buildType)
+    val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.bind(buildType).getValue()
+    val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.bind(buildType).getValue()
+    val signingConfig = PsBuildType.BuildTypeDescriptors.signingConfig.bind(buildType).getValue()
+// TODO(b/70501607): Decide on val testCoverageEnabled = PsBuildType.BuildTypeDescriptors.testCoverageEnabled.getValue(buildType)
+    val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.bind(buildType).getValue()
+    val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.bind(buildType).getValue()
+    val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getEditableValues().map { it.getValue() }
+    val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.bind(buildType).getValue()
 
     assertThat(applicationIdSuffix.resolved.asTestValue(), equalTo("suffix"))
     assertThat(applicationIdSuffix.parsedValue.asTestValue(), equalTo("suffix"))
@@ -79,6 +80,11 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
 
     assertThat(renderscriptOptimLevel.resolved.asTestValue(), equalTo(2))
     assertThat(renderscriptOptimLevel.parsedValue.asTestValue(), equalTo(2))
+
+    assertThat(signingConfig.resolved.asTestValue(), nullValue())
+    assertThat(
+      signingConfig.parsedValue,
+      equalTo<ParsedValue<Unit>>(ParsedValue.Set.Parsed(Unit, DslText.Reference("signingConfigs.myConfig"))))
 
     assertThat(versionNameSuffix.resolved.asTestValue(), equalTo("vsuffix"))
     assertThat(versionNameSuffix.parsedValue.asTestValue(), equalTo("vsuffix"))
@@ -123,19 +129,19 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     assertThat(buildType, notNullValue()); buildType!!
     assertFalse(buildType.isDeclared)
 
-    val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.getValue(buildType)
-    val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.getValue(buildType)
+    val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.bind(buildType).getValue()
+    val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.bind(buildType).getValue()
     // TODO(b/70501607): Decide on val embedMicroApp = PsBuildType.BuildTypeDescriptors.embedMicroApp.getValue(buildType)
-    val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.getValue(buildType)
-    val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.getValue(buildType)
-    val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.getValue(buildType)
+    val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.bind(buildType).getValue()
+    val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.bind(buildType).getValue()
+    val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.bind(buildType).getValue()
     // TODO(b/70501607): Decide on val pseudoLocalesEnabled = PsBuildType.BuildTypeDescriptors.pseudoLocalesEnabled.getValue(buildType)
-    val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.getValue(buildType)
-    val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.getValue(buildType)
+    val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.bind(buildType).getValue()
+    val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.bind(buildType).getValue()
     // TODO(b/70501607): Decide on val testCoverageEnabled = PsBuildType.BuildTypeDescriptors.testCoverageEnabled.getValue(buildType)
-    val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.getValue(buildType)
-    val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.getValue(buildType)
-    val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.getValue(buildType)
+    val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.bind(buildType).getValue()
+    val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.bind(buildType).getValue()
+    val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.bind(buildType).getValue()
 
     assertThat(applicationIdSuffix.resolved.asTestValue(), nullValue())
     assertThat(applicationIdSuffix.parsedValue.asTestValue(), nullValue())
@@ -157,6 +163,8 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
 
     assertThat(renderscriptOptimLevel.resolved.asTestValue(), equalTo(3))
     assertThat(renderscriptOptimLevel.parsedValue.asTestValue(), nullValue())
+
+    // TODO(b/79142681) signingConfig resolved value is always null.
 
     assertThat(versionNameSuffix.resolved.asTestValue(), nullValue())
     assertThat(versionNameSuffix.parsedValue.asTestValue(), nullValue())
@@ -190,31 +198,37 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     buildType.renderscriptOptimLevel = 3.asParsed()
     buildType.versionNameSuffix = "new_vsuffix".asParsed()
     buildType.zipAlignEnabled = false.asParsed()
-    PsBuildType.BuildTypeDescriptors.proGuardFiles.deleteItem(buildType, 1)
-    val editableProGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType)
-    editableProGuardFiles[1].setParsedValue(Unit, File("a.txt").asParsed())
-    PsBuildType.BuildTypeDescriptors.proGuardFiles.addItem(buildType, 2).setParsedValue(Unit, File("z.txt").asParsed())
+    PsBuildType.BuildTypeDescriptors.signingConfig.bind(buildType).setParsedValue(ParsedValue.NotSet)
+    PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).run {
+      deleteItem(1)
+      val editableProGuardFiles = getEditableValues()
+      editableProGuardFiles[1].setParsedValue(File("a.txt").asParsed())
+      addItem(2).setParsedValue(File("z.txt").asParsed())
+    }
 
-    PsBuildType.BuildTypeDescriptors.manifestPlaceholders.addEntry(buildType, "b").setParsedValue(Unit, "v".asParsed())
-    PsBuildType.BuildTypeDescriptors.manifestPlaceholders.changeEntryKey(buildType, "b", "v")
-    PsBuildType.BuildTypeDescriptors.manifestPlaceholders.deleteEntry(buildType, "v")
+    PsBuildType.BuildTypeDescriptors.manifestPlaceholders.bind(buildType).run {
+      addEntry("b").setParsedValue("v".asParsed())
+      changeEntryKey("b", "v")
+      deleteEntry("v")
+    }
 
 
     fun verifyValues(buildType: PsBuildType, afterSync: Boolean = false) {
-      val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.getValue(buildType)
-      val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.getValue(buildType)
+      val applicationIdSuffix = PsBuildType.BuildTypeDescriptors.applicationIdSuffix.bind(buildType).getValue()
+      val debuggable = PsBuildType.BuildTypeDescriptors.debuggable.bind(buildType).getValue()
       // TODO(b/70501607): Decide on val embedMicroApp = PsBuildType.BuildTypeDescriptors.embedMicroApp.getValue(buildType)
-      val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.getValue(buildType)
-      val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.getValue(buildType)
-      val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.getValue(buildType)
+      val jniDebuggable = PsBuildType.BuildTypeDescriptors.jniDebuggable.bind(buildType).getValue()
+      val minifyEnabled = PsBuildType.BuildTypeDescriptors.minifyEnabled.bind(buildType).getValue()
+      val multiDexEnabled = PsBuildType.BuildTypeDescriptors.multiDexEnabled.bind(buildType).getValue()
       // TODO(b/70501607): Decide on val pseudoLocalesEnabled = PsBuildType.BuildTypeDescriptors.pseudoLocalesEnabled.getValue(buildType)
-      val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.getValue(buildType)
-      val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.getValue(buildType)
+      val renderscriptDebuggable = PsBuildType.BuildTypeDescriptors.renderscriptDebuggable.bind(buildType).getValue()
+      val renderscriptOptimLevel = PsBuildType.BuildTypeDescriptors.renderscriptOptimLevel.bind(buildType).getValue()
+      val signingConfig = PsBuildType.BuildTypeDescriptors.signingConfig.bind(buildType).getValue()
       // TODO(b/70501607): Decide on val testCoverageEnabled = PsBuildType.BuildTypeDescriptors.testCoverageEnabled.getValue(buildType)
-      val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.getValue(buildType)
-      val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.getValue(buildType)
-      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType).map { it.getValue(Unit) }
-      val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.getValue(buildType)
+      val versionNameSuffix = PsBuildType.BuildTypeDescriptors.versionNameSuffix.bind(buildType).getValue()
+      val zipAlignEnabled = PsBuildType.BuildTypeDescriptors.zipAlignEnabled.bind(buildType).getValue()
+      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getEditableValues().map { it.getValue() }
+      val manifestPlaceholders = PsBuildType.BuildTypeDescriptors.manifestPlaceholders.bind(buildType).getValue()
 
       assertThat(applicationIdSuffix.parsedValue.asTestValue(), equalTo("new_suffix"))
       assertThat(debuggable.parsedValue.asTestValue(), equalTo(true))
@@ -223,6 +237,7 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
       assertThat(multiDexEnabled.parsedValue.asTestValue(), equalTo(false))
       assertThat(renderscriptDebuggable.parsedValue.asTestValue(), equalTo(true))
       assertThat(renderscriptOptimLevel.parsedValue.asTestValue(), equalTo(3))
+      assertThat(signingConfig.parsedValue.asTestValue(), nullValue())
       assertThat(versionNameSuffix.parsedValue.asTestValue(), equalTo("new_vsuffix"))
       assertThat(zipAlignEnabled.parsedValue.asTestValue(), equalTo(false))
 
@@ -246,6 +261,7 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
         assertThat(multiDexEnabled.parsedValue.asTestValue(), equalTo(multiDexEnabled.resolved.asTestValue()))
         assertThat(renderscriptDebuggable.parsedValue.asTestValue(), equalTo(renderscriptDebuggable.resolved.asTestValue()))
         assertThat(renderscriptOptimLevel.parsedValue.asTestValue(), equalTo(renderscriptOptimLevel.resolved.asTestValue()))
+        // TODO(b/79142681) signingConfig resolved value is always null.
         assertThat(versionNameSuffix.parsedValue.asTestValue(), equalTo(versionNameSuffix.resolved.asTestValue()))
         assertThat(zipAlignEnabled.parsedValue.asTestValue(), equalTo(zipAlignEnabled.resolved.asTestValue()))
 
@@ -279,14 +295,16 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     val buildType = appModule.findBuildType("release")
     assertThat(buildType, notNullValue()); buildType!!
 
-    val editableProGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType)
-    editableProGuardFiles[1].setParsedValue(Unit, File("a.txt").asParsed())
-    editableProGuardFiles[2].setParsedValue(Unit, File("b.txt").asParsed())
-    PsBuildType.BuildTypeDescriptors.proGuardFiles.addItem(buildType, 0).setParsedValue(Unit, File("z.txt").asParsed())
+    PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).run {
+      val editableProGuardFiles = getEditableValues()
+      editableProGuardFiles[1].setParsedValue(File("a.txt").asParsed())
+      editableProGuardFiles[2].setParsedValue(File("b.txt").asParsed())
+      addItem(0).setParsedValue(File("z.txt").asParsed())
+    }
 
 
     fun verifyValues(buildType: PsBuildType, afterSync: Boolean = false) {
-      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType).map { it.getValue(Unit) }
+      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getEditableValues().map { it.getValue() }
 
       // TODO(b/72814329): Resolved values are not yet supported on list properties.
       assertThat(proGuardFiles[0].resolved.asTestValue(), nullValue())
@@ -331,21 +349,19 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     val buildType = appModule.findBuildType("release")
     assertThat(buildType, notNullValue()); buildType!!
 
-    PsBuildType.BuildTypeDescriptors.proGuardFiles.setParsedValue(
-      buildType,
+    PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).setParsedValue(
       ParsedValue.Set.Parsed(
-        dslText = DslText(DslMode.REFERENCE, "varProGuardFiles"),
+        dslText = DslText.Reference("varProGuardFiles"),
         value = null
       )
     )
 
     fun verifyValues(buildType: PsBuildType, afterSync: Boolean = false) {
-      val proGuardFilesValue = PsBuildType.BuildTypeDescriptors.proGuardFiles.getValue(buildType)
+      val proGuardFilesValue = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getValue()
       val parsedProGuardFilesValue = proGuardFilesValue.parsedValue as? ParsedValue.Set.Parsed
-      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.getEditableValues(buildType).map { it.getValue(Unit) }
+      val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getEditableValues().map { it.getValue() }
 
-      assertThat(parsedProGuardFilesValue?.dslText?.mode, equalTo(DslMode.REFERENCE))
-      assertThat(parsedProGuardFilesValue?.dslText?.text, equalTo("varProGuardFiles"))
+      assertThat(parsedProGuardFilesValue?.dslText, equalTo<DslText?>(DslText.Reference("varProGuardFiles")))
 
       assertThat(proGuardFiles.size, equalTo(2))
       // TODO(b/72814329): Resolved values are not yet supported on list properties.

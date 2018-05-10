@@ -18,11 +18,10 @@ package com.android.tools.idea.gradle.structure.model.android
 import com.android.ide.common.gradle.model.IdeAndroidProject
 import com.android.sdklib.AndroidTargetHash
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
+import com.android.tools.idea.gradle.dsl.api.util.LanguageLevelUtil
 import com.android.tools.idea.gradle.structure.model.helpers.*
-import com.android.tools.idea.gradle.structure.model.meta.ModelDescriptor
-import com.android.tools.idea.gradle.structure.model.meta.ModelSimpleProperty
-import com.android.tools.idea.gradle.structure.model.meta.asString
-import com.android.tools.idea.gradle.structure.model.meta.property
+import com.android.tools.idea.gradle.structure.model.meta.*
 import com.intellij.pom.java.LanguageLevel
 
 object AndroidModuleDescriptors : ModelDescriptor<PsAndroidModule, IdeAndroidProject, AndroidModel> {
@@ -34,43 +33,46 @@ object AndroidModuleDescriptors : ModelDescriptor<PsAndroidModule, IdeAndroidPro
     model.isModified = true
   }
 
-  val compileSdkVersion: ModelSimpleProperty<PsAndroidModule, String> = property(
+  val compileSdkVersion: SimpleProperty<PsAndroidModule, String> = property(
     "Compile Sdk Version",
     getResolvedValue = { AndroidTargetHash.getPlatformVersion(compileTarget)?.featureLevel?.toString() ?: compileTarget },
     getParsedProperty = { compileSdkVersion() },
     getter = { asString() },
     setter = { setValue(it) },
-    parse = { parseString(it) },
-    getKnownValues = { installedCompiledApis() }
+    parse = ::parseString,
+    getKnownValues = ::installedCompiledApis
   )
 
-  val buildToolsVersion: ModelSimpleProperty<PsAndroidModule, String> = property(
+  val buildToolsVersion: SimpleProperty<PsAndroidModule, String> = property(
     "Build Tools Version",
     getResolvedValue = { buildToolsVersion },
     getParsedProperty = { buildToolsVersion() },
     getter = { asString() },
     setter = { setValue(it) },
-    parse = { parseString(it) },
-    getKnownValues = { installedBuildTools() }
+    parse = ::parseString,
+    getKnownValues = ::installedBuildTools,
+    variableMatchingStrategy = VariableMatchingStrategy.WELL_KNOWN_VALUE
   )
 
-  val sourceCompatibility: ModelSimpleProperty<PsAndroidModule, LanguageLevel> = property(
+  val sourceCompatibility: SimpleProperty<PsAndroidModule, LanguageLevel> = property(
     "Source Compatibility",
     getResolvedValue = { LanguageLevel.parse(javaCompileOptions.sourceCompatibility) },
     getParsedProperty = { compileOptions().sourceCompatibility() },
-    getter = { toLanguageLevel() },
+    getter = { asLanguageLevel() },
     setter = { setLanguageLevel(it) },
-    parse = { parseEnum(it, LanguageLevel::parse) },
-    getKnownValues = { languageLevels() }
+    parse = ::parseLanguageLevel,
+    format = ::formatLanguageLevel,
+    getKnownValues = ::languageLevels
   )
 
-  val targetCompatibility: ModelSimpleProperty<PsAndroidModule, LanguageLevel> = property(
+  val targetCompatibility: SimpleProperty<PsAndroidModule, LanguageLevel> = property(
     "Target Compatibility",
     getResolvedValue = { LanguageLevel.parse(javaCompileOptions.targetCompatibility) },
     getParsedProperty = { compileOptions().targetCompatibility() },
-    getter = { toLanguageLevel() },
+    getter = { asLanguageLevel() },
     setter = { setLanguageLevel(it) },
-    parse = { parseEnum(it, LanguageLevel::parse) },
-    getKnownValues = { languageLevels() }
+    parse = ::parseLanguageLevel,
+    format = ::formatLanguageLevel,
+    getKnownValues = ::languageLevels
   )
 }

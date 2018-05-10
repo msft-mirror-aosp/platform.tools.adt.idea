@@ -15,17 +15,20 @@
  */
 package com.android.tools.idea.uibuilder.handlers.constraint;
 
+import com.android.SdkConstants;
 import com.android.tools.idea.common.command.NlWriteCommandAction;
 import com.android.tools.idea.common.model.AttributesTransaction;
 import com.android.tools.idea.common.model.NlAttributesHolder;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlComponentDelegate;
+import com.android.tools.idea.rendering.parsers.AttributeSnapshot;
 import com.android.utils.Pair;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Encapsulate write operations on components
@@ -41,6 +44,10 @@ public class ComponentModification implements NlAttributesHolder {
     myComponent = component;
     myLabel = label;
     myComponentDelegate = myComponent.getDelegate();
+    List<AttributeSnapshot> attributeSnapshots = component.getAttributes();
+    for (AttributeSnapshot snapshot : attributeSnapshots) {
+      setAttribute(snapshot.namespace, snapshot.name, snapshot.value);
+    }
   }
 
   public NlComponent getComponent() {
@@ -50,7 +57,7 @@ public class ComponentModification implements NlAttributesHolder {
   HashMap<Pair<String, String>, String> myAttributes = new HashMap<>();
 
   @Override
-  public void setAttribute(String namespace, String name, String value) {
+  public void setAttribute(@Nullable String namespace, @NotNull String name, @Nullable String value) {
     myAttributes.put(Pair.of(namespace, name), value);
   }
 
@@ -58,6 +65,8 @@ public class ComponentModification implements NlAttributesHolder {
   public String getAttribute(@Nullable String namespace, @NotNull String attribute) {
     return myAttributes.get(Pair.of(namespace, attribute));
   }
+
+  public HashMap<Pair<String, String>, String> getAttributes() { return myAttributes; }
 
   @Override
   public void removeAttribute(@NotNull String namespace, @NotNull String name) {
@@ -67,6 +76,12 @@ public class ComponentModification implements NlAttributesHolder {
   public void apply() {
     if (myComponentDelegate != null && myComponentDelegate.handlesApply(this)) {
       myComponentDelegate.apply(this);
+      AttributesTransaction transaction = myComponent.startAttributeTransaction();
+      for (Pair<String, String> key : myAttributes.keySet()) {
+        String value = myAttributes.get(key);
+        transaction.setAttribute(key.getFirst(), key.getSecond(), value);
+      }
+      transaction.apply();
     } else {
         AttributesTransaction transaction = myComponent.startAttributeTransaction();
         for (Pair<String, String> key : myAttributes.keySet()) {
@@ -80,6 +95,23 @@ public class ComponentModification implements NlAttributesHolder {
   public void commit() {
     if (myComponentDelegate != null && myComponentDelegate.handlesCommit(this)) {
       myComponentDelegate.commit(this);
+      myComponent.clearTransaction(); // make sure to clean things here too
+
+      // We have to verify if there is attributes that need to be committed to the component directly
+      AttributesTransaction transaction = null;
+      for (Pair<String, String> key : myAttributes.keySet()) {
+        if (!myComponentDelegate.commitToMotionScene(key)) {
+          String value = myAttributes.get(key);
+          if (transaction == null) {
+            transaction = myComponent.startAttributeTransaction();
+          }
+          transaction.setAttribute(key.getFirst(), key.getSecond(), value);
+        }
+      }
+      if (transaction != null) {
+        transaction.apply();
+        NlWriteCommandAction.run(myComponent, myLabel, transaction::commit);
+      }
     } else {
       AttributesTransaction transaction = myComponent.startAttributeTransaction();
       for (Pair<String, String> key : myAttributes.keySet()) {
@@ -94,7 +126,13 @@ public class ComponentModification implements NlAttributesHolder {
   public void commitTo(XmlTag view) {
     for (Pair<String, String> key : myAttributes.keySet()) {
       String value = myAttributes.get(key);
-      view.setAttribute(key.getSecond(), key.getFirst(), value);
+      if (myComponentDelegate == null || myComponentDelegate.commitToMotionScene(key)) {
+        String namespace = key.getFirst();
+        if (namespace.equalsIgnoreCase(SdkConstants.TOOLS_URI)) {
+          namespace = SdkConstants.AUTO_URI;
+        }
+        view.setAttribute(key.getSecond(), namespace, value);
+      }
     }
   }
 }

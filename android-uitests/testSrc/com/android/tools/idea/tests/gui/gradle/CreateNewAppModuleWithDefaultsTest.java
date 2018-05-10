@@ -20,6 +20,7 @@ import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,7 +28,7 @@ import org.junit.runner.RunWith;
 import static com.android.tools.idea.testing.FileSubject.file;
 import static com.google.common.truth.Truth.assertAbout;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class CreateNewAppModuleWithDefaultsTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
@@ -46,18 +47,18 @@ public class CreateNewAppModuleWithDefaultsTest {
    *   a new folder matching the module name should have been created.
    * </pre>
    */
-  @RunIn(TestGroup.SANITY)
+  @RunIn(TestGroup.SANITY_BAZEL)
   @Test
   public void createNewAppModuleWithDefaults() throws Exception {
     guiTest.importSimpleLocalApplication()
            .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
            .chooseModuleType("Phone & Tablet Module")
            .clickNextToStep("Phone & Tablet Module")
-           .setModuleName("application-module")
+           .setModuleName("application_module")
            .clickNextToStep("Add an Activity to Mobile")
            .chooseActivity("Add No Activity")
            .clickFinish()
            .waitForGradleProjectSyncToFinish();
-    assertAbout(file()).that(guiTest.getProjectPath("application-module")).isDirectory();
+    assertAbout(file()).that(guiTest.getProjectPath("application_module")).isDirectory();
   }
 }

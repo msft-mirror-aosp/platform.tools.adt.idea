@@ -30,6 +30,7 @@ import com.android.tools.idea.tests.gui.framework.fixture.WelcomeFrameFixture;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import com.intellij.util.SystemProperties;
 import com.intellij.util.containers.ContainerUtil;
 import org.fest.swing.timing.Wait;
@@ -45,7 +46,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class CreateAPKProjectTest extends DebuggerTestBase {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
@@ -78,7 +79,7 @@ public class CreateAPKProjectTest extends DebuggerTestBase {
    * </pre>
    */
   @Test
-  @RunIn(TestGroup.QA_UNRELIABLE) // Bug: http://b/65172343
+  @RunIn(TestGroup.QA_UNRELIABLE) // b/70731570
   public void createProjectFromLocallyBuiltApk() throws Exception {
     File projectRoot = buildApkLocally("ApkDebug");
 
@@ -318,11 +319,10 @@ public class CreateAPKProjectTest extends DebuggerTestBase {
     // VfsUtil.findFileByIoFile blocks us indefinitely. Retrieve
     // VirtualFile before we open the dialog:
     VirtualFile apkFile = VfsUtil.findFileByIoFile(apk, true);
-    welcomeFrame.profileDebugApk();
 
     // This step generates the ~/ApkProjects/app-x86-debug directory. This
     // directory will be removed as a part of our tests' cleanup methods.
-    FileChooserDialogFixture.findDialog(guiTest.robot(), "Select APK File")
+    welcomeFrame.profileOrDebugApk()
       .select(apkFile)
       .clickOk();
 
@@ -331,7 +331,8 @@ public class CreateAPKProjectTest extends DebuggerTestBase {
 
   @NotNull
   private File buildApkLocally(@NotNull String apkProjectToImport) throws IOException {
-    IdeFrameFixture ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish(apkProjectToImport);
+    IdeFrameFixture ideFrame = guiTest.importProject(apkProjectToImport);
+    ideFrame.waitForGradleProjectSyncToFinish(Wait.seconds(120));
 
     ideFrame.waitAndInvokeMenuPath("Build", "Build Bundle(s) / APK(s)", "Build APK(s)");
     guiTest.waitForBackgroundTasks();

@@ -15,12 +15,12 @@
  */
 package com.android.tools.idea.tests.gui.npw;
 
-import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.InspectCodeDialogFixture;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,18 +28,17 @@ import org.junit.runner.RunWith;
 import static com.android.tools.idea.tests.gui.npw.NewCppProjectTestUtil.*;
 import static com.google.common.truth.Truth.assertThat;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class NewCppProjectTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-  @Rule public final EmulatorTestRule emulator = new EmulatorTestRule(false);
 
   /**
    * Creates a new project with c++, and checks that if we run Analyze > Inspect Code, there are no warnings.
    * This checks that our (default) project templates are warnings-clean.
    * The test then proceeds to make a couple of edits and checks that these do not generate additional warnings either.
    */
-  @RunIn(TestGroup.PROJECT_WIZARD)
+  @RunIn(TestGroup.UNRELIABLE)  // b/78916175 @RunIn(TestGroup.PROJECT_WIZARD)
   @Test
   public void noWarningsInNewProjectWithCpp() {
     createCppProject(false, false, guiTest);

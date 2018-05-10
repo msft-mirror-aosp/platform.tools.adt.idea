@@ -25,14 +25,14 @@ import javax.swing.table.TableColumnModel
 /**
  * A property editor [ModelPropertyEditor] for properties of simple list types.
  */
-class ListPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelListProperty<ModelT, ValueT>>(
-  model: ModelT,
+class ListPropertyEditor<ValueT : Any, out ModelPropertyT : ModelListPropertyCore<ValueT>>(
   property: ModelPropertyT,
-  editor: PropertyEditorFactory<Unit, ModelSimpleProperty<Unit, ValueT>, ValueT>,
+  propertyContext: ModelPropertyContext<ValueT>,
+  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
   variablesProvider: VariablesProvider?
 ) :
-  CollectionPropertyEditor<ModelT, ModelPropertyT, ValueT>(model, property, editor, variablesProvider),
-  ModelPropertyEditor<ModelT, List<ValueT>> {
+  CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesProvider),
+  ModelPropertyEditor<List<ValueT>> {
 
   override fun updateProperty() = throw UnsupportedOperationException()
 
@@ -45,15 +45,15 @@ class ListPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelListPro
   override fun createTableModel(): DefaultTableModel {
     val tableModel = DefaultTableModel()
     tableModel.addColumn("item")
-    for (item in property.getEditableValues(model)) {
-      tableModel.addRow(arrayOf(item.getParsedValue(Unit).toTableModelValue()))
+    for (item in property.getEditableValues()) {
+      tableModel.addRow(arrayOf(item.getParsedValue().toTableModelValue()))
     }
     return tableModel
   }
 
-  override fun getValueAt(row: Int): ParsedValue<ValueT> = getRowProperty(row).getParsedValue(Unit)
+  override fun getValueAt(row: Int): ParsedValue<ValueT> = getRowProperty(row).getParsedValue()
 
-  override fun setValueAt(row: Int, value: ParsedValue<ValueT>) = getRowProperty(row).setParsedValue(Unit, value)
+  override fun setValueAt(row: Int, value: ParsedValue<ValueT>) = getRowProperty(row).setParsedValue(value)
 
   override fun createColumnModel(): TableColumnModel {
     return DefaultTableColumnModel().apply {
@@ -65,14 +65,13 @@ class ListPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelListPro
     }
   }
 
-  override fun getValueText(): String = throw UnsupportedOperationException()
   override fun getValue(): ParsedValue<List<ValueT>> = throw UnsupportedOperationException()
 
   override fun addItem() {
     tableModel?.let { tableModel ->
       val index = tableModel.rowCount
-      val modelPropertyCore = property.addItem(model, index)
-      tableModel.addRow(arrayOf(modelPropertyCore.getValue(Unit).parsedValue.toTableModelValue()))
+      val modelPropertyCore = property.addItem(index)
+      tableModel.addRow(arrayOf(modelPropertyCore.getValue().parsedValue.toTableModelValue()))
       table.selectionModel.setSelectionInterval(index, index)
     table.editCellAt(index, 0)
     }
@@ -84,18 +83,18 @@ class ListPropertyEditor<ModelT, ValueT : Any, out ModelPropertyT : ModelListPro
       val selection = table.selectionModel
       for (index in selection.maxSelectionIndex downTo selection.minSelectionIndex) {
         if (table.selectionModel.isSelectedIndex(index)) {
-          property.deleteItem(model, index)
+          property.deleteItem(index)
           tableModel.removeRow(index)
         }
       }
     }
   }
 
-  private fun getRowProperty(row: Int) = property.getEditableValues(model)[row]
+  private fun getRowProperty(row: Int) = property.getEditableValues()[row]
 }
 
-fun <ModelT, ValueT : Any, ModelPropertyT : ModelListProperty<ModelT, ValueT>> listPropertyEditor(
-  editor: PropertyEditorFactory<Unit, ModelSimpleProperty<Unit, ValueT>, ValueT>
+fun <ValueT : Any, ModelPropertyT : ModelListPropertyCore<ValueT>> listPropertyEditor(
+  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>
 ):
-    PropertyEditorFactory<ModelT, ModelPropertyT, List<ValueT>> =
-    { model, property, variablesProvider -> ListPropertyEditor(model, property, editor, variablesProvider) }
+    PropertyEditorFactory<ModelPropertyT, ModelPropertyContext<ValueT>, List<ValueT>> =
+    { property, propertyContext, variablesProvider -> ListPropertyEditor(property, propertyContext, editor, variablesProvider) }

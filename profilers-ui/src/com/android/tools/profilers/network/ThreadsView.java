@@ -24,6 +24,7 @@ import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.AxisComponentModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.network.httpdata.HttpData;
 import com.google.common.collect.ImmutableMap;
@@ -111,10 +112,10 @@ final class ThreadsView {
 
     myObserver = new AspectObserver();
     stageView.getStage().getAspect().addDependency(myObserver)
-      .onChange(NetworkProfilerAspect.SELECTED_CONNECTION, () -> {
-        timelineRenderer.updateRows();
-        myThreadsTable.repaint();
-      });
+             .onChange(NetworkProfilerAspect.SELECTED_CONNECTION, () -> {
+               timelineRenderer.updateRows();
+               myThreadsTable.repaint();
+             });
   }
 
   @NotNull
@@ -292,7 +293,7 @@ final class ThreadsView {
       myStage = stage;
       myDataList = data;
       myRange = stage.getStudioProfilers().getTimeline().getSelectionRange();
-      setFont(AdtUiUtils.DEFAULT_FONT);
+      setFont(ProfilerFonts.SMALL_FONT);
       setForeground(Color.BLACK);
       setBackground(ProfilerColors.DEFAULT_BACKGROUND);
       myTable = table;
@@ -381,7 +382,7 @@ final class ThreadsView {
       myContent = new JPanel(new TabularLayout("*", "*"));
       myContent.setBorder(TOOLTIP_BORDER);
       myContent.setBackground(ProfilerColors.TOOLTIP_BACKGROUND);
-      myContent.setFont(myContent.getFont().deriveFont(TOOLTIP_FONT_SIZE));
+      myContent.setFont(ProfilerFonts.TOOLTIP_FONT);
 
       myTooltipComponent = new TooltipComponent.Builder(myContent, table).setPreferredParentClass(ProfilerLayeredPane.class).build();
       myTooltipComponent.registerListenersOn(table);
@@ -406,7 +407,7 @@ final class ThreadsView {
 
       myContent.removeAll();
       addToContent(newTooltipLabel(urlName));
-      JLabel durationLabel = newTooltipLabel(TimeAxisFormatter.DEFAULT.getFormattedDuration(duration));
+      JLabel durationLabel = newTooltipLabel(TimeFormatter.getSingleUnitDurationString(duration));
       durationLabel.setForeground(ProfilerColors.TOOLTIP_TIME_COLOR);
       addToContent(durationLabel);
 
@@ -441,7 +442,7 @@ final class ThreadsView {
     private static JLabel newTooltipLabel(String text) {
       JLabel label = new JLabel(text);
       label.setForeground(ProfilerColors.TOOLTIP_TEXT);
-      label.setFont(label.getFont().deriveFont(TOOLTIP_FONT_SIZE));
+      label.setFont(ProfilerFonts.TOOLTIP_FONT);
       return label;
     }
 

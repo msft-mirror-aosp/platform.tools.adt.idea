@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
-import com.google.common.base.Preconditions;
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
+import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
@@ -31,26 +32,21 @@ import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.iStr
  * Represents a literal element.
  */
 public final class GradleDslLiteral extends GradleDslSettableExpression {
-  @Nullable private PsiElement myUnsavedConfigBlock;
+  private boolean myIsReference;
 
   public GradleDslLiteral(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, null, name, null);
+    // Will be set in the call to #setValue
+    myIsReference = false;
   }
 
   public GradleDslLiteral(@NotNull GradleDslElement parent,
                           @NotNull PsiElement psiElement,
                           @NotNull GradleNameElement name,
-                          @NotNull PsiElement literal) {
+                          @NotNull PsiElement literal,
+                          boolean isReference) {
     super(parent, psiElement, name, literal);
-  }
-
-  @Nullable
-  public PsiElement getUnsavedConfigBlock() {
-    return myUnsavedConfigBlock;
-  }
-
-  public void setUnsavedConfigBlock(@Nullable PsiElement configBlock) {
-    myUnsavedConfigBlock = configBlock;
+    myIsReference = isReference;
   }
 
   @Override
@@ -73,11 +69,6 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
     }
     return ApplicationManager.getApplication()
                              .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, false));
-  }
-
-  @Nullable
-  public PsiElement getLastCommittedValue() {
-    return myExpression;
   }
 
   /**
@@ -107,6 +98,12 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   @Override
   public void setValue(@NotNull Object value) {
     checkForValidValue(value);
+    if (value instanceof ReferenceTo) {
+      myIsReference = true;
+    }
+    else {
+      myIsReference = false;
+    }
     PsiElement element =
       ApplicationManager.getApplication().runReadAction((Computable<PsiElement>)() -> getDslFile().getParser().convertToPsiElement(value));
     setUnsavedValue(element);
@@ -144,16 +141,6 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
     return literal;
   }
 
-  public void setConfigBlock(@NotNull PsiElement block) {
-    // For now we only support setting the config block on literals for newly created dependencies.
-    Preconditions.checkState(getPsiElement() == null, "Can't add configuration block to an existing DSL literal.");
-
-    // TODO: Use com.android.tools.idea.gradle.dsl.parser.dependencies.DependencyConfigurationDslElement to add a dependency configuration.
-
-    myUnsavedConfigBlock = block;
-    setModified(true);
-  }
-
   @Override
   public String toString() {
     Object value = getValue();
@@ -180,5 +167,24 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
   @Override
   protected void apply() {
     getDslFile().getWriter().applyDslLiteral(this);
+  }
+
+  @Nullable
+  public GradleReferenceInjection getReferenceInjection() {
+    return myDependencies.isEmpty() ? null : myDependencies.get(0);
+  }
+
+  @Nullable
+  public String getReferenceText() {
+    if (!myIsReference) {
+      return null;
+    }
+
+    PsiElement element = getCurrentElement();
+    return element != null ? getPsiText(element) : null;
+  }
+
+  public boolean isReference() {
+    return myIsReference;
   }
 }

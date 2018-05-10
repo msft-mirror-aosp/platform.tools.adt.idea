@@ -65,6 +65,9 @@ public class HtmlLinkManagerTest extends TestCase {
     List<GoogleMavenArtifactId> addedArtifacts = new ArrayList<>();
 
     AndroidModuleSystem moduleSystem = new AndroidModuleSystem() {
+      @Override
+      public void registerDependency(@NotNull GradleCoordinate coordinate) {}
+
       @NotNull
       @Override
       public Sequence<GoogleMavenArtifactId> getDependencies() {
@@ -93,19 +96,19 @@ public class HtmlLinkManagerTest extends TestCase {
 
       @Nullable
       @Override
-      public GoogleMavenArtifactVersion getDeclaredVersion(@NotNull GoogleMavenArtifactId artifactId) throws DependencyManagementException {
-        return null;
-      }
-
-      @Nullable
-      @Override
-      public GradleCoordinate getDeclaredDependency(@NotNull GradleCoordinate coordinate) throws DependencyManagementException {
+      public GradleCoordinate getRegisteredDependency(@NotNull GradleCoordinate coordinate) throws DependencyManagementException {
         return null;
       }
 
       @Nullable
       @Override
       public GoogleMavenArtifactVersion getResolvedVersion(@NotNull GoogleMavenArtifactId artifactId) throws DependencyManagementException {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public GradleCoordinate getResolvedDependency(@NotNull GradleCoordinate coordinate) throws DependencyManagementException {
         return null;
       }
 

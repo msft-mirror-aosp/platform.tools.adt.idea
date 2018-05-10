@@ -40,13 +40,14 @@ public class StudioIcons {
     public static final Icon CHECKED = load("/studio/icons/common/checked.png"); // 16x16
     public static final Icon CLEAR = load("/studio/icons/common/clear.png"); // 16x16
     public static final Icon CLOSE = load("/studio/icons/common/close.png"); // 16x16
+    public static final Icon DELETE = load("/studio/icons/common/delete.png"); // 16x16
     public static final Icon EDIT = load("/studio/icons/common/edit.png"); // 16x16
     public static final Icon ERROR_INLINE_SELECTED = load("/studio/icons/common/error-inline-selected.png"); // 16x16
     public static final Icon ERROR_INLINE = load("/studio/icons/common/error-inline.png"); // 16x16
     public static final Icon ERROR = load("/studio/icons/common/error.png"); // 16x16
     public static final Icon EXPORT = load("/studio/icons/common/export.png"); // 16x16
     public static final Icon FILTER = load("/studio/icons/common/filter.png"); // 16x16
-    public static final Icon HELP = load("/studio/icons/common/help.png"); //  16x16
+    public static final Icon HELP = load("/studio/icons/common/help.png"); // 16x16
     public static final Icon IMPORT_DATA = load("/studio/icons/common/import-data.png"); // 16x16
     public static final Icon INFO_INLINE_SELECTED = load("/studio/icons/common/info-inline-selected.png"); // 16x16
     public static final Icon INFO_INLINE = load("/studio/icons/common/info-inline.png"); // 16x16
@@ -60,6 +61,8 @@ public class StudioIcons {
     public static final Icon PROPERTY_BOUND = load("/studio/icons/common/property-bound.png"); // 15x20
     public static final Icon PROPERTY_UNBOUND_FOCUS = load("/studio/icons/common/property-unbound-focus.png"); // 15x20
     public static final Icon PROPERTY_UNBOUND = load("/studio/icons/common/property-unbound.png"); // 15x20
+    public static final Icon REMOVE = load("/studio/icons/common/remove.png"); // 16x16
+    public static final Icon REORDER = load("/studio/icons/common/reorder.png"); // 16x16
     public static final Icon RESET_ZOOM = load("/studio/icons/common/reset-zoom.png"); // 16x16
     public static final Icon SEARCH = load("/studio/icons/common/search.png"); // 16x16
     public static final Icon SUCCESS_INLINE_SELECTED = load("/studio/icons/common/success-inline-selected.png"); // 16x16
@@ -73,6 +76,7 @@ public class StudioIcons {
     public static final Icon ZOOM_ACTUAL = load("/studio/icons/common/zoom-actual.png"); // 16x16
     public static final Icon ZOOM_IN = load("/studio/icons/common/zoom-in.png"); // 16x16
     public static final Icon ZOOM_OUT = load("/studio/icons/common/zoom-out.png"); // 16x16
+    public static final Icon ZOOM_SELECT = load("/studio/icons/common/zoom-select.png"); // 16x16
   }
 
   public static class Cursors {
@@ -95,6 +99,17 @@ public class StudioIcons {
       public static final Icon ROOT_INLINE = load("/studio/icons/layout-editor/extras/root-inline.png"); // 16x16
       public static final Icon VISIBILITY_GONE_INLINE_SELECTED = load("/studio/icons/layout-editor/extras/visibility-gone-inline-selected.png"); // 16x16
       public static final Icon VISIBILITY_GONE_INLINE = load("/studio/icons/layout-editor/extras/visibility-gone-inline.png"); // 16x16
+    }
+
+    public static class Motion {
+      public static final Icon GO_TO_END = load("/studio/icons/layout-editor/motion/go-to-end.png"); // 16x16
+      public static final Icon GO_TO_START = load("/studio/icons/layout-editor/motion/go-to-start.png"); // 16x16
+      public static final Icon LOOP = load("/studio/icons/layout-editor/motion/loop.png"); // 16x16
+      public static final Icon MAX_SCALE = load("/studio/icons/layout-editor/motion/max-scale.png"); // 16x16
+      public static final Icon MIN_SCALE = load("/studio/icons/layout-editor/motion/min-scale.png"); // 16x16
+      public static final Icon PAUSE = load("/studio/icons/layout-editor/motion/pause.png"); // 16x16
+      public static final Icon PLAY = load("/studio/icons/layout-editor/motion/play.png"); // 16x16
+      public static final Icon SLOW_MOTION = load("/studio/icons/layout-editor/motion/slow-motion.png"); // 16x16
     }
 
     public static class Palette {
@@ -322,6 +337,8 @@ public class StudioIcons {
 
   public static class MotionLayoutUI {
     public static final Icon ADD_KEYFRAME = load("/studio/icons/layout-editor/motion/add-keyframe.png"); // 16x16
+    public static final Icon REMOVE_KEYFRAME = load("/studio/icons/layout-editor/motion/remove-keyframe.png"); // 16x16
+    public static final Icon REMOVE_TAG = load("/studio/icons/layout-editor/motion/ic_delete_forever.png"); // 16x16
     public static final Icon CIRCLE_PLAY = load("/studio/icons/layout-editor/motion/circle-play.png"); // 16x16
     public static final Icon BACKWARD = load("/studio/icons/layout-editor/motion/skip-previous.png"); // 16x16
     public static final Icon PLAY = load("/studio/icons/layout-editor/motion/play.png"); // 16x16
@@ -437,6 +454,7 @@ public class StudioIcons {
       public static final Icon BOOKMARK = load("/studio/icons/profiler/sessions/bookmark.png"); // 16x16
       public static final Icon CPU = load("/studio/icons/profiler/sessions/cpu.png"); // 16x16
       public static final Icon HEAP = load("/studio/icons/profiler/sessions/heap.png"); // 16x16
+      public static final Icon SAVE = load("/studio/icons/profiler/sessions/save.png"); // 16x16
     }
 
     public static class Sidebar {
@@ -445,6 +463,7 @@ public class StudioIcons {
     }
 
     public static class Toolbar {
+      public static final Icon CAPTURE_CLOCK = load("/studio/icons/profiler/toolbar/capture-clock.png"); // 16x16
       public static final Icon CLOCK = load("/studio/icons/profiler/toolbar/clock.png"); // 16x16
       public static final Icon COLLAPSE_SESSION = load("/studio/icons/profiler/toolbar/collapse-session.png"); // 16x16
       public static final Icon EXPAND_SESSION = load("/studio/icons/profiler/toolbar/expand-session.png"); // 16x16

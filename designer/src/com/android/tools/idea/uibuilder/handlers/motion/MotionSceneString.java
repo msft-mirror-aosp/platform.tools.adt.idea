@@ -8,9 +8,10 @@ public class MotionSceneString {
       public static final String MotionNameSpace = "motion:";
       public static final String AndroidNameSpace = "android:";
 
-
       public static final  String MotionSceneKeyFrames = "KeyFrames";
       public static final  String MotionSceneTransition = "Transition";
+      public static final  String MotionSceneOnSwipe = "OnSwipe";
+
       public static final  String MotionSceneConstraintSet = "ConstraintSet";
       public static final  String ConstraintSetConstrainView = "ConstrainView";
 
@@ -22,7 +23,6 @@ public class MotionSceneString {
       public static final  String KeyTypeAttributes="KeyAttributes";
       public static final  String KeyTypePositionCartesian="KeyPositionCartesian";
       public static final  String KeyTypePositionPath="KeyPositionPath";
-
 
       public static final  String Key_framePosition="framePosition";
       public static final  String KeyAttributes_android_orientation="orientation";
@@ -44,6 +44,15 @@ public class MotionSceneString {
       public static final  String KeyAttributes_target="target";
       public static final  String KeyAttributes_transitionEasing="transitionEasing";
       public static final  String KeyAttributes_transitionPathRotate="transitionPathRotate";
+      public static final  String KeyAttributes_customAttribute="CustomAttribute";
+
+      public static final  String CustomAttributes_attributeName="attributeName";
+      public static final  String CustomAttributes_customColorValue="customColorValue";
+      public static final  String CustomAttributes_customIntegerValue="customIntegerValue";
+      public static final  String CustomAttributes_customFloatValue="customFloatValue";
+      public static final  String CustomAttributes_customStringValue="customStringValue";
+      public static final  String CustomAttributes_customDimensionValue="customDimension";
+      public static final  String CustomAttributes_customBooleanValue="customBoolean";
 
       public static final  String KeyCycle_android_alpha="alpha";
       public static final  String KeyCycle_android_translationX="translationX";

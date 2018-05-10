@@ -16,10 +16,9 @@
 package com.android.tools.profilers;
 
 import com.android.tools.adtui.AxisComponent;
-import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.Range;
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
+import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.intellij.ui.components.JBPanel;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.util.concurrent.TimeUnit;
+
+import static com.android.tools.profilers.ProfilerFonts.STANDARD_FONT;
 
 public abstract class StageView<T extends Stage> extends AspectObserver {
   private final T myStage;
@@ -66,7 +67,7 @@ public abstract class StageView<T extends Stage> extends AspectObserver {
     myTooltipBinder = new ViewBinder<>();
 
     mySelectionTimeLabel = new JLabel("");
-    mySelectionTimeLabel.setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(12f));
+    mySelectionTimeLabel.setFont(STANDARD_FONT);
     mySelectionTimeLabel.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
 
     stage.getStudioProfilers().addDependency(this).onChange(ProfilerAspect.TOOLTIP, this::tooltipChanged);
@@ -176,12 +177,12 @@ public abstract class StageView<T extends Stage> extends AspectObserver {
     long selectionMaxUs = timeline.convertToRelativeTimeUs(TimeUnit.MICROSECONDS.toNanos((long)selectionRange.getMax()));
     mySelectionTimeLabel.setIcon(StudioIcons.Profiler.Toolbar.CLOCK);
     if (selectionRange.isPoint()) {
-      mySelectionTimeLabel.setText(TimeAxisFormatter.DEFAULT.getSimplifiedClockFormattedString(selectionMinUs));
+      mySelectionTimeLabel.setText(TimeFormatter.getSimplifiedClockString(selectionMinUs));
     }
     else {
       mySelectionTimeLabel.setText(String.format("%s - %s",
-                                                 TimeAxisFormatter.DEFAULT.getSimplifiedClockFormattedString(selectionMinUs),
-                                                 TimeAxisFormatter.DEFAULT.getSimplifiedClockFormattedString(selectionMaxUs)));
+                                                 TimeFormatter.getSimplifiedClockString(selectionMinUs),
+                                                 TimeFormatter.getSimplifiedClockString(selectionMaxUs)));
     }
   }
 }

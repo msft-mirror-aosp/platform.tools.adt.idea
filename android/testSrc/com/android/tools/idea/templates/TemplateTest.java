@@ -1459,7 +1459,7 @@ public class TemplateTest extends AndroidGradleTestCase {
       // and has only kotlin files.
       if (getTestName(false).endsWith("WithKotlin")) {
         Path rootPath = projectDir.toPath();
-        // Note: Files.walk() stream needs to be closed (or consumed completly), otherwise it will leave locked directories on Windows
+        // Note: Files.walk() stream needs to be closed (or consumed completely), otherwise it will leave locked directories on Windows
         List<Path> allPaths = Files.walk(rootPath).collect(toList());
         assertFalse(allPaths.stream().anyMatch(path -> path.toString().endsWith(".java")));
         assertTrue(allPaths.stream().anyMatch(path -> path.toString().endsWith(".kt")));
@@ -1530,15 +1530,17 @@ public class TemplateTest extends AndroidGradleTestCase {
   }
 
   private static String getModifiedProjectName(@NotNull String projectName, @Nullable TestTemplateWizardState activityState) {
+    String specialChars = "!@#$^&()_+=-.`~";
+    String nonAsciiChars = "你所有的基地都属于我们";
     if (SystemInfo.isWindows) {
       return "app";
     } else if (activityState != null && activityState.hasAttr(ATTR_KOTLIN_SUPPORT) && activityState.getBoolean(ATTR_KOTLIN_SUPPORT)) {
       // Filed: https://youtrack.jetbrains.com/issue/KT-18767
-      // Note: kotlin plugin fails when running `:compileDebugKotin` with a project name containing a comma => ","
-      // So the projectName contains characters other than a comma
-      return projectName + "!@#$^&()_+=-.`~你所有的基地都属于我们";
+      // Note: Kotlin plugin fails when running `:compileDebugKotlin` with a project name containing a comma => ","
+      // So the projectName contains characters other than a comma.
+      return projectName + specialChars + nonAsciiChars;
     } else {
-      return (projectName + "!@#$^&()_+=-,.`~你所有的基地都属于我们");
+      return projectName + specialChars + ',' + nonAsciiChars;
     }
   }
 
@@ -1547,10 +1549,13 @@ public class TemplateTest extends AndroidGradleTestCase {
     ApplicationManager.getApplication().runWriteAction(() -> {
       int minSdkVersion = Integer.parseInt((String)moduleState.get(ATTR_MIN_API));
       IconGenerator iconGenerator = new LauncherLegacyIconGenerator(minSdkVersion);
-      iconGenerator.outputName().set("ic_launcher");
-      iconGenerator.sourceAsset().setValue(new ImageAsset());
-      createProject(projectState, myFixture.getProject(), iconGenerator);
-      Disposer.dispose(iconGenerator);
+      try {
+        iconGenerator.outputName().set("ic_launcher");
+        iconGenerator.sourceAsset().setValue(new ImageAsset());
+        createProject(projectState, myFixture.getProject(), iconGenerator);
+      } finally {
+        Disposer.dispose(iconGenerator);
+      }
       FileDocumentManager.getInstance().saveAllDocuments();
     });
 

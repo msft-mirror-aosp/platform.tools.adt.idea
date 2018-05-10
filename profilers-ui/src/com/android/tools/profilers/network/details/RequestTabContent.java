@@ -37,6 +37,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static com.android.tools.profilers.ProfilerFonts.STANDARD_FONT;
+
 /**
  * Tab which shows a request's headers and payload.
  */
@@ -67,6 +69,7 @@ final class RequestTabContent extends TabContent {
   @Override
   protected JComponent createComponent() {
     myPanel = TabUiUtils.createVerticalPanel(TabUiUtils.TAB_SECTION_VGAP);
+    myPanel.setBorder(new JBEmptyBorder(0, TabUiUtils.HORIZONTAL_PADDING, 0, TabUiUtils.HORIZONTAL_PADDING));
     return TabUiUtils.createVerticalScrollPane(myPanel);
   }
 
@@ -95,8 +98,8 @@ final class RequestTabContent extends TabContent {
     if (!contentToParse.isEmpty()) {
       final CardLayout cardLayout = new CardLayout();
       final JPanel payloadPanel = new JPanel(cardLayout);
-      String cardViewParsed = "view parsed";
-      String cardViewSource = "view source";
+      String cardViewParsed = "View Parsed";
+      String cardViewSource = "View Source";
 
       final Map<String, String> parsedContent = new LinkedHashMap<>();
       Stream<String[]> parsedContentStream = Arrays.stream(contentToParse.trim().split("&")).map(s -> s.split("=", 2));
@@ -110,7 +113,7 @@ final class RequestTabContent extends TabContent {
       Color toggleHoverColor = AdtUiUtils.overlayColor(toggleLabel.getBackground().getRGB(), toggleLabel.getForeground().getRGB(), 0.9f);
       Color toggleDefaultColor = AdtUiUtils.overlayColor(toggleLabel.getBackground().getRGB(), toggleHoverColor.getRGB(), 0.6f);
       toggleLabel.setForeground(toggleDefaultColor);
-      toggleLabel.setFont(UIManager.getFont("Label.font").deriveFont(TabUiUtils.FIELD_FONT_SIZE));
+      toggleLabel.setFont(STANDARD_FONT);
       toggleLabel.setBorder(new JBEmptyBorder(0, 10, 0, 5));
       toggleLabel.addMouseListener(new MouseAdapter() {
         @Override

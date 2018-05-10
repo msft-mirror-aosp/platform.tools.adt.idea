@@ -17,12 +17,10 @@ package com.android.tools.profilers;
 
 import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profilers.analytics.FeatureTracker;
-import com.android.tools.profilers.cpu.CpuProfilerConfigModel;
 import com.android.tools.profilers.cpu.ProfilingConfiguration;
 import com.android.tools.profilers.stacktrace.CodeNavigator;
 import com.android.tools.profilers.stacktrace.FakeCodeNavigator;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -310,12 +308,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   @Override
-  public void openCpuProfilingConfigurationsDialog(CpuProfilerConfigModel model, int deviceLevel,
-                                                   Consumer<ProfilingConfiguration> callbackDialog) {
-    // No-op.
-  }
-
-  @Override
   public void openParseLargeTracesDialog(Runnable yesCallback, Runnable noCallback) {
     if (myShouldParseLongTraces) {
       yesCallback.run();
@@ -355,12 +347,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
                                                                CpuProfiler.CpuProfilerType.ATRACE,
                                                                CpuProfiler.CpuProfilerConfiguration.Mode.SAMPLED);
     return ImmutableList.of(artSampled, artInstrumented, simpleperf, atrace);
-  }
-
-  @NotNull
-  @Override
-  public String getApplicationId() {
-    return "some.id";
   }
 
   @Override

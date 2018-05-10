@@ -17,7 +17,6 @@ package com.android.tools.idea.tests.gui.editors;
 
 import com.android.tools.idea.gradle.util.BuildMode;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.ApkViewerFixture;
@@ -26,11 +25,13 @@ import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.ProjectViewFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.ProjectViewFixture.PaneFixture;
 import com.intellij.ide.projectView.impl.ProjectViewPane;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
+import org.fest.swing.timing.Wait;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith(GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class ApkViewerTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
@@ -66,8 +67,8 @@ public class ApkViewerTest {
 
     IdeFrameFixture ideFrame = guiTest.importSimpleLocalApplication();
 
-    ProjectViewFixture projectView = ideFrame.invokeMenuPath("Build", "Build APK(s)")
-      .waitForBuildToFinish(BuildMode.ASSEMBLE)
+    ProjectViewFixture projectView = ideFrame.invokeMenuPath("Build", "Build Bundle(s) / APK(s)", "Build APK(s)")
+      .waitForBuildToFinish(BuildMode.ASSEMBLE, Wait.seconds(180))
       .getProjectView();
 
     PaneFixture paneFixture = projectView.selectPane(ProjectViewPane.ID, "Project");
@@ -89,7 +90,7 @@ public class ApkViewerTest {
       .enterText("\nSystem.out.println(\"Hello.\");")
       .close();
 
-    ideFrame.invokeMenuPath("Build", "Build APK(s)")
-      .waitForBuildToFinish(BuildMode.ASSEMBLE);
+    ideFrame.invokeMenuPath("Build", "Build Bundle(s) / APK(s)", "Build APK(s)")
+      .waitForBuildToFinish(BuildMode.ASSEMBLE, Wait.seconds(180));
   }
 }

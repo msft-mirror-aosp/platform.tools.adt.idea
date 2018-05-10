@@ -26,13 +26,14 @@ import com.android.tools.idea.common.surface.Interaction;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.rendering.parsers.AttributeSnapshot;
 import com.android.tools.idea.uibuilder.api.AccessoryPanelInterface;
-import com.android.tools.idea.uibuilder.api.CustomPanel;
-import com.android.tools.idea.uibuilder.handlers.assistant.TransitionLayoutAssistantPanel;
+import com.android.tools.idea.uibuilder.handlers.assistant.MotionLayoutAssistantPanel;
 import com.android.tools.idea.uibuilder.handlers.constraint.ComponentModification;
 import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintLayoutHandler;
+import com.android.tools.idea.uibuilder.handlers.constraint.targets.ConstraintDragTarget;
 import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistantFactory;
 import com.android.tools.idea.uibuilder.surface.AccessoryPanel;
 import com.android.tools.idea.uibuilder.surface.ScreenView;
+import com.android.utils.Pair;
 import com.google.common.collect.ImmutableList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,14 +41,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 
-import static com.android.SdkConstants.ATTR_TRANSITION_POSITION;
+import static com.android.SdkConstants.ATTR_TRANSITION_SHOW_PATHS;
 
 public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlComponentDelegate {
 
   @Override
   @NotNull
   public List<String> getInspectorProperties() {
-    return ImmutableList.of(ATTR_TRANSITION_POSITION);
+    return ImmutableList.of(ATTR_TRANSITION_SHOW_PATHS);
   }
 
   @Nullable
@@ -56,7 +57,7 @@ public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlCo
       return null;
     }
 
-    return (context) -> new TransitionLayoutAssistantPanel(surface, context.getComponent(), context.getDoClose());
+    return (context) -> new MotionLayoutAssistantPanel(surface, context.getComponent(), context.getDoClose());
   }
 
   @NotNull
@@ -97,6 +98,25 @@ public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlCo
     return new MotionLayoutSceneInteraction(screenView, component);
   }
 
+  @NotNull
+  @Override
+  public List<Target> createChildTargets(@NotNull SceneComponent parentComponent, @NotNull SceneComponent childComponent) {
+    MotionLayoutTimelinePanel panel = getTimeline(childComponent.getNlComponent());
+    if (panel != null) {
+      if (panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_PLAY
+          || panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_PAUSE
+          || panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_TRANSITION
+          || panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_UNKNOWN) {
+        ImmutableList.Builder<Target> listBuilder = new ImmutableList.Builder<>();
+        listBuilder.add(
+          new ConstraintDragTarget()
+        );
+        return listBuilder.build();
+      }
+    }
+    return super.createChildTargets(parentComponent, childComponent);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Delegation of NlComponent
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +126,7 @@ public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlCo
     return this;
   }
 
-  private MotionLayoutTimelinePanel getTimeline(@NotNull NlComponent component) {
+  public static MotionLayoutTimelinePanel getTimeline(@NotNull NlComponent component) {
     Object property = component.getClientProperty(MotionLayoutTimelinePanel.TIMELINE);
     if (property == null && component.getParent() != null) {
       // need to grab the timeline from the MotionLayout component...
@@ -187,6 +207,31 @@ public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlCo
     if (panel != null) {
       panel.getNlComponentDelegate().commit(modification);
     }
+  }
+
+  @Override
+  public void setAttribute(NlComponent component, String namespace, String attribute, String value) {
+    ComponentModification modification = new ComponentModification(component, "Set Attribute " + attribute);
+    MotionLayoutTimelinePanel panel = getTimeline(modification.getComponent());
+    if (panel != null) {
+      modification.setAttribute(namespace, attribute, value);
+      panel.getNlComponentDelegate().commit(modification);
+    }
+  }
+
+  @Override
+  public void clearCaches() {
+    // nothing here
+  }
+
+  @Override
+  public void willRemoveChild(@NotNull NlComponent component) {
+    // nmothing here
+  }
+
+  @Override
+  public boolean commitToMotionScene(Pair<String, String> key) {
+    return false;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

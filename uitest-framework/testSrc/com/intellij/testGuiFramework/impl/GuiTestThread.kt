@@ -36,7 +36,6 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
 
   private var testQueue: BlockingQueue<JUnitTestContainer> = LinkedBlockingQueue()
   private val core = JUnitCore()
-  private val LOG = Logger.getInstance("#com.intellij.testGuiFramework.impl.GuiTestThread")
 
   companion object {
     val GUI_TEST_THREAD_NAME = "GuiTest Thread"
@@ -44,7 +43,6 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
   }
 
   override fun run() {
-    LOG.warn("GuiTestThread started")
     client = JUnitClientImpl(host(), port(), createHandlers())
 
     core.addListener(JUnitClientListener({ jUnitInfo -> client!!.send(JUnitInfoMessage(jUnitInfo)) }))
@@ -66,7 +64,6 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
       override fun handle(message: MessageFromServer) {
         val content = (message as RunTestMessage).testContainer
         System.setProperty(GuiTestOptions.SEGMENT_INDEX, content.segmentIndex.toString())
-        LOG.info("Added test to testQueue: $content")
         testQueue.add(content)
       }
     }
@@ -87,7 +84,7 @@ class GuiTestThread : Thread(GUI_TEST_THREAD_NAME) {
   private fun port(): Int = System.getProperty(GuiTestStarter.GUI_TEST_PORT).toInt()
 
   private fun runTest(testContainer: JUnitTestContainer) {
-    val request = if (testContainer.testClass.getAnnotation(RunWith::class.java).value == Parameterized::class.java) {
+    val request = if (testContainer.testClass.getAnnotation(RunWith::class.java).value.java == Parameterized::class.java) {
       Request.method(testContainer.testClass, testContainer.methodName + "[" + testContainer.buildSystem + "]")
     } else {
       Request.method(testContainer.testClass, testContainer.methodName)

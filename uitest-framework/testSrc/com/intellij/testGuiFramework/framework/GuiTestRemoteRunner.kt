@@ -51,16 +51,11 @@ import java.net.SocketException
  *   - sends a RESTART_IDE message back to the server if the IDE has fatal errors
  */
 open class GuiTestRemoteRunner @Throws(InitializationError::class)
-  constructor(testClass: Class<*>, val buildSystem: TargetBuildSystem.BuildSystem = TargetBuildSystem.BuildSystem.GRADLE) : BlockJUnit4ClassRunner(testClass) {
+  constructor(testClass: Class<*>, val myBuildSystem: TargetBuildSystem.BuildSystem = TargetBuildSystem.BuildSystem.GRADLE) : BlockJUnit4ClassRunner(testClass) {
 
   constructor(testClass: Class<*>) : this(testClass, TargetBuildSystem.BuildSystem.GRADLE)
 
-  val SERVER_LOG = Logger.getLogger("#com.intellij.testGuiFramework.framework.GuiTestRemoteRunner[SERVER]")!!
   val criticalError = Ref<Boolean>(false)
-
-  init {
-    SERVER_LOG.level = Level.INFO
-  }
 
   override fun runChild(method: FrameworkMethod, notifier: RunNotifier) {
     if (GuiTestStarter.isGuiTestThread())
@@ -74,21 +69,20 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
     val eachNotifier = EachTestNotifier(notifier, description)
     if (criticalError.get()) { eachNotifier.fireTestIgnored(); return }
 
-    SERVER_LOG.info("Starting test on server side: ${testClass.name}#${method.name}")
     val server = JUnitServerHolder.getServer(notifier)
 
     try {
       if (!server.isRunning()) {
         server.launchIdeAndStart()
       }
-      val jUnitTestContainer = JUnitTestContainer(method.declaringClass, method.name, buildSystem = buildSystem)
+      val jUnitTestContainer = JUnitTestContainer(method.declaringClass, method.name, buildSystem = myBuildSystem)
       server.send(RunTestMessage(jUnitTestContainer))
     }
     catch (e: Exception) {
-      SERVER_LOG.error(e)
       e.printStackTrace()
-      notifier.fireTestIgnored(description)
-      throw RuntimeException(e)
+      eachNotifier.addFailure(e)
+      eachNotifier.fireTestFinished()
+      return
     }
     var testIsRunning = true
     while(testIsRunning) {
@@ -96,7 +90,8 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
         server.receive()
       } catch (e: SocketException) {
         LOG.warn(e.message)
-        eachNotifier.fireTestIgnored()
+        eachNotifier.addFailure(e)
+        eachNotifier.fireTestFinished()
         return
       }
       when (message) {
@@ -116,7 +111,7 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
             eachNotifier.fireTestFinished()
             return
           }
-          server.send(RunTestMessage(JUnitTestContainer(method.declaringClass, method.name, message.index, buildSystem)))
+          server.send(RunTestMessage(JUnitTestContainer(method.declaringClass, method.name, message.index, myBuildSystem)))
         }
 
       }
@@ -144,17 +139,12 @@ open class GuiTestRemoteRunner @Throws(InitializationError::class)
   }
 
   private fun runOnClientSide(method: FrameworkMethod, notifier: RunNotifier) {
-    try {
-      LOG.info("Starting test: '${testClass.name}.${method.name}'")
-      // if IDE has fatal errors from a previous test, request a restart
-      if (GuiTests.fatalErrorsFromIde().isNotEmpty()) {
-        GuiTestThread.client?.send(RestartIdeMessage()) ?: throw Exception("JUnitClient is accidentally null")
-      } else {
-          super.runChild(method, notifier)
-      }
-    } catch (e: Exception) {
-      LOG.error(e)
-      throw e
+    LOG.info("Starting test: '${testClass.name}.${method.name}'")
+    // if IDE has fatal errors from a previous test, request a restart
+    if (GuiTests.fatalErrorsFromIde().isNotEmpty()) {
+      GuiTestThread.client?.send(RestartIdeMessage()) ?: throw Exception("JUnitClient is accidentally null")
+    } else {
+      super.runChild(method, notifier)
     }
   }
 

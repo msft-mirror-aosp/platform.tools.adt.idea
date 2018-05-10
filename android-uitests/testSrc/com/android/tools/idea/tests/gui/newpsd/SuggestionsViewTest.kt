@@ -24,6 +24,7 @@ import com.android.tools.idea.tests.gui.framework.fixture.newpsd.ProjectStructur
 import com.android.tools.idea.tests.gui.framework.fixture.newpsd.selectSuggestionsConfigurable
 import com.android.tools.idea.tests.gui.framework.fixture.newpsd.waitForIdle
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner
 import org.fest.swing.timing.Wait
 import org.junit.*
 import org.junit.Assert.assertTrue
@@ -31,7 +32,7 @@ import org.junit.runner.RunWith
 import kotlin.test.assertNotNull
 
 @RunIn(TestGroup.UNRELIABLE)
-@RunWith(GuiTestRunner::class)
+@RunWith(GuiTestRemoteRunner::class)
 class SuggestionsViewTest {
 
   @Rule
@@ -48,8 +49,7 @@ class SuggestionsViewTest {
     StudioFlags.NEW_PSD_ENABLED.clearOverride()
   }
 
-  // TODO(b/71720545): Remove ignore if refreshFiles() helps avoid disk and memory file content conflicts.
-  @Ignore("b/71720545")
+  @Ignore("b/77848741")
   @Test
   fun showsAndProcessesMessages() {
     val fixture = guiTest.importProjectAndWaitForProjectSyncToFinish("PsdSimple")

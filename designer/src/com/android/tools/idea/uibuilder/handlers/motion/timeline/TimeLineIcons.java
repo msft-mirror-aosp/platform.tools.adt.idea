@@ -18,36 +18,18 @@ package com.android.tools.idea.uibuilder.handlers.motion.timeline;
 import icons.StudioIcons;
 
 import javax.swing.*;
-import java.awt.*;
 
 /**
- * Icons used byt TimelinePanel
+ * Icons used by TimelinePanel
  */
 public class TimeLineIcons {
-  public static final Icon CIRCLE_PLAY = StudioIcons.MotionLayoutUI.CIRCLE_PLAY;
-  public static final Icon PLAY = StudioIcons.MotionLayoutUI.PLAY;
-  public static final Icon FORWARD = StudioIcons.MotionLayoutUI.BACKWARD;
-  public static final Icon BACKWARD = StudioIcons.MotionLayoutUI.FORWARD;
-  public static final Icon LOOP = StudioIcons.MotionLayoutUI.LOOP;
-  public static final Icon ADD_KEYFRAME = StudioIcons.MotionLayoutUI.ADD_KEYFRAME;
-  public static final Icon VIEW = StudioIcons.MotionLayoutUI.VIEW;
-  public static final Icon CHART = StudioIcons.MotionLayoutUI.CHART;
-  public static final Icon PAUSE = StudioIcons.MotionLayoutUI.PAUSE;
-  /* ==================== Simple empty icon needed as a place holder =========================*/
-  public static final Icon EMPTY = new Icon() {
-    @Override
-    public void paintIcon(Component c, Graphics g, int x, int y) {
-
-    }
-
-    @Override
-    public int getIconWidth() {
-      return 0;
-    }
-
-    @Override
-    public int getIconHeight() {
-      return 0;
-    }
-  };
+  public static final Icon SLOW_MOTION = StudioIcons.LayoutEditor.Motion.SLOW_MOTION;
+  public static final Icon PLAY = StudioIcons.LayoutEditor.Motion.PLAY;
+  public static final Icon FORWARD = StudioIcons.LayoutEditor.Motion.GO_TO_END;
+  public static final Icon BACKWARD = StudioIcons.LayoutEditor.Motion.GO_TO_START;
+  public static final Icon LOOP = StudioIcons.LayoutEditor.Motion.LOOP;
+  public static final Icon ADD_KEYFRAME = StudioIcons.Common.ADD;
+  public static final Icon REMOVE_KEYFRAME = StudioIcons.Common.REMOVE;
+  public static final Icon REMOVE_TAG = StudioIcons.Common.DELETE;
+  public static final Icon PAUSE = StudioIcons.LayoutEditor.Motion.PAUSE;
 }

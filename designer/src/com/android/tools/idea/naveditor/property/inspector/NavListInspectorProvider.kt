@@ -27,11 +27,14 @@ import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.naveditor.property.ListProperty
 import com.android.tools.idea.naveditor.property.NavPropertiesManager
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.*
-import com.intellij.ui.*
+import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.InplaceButton
+import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.SortedListModel
 import com.intellij.ui.components.JBList
 import com.intellij.util.ui.UIUtil
+import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Point
@@ -121,16 +124,14 @@ abstract class NavListInspectorProvider<PropertyType : ListProperty>(
     override fun attachToInspector(inspector: InspectorPanel<NavPropertiesManager>) {
       val panel = JPanel(BorderLayout())
       list = JBList<NlProperty>(displayProperties)
+      list.isOpaque = false
       list.name = NAV_LIST_COMPONENT_NAME
       list.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
       list.fixedCellWidth = 1
       list.cellRenderer = object: ColoredListCellRenderer<NlProperty>() {
         override fun customizeCellRenderer(list: JList<out NlProperty>, value: NlProperty?, index: Int, selected: Boolean, hasFocus: Boolean) {
           icon = if (selected && hasFocus) whiteIcon else this@NavListInspectorProvider.icon
-          if (selected && !hasFocus) {
-            background = UIUtil.getListUnfocusedSelectionBackground()
-            mySelectionForeground = UIUtil.getListForeground()
-          }
+          isOpaque = selected && hasFocus
           val name = value?.name ?: ""
           val id = displayIdSuffix(value)
           append(name)
@@ -173,7 +174,7 @@ abstract class NavListInspectorProvider<PropertyType : ListProperty>(
 
       panel.add(list, BorderLayout.CENTER)
 
-      val plus = InplaceButton(tooltip, addIcon) {
+      val plus = InplaceButton(tooltip, StudioIcons.Common.ADD) {
         @Suppress("UnnecessaryVariable")
         val event = it
         surface?.let { plusClicked(event, components, it) }
@@ -260,5 +261,3 @@ abstract class NavListInspectorProvider<PropertyType : ListProperty>(
     }
   }
 }
-
-private val addIcon = ColoredIconGenerator.generateColoredIcon(AllIcons.General.Add, JBColor.GRAY.rgb)

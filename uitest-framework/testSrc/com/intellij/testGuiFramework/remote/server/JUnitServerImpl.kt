@@ -22,13 +22,13 @@ import com.intellij.testGuiFramework.launcher.GuiTestOptions
 import com.intellij.testGuiFramework.remote.transport.CloseIdeMessage
 import com.intellij.testGuiFramework.remote.transport.MessageFromClient
 import com.intellij.testGuiFramework.remote.transport.MessageFromServer
-import com.intellij.testGuiFramework.remote.transport.TransportMessage
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
+import org.junit.runner.Description
 import org.junit.runner.Result
+import org.junit.runner.notification.Failure
 import org.junit.runner.notification.RunListener
 import org.junit.runner.notification.RunNotifier
-import java.io.File
 import java.io.InvalidClassException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -61,8 +61,8 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   lateinit private var objectInputStream: ObjectInputStream
   lateinit private var objectOutputStream: ObjectOutputStream
 
-  private val IDE_STARTUP_TIMEOUT = 40000
-  private val MESSAGE_INTERVAL_TIMEOUT = 15L
+  private val IDE_STARTUP_TIMEOUT = 40000   // ms
+  private val MESSAGE_INTERVAL_TIMEOUT = if (GuiTestOptions.isDebug()) Long.MAX_VALUE else 15L // seconds
 
   private val port: Int
 
@@ -72,6 +72,22 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
     LOG.info("Server running on port $port")
     serverSocket.soTimeout = IDE_STARTUP_TIMEOUT
     notifier.addListener(object : RunListener() {
+      var shouldRestartClient = false
+
+      override fun testFailure(failure: Failure?) {
+        shouldRestartClient = true
+        super.testFailure(failure)
+      }
+
+      override fun testFinished(description: Description?) {
+        super.testFinished(description)
+        if (shouldRestartClient && GuiTestOptions.shouldRestartOnTestFailure()) {
+          closeIdeAndStop()
+          launchIdeAndStart()
+          shouldRestartClient = false
+        }
+      }
+
       override fun testRunFinished(result: Result?) {
         closeIdeAndStop()
         super.testRunFinished(result)
@@ -98,7 +114,6 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
 
   override fun send(message: MessageFromServer) {
     postingMessages.put(message)
-    LOG.info("Add message to send pool: $message ")
   }
 
   override fun receive(): MessageFromClient {
@@ -116,15 +131,12 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   private fun stopServer() {
     if (!running) return
     serverSendThread.objectOutputStream.close()
-    LOG.info("Object output stream closed")
     serverSendThread.interrupt()
-    LOG.info("Server Send Thread joined")
     serverReceiveThread.objectInputStream.close()
-    LOG.info("Object input stream closed")
     serverReceiveThread.interrupt()
-    LOG.info("Server Receive Thread joined")
     connection.close()
     running = false
+    LOG.info("Server stopped.")
   }
 
   private fun stopClient() {
@@ -152,11 +164,10 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
   inner class ServerSendThread(val connection: Socket, val objectOutputStream: ObjectOutputStream) : Thread(SEND_THREAD) {
 
     override fun run() {
-      LOG.info("Server Send Thread started")
       try {
         while (!connection.isClosed) {
           val message = postingMessages.take()
-          LOG.info("Sending message: $message ")
+          LOG.debug("Sending message: $message ")
           objectOutputStream.writeObject(message)
         }
       }
@@ -164,7 +175,7 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
         Thread.currentThread().interrupt()
       }
       catch (e: Exception) {
-        if (e is InvalidClassException) LOG.error("Probably client is down:", e)
+        if (e is InvalidClassException) LOG.warn("Probably client is down:", e)
       }
       finally {
         objectOutputStream.close()
@@ -177,15 +188,14 @@ class JUnitServerImpl(notifier: RunNotifier) : JUnitServer {
 
     override fun run() {
       try {
-        LOG.info("Server Receive Thread started")
         while (!connection.isClosed) {
           val message = objectInputStream.readObject() as MessageFromClient
-          LOG.info("Receiving message: $message")
+          LOG.debug("Receiving message: $message")
           receivingMessages.put(message)
         }
       }
       catch (e: Exception) {
-        if (e is InvalidClassException) LOG.error("Probably serialization error:", e)
+        if (e is InvalidClassException) LOG.warn("Probably serialization error:", e)
       }
     }
   }

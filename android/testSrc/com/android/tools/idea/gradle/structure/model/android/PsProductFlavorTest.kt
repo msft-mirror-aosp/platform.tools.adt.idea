@@ -16,10 +16,7 @@
 package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.tools.idea.gradle.structure.model.PsProject
-import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
-import com.android.tools.idea.gradle.structure.model.meta.ResolvedValue
-import com.android.tools.idea.gradle.structure.model.meta.ValueDescriptor
-import com.android.tools.idea.gradle.structure.model.meta.getValue
+import com.android.tools.idea.gradle.structure.model.meta.*
 import com.android.tools.idea.testing.AndroidGradleTestCase
 import com.android.tools.idea.testing.TestProjectPaths
 import org.hamcrest.CoreMatchers.*
@@ -29,7 +26,7 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
 
   private fun <T> ResolvedValue<T>.asTestValue(): T? = (this as? ResolvedValue.Set<T>)?.resolved
   private fun <T> ParsedValue<T>.asTestValue(): T? = (this as? ParsedValue.Set.Parsed<T>)?.value
-  private fun <T : Any> T.asParsed(): ParsedValue<T> = ParsedValue.Set.Parsed(value = this)
+  private fun <T : Any> T.asParsed(): ParsedValue<T> = ParsedValue.Set.Parsed(this, DslText.Literal)
 
   fun testProperties() {
     loadProject(TestProjectPaths.PSD_SAMPLE)
@@ -43,24 +40,25 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
     val productFlavor = appModule.findProductFlavor("paid")
     assertThat(productFlavor, notNullValue()); productFlavor!!
 
-    val applicationId = PsProductFlavor.ProductFlavorDescriptors.applicationId.getValue(productFlavor)
-    val dimension = PsProductFlavor.ProductFlavorDescriptors.dimension.getValue(productFlavor)
-    val maxSdkVersion = PsProductFlavor.ProductFlavorDescriptors.maxSdkVersion.getValue(productFlavor)
-    val minSdkVersion = PsProductFlavor.ProductFlavorDescriptors.minSdkVersion.getValue(productFlavor)
-    val multiDexEnabled = PsProductFlavor.ProductFlavorDescriptors.multiDexEnabled.getValue(productFlavor)
-    val targetSdkVersion = PsProductFlavor.ProductFlavorDescriptors.targetSdkVersion.getValue(productFlavor)
-    val testApplicationId = PsProductFlavor.ProductFlavorDescriptors.testApplicationId.getValue(productFlavor)
+    val applicationId = PsProductFlavor.ProductFlavorDescriptors.applicationId.bind(productFlavor).getValue()
+    val dimension = PsProductFlavor.ProductFlavorDescriptors.dimension.bind(productFlavor).getValue()
+    val maxSdkVersion = PsProductFlavor.ProductFlavorDescriptors.maxSdkVersion.bind(productFlavor).getValue()
+    val minSdkVersion = PsProductFlavor.ProductFlavorDescriptors.minSdkVersion.bind(productFlavor).getValue()
+    val multiDexEnabled = PsProductFlavor.ProductFlavorDescriptors.multiDexEnabled.bind(productFlavor).getValue()
+    val signingConfig = PsProductFlavor.ProductFlavorDescriptors.signingConfig.bind(productFlavor).getValue()
+    val targetSdkVersion = PsProductFlavor.ProductFlavorDescriptors.targetSdkVersion.bind(productFlavor).getValue()
+    val testApplicationId = PsProductFlavor.ProductFlavorDescriptors.testApplicationId.bind(productFlavor).getValue()
     // TODO(b/70501607): Decide on val testFunctionalTest = PsProductFlavor.ProductFlavorDescriptors.testFunctionalTest.getValue(productFlavor)
     // TODO(b/70501607): Decide on val testHandleProfiling = PsProductFlavor.ProductFlavorDescriptors.testHandleProfiling.getValue(productFlavor)
-    val testInstrumentationRunner = PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunner.getValue(productFlavor)
-    val versionCode = PsProductFlavor.ProductFlavorDescriptors.versionCode.getValue(productFlavor)
-    val versionName = PsProductFlavor.ProductFlavorDescriptors.versionName.getValue(productFlavor)
-    val manifestPlaceholders = PsProductFlavor.ProductFlavorDescriptors.manifestPlaceholders.getValue(productFlavor)
+    val testInstrumentationRunner = PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunner.bind(productFlavor).getValue()
+    val versionCode = PsProductFlavor.ProductFlavorDescriptors.versionCode.bind(productFlavor).getValue()
+    val versionName = PsProductFlavor.ProductFlavorDescriptors.versionName.bind(productFlavor).getValue()
+    val manifestPlaceholders = PsProductFlavor.ProductFlavorDescriptors.manifestPlaceholders.bind(productFlavor).getValue()
     val testInstrumentationRunnerArguments =
-      PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.getValue(productFlavor)
+      PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.bind(productFlavor).getValue()
     val editableTestInstrumentationRunnerArguments =
-      PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.getEditableValues(productFlavor)
-        .mapValues { it.value.getValue(Unit) }
+      PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.bind(productFlavor).getEditableValues()
+        .mapValues { it.value.getValue() }
 
     assertThat(dimension.resolved.asTestValue(), equalTo("foo"))
     assertThat(dimension.parsedValue.asTestValue(), equalTo("foo"))
@@ -76,6 +74,9 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
 
     assertThat(multiDexEnabled.resolved.asTestValue(), nullValue())
     assertThat(multiDexEnabled.parsedValue.asTestValue(), nullValue())
+
+    assertThat(signingConfig.resolved.asTestValue(), nullValue())
+    assertThat(signingConfig.parsedValue.asTestValue(), nullValue())
 
     assertThat(targetSdkVersion.resolved.asTestValue(), equalTo("20"))
     // TODO(b/71988818) assertThat(targetSdkVersion.parsedValue.asTestValue(), equalTo("19"))
@@ -121,7 +122,7 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
     assertThat(productFlavor, notNullValue()); productFlavor!!
 
     assertThat(
-      PsProductFlavor.ProductFlavorDescriptors.dimension.getKnownValues(productFlavor).get(),
+      PsProductFlavor.ProductFlavorDescriptors.dimension.bindContext(null, productFlavor).getKnownValues().get().literals,
       hasItems(ValueDescriptor("foo", "foo"), ValueDescriptor("bar", "bar")))
   }
 
@@ -148,32 +149,39 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
     productFlavor.versionCode = "3".asParsed()
     productFlavor.versionName = "3.0".asParsed()
     productFlavor.manifestPlaceholders = mapOf("c" to "CCC", "d" to "NotEEE").asParsed()
-    PsProductFlavor.ProductFlavorDescriptors.manifestPlaceholders.changeEntryKey(productFlavor,"d", "e")
-    PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments
-      .getEditableValues(productFlavor)["d"]?.setParsedValue(Unit, "DDD".asParsed())
-    PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.deleteEntry(productFlavor,"c")
+    PsProductFlavor.ProductFlavorDescriptors.signingConfig.bind(productFlavor).setParsedValue(
+      ParsedValue.Set.Parsed(Unit, DslText.Reference("signingConfigs.myConfig")))
+    PsProductFlavor.ProductFlavorDescriptors.manifestPlaceholders.bind(productFlavor).changeEntryKey("d", "e")
+    PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.bind(productFlavor)
+      .getEditableValues()["d"]?.setParsedValue("DDD".asParsed())
+    PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.bind(productFlavor).deleteEntry("c")
 
     fun verifyValues(productFlavor: PsProductFlavor, afterSync: Boolean = false) {
-      val applicationId = PsProductFlavor.ProductFlavorDescriptors.applicationId.getValue(productFlavor)
-      val dimension = PsProductFlavor.ProductFlavorDescriptors.dimension.getValue(productFlavor)
-      val maxSdkVersion = PsProductFlavor.ProductFlavorDescriptors.maxSdkVersion.getValue(productFlavor)
-      val minSdkVersion = PsProductFlavor.ProductFlavorDescriptors.minSdkVersion.getValue(productFlavor)
-      val multiDexEnabled = PsProductFlavor.ProductFlavorDescriptors.multiDexEnabled.getValue(productFlavor)
-      val targetSdkVersion = PsProductFlavor.ProductFlavorDescriptors.targetSdkVersion.getValue(productFlavor)
-      val testApplicationId = PsProductFlavor.ProductFlavorDescriptors.testApplicationId.getValue(productFlavor)
+      val applicationId = PsProductFlavor.ProductFlavorDescriptors.applicationId.bind(productFlavor).getValue()
+      val dimension = PsProductFlavor.ProductFlavorDescriptors.dimension.bind(productFlavor).getValue()
+      val maxSdkVersion = PsProductFlavor.ProductFlavorDescriptors.maxSdkVersion.bind(productFlavor).getValue()
+      val minSdkVersion = PsProductFlavor.ProductFlavorDescriptors.minSdkVersion.bind(productFlavor).getValue()
+      val multiDexEnabled = PsProductFlavor.ProductFlavorDescriptors.multiDexEnabled.bind(productFlavor).getValue()
+      val signingConfig = PsProductFlavor.ProductFlavorDescriptors.signingConfig.bind(productFlavor).getValue()
+      val targetSdkVersion = PsProductFlavor.ProductFlavorDescriptors.targetSdkVersion.bind(productFlavor).getValue()
+      val testApplicationId = PsProductFlavor.ProductFlavorDescriptors.testApplicationId.bind(productFlavor).getValue()
       // TODO(b/70501607): Decide on val testFunctionalTest = PsProductFlavor.ProductFlavorDescriptors.testFunctionalTest.getValue(productFlavor)
       // TODO(b/70501607): Decide on val testHandleProfiling = PsProductFlavor.ProductFlavorDescriptors.testHandleProfiling.getValue(productFlavor)
-      val testInstrumentationRunner = PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunner.getValue(productFlavor)
-      val versionCode = PsProductFlavor.ProductFlavorDescriptors.versionCode.getValue(productFlavor)
-      val versionName = PsProductFlavor.ProductFlavorDescriptors.versionName.getValue(productFlavor)
+      val testInstrumentationRunner = PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunner.bind(productFlavor).getValue()
+      val versionCode = PsProductFlavor.ProductFlavorDescriptors.versionCode.bind(productFlavor).getValue()
+      val versionName = PsProductFlavor.ProductFlavorDescriptors.versionName.bind(productFlavor).getValue()
       val testInstrumentationRunnerArguments =
-        PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.getValue(productFlavor)
+        PsProductFlavor.ProductFlavorDescriptors.testInstrumentationRunnerArguments.bind(productFlavor).getValue()
 
       assertThat(dimension.parsedValue.asTestValue(), equalTo("bar"))
       assertThat(applicationId.parsedValue.asTestValue(), equalTo("com.example.psd.sample.app.unpaid"))
       assertThat(maxSdkVersion.parsedValue.asTestValue(), equalTo(26))
       assertThat(minSdkVersion.parsedValue.asTestValue(), equalTo("11"))
       assertThat(multiDexEnabled.parsedValue.asTestValue(), equalTo(true))
+      assertThat(signingConfig.resolved.asTestValue(), nullValue())
+      assertThat(
+        signingConfig.parsedValue,
+        equalTo<ParsedValue<Unit>>(ParsedValue.Set.Parsed(Unit, DslText.Reference("signingConfigs.myConfig"))))
       // TODO(b/71988818)
       assertThat(targetSdkVersion.parsedValue.asTestValue(), equalTo("21"))
       assertThat(testApplicationId.parsedValue.asTestValue(), equalTo("com.example.psd.sample.app.unpaid.failed_test"))
@@ -188,6 +196,7 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
         assertThat(maxSdkVersion.parsedValue.asTestValue(), equalTo(maxSdkVersion.resolved.asTestValue()))
         assertThat(minSdkVersion.parsedValue.asTestValue(), equalTo(minSdkVersion.resolved.asTestValue()))
         assertThat(multiDexEnabled.parsedValue.asTestValue(), equalTo(multiDexEnabled.resolved.asTestValue()))
+        // TODO(b/79142681) signingConfig resolved value is always null.
         // TODO(b/71988818)
         assertThat(targetSdkVersion.parsedValue.asTestValue(), equalTo(targetSdkVersion.resolved.asTestValue()))
         assertThat(testApplicationId.parsedValue.asTestValue(), equalTo(testApplicationId.resolved.asTestValue()))

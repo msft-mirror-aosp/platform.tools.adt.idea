@@ -17,49 +17,74 @@ package com.android.tools.idea.gradle.structure.model.meta
 
 import com.google.common.util.concurrent.ListenableFuture
 import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
 /**
  * Core methods of a UI property descriptor manipulating parsed values.
  */
-interface ModelPropertyParsedCore<in ModelT, PropertyT : Any> {
-  fun getParsedValue(model: ModelT): ParsedValue<PropertyT>
-  fun setParsedValue(model: ModelT, value: ParsedValue<PropertyT>)
+interface ModelPropertyParsedCore<PropertyT : Any> {
+  fun getParsedValue(): ParsedValue<PropertyT>
+  fun setParsedValue(value: ParsedValue<PropertyT>)
 }
 
 /**
  * Core methods of a UI property descriptor manipulating resolved values.
  */
-interface ModelPropertyResolvedCore<in ModelT, out PropertyT : Any> {
-  fun getResolvedValue(model: ModelT): ResolvedValue<PropertyT>
+interface ModelPropertyResolvedCore<out PropertyT : Any> {
+  fun getResolvedValue(): ResolvedValue<PropertyT>
 }
 
 /**
- * A UI core descriptor of a property of a model of type [ModelT].
+ * A UI core descriptor of a property.
  */
-interface ModelPropertyCore<in ModelT, PropertyT : Any> :
-  ModelPropertyParsedCore<ModelT, PropertyT>,
-  ModelPropertyResolvedCore<ModelT, PropertyT>
+interface ModelPropertyCore<PropertyT : Any> :
+  ModelPropertyParsedCore<PropertyT>,
+  ModelPropertyResolvedCore<PropertyT> {
+  /**
+   * The function to get the default value of the property for a given model, or null if the default value of the property cannot be
+   * determined.
+   */
+  val defaultValueGetter: (() -> PropertyT?)?
+}
 
-fun <ModelT, PropertyT : Any> ModelPropertyCore<ModelT, PropertyT>.getValue(model: ModelT): PropertyValue<PropertyT> =
-  PropertyValue(parsedValue = getParsedValue(model), resolved = getResolvedValue(model))
+fun <PropertyT : Any> ModelPropertyCore<PropertyT>.getValue(): PropertyValue<PropertyT> =
+  PropertyValue(parsedValue = getParsedValue(), resolved = getResolvedValue())
 
 /**
  * A UI descriptor of a property of a model of type [ModelT].
  */
-interface ModelProperty<in ModelT, PropertyT : Any> :
-  ModelPropertyCore<ModelT, PropertyT>,
+interface ModelProperty<in ContextT, in ModelT, PropertyT : Any, ValueT : Any, out PropertyCoreT> :
   ReadWriteProperty<ModelT, ParsedValue<PropertyT>> {
   /**
    * A property description as it should appear in the UI.
    */
   val description: String
 
-  fun getDefaultValue(model: ModelT): PropertyT?
+  /**
+   * Returns a core property bound to [model].
+   */
+  fun bind(model: ModelT): PropertyCoreT
+
+  /**
+   * Returns a property context bound to [context] and [model].
+   */
+  fun bindContext(context: ContextT, model: ModelT): ModelPropertyContext<ValueT>
+}
+
+/**
+ * Metadata describing the well-known values and recognising variables suitable for a property.
+ */
+interface KnownValues<ValueT> {
+  val literals: List<ValueDescriptor<ValueT>>
+  fun isSuitableVariable(variable: ParsedValue.Set.Parsed<ValueT>): Boolean
+}
+
+fun <T> emptyKnownValues() = object : KnownValues<T> {
+  override val literals: List<ValueDescriptor<T>> = listOf()
+  override fun isSuitableVariable(variable: ParsedValue.Set.Parsed<T>): Boolean = false
 }
 
 @Suppress("AddVarianceModifier")  // PSQ erroneously reports AddVarianceModifier on ValueT here.
-interface ModelPropertyContext<in ModelT, ValueT : Any> {
+interface ModelPropertyContext<ValueT : Any> {
   /**
    * Parses the text representation of type [ValueT].
    *
@@ -68,9 +93,16 @@ interface ModelPropertyContext<in ModelT, ValueT : Any> {
   fun parse(value: String): ParsedValue<ValueT>
 
   /**
+   * Formats the text representation of [value].
+   *
+   * This is up to the parser to decide whether [value] is valid, invalid or is a DSL expression.
+   */
+  fun format(value: ValueT): String
+
+  /**
    * Returns a list of well-known values (constants) with their short human-readable descriptions that are applicable to the property.
    */
-  fun getKnownValues(model: ModelT): ListenableFuture<List<ValueDescriptor<ValueT>>>
+  fun getKnownValues(): ListenableFuture<KnownValues<ValueT>>
 }
 
 /**
@@ -78,56 +110,50 @@ interface ModelPropertyContext<in ModelT, ValueT : Any> {
  *
  * The simple-types property is a property whose value can be easily represented in the UI as text.
  */
-interface ModelSimpleProperty<in ModelT, PropertyT : Any> :
-  ModelProperty<ModelT, PropertyT>,
-  ModelPropertyContext<ModelT, PropertyT>
+interface ModelSimpleProperty<in ContextT, in ModelT, PropertyT : Any> :
+  ModelProperty<ContextT, ModelT, PropertyT, PropertyT, ModelPropertyCore<PropertyT>> 
+typealias SimpleProperty<ModelT, PropertyT> = ModelSimpleProperty<Nothing?, ModelT, PropertyT>
 
 /**
- * A UI descriptor of a collection property.
+ * A UI descriptor of a collection property core.
  */
-interface ModelCollectionProperty<in ModelT, CollectionT : Any, ValueT : Any>
-  : ModelProperty<ModelT, CollectionT>,
-    ModelPropertyContext<ModelT, ValueT>
+interface ModelCollectionPropertyCore<CollectionT : Any> : ModelPropertyCore<CollectionT>
+
+/**
+ * A UI descriptor of a list property core.
+ */
+interface ModelListPropertyCore<ValueT : Any> :
+  ModelCollectionPropertyCore<List<ValueT>> {
+  fun getEditableValues(): List<ModelPropertyCore<ValueT>>
+  fun addItem(index: Int): ModelPropertyCore<ValueT>
+  fun deleteItem(index: Int)
+}
 
 /**
  * A UI descriptor of a list property.
  */
-interface ModelListProperty<in ModelT, ValueT : Any> :
-  ModelCollectionProperty<ModelT, List<ValueT>, ValueT> {
-  fun getEditableValues(model: ModelT): List<ModelPropertyCore<Unit, ValueT>>
-  fun addItem(model: ModelT, index: Int): ModelPropertyCore<Unit, ValueT>
-  fun deleteItem(model: ModelT, index: Int)
+interface ModelListProperty<in ContextT, in ModelT, PropertyT : Any> : ModelProperty<ContextT, ModelT, List<PropertyT>, PropertyT, ModelListPropertyCore<PropertyT>>
+typealias ListProperty<ModelT, PropertyT> = ModelListProperty<Nothing?, ModelT, PropertyT>
+
+/**
+ * A UI descriptor of a map property core.
+ */
+interface ModelMapPropertyCore<ValueT : Any> : ModelCollectionPropertyCore<Map<String, ValueT>> {
+  fun getEditableValues(): Map<String, ModelPropertyCore<ValueT>>
+  fun addEntry(key: String): ModelPropertyCore<ValueT>
+  fun deleteEntry(key: String)
+  fun changeEntryKey(old: String, new: String): ModelPropertyCore<ValueT>
 }
 
 /**
  * A UI descriptor of a map property.
  */
-interface ModelMapProperty<in ModelT, ValueT : Any> :
-  ModelCollectionProperty<ModelT, Map<String, ValueT>, ValueT> {
-  fun getEditableValues(model: ModelT): Map<String, ModelPropertyCore<Unit, ValueT>>
-  fun addEntry(model: ModelT, key: String): ModelPropertyCore<Unit, ValueT>
-  fun deleteEntry(model: ModelT, key: String)
-  fun changeEntryKey(model: ModelT, old: String, new: String): ModelPropertyCore<Unit, ValueT>
-}
+interface ModelMapProperty<in ContextT, in ModelT, PropertyT : Any> : ModelProperty<ContextT, ModelT, Map<String, PropertyT>, PropertyT, ModelMapPropertyCore<PropertyT>>
+typealias MapProperty<ModelT, PropertyT> = ModelMapProperty<Nothing?, ModelT, PropertyT>
 
-fun <ModelT, PropertyT : Any> ModelSimpleProperty<ModelT, PropertyT>.bind(boundModel: ModelT): ModelSimpleProperty<Unit, PropertyT> = let {
-  object : ModelSimpleProperty<Unit, PropertyT> {
-    override fun getParsedValue(model: Unit): ParsedValue<PropertyT> = it.getParsedValue(boundModel)
+/**
+ * Creates a value formatter function that can be passed to [ParsedValue] renderers.
+ */
+fun <ValueT : Any> ModelPropertyContext<ValueT>.valueFormatter(): ValueT.() -> String =
+  { this@valueFormatter.format(this) }
 
-    override fun setParsedValue(model: Unit, value: ParsedValue<PropertyT>) = it.setParsedValue(boundModel, value)
-
-    override fun getResolvedValue(model: Unit): ResolvedValue<PropertyT> = it.getResolvedValue(boundModel)
-
-    override val description: String = it.description
-
-    override fun getDefaultValue(model: Unit): PropertyT? = it.getDefaultValue(boundModel)
-
-    override fun getValue(thisRef: Unit, property: KProperty<*>): ParsedValue<PropertyT> = it.getValue(boundModel, property)
-
-    override fun setValue(thisRef: Unit, property: KProperty<*>, value: ParsedValue<PropertyT>) = it.setValue(boundModel, property, value)
-
-    override fun parse(value: String): ParsedValue<PropertyT> = it.parse(value)
-
-    override fun getKnownValues(model: Unit): ListenableFuture<List<ValueDescriptor<PropertyT>>> = it.getKnownValues(boundModel)
-  }
-}

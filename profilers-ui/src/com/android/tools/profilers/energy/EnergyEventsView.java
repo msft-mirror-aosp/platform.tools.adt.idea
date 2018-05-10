@@ -44,6 +44,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.android.tools.profilers.ProfilerFonts.H2_FONT;
 import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 
 /**
@@ -115,10 +116,13 @@ public final class EnergyEventsView {
   public EnergyEventsView(EnergyProfilerStageView stageView) {
     myStage = stageView.getStage();
     myTableModel = new EventsTableModel(myStage);
+    // Add a listener on model to update selection before construct table because otherwise it flickers. The table also adds a listener
+    // on model that if the selection is set later then there is a clear and re-selection time gap on the view.
+    myTableModel.addTableModelListener(e -> updateTableSelection());
     myEventsTable = new HoverRowTable(myTableModel, ProfilerColors.DEFAULT_HOVER_COLOR);
     buildEventsTable();
     myStage.getAspect().addDependency(myAspectObserver).onChange(EnergyProfilerAspect.SELECTED_EVENT_DURATION, this::updateTableSelection)
-      .onChange(EnergyProfilerAspect.SELECTED_ORIGIN_FILTER, myTableModel::updateTableByConfiguration);
+      .onChange(EnergyProfilerAspect.SELECTED_ORIGIN_FILTER, myTableModel::updateTableByOrigin);
   }
 
   private void buildEventsTable() {
@@ -130,8 +134,8 @@ public final class EnergyEventsView {
       new TimelineRenderer(myEventsTable, myStage.getStudioProfilers().getTimeline().getSelectionRange()));
     TableUtils.setTableHeaderBorder(myEventsTable, ProfilerLayout.TABLE_COLUMN_HEADER_BORDER);
 
-    myEventsTable.getEmptyText().setText("No system events for the selected range.");
-    myEventsTable.getEmptyText().getComponent().setFont(myEventsTable.getFont().deriveFont(15f));
+    myEventsTable.getEmptyText().setText("No system events for the selected range or filter.");
+    myEventsTable.getEmptyText().getComponent().setFont(H2_FONT);
 
     myEventsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     myEventsTable.setBackground(ProfilerColors.DEFAULT_BACKGROUND);
@@ -246,7 +250,7 @@ public final class EnergyEventsView {
       myStage = stage;
       stage.getEnergyEventsFetcher().addListener(list -> {
         myDataList = list;
-        updateTableByConfiguration();
+        updateTableByOrigin();
       });
     }
 
@@ -281,7 +285,7 @@ public final class EnergyEventsView {
       return myList.get(rowIndex);
     }
 
-    public void updateTableByConfiguration() {
+    public void updateTableByOrigin() {
       myList = myStage.filterByOrigin(myDataList);
       fireTableDataChanged();
     }

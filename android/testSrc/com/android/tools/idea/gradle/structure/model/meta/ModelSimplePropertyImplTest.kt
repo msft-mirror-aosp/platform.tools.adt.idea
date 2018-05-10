@@ -35,9 +35,9 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
   }
 
   private fun <T : Any> GradlePropertyModel.wrap(
-    parse: (String) -> ParsedValue<T>,
+    parse: (Nothing?, String) -> ParsedValue<T>,
     caster: ResolvedPropertyModel.() -> T?
-  ): ModelSimpleProperty<Model, T> {
+  ): ModelSimpleProperty<Nothing?, Model, T> {
     val resolved = resolve()
     return Model.property(
       "description",
@@ -45,19 +45,20 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
       getParsedProperty = { resolved },
       getter = { caster() },
       setter = { setValue(it) },
-      parse = { parse(it) }
+      parse = { context, value -> parse(context, value) }
     )
   }
 
-  private fun <T : Any> ModelSimpleProperty<Model, T>.testValue() = (getParsedValue(Model) as? ParsedValue.Set.Parsed<T>)?.value
-  private fun <T : Any> ModelSimpleProperty<Model, T>.testSetValue(value: T?) =
-    setParsedValue(Model, if (value != null) ParsedValue.Set.Parsed(value = value) else ParsedValue.NotSet)
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testValue() =
+    (bind(Model).getParsedValue() as? ParsedValue.Set.Parsed<T>)?.value
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetValue(value: T?) =
+    bind(Model).setParsedValue(if (value != null) ParsedValue.Set.Parsed(value, DslText.Literal) else ParsedValue.NotSet)
 
-  private fun <T : Any> ModelSimpleProperty<Model, T>.testSetReference(value: String) =
-    setParsedValue(Model, ParsedValue.Set.Parsed(dslText = DslText(DslMode.REFERENCE, value), value = null))
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetReference(value: String) =
+    bind(Model).setParsedValue(ParsedValue.Set.Parsed(dslText = DslText.Reference(value), value = null))
 
-  private fun <T : Any> ModelSimpleProperty<Model, T>.testSetInterpolatedString(value: String) =
-    setParsedValue(Model, ParsedValue.Set.Parsed(dslText = DslText(DslMode.INTERPOLATED_STRING, value), value = null))
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetInterpolatedString(value: String) =
+    bind(Model).setParsedValue(ParsedValue.Set.Parsed(dslText = DslText.InterpolatedString(value), value = null))
 
   @Test
   fun testPropertyValues() {

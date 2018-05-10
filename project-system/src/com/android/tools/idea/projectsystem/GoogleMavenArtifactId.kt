@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.projectsystem
 
+import com.android.SdkConstants.CONSTRAINT_LAYOUT_LIB_GROUP_ID
 import com.android.ide.common.repository.GradleCoordinate
 
 /**
@@ -68,6 +69,7 @@ enum class GoogleMavenArtifactId(val mavenGroupId: String, val mavenArtifactId: 
   ANDROIDX_ESPRESSO_CORE("androidx.test.espresso", "espresso-core", false),
   ESPRESSO_CONTRIB("com.android.support.test.espresso", "espresso-contrib", false),
   ANDROIDX_ESPRESSO_CONTRIB("androidx.test.espresso", "espresso-contrib", false),
+  TEST_RULES("com.android.support.test", "rules", false),
 
   // Data binding
   DATA_BINDING_LIB("com.android.databinding", "library", false),
@@ -88,7 +90,29 @@ enum class GoogleMavenArtifactId(val mavenGroupId: String, val mavenArtifactId: 
   ;
 
   fun getCoordinate(revision: String): GradleCoordinate =
-      GradleCoordinate(mavenGroupId, mavenArtifactId, GradleCoordinate.StringComponent(revision))
+      GradleCoordinate(mavenGroupId, mavenArtifactId, revision)
+
+  fun isAndroidxLibrary(): Boolean = mavenGroupId.startsWith("androidx.")
+
+  fun isAndroidxPlatformLibrary(): Boolean = isPlatformSupportLibrary && isAndroidxLibrary()
+
+  fun hasAndroidxEquivalent(): Boolean {
+    // All the platform support libraries have an androidx version
+    if (isPlatformSupportLibrary) {
+      return true
+    }
+    // Return true to the rest of groups that also have androidx version
+    when(mavenGroupId) {
+      CONSTRAINT_LAYOUT_LIB_GROUP_ID,
+        "com.android.support.test",
+        "com.android.support.test.espresso",
+        "com.android.databinding",
+        "com.google.android.gms",
+        "com.google.android.support" -> return true
+    }
+    // The rest of the libraries do not have an equivalent Androidx library
+    return false
+  }
 
   override fun toString(): String = "$mavenGroupId:$mavenArtifactId"
 

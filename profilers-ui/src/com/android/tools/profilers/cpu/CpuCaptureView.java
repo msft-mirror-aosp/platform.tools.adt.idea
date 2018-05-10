@@ -32,6 +32,7 @@ import com.android.tools.perflib.vmtrace.ClockType;
 import com.android.tools.profiler.proto.CpuProfiler;
 import com.android.tools.profilers.JComboBoxView;
 import com.android.tools.profilers.ProfilerColors;
+import com.android.tools.profilers.ProfilerFonts;
 import com.android.tools.profilers.ViewBinder;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.nodemodel.CaptureNodeModel;
@@ -311,7 +312,7 @@ class CpuCaptureView {
       String message = "No data available for the selected thread.";
       JPanel panel = new JPanel(new BorderLayout());
       InstructionsPanel info =
-        new InstructionsPanel.Builder(new TextInstruction(SwingUtilities2.getFontMetrics(panel, INFO_MESSAGE_HEADER_FONT), message))
+        new InstructionsPanel.Builder(new TextInstruction(SwingUtilities2.getFontMetrics(panel, ProfilerFonts.H3_FONT), message))
           .setColors(JBColor.foreground(), null)
           .build();
       panel.add(info, BorderLayout.CENTER);
@@ -322,7 +323,7 @@ class CpuCaptureView {
       String message = "No data available for the selected time frame.";
       JPanel panel = new JPanel(new BorderLayout());
       InstructionsPanel info =
-        new InstructionsPanel.Builder(new TextInstruction(SwingUtilities2.getFontMetrics(panel, INFO_MESSAGE_HEADER_FONT), message))
+        new InstructionsPanel.Builder(new TextInstruction(SwingUtilities2.getFontMetrics(panel, ProfilerFonts.H3_FONT), message))
           .setColors(JBColor.foreground(), null)
           .build();
       panel.add(info, BorderLayout.CENTER);
@@ -384,8 +385,11 @@ class CpuCaptureView {
       myPanel.add(getNoDataForRange(), CARD_EMPTY_INFO);
 
       CodeNavigator navigator = stageView.getStage().getStudioProfilers().getIdeServices().getCodeNavigator();
-      stageView.getIdeComponents().createContextMenuInstaller().installNavigationContextMenu(myTree, navigator,
-                                                                                             () -> getCodeLocation(myTree));
+      assert stageView.getStage().getCapture() != null;
+      if (stageView.getStage().getCapture().getType() != CpuProfiler.CpuProfilerType.ATRACE) {
+        stageView.getIdeComponents().createContextMenuInstaller().installNavigationContextMenu(myTree, navigator,
+                                                                                               () -> getCodeLocation(myTree));
+      }
 
       switchCardLayout(myPanel, model.isEmpty());
 

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.tests.gui.kotlin;
 
-import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
@@ -23,6 +22,7 @@ import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewProjectWizardFixture;
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.fest.swing.timing.Wait;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,11 +33,10 @@ import java.util.Locale;
 import static com.google.common.truth.Truth.assertThat;
 
 @RunIn(TestGroup.PROJECT_WIZARD)
-@RunWith (GuiTestRunner.class)
+@RunWith(GuiTestRemoteRunner.class)
 public class NewKotlinModuleTest {
 
   @Rule public final GuiTestRule guiTest = new GuiTestRule();
-  @Rule public final EmulatorTestRule emulator = new EmulatorTestRule();
 
   private static final String APP_NAME = "app";
   private static final String NEW_KOTLIN_MDULE_NAME = "KotlinModule";

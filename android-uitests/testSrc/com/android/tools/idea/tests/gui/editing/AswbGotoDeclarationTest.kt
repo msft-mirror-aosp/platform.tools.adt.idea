@@ -21,9 +21,7 @@ import com.android.tools.idea.tests.gui.framework.RunIn
 import com.android.tools.idea.tests.gui.framework.TestGroup
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture
 import com.android.tools.idea.tests.gui.framework.guitestprojectsystem.TargetBuildSystem
-import org.fest.swing.exception.WaitTimedOutError
 import org.fest.swing.timing.Wait
-import org.hamcrest.core.IsInstanceOf.instanceOf
 import org.junit.*
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -42,57 +40,29 @@ class AswbGotoDeclarationTest {
     fun data(): List<TargetBuildSystem.BuildSystem> = Collections.singletonList(TargetBuildSystem.BuildSystem.BAZEL)
   }
 
-  @Before
-  fun setUp() {
-    guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleBazelApplication", "java/com/foo/gallery/BUILD")
-  }
-
-  private fun EditorFixture.gotoDeclaration(resourceId: String): EditorFixture {
-    select("($resourceId)")
-    invokeAction(EditorFixture.EditorAction.GOTO_DECLARATION)
-    return this
-  }
-
-  private fun EditorFixture.waitUntilCurrentFileIs(waitTimeInSecond: Long, targetResourcePath: String): EditorFixture {
-    Wait.seconds(waitTimeInSecond).expecting("Navigate to target resource file $targetResourcePath")
-        .until { currentFile!!.canonicalPath == targetResourcePath }
-    return this
-  }
-
-  /**
-   * Open a file
-   *
-   * @param relativePath the project-relative path
-   */
-  private fun openFile(relativePath: String): EditorFixture {
-    return guiTest.ideFrame().editor.open(relativePath)
-  }
-
+  @RunIn(TestGroup.UNRELIABLE)  // b/78573145
   @Test
   @TargetBuildSystem(TargetBuildSystem.BuildSystem.BAZEL)
   fun gotoDeclaration_withExternalResources() {
-    val srcPath = "../SimpleBazelApplication/java/com/foo/gallery/activities/MainActivity.java"
-    val targetResourcePath = guiTest.ideFrame()
-        .findFileByRelativePath("../SimpleBazelApplication/java/com/foo/libs/res/res/values/styles.xml", true)!!
-        .canonicalPath
-    val resourceId = "R.style.Base_Highlight"
-    try {
-      openFile(srcPath).gotoDeclaration(resourceId).waitUntilCurrentFileIs(20, targetResourcePath!!)
-    } catch(e: Exception) {
-      // Time out exception due to b/71820265, try-catch should be removed after fixing it.
-      Assert.assertThat(e, instanceOf(WaitTimedOutError::class.java))
-    }
+    guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleBazelApplication", "java/com/foo/gallery/BUILD")
+      .editor
+      .open("../SimpleBazelApplication/java/com/foo/gallery/activities/MainActivity.java")
+      .moveBetween("R.style", ".Base_Highlight")
+      .invokeAction(EditorFixture.EditorAction.GOTO_DECLARATION)
+    Wait.seconds(20).expecting("file to open")
+      .until({guiTest.ideFrame().editor.currentFileName.equals("styles.xml")})
   }
 
   @RunIn(TestGroup.UNRELIABLE)  // b/76176149
   @Test
   @TargetBuildSystem(TargetBuildSystem.BuildSystem.BAZEL)
   fun gotoDeclaration_withLocalResources() {
-    val srcPath = "../SimpleBazelApplication/java/com/foo/gallery/activities/MainActivity.java"
-    val targetResourcePath = guiTest.ideFrame()
-        .findFileByRelativePath("../SimpleBazelApplication/java/com/foo/gallery/activities/res/menu/settings.xml", true)!!
-        .canonicalPath
-    val resourceId = "R.menu.settings"
-    openFile(srcPath).gotoDeclaration(resourceId).waitUntilCurrentFileIs(20, targetResourcePath!!)
+    guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleBazelApplication", "java/com/foo/gallery/BUILD")
+      .editor
+      .open("../SimpleBazelApplication/java/com/foo/gallery/activities/MainActivity.java")
+      .moveBetween("R.menu", ".settings")
+      .invokeAction(EditorFixture.EditorAction.GOTO_DECLARATION)
+    Wait.seconds(20).expecting("file to open")
+      .until({guiTest.ideFrame().editor.currentFileName.equals("settings.xml")})
   }
 }

@@ -225,10 +225,27 @@ public interface GradlePropertyModel {
   GradlePropertyModel getUnresolvedModel();
 
   /**
-   * @return the {@link PsiElement} that this property originated from.
+   * @return the {@link PsiElement} that this property originated from. E.g "propertyName = 'some value $here'"
    */
   @Nullable
   PsiElement getPsiElement();
+
+  /**
+   * @return the {@link PsiElement} that contains the expression of this property, if applicable. E.g "'some value $here'".
+   * Where not applicable (like block elements) returns the same as {@link #getPsiElement()}. This will be the element representing
+   * what is returned by {@link #getValue(TypeReference)}.
+   */
+  @Nullable
+  PsiElement getExpressionPsiElement();
+
+  /**
+   * @return the {@link PsiElement} representing the full expression that contains this properties value.
+   *         For example: "propertyName = methodCall('some value')" a property representing propertyName would return
+   *         the {@link PsiElement} for "methodCall('some value')" whereas {@link #getExpressionPsiElement()} would give us the
+   *         element for 'some value'.
+   */
+  @Nullable
+  PsiElement getFullExpressionPsiElement();
 
   /**
    * @return the value of the property as a String or null if no value exists or is of an incorrect type.
@@ -277,4 +294,9 @@ public interface GradlePropertyModel {
    * explicit name, i.e list values. This method will rename keys if called on properties inside maps.
    */
   void rename(@NotNull String name);
+
+  /**
+   * @return whether or not this property has been modified since it was obtained from the file.
+   */
+  boolean isModified();
 }

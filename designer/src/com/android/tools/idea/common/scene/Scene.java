@@ -410,13 +410,13 @@ public class Scene implements SelectionListener, Disposable {
   public void select(List<SceneComponent> components) {
     if (myDesignSurface != null) {
       ArrayList<NlComponent> nlComponents = new ArrayList<>();
-      if (myIsShiftDown) {
+      if (myIsShiftDown || myIsControlDown) {
         List<NlComponent> selection = myDesignSurface.getSelectionModel().getSelection();
         nlComponents.addAll(selection);
       }
       for (SceneComponent sceneComponent : components) {
         NlComponent nlComponent = sceneComponent.getNlComponent();
-        if (myIsShiftDown && nlComponents.contains(nlComponent)) {
+        if ((myIsShiftDown || myIsControlDown) && nlComponents.contains(nlComponent)) {
           // if shift is pressed and the component is already selected, remove it from the selection
           nlComponents.remove(nlComponent);
         }
@@ -896,6 +896,15 @@ public class Scene implements SelectionListener, Disposable {
     }
     myFindListener.find(transform, myRoot, x, y);
     return myFindListener.getClosestComponent();
+  }
+
+  @Nullable
+  public Target findTarget(@NotNull SceneContext transform, @AndroidDpCoordinate int x, @AndroidDpCoordinate int y) {
+    if (myRoot == null) {
+      return null;
+    }
+    myFindListener.find(transform, myRoot, x, y);
+    return myFindListener.getClosestTarget();
   }
 
   public Collection<SceneComponent> getSceneComponents() {

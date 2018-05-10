@@ -36,7 +36,6 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlo
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplicationStatement;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.*;
@@ -102,8 +101,7 @@ public class GroovyDslWriter implements GradleDslWriter {
 
     // If the parent doesn't have a psi element, the anchor will be used to create the parent in getParentPsi.
     // In this case we want to be placed in the newly made parent so we ignore our anchor.
-    // 'apply' groups are an exception, as they don't have a psi element but we should still use their anchor to insert correctly.
-    if (needToCreateParent(element) && !(element.getParent() instanceof ApplyDslElement)) {
+    if (needToCreateParent(element)) {
       anchorAfter = null;
     }
     PsiElement parentPsiElement = getParentPsi(element);
@@ -119,6 +117,7 @@ public class GroovyDslWriter implements GradleDslWriter {
     }
 
     String statementText = maybeTrimForParent(element.getNameElement(), element.getParent());
+    assert statementText != null && !statementText.isEmpty() : "Element name can't be null! This will cause statement creation to error.";
     if (element.isBlockElement()) {
       statementText += " {\n}\n";
     }
@@ -221,53 +220,17 @@ public class GroovyDslWriter implements GradleDslWriter {
 
   @Override
   public PsiElement createDslLiteral(@NotNull GradleDslLiteral literal) {
-    GradleDslElement parent = literal.getParent();
-
-    if (!(parent instanceof GradleDslExpressionMap)) {
-      return createDslElement(literal);
-    }
-
-    return processMapElement(literal);
+    return createDslLiteralOrReference(literal);
   }
 
   @Override
   public void applyDslLiteral(@NotNull GradleDslLiteral literal) {
-    PsiElement psiElement = ensureGroovyPsi(literal.getPsiElement());
-    if (psiElement == null) {
-      return;
-    }
-
-    maybeUpdateName(literal);
-
-    GrExpression newLiteral = extractUnsavedExpression(literal);
-    if (newLiteral == null) {
-      return;
-    }
-    PsiElement expression = ensureGroovyPsi(literal.getLastCommittedValue());
-    if (expression != null) {
-      PsiElement replace = expression.replace(newLiteral);
-      if (replace instanceof GrLiteral) {
-        literal.setExpression(replace);
-      }
-    }
-    else {
-      PsiElement added = createPsiElementInsideList(literal, psiElement, newLiteral);
-      if (added instanceof GrLiteral) {
-        literal.setExpression(added);
-      }
-
-      if (literal.getUnsavedConfigBlock() != null) {
-        addConfigBlock(literal);
-      }
-    }
-
-    literal.reset();
-    literal.setModified(false);
+    applyDslLiteralOrReference(literal);
   }
 
   @Override
   public void deleteDslLiteral(@NotNull GradleDslLiteral literal) {
-    PsiElement expression = literal.getLastCommittedValue();
+    PsiElement expression = literal.getExpression();
     if (expression == null) {
       return;
     }
@@ -275,57 +238,6 @@ public class GroovyDslWriter implements GradleDslWriter {
     expression.delete();
     maybeDeleteIfEmpty(parent, literal);
     removePsiIfInvalid(literal);
-  }
-
-  @Override
-  public PsiElement createDslReference(@NotNull GradleDslReference reference) {
-    GradleDslElement parent = reference.getParent();
-
-    if (!(parent instanceof GradleDslExpressionMap)) {
-      return createDslElement(reference);
-    }
-
-    return processMapElement(reference);
-  }
-
-  @Override
-  public void applyDslReference(@NotNull GradleDslReference reference) {
-    PsiElement psiElement = ensureGroovyPsi(reference.getPsiElement());
-    if (psiElement == null) {
-      return;
-    }
-
-    maybeUpdateName(reference);
-
-    PsiElement newReference = extractUnsavedExpression(reference);
-    if (newReference == null) {
-      return;
-    }
-
-    PsiElement expression = ensureGroovyPsi(reference.getExpression());
-    if (expression != null) {
-      PsiElement replace = expression.replace(newReference);
-      reference.setExpression(replace);
-    }
-    else {
-      PsiElement added = createPsiElementInsideList(reference, psiElement, newReference);
-      reference.setExpression(added);
-    }
-
-    reference.reset();
-    reference.setModified(false);
-  }
-
-  @Override
-  public void deleteDslReference(@NotNull GradleDslReference reference) {
-    PsiElement expression = reference.getExpression();
-    if (expression == null) {
-      return;
-    }
-    PsiElement parent = expression.getParent();
-    expression.delete();
-    maybeDeleteIfEmpty(parent, reference);
-    removePsiIfInvalid(reference);
   }
 
   @Override
@@ -475,6 +387,13 @@ public class GroovyDslWriter implements GradleDslWriter {
     if (expressionMap.getElementType() == PropertyType.DERIVED && expressionMap.isLiteralMap()) {
       psiElement = createDerivedMap(expressionMap);
     }
+    else if (expressionMap.getElementType() == PropertyType.DERIVED && expressionMap.getParent() instanceof GradleDslExpressionList
+             && expressionMap.getParent().getParent() instanceof GradleDslMethodCall) {
+      // We have a DERIVED non-literal map that is an argument of a method, this is only the case if the map is used as the only argument
+      // E.g methodName(key: val, key2: val). In this case the map doesn't have a PsiElement and named args are placed directly
+      // in the methods argument list.
+      return expressionMap.getParent() == null ? null : expressionMap.getParent().create();
+    }
     else {
       psiElement = createDslElement(expressionMap);
     }
@@ -514,5 +433,19 @@ public class GroovyDslWriter implements GradleDslWriter {
   @Override
   public void applyDslExpressionMap(@NotNull GradleDslExpressionMap expressionMap) {
     maybeUpdateName(expressionMap);
+  }
+
+  private PsiElement createDslLiteralOrReference(@NotNull GradleDslSettableExpression expression) {
+    GradleDslElement parent = expression.getParent();
+
+    if (parent instanceof GradleDslExpressionMap) {
+      return processMapElement(expression);
+    }
+
+    if (parent instanceof GradleDslExpressionList) {
+      return processListElement(expression);
+    }
+
+    return createDslElement(expression);
   }
 }

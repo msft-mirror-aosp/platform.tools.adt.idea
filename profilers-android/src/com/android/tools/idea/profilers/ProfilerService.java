@@ -22,9 +22,11 @@ import com.android.tools.nativeSymbolizer.NativeSymbolizerKt;
 import com.android.tools.profilers.ProfilerClient;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.Key;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -32,9 +34,15 @@ import java.nio.file.Paths;
 
 public class ProfilerService implements Disposable {
 
+  private static final Key<Boolean> DATA_KEY = Key.create("PROJECT_PROFILER_SERVICE");
+
   public static ProfilerService getInstance(@NotNull Project project) {
     ProfilerService service = ServiceManager.getService(project, ProfilerService.class);
     return service;
+  }
+
+  public static boolean isServiceInitialized(@NotNull Project project) {
+    return project.getUserData(DATA_KEY) != null;
   }
 
   private static final String DATASTORE_NAME_PREFIX = "DataStoreService";
@@ -47,7 +55,7 @@ public class ProfilerService implements Disposable {
   private final DataStoreService myDataStoreService;
 
   private ProfilerService(@NotNull Project project) {
-    String datastoreDirectory = Paths.get(System.getProperty("user.home"), ".android").toString() + File.separator;
+    String datastoreDirectory = Paths.get(PathManager.getSystemPath(), ".android").toString() + File.separator;
 
     NativeSymbolizer symbolizer = NativeSymbolizerKt.createNativeSymbolizer(project);
     Disposer.register(this, symbolizer);
@@ -64,6 +72,8 @@ public class ProfilerService implements Disposable {
     IdeSdks.subscribe(myManager, this);
 
     myClient = new ProfilerClient(datastoreName);
+
+    project.putUserData(DATA_KEY, true);
   }
 
   @Override

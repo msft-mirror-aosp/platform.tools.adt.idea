@@ -15,18 +15,19 @@
  */
 package com.android.tools.profilers.cpu;
 
+import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.Range;
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.profilers.ProfilerColors;
 import com.android.tools.profilers.ProfilerTimeline;
 import com.android.tools.profilers.ProfilerTooltipView;
 import com.android.tools.profilers.cpu.atrace.CpuKernelTooltip;
-import com.google.common.annotations.VisibleForTesting;
-import com.intellij.ui.ColorUtil;
+import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+
+import static com.android.tools.profilers.ProfilerFonts.TOOLTIP_FONT;
 
 /**
  * This class manages the elements shown in the tooltip when the tooltip is visible.
@@ -36,16 +37,24 @@ import javax.swing.*;
 public class CpuKernelTooltipView extends ProfilerTooltipView {
   @NotNull private final CpuKernelTooltip myTooltip;
   @NotNull private final ProfilerTimeline myTimeline;
-  @NotNull private final JLabel myContent;
+  private final int myProcessId;
+  @NotNull private final JPanel myContent;
+  @NotNull private final JLabel myThread;
+  @NotNull private final JLabel myProcess;
+  @NotNull private final JLabel myCpu;
+  @NotNull private final JPanel myUnavailableDetails;
 
   protected CpuKernelTooltipView(@NotNull CpuProfilerStageView view, @NotNull CpuKernelTooltip tooltip) {
-    super(view.getTimeline(), "CPU");
+    super(view.getTimeline());
+    myProcessId = view.getStage().getStudioProfilers().getSession().getPid();
     myTimeline = view.getTimeline();
     myTooltip = tooltip;
-    myContent = new JLabel();
-    myContent.setFont(AdtUiUtils.DEFAULT_FONT);
-    myContent.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
-    tooltip.addDependency(this).onChange(CpuKernelTooltip.Aspect.CPU_KERNEL_THREAD_INFO, this::timeChanged);
+    myContent = new JPanel();
+    myThread = new JLabel();
+    myProcess = new JLabel();
+    myCpu = new JLabel();
+    myUnavailableDetails = new JPanel(new TabularLayout("*", "Fit,Fit"));
+    tooltip.addDependency(this).onChange(CpuKernelTooltip.Aspect.CPU_KERNEL_THREAD_INFO, this::threadInfoChanged);
   }
 
   @Override
@@ -54,44 +63,44 @@ public class CpuKernelTooltipView extends ProfilerTooltipView {
     myTooltip.removeDependencies(this);
   }
 
-  @Override
-  protected void timeChanged() {
+  private void threadInfoChanged() {
     Range range = myTimeline.getTooltipRange();
-    if (range.isEmpty()) {
-      myHeadingLabel.setText("");
-      myContent.setText("");
+    CpuThreadInfo threadInfo = myTooltip.getCpuThreadInfo();
+    myContent.removeAll();
+    if (range.isEmpty() || threadInfo == null) {
       return;
     }
-
-    CpuThreadInfo threadInfo = myTooltip.getCpuThreadInfo();
-    if (threadInfo == null) {
-      // If we don't have a kernel thread set default tooltip data.
-      String time = TimeAxisFormatter.DEFAULT
-        .getFormattedString(myTimeline.getDataRange().getLength(),
-                            range.getMin() - myTimeline.getDataRange().getMin(),
-                            true);
-      myHeadingLabel.setText(String.format("<html>IDLE at <span style='color:#%s'>%s</span></html",
-                                           ColorUtil.toHex(ProfilerColors.TOOLTIP_TIME_COLOR),
-                                           time));
-      myContent.setText("");
+    myThread.setText(String.format("Thread: %s", threadInfo.getName()));
+    myContent.add(myThread, new TabularLayout.Constraint(0, 0));
+    myProcess.setText(String.format("Process: %s", threadInfo.getProcessName()));
+    myContent.add(myProcess, new TabularLayout.Constraint(1, 0));
+    myCpu.setText(String.format("CPU: %d", myTooltip.getCpuId()));
+    myContent.add(myCpu, new TabularLayout.Constraint(2, 0));
+    if (myProcessId != threadInfo.getProcessId()) {
+      myContent.add(myUnavailableDetails, new TabularLayout.Constraint(4, 0));
     }
-    else {
-      String time = TimeAxisFormatter.DEFAULT
-        .getFormattedString(myTimeline.getDataRange().getLength(),
-                            range.getMin() - myTimeline.getDataRange().getMin(),
-                            true);
-      myHeadingLabel.setText(String.format("<html>%s at <span style='color:#%s'>%s</span></html",
-                                           threadInfo.getProcessName(),
-                                           ColorUtil.toHex(ProfilerColors.TOOLTIP_TIME_COLOR),
-                                           time));
-      myContent.setText(threadInfo.getName());
-    }
-    updateMaximumLabelDimensions();
   }
 
   @NotNull
   @Override
   protected JComponent createTooltip() {
+    myContent.setLayout(new TabularLayout("*", "Fit,Fit"));
+    myContent.setFont(TOOLTIP_FONT);
+    myContent.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
+    JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
+    separator.setBorder(JBUI.Borders.empty(5, 0));
+    myUnavailableDetails.add(separator, new TabularLayout.Constraint(0, 0));
+    JLabel unavailableLabel = new JLabel("Other (not selectable)");
+    unavailableLabel.setFont(AdtUiUtils.DEFAULT_FONT);
+    unavailableLabel.setForeground(ProfilerColors.TOOLTIP_TIME_COLOR);
+    myUnavailableDetails.add(unavailableLabel, new TabularLayout.Constraint(1, 0));
+    // JLabel doesn't pull font characteristics from the panel.
+    myThread.setFont(TOOLTIP_FONT);
+    myProcess.setFont(TOOLTIP_FONT);
+    myCpu.setFont(TOOLTIP_FONT);
+    myThread.setBorder(JBUI.Borders.emptyBottom(2));
+    myProcess.setBorder(JBUI.Borders.emptyBottom(2));
+    myContent.add(myUnavailableDetails, new TabularLayout.Constraint(0, 0));
     return myContent;
   }
 }

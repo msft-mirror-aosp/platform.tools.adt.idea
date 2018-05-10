@@ -15,15 +15,18 @@
  */
 package com.android.tools.idea.uibuilder.handlers.motion.timeline;
 
+import com.android.tools.adtui.common.StudioColorsKt;
+import com.intellij.util.ui.JBUI;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.Rectangle2D;
 
 /**
  * Draw the the top of the column
  */
 class ColumnHead extends TimeLine implements Gantt.ChartElement {
   JLayeredPane myLayeredPane;
-  int rowHeight = 20;
   Chart mChart;
 
   ColumnHead(Chart chart) {
@@ -31,25 +34,45 @@ class ColumnHead extends TimeLine implements Gantt.ChartElement {
     mChart = chart;
     update(Reason.CONSTRUCTION);
     mChart.add(this);
+    setBorder(JBUI.Borders.customLine(StudioColorsKt.getBorder(), 0, 0, 1, 0));
   }
 
   int[] mXPoints = new int[5];
   int[] mYPoints = new int[5];
+  Rectangle2D myRect;
+  FontMetrics myFontMetrics;
 
   //Fletching: The plastic vanes or feathers on an arrow. ...
-  private void drawFletching(Graphics g, int x, int y) {
+  private void drawFletching(Graphics g, int framePosition, int x, int y) {
+    String string = Integer.toString(framePosition);
+    if (myFontMetrics == null) {
+      myFontMetrics = g.getFontMetrics();
+      myRect = myFontMetrics.getMaxCharBounds(g);
+    }
+
+    double w = myRect.getWidth() / 2;
+    double h = myRect.getHeight() * 1.5;
     x++;
     mXPoints[0] = x;
-    mYPoints[0] = y + 10;
-    mXPoints[1] = x - 5;
-    mYPoints[1] = y + 6;
-    mXPoints[2] = x - 5;
+    mYPoints[0] = (int)(y + h);
+    mXPoints[1] = (int)(x - w);
+    mYPoints[1] = (int)(y + h / 2);
+    mXPoints[2] = (int)(x - w);
     mYPoints[2] = y;
-    mXPoints[3] = x + 4;
+    mXPoints[3] = (int)(x + w);
     mYPoints[3] = y;
-    mXPoints[4] = x + 4;
-    mYPoints[4] = y + 6;
+    mXPoints[4] = (int)(x + w);
+    mYPoints[4] = (int)(y + h / 2);
+    g.setColor(Chart.myTimeCursorColor);
     g.fillPolygon(mXPoints, mYPoints, 5);
+    g.setColor(getBackground());
+    g.drawString(string, x - myFontMetrics.stringWidth(string) / 2, y + myFontMetrics.getAscent());
+  }
+
+  @Override
+  protected void paintBorder(Graphics g) {
+    //Do Nothing here: The cursor line needs to be painted over the border so the call to
+    //paintBorder needs to be done after the cursor painting.
   }
 
   @Override
@@ -57,14 +80,15 @@ class ColumnHead extends TimeLine implements Gantt.ChartElement {
     g.setColor(mChart.myGridColor);
     setForeground(mChart.myGridColor);
     super.paintComponent(g);
+    super.paintBorder(g);
 
     if (!Float.isNaN(mChart.getTimeCursorMs())) {
       int h = getHeight();
       float time = mChart.getTimeCursorMs();
       int x = mChart.getCursorPosition();
       g.setColor(mChart.myTimeCursorColor);
-      drawFletching(g, x, 0);
       g.fillRect(x, h - 15, 1, h);
+      drawFletching(g, mChart.getFramePosition(), x, 0);
     }
   }
 
@@ -83,11 +107,11 @@ class ColumnHead extends TimeLine implements Gantt.ChartElement {
       case ZOOM:
         Dimension d = getPreferredSize();
         d.width = mChart.getGraphWidth();
-        d.height = rowHeight;
+        d.height = Gantt.HEADER_HEIGHT;
         setPreferredSize(d);
         repaint();
         break;
-        default:
+      default:
     }
     super.setInserts(mChart.myChartLeftInset, mChart.myChartRightInset);
   }

@@ -22,6 +22,7 @@ import com.android.tools.idea.common.analytics.NlUsageTrackerManager;
 import com.android.tools.idea.common.api.DragType;
 import com.android.tools.idea.common.api.InsertType;
 import com.android.tools.idea.common.model.AttributesTransaction;
+import com.android.tools.idea.common.model.NlAttributesHolder;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.scene.ComponentProvider;
 import com.android.tools.idea.common.scene.Scene;
@@ -99,12 +100,12 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
     new NlIcon(StudioIcons.LayoutEditor.Toolbar.BASELINE_ALIGNED, StudioIcons.LayoutEditor.Toolbar.BASELINE_ALIGNED_CONSTRAINT);
 
   private static boolean ourAutoConnect;
-  private final static String ADD_VERTICAL_BARRIER = "Add Vertical barrier";
+  private final static String ADD_VERTICAL_BARRIER = "Add Vertical Barrier";
   private final static String ADD_HORIZONTAL_BARRIER = "Add Horizontal Barrier";
   private final static String ADD_TO_BARRIER = "Add to Barrier";
   private final static String ADD_LAYER = "Add Layer";
   private final static String ADD_GROUP = "Add Group";
-  private final static String ADD_CONSTRAINTS_SET = "Add set of Constraints";
+  private final static String ADD_CONSTRAINTS_SET = "Add Set of Constraints";
   @VisibleForTesting
   public static final String EDIT_BASELINE_ACTION_TOOLTIP = "Edit Baseline";
 
@@ -181,7 +182,7 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
       Lists.newArrayList(
         new ToggleVisibilityAction(SHOW_CONSTRAINTS_PREF_KEY, "Show Constraints", true),
         new ToggleVisibilityAction(SHOW_MARGINS_PREF_KEY, "Show Margins", true),
-        new ToggleVisibilityAction(FADE_UNSELECTED_VIEWS, "Fade Unselected views ", false)
+        new ToggleVisibilityAction(FADE_UNSELECTED_VIEWS, "Fade Unselected Views ", false)
       )
     )));
     actions.add(new ToggleAutoConnectAction());
@@ -428,10 +429,8 @@ public class ConstraintLayoutHandler extends ViewGroupHandler implements Compone
   }
 
   @Override
-  public void cleanUpAttributes(@NotNull NlComponent child) {
-    AttributesTransaction transaction = child.startAttributeTransaction();
-    ConstraintComponentUtilities.cleanup(transaction, child);
-    transaction.commit();
+  public void cleanUpAttributes(@NotNull NlComponent component, @NotNull NlAttributesHolder attributes) {
+    ConstraintComponentUtilities.cleanup(attributes, component);
   }
 
   /**

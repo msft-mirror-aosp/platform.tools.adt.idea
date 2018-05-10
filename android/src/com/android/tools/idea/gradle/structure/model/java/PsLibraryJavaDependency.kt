@@ -21,8 +21,10 @@ import com.android.tools.idea.gradle.model.java.JarLibraryDependency
 import com.android.tools.idea.gradle.structure.model.*
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
 import com.android.tools.idea.gradle.structure.model.meta.*
+import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepositorySearchService
 import com.intellij.util.PlatformIcons.LIBRARY_ICON
 import javax.swing.Icon
+import kotlin.reflect.KProperty
 
 class PsLibraryJavaDependency(
   parent: PsJavaModule,
@@ -49,7 +51,16 @@ class PsLibraryJavaDependency(
 
   var version by PsLibraryJavaDependency.Descriptor.version
 
-  override val versionProperty: ModelSimpleProperty<Unit, String> get() = PsLibraryJavaDependency.Descriptor.version.bind(this)
+  override val versionProperty: ModelSimpleProperty<ArtifactRepositorySearchService, Unit, String>
+    get() = object : ModelSimpleProperty<ArtifactRepositorySearchService, Unit, String> {
+      override val description: String get() = Descriptor.version.description
+      override fun bind(model: Unit): ModelPropertyCore<String> = Descriptor.version.bind(this@PsLibraryJavaDependency)
+      override fun bindContext(context: ArtifactRepositorySearchService, model: Unit): ModelPropertyContext<String> =
+        Descriptor.version.bindContext(context, this@PsLibraryJavaDependency)
+
+      override fun getValue(thisRef: Unit, property: KProperty<*>): ParsedValue<String> = throw UnsupportedOperationException()
+      override fun setValue(thisRef: Unit, property: KProperty<*>, value: ParsedValue<String>) = throw UnsupportedOperationException()
+    }
 
   object Descriptor : ModelDescriptor<PsLibraryJavaDependency, Nothing, ArtifactDependencyModel> {
     override fun getResolved(model: PsLibraryJavaDependency): Nothing? = null
@@ -61,13 +72,13 @@ class PsLibraryJavaDependency(
       model.isModified = true
     }
 
-    val version: ModelSimpleProperty<PsLibraryJavaDependency, String> = property(
+    val version: ModelSimpleProperty<ArtifactRepositorySearchService, PsLibraryJavaDependency, String> = property(
       "Version",
       getResolvedValue = { null },
       getParsedProperty = { this.version() },
       getter = { asString() },
       setter = { setValue(it) },
-      parse = { parseString(it) }
+      parse = ::parseString
     )
   }
 }

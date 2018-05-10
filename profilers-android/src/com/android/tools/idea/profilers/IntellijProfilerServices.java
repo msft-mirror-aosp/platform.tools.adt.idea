@@ -17,12 +17,10 @@ package com.android.tools.idea.profilers;
 
 import com.android.tools.idea.diagnostics.crash.exception.NoPiiException;
 import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink;
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfigConverter;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilingConfigService;
-import com.android.tools.idea.profilers.profilingconfig.CpuProfilingConfigurationsDialog;
 import com.android.tools.idea.profilers.stacktrace.IntellijCodeNavigator;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
@@ -31,7 +29,6 @@ import com.android.tools.profilers.FeatureConfig;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.ProfilerPreferences;
 import com.android.tools.profilers.analytics.FeatureTracker;
-import com.android.tools.profilers.cpu.CpuProfilerConfigModel;
 import com.android.tools.profilers.cpu.ProfilingConfiguration;
 import com.android.tools.profilers.stacktrace.CodeNavigator;
 import com.google.common.collect.ImmutableList;
@@ -42,8 +39,6 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -270,17 +265,6 @@ public class IntellijProfilerServices implements IdeProfilerServices {
   }
 
   @Override
-  public void openCpuProfilingConfigurationsDialog(CpuProfilerConfigModel model, int deviceLevel,
-                                                   Consumer<ProfilingConfiguration> dialogCallback) {
-    CpuProfilingConfigurationsDialog dialog = new CpuProfilingConfigurationsDialog(myProject,
-                                                                                   deviceLevel,
-                                                                                   model,
-                                                                                   dialogCallback,
-                                                                                   myFeatureTracker);
-    dialog.show();
-  }
-
-  @Override
   public void openParseLargeTracesDialog(Runnable yesCallback, Runnable noCallback) {
     int dialogResult = Messages.showYesNoDialog(myProject,
                                                 "The trace file generated is large, and Android Studio may become unresponsive while " +
@@ -322,19 +306,6 @@ public class IntellijProfilerServices implements IdeProfilerServices {
       .stream()
       .map(ProfilingConfiguration::fromProto)
       .collect(Collectors.toList());
-  }
-
-  @NotNull
-  @Override
-  public String getApplicationId() {
-    Module[] modules = ModuleManager.getInstance(myProject).getModules();
-    for (Module module : modules) {
-      AndroidModuleModel model = AndroidModuleModel.get(module);
-      if (model != null) {
-        return model.getApplicationId();
-      }
-    }
-    throw new IllegalStateException("No Android module found for the project.");
   }
 
   @Override

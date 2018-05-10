@@ -23,12 +23,13 @@ import com.intellij.openapi.ui.VerticalFlowLayout;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBEmptyBorder;
-import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+
+import static com.android.tools.profilers.ProfilerFonts.STANDARD_FONT;
 
 /**
  * Detailed information view of energy duration, for wake locks, alarms, etc.
@@ -40,28 +41,23 @@ public class EnergyDetailsView extends JPanel {
   @NotNull private final JLabel myTitleLabel;
 
   public EnergyDetailsView(@NotNull EnergyProfilerStageView stageView) {
-    super(new BorderLayout());
-    // Create 2x2 pane
-    //     * Fit
-    // Fit _ _
-    // *   _ _
-    //
-    // where main contents span the whole area and a close button fits into the top right
-    JPanel rootPanel = new JPanel(new TabularLayout("*,Fit-", "Fit-,*"));
+    super(new TabularLayout("*", "Fit-,*"));
 
     JPanel titlePanel = new JPanel(new BorderLayout());
     titlePanel.setBorder(AdtUiUtils.DEFAULT_BOTTOM_BORDER);
     myTitleLabel = new JLabel();
-    myTitleLabel.setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(12.0f));
+    myTitleLabel.setFont(STANDARD_FONT);
     myTitleLabel.setBorder(new JBEmptyBorder(6, 10, 6, 3));
     titlePanel.add(myTitleLabel, BorderLayout.WEST);
+    CloseButton closeButton = new CloseButton(e -> stageView.getStage().setSelectedDuration(null));
+    titlePanel.add(closeButton, BorderLayout.EAST);
 
     myDetailsOverview = new EnergyDetailsOverview();
     myCallstackView = new EnergyCallstackView(stageView);
-    JPanel detailsPanel = new JPanel(new VerticalFlowLayout(0, JBUI.scale(5)));
-    detailsPanel.setBorder(new JBEmptyBorder(0, 10, 0, 5));
+    JPanel detailsPanel = new JPanel(new VerticalFlowLayout(0, 0));
+    detailsPanel.setBorder(new JBEmptyBorder(7, 10, 0, 10));
     detailsPanel.add(myDetailsOverview);
-    detailsPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+    detailsPanel.add(AdtUiUtils.createHorizontalSeparator());
     detailsPanel.add(myCallstackView);
     detailsPanel.setBackground(ProfilerColors.DEFAULT_BACKGROUND);
     myDetailsOverview.setBackground(null);
@@ -69,12 +65,8 @@ public class EnergyDetailsView extends JPanel {
     JBScrollPane detailsScrollPane = new JBScrollPane(detailsPanel);
     detailsScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
-    CloseButton closeButton = new CloseButton(e -> stageView.getStage().setSelectedDuration(null));
-    closeButton.setAlignmentY(CENTER_ALIGNMENT);
-    rootPanel.add(closeButton, new TabularLayout.Constraint(0, 1));
-    rootPanel.add(titlePanel, new TabularLayout.Constraint(0, 0, 1, 2));
-    rootPanel.add(detailsScrollPane, new TabularLayout.Constraint(1, 0, 1, 2));
-    add(rootPanel);
+    add(titlePanel, new TabularLayout.Constraint(0, 0));
+    add(detailsScrollPane, new TabularLayout.Constraint(1, 0));
   }
 
   /**

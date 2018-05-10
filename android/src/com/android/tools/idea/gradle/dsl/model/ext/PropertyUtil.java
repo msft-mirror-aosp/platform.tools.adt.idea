@@ -16,20 +16,24 @@
 package com.android.tools.idea.gradle.dsl.model.ext;
 
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
-import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.DefaultTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.FileTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
+import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.REFERENCE;
+import static com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement.convertNameToKey;
 
 public class PropertyUtil {
   @NonNls public static final String FILE_METHOD_NAME = "file";
@@ -40,11 +44,8 @@ public class PropertyUtil {
                                                                          @Nullable GradleDslElement oldElement,
                                                                          @NotNull Object value,
                                                                          @NotNull GradleNameElement name) {
-    boolean isReference = value instanceof ReferenceTo;
-
     // Check if we can reuse the element.
-    if (!isReference && oldElement instanceof GradleDslLiteral ||
-        isReference && oldElement instanceof GradleDslReference) {
+    if (oldElement instanceof GradleDslLiteral) {
       GradleDslSimpleExpression expression = (GradleDslSimpleExpression)oldElement;
       expression.setValue(value);
       return expression;
@@ -60,14 +61,7 @@ public class PropertyUtil {
 
   @NotNull
   public static GradleDslSimpleExpression createBasicExpression(@NotNull GradleDslElement parent, @NotNull Object value, @NotNull GradleNameElement name) {
-    GradleDslSimpleExpression newElement;
-    if (value instanceof ReferenceTo) {
-      newElement = new GradleDslReference(parent, name);
-    }
-    else {
-      newElement = new GradleDslLiteral(parent, name);
-    }
-
+    GradleDslSimpleExpression newElement = new GradleDslLiteral(parent, name);
     newElement.setValue(value);
     return newElement;
   }
@@ -81,17 +75,6 @@ public class PropertyUtil {
       }
       else {
         ((GradlePropertiesDslElement)holder).setNewElement(newElement);
-      }
-    }
-    else if (holder instanceof GradleDslExpressionList) {
-      assert newElement instanceof GradleDslExpression;
-      GradleDslExpressionList list = (GradleDslExpressionList)holder;
-      if (oldElement != null) {
-        assert oldElement instanceof GradleDslExpression;
-        list.replaceExpression((GradleDslExpression)oldElement, (GradleDslExpression)newElement);
-      }
-      else {
-        list.addNewExpression((GradleDslSimpleExpression)newElement, list.getExpressions().size());
       }
     }
     else if (holder instanceof GradleDslMethodCall) {
@@ -119,10 +102,6 @@ public class PropertyUtil {
 
     if (holder instanceof GradlePropertiesDslElement) {
       ((GradlePropertiesDslElement)holder).removeProperty(element);
-    }
-    else if (holder instanceof GradleDslExpressionList) {
-      GradleDslExpressionList list = (GradleDslExpressionList)holder;
-      list.removeElement(element);
     }
     else if (holder instanceof GradleDslMethodCall) {
       GradleDslMethodCall methodCall = (GradleDslMethodCall)holder;
@@ -159,8 +138,8 @@ public class PropertyUtil {
    */
   @NotNull
   public static GradleDslSimpleExpression resolveElement(@NotNull GradleDslSimpleExpression expression) {
-    while (expression instanceof GradleDslReference && !expression.hasCycle()) {
-      GradleReferenceInjection injection = ((GradleDslReference)expression).getReferenceInjection();
+    while (expression instanceof GradleDslLiteral && ((GradleDslLiteral)expression).isReference() && !expression.hasCycle()) {
+      GradleReferenceInjection injection = ((GradleDslLiteral)expression).getReferenceInjection();
       if (injection == null) {
         return expression;
       }
@@ -195,4 +174,124 @@ public class PropertyUtil {
     String result = builder.toString();
     return result.isEmpty() ? null : result;
   }
+
+  public static boolean isNonExpressionPropertiesElement(@Nullable GradleDslElement e) {
+    return e instanceof GradlePropertiesDslElement && !(e instanceof GradleDslExpression);
+  }
+
+  public static boolean isPropertiesElementOrMap(@Nullable GradleDslElement e) {
+    return e instanceof GradlePropertiesDslElement && !(e instanceof GradleDslExpressionList);
+  }
+
+  /**
+   * Requires READ_ACCESS.
+   */
+  public static boolean isElementModified(@NotNull GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
+    return checkForModifiedValue(oldElement, newElement) || checkForModifiedName(oldElement, newElement);
+  }
+
+  /**
+   * Requires READ_ACCESS.
+   */
+  @Nullable
+  public static GradleDslElement findOriginalElement(@NotNull GradleDslElement parent, @NotNull GradleDslElement element) {
+    GradlePropertiesDslElement holder = parent instanceof GradleDslMethodCall ? ((GradleDslMethodCall)parent).getArgumentsElement() :
+                                        (GradlePropertiesDslElement)parent;
+
+    if (holder instanceof GradleDslExpressionList) {
+      List<GradleDslElement> elements = holder.getAllPropertyElements();
+      List<GradleDslElement> originalElement = holder.getOriginalElements();
+      int index = elements.indexOf(element);
+      return index >= 0 && index < originalElement.size() ? originalElement.get(index) : null;
+    }
+    else {
+      return holder.getOriginalElementForNameAndType(element.getName(), element.getElementType());
+    }
+  }
+
+  /**
+   * Requires READ_ACCESS.
+   */
+  public static boolean isFakeElementModified(@NotNull FakeElement element) {
+    GradleDslElement realExpression = element.getRealExpression();
+    GradleDslElement realParent = realExpression.getParent();
+    GradleDslElement oldRealExpression = realParent == null ? null : findOriginalElement(realParent, realExpression);
+    return oldRealExpression == null ||  isElementModified(oldRealExpression, realExpression);
+  }
+
+  /**
+   * Requires READ_ACCESS.
+   */
+  private static boolean checkForModifiedValue(@NotNull GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
+    if (!(oldElement.getClass().equals(newElement.getClass()))) {
+      return true;
+    }
+
+    if (oldElement instanceof GradleDslSettableExpression) {
+      GradleDslSettableExpression oExpression = (GradleDslSettableExpression)oldElement;
+      GradleDslSettableExpression nExpression = (GradleDslSettableExpression)newElement;
+      if (nExpression.getUnsavedValue() == null) {
+        return false;
+      }
+      else if (oExpression.getExpression() == null) {
+        return true;
+      }
+      else {
+        return !Objects.equals(nExpression.getUnsavedValue().getText(), oExpression.getExpression().getText());
+      }
+    }
+
+    if (oldElement instanceof GradlePropertiesDslElement) {
+      GradlePropertiesDslElement oListOrMap = (GradlePropertiesDslElement)oldElement;
+      GradlePropertiesDslElement nListOrMap = (GradlePropertiesDslElement)newElement;
+      List<GradleDslElement> originalElements = oListOrMap.getOriginalElements();
+      List<GradleDslElement> newElements = nListOrMap.getCurrentElements();
+      if (originalElements.size() != newElements.size()) {
+        return true;
+      }
+      BiFunction<GradleDslElement, GradleDslElement, Boolean> func = (oldElement instanceof GradleDslExpressionList) ?
+                                                                     PropertyUtil::checkForModifiedValue :
+                                                                     PropertyUtil::isElementModified;
+      for (int i = 0; i < originalElements.size(); i++) {
+        if (func.apply(originalElements.get(i), newElements.get(i))) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (oldElement instanceof GradleDslMethodCall) {
+      GradleDslMethodCall oMethodCall = (GradleDslMethodCall)oldElement;
+      GradleDslMethodCall nMethodCall = (GradleDslMethodCall)newElement;
+      if (!oMethodCall.getMethodName().equals(nMethodCall.getMethodName())) {
+        return false;
+      }
+      return checkForModifiedValue(oMethodCall.getArgumentsElement(), nMethodCall.getArgumentsElement());
+    }
+
+    PsiElement oldPsi = oldElement.getPsiElement();
+    PsiElement newPsi = newElement.getPsiElement();
+    return oldPsi == null || newPsi == null || !Objects.equals(oldPsi.getText(), newPsi.getText());
+  }
+
+  /**
+   * Requires READ_ACCESS.
+   */
+  private static boolean checkForModifiedName(@NotNull GradleDslElement originalElement, @NotNull GradleDslElement newElement) {
+    GradleNameElement oNameElement = originalElement.getNameElement();
+    PsiElement oNamePsiElement = oNameElement.getNamedPsiElement();
+    if (oNamePsiElement == null) {
+      return false;
+    }
+    String oldName = oNamePsiElement.getText();
+
+    GradleNameElement nNameElement = newElement.getNameElement();
+    String newName = nNameElement.getUnsavedName();
+    if (newName == null) {
+      return false;
+    }
+
+    return !Objects.equals(convertNameToKey(newName), convertNameToKey(oldName));
+  }
+
 }

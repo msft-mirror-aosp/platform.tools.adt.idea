@@ -39,12 +39,12 @@ import com.intellij.icons.AllIcons;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.ui.Gray;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.util.IconUtil;
 import com.intellij.util.PlatformIcons;
+import com.intellij.util.ui.JBEmptyBorder;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import icons.StudioIcons;
@@ -61,8 +61,6 @@ import java.util.concurrent.TimeUnit;
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS;
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_VERTICAL_BORDERS;
 import static com.android.tools.profilers.ProfilerLayout.*;
-import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
-import static java.awt.event.InputEvent.META_DOWN_MASK;
 
 public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
   private static Logger getLogger() {
@@ -150,7 +148,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     myHeapDumpButton.setToolTipText(myHeapDumpAction.getDefaultToolTipText());
 
     myCaptureElapsedTime = new JLabel("");
-    myCaptureElapsedTime.setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(12f));
+    myCaptureElapsedTime.setFont(ProfilerFonts.STANDARD_FONT);
     myCaptureElapsedTime.setBorder(JBUI.Borders.emptyLeft(5));
     myCaptureElapsedTime.setForeground(ProfilerColors.CPU_CAPTURE_STATUS);
 
@@ -309,9 +307,12 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     StudioProfilers profilers = getStage().getStudioProfilers();
     ProfilerTimeline timeline = profilers.getTimeline();
     Range viewRange = getTimeline().getViewRange();
+    mySelectionComponent = new SelectionComponent(getStage().getSelectionModel(), timeline.getViewRange());
+    mySelectionComponent.setCursorSetter(ProfilerLayeredPane::setCursorOnProfilerLayeredPane);
     RangeTooltipComponent tooltip =
       new RangeTooltipComponent(timeline.getTooltipRange(), timeline.getViewRange(), timeline.getDataRange(),
-                                getTooltipPanel(), ProfilerLayeredPane.class);
+                                getTooltipPanel(), ProfilerLayeredPane.class,
+                                () -> mySelectionComponent.getMode() != SelectionComponent.Mode.MOVE);
     TabularLayout layout = new TabularLayout("*");
     JPanel panel = new JBPanel(layout);
     panel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
@@ -374,18 +375,18 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     DurationDataRenderer<GcDurationData> gcRenderer =
       new DurationDataRenderer.Builder<>(memoryUsage.getGcDurations(), Color.BLACK)
         .setIcon(StudioIcons.Profiler.Events.GARBAGE_EVENT)
+        // Need to offset the GcDurationData by the margin difference between the overlay component and the
+        // line chart. This ensures we are able to render the Gc events in the proper locations on the line.
         .setLabelOffsets(-StudioIcons.Profiler.Events.GARBAGE_EVENT.getIconWidth() / 2f,
-                         StudioIcons.Profiler.Events.GARBAGE_EVENT.getIconHeight() / 2f)
+                         StudioIcons.Profiler.Events.GARBAGE_EVENT.getIconHeight() / 2f + Y_AXIS_TOP_MARGIN)
         .setHoverHandler(getStage().getTooltipLegends().getGcDurationLegend()::setPickData)
         .setClickRegionPadding(0, 0)
         .build();
     lineChart.addCustomRenderer(gcRenderer);
 
-    mySelectionComponent = new SelectionComponent(getStage().getSelectionModel(), timeline.getViewRange());
-    mySelectionComponent.setCursorSetter(ProfilerLayeredPane::setCursorOnProfilerLayeredPane);
     final JPanel overlayPanel = new JBPanel(new BorderLayout());
     overlayPanel.setOpaque(false);
-    overlayPanel.setBorder(BorderFactory.createEmptyBorder(Y_AXIS_TOP_MARGIN, 0, 0, 0));
+    overlayPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
     final OverlayComponent overlay = new OverlayComponent(mySelectionComponent);
     overlay.addDurationDataRenderer(gcRenderer);
     overlayPanel.add(overlay, BorderLayout.CENTER);
@@ -512,7 +513,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
            getCaptureIntersectingWithMouseX(x).isExportable(),
       x -> getIdeComponents().createExportDialog().open(
         () -> "Export capture to file",
-        () -> getCaptureIntersectingWithMouseX(x).getName(),
+        () -> MemoryProfiler.generateCaptureFileName(),
         () -> getCaptureIntersectingWithMouseX(x).getExportableExtension(),
         file -> getStage().getStudioProfilers().getIdeServices().saveFile(
           file,
@@ -560,7 +561,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
                         ? IconUtil.darker(StudioIcons.Profiler.Toolbar.HEAP_DUMP, 6)
                         : IconUtil.brighter(StudioIcons.Profiler.Toolbar.HEAP_DUMP, 6);
     RenderInstruction[] instructions;
-    FontMetrics metrics = SwingUtilities2.getFontMetrics(parent, PROFILING_INSTRUCTIONS_FONT);
+    FontMetrics metrics = SwingUtilities2.getFontMetrics(parent, ProfilerFonts.H2_FONT);
     if (getStage().useLiveAllocationTracking()) {
       RenderInstruction[] liveAllocInstructions = {
         new TextInstruction(metrics, "Select a range to inspect allocations"),
@@ -603,6 +604,8 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
     headingPanel.add(toolbar, BorderLayout.WEST);
 
     JPanel buttonToolbar = new JPanel(createToolbarLayout());
+    buttonToolbar.setBorder(new JBEmptyBorder(3, 0, 0, 0));
+    buttonToolbar.setOpaque(false);
     if (!getStage().isMemoryCaptureOnly()) {
       buttonToolbar.add(getSelectionTimeLabel());
     }
@@ -615,7 +618,7 @@ public class MemoryProfilerStageView extends StageView<MemoryProfilerStage> {
       filterComponent.addOnFilterChange((pattern, model) -> getStage().selectCaptureFilter(pattern, model));
       headingPanel.add(filterComponent, BorderLayout.SOUTH);
       filterComponent.setVisible(false);
-      filterComponent.setBorder(AdtUiUtils.DEFAULT_TOP_BORDER);
+      filterComponent.setBorder(new JBEmptyBorder(0, 4, 0, 0));
       FilterComponent.configureKeyBindingAndFocusBehaviors(capturePanel, filterComponent, button);
     }
     headingPanel.add(buttonToolbar, BorderLayout.EAST);

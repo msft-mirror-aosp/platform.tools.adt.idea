@@ -15,33 +15,40 @@
  */
 package com.android.tools.profilers.cpu;
 
+import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.Range;
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.profilers.ProfilerColors;
 import com.android.tools.profilers.ProfilerTimeline;
 import com.android.tools.profilers.ProfilerTooltipView;
-import com.google.common.annotations.VisibleForTesting;
-import com.intellij.ui.ColorUtil;
+import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 
+import static com.android.tools.profilers.ProfilerFonts.TOOLTIP_FONT;
+
 public class CpuThreadsTooltipView extends ProfilerTooltipView {
   @NotNull private final CpuThreadsTooltip myTooltip;
   @NotNull private final ProfilerTimeline myTimeline;
-
-  @VisibleForTesting
-  @NotNull protected final JLabel myContent;
+  @NotNull private final JPanel myContent;
+  @NotNull private final JLabel myLabel;
+  @NotNull private final JLabel myState;
+  @NotNull private final JPanel myUnavailableDetails;
 
   protected CpuThreadsTooltipView(@NotNull CpuProfilerStageView view, @NotNull CpuThreadsTooltip tooltip) {
-    super(view.getTimeline(), "CPU");
+    super(view.getTimeline());
     myTimeline = view.getTimeline();
     myTooltip = tooltip;
-    myContent = new JLabel();
-    myContent.setFont(AdtUiUtils.DEFAULT_FONT);
-    myContent.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
-    tooltip.addDependency(this).onChange(CpuThreadsTooltip.Aspect.THREAD_STATE, this::timeChanged);
+    myContent = new JPanel();
+    myLabel = new JLabel();
+    myLabel.setFont(TOOLTIP_FONT);
+    myLabel.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
+    myState = new JLabel();
+    myState.setFont(TOOLTIP_FONT);
+    myState.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
+    myUnavailableDetails = new JPanel(new TabularLayout("*", "Fit,Fit"));
+    tooltip.addDependency(this).onChange(CpuThreadsTooltip.Aspect.THREAD_STATE, this::stateChanged);
   }
 
   @Override
@@ -50,29 +57,53 @@ public class CpuThreadsTooltipView extends ProfilerTooltipView {
     myTooltip.removeDependencies(this);
   }
 
-  @Override
-  protected void timeChanged() {
+  private void stateChanged() {
     Range range = myTimeline.getTooltipRange();
-    if (!range.isEmpty()) {
-      String time = TimeAxisFormatter.DEFAULT
-        .getFormattedString(myTimeline.getDataRange().getLength(), range.getMin() - myTimeline.getDataRange().getMin(), true);
-      String title = myTooltip.getThreadName() != null ? myTooltip.getThreadName() : "CPU";
-      myHeadingLabel.setText(String.format("<html>%s <span style='color:#%s'>%s</span></html",
-                                           title,
-                                           ColorUtil.toHex(ProfilerColors.TOOLTIP_TIME_COLOR),
-                                           time));
-      myContent.setText(myTooltip.getThreadState() == null ? "" : threadStateToString(myTooltip.getThreadState()));
-      updateMaximumLabelDimensions();
-    } else {
-      myHeadingLabel.setText("");
-      myContent.setText("");
+    myContent.removeAll();
+    if (range.isEmpty()) {
+      myContent.add(myUnavailableDetails, new TabularLayout.Constraint(0, 0));
+      return;
+    }
+    String title = myTooltip.getThreadName() != null ? myTooltip.getThreadName() : "CPU";
+    myLabel.setText(String.format("Thread: %s", title));
+    myContent.add(myLabel, new TabularLayout.Constraint(0, 0));
+    if (myTooltip.getThreadState() != null) {
+      myState.setText(threadStateToString(myTooltip.getThreadState()));
+      myContent.add(myState, new TabularLayout.Constraint(2, 0));
+      if (!threadStateIsCaptured(myTooltip.getThreadState())) {
+        myContent.add(myUnavailableDetails, new TabularLayout.Constraint(3, 0));
+      }
     }
   }
 
   @NotNull
   @Override
   protected JComponent createTooltip() {
+    myContent.setLayout(new TabularLayout("*", "Fit-,5px,Fit"));
+    JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
+    separator.setBorder(JBUI.Borders.empty(5, 0));
+    myUnavailableDetails.add(separator, new TabularLayout.Constraint(0, 0));
+    JLabel unavailableLabel = new JLabel("Details Unavailable");
+    unavailableLabel.setFont(AdtUiUtils.DEFAULT_FONT);
+    unavailableLabel.setForeground(ProfilerColors.TOOLTIP_TIME_COLOR);
+    myUnavailableDetails.add(unavailableLabel, new TabularLayout.Constraint(1, 0));
+    myContent.add(myUnavailableDetails, new TabularLayout.Constraint(0, 0));
     return myContent;
+  }
+
+  private static boolean threadStateIsCaptured(@NotNull CpuProfilerStage.ThreadState state) {
+    switch (state) {
+      case RUNNING_CAPTURED:
+      case RUNNABLE_CAPTURED:
+      case SLEEPING_CAPTURED:
+      case DEAD_CAPTURED:
+      case WAITING_CAPTURED:
+      case WAITING_IO_CAPTURED:
+      case HAS_ACTIVITY:
+        return true;
+      default:
+        return false;
+    }
   }
 
   private static String threadStateToString(@NotNull CpuProfilerStage.ThreadState state) {
