@@ -32,6 +32,7 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.registry.Registry;
 import com.intellij.ui.components.JBLayeredPane;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.accessibility.ScreenReader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
@@ -104,6 +105,10 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   public void init(@NotNull JComponent content,
                    @NotNull T context,
                    @NotNull List<ToolWindowDefinition<T>> definitions) {
+    if (ScreenReader.isActive()) {
+      setFocusCycleRoot(true);
+      setFocusTraversalPolicy(new LayoutFocusTraversalPolicy());
+    }
     myLoadingPanel.stopLoading();
     myMainPanel.setVisible(true);
     content.addComponentListener(createWidthUpdater());

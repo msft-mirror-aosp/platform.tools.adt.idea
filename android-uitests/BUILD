@@ -363,6 +363,7 @@ java_test(
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "CreateDefaultActivityTest",
     data = COMMON_DATA + [
@@ -373,12 +374,12 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.CreateDefaultActivityTest"],
     tags = COMMON_TAGS + [
         "no_psq",
-        "qa_sanity",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "GenerateApkWithReleaseVariantTest",
     data = COMMON_DATA + glob([
@@ -387,12 +388,12 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.instantapp.GenerateApkWithReleaseVariantTest"],
     tags = COMMON_TAGS + [
         "no_psq",
-        "qa_sanity",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "ModifyMinSdkAndSyncTest",
     data = COMMON_DATA + glob([
@@ -401,12 +402,12 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.gradle.ModifyMinSdkAndSyncTest"],
     tags = COMMON_TAGS + [
         "no_psq",
-        "qa_sanity",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "CreateNewAppModuleWithDefaultsTest",
     data = COMMON_DATA + glob([
@@ -421,6 +422,7 @@ java_test(
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "CreateNewLibraryModuleWithDefaultsTest",
     data = COMMON_DATA + glob([
@@ -435,12 +437,27 @@ java_test(
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
+# Sanity test
 java_test(
     name = "AddNewBuildTypeTest",
     data = COMMON_DATA + glob([
         "testData/SimpleLocalApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AddNewBuildTypeTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+# Sanity test
+java_test(
+    name = "RunOnEmulatorTest",
+    data = COMMON_DATA + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.emulator.RunOnEmulatorTest"],
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
@@ -467,6 +484,80 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+# Sanity test
+java_test(
+    name = "SideConstraintHandlingTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:buildprop",
+        "//prebuilts/studio/layoutlib:data/fonts",
+        "//prebuilts/studio/layoutlib:data/res",
+        "//tools/adt/idea/android/lib:androidWidgets",
+    ] + glob([
+        "testData/LayoutLocalTest/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.SideConstraintHandlingTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "qa_sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+# Sanity test
+java_test(
+    name = "BaselineConstraintHandlingTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:buildprop",
+        "//prebuilts/studio/layoutlib:data/fonts",
+        "//prebuilts/studio/layoutlib:data/res",
+        "//tools/adt/idea/android/lib:androidWidgets",
+    ] + glob([
+        "testData/LayoutLocalTest/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BaselineConstraintHandlingTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "qa_sanity",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "AddAppCompatLibTest",
+    data = COMMON_DATA + glob([
+        "testData/NoAppCompatLibApp/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AddAppCompatLibTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+# Sanity test
+java_test(
+    name = "BasicLayoutEditTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:buildprop",
+        "//prebuilts/studio/layoutlib:data/fonts",
+        "//prebuilts/studio/layoutlib:data/res",
+        "//tools/adt/idea/android/lib:androidWidgets",
+        ":aswb_plugin",
+    ] + glob([
+        "testData/SimpleLocalApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BasicLayoutEditTest"],
+    tags = COMMON_TAGS + [
+        "no_psq",
+        "qa_sanity",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

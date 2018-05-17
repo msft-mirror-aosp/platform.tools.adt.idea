@@ -25,14 +25,15 @@ import javax.swing.table.TableColumnModel
 /**
  * A property editor [ModelPropertyEditor] for properties of simple list types.
  */
-class ListPropertyEditor<ValueT : Any, out ModelPropertyT : ModelListPropertyCore<ValueT>>(
+class ListPropertyEditor<ValueT : Any, ModelPropertyT : ModelListPropertyCore<ValueT>>(
   property: ModelPropertyT,
   propertyContext: ModelPropertyContext<ValueT>,
   editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
-  variablesProvider: VariablesProvider?
+  variablesProvider: VariablesProvider?,
+  extensions: List<EditorExtensionAction>
 ) :
-  CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesProvider),
-  ModelPropertyEditor<List<ValueT>> {
+  CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesProvider, extensions),
+  ModelPropertyEditor<List<ValueT>>, ModelPropertyEditorFactory<List<ValueT>, ModelPropertyT> {
 
   override fun updateProperty() = throw UnsupportedOperationException()
 
@@ -51,10 +52,6 @@ class ListPropertyEditor<ValueT : Any, out ModelPropertyT : ModelListPropertyCor
     return tableModel
   }
 
-  override fun getValueAt(row: Int): ParsedValue<ValueT> = getRowProperty(row).getParsedValue()
-
-  override fun setValueAt(row: Int, value: ParsedValue<ValueT>) = getRowProperty(row).setParsedValue(value)
-
   override fun createColumnModel(): TableColumnModel {
     return DefaultTableColumnModel().apply {
       addColumn(TableColumn(0).apply {
@@ -65,7 +62,7 @@ class ListPropertyEditor<ValueT : Any, out ModelPropertyT : ModelListPropertyCor
     }
   }
 
-  override fun getValue(): ParsedValue<List<ValueT>> = throw UnsupportedOperationException()
+  override fun getValue(): Annotated<ParsedValue<List<ValueT>>> = throw UnsupportedOperationException()
 
   override fun addItem() {
     tableModel?.let { tableModel ->
@@ -90,11 +87,16 @@ class ListPropertyEditor<ValueT : Any, out ModelPropertyT : ModelListPropertyCor
     }
   }
 
-  private fun getRowProperty(row: Int) = property.getEditableValues()[row]
+  override fun getPropertyAt(row: Int) = property.getEditableValues()[row]
+
+  override fun createNew(property: ModelPropertyT): ModelPropertyEditor<List<ValueT>> =
+    listPropertyEditor(editor)(property, propertyContext, variablesProvider, extensions)
 }
 
 fun <ValueT : Any, ModelPropertyT : ModelListPropertyCore<ValueT>> listPropertyEditor(
   editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>
 ):
-    PropertyEditorFactory<ModelPropertyT, ModelPropertyContext<ValueT>, List<ValueT>> =
-    { property, propertyContext, variablesProvider -> ListPropertyEditor(property, propertyContext, editor, variablesProvider) }
+  PropertyEditorFactory<ModelPropertyT, ModelPropertyContext<ValueT>, List<ValueT>> =
+  { property, propertyContext, variablesProvider, extensions ->
+    ListPropertyEditor(property, propertyContext, editor, variablesProvider, extensions)
+  }

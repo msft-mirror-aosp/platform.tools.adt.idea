@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
-import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
@@ -51,7 +50,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
 
   @Override
   @Nullable
-  public Object getValue() {
+  public Object produceValue() {
     PsiElement element = getCurrentElement();
     if (element == null) {
       return null;
@@ -62,7 +61,7 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
 
   @Override
   @Nullable
-  public Object getUnresolvedValue() {
+  public Object produceUnresolvedValue() {
     PsiElement element = getCurrentElement();
     if (element == null) {
       return null;
@@ -71,48 +70,22 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
                              .runReadAction((Computable<Object>)() -> getDslFile().getParser().extractValue(this, element, false));
   }
 
-  /**
-   * Returns the value of type {@code clazz} when the literal contains the value of that type,
-   * or {@code null} otherwise.
-   */
-  @Override
-  @Nullable
-  public <T> T getValue(@NotNull Class<T> clazz) {
-    Object value = getValue();
-    if (value != null && clazz.isAssignableFrom(value.getClass())) {
-      return clazz.cast(value);
-    }
-    return null;
-  }
-
-  @Override
-  @Nullable
-  public <T> T getUnresolvedValue(@NotNull Class<T> clazz) {
-    Object value = getUnresolvedValue();
-    if (value != null && clazz.isAssignableFrom(value.getClass())) {
-      return clazz.cast(value);
-    }
-    return null;
-  }
-
   @Override
   public void setValue(@NotNull Object value) {
     checkForValidValue(value);
-    if (value instanceof ReferenceTo) {
-      myIsReference = true;
-    }
-    else {
-      myIsReference = false;
-    }
     PsiElement element =
-      ApplicationManager.getApplication().runReadAction((Computable<PsiElement>)() -> getDslFile().getParser().convertToPsiElement(value));
+      ApplicationManager.getApplication().runReadAction((Computable<PsiElement>)() -> {
+        PsiElement psiElement = getDslFile().getParser().convertToPsiElement(value);
+        getDslFile().getParser().setUpForNewValue(this, psiElement);
+        return psiElement;
+      });
     setUnsavedValue(element);
     valueChanged();
   }
 
   @Nullable
   @Override
-  public Object getRawValue() {
+  public Object produceRawValue() {
     PsiElement currentElement = getCurrentElement();
     if (currentElement == null) {
       return null;
@@ -186,5 +159,15 @@ public final class GradleDslLiteral extends GradleDslSettableExpression {
 
   public boolean isReference() {
     return myIsReference;
+  }
+
+  public void setReference(boolean isReference) {
+    myIsReference = isReference;
+  }
+
+  @Override
+  public void reset() {
+    super.reset();
+    ApplicationManager.getApplication().runReadAction(() -> getDslFile().getParser().setUpForNewValue(this, getCurrentElement()));
   }
 }

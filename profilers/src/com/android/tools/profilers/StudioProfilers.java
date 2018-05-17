@@ -63,7 +63,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    */
   public static final int PROFILERS_UPDATE_RATE = 60;
 
-  private final ProfilerClient myClient;
+  @Nullable private final ProfilerClient myClient;
 
   private final ProfilerTimeline myTimeline;
 
@@ -120,12 +120,12 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    */
   private boolean myAutoProfilingEnabled = true;
 
-  public StudioProfilers(ProfilerClient client, @NotNull IdeProfilerServices ideServices) {
+  public StudioProfilers(@Nullable ProfilerClient client, @NotNull IdeProfilerServices ideServices) {
     this(client, ideServices, new FpsTimer(PROFILERS_UPDATE_RATE));
   }
 
   @VisibleForTesting
-  public StudioProfilers(ProfilerClient client, @NotNull IdeProfilerServices ideServices, @NotNull StopwatchTimer timer) {
+  public StudioProfilers(@Nullable ProfilerClient client, @NotNull IdeProfilerServices ideServices, @NotNull StopwatchTimer timer) {
     myClient = client;
     myIdeServices = ideServices;
     myPreferredProcessName = null;
@@ -147,37 +147,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     myProfilers = profilersBuilder.build();
 
     myTimeline = new ProfilerTimeline(myUpdater);
-    myTimeline.getSelectionRange().addDependency(this).onChange(Range.Aspect.RANGE, () -> {
-      if (!myTimeline.getSelectionRange().isEmpty()) {
-        myTimeline.setStreaming(false);
-      }
-    });
-
-    registerSessionChangeListener(Common.SessionMetaData.SessionType.FULL, () -> {
-      setStage(new StudioMonitorStage(this));
-      if (SessionsManager.isSessionAlive(mySelectedSession)) {
-        // The session is live - move the timeline to the current time.
-        TimeResponse timeResponse = myClient.getProfilerClient()
-                                            .getCurrentTime(TimeRequest.newBuilder().setDeviceId(mySelectedSession.getDeviceId()).build());
-
-        myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
-        if (startupCpuProfilingStarted()) {
-          setStage(new CpuProfilerStage(this));
-        }
-      }
-      else {
-        // The session is finished, reset the timeline to include the entire data range.
-        myTimeline.reset(mySelectedSession.getStartTimestamp(), mySelectedSession.getEndTimestamp());
-        // Disable data range update and stream/snap features.
-        myTimeline.setIsPaused(true);
-        myTimeline.setStreaming(false);
-        myTimeline.getViewRange().set(mySessionsManager.getSessionPreferredViewRange(mySelectedSession));
-      }
-
-      // Profilers can query data depending on whether the agent is set. Even though we set the status above, delay until after the session
-      // is properly assigned before firing this aspect change.
-      changed(ProfilerAspect.AGENT);
-    });
 
     myProcesses = Maps.newHashMap();
     myDevice = null;
@@ -186,15 +155,51 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     // TODO: StudioProfilers initalizes with a default session, which a lot of tests now relies on to avoid a NPE.
     // We should clean all the tests up to either have StudioProfilers create a proper session first or handle the null cases better.
     mySelectedSession = myProfilingSession = Common.Session.getDefaultInstance();
-    mySessionsManager.addDependency(this)
-                     .onChange(SessionAspect.SELECTED_SESSION, this::selectedSessionChanged)
-                     .onChange(SessionAspect.PROFILING_SESSION, this::profilingSessionChanged);
 
-    myViewAxis = new AxisComponentModel(myTimeline.getViewRange(), TimeAxisFormatter.DEFAULT);
-    myViewAxis.setGlobalRange(myTimeline.getDataRange());
+    if (myClient != null) {
+      myTimeline.getSelectionRange().addDependency(this).onChange(Range.Aspect.RANGE, () -> {
+        if (!myTimeline.getSelectionRange().isEmpty()) {
+          myTimeline.setStreaming(false);
+        }
+      });
 
-    myUpdater.register(myViewAxis);
-    myUpdater.register(this);
+      registerSessionChangeListener(Common.SessionMetaData.SessionType.FULL, () -> {
+        setStage(new StudioMonitorStage(this));
+        if (SessionsManager.isSessionAlive(mySelectedSession)) {
+          // The session is live - move the timeline to the current time.
+          TimeResponse timeResponse = myClient.getProfilerClient()
+                                              .getCurrentTime(
+                                                TimeRequest.newBuilder().setDeviceId(mySelectedSession.getDeviceId()).build());
+
+          myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
+          if (startupCpuProfilingStarted()) {
+            setStage(new CpuProfilerStage(this));
+          }
+        }
+        else {
+          // The session is finished, reset the timeline to include the entire data range.
+          myTimeline.reset(mySelectedSession.getStartTimestamp(), mySelectedSession.getEndTimestamp());
+          // Disable data range update and stream/snap features.
+          myTimeline.setIsPaused(true);
+          myTimeline.setStreaming(false);
+          myTimeline.getViewRange().set(mySessionsManager.getSessionPreferredViewRange(mySelectedSession));
+        }
+
+        // Profilers can query data depending on whether the agent is set. Even though we set the status above, delay until after the
+        // session is properly assigned before firing this aspect change.
+        changed(ProfilerAspect.AGENT);
+      });
+
+      mySessionsManager.addDependency(this)
+                       .onChange(SessionAspect.SELECTED_SESSION, this::selectedSessionChanged)
+                       .onChange(SessionAspect.PROFILING_SESSION, this::profilingSessionChanged);
+
+      myViewAxis = new AxisComponentModel(myTimeline.getViewRange(), TimeAxisFormatter.DEFAULT);
+      myViewAxis.setGlobalRange(myTimeline.getDataRange());
+
+      myUpdater.register(myViewAxis);
+      myUpdater.register(this);
+    }
   }
 
   public boolean isStopped() {
@@ -233,7 +238,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    *                      or process that starts after a certain time.
    */
   public void setPreferredProcess(@Nullable String deviceName,
-                                  @Nullable String processName,
+                                  @NotNull String processName,
                                   @Nullable Predicate<Common.Process> processFilter) {
     myPreferredDeviceName = deviceName;
     myPreferredProcessName = processName;
@@ -348,7 +353,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       }
     }
 
-    // Next, prefer the device currently used, either selected by user or automatically
+    // Next, prefer the device currently used.
     if (myDevice != null) {
       for (Common.Device device : devices) {
         if (myDevice.getDeviceId() == device.getDeviceId()) {
@@ -357,27 +362,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       }
     }
 
-    // No preferred candidate. Choose any device that has online processes
-    Common.Device anyDevice = devices.isEmpty() ? null : devices.iterator().next();
-    return myAutoProfilingEnabled && myPreferredDeviceName == null ?
-           devices.stream().filter(this::deviceHasAliveProcesses).findAny().orElse(anyDevice) : null;
-  }
-
-  private boolean deviceHasAliveProcesses(@NotNull Common.Device device) {
-    if (!device.getState().equals(Common.Device.State.ONLINE)) {
-      return false;
-    }
-
-    List<Common.Process> deviceProcesses = myProcesses.get(device);
-    if (deviceProcesses == null) {
-      return false;
-    }
-    for (Common.Process process : deviceProcesses) {
-      if (process.getState().equals(Common.Process.State.ALIVE)) {
-        return true;
-      }
-    }
-    return false;
+    return null;
   }
 
   /**
@@ -581,6 +566,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     return myStage;
   }
 
+  @Nullable
   public ProfilerClient getClient() {
     return myClient;
   }

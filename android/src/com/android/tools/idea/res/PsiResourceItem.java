@@ -244,9 +244,9 @@ public class PsiResourceItem implements ResourceItem {
         VirtualFile virtualFile = source.getVirtualFile();
         String path = virtualFile == null ? null : VfsUtilCore.virtualToIoFile(virtualFile).getAbsolutePath();
         if (density != null) {
-          myResourceValue = new DensityBasedResourceValue(myNamespace, myType, myName, path, density, null);
+          myResourceValue = new DensityBasedResourceValueImpl(myNamespace, myType, myName, path, density, null);
         } else {
-          myResourceValue = new ResourceValue(myNamespace, myType, myName, path, null);
+          myResourceValue = new ResourceValueImpl(myNamespace, myType, myName, path, null);
         }
       } else {
         myResourceValue = parseXmlToResourceValue(tag);
@@ -293,16 +293,16 @@ public class PsiResourceItem implements ResourceItem {
     switch (myType) {
       case STYLE:
         String parent = getAttributeValue(tag, ATTR_PARENT);
-        value = parseStyleValue(tag, new StyleResourceValue(myNamespace, myType, myName, parent, null));
+        value = parseStyleValue(tag, new StyleResourceValueImpl(myNamespace, myType, myName, parent, null));
         break;
       case DECLARE_STYLEABLE:
-        value = parseDeclareStyleable(tag, new DeclareStyleableResourceValue(myNamespace, myType, myName, null, null));
+        value = parseDeclareStyleable(tag, new DeclareStyleableResourceValueImpl(myNamespace, myType, myName, null, null));
         break;
       case ATTR:
-        value = parseAttrValue(tag, new AttrResourceValue(myNamespace, myType, myName, null));
+        value = parseAttrValue(tag, new AttrResourceValueImpl(myNamespace, myType, myName, null));
         break;
       case ARRAY:
-        value = parseArrayValue(tag, new ArrayResourceValue(myNamespace, myType, myName, null) {
+        value = parseArrayValue(tag, new ArrayResourceValueImpl(myNamespace, myType, myName, null) {
           // Allow the user to specify a specific element to use via tools:index
           @Override
           protected int getDefaultIndex() {
@@ -315,7 +315,7 @@ public class PsiResourceItem implements ResourceItem {
         });
         break;
       case PLURALS:
-        value = parsePluralsValue(tag, new PluralsResourceValue(myNamespace, myType, myName, null, null) {
+        value = parsePluralsValue(tag, new PluralsResourceValueImpl(myNamespace, myType, myName, null, null) {
           // Allow the user to specify a specific quantity to use via tools:quantity
           @Override
           public String getValue() {
@@ -334,7 +334,7 @@ public class PsiResourceItem implements ResourceItem {
         value = parseTextValue(tag, new PsiTextResourceValue(myNamespace, myType, myName, null, null, null));
         break;
       default:
-        value = parseValue(tag, new ResourceValue(myNamespace, myType, myName, null));
+        value = parseValue(tag, new ResourceValueImpl(myNamespace, myType, myName, null));
         break;
     }
 
@@ -348,7 +348,8 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private ResourceValue parseDeclareStyleable(@NotNull XmlTag tag, @NotNull DeclareStyleableResourceValue declareStyleable) {
+  private DeclareStyleableResourceValueImpl parseDeclareStyleable(@NotNull XmlTag tag,
+                                                                  @NotNull DeclareStyleableResourceValueImpl declareStyleable) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (!StringUtil.isEmpty(name)) {
@@ -356,7 +357,7 @@ public class PsiResourceItem implements ResourceItem {
         if (url != null) {
           ResourceReference resolvedAttr = url.resolve(getNamespace(), ResourceHelper.getNamespaceResolver(tag));
           if (resolvedAttr != null) {
-            AttrResourceValue attr = parseAttrValue(child, new AttrResourceValue(resolvedAttr, null));
+            AttrResourceValue attr = parseAttrValue(child, new AttrResourceValueImpl(resolvedAttr, null));
             declareStyleable.addValue(attr);
           }
         }
@@ -367,12 +368,13 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private static ResourceValue parseStyleValue(@NotNull XmlTag tag, @NotNull StyleResourceValue styleValue) {
+  private static StyleResourceValueImpl parseStyleValue(@NotNull XmlTag tag, @NotNull StyleResourceValueImpl styleValue) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (!StringUtil.isEmpty(name)) {
         String value = ValueXmlHelper.unescapeResourceString(ResourceHelper.getTextContent(child), true, true);
-        ItemResourceValue itemValue = new ItemResourceValue(styleValue.getNamespace(), name, value, styleValue.getLibraryName());
+        StyleItemResourceValueImpl itemValue =
+            new StyleItemResourceValueImpl(styleValue.getNamespace(), name, value, styleValue.getLibraryName());
         itemValue.setNamespaceResolver(ResourceHelper.getNamespaceResolver(child));
         styleValue.addItem(itemValue);
       }
@@ -382,7 +384,7 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private static AttrResourceValue parseAttrValue(@NotNull XmlTag tag, @NotNull AttrResourceValue attrValue) {
+  private static AttrResourceValue parseAttrValue(@NotNull XmlTag tag, @NotNull AttrResourceValueImpl attrValue) {
     for (XmlTag child : tag.getSubTags()) {
       String name = getAttributeValue(child, ATTR_NAME);
       if (name != null) {
@@ -402,17 +404,19 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private static ResourceValue parseArrayValue(@NotNull XmlTag tag, @NotNull ArrayResourceValue arrayValue) {
+  private static ArrayResourceValueImpl parseArrayValue(@NotNull XmlTag tag, @NotNull ArrayResourceValueImpl arrayValue) {
     for (XmlTag child : tag.getSubTags()) {
       String text = ValueXmlHelper.unescapeResourceString(ResourceHelper.getTextContent(child), true, true);
-      arrayValue.addElement(text);
+      if (text != null) {
+        arrayValue.addElement(text);
+      }
     }
 
     return arrayValue;
   }
 
   @NotNull
-  private static ResourceValue parsePluralsValue(@NotNull XmlTag tag, @NotNull PluralsResourceValue value) {
+  private static PluralsResourceValueImpl parsePluralsValue(@NotNull XmlTag tag, @NotNull PluralsResourceValueImpl value) {
     for (XmlTag child : tag.getSubTags()) {
       String quantity = child.getAttributeValue(ATTR_QUANTITY);
       if (quantity != null) {
@@ -425,7 +429,7 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private static ResourceValue parseValue(@NotNull XmlTag tag, @NotNull ResourceValue value) {
+  private static ResourceValueImpl parseValue(@NotNull XmlTag tag, @NotNull ResourceValueImpl value) {
     String text = ResourceHelper.getTextContent(tag);
     text = ValueXmlHelper.unescapeResourceString(text, true, true);
     value.setValue(text);
@@ -511,7 +515,7 @@ public class PsiResourceItem implements ResourceItem {
     return helper.toString();
   }
 
-  private class PsiTextResourceValue extends TextResourceValue {
+  private class PsiTextResourceValue extends TextResourceValueImpl {
     public PsiTextResourceValue(@NotNull ResourceNamespace namespace, @NotNull ResourceType type, @NotNull String name,
                                 @Nullable String textValue, @Nullable String rawXmlValue, @Nullable String libraryName) {
       super(namespace, type, name, textValue, rawXmlValue, libraryName);

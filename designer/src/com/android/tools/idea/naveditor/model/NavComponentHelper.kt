@@ -18,6 +18,7 @@ package com.android.tools.idea.naveditor.model
 import com.android.SdkConstants
 import com.android.SdkConstants.*
 import com.android.annotations.VisibleForTesting
+import com.android.tools.idea.common.api.InsertType
 import com.android.tools.idea.common.model.BooleanAutoAttributeDelegate
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.StringAttributeDelegate
@@ -29,6 +30,7 @@ import com.google.common.collect.Table
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiManager
 import com.intellij.psi.xml.XmlFile
+import org.jetbrains.android.dom.navigation.NavActionElement
 import org.jetbrains.android.dom.navigation.NavigationSchema
 import java.io.File
 
@@ -250,9 +252,12 @@ fun NlComponent.createNestedGraph(): NlComponent {
   return createChild(model.schema.getDefaultTag(NavigationSchema.DestinationType.NAVIGATION)!!)
 }
 
+val NlComponent.supportsActions: Boolean
+  get() = model.schema.getDestinationSubtags(tagName).containsKey(NavActionElement::class.java)
+
 private fun NlComponent.createChild(tagName: String): NlComponent {
   val newTag = tag.createChildTag(tagName, null, null, false)
-  val child = model.createComponent(newTag, this, null)
+  val child = model.createComponent(null, newTag, this, null, InsertType.CREATE)
   child.ensureId()
   return child
 }

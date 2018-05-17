@@ -35,30 +35,26 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
   }
 
   private fun <T : Any> GradlePropertyModel.wrap(
-    parse: (Nothing?, String) -> ParsedValue<T>,
+    parse: (Nothing?, String) -> Annotated<ParsedValue<T>>,
     caster: ResolvedPropertyModel.() -> T?
   ): ModelSimpleProperty<Nothing?, Model, T> {
     val resolved = resolve()
     return Model.property(
       "description",
-      getResolvedValue = { null },
-      getParsedProperty = { resolved },
+      resolvedValueGetter = { null },
+      parsedPropertyGetter = { resolved },
       getter = { caster() },
       setter = { setValue(it) },
-      parse = { context, value -> parse(context, value) }
+      parser = { context, value -> parse(context, value) }
     )
   }
 
-  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testValue() =
-    (bind(Model).getParsedValue() as? ParsedValue.Set.Parsed<T>)?.value
-  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetValue(value: T?) =
-    bind(Model).setParsedValue(if (value != null) ParsedValue.Set.Parsed(value, DslText.Literal) else ParsedValue.NotSet)
-
-  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetReference(value: String) =
-    bind(Model).setParsedValue(ParsedValue.Set.Parsed(dslText = DslText.Reference(value), value = null))
-
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testValue() = bind(Model).testValue()
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testIsModified() = bind(Model).isModified
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetValue(value: T?) = bind(Model).testSetValue(value)
+  private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetReference(value: String) = bind(Model).testSetReference(value)
   private fun <T : Any> ModelSimpleProperty<Nothing?, Model, T>.testSetInterpolatedString(value: String) =
-    bind(Model).setParsedValue(ParsedValue.Set.Parsed(dslText = DslText.InterpolatedString(value), value = null))
+    bind(Model).testSetInterpolatedString(value)
 
   @Test
   fun testPropertyValues() {
@@ -87,13 +83,21 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
     val propOtherExpression2 = extModel.findProperty("propOtherExpression2").wrap(::parseString, ResolvedPropertyModel::asString)
 
     assertThat(propValue.testValue(), equalTo("value"))
+    assertThat(propValue.testIsModified(), equalTo(false))
     assertThat(prop25.testValue(), equalTo(25))
+    assertThat(prop25.testIsModified(), equalTo(false))
     assertThat(propTrue.testValue(), equalTo(true))
+    assertThat(propTrue.testIsModified(), equalTo(false))
     assertThat(propRef.testValue(), equalTo("value"))
+    assertThat(propRef.testIsModified(), equalTo(false))
     assertThat(propInterpolated.testValue(), equalTo("25th"))
+    assertThat(propInterpolated.testIsModified(), equalTo(false))
     assertThat(propUnresolved.testValue(), nullValue())
+    assertThat(propUnresolved.testIsModified(), equalTo(false))
     assertThat(propOtherExpression1.testValue(), nullValue())
+    assertThat(propOtherExpression1.testIsModified(), equalTo(false))
     assertThat(propOtherExpression2.testValue(), nullValue())
+    assertThat(propOtherExpression2.testIsModified(), equalTo(false))
   }
 
   @Test
@@ -106,8 +110,6 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
                  propInterpolated = "${'$'}{prop25}th"
                  propUnresolved = unresolvedReference
                  propRef = propValue
-                 propOtherExpression1 = z(1)
-                 propOtherExpression2 = 1 + 2
                }""".trimIndent()
     writeToBuildFile(text)
 
@@ -119,27 +121,38 @@ class ModelSimplePropertyImplTest : GradleFileModelTestCase() {
     val propInterpolated = extModel.findProperty("propInterpolated").wrap(::parseString, ResolvedPropertyModel::asString)
     val propUnresolved = extModel.findProperty("propUnresolved").wrap(::parseString, ResolvedPropertyModel::asString)
     val propRef = extModel.findProperty("propRef").wrap(::parseString, ResolvedPropertyModel::asString)
-    val propOtherExpression1 = extModel.findProperty("propOtherExpression1").wrap(::parseString, ResolvedPropertyModel::asString)
-    val propOtherExpression2 = extModel.findProperty("propOtherExpression2").wrap(::parseString, ResolvedPropertyModel::asString)
 
     propValue.testSetValue("changed")
     assertThat(propValue.testValue(), equalTo("changed"))
+    assertThat(propValue.testIsModified(), equalTo(true))
+    assertThat(propRef.testIsModified(), equalTo(false))  // Changing a dependee does not make the dependent modified.
 
     prop25.testSetValue(26)
     assertThat(prop25.testValue(), equalTo(26))
+    assertThat(prop25.testIsModified(), equalTo(true))
 
     propTrue.testSetValue(null)
     assertThat(propTrue.testValue(), nullValue())
+    assertThat(propTrue.testIsModified(), equalTo(true))
 
     propInterpolated.testSetInterpolatedString("${'$'}{prop25} items")
     assertThat(propInterpolated.testValue(), equalTo("26 items"))
+    assertThat(propInterpolated.testIsModified(), equalTo(true))
 
     propUnresolved.testSetValue("reset")
     assertThat(propUnresolved.testValue(), equalTo("reset"))
+    assertThat(propUnresolved.testIsModified(), equalTo(true))
 
     propRef.testSetReference("propInterpolated")
     assertThat(propRef.testValue(), equalTo("26 items"))
-    assertThat(propOtherExpression1.testValue(), nullValue())
-    assertThat(propOtherExpression2.testValue(), nullValue())
+    assertThat(propRef.testIsModified(), equalTo(true))
+
+    prop25.testSetReference("25")
+    assertThat(prop25.testValue(), equalTo(25))
+
+    propTrue.testSetReference("2 + 2")
+    assertThat<Annotated<ParsedValue<Boolean>>>(
+      propTrue.bind(Model).getParsedValue(),
+      equalTo<Annotated<ParsedValue<Boolean>>>(ParsedValue.Set.Parsed<Boolean>(null, DslText.OtherUnparsedDslText("2 + 2")).annotated()))
   }
 }

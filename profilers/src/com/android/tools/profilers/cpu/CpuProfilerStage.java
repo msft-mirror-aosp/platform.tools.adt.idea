@@ -53,6 +53,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
   private static final SingleUnitAxisFormatter CPU_USAGE_FORMATTER = new SingleUnitAxisFormatter(1, 5, 10, "%");
   private static final SingleUnitAxisFormatter NUM_THREADS_AXIS = new SingleUnitAxisFormatter(1, 5, 1, "");
+
+  // Clamp the property value between 5 Seconds and 5 Minutes, otherwise the user could specify arbitrarily small or large value.
+  public static int CPU_ART_STOP_TIMEOUT_SEC = Math.max(5, Math.min(Integer.getInteger("profiler.cpu.art.stop.timeout.sec", 5),
+                                                                     5 * 60));
   /**
    * Percentage of space on either side of an imported trace.
    */
@@ -81,14 +85,14 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
 
   @VisibleForTesting
-  static final String PARSING_ABORTED_BALLOON_TITLE = "Trace parsing was aborted";
+  static final String PARSING_ABORTED_BALLOON_TITLE = "Parsing trace file aborted";
   @VisibleForTesting
-  static final String PARSING_IMPORTED_TRACE_ABORTED_BALLOON_TEXT = "Parsing the imported trace file was aborted because you left the " +
-                                                                    "session while parsing was in progress. Please reselect that session " +
-                                                                    "to start parsing again.";
+  static final String PARSING_IMPORTED_TRACE_ABORTED_BALLOON_TEXT = "The profiler changed to a different session before the imported " +
+                                                                    "trace file could be parsed. Please try importing your trace " +
+                                                                    "file again.";
   @VisibleForTesting
-  static final String PARSING_RECORDED_TRACE_ABORTED_BALLOON_TEXT = "Parsing the recorded trace file was aborted because you left CPU " +
-                                                                    "profiler before parsing was complete. Please try recording again.";
+  static final String PARSING_RECORDED_TRACE_ABORTED_BALLOON_TEXT = "The CPU profiler was closed before the recorded trace file could be " +
+                                                                    "parsed. Please record another trace.";
 
   @VisibleForTesting
   static final String CAPTURE_START_FAILURE_BALLOON_TITLE = "Recording failed to start";

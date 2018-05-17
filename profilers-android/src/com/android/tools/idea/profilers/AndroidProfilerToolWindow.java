@@ -32,6 +32,7 @@ import com.intellij.openapi.startup.StartupManager;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowManagerAdapter;
@@ -43,11 +44,17 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.io.File;
 import java.util.function.Predicate;
 
 public class AndroidProfilerToolWindow extends AspectObserver implements Disposable {
 
   private static final String HIDE_STOP_PROMPT = "profilers.hide.stop.prompt";
+
+  private static final String OPEN_FILE_FAILURE_BALLOON_TITLE = "Failed to open file";
+
+  private static final String OPEN_FILE_FAILURE_BALLOON_TEXT = "The profiler was unable to open the selected file. Please try opening it " +
+                                                               "again or select a different file.";
 
   @NotNull
   private final StudioProfilersView myView;
@@ -68,9 +75,14 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
     myWindow = window;
     myProject = project;
 
+    ProfilerClient client = null;
+    IdeProfilerServices ideProfilerServices = new IntellijProfilerServices(myProject);
     ProfilerService service = ProfilerService.getInstance(myProject);
-    ProfilerClient client = service.getProfilerClient();
-    myProfilers = new StudioProfilers(client, new IntellijProfilerServices(myProject));
+    if (service != null) {
+      service.getDataStoreService().setNoPiiExceptionHanlder(ideProfilerServices::reportNoPiiException);
+      client = service.getProfilerClient();
+    }
+    myProfilers = new StudioProfilers(client, ideProfilerServices);
 
     // Sets the preferred process. Note the always-false predicate, which prevents the Profilers to immediately starts profiling an app that
     // is already running.
@@ -83,7 +95,6 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
     myIdeProfilerComponents = new IntellijProfilerComponents(myProject, myProfilers.getIdeServices().getFeatureTracker());
     myView = new StudioProfilersView(myProfilers, myIdeProfilerComponents);
     myLayeredPane = new ProfilerLayeredPane();
-    service.getDataStoreService().setNoPiiExceptionHanlder(myProfilers.getIdeServices()::reportNoPiiException);
     initializeUi();
     Disposer.register(this, myView);
 
@@ -126,6 +137,15 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
    */
   public void profileModule(@NotNull Module module, @NotNull IDevice device, @Nullable Predicate<Common.Process> processPredicate) {
     myProfilers.setPreferredProcess(getDeviceDisplayName(device), getModuleName(module), processPredicate);
+  }
+
+  /**
+   * Tries to import a file into an imported session of the profilers and shows an error balloon if it fails to do so.
+   */
+  public void openFile(@NotNull VirtualFile file) {
+    if (!myProfilers.getSessionsManager().importSessionFromFile(new File(file.getPath()))) {
+      myProfilers.getIdeServices().showErrorBalloon(OPEN_FILE_FAILURE_BALLOON_TITLE, OPEN_FILE_FAILURE_BALLOON_TEXT, null, null);
+    }
   }
 
   private void modeChanged() {
@@ -249,7 +269,6 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
             "Yes",
             "Cancel",
             null,
-            "Do not ask me again",
             result -> myProfilers.getIdeServices().getTemporaryProfilerPreferences().setBoolean(HIDE_STOP_PROMPT, result)
           );
 
@@ -270,11 +289,11 @@ public class AndroidProfilerToolWindow extends AspectObserver implements Disposa
       else if (hasAliveSession && !myIsProfilingActiveBalloonShown) {
         // Only shown the balloon if we detect the window is hidden for the first time.
         myIsProfilingActiveBalloonShown = true;
-        ToolWindowManager.getInstance(myProject).notifyByBalloon(
-          AndroidProfilerToolWindowFactory.ID,
-          MessageType.INFO,
-          "Profiler session is running in the background. Hide the toolbar button to stop profiling completely."
-        );
+        String messageHtml = "A profiler session is running in the background.<br>" +
+                             (myProfilers.getIdeServices().getFeatureConfig().isSessionsEnabled() ?
+                              "To end the session, open the profiler and click the stop button in the Sessions pane." :
+                              "To end the session, open the profiler and click the \"End Session\" button");
+        ToolWindowManager.getInstance(myProject).notifyByBalloon(AndroidProfilerToolWindowFactory.ID, MessageType.INFO, messageHtml);
       }
     }
   }

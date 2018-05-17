@@ -172,10 +172,12 @@ public final class ProfilerTimeline extends AspectModel<ProfilerTimeline.Aspect>
     return myViewRangeUs;
   }
 
+  @NotNull
   public Range getSelectionRange() {
     return mySelectionRangeUs;
   }
 
+  @NotNull
   public Range getTooltipRange() {
     return myTooltipRangeUs;
   }
@@ -301,6 +303,13 @@ public final class ProfilerTimeline extends AspectModel<ProfilerTimeline.Aspect>
    */
   public void adjustRangeCloseToMiddleView(@NotNull Range target) {
     ensureRangeFitsViewRange(target);
+    boolean isTargetLargerThanViewRange = target.getLength() > myViewRangeUs.getLength();
+    if (isTargetLargerThanViewRange) {
+      // If the target is larger than the current view range, myTargetRangeMaxUs should have been set to target's max. We shouldn't try to
+      // change it at this point, because we'll be zooming out in the next animate cycles. Therefore, we return early.
+      return;
+    }
+
     double targetMiddle = (target.getMax() + target.getMin()) / 2;
     double targetMax = targetMiddle + myViewRangeUs.getLength() / 2;
     // When the view range is from timestamp zero, i.e the data range's min, get the view range max value. The view range is the larger one
@@ -379,6 +388,13 @@ public final class ProfilerTimeline extends AspectModel<ProfilerTimeline.Aspect>
   }
 
   /**
+   * Zoom and pans the view range to the specified target range. See {@link #frameViewToRange(Range, double)}.
+   */
+  public void frameViewToRange(Range targetRangeUs) {
+    frameViewToRange(targetRangeUs, 0.1);
+  }
+
+  /**
    * Zoom and pans the view range to the specified target range.
    * @param targetRangeUs target range to lerp view to.
    * @param leftRightPaddingPercent how much space to leave on both sides of the range to leave as padding.
@@ -423,6 +439,9 @@ public final class ProfilerTimeline extends AspectModel<ProfilerTimeline.Aspect>
     double endTimeUs = TimeUnit.NANOSECONDS.toMicros(endTimeNs);
     myDataRangeUs.set(startTimeUs, endTimeUs);
     myViewRangeUs.set(endTimeUs - DEFAULT_VIEW_LENGTH_US, endTimeUs);
+    myTargetRangeMaxUs = -1;
+    myJumpFactor = 0;
+    myZoomLeft.set(0, 0);
     setStreaming(true);
     myResetTimeNs = myUpdater.getTimer().getCurrentTimeNs();
     myIsReset = true;

@@ -15,13 +15,16 @@
  */
 package com.android.tools.idea.ui.resourcechooser;
 
+import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValue;
+import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.ide.common.rendering.api.SampleDataResourceValue;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.ide.common.util.PathString;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.res.SampleDataResourceItem;
+import com.android.tools.idea.res.SampleDataResourceRepository;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -87,7 +90,7 @@ public abstract class ResourceChooserItem {
 
   @NotNull
   public ResourceValue getResourceValue() {
-    return new ResourceValue(getType(), getName(), getResourceUrl(), isFramework());
+    return new ResourceValueImpl(ResourceNamespace.fromBoolean(isFramework()), getType(), getName(), getResourceUrl());
   }
 
   @Override
@@ -306,7 +309,9 @@ public abstract class ResourceChooserItem {
     @NotNull
     @Override
     public String getResourceUrl() {
-      return TOOLS_SAMPLE_PREFIX + myName + ((myIndex >= 0) ? "[" + myIndex + "]" : "");
+      boolean isPredefinedData = SampleDataResourceRepository.PREDEFINED_SAMPLES_NS.equals(myItem.getResourceValue().getNamespace());
+      String prefix = isPredefinedData ? TOOLS_SAMPLE_PREFIX : SAMPLE_PREFIX;
+      return prefix + myName + ((myIndex >= 0) ? "[" + myIndex + "]" : "");
     }
 
     @Override
@@ -357,7 +362,7 @@ public abstract class ResourceChooserItem {
                           ResourceType.DRAWABLE :
                           myItem.getType();
       SampleDataResourceValue value = getSampleDataResourceValue();
-      return new ResourceValue(myItem.getNamespace(), type, myItem.getName(), value.getValueAsLines().get(0), value.getLibraryName());
+      return new ResourceValueImpl(myItem.getNamespace(), type, myItem.getName(), value.getValueAsLines().get(0), value.getLibraryName());
     }
   }
 }

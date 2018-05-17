@@ -16,6 +16,7 @@
 package com.android.tools.idea.rendering;
 
 import com.android.ide.common.rendering.api.ResourceValue;
+import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.ide.common.rendering.api.Result;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.resources.ResourceType;
@@ -28,6 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
@@ -86,7 +88,7 @@ public class RenderTaskTest extends AndroidTestCase {
     RenderLogger logger = mock(RenderLogger.class);
     CrashReporter mockCrashReporter = mock(CrashReporter.class);
 
-    RenderTask task = RenderTestUtil.createRenderTask(myModule, layoutFile, configuration, logger);
+    RenderTask task = RenderTestUtil.createRenderTask(myFacet, layoutFile, configuration, logger);
     task.setCrashReporter(mockCrashReporter);
     // Make sure we throw an exception during the inflate call
     task.render((w, h) -> { throw new NullPointerException(); }).get();
@@ -105,10 +107,10 @@ public class RenderTaskTest extends AndroidTestCase {
     Configuration configuration = RenderTestUtil.getConfiguration(myModule, drawableFile);
     RenderLogger logger = mock(RenderLogger.class);
 
-    RenderTask task = RenderTestUtil.createRenderTask(myModule, drawableFile, configuration, logger);
+    RenderTask task = RenderTestUtil.createRenderTask(myFacet, drawableFile, configuration, logger);
     // Workaround for a bug in layoutlib that will only fully initialize the static state if a render() call is made.
     task.render().get();
-    ResourceValue resourceValue = new ResourceValue(RES_AUTO, ResourceType.DRAWABLE, "test", "@drawable/test");
+    ResourceValue resourceValue = new ResourceValueImpl(RES_AUTO, ResourceType.DRAWABLE, "test", "@drawable/test");
     BufferedImage result = task.renderDrawable(resourceValue).get();
 
     assertNotNull(result);
@@ -156,7 +158,7 @@ public class RenderTaskTest extends AndroidTestCase {
     Configuration configuration = RenderTestUtil.getConfiguration(myModule, file);
     RenderLogger logger = mock(RenderLogger.class);
 
-    RenderTask task = RenderTestUtil.createRenderTask(myModule, file, configuration, logger);
+    RenderTask task = RenderTestUtil.createRenderTask(myFacet, file, configuration, logger);
     checkSimpleLayoutResult(task.render());
     // Try a second render
     checkSimpleLayoutResult(task.render());
@@ -165,19 +167,19 @@ public class RenderTaskTest extends AndroidTestCase {
     task.dispose().get(5, TimeUnit.SECONDS);
 
     // Now call inflate and check
-    task = RenderTestUtil.createRenderTask(myModule, file, configuration, logger);
+    task = RenderTestUtil.createRenderTask(myFacet, file, configuration, logger);
     checkSimpleLayoutResult(task.inflate());
     checkSimpleLayoutResult(task.render());
     task.dispose().get(5, TimeUnit.SECONDS);
 
     // Now call inflate and layout
-    task = RenderTestUtil.createRenderTask(myModule, file, configuration, logger);
+    task = RenderTestUtil.createRenderTask(myFacet, file, configuration, logger);
     checkSimpleLayoutResult(task.inflate());
     checkSimpleLayoutResult(task.layout());
     task.dispose().get(5, TimeUnit.SECONDS);
 
     // layout without inflate should return null
-    task = RenderTestUtil.createRenderTask(myModule, file, configuration, logger);
+    task = RenderTestUtil.createRenderTask(myFacet, file, configuration, logger);
     assertNull(Futures.getUnchecked((task.layout())));
     task.dispose().get(5, TimeUnit.SECONDS);
   }
@@ -189,7 +191,7 @@ public class RenderTaskTest extends AndroidTestCase {
     RenderLogger logger = mock(RenderLogger.class);
 
     for (int i = 0; i < 5; i++) {
-      RenderTask task = RenderTestUtil.createRenderTask(myModule, layoutFile, configuration, logger);
+      RenderTask task = RenderTestUtil.createRenderTask(myFacet, layoutFile, configuration, logger);
       Semaphore semaphore = new Semaphore(0);
       task.runAsyncRenderAction(() -> {
         semaphore.acquire();
@@ -259,8 +261,8 @@ public class RenderTaskTest extends AndroidTestCase {
     Configuration configuration = RenderTestUtil.getConfiguration(myModule, drawableFile);
     RenderLogger logger = mock(RenderLogger.class);
 
-    RenderTask task = RenderTestUtil.createRenderTask(myModule, drawableFile, configuration, logger);
-    ResourceValue resourceValue = new ResourceValue(RES_AUTO, ResourceType.DRAWABLE, "test", "@drawable/test");
+    RenderTask task = RenderTestUtil.createRenderTask(myFacet, drawableFile, configuration, logger);
+    ResourceValue resourceValue = new ResourceValueImpl(RES_AUTO, ResourceType.DRAWABLE, "test", "@drawable/test");
     BufferedImage result = task.renderDrawable(resourceValue).get();
     assertNotNull(result);
 
@@ -327,7 +329,7 @@ public class RenderTaskTest extends AndroidTestCase {
     configuration.setTheme("android:Theme.NoTitleBar.Fullscree");
     RenderLogger logger = mock(RenderLogger.class);
 
-    RenderTask task = RenderTestUtil.createRenderTask(myModule, file, configuration, logger);
+    RenderTask task = RenderTestUtil.createRenderTask(myFacet, file, configuration, logger);
     BufferedImage result = task.render().get().getRenderedImage().getCopy();
 
     BufferedImage goldenImage = ImageIO.read(new File(getTestDataPath() + "/layouts/cjk-golden.png"));

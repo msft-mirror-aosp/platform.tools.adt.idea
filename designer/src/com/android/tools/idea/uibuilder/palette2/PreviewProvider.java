@@ -145,11 +145,10 @@ public class PreviewProvider implements Disposable {
       return null;
     }
 
-    NlModel model = sceneView.getModel();
-    ViewEditor editor = ViewEditorImpl.getOrCreate(sceneView.getScene());
+    NlModel model = sceneView.getSceneManager().getModel();
     NlComponent component = ApplicationManager.getApplication()
       .runWriteAction(
-        (Computable<NlComponent>)() -> NlModelHelperKt.createComponent(model, editor, tag, null, null, InsertType.CREATE_PREVIEW
+        (Computable<NlComponent>)() -> model.createComponent(sceneView.getSurface(), tag, null, null, InsertType.CREATE_PREVIEW
         ));
 
     if (component == null) {
@@ -248,9 +247,9 @@ public class PreviewProvider implements Disposable {
       if (facet == null) {
         return null;
       }
-      RenderService renderService = RenderService.getInstance(facet);
-      RenderLogger logger = renderService.createLogger();
-      myRenderTask = renderService.createTask(null, configuration, logger, null);
+      RenderService renderService = RenderService.getInstance(module.getProject());
+      RenderLogger logger = renderService.createLogger(facet);
+      myRenderTask = renderService.createTask(facet, null, configuration, logger, null);
     }
 
     return myRenderTask;

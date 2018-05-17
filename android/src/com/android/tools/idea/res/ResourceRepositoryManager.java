@@ -29,6 +29,7 @@ import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.model.AndroidModel;
+import com.android.tools.idea.res.aar.AarResourceRepositoryCache;
 import com.google.common.collect.Multimap;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
@@ -39,14 +40,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.util.CachedValue;
-import com.intellij.psi.util.CachedValueProvider;
-import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.util.ObjectUtils;
-import org.jetbrains.android.dom.manifest.Manifest;
+import org.jetbrains.android.dom.manifest.AndroidManifestUtils;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatform;
 import org.jetbrains.android.util.AndroidUtils;
@@ -68,8 +64,12 @@ public class ResourceRepositoryManager implements Disposable {
   private static final Object MODULE_RESOURCES_LOCK = new Object();
 
   @NotNull private final AndroidFacet myFacet;
-  @NotNull private final CachedValue<ResourceNamespace> myNamespace;
   @Nullable private ResourceVisibilityLookup.Provider myResourceVisibilityProvider;
+
+  /**
+   * If the module is namespaced, this is the shared {@link ResourceNamespace} instance corresponding to the package name from the manifest.
+   */
+  @Nullable private ResourceNamespace myCachedNamespace;
 
   @GuardedBy("APP_RESOURCES_LOCK")
   private AppResourceRepository myAppResources;
@@ -179,20 +179,6 @@ public class ResourceRepositoryManager implements Disposable {
   private ResourceRepositoryManager(@NotNull AndroidFacet facet) {
     myFacet = facet;
     Disposer.register(facet, this);
-
-    myNamespace = CachedValuesManager.getManager(facet.getModule().getProject()).createCachedValue(() -> {
-      // TODO(namespaces): read the merged manifest.
-      Manifest manifest = myFacet.getManifest();
-      if (manifest != null) {
-        String packageName = manifest.getPackage().getValue();
-        if (!StringUtil.isEmptyOrSpaces(packageName)) {
-          ResourceNamespace namespace = ResourceNamespace.fromPackageName(packageName);
-          // Provide the PSI element as a dependency, so we recompute on every change to the manifest.
-          return CachedValueProvider.Result.create(namespace, manifest.getXmlTag());
-        }
-      }
-      return null;
-    }, false);
   }
 
   /**
@@ -433,7 +419,7 @@ public class ResourceRepositoryManager implements Disposable {
     resetResources();
     ConfigurationManager.getOrCreateInstance(myFacet.getModule()).getResolverCache().reset();
     ResourceFolderRegistry.reset();
-    FileResourceRepository.reset();
+    AarResourceRepositoryCache.getInstance().clear();
   }
 
   public void resetVisibility() {
@@ -461,7 +447,16 @@ public class ResourceRepositoryManager implements Disposable {
       return ResourceNamespace.RES_AUTO;
     }
 
-    return ObjectUtils.notNull(myNamespace.getValue(), ResourceNamespace.RES_AUTO);
+    String packageName = AndroidManifestUtils.getPackageName(myFacet);
+    if (packageName == null) {
+      return ResourceNamespace.RES_AUTO;
+    }
+
+    if (myCachedNamespace == null || !packageName.equals(myCachedNamespace.getPackageName())) {
+      myCachedNamespace = ResourceNamespace.fromPackageName(packageName);
+    }
+
+    return myCachedNamespace;
   }
 
   @Nullable

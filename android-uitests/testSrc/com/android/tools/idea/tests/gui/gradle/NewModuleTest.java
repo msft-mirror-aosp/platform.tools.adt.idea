@@ -15,7 +15,10 @@
  */
 package com.android.tools.idea.tests.gui.gradle;
 
-import com.android.tools.idea.tests.gui.framework.*;
+import com.android.tools.idea.tests.gui.framework.GuiTestRule;
+import com.android.tools.idea.tests.gui.framework.GuiTests;
+import com.android.tools.idea.tests.gui.framework.RunIn;
+import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture;
 import com.intellij.lang.annotation.HighlightSeverity;
@@ -69,7 +72,7 @@ public class NewModuleTest {
     assertAbout(file()).that(guiTest.getProjectPath("somelibrary/src/test")).doesNotExist();
   }
 
-  @Ignore("b/74218213, b/76362024")
+  @Ignore("b/79567215")
   @Test
   public void createNewModuleFromJar() throws Exception {
     String jarFile = GuiTests.getTestDataDir() + "/LocalJarsAsModules/localJarAsModule/local.jar";

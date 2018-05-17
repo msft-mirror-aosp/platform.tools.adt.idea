@@ -26,12 +26,6 @@ import java.io.File
 
 class PsBuildTypeTest : AndroidGradleTestCase() {
 
-  private fun <T> ResolvedValue<T>.asTestValue(): T? = (this as? ResolvedValue.Set<T>)?.resolved
-  private fun <T> ParsedValue<T>.asTestValue(): T? = (this as? ParsedValue.Set.Parsed<T>)?.value
-  private fun <T> ParsedValue<T>.asUnparsedValue(): String? =
-    ((this as? ParsedValue.Set.Parsed<T>)?.dslText as? DslText.OtherUnparsedDslText)?.text
-  private fun <T : Any> T.asParsed(): ParsedValue<T> = ParsedValue.Set.Parsed(this, DslText.Literal)
-
   fun testProperties() {
     loadProject(TestProjectPaths.PSD_SAMPLE)
 
@@ -84,7 +78,7 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
     assertThat(signingConfig.resolved.asTestValue(), nullValue())
     assertThat(
       signingConfig.parsedValue,
-      equalTo<ParsedValue<Unit>>(ParsedValue.Set.Parsed(Unit, DslText.Reference("signingConfigs.myConfig"))))
+      equalTo<Annotated<ParsedValue<Unit>>>(ParsedValue.Set.Parsed(Unit, DslText.Reference("signingConfigs.myConfig")).annotated()))
 
     assertThat(versionNameSuffix.resolved.asTestValue(), equalTo("vsuffix"))
     assertThat(versionNameSuffix.parsedValue.asTestValue(), equalTo("vsuffix"))
@@ -358,7 +352,7 @@ class PsBuildTypeTest : AndroidGradleTestCase() {
 
     fun verifyValues(buildType: PsBuildType, afterSync: Boolean = false) {
       val proGuardFilesValue = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getValue()
-      val parsedProGuardFilesValue = proGuardFilesValue.parsedValue as? ParsedValue.Set.Parsed
+      val parsedProGuardFilesValue = proGuardFilesValue.parsedValue.value as? ParsedValue.Set.Parsed
       val proGuardFiles = PsBuildType.BuildTypeDescriptors.proGuardFiles.bind(buildType).getEditableValues().map { it.getValue() }
 
       assertThat(parsedProGuardFilesValue?.dslText, equalTo<DslText?>(DslText.Reference("varProGuardFiles")))

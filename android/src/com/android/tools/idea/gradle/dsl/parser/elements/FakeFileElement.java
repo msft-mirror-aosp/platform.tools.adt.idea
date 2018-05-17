@@ -19,8 +19,6 @@ import com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
-
 /**
  * This element is used to combine all the arguments in a GradleDslMethodCall into one value
  * by joining them with a "/". For Example:
@@ -41,7 +39,7 @@ public class FakeFileElement extends FakeElement {
 
   @Nullable
   @Override
-  protected Object produceValue() {
+  protected Object extractValue() {
     return PropertyUtil.getFileValue(myMethodCall);
   }
 
@@ -52,8 +50,8 @@ public class FakeFileElement extends FakeElement {
 
   @Nullable
   @Override
-  public Object getRawValue() {
-    return produceValue();
+  public Object produceRawValue() {
+    return extractValue();
   }
 
   @NotNull

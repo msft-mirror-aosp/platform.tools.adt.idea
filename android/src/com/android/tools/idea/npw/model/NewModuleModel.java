@@ -35,11 +35,13 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.android.tools.idea.observable.BatchInvoker.INVOKE_IMMEDIATELY_STRATEGY;
 import static com.android.tools.idea.templates.TemplateMetadata.*;
 import static org.jetbrains.android.util.AndroidBundle.message;
 
 public final class NewModuleModel extends WizardModel {
-  private final BindingsManager myBindings = new BindingsManager();
+  // Note: INVOKE_IMMEDIATELY otherwise Objects may be constructed in the wrong state
+  private final BindingsManager myBindings = new BindingsManager(INVOKE_IMMEDIATELY_STRATEGY);
 
   @NotNull private final StringProperty myModuleName = new StringValueProperty();
   @NotNull private final StringProperty mySplitName = new StringValueProperty("feature");
@@ -75,7 +77,7 @@ public final class NewModuleModel extends WizardModel {
     myIsLibrary.addListener(sender -> updateApplicationName());
     myIsInstantApp.addListener(sender -> updateApplicationName());
 
-    myMultiTemplateRenderer = new MultiTemplateRenderer();
+    myMultiTemplateRenderer = new MultiTemplateRenderer(project);
   }
 
   public NewModuleModel(@NotNull NewProjectModel projectModel, @NotNull File templateFile) {
@@ -262,13 +264,10 @@ public final class NewModuleModel extends WizardModel {
         .withCommandName("New Module")
         .withDryRun(dryRun)
         .withShowErrors(true)
+        .withPerformSync(false)
         .withOutputRoot(projectRoot)
         .withModuleRoot(moduleRoot)
         .withParams(templateState)
-        //.withPerformSync(myPerformSyncIfNecessary) // TODO: Check that we still need this
-        //.intoTargetFiles(myState.get(TARGET_FILES_KEY))
-        //.intoOpenFiles(myState.get(FILES_TO_OPEN_KEY))
-        //.intoDependencies(myState.get(DEPENDENCIES_KEY))
         .build();
       // @formatter:on
       return template.render(context, dryRun);

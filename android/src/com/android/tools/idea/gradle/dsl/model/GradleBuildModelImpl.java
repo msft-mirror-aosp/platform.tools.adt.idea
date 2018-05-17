@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.dsl.model;
 
 import com.android.tools.idea.gradle.dsl.api.*;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
+import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel;
@@ -24,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel;
 import com.android.tools.idea.gradle.dsl.api.values.GradleNotNullValue;
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl;
 import com.android.tools.idea.gradle.dsl.model.build.BuildScriptModelImpl;
+import com.android.tools.idea.gradle.dsl.model.configurations.ConfigurationsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.dependencies.DependenciesModelImpl;
 import com.android.tools.idea.gradle.dsl.model.ext.ExtModelImpl;
 import com.android.tools.idea.gradle.dsl.model.java.JavaModelImpl;
@@ -33,6 +35,7 @@ import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement;
 import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.SubProjectsDslElement;
+import com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
@@ -112,45 +115,45 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
   @Override
   public List<GradleNotNullValue<String>> appliedPlugins() {
     return plugins().stream().map(plugin -> new GradleNotNullValue<String>() {
-        @NotNull
-        @Override
-        public VirtualFile getFile() {
-          return plugin.name().getGradleFile();
-        }
+      @NotNull
+      @Override
+      public VirtualFile getFile() {
+        return plugin.name().getGradleFile();
+      }
 
-        @NotNull
-        @Override
-        public String getPropertyName() {
-          return plugin.name().getName();
-        }
+      @NotNull
+      @Override
+      public String getPropertyName() {
+        return plugin.name().getName();
+      }
 
-        @Nullable
-        @Override
-        public String getDslText() {
-          return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> {
-            PsiElement e = plugin.name().getPsiElement();
-            return e == null ? null : e.getText();
-          });
-        }
+      @Nullable
+      @Override
+      public String getDslText() {
+        return ApplicationManager.getApplication().runReadAction((Computable<String>)() -> {
+          PsiElement e = plugin.name().getPsiElement();
+          return e == null ? null : e.getText();
+        });
+      }
 
-        @NotNull
-        @Override
-        public Map<String, GradleNotNullValue<Object>> getResolvedVariables() {
-          return ImmutableMap.of();
-        }
+      @NotNull
+      @Override
+      public Map<String, GradleNotNullValue<Object>> getResolvedVariables() {
+        return ImmutableMap.of();
+      }
 
-        @NotNull
-        @Override
-        public String value() {
-          return plugin.name().forceString();
-        }
+      @NotNull
+      @Override
+      public String value() {
+        return plugin.name().forceString();
+      }
 
-        @Nullable
-        @Override
-        public PsiElement getPsiElement() {
-          return plugin.name().getPsiElement();
-        }
-      }).collect(Collectors.toList());
+      @Nullable
+      @Override
+      public PsiElement getPsiElement() {
+        return plugin.name().getPsiElement();
+      }
+    }).collect(Collectors.toList());
   }
 
   @NotNull
@@ -304,6 +307,18 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
 
   @NotNull
   @Override
+  public ConfigurationsModel configurations() {
+    ConfigurationsDslElement configurationsDslElement =
+      myGradleDslFile.getPropertyElement(ConfigurationsDslElement.CONFIGURATIONS_BLOCK_NAME, ConfigurationsDslElement.class);
+    if (configurationsDslElement == null) {
+      configurationsDslElement = new ConfigurationsDslElement(myGradleDslFile);
+      myGradleDslFile.addNewElementBeforeAllOfClass(configurationsDslElement, DependenciesDslElement.class);
+    }
+    return new ConfigurationsModelImpl(configurationsDslElement);
+  }
+
+  @NotNull
+  @Override
   public DependenciesModel dependencies() {
     DependenciesDslElement dependenciesDslElement =
       myGradleDslFile.getPropertyElement(DEPENDENCIES_BLOCK_NAME, DependenciesDslElement.class);
@@ -320,7 +335,10 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
     ExtDslElement extDslElement = myGradleDslFile.getPropertyElement(EXT_BLOCK_NAME, ExtDslElement.class);
     if (extDslElement == null) {
       extDslElement = new ExtDslElement(myGradleDslFile);
-      myGradleDslFile.setNewElement(extDslElement);
+      // Place the Ext element just after the applied plugins, this present.
+      List<GradleDslElement> elements = myGradleDslFile.getAllElements();
+      int index = (!elements.isEmpty() && elements.get(0) instanceof ApplyDslElement) ? 1 : 0;
+      myGradleDslFile.addNewElementAt(index, extDslElement);
     }
     return new ExtModelImpl(extDslElement);
   }

@@ -18,12 +18,14 @@ package com.android.tools.idea.res.aar;
 import com.android.ide.common.rendering.api.*;
 import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.ide.common.resources.ResourceItem;
+import com.android.ide.common.resources.ResourceItemWithVisibility;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.ide.common.resources.configuration.ScreenSizeQualifier;
 import com.android.ide.common.util.PathString;
 import com.android.resources.Density;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
+import com.android.resources.ResourceVisibility;
 import com.android.testutils.TestUtils;
 import com.android.tools.idea.res.FileResourceRepository;
 import com.android.utils.XmlUtils;
@@ -258,17 +260,17 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       if (!Objects.equals(style1.getParentStyle(), style2.getParentStyle())) {
         return false;
       }
-      Collection<ItemResourceValue> items1 = style1.getDefinedItems();
-      Collection<ItemResourceValue> items2 = style2.getDefinedItems();
+      Collection<StyleItemResourceValue> items1 = style1.getDefinedItems();
+      Collection<StyleItemResourceValue> items2 = style2.getDefinedItems();
       if (items1.size() != items2.size()) {
         return false;
       }
-      Iterator<ItemResourceValue> it1 = items1.iterator();
-      Iterator<ItemResourceValue> it2 = items2.iterator();
+      Iterator<StyleItemResourceValue> it1 = items1.iterator();
+      Iterator<StyleItemResourceValue> it2 = items2.iterator();
       while (it1.hasNext()) {
-        ItemResourceValue item1 = it1.next();
-        ItemResourceValue item2 = it2.next();
-        if (!areEquivalentResourceValues(item1, item2)) {
+        StyleItemResourceValue item1 = it1.next();
+        StyleItemResourceValue item2 = it2.next();
+        if (!areEquivalentResourceValues((ResourceValue)item1, (ResourceValue)item2)) {
           return false;
         }
       }
@@ -532,6 +534,20 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
     return new File(sdkPath + "/platforms/" + platformDir + "/data/res");
   }
 
+  private static void checkVisibility(@NotNull AarProtoResourceRepository repository) {
+    List<ResourceItem> items = repository.getResourceItems(repository.getNamespace(), ResourceType.DECLARE_STYLEABLE);
+    assertFalse(items.isEmpty());
+    for (ResourceItem item : items) {
+      assertEquals(ResourceVisibility.PUBLIC, ((ResourceItemWithVisibility)item).getVisibility());
+    }
+
+    items = repository.getResourceItems(repository.getNamespace(), ResourceType.DRAWABLE);
+    assertFalse(items.isEmpty());
+    for (ResourceItem item : items) {
+      assertEquals(ResourceVisibility.PRIVATE_XML_ONLY, ((ResourceItemWithVisibility)item).getVisibility());
+    }
+  }
+
   public void testLoading() throws Exception {
     myEnumMap = loadEnumMap();
 
@@ -544,13 +560,14 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       FileResourceRepository fromSources = FileResourceRepository.createForTest(new File(myAarFolder, "res"), namespace, LIBRARY_NAME);
       loadTimeFromSources += System.currentTimeMillis() - start;
       start = System.currentTimeMillis();
-      AarProtoResourceRepository fromResApk = AarProtoResourceRepository.create(myAarFolder, LIBRARY_NAME);
+      AarProtoResourceRepository fromResApk = AarProtoResourceRepository.createIfProtoAar(myAarFolder, LIBRARY_NAME);
       loadTimeFromResApk += System.currentTimeMillis() - start;
       assertEquals(LIBRARY_NAME, fromResApk.getLibraryName());
       assertEquals(namespace, fromResApk.getNamespace());
       if (i == 0) {
         updateEnumMap(fromSources);
         compareContents(fromSources, fromResApk);
+        checkVisibility(fromResApk);
       }
     }
     if (PRINT_STATS) {

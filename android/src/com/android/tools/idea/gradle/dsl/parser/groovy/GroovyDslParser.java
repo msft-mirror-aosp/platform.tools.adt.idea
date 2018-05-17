@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec;
+import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.model.GradleBuildModelImpl;
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslParser;
@@ -37,6 +38,8 @@ import com.android.tools.idea.gradle.dsl.parser.android.testOptions.UnitTestsDsl
 import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
 import com.android.tools.idea.gradle.dsl.parser.build.SubProjectsDslElement;
+import com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationDslElement;
+import com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
@@ -79,6 +82,7 @@ import static com.android.tools.idea.gradle.dsl.parser.android.AaptOptionsDslEle
 import static com.android.tools.idea.gradle.dsl.parser.android.AdbOptionsDslElement.ADB_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement.ANDROID_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.BuildTypesDslElement.BUILD_TYPES_BLOCK_NAME;
+import static com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationsDslElement.CONFIGURATIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.DataBindingDslElement.DATA_BINDING_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.DexOptionsDslElement.DEX_OPTIONS_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.android.ExternalNativeBuildDslElement.EXTERNAL_NATIVE_BUILD_BLOCK_NAME;
@@ -146,6 +150,11 @@ public class GroovyDslParser implements GradleDslParser {
       }
 
       @Override
+      public void visitReferenceExpression(@NotNull GrReferenceExpression e) {
+        process(e);
+      }
+
+      @Override
       public void visitApplicationStatement(@NotNull GrApplicationStatement e) {
         process(e);
       }
@@ -169,6 +178,16 @@ public class GroovyDslParser implements GradleDslParser {
   }
 
   @Override
+  public void setUpForNewValue(@NotNull GradleDslLiteral context, @Nullable PsiElement newValue) {
+    if (newValue == null) {
+      return;
+    }
+
+    boolean isReference = newValue instanceof GrReferenceExpression || newValue instanceof GrIndexProperty;
+    context.setReference(isReference);
+  }
+
+  @Override
   @Nullable
   public Object extractValue(@NotNull GradleDslSimpleExpression context, @NotNull PsiElement literal, boolean resolve) {
     ApplicationManager.getApplication().assertReadAccessAllowed();
@@ -185,7 +204,7 @@ public class GroovyDslParser implements GradleDslParser {
     }
 
     if (!(literal instanceof GrLiteral)) {
-      return null;
+      return new ReferenceTo(literal.getText());
     }
 
     // If this literal has a value then return is, this will be the case for none-string values.
@@ -271,9 +290,32 @@ public class GroovyDslParser implements GradleDslParser {
     else if (psiElement instanceof GrVariableDeclaration) {
       success = parse((GrVariableDeclaration)psiElement, (GradlePropertiesDslElement)gradleDslFile);
     }
+    else if (psiElement instanceof GrReferenceExpression) {
+      success = parse((GrReferenceExpression)psiElement, (GradlePropertiesDslElement)gradleDslFile);
+    }
     if (!success) {
       gradleDslFile.notification(INCOMPLETE_PARSING).addUnknownElement(psiElement);
     }
+  }
+
+  private boolean parse(@NotNull GrReferenceExpression element, @NotNull GradlePropertiesDslElement dslElement) {
+    GradleNameElement name = GradleNameElement.from(element);
+
+    if (name.isQualified()) {
+      GradlePropertiesDslElement nestedElement = getBlockElement(name.qualifyingParts(), dslElement);
+      if (nestedElement != null) {
+        dslElement = nestedElement;
+      }
+    }
+    GradleDslElement resultElement;
+    // Only supported in configuration block currently.
+    if (!(dslElement instanceof ConfigurationsDslElement)) {
+      return false;
+    }
+    resultElement = new ConfigurationDslElement(dslElement, element, name, false);
+    resultElement.setElementType(REGULAR);
+    dslElement.addParsedElement(resultElement);
+    return true;
   }
 
   private boolean parse(@NotNull GrMethodCallExpression expression, @NotNull GradlePropertiesDslElement dslElement) {
@@ -353,6 +395,11 @@ public class GroovyDslParser implements GradleDslParser {
       @Override
       public void visitAssignmentExpression(@NotNull GrAssignmentExpression expression) {
         parse(expression, blockElement);
+      }
+
+      @Override
+      public void visitReferenceExpression(@NotNull GrReferenceExpression referenceExpression) {
+        parse(referenceExpression, blockElement);
       }
 
       @Override
@@ -683,6 +730,9 @@ public class GroovyDslParser implements GradleDslParser {
           else if (ANDROID_BLOCK_NAME.equals(nestedElementName)) {
             newElement = new AndroidDslElement(resultElement);
           }
+          else if (CONFIGURATIONS_BLOCK_NAME.equals(nestedElementName)) {
+            newElement = new ConfigurationsDslElement(resultElement);
+          }
           else if (DEPENDENCIES_BLOCK_NAME.equals(nestedElementName)) {
             newElement = new DependenciesDslElement(resultElement);
           }
@@ -869,6 +919,9 @@ public class GroovyDslParser implements GradleDslParser {
           else {
             return null;
           }
+        }
+        else if (resultElement instanceof ConfigurationsDslElement) {
+          newElement = new ConfigurationDslElement(resultElement, elementName);
         }
         else {
           return null;

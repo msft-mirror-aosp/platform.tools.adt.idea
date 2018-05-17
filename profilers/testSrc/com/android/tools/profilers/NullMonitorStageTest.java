@@ -41,6 +41,7 @@ public class NullMonitorStageTest {
     Common.Device device = Common.Device.getDefaultInstance();
     myRpcService.addDevice(device);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    profilers.setDevice(device);
     assertEquals(stage.getType(), NullMonitorStage.Type.UNSUPPORTED_DEVICE);
 
     // Update the device to an API < 21
@@ -54,5 +55,12 @@ public class NullMonitorStageTest {
     myRpcService.updateDevice(oldApiDevice, newApiDevice);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertEquals(stage.getType(), NullMonitorStage.Type.NO_DEBUGGABLE_PROCESS);
+  }
+
+  @Test
+  public void testNoClient() {
+    StudioProfilers profilers = new StudioProfilers(null, new FakeIdeProfilerServices(), new FakeTimer());
+    NullMonitorStage stage = new NullMonitorStage(profilers);
+    assertEquals(stage.getType(), NullMonitorStage.Type.NO_CLIENT);
   }
 }

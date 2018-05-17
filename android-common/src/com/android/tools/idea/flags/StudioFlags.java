@@ -119,6 +119,11 @@ public final class StudioFlags {
     "Add the option to export CPU trace files when right-clicking a CPU capture.",
     true);
 
+  public static final Flag<Boolean> PROFILER_OPEN_CAPTURES = Flag.create(
+    PROFILER, "profiler.open.captures", "Enable opening .trace and .hprof files",
+    "Allow opening .hprof and .trace files in Android Studio (e.g. File -> Open) which imports them into Android Profiler.",
+    false);
+
   public static final Flag<Boolean> PROFILER_STARTUP_CPU_PROFILING = Flag.create(
     PROFILER, "startup.cpu.profiling", "Enable startup CPU Profiling",
     "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
@@ -295,7 +300,11 @@ public final class StudioFlags {
   private static final FlagGroup RESOURCES_MANAGEMENT = new FlagGroup(FLAGS, "res.manag", "Resource Management");
   public static final Flag<Boolean> RESOURCE_MANAGER_ENABLED = Flag.create(
     RESOURCES_MANAGEMENT, "enabled", "Enable the new resources management tools",
-    "If enabled, the new resource magement tool are enabled. Subflags will also need to be enabled to enable all available new tools",
+    "If enabled, the new resource management tools are enabled. Subflags will also need to be enabled to enable all available new tools",
+    false);
+  public static final Flag<Boolean> AAR_V2_ENABLED = Flag.create(
+    RESOURCES_MANAGEMENT, "aar.v2", "Enable support for libraries in proto format",
+    "Allows project to depend on libraries in AARv2 format.",
     false);
 
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
@@ -319,6 +328,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> MIGRATE_TO_ANDROID_X_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.androidx.enabled", "Enable the Migrate to AndroidX refactoring feature",
     "If enabled, show the action in the refactoring menu", true);
+  public static final Flag<Boolean> MIGRATE_TO_RESOURCE_NAMESPACES_REFACTORING_ENABLED = Flag.create(
+    REFACTORINGS, "migrateto.resourcenamespaces.enabled", "Enable the Migrate to Resource Namespaces refactoring feature",
+    "If enabled, show the action in the refactoring menu", false);
 
   private static final FlagGroup IOT = new FlagGroup(FLAGS, "iot", "IoT features");
   public static final Flag<Boolean> UNINSTALL_LAUNCHER_APPS_ENABLED = Flag.create(

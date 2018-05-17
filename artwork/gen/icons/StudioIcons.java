@@ -80,8 +80,12 @@ public class StudioIcons {
   }
 
   public static class Cursors {
+    public static final Icon EW_RESIZE = load("/studio/icons/cursors/ew-resize.png"); // 20x20
     public static final Icon GRAB = load("/studio/icons/cursors/grab.png"); // 20x20
     public static final Icon GRABBING = load("/studio/icons/cursors/grabbing.png"); // 20x20
+    public static final Icon NESW_RESIZE = load("/studio/icons/cursors/nesw-resize.png"); // 20x20
+    public static final Icon NS_RESIZE = load("/studio/icons/cursors/ns-resize.png"); // 20x20
+    public static final Icon NWSE_RESIZE = load("/studio/icons/cursors/nwse-resize.png"); // 20x20
   }
 
   public static class DeviceExplorer {
@@ -436,6 +440,10 @@ public class StudioIcons {
       public static final Icon ROTATE_EVENT = load("/studio/icons/profiler/events/rotate-event.png"); // 22x22
       public static final Icon VOLUME_DOWN = load("/studio/icons/profiler/events/volume-down.png"); // 22x22
       public static final Icon VOLUME_UP = load("/studio/icons/profiler/events/volume-up.png"); // 22x22
+    }
+
+    public static class Files {
+      public static final Icon PROFILER_CAPTURE = load("/studio/icons/profiler/files/profiler-capture.png"); // 16x16
     }
 
     public static class Overlays {

@@ -19,16 +19,21 @@ import com.android.SdkConstants;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlComponentDelegate;
 import com.android.tools.idea.common.scene.SceneComponent;
+import com.android.tools.idea.common.scene.target.AnchorTarget;
 import com.android.tools.idea.common.scene.target.ComponentAssistantActionTarget;
+import com.android.tools.idea.common.scene.target.LassoTarget;
 import com.android.tools.idea.common.scene.target.Target;
 import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.Interaction;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.rendering.parsers.AttributeSnapshot;
 import com.android.tools.idea.uibuilder.api.AccessoryPanelInterface;
+import com.android.tools.idea.uibuilder.api.actions.ViewAction;
 import com.android.tools.idea.uibuilder.handlers.assistant.MotionLayoutAssistantPanel;
 import com.android.tools.idea.uibuilder.handlers.constraint.ComponentModification;
 import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintLayoutHandler;
+import com.android.tools.idea.uibuilder.handlers.constraint.draw.ConstraintLayoutNotchProvider;
+import com.android.tools.idea.uibuilder.handlers.constraint.targets.ConstraintAnchorTarget;
 import com.android.tools.idea.uibuilder.handlers.constraint.targets.ConstraintDragTarget;
 import com.android.tools.idea.uibuilder.property.assistant.ComponentAssistantFactory;
 import com.android.tools.idea.uibuilder.surface.AccessoryPanel;
@@ -65,10 +70,38 @@ public class MotionLayoutHandler extends ConstraintLayoutHandler implements NlCo
   public List<Target> createTargets(@NotNull SceneComponent sceneComponent) {
     ComponentAssistantFactory panelFactory = getComponentAssistant(sceneComponent.getScene().getDesignSurface(), sceneComponent.getNlComponent());
 
-    return panelFactory != null ?
-           ImmutableList.of(new ComponentAssistantActionTarget(panelFactory)) :
-           ImmutableList.of();
+    sceneComponent.setNotchProvider(new ConstraintLayoutNotchProvider());
+
+    if (panelFactory != null) {
+      return ImmutableList.of(
+        new LassoTarget(),
+        new ConstraintAnchorTarget(AnchorTarget.Type.LEFT, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.TOP, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.RIGHT, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.BOTTOM, false),
+        new ComponentAssistantActionTarget(panelFactory)
+      );
+    } else {
+      return ImmutableList.of(
+        new LassoTarget(),
+        new ConstraintAnchorTarget(AnchorTarget.Type.LEFT, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.TOP, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.RIGHT, false),
+        new ConstraintAnchorTarget(AnchorTarget.Type.BOTTOM, false)
+      );
+    }
   }
+
+  @Override
+  public boolean addPopupMenuActions(@NotNull NlComponent component, @NotNull List<ViewAction> actions) {
+    MotionLayoutTimelinePanel panel = getTimeline(component);
+    if (panel == null || panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_START
+      || panel.getCurrentState() == MotionLayoutTimelinePanel.State.TL_END) {
+      super.addPopupMenuActions(component, actions);
+    }
+    return false;
+  }
+
 
   @Override
   public boolean needsAccessoryPanel(@NotNull AccessoryPanel.Type type) {

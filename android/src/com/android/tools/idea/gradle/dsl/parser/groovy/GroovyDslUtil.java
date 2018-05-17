@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.groovy;
 
-import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
+import com.android.tools.idea.gradle.dsl.api.ext.RawText;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.google.common.base.Splitter;
@@ -26,6 +26,7 @@ import com.intellij.lang.ASTNode;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.TokenType;
 import com.intellij.psi.codeStyle.CodeStyleManager;
@@ -150,15 +151,16 @@ public final class GroovyDslUtil {
 
   static void maybeDeleteIfEmpty(@Nullable PsiElement element, @NotNull GradleDslElement dslElement) {
     GradleDslElement parentDslElement = dslElement.getParent();
-    if (parentDslElement instanceof GradleDslExpressionList && !((GradleDslExpressionList)parentDslElement).shouldBeDeleted() ||
-        parentDslElement instanceof GradleDslExpressionMap  && !((GradleDslExpressionMap)parentDslElement).shouldBeDeleted()) {
+    if ((parentDslElement instanceof GradleDslExpressionList && !((GradleDslExpressionList)parentDslElement).shouldBeDeleted()) ||
+        (parentDslElement instanceof GradleDslExpressionMap && !((GradleDslExpressionMap)parentDslElement).shouldBeDeleted()) &&
+        parentDslElement.getPsiElement() == element) {
       // Don't delete parent if empty.
       return;
     }
-    deleteIfEmpty(element);
+    deleteIfEmpty(element, dslElement);
   }
 
-  private static void deleteIfEmpty(@Nullable PsiElement element) {
+  private static void deleteIfEmpty(@Nullable PsiElement element, @NotNull GradleDslElement containingDslElement) {
     if (element == null) {
       return;
     }
@@ -260,7 +262,9 @@ public final class GroovyDslUtil {
       // Give the parent a chance to adapt to the missing child.
       handleElementRemoved(parent, element);
       // If this element is deleted, also delete the parent if it is empty.
-      deleteIfEmpty(parent);
+      GradleDslElement dslParent =
+        element == containingDslElement.getPsiElement() ? containingDslElement.getParent() : containingDslElement;
+      maybeDeleteIfEmpty(parent, dslParent);
     }
   }
 
@@ -280,7 +284,7 @@ public final class GroovyDslUtil {
 
   /**
    * This method is used to edit the PsiTree once an element has been deleted.
-   *
+   * <p>
    * It currently only looks at GrListOrMap to insert a ":" into a map. This is needed because once we delete
    * the final element in a map we are left with [], which is a list.
    */
@@ -334,8 +338,8 @@ public final class GroovyDslUtil {
     else if (unsavedValue instanceof Integer || unsavedValue instanceof Boolean) {
       unsavedValueText = unsavedValue.toString();
     }
-    else if (unsavedValue instanceof ReferenceTo) {
-      unsavedValueText = ((ReferenceTo)unsavedValue).getText();
+    else if (unsavedValue instanceof RawText) {
+      unsavedValueText = ((RawText)unsavedValue).getText();
     }
 
     if (unsavedValueText == null) {
@@ -406,7 +410,7 @@ public final class GroovyDslUtil {
 
     PsiElement added = createPsiElementInsideList(parent, expression, parentPsi, newExpressionPsi);
     expression.setPsiElement(added);
-    expression.setModified(false);
+    expression.commit();
     return expression.getPsiElement();
   }
 
@@ -444,7 +448,7 @@ public final class GroovyDslUtil {
       GrExpression grExpression = getChildOfType(addedNameArgument, GrExpression.class);
       if (grExpression != null) {
         expression.setExpression(grExpression);
-        expression.setModified(false);
+        expression.commit();
         expression.reset();
         return expression.getPsiElement();
       }
@@ -487,7 +491,7 @@ public final class GroovyDslUtil {
     }
 
     expression.reset();
-    expression.setModified(false);
+    expression.commit();
   }
 
   @Nullable
@@ -601,7 +605,7 @@ public final class GroovyDslUtil {
    * is that when we are applying a GradleDslReference or GradleDslLiteral we don't know whether (1) we are actually in a list and (2)
    * whether the list actually needs us to add a comma. Ideally we would have the apply/create/delete methods of GradleDslExpressionList
    * position the arguments. This is a workaround for now.
-   *
+   * <p>
    * Note: In order to get the position of where to insert the item, we set the PsiElement of the literal/reference to be the previous
    * item in the list (this is done in GradleDslExpressionList) and then set it back once we have called apply.
    */
@@ -729,29 +733,35 @@ public final class GroovyDslUtil {
   static PsiElement getPsiElementForAnchor(@NotNull PsiElement parent, @Nullable GradleDslElement dslAnchor) {
     PsiElement anchorAfter = dslAnchor == null ? null : dslAnchor.getPsiElement();
     if (anchorAfter == null && parent instanceof GrClosableBlock) {
-      PsiElement element = parent.getFirstChild();
-      // Skip the first non-empty element, this is normally the '{' of a closable block.
-      if (element != null) {
-        element = element.getNextSibling();
-      }
-
-      // Find the last empty (no newlines or content) child after the initial element.
-      while (element != null) {
-        element = element.getNextSibling();
-        if (element != null && (Strings.isNullOrEmpty(element.getText()) || element.getText().matches("[\\t ]+"))) {
-          continue;
-        }
-        break;
-      }
-
-      return element == null ? null : element.getPrevSibling();
+      return adjustForCloseableBlock((GrClosableBlock)parent);
     }
     else {
-      while (anchorAfter != null && anchorAfter.getParent() != parent) {
+      while (anchorAfter != null && !(anchorAfter instanceof PsiFile) && anchorAfter.getParent() != parent) {
         anchorAfter = anchorAfter.getParent();
       }
-      return anchorAfter;
+      return anchorAfter instanceof PsiFile
+             ? (parent instanceof GrClosableBlock) ? adjustForCloseableBlock((GrClosableBlock)parent) : null
+             : anchorAfter;
     }
+  }
+
+  private static PsiElement adjustForCloseableBlock(@NotNull GrClosableBlock block) {
+    PsiElement element = block.getFirstChild();
+    // Skip the first non-empty element, this is normally the '{' of a closable block.
+    if (element != null) {
+      element = element.getNextSibling();
+    }
+
+    // Find the last empty (no newlines or content) child after the initial element.
+    while (element != null) {
+      element = element.getNextSibling();
+      if (element != null && (Strings.isNullOrEmpty(element.getText()) || element.getText().matches("[\\t ]+"))) {
+        continue;
+      }
+      break;
+    }
+
+    return element == null ? null : element.getPrevSibling();
   }
 
   static boolean needToCreateParent(@NotNull GradleDslElement element) {

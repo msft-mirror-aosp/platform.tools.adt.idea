@@ -15,10 +15,11 @@
  */
 package com.android.tools.idea.res;
 
-import com.android.annotations.NonNull;
 import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.*;
+import com.android.ide.common.xml.AndroidManifestParser;
+import com.android.ide.common.xml.ManifestData;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.log.LogWrapper;
 import com.android.utils.ILogger;
@@ -27,17 +28,19 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.NullableLazyValue;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
+import static com.android.SdkConstants.FN_ANDROID_MANIFEST_XML;
 import static com.android.SdkConstants.FN_RESOURCE_TEXT;
 
 /**
@@ -47,9 +50,10 @@ import static com.android.SdkConstants.FN_RESOURCE_TEXT;
  * for example for the expanded {@code .aar} directories.
  *
  * <p>Most of the implementation is based on {@link ResourceMerger} which means the behavior is highly
- * consistent with what will happen at build time.
+ * consistent with what happens at build time.
  */
-public class FileResourceRepository extends LocalResourceRepository {
+// TODO: Rename to AarSourceResourceRepository and move to the com.android.tools.idea.res.aar package.
+public class FileResourceRepository extends LocalResourceRepository  implements LeafResourceRepository {
   private static final Logger LOG = Logger.getInstance(FileResourceRepository.class);
   protected final ResourceTable myFullTable = new ResourceTable();
   /** @see #getAllDeclaredIds() */
@@ -59,34 +63,43 @@ public class FileResourceRepository extends LocalResourceRepository {
   @NotNull private final ResourceNamespace myNamespace;
   @Nullable private final String myLibraryName;
 
-  /** R.txt file associated with the repository. This is only available for AARs. */
-  @Nullable private File myResourceTextFile;
-
-  private final static Map<File, FileResourceRepository> ourCache = ContainerUtil.createSoftValueMap();
+  /** The package name read on-demand from the manifest. */
+  @NotNull private final NullableLazyValue<String> myManifestPackageName;
 
   protected FileResourceRepository(@NotNull File resourceDirectory, @NotNull ResourceNamespace namespace, @Nullable String libraryName) {
     super(resourceDirectory.getName());
     myResourceDirectory = resourceDirectory;
     myNamespace = namespace;
     myLibraryName = libraryName;
+
+    myManifestPackageName = NullableLazyValue.createValue(() -> {
+      File manifest = new File(myResourceDirectory.getParentFile(), FN_ANDROID_MANIFEST_XML);
+      if (!manifest.exists()) {
+        return null;
+      }
+
+      try {
+        ManifestData manifestData = AndroidManifestParser.parse(manifest.toPath());
+        return manifestData.getPackage();
+      }
+      catch (IOException e) {
+        LOG.error("Failed to read manifest " + manifest.getAbsolutePath() + " for library " + myLibraryName, e);
+        return null;
+      }
+    });
   }
 
+  /**
+   * Creates and loads a resource repository. Consider calling
+   * {@link com.android.tools.idea.res.aar.AarResourceRepositoryCache#get(File, String)} instead of this method.
+   *
+   * @param resourceDirectory the directory containing resources
+   * @param libraryName the name of the library
+   * @return the created resource repository
+   */
   @NotNull
-  // TODO: namespaces
-  static synchronized FileResourceRepository get(@NotNull File resourceDirectory, @Nullable String libraryName) {
-    FileResourceRepository repository = ourCache.get(resourceDirectory);
-    if (repository == null) {
-      repository = create(resourceDirectory, ResourceNamespace.TODO, libraryName);
-      ourCache.put(resourceDirectory, repository);
-    }
-
-    return repository;
-  }
-
-  @Nullable
-  @VisibleForTesting
-  static synchronized FileResourceRepository getCached(@NotNull File resourceDirectory) {
-    return ourCache.get(resourceDirectory);
+  public static FileResourceRepository create(@NotNull File resourceDirectory, @Nullable String libraryName) {
+    return create(resourceDirectory, ResourceNamespace.RES_AUTO, libraryName);
   }
 
   @NotNull
@@ -124,18 +137,8 @@ public class FileResourceRepository extends LocalResourceRepository {
     // in an exploded-aar folder as well as in the build-cache for AAR files.
     File rDotTxt = new File(directory, FN_RESOURCE_TEXT);
     if (rDotTxt.exists()) {
-      myResourceTextFile = rDotTxt;
       myAarDeclaredIds = RDotTxtParser.getIds(rDotTxt);
     }
-  }
-
-  @Nullable
-  File getResourceTextFile() {
-    return myResourceTextFile;
-  }
-
-  public static synchronized void reset() {
-    ourCache.clear();
   }
 
   @NotNull
@@ -147,6 +150,7 @@ public class FileResourceRepository extends LocalResourceRepository {
    * Returns the namespace of all resources in this repository.
    */
   @NotNull
+  @Override
   public final ResourceNamespace getNamespace() {
     return myNamespace;
   }
@@ -155,6 +159,17 @@ public class FileResourceRepository extends LocalResourceRepository {
   @Nullable
   public final String getLibraryName() {
     return myLibraryName;
+  }
+
+  @Nullable
+  @Override
+  public String getPackageName() {
+    if (myNamespace.getPackageName() != null) {
+      return myNamespace.getPackageName();
+    }
+    else {
+      return myManifestPackageName.getValue();
+    }
   }
 
   private static ResourceMerger createResourceMerger(File file, ResourceNamespace namespace, String libraryName) {
@@ -179,7 +194,7 @@ public class FileResourceRepository extends LocalResourceRepository {
   }
 
   @Override
-  @NonNull
+  @NotNull
   protected ResourceTable getFullTable() {
     return myFullTable;
   }
@@ -215,12 +230,6 @@ public class FileResourceRepository extends LocalResourceRepository {
     return myAarDeclaredIds;
   }
 
-  // For debugging only
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + " for " + myResourceDirectory + ": @" + Integer.toHexString(System.identityHashCode(this));
-  }
-
   @NotNull
   @Override
   protected Set<VirtualFile> computeResourceDirs() {
@@ -229,5 +238,11 @@ public class FileResourceRepository extends LocalResourceRepository {
       return ImmutableSet.of();
     }
     return ImmutableSet.of(virtualFile);
+  }
+
+  // For debugging only.
+  @Override
+  public String toString() {
+    return getClass().getSimpleName() + " for " + myResourceDirectory + ": @" + Integer.toHexString(System.identityHashCode(this));
   }
 }

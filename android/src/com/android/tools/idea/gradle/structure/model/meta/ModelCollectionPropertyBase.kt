@@ -20,76 +20,51 @@ import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 abstract class ModelCollectionPropertyBase<in ContextT, in ModelT, out ResolvedT, ParsedT, in CollectionT, ValueT : Any> :
   ModelPropertyBase<ContextT, ModelT, ValueT>() {
   abstract val modelDescriptor: ModelDescriptor<ModelT, ResolvedT, ParsedT>
-  abstract val clearParsedValue: ParsedT.() -> Unit
-  abstract val setParsedRawValue: (ParsedT.(DslText) -> Unit)
+  abstract val parsedPropertyGetter: ParsedT.() -> ResolvedPropertyModel
+  abstract val getter: ResolvedPropertyModel.() -> ValueT?
+  abstract val setter: ResolvedPropertyModel.(ValueT) -> Unit
+
+  protected fun ModelT.getParsedProperty(): ResolvedPropertyModel? = modelDescriptor
+      .getParsed(this)
+      ?.parsedPropertyGetter()
 
   fun setParsedValue(model: ModelT, value: ParsedValue<CollectionT>) {
-    val parsedModel = modelDescriptor.getParsed(model) ?: throw IllegalStateException()
+    val parsedProperty = model.getParsedProperty() ?: throw IllegalStateException()
     when (value) {
-      is ParsedValue.NotSet -> parsedModel.clearParsedValue()
+      is ParsedValue.NotSet -> {
+        parsedProperty.delete()
+      }
       is ParsedValue.Set.Parsed -> {
         val dsl = value.dslText
         when (dsl) {
           // Dsl modes.
-          is DslText.Reference -> parsedModel.setParsedRawValue(dsl)
-          is DslText.InterpolatedString -> parsedModel.setParsedRawValue(dsl)
-          is DslText.OtherUnparsedDslText -> parsedModel.setParsedRawValue(dsl)
+          is DslText.Reference -> parsedProperty.setDslText(dsl)
+          is DslText.InterpolatedString -> parsedProperty.setDslText(dsl)
+          is DslText.OtherUnparsedDslText -> parsedProperty.setDslText(dsl)
           // Literal modes are not supported. getEditableValues() should be used.
-          DslText.Literal -> UnsupportedOperationException()
+          DslText.Literal -> throw UnsupportedOperationException()
         }
       }
-      is ParsedValue.Set.Invalid -> throw IllegalArgumentException()
     }
     model.setModified()
   }
 
-  protected fun ModelPropertyCore<ValueT>.makeSetModifiedAware(updatedModel: ModelT) = let {
-    object : ModelPropertyCore<ValueT> by it {
-      override fun setParsedValue(value: ParsedValue<ValueT>) {
-        it.setParsedValue(value)
-        modelDescriptor.setModified(updatedModel)
-      }
-    }
-  }
-
-  protected fun makePropertyCore(it: ModelPropertyParsedCore<ValueT>, resolvedValueGetter: () -> ValueT?): ModelPropertyCore<ValueT> =
-    object : ModelPropertyCore<ValueT>, ModelPropertyParsedCore<ValueT> by it {
-      override val defaultValueGetter: (() -> ValueT?)? = null
-
-      override fun getResolvedValue(): ResolvedValue<ValueT> =
-        resolvedValueGetter().let { if (it != null) ResolvedValue.Set(it) else ResolvedValue.NotResolved() }
-    }
-
   protected fun ModelT.setModified() = modelDescriptor.setModified(this)
 }
 
-fun <T : Any> makeItemProperty(
+fun <T : Any> makeItemPropertyCore(
   resolvedProperty: ResolvedPropertyModel,
-  getTypedValue: ResolvedPropertyModel.() -> T?,
-  setTypedValue: ResolvedPropertyModel.(T) -> Unit
-): ModelPropertyCore<T> =
-  object : ModelPropertyCore<T> {
-    override val defaultValueGetter: (() -> T?)? = null
-
-    override fun getParsedValue(): ParsedValue<T> = makeParsedValue(resolvedProperty.getTypedValue(), resolvedProperty.dslText())
-
-    override fun setParsedValue(value: ParsedValue<T>) {
-      when (value) {
-        is ParsedValue.NotSet -> resolvedProperty.delete()
-        is ParsedValue.Set.Parsed -> {
-          val dsl = value.dslText
-          when (dsl) {
-            // Dsl modes.
-            is DslText.Reference -> resolvedProperty.setDslText(dsl)
-            is DslText.InterpolatedString -> resolvedProperty.setDslText(dsl)
-            is DslText.OtherUnparsedDslText -> resolvedProperty.setDslText(dsl)
-            // Literal modes.
-            DslText.Literal -> resolvedProperty.setTypedValue(value.value!!)
-          }
-        }
-        is ParsedValue.Set.Invalid -> throw IllegalArgumentException()
-      }
-    }
-
-    override fun getResolvedValue(): ResolvedValue<T> = ResolvedValue.NotResolved()
-  }
+  getter: ResolvedPropertyModel.() -> T?,
+  setter: ResolvedPropertyModel.(T) -> Unit,
+  resolvedValueGetter: () -> ResolvedValue<T>,
+  modifiedSetter: () -> Unit
+): ModelPropertyCore<T> = object: ModelPropertyParsedCoreImpl<T>(), ModelPropertyCore<T> {
+  override val description: String get() = ""
+  override fun getParsedProperty(): ResolvedPropertyModel? = resolvedProperty
+  override val getter: ResolvedPropertyModel.() -> T? = getter
+  override val setter: ResolvedPropertyModel.(T) -> Unit = setter
+  override fun setModified() = modifiedSetter()
+  override fun getResolvedValue(): ResolvedValue<T> = resolvedValueGetter()
+  override val defaultValueGetter: (() -> T?)? = null
+  override val isModified: Boolean? get() = resolvedProperty.isModified
+}

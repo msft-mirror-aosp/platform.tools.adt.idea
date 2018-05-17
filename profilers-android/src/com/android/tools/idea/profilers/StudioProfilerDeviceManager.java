@@ -28,6 +28,7 @@ import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.profilers.perfd.PerfdProxy;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.profiler.proto.Agent;
+import com.android.tools.profilers.cpu.CpuProfilerStage;
 import com.google.common.base.Charsets;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -67,10 +68,6 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
   }
 
   private static int LIVE_ALLOCATION_STACK_DEPTH = Integer.getInteger("profiler.alloc.stack.depth", 50);
-
-  // Clamp the property value between 5 Seconds and 5 Minutes, otherwise the user could specify arbitrarily small or large value.
-  private static int CPU_ART_STOP_TIMEOUT_SEC = Math.max(5, Math.min(Integer.getInteger("profiler.cpu.art.stop.timeout.sec", 5),
-                                                                     5 * 60));
 
   private static final String BOOT_COMPLETE_PROPERTY = "dev.bootcomplete";
   private static final String BOOT_COMPLETE_MESSAGE = "1";
@@ -192,6 +189,10 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
   private void disconnectProxy(@NonNull IDevice device) {
     mySerialToDeviceContextMap.compute(device.getSerialNumber(), (serial, context) -> {
       assert context != null;
+      if (context.myLastKnowPerfdThreadfuture != null) {
+        context.myLastKnowPerfdThreadfuture.cancel(true);
+        context.myLastKnowPerfdThreadfuture = null;
+      }
       context.myExecutor.execute(getDisconnectRunnable(serial));
       return context;
     });
@@ -200,6 +201,10 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
   private void disconnectProxies() {
     mySerialToDeviceContextMap.forEach((serial, context) -> {
       assert context != null;
+      if (context.myLastKnowPerfdThreadfuture != null) {
+        context.myLastKnowPerfdThreadfuture.cancel(true);
+        context.myLastKnowPerfdThreadfuture = null;
+      }
       context.myExecutor.execute(getDisconnectRunnable(serial));
     });
   }
@@ -207,7 +212,7 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
   private void spawnPerfd(@NonNull IDevice device) {
     mySerialToDeviceContextMap.compute(device.getSerialNumber(), (serial, context) -> {
       assert context != null && (context.myLastKnownPerfdProxy == null || context.myLastKnownPerfdProxy.getDevice() != device);
-      context.myExecutor.execute(new PerfdThread(device, myDataStoreService));
+      context.myLastKnowPerfdThreadfuture = context.myExecutor.submit(new PerfdThread(device, myDataStoreService));
       return context;
     });
   }
@@ -290,6 +295,10 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
 
           @Override
           public boolean isCancelled() {
+            if (Thread.interrupted()) {
+              Thread.currentThread().interrupt();
+              return true;
+            }
             return false;
           }
         }, 0, null);
@@ -460,7 +469,7 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
           .setServiceSocketName("@" + DEVICE_SOCKET_NAME).setEnergyProfilerEnabled(StudioFlags.PROFILER_ENERGY_PROFILER_ENABLED.get())
           .setCpuApiTracingEnabled(StudioFlags.PROFILER_CPU_API_TRACING.get())
           .setAndroidFeatureLevel(myDevice.getVersion().getFeatureLevel())
-          .setCpuConfig(Agent.AgentConfig.CpuConfig.newBuilder().setArtStopTimeoutSec(CPU_ART_STOP_TIMEOUT_SEC))
+          .setCpuConfig(Agent.AgentConfig.CpuConfig.newBuilder().setArtStopTimeoutSec(CpuProfilerStage.CPU_ART_STOP_TIMEOUT_SEC))
           .build();
 
       File configFile = FileUtil.createTempFile(fileName, null, true);
@@ -589,5 +598,6 @@ class StudioProfilerDeviceManager implements AndroidDebugBridge.IDebugBridgeChan
   private static class DeviceContext {
     @NotNull private final ExecutorService myExecutor = new ThreadPoolExecutor(0, 1, 1L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
     @Nullable private PerfdProxy myLastKnownPerfdProxy;
+    @Nullable private Future<?> myLastKnowPerfdThreadfuture;
   }
 }

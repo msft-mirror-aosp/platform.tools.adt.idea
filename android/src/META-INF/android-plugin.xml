@@ -245,6 +245,10 @@
             description="Migrate To AndroidX Package Names">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
+    <action id="AndroidMigrateToResourceNamespacesAction" class="org.jetbrains.android.refactoring.MigrateToResourceNamespacesAction" text="Migrate to Resource Namespaces..."
+            description="Migrate To Resource Namespaces">
+      <add-to-group group-id="RefactoringMenu"/>
+    </action>
     <action id="AndroidExtractStyleAction" class="org.jetbrains.android.refactoring.AndroidExtractStyleAction" text="St_yle..."
             description="Pull out style-related attributes from layout and extract them as a new style">
       <add-to-group group-id="IntroduceActionsGroup"/>
@@ -377,6 +381,7 @@
     <applicationService serviceImplementation="com.android.tools.idea.gradle.util.GradleVersions"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.util.GradleProjectSettingsFinder"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.util.GradleLocalCache"/>
+    <applicationService serviceImplementation="com.android.tools.idea.res.aar.AarResourceRepositoryCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.InstalledApkCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.InstalledPatchCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.templates.RepositoryUrlManager"/>

@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
+import com.android.tools.idea.gradle.structure.model.meta.Annotated
+import com.android.tools.idea.gradle.structure.model.meta.ModelPropertyCore
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.intellij.openapi.Disposable
+import javax.swing.Icon
 import javax.swing.JComponent
 
 /**
@@ -32,6 +35,11 @@ interface ModelPropertyEditor<out ValueT> : Disposable {
   val component: JComponent
 
   /**
+   * The component to be added to the model editor to represent the label of the property editor.
+   */
+  val labelComponent: JComponent
+
+  /**
    * The component to be added to the model editor to represent the current status of the property editor.
    */
   val statusComponent: JComponent?
@@ -39,10 +47,29 @@ interface ModelPropertyEditor<out ValueT> : Disposable {
   /**
    * Returns the current value of the editor.
    */
-  fun getValue(): ParsedValue<ValueT>
+  fun getValue(): Annotated<ParsedValue<ValueT>>
 
   /**
    * Updates the bound property to the current value of the editor.
    */
   fun updateProperty()
+}
+
+/**
+ * A descriptor of an additional property editor action provided as an editor extension.
+ */
+interface EditorExtensionAction {
+  val title: String
+  val tooltip: String
+  val icon: Icon
+  fun <T: Any, ModelPropertyCoreT: ModelPropertyCore<T>> invoke(property: ModelPropertyCoreT,
+                                                                editor: ModelPropertyEditor<T>,
+                                                                editorFactory: ModelPropertyEditorFactory<T, ModelPropertyCoreT>)
+}
+
+/**
+ * A factory to create property editors with the preconfigured property context.
+ */
+interface ModelPropertyEditorFactory<ValueT: Any, in ModelPropertyCoreT: ModelPropertyCore<ValueT>> {
+  fun createNew(property: ModelPropertyCoreT): ModelPropertyEditor<ValueT>
 }
