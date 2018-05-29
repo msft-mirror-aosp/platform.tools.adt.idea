@@ -17,7 +17,6 @@ package com.android.tools.idea.tests.gui.webp;
 
 import com.android.tools.adtui.webp.WebpNativeLibHelper;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
@@ -48,6 +47,7 @@ import javax.swing.*;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.fest.reflect.core.Reflection.field;
@@ -55,7 +55,7 @@ import static org.fest.reflect.core.Reflection.field;
 @RunWith(GuiTestRemoteRunner.class)
 public class ConvertToWebpActionTest {
 
-  @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final GuiTestRule guiTest = new GuiTestRule().withTimeout(5, TimeUnit.MINUTES);
 
   @Test
   public void testConvertLossless() throws IOException {

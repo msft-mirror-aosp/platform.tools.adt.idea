@@ -18,8 +18,10 @@ package com.android.tools.profilers;
 import com.android.tools.adtui.TreeWalker;
 import com.android.tools.adtui.chart.linechart.LineChart;
 import com.android.tools.adtui.model.FakeTimer;
+import com.android.tools.adtui.stdui.CommonButton;
 import com.android.tools.adtui.swing.FakeUi;
 import com.android.tools.profiler.proto.Common;
+import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profilers.cpu.CpuMonitorTooltip;
 import com.android.tools.profilers.cpu.CpuProfilerStage;
 import com.android.tools.profilers.energy.EnergyMonitorTooltip;
@@ -32,6 +34,7 @@ import com.android.tools.profilers.sessions.SessionsView;
 import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.google.common.truth.Truth;
 import com.intellij.openapi.ui.ThreeComponentsSplitter;
+import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
@@ -63,7 +66,7 @@ public class StudioProfilersViewTest {
   private FakeUi myUi;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     myTimer = new FakeTimer();
     myProfilerServices.enableEnergyProfiler(true);
     myProfilers = new StudioProfilers(myGrpcChannel.getClient(), myProfilerServices, myTimer);
@@ -72,7 +75,7 @@ public class StudioProfilersViewTest {
     myView = new StudioProfilersView(myProfilers, new FakeIdeProfilerComponents());
     myView.bind(FakeStage.class, FakeView::new);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    JPanel component = myView.getComponent();
+    JLayeredPane component = myView.getComponent();
     component.setSize(1024, 450);
     myUi = new FakeUi(component);
   }
@@ -93,7 +96,7 @@ public class StudioProfilersViewTest {
     myService.addSession(SESSION_O, SESSION_O_METADATA);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     myProfilers.getSessionsManager().setSession(SESSION_O);
-    myUi = new FakeUi(myView.getComponent());
+    myUi.layout();
 
     assertThat(myProfilers.getStage()).isInstanceOf(StudioMonitorStage.class);
 
@@ -104,7 +107,7 @@ public class StudioProfilersViewTest {
     // Test that we have the expected number of monitors
     assertThat(points.size()).isEqualTo(4);
 
-    //// Test the first monitor goes to cpu profiler
+    // Test the first monitor goes to cpu profiler
     myUi.mouse.click(points.get(0).x + 1, points.get(0).y + 1);
     assertThat(myProfilers.getStage()).isInstanceOf(CpuProfilerStage.class);
     myProfilers.setMonitoringStage();
@@ -134,7 +137,7 @@ public class StudioProfilersViewTest {
     myService.addSession(SESSION_O, SESSION_O_METADATA);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     myProfilers.getSessionsManager().setSession(SESSION_O);
-    myUi = new FakeUi(myView.getComponent());
+    myUi.layout();
 
     assertThat(myProfilers.getStage()).isInstanceOf(StudioMonitorStage.class);
     StudioMonitorStage stage = (StudioMonitorStage)myProfilers.getStage();
@@ -314,7 +317,7 @@ public class StudioProfilersViewTest {
   @Test
   public void testNoStage() throws Exception {
     StudioProfilersView view = new StudioProfilersView(myProfilers, new FakeIdeProfilerComponents());
-    JPanel component = view.getComponent();
+    JLayeredPane component = view.getComponent();
     new ReferenceWalker(myProfilers).assertNotReachable(view, component);
   }
 
@@ -325,7 +328,8 @@ public class StudioProfilersViewTest {
     services.enableSessionsView(false);
     StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), services, timer);
     StudioProfilersView view = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
-    JComponent splitter = view.getComponent();
+    assertThat(view.getComponent().getComponentCount()).isEqualTo(1);
+    Component splitter = view.getComponent().getComponent(0);
     assertThat(splitter).isInstanceOf(ThreeComponentsSplitter.class);
     assertThat(((ThreeComponentsSplitter)splitter).getFirstComponent()).isNull();
 
@@ -333,7 +337,8 @@ public class StudioProfilersViewTest {
     services.enableSessionsView(true);
     profilers = new StudioProfilers(myGrpcChannel.getClient(), services, timer);
     view = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
-    splitter = view.getComponent();
+    assertThat(view.getComponent().getComponentCount()).isEqualTo(1);
+    splitter = view.getComponent().getComponent(0);
     assertThat(splitter).isInstanceOf(ThreeComponentsSplitter.class);
     assertThat(((ThreeComponentsSplitter)splitter).getFirstComponent()).isNotNull();
   }
@@ -351,7 +356,7 @@ public class StudioProfilersViewTest {
 
     // Fake a resize and re-create the StudioProfilerView, the session UI should maintain the previous dimension
     profilersView.getSessionsView().getExpandButton().doClick();
-    ThreeComponentsSplitter splitter = (ThreeComponentsSplitter)profilersView.getComponent();
+    ThreeComponentsSplitter splitter = (ThreeComponentsSplitter)profilersView.getComponent().getComponent(0);
     assertThat(splitter.getFirstSize()).isEqualTo(SessionsView.getComponentMinimizeSize(true).width);
     splitter.setSize(1024, 450);
     FakeUi ui = new FakeUi(splitter);
@@ -360,7 +365,7 @@ public class StudioProfilersViewTest {
     profilers = new StudioProfilers(myGrpcChannel.getClient(), myProfilerServices, myTimer);
     profilersView = new StudioProfilersView(profilers, new FakeIdeProfilerComponents());
     assertThat(profilersView.getSessionsView().getCollapsed()).isFalse();
-    assertThat(((ThreeComponentsSplitter)profilersView.getComponent()).getFirstSize()).isEqualTo(splitter.getFirstSize());
+    assertThat(((ThreeComponentsSplitter)profilersView.getComponent().getComponent(0)).getFirstSize()).isEqualTo(splitter.getFirstSize());
   }
 
   @Test
@@ -371,10 +376,10 @@ public class StudioProfilersViewTest {
     ContextMenuItem attachItem = null;
     ContextMenuItem detachItem = null;
     for (ContextMenuItem item : contextMenuItems) {
-      if (item.getText().equals("Attach to Live")) {
+      if (item.getText().equals(StudioProfilersView.ATTACH_LIVE)) {
         attachItem = item;
       }
-      else if (item.getText().equals("Detach from Live")) {
+      else if (item.getText().equals(StudioProfilersView.DETACH_LIVE)) {
         detachItem = item;
       }
     }
@@ -394,6 +399,8 @@ public class StudioProfilersViewTest {
     assertThat(liveButton.isSelected()).isFalse();
     assertThat(attachItem.isEnabled()).isTrue();
     assertThat(detachItem.isEnabled()).isFalse();
+    assertThat(liveButton.getIcon()).isEqualTo(StudioIcons.Profiler.Toolbar.GOTO_LIVE);
+    assertThat(liveButton.getToolTipText()).startsWith(StudioProfilersView.ATTACH_LIVE);
 
     // Attaching to live should select the button again.
     attachItem.run();
@@ -402,6 +409,8 @@ public class StudioProfilersViewTest {
     assertThat(liveButton.isSelected()).isTrue();
     assertThat(attachItem.isEnabled()).isFalse();
     assertThat(detachItem.isEnabled()).isTrue();
+    assertThat(liveButton.getIcon()).isEqualTo(StudioIcons.Profiler.Toolbar.PAUSE_LIVE);
+    assertThat(liveButton.getToolTipText()).startsWith(StudioProfilersView.DETACH_LIVE);
 
     // Stopping the session should disable and unselect the button
     myProfilers.getSessionsManager().endCurrentSession();
@@ -430,8 +439,86 @@ public class StudioProfilersViewTest {
     assertThat(detachItem.isEnabled()).isFalse();
   }
 
+  @Test
+  public void testGoLiveButtonWhenToggleStreaming() {
+    JToggleButton liveButton = myView.getGoLiveButton();
+    assertThat(liveButton.isEnabled()).isTrue();
+    myProfilers.getTimeline().setStreaming(false);
+    assertThat(liveButton.isSelected()).isFalse();
+    assertThat(liveButton.getIcon()).isEqualTo(StudioIcons.Profiler.Toolbar.GOTO_LIVE);
+    assertThat(liveButton.getToolTipText()).startsWith(StudioProfilersView.ATTACH_LIVE);
+
+    myProfilers.getTimeline().setStreaming(true);
+    assertThat(liveButton.isSelected()).isTrue();
+    assertThat(liveButton.getIcon()).isEqualTo(StudioIcons.Profiler.Toolbar.PAUSE_LIVE);
+    assertThat(liveButton.getToolTipText()).startsWith(StudioProfilersView.DETACH_LIVE);
+  }
+
+  @Test
+  public void testTimelineButtonEnableStates() {
+    CommonButton zoomInButton = myView.getZoomInButton();
+    CommonButton zoomOutButton = myView.getZoomOutButton();
+    CommonButton resetButton = myView.getResetZoomButton();
+    CommonButton frameSelectionButton = myView.getFrameSelectionButton();
+    JToggleButton liveButton = myView.getGoLiveButton();
+
+    // A live session without agent should have all controls enabled
+    assertThat(myProfilers.getSessionsManager().isSessionAlive()).isTrue();
+    assertThat(zoomInButton.isEnabled()).isTrue();
+    assertThat(zoomOutButton.isEnabled()).isTrue();
+    assertThat(resetButton.isEnabled()).isTrue();
+    assertThat(frameSelectionButton.isEnabled()).isFalse(); // Frame selection button is dependent on selection being available.
+    assertThat(liveButton.isEnabled()).isTrue();
+
+    // Updating the selection should enable the frame selection control.
+    myProfilers.getTimeline().getSelectionRange().set(myProfilers.getTimeline().getDataRange());
+    assertThat(zoomInButton.isEnabled()).isTrue();
+    assertThat(zoomOutButton.isEnabled()).isTrue();
+    assertThat(resetButton.isEnabled()).isTrue();
+    assertThat(frameSelectionButton.isEnabled()).isTrue();
+    assertThat(liveButton.isEnabled()).isTrue();
+
+    // Stopping the session should disable the live control
+    myProfilers.getSessionsManager().endCurrentSession();
+    assertThat(zoomInButton.isEnabled()).isTrue();
+    assertThat(zoomOutButton.isEnabled()).isTrue();
+    assertThat(resetButton.isEnabled()).isTrue();
+    assertThat(frameSelectionButton.isEnabled()).isTrue();
+    assertThat(liveButton.isEnabled()).isFalse();
+
+    // Starting a session that is waiting for an agent to initialize should have all controls disabled.
+    Common.Device onlineDevice = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build();
+    Common.Process onlineProcess = Common.Process.newBuilder().setPid(2).setState(Common.Process.State.ALIVE).build();
+    myService.setAgentStatus(
+      Profiler.AgentStatusResponse.newBuilder().setStatus(Profiler.AgentStatusResponse.Status.DETACHED).setIsAgentAttachable(true).build());
+    myProfilers.getSessionsManager().beginSession(onlineDevice, onlineProcess);
+    assertThat(zoomInButton.isEnabled()).isFalse();
+    assertThat(zoomOutButton.isEnabled()).isFalse();
+    assertThat(resetButton.isEnabled()).isFalse();
+    assertThat(frameSelectionButton.isEnabled()).isFalse();
+    assertThat(liveButton.isEnabled()).isFalse();
+
+    // Controls should be enabled after agent is attached.
+    myService.setAgentStatus(
+      Profiler.AgentStatusResponse.newBuilder().setStatus(Profiler.AgentStatusResponse.Status.ATTACHED).setIsAgentAttachable(true).build());
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(zoomInButton.isEnabled()).isTrue();
+    assertThat(zoomOutButton.isEnabled()).isTrue();
+    assertThat(resetButton.isEnabled()).isTrue();
+    assertThat(frameSelectionButton.isEnabled()).isFalse();
+    assertThat(liveButton.isEnabled()).isTrue();
+
+    // Setting to an empty session should have all controls disabled.
+    myProfilers.getSessionsManager().setSession(Common.Session.getDefaultInstance());
+    assertThat(zoomInButton.isEnabled()).isFalse();
+    assertThat(zoomOutButton.isEnabled()).isFalse();
+    assertThat(resetButton.isEnabled()).isFalse();
+    assertThat(frameSelectionButton.isEnabled()).isFalse();
+    assertThat(liveButton.isEnabled()).isFalse();
+  }
+
   public void transitionStage(Stage stage) throws Exception {
-    JPanel component = myView.getComponent();
+    JLayeredPane component = myView.getComponent();
     myProfilers.setStage(new FakeStage(myProfilers));
     new ReferenceWalker(myProfilers).assertNotReachable(myView, component);
     myProfilers.setStage(stage);

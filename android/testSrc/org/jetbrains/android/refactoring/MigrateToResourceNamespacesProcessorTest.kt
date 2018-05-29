@@ -16,11 +16,16 @@
 package org.jetbrains.android.refactoring
 
 import com.android.builder.model.AndroidProject
+import com.intellij.codeInsight.daemon.impl.analysis.XmlUnusedNamespaceInspection
 import com.intellij.openapi.application.runUndoTransparentWriteAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture
 import com.intellij.testFramework.fixtures.TestFixtureBuilder
 import org.jetbrains.android.AndroidTestCase
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.android.inspections.AndroidDomInspection
+import org.jetbrains.android.inspections.AndroidElementNotAllowedInspection
+import org.jetbrains.android.inspections.AndroidUnknownAttributeInspection
 
 class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
 
@@ -40,13 +45,20 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
   override fun setUp() {
     super.setUp()
 
+    myFixture.enableInspections(
+      AndroidDomInspection::class.java,
+      AndroidUnknownAttributeInspection::class.java,
+      AndroidElementNotAllowedInspection::class.java,
+      XmlUnusedNamespaceInspection::class.java
+    )
+
     runUndoTransparentWriteAction {
       myFacet.manifest!!.`package`.value = "com.example.app"
       AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!.manifest!!.`package`.value = "com.example.lib"
     }
 
     myFixture.addFileToProject(
-      "${getAdditionalModulePath("lib") + "/res"}/values/lib.xml",
+      "${getAdditionalModulePath("lib")}/res/values/lib.xml",
       // language=xml
       """
         <resources>
@@ -67,7 +79,7 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
   }
 
   fun testResourceValues() {
-    myFixture.addFileToProject(
+    val appXml = myFixture.addFileToProject(
       "/res/values/app.xml",
       // language=xml
       """
@@ -90,20 +102,7 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       """.trimIndent()
     )
 
-    MigrateToResourceNamespacesProcessor(myFacet).run()
-
-    myFixture.checkResult(
-      "res/values/app.xml",
-      // language=xml
-      """
-        <resources>
-          <string name="appString">Hello from app</string>
-          <string name="s1">@string/appString</string>
-          <string name="s2">@com.example.lib:string/libString</string>
-        </resources>
-      """.trimIndent(),
-      true
-    )
+    refactorAndSync()
 
     myFixture.checkResult(
       "/res/layout/layout.xml",
@@ -116,6 +115,23 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       """.trimIndent(),
       true
     )
+
+    FileDocumentManager.getInstance().saveAllDocuments()
+    myFixture.configureFromExistingVirtualFile(appXml.virtualFile)
+
+    myFixture.checkResult(
+      // language=xml
+      """
+        <resources>
+          <string name="appString">Hello from app</string>
+          <string name="s1">@string/appString</string>
+          <string name="s2">@com.example.lib:string/libString</string>
+        </resources>
+      """.trimIndent(),
+      true
+    )
+
+    myFixture.checkHighlighting()
   }
 
   fun testManifest() {
@@ -123,7 +139,7 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       myFacet.manifest!!.application.label.stringValue = "@string/libString"
     }
 
-    MigrateToResourceNamespacesProcessor(myFacet).run()
+    refactorAndSync()
 
     myFixture.checkResult(
       "AndroidManifest.xml",
@@ -175,7 +191,7 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       """.trimIndent()
     )
 
-    MigrateToResourceNamespacesProcessor(myFacet).run()
+    refactorAndSync()
 
     myFixture.checkResult(
       "/src/com/example/app/MainActivity.java",
@@ -201,5 +217,75 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       """.trimIndent(),
       true
     )
+  }
+
+  fun testGradleFiles() {
+    // Make sure there's at least on reference to rewrite.
+    runUndoTransparentWriteAction {
+      myFacet.manifest!!.application.label.stringValue = "@string/libString"
+    }
+
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
+        android {
+            compileSdkVersion 27
+
+            defaultConfig {
+                applicationId "com.example.app"
+            }
+        }
+      """.trimIndent()
+    )
+
+    myFixture.addFileToProject(
+      "${getAdditionalModulePath("lib")}/build.gradle",
+      """
+        android {
+            compileSdkVersion 27
+        }
+      """.trimIndent()
+    )
+
+    refactorAndSync()
+
+    myFixture.checkResult(
+      "build.gradle",
+      """
+        android {
+            compileSdkVersion 27
+
+            defaultConfig {
+                applicationId "com.example.app"
+            }
+            aaptOptions {
+                namespaced true
+            }
+        }
+      """.trimIndent(),
+      true
+    )
+
+    myFixture.checkResult(
+      "${getAdditionalModulePath("lib")}/build.gradle",
+      """
+        android {
+            compileSdkVersion 27
+            aaptOptions {
+                namespaced true
+            }
+        }
+      """.trimIndent(),
+      true
+    )
+  }
+
+  /**
+   * Runs the refactoring and changes the model to enable namespacing, like the sync would do.
+   */
+  private fun refactorAndSync() {
+    MigrateToResourceNamespacesProcessor(myFacet).run()
+    enableNamespacing(myFacet, "com.example.app")
+    enableNamespacing(AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!, "com.example.lib")
   }
 }

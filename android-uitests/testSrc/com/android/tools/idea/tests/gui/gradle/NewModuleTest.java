@@ -24,7 +24,6 @@ import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFix
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
 import org.fest.swing.timing.Wait;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,7 +52,7 @@ public class NewModuleTest {
       // delete lines using DSL features added after Android Gradle 1.0.0
       .moveBetween("use", "Library")
       .invokeAction(EditorFixture.EditorAction.DELETE_LINE)
-      .moveBetween("test", "Compile")
+      .moveBetween("test", "Implementation")
       .invokeAction(EditorFixture.EditorAction.DELETE_LINE)
       .getIdeFrame()
       .requestProjectSync()
@@ -68,11 +67,11 @@ public class NewModuleTest {
       .open("somelibrary/build.gradle")
       .getCurrentFileContents();
     assertThat(gradleFileContents).doesNotContain("testCompile");
+    assertThat(gradleFileContents).doesNotContain("testImplementation");
     assertAbout(file()).that(guiTest.getProjectPath("somelibrary/src/main")).isDirectory();
     assertAbout(file()).that(guiTest.getProjectPath("somelibrary/src/test")).doesNotExist();
   }
 
-  @Ignore("b/79567215")
   @Test
   public void createNewModuleFromJar() throws Exception {
     String jarFile = GuiTests.getTestDataDir() + "/LocalJarsAsModules/localJarAsModule/local.jar";

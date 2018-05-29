@@ -16,7 +16,6 @@
   package com.android.tools.idea.tests.gui.projectstructure;
 
   import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-  import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
   import com.android.tools.idea.tests.gui.framework.RunIn;
   import com.android.tools.idea.tests.gui.framework.TestGroup;
   import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
@@ -29,13 +28,15 @@ import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
   import org.junit.Test;
   import org.junit.runner.RunWith;
 
+  import java.util.concurrent.TimeUnit;
+
   import static com.google.common.truth.Truth.assertThat;
 
 @RunIn(TestGroup.PROJECT_SUPPORT)
 @RunWith(GuiTestRemoteRunner.class)
 public class FlavorsEditingTest {
 
-  @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final GuiTestRule guiTest = new GuiTestRule().withTimeout(5, TimeUnit.MINUTES);
 
   /**
    * Verify flavor editing works as expected.

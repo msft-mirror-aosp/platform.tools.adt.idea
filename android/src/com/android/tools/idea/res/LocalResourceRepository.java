@@ -26,7 +26,6 @@ import com.android.ide.common.resources.ResourceFile;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ResourceTable;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
-import com.android.ide.common.util.PathString;
 import com.android.resources.FolderTypeRelationship;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
@@ -39,8 +38,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ModificationTracker;
-import com.intellij.openapi.vfs.LocalFileSystem;
-import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
@@ -50,7 +47,6 @@ import org.jetbrains.android.util.AndroidResourceUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -179,8 +175,7 @@ public abstract class LocalResourceRepository extends AbstractResourceRepository
   }
 
   @Override
-  public void dispose() {
-  }
+  public void dispose() {}
 
   public void addParent(@NonNull MultiResourceRepository parent) {
     synchronized (ITEM_MAP_LOCK) {
@@ -316,8 +311,7 @@ public abstract class LocalResourceRepository extends AbstractResourceRepository
     }
     List<VirtualFile> output;
     synchronized (ITEM_MAP_LOCK) {
-      ListMultimap<String, ResourceItem> typeItems =
-        getMap(ResourceNamespace.TODO, type, false);
+      ListMultimap<String, ResourceItem> typeItems = getMap(ResourceNamespace.TODO(), type, false);
       if (typeItems == null) {
         return Collections.emptyList();
       }

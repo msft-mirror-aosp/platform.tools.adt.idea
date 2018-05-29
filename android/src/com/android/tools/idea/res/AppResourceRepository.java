@@ -16,6 +16,7 @@
 package com.android.tools.idea.res;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.builder.model.AaptOptions;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.projectsystem.FilenameConstants;
@@ -86,7 +87,7 @@ class AppResourceRepository extends MultiResourceRepository {
     LocalResourceRepository resources = ResourceRepositoryManager.getProjectResources(facet);
     repositories.addAll(libraries);
     repositories.add(resources);
-    repositories.add(new SampleDataResourceRepository(facet));
+    repositories.add(SampleDataResourceRepository.getInstance(facet));
     return repositories;
   }
 
@@ -116,6 +117,7 @@ class AppResourceRepository extends MultiResourceRepository {
       }
     }
 
+    AaptOptions.Namespacing namespacing = ResourceRepositoryManager.getOrCreateInstance(facet).getNamespacing();
     List<FileResourceRepository> resources = new ArrayList<>(aarDirs.size());
     // TODO: Load AAR repositories on multiple threads.
     for (Map.Entry<File, String> entry : aarDirs.entrySet()) {
@@ -124,7 +126,7 @@ class AppResourceRepository extends MultiResourceRepository {
       if (LOG.isDebugEnabled()) {
         LOG.debug("  Dependency: " + anonymizeClassName(libraryName));
       }
-      resources.add(AarResourceRepositoryCache.getInstance().get(directory, libraryName));
+      resources.add(AarResourceRepositoryCache.getInstance().get(directory, namespacing, libraryName));
     }
     return resources;
   }
@@ -132,14 +134,10 @@ class AppResourceRepository extends MultiResourceRepository {
   protected AppResourceRepository(@NotNull AndroidFacet facet,
                                   @NotNull List<? extends LocalResourceRepository> delegates,
                                   @NotNull List<FileResourceRepository> libraries) {
-    super(facet.getModule().getName() + " with modules and libraries", delegates);
+    super(facet.getModule().getName() + " with modules and libraries");
     myFacet = facet;
     myLibraries = libraries;
-  }
-
-  @Override
-  public void dispose() {
-    super.dispose();
+    setChildren(delegates);
   }
 
   /**
@@ -179,7 +177,7 @@ class AppResourceRepository extends MultiResourceRepository {
         }
       }
       // Also add all ids from resource types, just in case it contains things that are not in the libraries.
-      myIds.addAll(super.getItemsOfType(ResourceNamespace.TODO, ResourceType.ID));
+      myIds.addAll(super.getItemsOfType(ResourceNamespace.TODO(), ResourceType.ID));
     }
     return myIds;
   }

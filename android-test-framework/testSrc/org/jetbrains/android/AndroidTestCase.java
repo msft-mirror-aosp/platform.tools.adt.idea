@@ -3,6 +3,7 @@
 package org.jetbrains.android;
 
 import com.android.SdkConstants;
+import com.android.tools.idea.model.TestAndroidModel;
 import com.android.tools.idea.rendering.RenderSecurityManager;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.startup.AndroidCodeStyleSettingsModifier;
@@ -59,6 +60,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
 
 @SuppressWarnings({"JUnitTestCaseWithNonTrivialConstructors"})
 public abstract class AndroidTestCase extends AndroidTestBase {
@@ -337,6 +340,21 @@ public abstract class AndroidTestCase extends AndroidTestBase {
 
   protected final void createManifest() throws IOException {
     myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
+  }
+
+  /**
+   * Enables namespacing in the main module and sets the app namespace according to the given package name.
+   */
+  protected void enableNamespacing(@NotNull String appPackageName) {
+    enableNamespacing(myFacet, appPackageName);
+  }
+
+  /**
+   * Enables namespacing in the given module and sets the app namespace according to the given package name.
+   */
+  protected void enableNamespacing(@NotNull AndroidFacet facet, @NotNull String appPackageName) {
+    facet.getConfiguration().setModel(TestAndroidModel.namespaced(facet));
+    runWriteCommandAction(getProject(), () -> facet.getManifest().getPackage().setValue(appPackageName));
   }
 
   protected final void createProjectProperties() throws IOException {

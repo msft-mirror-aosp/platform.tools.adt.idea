@@ -18,6 +18,7 @@ package com.android.tools.idea.naveditor
 import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
 import com.android.tools.idea.common.fixtures.ModelBuilder
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.naveditor.scene.TestableThumbnailManager
 import com.android.tools.idea.naveditor.scene.ThumbnailManager
 import com.android.tools.idea.testing.TestProjectPaths.NAVIGATION_EDITOR_BASIC
@@ -45,12 +46,12 @@ abstract class NavTestCase : AndroidTestCase() {
     myRootDisposable = object : Disposable {
       override fun dispose() {}
     }
-    myFixture.copyDirectoryToProject(NAVIGATION_EDITOR_BASIC + "/app/src/main/java", "src")
-    myFixture.copyDirectoryToProject(NAVIGATION_EDITOR_BASIC + "/app/src/main/res", "res")
-    myFixture.copyFileToProject(NAVIGATION_EDITOR_BASIC + "/app/src/main/AndroidManifest.xml", "AndroidManifest.xml")
+    myFixture.copyDirectoryToProject("$NAVIGATION_EDITOR_BASIC/app/src/main/java", "src")
+    myFixture.copyDirectoryToProject("$NAVIGATION_EDITOR_BASIC/app/src/main/res", "res")
+    myFixture.copyFileToProject("$NAVIGATION_EDITOR_BASIC/app/src/main/AndroidManifest.xml", "AndroidManifest.xml")
     val tempDir = FileUtil.createTempDirectory("NavigationTest", null)
     val classesDir = FileUtil.createTempDirectory("NavigationTestClasses", null)
-    for ((i, prebuilt) in PREBUILT_AAR_PATHS.withIndex()) {
+    for ((i, prebuilt) in navEditorAarPaths.withIndex()) {
       val aar = File(PathManager.getHomePath(), prebuilt)
       ZipUtil.extract(aar, tempDir, null)
       val classes = File(classesDir, "classes$i.jar")
@@ -69,7 +70,7 @@ abstract class NavTestCase : AndroidTestCase() {
     }
 
     TestableThumbnailManager.register(myFacet)
-    System.setProperty(NavigationSchema.ENABLE_NAV_PROPERTY, "true")
+    StudioFlags.ENABLE_NAV_EDITOR.override(true)
   }
 
   override fun tearDown() {
@@ -78,6 +79,7 @@ abstract class NavTestCase : AndroidTestCase() {
       val thumbnailManager = ThumbnailManager.getInstance(myFacet)
       (thumbnailManager as? TestableThumbnailManager)?.deregister()
       deleteManifest()
+      StudioFlags.ENABLE_NAV_EDITOR.clearOverride()
     }
     finally {
       super.tearDown()
@@ -94,15 +96,10 @@ abstract class NavTestCase : AndroidTestCase() {
 
   companion object {
 
-    val TAG_NAVIGATION = "navigation"
-    private val PREBUILT_AAR_PATHS = arrayOf(
-      "../../prebuilts/tools/common/m2/repository/androidx/navigation/navigation-runtime/1.0.0-alpha01/navigation-runtime-1.0.0-alpha01.aar",
-      "../../prebuilts/tools/common/m2/repository/androidx/navigation/navigation-common/1.0.0-alpha01/navigation-common-1.0.0-alpha01.aar",
-      "../../prebuilts/tools/common/m2/repository/androidx/navigation/navigation-fragment/1.0.0-alpha01/navigation-fragment-1.0.0-alpha01.aar",
-      "../../prebuilts/tools/common/m2/repository/com/android/support/support-fragment/27.0.2/support-fragment-27.0.2.aar")
+    const val TAG_NAVIGATION = "navigation"
 
     val testDataPath: String
-      get() = designerPluginHome + "/testData"
+      get() = "$designerPluginHome/testData"
 
     // Now that the Android plugin is kept in a separate place, we need to look in a relative position instead
     private val designerPluginHome: String

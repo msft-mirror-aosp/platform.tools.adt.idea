@@ -47,14 +47,8 @@ class CollapsibleLabelModel(
   private var children: MutableList<InspectorLineModel>? = null
   private var defaultExpansionValue = true
 
-  var parent: CollapsibleLabelModel? = null
-    private set
-
-  val hasChildren: Boolean
-    get() = children?.isNotEmpty() == true
-
   var expandable = false
-    set(value) {
+    private set(value) {
       field = value
       fireValueChanged()
     }
@@ -123,10 +117,15 @@ class CollapsibleLabelModel(
     editorModel?.refresh()
   }
 
+  var separatorAfterTitle: InspectorLineModel? = null
+
   override fun makeExpandable(initiallyExpanded: Boolean) {
     defaultExpansionValue = initiallyExpanded
     expandable = true
     expanded = properties.getBoolean(KEY_PREFIX + name, defaultExpansionValue)
+    val separator = separatorAfterTitle ?: return
+    addChild(separator)
+    separatorAfterTitle = null
   }
 
   override fun addChild(child: InspectorLineModel) {
@@ -135,7 +134,20 @@ class CollapsibleLabelModel(
     }
     children?.add(child)
     child.visible = expanded && visible
+    child.parent = this
     val expandableChild = child as? CollapsibleLabelModel
     expandableChild?.parent = this
+  }
+
+  fun hideForSearch(isMatch: Boolean) {
+    expandable = false
+    visible = isMatch
+  }
+
+  fun restoreAfterSearch() {
+    expandable = children?.isNotEmpty() == true
+    if (parent == null) {
+      visible = true
+    }
   }
 }

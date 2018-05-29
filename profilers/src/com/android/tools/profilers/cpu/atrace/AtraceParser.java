@@ -28,6 +28,8 @@ import trebuchet.util.PrintlnImportFeedback;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * AtraceParser is a minimal implementation parsing the atrace file.
@@ -67,11 +69,29 @@ public class AtraceParser implements TraceParser {
   private final List<SeriesData<Long>> myCpuUtilizationSeries;
 
   private int myProcessId;
+  /**
+   * The device boot time captured at the beginning of the trace.
+   */
+  private double myMonoTimeAtBeginningSeconds = 0;
   private ProcessModel myProcessModel;
   // Trebuchet.Model is what Trebuchet uses to represent all captured data.
   private Model myModel;
   private Range myRange;
 
+  /**
+   * This constructor parses the atrace model from the file and should be used for getting the list
+   * of processes from the capture. After calling this construct the contract expects {@link #setSelectProcess}
+   * to be called before parse.
+   */
+  public AtraceParser(@NotNull File file) throws IOException {
+    this(INVALID_PROCESS);
+    parseModelIfNeeded(file);
+  }
+
+  /**
+   * This constructor assumes we know what process we want to focus on. It caches off the process id,
+   * and expects parse with the proper file to be called.
+   */
   public AtraceParser(int processId) {
     myProcessId = processId;
     myCaptureTreeNodes = new HashMap<>();
@@ -82,9 +102,7 @@ public class AtraceParser implements TraceParser {
 
   @Override
   public CpuCapture parse(File file, int traceId) throws IOException {
-    AtraceDecompressor reader = new AtraceDecompressor(file);
-    ImportTask task = new ImportTask(new PrintlnImportFeedback());
-    myModel = task.importBuffer(reader);
+    parseModelIfNeeded(file);
     double startTimestampUs = convertToUserTimeUs(myModel.getBeginTimestamp());
     double endTimestampUs = convertToUserTimeUs(myModel.getEndTimestamp());
     myRange = new Range(startTimestampUs, endTimestampUs);
@@ -100,6 +118,96 @@ public class AtraceParser implements TraceParser {
     return new AtraceCpuCapture(this, traceId);
   }
 
+  /**
+   * Parses the input file and caches off the model to prevent parsing multiple times.
+   */
+  private void parseModelIfNeeded(@NotNull File file) throws IOException {
+    if (myModel == null) {
+      AtraceDecompressor reader = new AtraceDecompressor(file);
+      ImportTask task = new ImportTask(new PrintlnImportFeedback());
+      myModel = task.importBuffer(reader);
+      // We check if we have a parent timestamp. If not this could be from an imported trace.
+      // In the case it is 0, we use the first timestamp of our capture as a reference point.
+      if (Double.compare(myModel.getParentTimestamp(),0.0) == 0) {
+        myMonoTimeAtBeginningSeconds = myModel.getBeginTimestamp();
+      } else {
+        myMonoTimeAtBeginningSeconds = myModel.getParentTimestamp() - (myModel.getParentTimestampBootTime() - myModel.getBeginTimestamp());
+      }
+    }
+  }
+
+  /**
+   * An array of CPU process information is returned. This array is sorted using the following criteria,
+   * 1) Process names matching the hint string.
+   * 2) Processes with the most activity
+   * 3) Alphabetically
+   * 4) Processes without names.
+   */
+  @NotNull
+  public CpuThreadInfo[] getProcessList(String hint) {
+    assert myModel != null;
+    CpuThreadInfo[] processList = new CpuThreadInfo[myModel.getProcesses().size()];
+    Stream<ProcessModel> processStream = myModel.getProcesses().values().stream();
+    int index = 0;
+    String hintLower = hint.toLowerCase(Locale.getDefault());
+    processStream = processStream.sorted((a, b) -> {
+      String aNameLower = getMainThreadForProcess(a).toLowerCase(Locale.getDefault());
+      String bNameLower = getMainThreadForProcess(b).toLowerCase(Locale.getDefault());
+
+      // If either the left or right names overlap with our hint we want to bubble those elements
+      // to the top.
+      // Eg. Hint = "Test"
+      // A = "Project"
+      // B = "Test_Project"
+      // The sorting should be Test_Project, Project.
+      if (hintLower.contains(aNameLower) && !hintLower.contains(bNameLower)) {
+        return -1;
+      }
+      else if (hintLower.contains(bNameLower) && !hintLower.contains(aNameLower)) {
+        return 1;
+      }
+
+      // If our name starts with < then we have a process whose name did not resolve as such we bubble these elements
+      // to the bottom of our list.
+      // A = "<1234>"
+      // B = "Test_Project"
+      // The sorting should be Test_Project, <1234>
+      if (aNameLower.startsWith("<") && !bNameLower.startsWith("<")) {
+        return 1;
+      }
+      else if (bNameLower.startsWith("<") && !aNameLower.startsWith("<")) {
+        return -1;
+      }
+
+      // If our project names don't match either our hint, or our <> name then we sort the elements within
+      // by count of threads.
+      // Note: This also applies if we have multiple projects that match our hint, or don't have a name.
+      int threadsGreater = b.getThreads().size() - a.getThreads().size();
+      if (threadsGreater != 0) {
+        return threadsGreater;
+      }
+
+      // Finally we sort our projects by name.
+      int name = aNameLower.compareTo(bNameLower);
+      if (name == 0) {
+        return b.getId() - a.getId();
+      }
+      return name;
+    });
+    List<ProcessModel> processes = processStream.collect(Collectors.toList());
+    for (ProcessModel process : processes) {
+      String name = getMainThreadForProcess(process);
+      processList[index++] = new CpuThreadInfo(process.getId(), name, process.getId(), name);
+    }
+    return processList;
+  }
+
+  public void setSelectProcess(@NotNull CpuThreadInfo process) {
+    assert myModel != null;
+    assert myModel.getProcesses().containsKey(process.getProcessId());
+    myProcessId = process.getProcessId();
+  }
+
   @Override
   public boolean supportsDualClock() {
     return false;
@@ -110,7 +218,7 @@ public class AtraceParser implements TraceParser {
    *             systemTime(CLOCK_MONOTONIC) / 1000000000.0f returning the time in fractions of a second.
    * @return time converted to Us.
    */
-  private double secondsToUs(double time) {
+  private static double secondsToUs(double time) {
     return (time * 1000000.0);
   }
 
@@ -141,7 +249,8 @@ public class AtraceParser implements TraceParser {
   private void buildCaptureTreeNodes() {
     Range range = getRange();
     for (ThreadModel thread : myProcessModel.getThreads()) {
-      CpuThreadInfo threadInfo = new CpuThreadInfo(thread.getId(), thread.getName());
+      CpuThreadInfo threadInfo =
+        new CpuThreadInfo(thread.getId(), thread.getName(), thread.getProcess().getId(), thread.getProcess().getName());
       CaptureNode root = new CaptureNode(new AtraceNodeModel(thread.getName()));
       root.setStartGlobal((long)range.getMin());
       root.setEndGlobal((long)range.getMax());
@@ -237,7 +346,7 @@ public class AtraceParser implements TraceParser {
    * of each series element following. The iteration continues until it finds the first element greater than our process end time.
    * A new series object is inserted just before this point. The result of this is the initial list is modified to have 2 elements added
    * with each element in the middle incremented by one.
-   *
+   * <p>
    * The start and end times represent a slice when the core is used continuously, and the core's utilization data before the start
    * timestamp has been captured by cpuSeriesIt.
    *
@@ -248,9 +357,9 @@ public class AtraceParser implements TraceParser {
    * @return
    */
   @NotNull
-  private SeriesData<Long> buildCpuUtilizationData(ListIterator<SeriesData<Long>> cpuSeriesIt,
-                                                   Long sliceStartTimeUs,
-                                                   Long sliceEndTimeUs) {
+  private static SeriesData<Long> buildCpuUtilizationData(ListIterator<SeriesData<Long>> cpuSeriesIt,
+                                                          Long sliceStartTimeUs,
+                                                          Long sliceEndTimeUs) {
     // Assume our CPU usage is 0, and we are changing it to 1.
     Long usedCpuCount = 1L;
     SeriesData<Long> last = null;
@@ -311,7 +420,7 @@ public class AtraceParser implements TraceParser {
   /**
    * @return converted state from the input slice.
    */
-  private CpuProfilerStage.ThreadState getState(SchedSlice slice) {
+  private static CpuProfilerStage.ThreadState getState(SchedSlice slice) {
     switch (slice.getState()) {
       case RUNNING:
         return CpuProfilerStage.ThreadState.RUNNING_CAPTURED;
@@ -336,12 +445,31 @@ public class AtraceParser implements TraceParser {
     return myRange;
   }
 
-  private long convertToUserTimeUs(double offsetTime) {
-    return (long)secondsToUs((offsetTime - myModel.getBeginTimestamp()) + myModel.getParentTimestamp());
+  private long convertToUserTimeUs(double timestampInSeconds) {
+    return (long)secondsToUs((timestampInSeconds - myModel.getBeginTimestamp()) + myMonoTimeAtBeginningSeconds);
+  }
+
+  /**
+   * Returns the best assumed name for a process. It does this by first getting the process name.
+   * If the process does not have a name it looks at each thread and if it finds one with the id
+   * matching that of the process uses the name of the thread. If no main thread is found the
+   * original process name is returned.
+   */
+  @NotNull
+  private static String getMainThreadForProcess(@NotNull ProcessModel process) {
+    String name = process.getName();
+    if (name.startsWith("<")) {
+      for (ThreadModel threads : process.getThreads()) {
+        if (threads.getId() == process.getId()) {
+          return threads.getName();
+        }
+      }
+    }
+    return name;
   }
 
   @NotNull
   public String getMainThreadName() {
-    return myProcessModel.getName();
+    return getMainThreadForProcess(myProcessModel);
   }
 }

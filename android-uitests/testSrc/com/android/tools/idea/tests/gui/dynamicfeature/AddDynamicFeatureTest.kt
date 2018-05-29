@@ -18,20 +18,21 @@ package com.android.tools.idea.tests.gui.dynamicfeature
 import com.android.flags.junit.RestoreFlagRule
 import com.android.tools.idea.flags.StudioFlags.NPW_DYNAMIC_APP_MODULE
 import com.android.tools.idea.tests.gui.framework.GuiTestRule
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner
 import com.android.tools.idea.tests.gui.framework.RunIn
 import com.android.tools.idea.tests.gui.framework.TestGroup
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewActivityWizardFixture
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-@RunIn(TestGroup.PROJECT_WIZARD)
-@RunWith(GuiTestRunner::class)
+@RunIn(TestGroup.UNRELIABLE) // b/79945618  @RunIn(TestGroup.PROJECT_WIZARD)
+@RunWith(GuiTestRemoteRunner::class)
 class AddDynamicFeatureTest {
   @Rule
   @JvmField
@@ -201,6 +202,7 @@ class AddDynamicFeatureTest {
    * 3. Open the "app" module build.gradle and check that play-services-maps was added with "api" dependency.
    * </pre>
    */
+  @RunIn(TestGroup.UNRELIABLE)  // b/79942260
   @Test
   @Throws(Exception::class)
   fun addMapsActivityToDynamicModule() {

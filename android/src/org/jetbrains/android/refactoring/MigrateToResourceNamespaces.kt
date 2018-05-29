@@ -18,9 +18,10 @@ package org.jetbrains.android.refactoring
 import com.android.builder.model.AaptOptions
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.AbstractResourceRepository
+import com.android.ide.common.resources.SingleNamespaceResourceRepository
 import com.android.resources.ResourceType
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.res.LeafResourceRepository
+import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.res.ResourceRepositoryManager
 import com.google.common.collect.Maps
 import com.google.common.collect.Table
@@ -28,6 +29,7 @@ import com.google.common.collect.Tables
 import com.intellij.lang.Language
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.LangDataKeys
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileTypes.StdFileTypes
 import com.intellij.openapi.module.Module
@@ -106,15 +108,19 @@ class MigrateToResourceNamespacesHandler : RefactoringActionHandler {
   }
 }
 
-private sealed class ResourceUsageInfo : UsageInfo {
-  constructor(ref: PsiReference) : super(ref)
-  constructor(element: PsiElement, startOffset: Int, endOffset: Int) : super(element, startOffset, endOffset)
-
+private sealed class ResourceUsageInfo(element: PsiElement, startOffset: Int, endOffset: Int) : UsageInfo(element, startOffset, endOffset) {
   abstract val resourceType: ResourceType
   abstract val name: String
 }
 
-private class DomUsageInfo(ref: PsiReference, val domValue: GenericDomValue<ResourceValue>) : ResourceUsageInfo(ref) {
+private class DomUsageInfo(
+  ref: PsiReference,
+  val domValue: GenericDomValue<ResourceValue>
+) : ResourceUsageInfo( // We don't use the UsageInfo(PsiReference) constructor to avoid resolving the reference.
+  ref.element,
+  ref.rangeInElement.startOffset,
+  ref.rangeInElement.endOffset
+) {
   override val resourceType: ResourceType
     get() = domValue.value!!.type!!
   override val name: String
@@ -162,7 +168,6 @@ class MigrateToResourceNamespacesProcessor(
 
     val leafRepos = mutableListOf<AbstractResourceRepository>()
     ResourceRepositoryManager.getAppResources(invokingFacet).getLeafResourceRepositories(leafRepos)
-    leafRepos.retainAll { it is LeafResourceRepository } // TODO(b/78765120): enforce this in MultiResourceRepository.
 
     val total = result.size.toDouble()
     // TODO(b/78765120): try doing this in parallel using a thread pool.
@@ -173,7 +178,7 @@ class MigrateToResourceNamespacesProcessor(
         for (repo in leafRepos) {
           if (repo.hasResourceItem(ResourceNamespace.RES_AUTO, resourceUsageInfo.resourceType, resourceUsageInfo.name)) {
             // TODO(b/78765120): check other repos and build a list of unresolved or conflicting references, to display in a UI later.
-            return@computeIfAbsent (repo as LeafResourceRepository).packageName
+            return@computeIfAbsent (repo as SingleNamespaceResourceRepository).packageName
           }
         }
 
@@ -290,7 +295,7 @@ class MigrateToResourceNamespacesProcessor(
   }
 
   private fun findCodeUsages(): Collection<ResourceUsageInfo> {
-    val psiFacade = JavaPsiFacade.getInstance(invokingFacet.module.project)
+    val psiFacade = JavaPsiFacade.getInstance(myProject)
     val result = mutableSetOf<ResourceUsageInfo>()
 
     for (facet in allFacets) {
@@ -328,11 +333,12 @@ class MigrateToResourceNamespacesProcessor(
   }
 
   override fun performRefactoring(usages: Array<UsageInfo>) {
-    // TODO(b/78765120): update build.gradle files
-    val project = invokingFacet.module.project
-    val psiMigration = PsiMigrationManager.getInstance(project).startMigration()
+    val psiMigration = PsiMigrationManager.getInstance(myProject).startMigration()
+    val progressIndicator = ProgressManager.getInstance().progressIndicator
+    progressIndicator.isIndeterminate = false
 
-    val total = usages.size.toDouble()
+    progressIndicator.text = "Rewriting resource references..."
+    val totalUsages = usages.size.toDouble()
     usages.forEachIndexed { index, usageInfo ->
       if (usageInfo !is ResourceUsageInfo) error("Don't know how to handle ${usageInfo.javaClass.name}.")
 
@@ -352,7 +358,7 @@ class MigrateToResourceNamespacesProcessor(
         is CodeUsageInfo -> {
           usageInfo.classReference.bindToElement(
             AndroidRefactoringUtil.findOrCreateClass(
-              project,
+              myProject,
               psiMigration,
               AndroidResourceUtil.packageToRClass(inferredNamespace)
             )
@@ -360,10 +366,28 @@ class MigrateToResourceNamespacesProcessor(
         }
       }
 
-      ProgressManager.getInstance().progressIndicator.fraction = (index + 1) / total
+      progressIndicator.fraction = (index + 1) / totalUsages
     }
 
     psiMigration.finish()
+
+    progressIndicator.text = "Updating Gradle build files..."
+    progressIndicator.fraction = 0.0
+
+    val projectBuildModel = ProjectBuildModel.get(myProject)
+
+    val totalFacets = allFacets.size.toDouble()
+    allFacets.forEachIndexed { index, facet ->
+      val moduleBuildModel = projectBuildModel.getModuleBuildModel(facet.module) ?: return@forEachIndexed
+      moduleBuildModel.android()?.aaptOptions()?.namespaced()?.setValue(true)
+      moduleBuildModel.applyChanges()
+      progressIndicator.fraction = (index + 1) / totalFacets
+    }
+
+    val application = ApplicationManager.getApplication()
+    if (!application.isUnitTestMode) {
+      application.invokeLater { AndroidRefactoringUtil.offerToSync(myProject, commandName) }
+    }
   }
 
   override fun preprocessUsages(refUsages: Ref<Array<UsageInfo>>): Boolean {

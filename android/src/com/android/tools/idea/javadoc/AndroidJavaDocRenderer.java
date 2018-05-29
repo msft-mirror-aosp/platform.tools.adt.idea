@@ -399,7 +399,7 @@ public class AndroidJavaDocRenderer {
       for (File dir : resDirectories) {
         VirtualFile virtualFile = fileSystem.findFileByIoFile(dir);
         if (virtualFile != null) {
-          ResourceFolderRepository resources = ResourceFolderRegistry.get(facet, virtualFile);
+          ResourceFolderRepository resources = ResourceFolderRegistry.getInstance(facet.getModule().getProject()).get(facet, virtualFile);
           addItemsFromRepository(flavor, mask, rank, resources, false, type, name, results);
         }
       }
@@ -427,7 +427,7 @@ public class AndroidJavaDocRenderer {
                                                @NotNull ResourceType type,
                                                @NotNull String name,
                                                @NotNull List<ItemInfo> results) {
-      ResourceNamespace namespace = isFramework ? ResourceNamespace.ANDROID : ResourceNamespace.TODO;
+      ResourceNamespace namespace = isFramework ? ResourceNamespace.ANDROID : ResourceNamespace.TODO();
       List<ResourceItem> items = resources.getResourceItems(namespace, type, name);
       for (ResourceItem item : items) {
         String folderName = null;

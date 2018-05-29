@@ -1300,9 +1300,16 @@ public class AndroidLayoutDomTest extends AndroidDomTestCase {
     doTestSpellcheckerQuickFixes();
   }
 
-  public void testAarDependency() throws Throwable {
-    PsiTestUtil.addLibrary(myModule, "maven_aar_dependency", getTestDataPath() + "/" + myTestFolder + "/myaar", "classes.jar", "res");
+  public void testAarDependencyCompletion() throws Throwable {
+    // See org.jetbrains.android.facet.ResourceFolderManager#isAarDependency
+    PsiTestUtil.addLibrary(myModule, "myapklib.aar", getTestDataPath() + "/" + myTestFolder + "/myaar", "classes.jar", "res");
     doTestCompletion();
+  }
+
+  public void testAarDependencyHighlightingNamespaced() throws Throwable {
+    enableNamespacing("myapp");
+    PsiTestUtil.addLibrary(myModule, "myapklib.aar", getTestDataPath() + "/" + myTestFolder + "/myaar-v2", "classes.jar", "res");
+    doTestHighlighting();
   }
 
   public void testUnknownDataBindingAttribute() throws Throwable {

@@ -56,7 +56,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
   // Clamp the property value between 5 Seconds and 5 Minutes, otherwise the user could specify arbitrarily small or large value.
   public static int CPU_ART_STOP_TIMEOUT_SEC = Math.max(5, Math.min(Integer.getInteger("profiler.cpu.art.stop.timeout.sec", 5),
-                                                                     5 * 60));
+                                                                    5 * 60));
   /**
    * Percentage of space on either side of an imported trace.
    */
@@ -73,17 +73,6 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
   @VisibleForTesting
   static final String PARSING_FILE_FAILURE_BALLOON_TEXT = "The profiler was unable to parse the trace file. Please make sure the file " +
                                                           "selected is a valid trace. Alternatively, try importing another file, or ";
-
-  @VisibleForTesting
-  static final String PARSING_ATRACE_FAILURE_BALLOON_TEXT = "Importing trace files you create using atrace is not yet supported. ";
-
-  @VisibleForTesting
-  static final String PARSING_ATRACE_NOT_SUPPORTED_TEXT = "Learn More";
-
-  @VisibleForTesting
-  static final String PARSING_ATRACE_NOT_SUPPORTED_URL = "https://d.android.com/r/studio-ui/import-atrace-support.html";
-
-
   @VisibleForTesting
   static final String PARSING_ABORTED_BALLOON_TITLE = "Parsing trace file aborted";
   @VisibleForTesting
@@ -277,14 +266,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     myCpuUsage = new DetailedCpuUsage(profilers);
 
-    myCpuUsageAxis = new AxisComponentModel(myCpuUsage.getCpuRange(), CPU_USAGE_FORMATTER);
-    myCpuUsageAxis.setClampToMajorTicks(true);
-
-    myThreadCountAxis = new AxisComponentModel(myCpuUsage.getThreadRange(), NUM_THREADS_AXIS);
-    myThreadCountAxis.setClampToMajorTicks(true);
-
-    myTimeAxisGuide = new AxisComponentModel(viewRange, TimeAxisFormatter.DEFAULT_WITHOUT_MINOR_TICKS);
-    myTimeAxisGuide.setGlobalRange(dataRange);
+    myCpuUsageAxis = new AxisComponentModel.Builder(myCpuUsage.getCpuRange(), CPU_USAGE_FORMATTER, true).build();
+    myThreadCountAxis = new AxisComponentModel.Builder(myCpuUsage.getThreadRange(), NUM_THREADS_AXIS, true).build();
+    myTimeAxisGuide =
+      new AxisComponentModel.Builder(viewRange, TimeAxisFormatter.DEFAULT_WITHOUT_MINOR_TICKS, false).setGlobalRange(dataRange).build();
 
     myLegends = new CpuStageLegends(myCpuUsage, dataRange);
 
@@ -553,10 +538,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     ProfilingConfiguration config = myProfilerConfigModel.getProfilingConfiguration();
     CpuServiceGrpc.CpuServiceBlockingStub cpuService = getStudioProfilers().getClient().getCpuClient();
     CpuProfilingAppStartRequest request = CpuProfilingAppStartRequest.newBuilder()
-      .setSession(mySession)
-      .setConfiguration(config.toProto())
-      .setAbiCpuArch(getStudioProfilers().getProcess().getAbiCpuArch())
-      .build();
+                                                                     .setSession(mySession)
+                                                                     .setConfiguration(config.toProto())
+                                                                     .setAbiCpuArch(getStudioProfilers().getProcess().getAbiCpuArch())
+                                                                     .build();
 
     // Set myInProgressTraceInitiationType before calling setCaptureState() because the latter may fire an
     // aspect that depends on the former.
@@ -564,8 +549,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     setCaptureState(CaptureState.STARTING);
     CompletableFuture.supplyAsync(
       () -> cpuService.startProfilingApp(request), getStudioProfilers().getIdeServices().getPoolExecutor())
-      .thenAcceptAsync(response -> this.startCapturingCallback(response, config),
-                       getStudioProfilers().getIdeServices().getMainExecutor());
+                     .thenAcceptAsync(response -> this.startCapturingCallback(response, config),
+                                      getStudioProfilers().getIdeServices().getMainExecutor());
 
     getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_CPU_CAPTURE, true);
     myInstructionsEaseOutModel.setCurrentPercentage(1);
@@ -587,7 +572,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
       getLogger().warn(response.getErrorMessage());
       setCaptureState(CaptureState.START_FAILURE);
       getStudioProfilers().getIdeServices()
-        .showErrorBalloon(CAPTURE_START_FAILURE_BALLOON_TITLE, CAPTURE_START_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL, REPORT_A_BUG_TEXT);
+                          .showErrorBalloon(CAPTURE_START_FAILURE_BALLOON_TITLE, CAPTURE_START_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL,
+                                            REPORT_A_BUG_TEXT);
       // START_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
       setCaptureState(CaptureState.IDLE);
     }
@@ -596,15 +582,16 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
   public void stopCapturing() {
     CpuServiceGrpc.CpuServiceBlockingStub cpuService = getStudioProfilers().getClient().getCpuClient();
     CpuProfilingAppStopRequest request = CpuProfilingAppStopRequest.newBuilder()
-      .setProfilerType(myProfilerConfigModel.getProfilingConfiguration().getProfilerType())
-      .setSession(mySession)
-      .build();
+                                                                   .setProfilerType(
+                                                                     myProfilerConfigModel.getProfilingConfiguration().getProfilerType())
+                                                                   .setSession(mySession)
+                                                                   .build();
 
     setCaptureState(CaptureState.STOPPING);
     myInProgressTraceSeries.clear();
     CompletableFuture.supplyAsync(
       () -> cpuService.stopProfilingApp(request), getStudioProfilers().getIdeServices().getPoolExecutor())
-      .thenAcceptAsync(this::stopCapturingCallback, getStudioProfilers().getIdeServices().getMainExecutor());
+                     .thenAcceptAsync(this::stopCapturingCallback, getStudioProfilers().getIdeServices().getMainExecutor());
   }
 
   public long getCaptureElapsedTimeUs() {
@@ -623,7 +610,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     GetTraceInfoResponse response = cpuService.getTraceInfo(
       GetTraceInfoRequest.newBuilder().
         setSession(mySession).
-        setFromTimestamp(rangeMinNs).setToTimestamp(rangeMaxNs).build());
+                           setFromTimestamp(rangeMinNs).setToTimestamp(rangeMaxNs).build());
     return response.getTraceInfoList();
   }
 
@@ -662,7 +649,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
       getLogger().warn(response.getErrorMessage());
       setCaptureState(CaptureState.STOP_FAILURE);
       getStudioProfilers().getIdeServices()
-        .showErrorBalloon(CAPTURE_STOP_FAILURE_BALLOON_TITLE, CAPTURE_STOP_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL, REPORT_A_BUG_TEXT);
+                          .showErrorBalloon(CAPTURE_STOP_FAILURE_BALLOON_TITLE, CAPTURE_STOP_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL,
+                                            REPORT_A_BUG_TEXT);
       // STOP_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
       setCaptureState(CaptureState.IDLE);
       captureMetadata.setStatus(CpuCaptureMetadata.CaptureStatus.STOP_CAPTURING_FAILURE);
@@ -734,7 +722,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
       else {
         setCaptureState(CaptureState.PARSING_FAILURE);
         getStudioProfilers().getIdeServices()
-          .showErrorBalloon(PARSING_FILE_FAILURE_BALLOON_TITLE, PARSING_FILE_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL, REPORT_A_BUG_TEXT);
+                            .showErrorBalloon(PARSING_FILE_FAILURE_BALLOON_TITLE, PARSING_FILE_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL,
+                                              REPORT_A_BUG_TEXT);
         // PARSING_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
         setCaptureState(CaptureState.IDLE);
         // Track import trace failure
@@ -745,25 +734,9 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     // Parsing is in progress. Handle it asynchronously and set the capture afterwards using the main executor.
     capture.handleAsync((parsedCapture, exception) -> {
-      // We need to handle the special case of failing to parse atrace files because we don't fully support importing them.
-      // TODO (b/74526422): remove this when adding full support for importing atrace captures
-      boolean exceptionThrownByAtraceImport = exception != null && exception.getCause() != null
-                                              && exception.getCause().getMessage().equals(CpuCaptureParser.ATRACE_IMPORT_FAILURE_MESSAGE);
-      if (exceptionThrownByAtraceImport) {
-        // Parsing failed because we tried to parse an atrace capture before fully supporting it. Inform that to users.
-        setCaptureState(CaptureState.PARSING_FAILURE);
-        getStudioProfilers().getIdeServices().showErrorBalloon(PARSING_FILE_FAILURE_BALLOON_TITLE, PARSING_ATRACE_FAILURE_BALLOON_TEXT,
-                                                               PARSING_ATRACE_NOT_SUPPORTED_URL, PARSING_ATRACE_NOT_SUPPORTED_TEXT);
-        // PARSING_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
-        setCaptureState(CaptureState.IDLE);
-      }
-      else {
-        // The callback is responsible for handling the general case.
-        parsingCallback.accept(parsedCapture);
-      }
+      parsingCallback.accept(parsedCapture);
       return parsedCapture;
     }, getStudioProfilers().getIdeServices().getMainExecutor());
-
   }
 
   /**
@@ -806,7 +779,8 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
         captureMetadata.setStatus(CpuCaptureMetadata.CaptureStatus.PARSING_FAILURE);
         setCaptureState(CaptureState.PARSING_FAILURE);
         getStudioProfilers().getIdeServices()
-          .showErrorBalloon(PARSING_FAILURE_BALLOON_TITLE, PARSING_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL, REPORT_A_BUG_TEXT);
+                            .showErrorBalloon(PARSING_FAILURE_BALLOON_TITLE, PARSING_FAILURE_BALLOON_TEXT, CPU_BUG_TEMPLATE_URL,
+                                              REPORT_A_BUG_TEXT);
         // PARSING_FAILURE is a transient state. After notifying the listeners that the parser has failed, we set the status to IDLE.
         setCaptureState(CaptureState.IDLE);
         setCapture(null);
@@ -848,23 +822,23 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     List<CpuProfiler.Thread> threads = new ArrayList<>();
     for (CpuThreadInfo thread : capture.getThreads()) {
       threads.add(CpuProfiler.Thread.newBuilder()
-                    .setTid(thread.getId())
-                    .setName(thread.getName())
-                    .build());
+                                    .setTid(thread.getId())
+                                    .setName(thread.getName())
+                                    .build());
     }
 
     TraceInfo traceInfo = TraceInfo.newBuilder()
-      .setTraceId(traceId)
-      .setFromTimestamp(captureFrom)
-      .setToTimestamp(captureTo)
-      .setProfilerType(capture.getType())
-      .setTraceFilePath(myCaptureParser.getTraceFilePath(traceId))
-      .addAllThreads(threads).build();
+                                   .setTraceId(traceId)
+                                   .setFromTimestamp(captureFrom)
+                                   .setToTimestamp(captureTo)
+                                   .setProfilerType(capture.getType())
+                                   .setTraceFilePath(myCaptureParser.getTraceFilePath(traceId))
+                                   .addAllThreads(threads).build();
 
     SaveTraceInfoRequest request = SaveTraceInfoRequest.newBuilder()
-      .setSession(mySession)
-      .setTraceInfo(traceInfo)
-      .build();
+                                                       .setSession(mySession)
+                                                       .setTraceInfo(traceInfo)
+                                                       .build();
 
     CpuServiceGrpc.CpuServiceBlockingStub service = getStudioProfilers().getClient().getCpuClient();
     service.saveTraceInfo(request);
@@ -1160,7 +1134,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     /**
      * Number of update() runs before the callback is called.
-     *
+     * <p>
      * Updater is running 60 times per second, which is too frequent for checking capture state which
      * requires a RPC call. Therefore, we check the state less often.
      */

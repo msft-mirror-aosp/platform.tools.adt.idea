@@ -17,12 +17,17 @@ package com.android.tools.idea.gradle.structure.model;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
+import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.MavenRepositoryModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel;
+import com.android.tools.idea.gradle.structure.model.meta.Annotated;
+import com.android.tools.idea.gradle.structure.model.meta.ModelPropertyContext;
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue;
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepository;
 import com.android.tools.idea.gradle.structure.model.repositories.search.JCenterRepository;
 import com.android.tools.idea.gradle.structure.model.repositories.search.LocalMavenRepository;
 import com.android.tools.idea.gradle.structure.model.repositories.search.MavenCentralRepository;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Result;
@@ -38,6 +43,7 @@ import javax.swing.*;
 import java.io.File;
 import java.util.EventListener;
 import java.util.List;
+import java.util.Objects;
 
 import static icons.StudioIcons.Shell.Filetree.ANDROID_MODULE;
 
@@ -53,7 +59,7 @@ public abstract class PsModule extends PsChildModel {
 
   private final EventDispatcher<DependenciesChangeListener> myDependenciesChangeEventDispatcher =
     EventDispatcher.create(DependenciesChangeListener.class);
-  private final PsVariables myVariables = new PsVariables(this);
+  @NotNull private final PsVariablesScope myVariables;
 
 
   protected PsModule(@NotNull PsProject parent,
@@ -65,12 +71,69 @@ public abstract class PsModule extends PsChildModel {
     myGradlePath = gradlePath;
     myModuleName = resolvedModel.getName();
     myParsedModel = parsedModel;
+    // TODO(b/77695733): Ensure that getProjectBuildModel() is indeed not null.
+    myVariables = new PsVariables(this, "Module: " + getName(), Objects.requireNonNull(this.myParsedModel).ext(), parent.getVariables());
   }
 
   protected PsModule(@NotNull PsProject parent, @NotNull String name) {
     super(parent);
     myResolvedModel = null;
     myModuleName = name;
+    myVariables = new PsVariablesScope() {
+      @NotNull
+      @Override
+      public String getName() {
+        return "";
+      }
+
+      @NotNull
+      @Override
+      public String getTitle() {
+        return "";
+      }
+
+      @NotNull
+      @Override
+      public <ValueT> List<Annotated<ParsedValue.Set.Parsed<ValueT>>> getAvailableVariablesFor(@NotNull ModelPropertyContext<ValueT> property) {
+        return ImmutableList.of();
+      }
+
+      @NotNull
+      @Override
+      public List<PsVariable> getModuleVariables() {
+        return ImmutableList.of();
+      }
+
+      @NotNull
+      @Override
+      public List<PsVariablesScope> getVariableScopes() {
+        return ImmutableList.of();
+      }
+
+      @NotNull
+      @Override
+      public String getNewVariableName(@NotNull String preferredName) {
+        throw new UnsupportedOperationException();
+      }
+
+      @NotNull
+      @Override
+      public PsVariable getOrCreateVariable(@NotNull String name) {
+        throw new UnsupportedOperationException();
+      }
+
+      @NotNull
+      @Override
+      public PsModel getModel() {
+        throw new UnsupportedOperationException();
+      }
+
+      @NotNull
+      @Override
+      public ExtModel getContainer() {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 
   @Override
@@ -233,7 +296,7 @@ public abstract class PsModule extends PsChildModel {
   }
 
   @NotNull
-  public PsVariables getVariables() {
+  public PsVariablesScope getVariables() {
     return myVariables;
   }
 

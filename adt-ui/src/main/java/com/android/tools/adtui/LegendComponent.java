@@ -23,7 +23,6 @@ import com.android.tools.adtui.model.legend.Legend;
 import com.android.tools.adtui.model.legend.LegendComponentModel;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.JBColor;
-import com.intellij.util.containers.HashMap;
 import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.NotNull;
 import sun.swing.SwingUtilities2;
@@ -31,6 +30,7 @@ import sun.swing.SwingUtilities2;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -101,6 +101,7 @@ public class LegendComponent extends AnimatedComponent {
 
   public void configure(@NotNull Legend legend, @NotNull LegendConfig config) {
     myConfigs.put(legend, config);
+    modelChanged();
   }
 
   @NotNull
@@ -204,8 +205,8 @@ public class LegendComponent extends AnimatedComponent {
 
     if (!getPreferredSize().equals(prevSize)) {
       revalidate();
-      repaint();
     }
+    repaint();
   }
 
   public enum Orientation {

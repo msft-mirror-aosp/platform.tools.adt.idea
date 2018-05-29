@@ -24,8 +24,10 @@ import com.android.tools.idea.gradle.project.build.BuildStatus;
 import com.android.tools.idea.gradle.project.build.GradleBuildListener;
 import com.android.tools.idea.gradle.project.build.GradleBuildState;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
+import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener;
 import com.android.tools.idea.gradle.project.sync.GradleSyncState;
+import com.android.tools.idea.npw.model.MultiTemplateRenderer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
@@ -60,6 +62,7 @@ public class IndexingSuspender {
   private boolean myShouldWait;
 
   private boolean myScheduledAfterProjectInitialisation;
+  @Nullable private ActivationEvent myActivationEvent;
   @Nullable private DeactivationEvent myDeactivationEvent;
   private volatile boolean myActivated;
 
@@ -88,10 +91,26 @@ public class IndexingSuspender {
   }
 
   private void consumeActivationEvent(@NotNull ActivationEvent event) {
+    // The switch below represents a state machine, so check very carefully all cases whenever changing one, as there
+    // may be logical dependencies. The two intended workflows to cover are:
+    //
+    // 1) Sync -> Build
+    // 2) Template Rendering -> Sync -> Build
+    //
+    // In both cases the objective is to suspend indexing in one batch, however in cases when project initialisation
+    // is part of the workflow, we have to resume indexing and split the suspension into two batches, or otherwise
+    // there is a risk of IDE deadlock when project initialisation can't proceed without initial refresh and the latter
+    // can't proceed with indexing being suspended.
+
     LOG.info("Consuming IndexingSuspender activation event: " + event.toString());
     switch (event) {
       case SYNC_STARTED:
         if (!myProject.isInitialized()) {
+          if (myActivated) {
+            // Always mandatory to resume indexing during project initialisation, otherwise risking IDE deadlock
+            // during the initial refresh.
+            ensureDeactivated();
+          }
           myScheduledAfterProjectInitialisation = true;
           StartupManager.getInstance(myProject).runWhenProjectIsInitialized(
             () -> {
@@ -104,7 +123,9 @@ public class IndexingSuspender {
           );
         }
         else {
-          activate(ActivationEvent.SYNC_STARTED, DeactivationEvent.SYNC_FINISHED);
+          if (!myActivated) {
+            activate(ActivationEvent.SYNC_STARTED, DeactivationEvent.SYNC_FINISHED);
+          }
         }
         break;
       case SETUP_STARTED:
@@ -117,8 +138,8 @@ public class IndexingSuspender {
           activate(ActivationEvent.SETUP_STARTED, DeactivationEvent.SYNC_FINISHED);
         }
         // The sentinel dumb mode will be ended either when build starts or when suspender gets deactivated with a
-        // DeactivationEvent
-        startSentinelDumbMode("Project Setup");
+        // DeactivationEvent. If we're in the sentinel dumb mode
+        startSentinelDumbModeIfNeeded("Project Setup");
         break;
       case BUILD_EXECUTOR_CREATED:
         if (myDeactivationEvent == DeactivationEvent.SYNC_FINISHED) {
@@ -126,9 +147,27 @@ public class IndexingSuspender {
         }
         break;
       case BUILD_STARTED:
-        ensureNoSentinelDumbMode();
+        if (myActivationEvent != ActivationEvent.TEMPLATE_RENDERING_STARTED) {
+          // If the current suspension is caused by template rendering, it's OK to continue the sentinel dumb mode till
+          // the end of the build, as there isn't much we can do in the IDE anyway, but extending the sentinel dumb mode
+          // would improve batching (i.e., less 'Reindexed files' iterations).
+          ensureNoSentinelDumbMode();
+        }
         if (!myActivated) {
           activate(ActivationEvent.BUILD_STARTED, DeactivationEvent.BUILD_FINISHED);
+        }
+        break;
+      case TEMPLATE_RENDERING_STARTED:
+        if (!myActivated) {
+          activate(ActivationEvent.TEMPLATE_RENDERING_STARTED, DeactivationEvent.TEMPLATE_RENDERING_FINISHED);
+          // The sentinel dumb mode will be ended either when build starts or when suspender gets deactivated with a
+          // DeactivationEvent
+          startSentinelDumbModeIfNeeded("Template Rendering");
+        }
+        break;
+      case SYNC_TASK_CREATED:
+        if (myDeactivationEvent == DeactivationEvent.TEMPLATE_RENDERING_FINISHED) {
+          myDeactivationEvent = DeactivationEvent.SYNC_FINISHED;
         }
         break;
     }
@@ -161,6 +200,11 @@ public class IndexingSuspender {
   private void subscribeToSyncAndBuildEvents() {
     LOG.info(String.format("Subscribing project '%1$s' to indexing suspender events (%2$s)", myProject.toString(), toString()));
     GradleSyncState.subscribe(myProject, new GradleSyncListener() {
+      @Override
+      public void syncTaskCreated(@NotNull Project project, @NotNull GradleSyncInvoker.Request request) {
+        consumeActivationEvent(ActivationEvent.SYNC_TASK_CREATED);
+      }
+
       @Override
       public void syncStarted(@NotNull Project project, boolean skipped, boolean sourceGenerationRequested) {
         consumeActivationEvent(ActivationEvent.SYNC_STARTED);
@@ -203,6 +247,18 @@ public class IndexingSuspender {
         consumeDeactivationEvent(DeactivationEvent.BUILD_FINISHED);
       }
     });
+
+    MultiTemplateRenderer.subscribe(myProject, new MultiTemplateRenderer.TemplateRendererListener() {
+      @Override
+      public void multiRenderingStarted() {
+        consumeActivationEvent(ActivationEvent.TEMPLATE_RENDERING_STARTED);
+      }
+
+      @Override
+      public void multiRenderingFinished() {
+        consumeDeactivationEvent(DeactivationEvent.TEMPLATE_RENDERING_FINISHED);
+      }
+    });
   }
 
   private void activate(@NotNull ActivationEvent activationEvent, @NotNull DeactivationEvent deactivationEvent) {
@@ -216,12 +272,17 @@ public class IndexingSuspender {
       return;
     }
 
-    if (!myProject.isInitialized()) {
+    // Allow indexing suspension in case of template rendering regardless of project initialisation state:
+    // - if it's triggered during New Project workflow, then suspension will have a wider scope than just gradle sync,
+    // so it will not interfere.
+    // - if it's triggered during other NPW workflows, then project is already initialised anyway and there is no concern.
+    if (activationEvent != ActivationEvent.TEMPLATE_RENDERING_STARTED && !myProject.isInitialized()) {
       reportStateError("Attempt to suspend indexing when project is not yet initialised. Ignoring.");
       return;
     }
 
     myActivated = true;
+    myActivationEvent = activationEvent;
     myDeactivationEvent = deactivationEvent;
     startBatchUpdate();
   }
@@ -307,8 +368,11 @@ public class IndexingSuspender {
    * @see #canActivate()
    */
   @SuppressWarnings("SameParameterValue")
-  private void startSentinelDumbMode(@NotNull String contextDescription) {
+  private void startSentinelDumbModeIfNeeded(@NotNull String contextDescription) {
     synchronized (myIndexingLock) {
+      if (myShouldWait) {
+        return;
+      }
       myShouldWait = true;
     }
     DumbService.getInstance(myProject).queueTask(new IndexingSuspenderTask(contextDescription));
@@ -368,14 +432,17 @@ public class IndexingSuspender {
   }
 
   private enum ActivationEvent {
+    SYNC_TASK_CREATED,
     SYNC_STARTED,
     SETUP_STARTED,
     BUILD_EXECUTOR_CREATED,
     BUILD_STARTED,
+    TEMPLATE_RENDERING_STARTED,
   }
 
   private enum DeactivationEvent {
     SYNC_FINISHED,
     BUILD_FINISHED,
+    TEMPLATE_RENDERING_FINISHED,
   }
 }

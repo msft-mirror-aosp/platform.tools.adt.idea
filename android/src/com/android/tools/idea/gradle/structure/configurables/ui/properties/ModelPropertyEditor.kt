@@ -50,26 +50,49 @@ interface ModelPropertyEditor<out ValueT> : Disposable {
   fun getValue(): Annotated<ParsedValue<ValueT>>
 
   /**
-   * Updates the bound property to the current value of the editor.
+   * Attempts to update the bound property to the current value of the editor and returns the outcome of the action.
    */
-  fun updateProperty()
+  fun updateProperty(): UpdatePropertyOutcome
+
+  /**
+   * Reloads the editor from the bound property.
+   */
+  fun reload()
+}
+
+/**
+ * The outcome of [ModelPropertyEditor.updateProperty].
+ */
+enum class UpdatePropertyOutcome {
+  /**
+   * The value of the editor hasn't changed.
+   */
+  NOT_CHANGED,
+  /**
+   * The property has been updated with the current value of the editor.
+   */
+  UPDATED,
+  /**
+   * The operation cannot be performed. The current value of the editor is invalid.
+   */
+  INVALID
 }
 
 /**
  * A descriptor of an additional property editor action provided as an editor extension.
  */
-interface EditorExtensionAction {
+interface EditorExtensionAction<T : Any, ModelPropertyCoreT : ModelPropertyCore<T>> {
   val title: String
   val tooltip: String
   val icon: Icon
-  fun <T: Any, ModelPropertyCoreT: ModelPropertyCore<T>> invoke(property: ModelPropertyCoreT,
-                                                                editor: ModelPropertyEditor<T>,
-                                                                editorFactory: ModelPropertyEditorFactory<T, ModelPropertyCoreT>)
+  fun invoke(property: ModelPropertyCoreT,
+             editor: ModelPropertyEditor<T>,
+             editorFactory: ModelPropertyEditorFactory<T, ModelPropertyCoreT>)
 }
 
 /**
  * A factory to create property editors with the preconfigured property context.
  */
-interface ModelPropertyEditorFactory<ValueT: Any, in ModelPropertyCoreT: ModelPropertyCore<ValueT>> {
+interface ModelPropertyEditorFactory<ValueT : Any, in ModelPropertyCoreT : ModelPropertyCore<ValueT>> {
   fun createNew(property: ModelPropertyCoreT): ModelPropertyEditor<ValueT>
 }

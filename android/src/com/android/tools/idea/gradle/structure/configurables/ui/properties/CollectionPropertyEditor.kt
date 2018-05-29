@@ -15,8 +15,9 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
+import com.android.tools.idea.gradle.structure.configurables.ui.PropertyEditorCoreFactory
 import com.android.tools.idea.gradle.structure.configurables.ui.toRenderer
-import com.android.tools.idea.gradle.structure.model.VariablesProvider
+import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.*
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
 import com.intellij.ui.SimpleColoredComponent
@@ -39,10 +40,9 @@ import javax.swing.table.TableColumnModel
 abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionPropertyCore<*>, ValueT : Any>(
   property: ModelPropertyT,
   propertyContext: ModelPropertyContext<ValueT>,
-  protected val editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
-  variablesProvider: VariablesProvider?,
-  extensions: List<EditorExtensionAction>
-) : PropertyEditorBase<ModelPropertyT, ValueT>(property, propertyContext, variablesProvider, extensions) {
+  protected val editor: PropertyEditorCoreFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
+  variablesScope: PsVariablesScope?
+) : PropertyEditorBase<ModelPropertyT, ValueT>(property, propertyContext, variablesScope) {
 
   override val component: JPanel = JPanel(BorderLayout())
   val statusComponent: JComponent? = null
@@ -62,7 +62,7 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
         ToolbarDecorator.createDecorator(it)
           .setAddAction { addItem() }
           .setRemoveAction { removeItem() }
-          .setPreferredSize(Dimension(450, 100))
+          .setPreferredSize(Dimension(450, it.rowHeight * 3))
           .setToolbarPosition(ActionToolbarPosition.RIGHT)
           .createPanel()
       )
@@ -88,7 +88,7 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
 
   protected fun getValueAt(row: Int): Annotated<ParsedValue<ValueT>> = getPropertyAt(row).getParsedValue()
   protected fun setValueAt(row: Int, value: ParsedValue<ValueT>) = getPropertyAt(row).setParsedValue(value)
-  private fun calculateMinRowHeight() = editor(SimplePropertyStub(), propertyContext, null, extensions).component.minimumSize.height
+  private fun calculateMinRowHeight() = editor(SimplePropertyStub(), propertyContext, null).component.minimumSize.height
 
   protected fun Annotated<ParsedValue<ValueT>>.toTableModelValue() = Value(this)
   protected fun ParsedValue<ValueT>.toTableModelValue() = Value(this.annotated())
@@ -131,32 +131,38 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
       currentRow = row
       val rowProperty = getPropertyAt(row)
       currentRowProperty = rowProperty
-      val editor = this@CollectionPropertyEditor.editor(rowProperty, propertyContext, variablesProvider, extensions)
+      val editor = this@CollectionPropertyEditor.editor(rowProperty, propertyContext, variablesScope)
       lastEditor = editor
       lastValue = null
       return editor.component
     }
 
-    override fun stopCellEditing(): Boolean {
-      lastEditor?.updateProperty()
-      lastValue = currentRowProperty?.getParsedValue()
-      currentRow = -1
-      currentRowProperty = null
-      lastEditor?.dispose()
-      lastEditor = null
-      fireEditingStopped()
-      return true
-    }
+    override fun stopCellEditing(): Boolean =
+      when (lastEditor?.updateProperty()) {
+        null,
+        UpdatePropertyOutcome.UPDATED,
+        UpdatePropertyOutcome.NOT_CHANGED -> {
+          lastValue = currentRowProperty?.getParsedValue()
+          currentRow = -1
+          currentRowProperty = null
+          lastEditor?.dispose()
+          lastEditor = null
+          fireEditingStopped()
+          true
+        }
+        UpdatePropertyOutcome.INVALID -> false
+      }
 
     override fun cancelCellEditing() {
-      lastValue = lastEditor?.getValue()
+      lastValue = null
       currentRow = -1
+      currentRowProperty = null
       lastEditor?.dispose()
       lastEditor = null
       super.cancelCellEditing()
     }
 
-    override fun getCellEditorValue(): Any = (lastValue ?: lastEditor!!.getValue()).toTableModelValue()
+    override fun getCellEditorValue(): Any? = (lastValue ?: lastEditor?.getValue())?.toTableModelValue()
   }
 }
 
@@ -167,4 +173,5 @@ class SimplePropertyStub<ValueT : Any> : ModelPropertyCore<ValueT> {
   override fun getResolvedValue(): ResolvedValue<ValueT> = ResolvedValue.NotResolved()
   override val defaultValueGetter: (() -> ValueT?)? = null
   override val isModified: Boolean? = null
+  override fun annotateParsedResolvedMismatch(): ValueAnnotation? = null
 }

@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
-import com.android.tools.idea.gradle.structure.model.VariablesProvider
+import com.android.tools.idea.gradle.structure.configurables.ui.PropertyEditorCoreFactory
+import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.*
 import javax.swing.table.DefaultTableColumnModel
 import javax.swing.table.DefaultTableModel
@@ -28,14 +29,15 @@ import javax.swing.table.TableColumnModel
 class ListPropertyEditor<ValueT : Any, ModelPropertyT : ModelListPropertyCore<ValueT>>(
   property: ModelPropertyT,
   propertyContext: ModelPropertyContext<ValueT>,
-  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
-  variablesProvider: VariablesProvider?,
-  extensions: List<EditorExtensionAction>
+  editor: PropertyEditorCoreFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
+  variablesScope: PsVariablesScope?
 ) :
-  CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesProvider, extensions),
+  CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesScope),
   ModelPropertyEditor<List<ValueT>>, ModelPropertyEditorFactory<List<ValueT>, ModelPropertyT> {
 
-  override fun updateProperty() = throw UnsupportedOperationException()
+  override fun updateProperty(): UpdatePropertyOutcome = throw UnsupportedOperationException()
+
+  override fun reload() = loadValue()
 
   override fun dispose() = Unit
 
@@ -68,7 +70,7 @@ class ListPropertyEditor<ValueT : Any, ModelPropertyT : ModelListPropertyCore<Va
     tableModel?.let { tableModel ->
       val index = tableModel.rowCount
       val modelPropertyCore = property.addItem(index)
-      tableModel.addRow(arrayOf(modelPropertyCore.getValue().parsedValue.toTableModelValue()))
+      tableModel.addRow(arrayOf(modelPropertyCore.getValue().value.parsedValue.toTableModelValue()))
       table.selectionModel.setSelectionInterval(index, index)
     table.editCellAt(index, 0)
     }
@@ -90,13 +92,6 @@ class ListPropertyEditor<ValueT : Any, ModelPropertyT : ModelListPropertyCore<Va
   override fun getPropertyAt(row: Int) = property.getEditableValues()[row]
 
   override fun createNew(property: ModelPropertyT): ModelPropertyEditor<List<ValueT>> =
-    listPropertyEditor(editor)(property, propertyContext, variablesProvider, extensions)
+    ListPropertyEditor(property, propertyContext, editor, variablesScope)
 }
 
-fun <ValueT : Any, ModelPropertyT : ModelListPropertyCore<ValueT>> listPropertyEditor(
-  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>
-):
-  PropertyEditorFactory<ModelPropertyT, ModelPropertyContext<ValueT>, List<ValueT>> =
-  { property, propertyContext, variablesProvider, extensions ->
-    ListPropertyEditor(property, propertyContext, editor, variablesProvider, extensions)
-  }

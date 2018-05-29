@@ -31,26 +31,27 @@ public class AxisComponentModel extends AspectModel<AxisComponentModel.Aspect> i
   @NotNull private final BaseAxisFormatter myFormatter;
   @Nullable private Range myGlobalRange;
 
-  private boolean myClampToMajorTicks = false;
+  private boolean myClampToMajorTicks;
 
-  @NotNull private String myLabel = "";
+  @NotNull private String myLabel;
 
   /**
    * During the first update, skip the y range interpolation and snap to the initial max value.
    */
   private boolean myFirstUpdate = true;
 
-  /**
-   * @param range     a Range object this AxisComponent listens to for the min/max values.
-   * @param formatter formatter used for determining the tick marker and labels that need to be rendered.
-   */
-  public AxisComponentModel(@NotNull Range range, @NotNull BaseAxisFormatter formatter) {
-    myRange = range;
-    myFormatter = formatter;
+  private AxisComponentModel(@NotNull Builder builder) {
+    myRange = builder.myRange;
+    myFormatter = builder.myFormatter;
+    myClampToMajorTicks = builder.myClampToMajorTicks;
+    myGlobalRange = builder.myGlobalRange;
+    myLabel = builder.myLabel;
   }
 
   @Override
   public void update(long elapsedNs) {
+    boolean needsUpdate = false;
+
     // During the animate/updateData phase, the axis updates the range's max to a new target based on whether myClampToMajorTicks is enabled
     //    - This would increase the max to an integral multiplier of the major interval.
     if (myClampToMajorTicks) {
@@ -65,35 +66,31 @@ public class AxisComponentModel extends AspectModel<AxisComponentModel.Aspect> i
       clampedMaxTarget = majorNumTicksTarget * majorInterval;
 
       clampedMaxTarget += getZero();
-      float fraction = myFirstUpdate ? 1f : Updater.DEFAULT_LERP_FRACTION;
-      myRange.setMax(Updater.lerp(myRange.getMax(), clampedMaxTarget, fraction, elapsedNs,
-                                  (float)(clampedMaxTarget * Updater.DEFAULT_LERP_THRESHOLD_PERCENTAGE)));
+      double max = myFirstUpdate
+                   ? clampedMaxTarget
+                   : Updater.lerp(myRange.getMax(), clampedMaxTarget, Updater.DEFAULT_LERP_FRACTION, elapsedNs,
+                                  (float)(clampedMaxTarget * Updater.DEFAULT_LERP_THRESHOLD_PERCENTAGE));
+      if (Double.compare(max, myRange.getMax()) != 0 || myFirstUpdate) {  // Precise comparison, since the lerp snaps to the target value.
+        myRange.setMax(max);
+        needsUpdate = true;
+      }
+    }
+    else {
+      // TODO(b/80085190): Move {@link AxisComponent#calculateMarkers} implementation here.
+      needsUpdate = true;
     }
     myFirstUpdate = false;
 
-    //TODO also change when data changes
-    changed(Aspect.AXIS);
+    if (needsUpdate) {
+      //TODO also change when data changes
+      changed(Aspect.AXIS);
+    }
   }
 
-  /**
-   * @param globalRange sets the global range on the AxisComponent. The global range also sets the relative zero point.
-   */
-  public void setGlobalRange(@NotNull Range globalRange) {
-    myGlobalRange = globalRange;
-  }
-
-  /**
-   * Sets the content of the axis' label.
-   */
-  public void setLabel(@NotNull String label) {
-    myLabel = label;
-  }
-
-  /**
-   * @param clampToMajorTicks if true, the AxisComponent will extend itself to the next major tick based on the current max value.
-   */
-  public void setClampToMajorTicks(boolean clampToMajorTicks) {
-    myClampToMajorTicks = clampToMajorTicks;
+  @Override
+  public void reset() {
+    myFirstUpdate = true;
+    update(0);
   }
 
   @NotNull
@@ -118,5 +115,48 @@ public class AxisComponentModel extends AspectModel<AxisComponentModel.Aspect> i
 
   public double getZero() {
     return myGlobalRange != null ? myGlobalRange.getMin() : myRange.getMin();
+  }
+
+  public static class Builder {
+    @NotNull private final Range myRange;
+    @NotNull private final BaseAxisFormatter myFormatter;
+    private final boolean myClampToMajorTicks;
+
+    @Nullable private Range myGlobalRange;
+    @NotNull private String myLabel = "";
+
+    /**
+     * @param range             A Range object this AxisComponent listens to for the min/max values.
+     * @param formatter         Formatter used for determining the tick marker and labels that need to be rendered.
+     * @param clampToMajorTicks If true, the AxisComponent will extend itself to the next major tick based on the current max value.
+     */
+    public Builder(@NotNull Range range, @NotNull BaseAxisFormatter formatter, boolean clampToMajorTicks) {
+      myRange = range;
+      myFormatter = formatter;
+      myClampToMajorTicks = clampToMajorTicks;
+    }
+
+    /**
+     * @param globalRange sets the global range on the AxisComponent. The global range also sets the relative zero point.
+     */
+    @NotNull
+    public Builder setGlobalRange(@NotNull Range globalRange) {
+      myGlobalRange = globalRange;
+      return this;
+    }
+
+    /**
+     * Sets the content of the axis's label.
+     */
+    @NotNull
+    public Builder setLabel(@NotNull String label) {
+      myLabel = label;
+      return this;
+    }
+
+    @NotNull
+    public AxisComponentModel build() {
+      return new AxisComponentModel(this);
+    }
   }
 }

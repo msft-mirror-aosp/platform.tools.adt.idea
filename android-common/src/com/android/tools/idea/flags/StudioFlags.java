@@ -302,10 +302,6 @@ public final class StudioFlags {
     RESOURCES_MANAGEMENT, "enabled", "Enable the new resources management tools",
     "If enabled, the new resource management tools are enabled. Subflags will also need to be enabled to enable all available new tools",
     false);
-  public static final Flag<Boolean> AAR_V2_ENABLED = Flag.create(
-    RESOURCES_MANAGEMENT, "aar.v2", "Enable support for libraries in proto format",
-    "Allows project to depend on libraries in AARv2 format.",
-    false);
 
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
   public static final Flag<Boolean> LAYOUT_INSPECTOR_LOAD_OVERLAY_ENABLED = Flag.create(
@@ -348,6 +344,18 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_ENHANCED_NATIVE_HEADER_SUPPORT = Flag
     .create(NDK, "enhancednativeheadersupport", "Enable enhanced native header support",
             "If enabled, project system view will show a new include node with organized header files", true);
+
+  private static final FlagGroup NAVIGATION = new FlagGroup(FLAGS, "navigation", "Navigation Editor");
+  public static final Flag<Boolean> ENABLE_NAV_EDITOR = Flag.create(
+    NAVIGATION, "enable.nav.editor", "Enable the Navigation Editor",
+    "If enabled, it will be possible to create and edit navigation resource files", true);
+
+  private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
+  public static final Flag<Boolean> IN_MEMORY_R_CLASSES = Flag.create(
+    EDITOR,
+    "in.memory.r.classes",
+    "Generate R classes fully in memory",
+    "If enabled, R classes are generated in memory", false);
 
   private StudioFlags() {
   }

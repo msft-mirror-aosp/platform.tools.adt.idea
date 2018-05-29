@@ -17,7 +17,6 @@ package com.android.tools.idea.tests.gui.sdkmanager;
 
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.GuiTests;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
@@ -37,8 +36,9 @@ import org.junit.runner.RunWith;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
-import static com.android.tools.idea.tests.gui.framework.GuiTests.findAndClickLabelWhenEnabled;
+import static com.android.tools.idea.tests.gui.framework.GuiTests.findAndClickLabel;
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.fest.reflect.core.Reflection.method;
@@ -49,7 +49,7 @@ import static org.fest.swing.finder.WindowFinder.findDialog;
 @RunWith(GuiTestRemoteRunner.class)
 public class InstallPackageTest {
 
-  @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final GuiTestRule guiTest = new GuiTestRule().withTimeout(5, TimeUnit.MINUTES);
 
   private static final String INSTALL_PACKAGE_TAB = "SDK Platforms";
   private static final String SDK_PLATFORM_VERSION = "API 18";
@@ -81,7 +81,7 @@ public class InstallPackageTest {
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
 
     IdeSettingsDialogFixture ideSettingsDialogFixture = ideFrameFixture.openIdeSettings().selectSdkPage();
-    findAndClickLabelWhenEnabled(ideSettingsDialogFixture, INSTALL_PACKAGE_TAB);
+    findAndClickLabel(ideSettingsDialogFixture, INSTALL_PACKAGE_TAB);
 
     GuiTests.waitUntilFound(guiTest.robot(), ideSettingsDialogFixture.target(), new GenericTypeMatcher<TreeTableView>(TreeTableView.class) {
       @Override
@@ -103,7 +103,7 @@ public class InstallPackageTest {
     });
 
     ideSettingsDialogFixture.clickOK();
-    MessagesFixture.findByTitle(guiTest.robot(), "Confirm Change").clickOk();
+    MessagesFixture.findByTitle(guiTest.robot(), "Confirm Change", 30).clickOk();
     DialogFixture downloadDialog =
       findDialog(withTitle("SDK Quickfix Installation")).withTimeout(SECONDS.toMillis(30)).using(guiTest.robot());
     JButtonFixture finish = downloadDialog.button(withText("Finish"));

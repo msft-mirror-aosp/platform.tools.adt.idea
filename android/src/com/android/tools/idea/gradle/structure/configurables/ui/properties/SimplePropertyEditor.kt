@@ -15,23 +15,18 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
-import com.android.tools.adtui.HtmlLabel
-import com.android.tools.idea.gradle.structure.configurables.ui.RenderedComboBox
-import com.android.tools.idea.gradle.structure.configurables.ui.TextRenderer
-import com.android.tools.idea.gradle.structure.model.VariablesProvider
+import com.android.tools.idea.gradle.structure.configurables.ui.*
+import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.*
-import com.google.common.annotations.VisibleForTesting
-import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.SimpleTextAttributes
 import java.awt.Dimension
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
 import javax.swing.DefaultComboBoxModel
 import javax.swing.Icon
-import javax.swing.text.DefaultCaret
 
 /**
  * A property editor [ModelPropertyEditor] for properties of simple (not complex) types.
@@ -42,10 +37,10 @@ import javax.swing.text.DefaultCaret
 class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<PropertyT>>(
   property: ModelPropertyT,
   propertyContext: ModelPropertyContext<PropertyT>,
-  variablesProvider: VariablesProvider?,
-  extensions: List<EditorExtensionAction>
+  variablesScope: PsVariablesScope?,
+  private val extensions: List<EditorExtensionAction<PropertyT, ModelPropertyT>>
 ) :
-  PropertyEditorBase<ModelPropertyT, PropertyT>(property, propertyContext, variablesProvider, extensions),
+  PropertyEditorBase<ModelPropertyT, PropertyT>(property, propertyContext, variablesScope),
   ModelPropertyEditor<PropertyT>,
   ModelPropertyEditorFactory<PropertyT, ModelPropertyT> {
 
@@ -93,74 +88,50 @@ class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<P
       }
     }
 
-    @VisibleForTesting
     fun loadKnownValues() {
       val availableVariables: List<Annotated<ParsedValue.Set.Parsed<PropertyT>>>? = getAvailableVariables()
 
-      fun receiveKnownValuesOnEdt(knownValues: KnownValues<PropertyT>) {
-        val possibleValues = buildKnownValueRenderers(knownValues, formatter, property.defaultValueGetter?.invoke())
-        knownValueRenderers = possibleValues
-        setKnownValues(
-          (possibleValues.keys.toList().map { it.annotated() } +
-           availableVariables?.filter { knownValues.isSuitableVariable(it) }.orEmpty()
-          )
-        )
-      }
-
       knownValuesFuture?.cancel(false)
 
-      knownValuesFuture = Futures.transform(
-        propertyContext.getKnownValues(),
-        {
-          receiveKnownValuesOnEdt(it!!)
+      knownValuesFuture =
+        propertyContext.getKnownValues().continueOnEdt { knownValues ->
+          val possibleValues = buildKnownValueRenderers(knownValues!!, formatter, property.defaultValueGetter?.invoke())
+          knownValueRenderers = possibleValues
+          knownValues to possibleValues
+        }.invokeLater { (knownValues, possibleValues) ->
+          setKnownValues(
+            (possibleValues.keys.toList().map { it.annotated() } +
+             availableVariables?.filter { knownValues.isSuitableVariable(it) }.orEmpty()
+            )
+          )
           knownValuesFuture = null
-        },
-        {
-          val application = ApplicationManager.getApplication()
-          if (application.isDispatchThread) {
-            it.run()
+        }
+    }
+
+    private fun setStatus(status: ValueRenderer) {
+      statusComponent.clear()
+      status.renderTo(statusComponentRenderer)
+    }
+
+    private fun getStatusRenderer(valueAnnotation: ValueAnnotation?): ValueRenderer =
+      (valueAnnotation as? ValueAnnotation.Error).let {
+        if (it != null) {
+          object: ValueRenderer {
+            override fun renderTo(textRenderer: TextRenderer): Boolean {
+              textRenderer.append(it.message, SimpleTextAttributes.ERROR_ATTRIBUTES)
+              return true
+            }
           }
-          else {
-            application.invokeLater(it, ModalityState.any())
+        } else {
+          object: ValueRenderer {
+            override fun renderTo(textRenderer: TextRenderer): Boolean = false
           }
-        })
-    }
-
-    private fun setStatusHtmlText(statusHtmlText: String) {
-      statusComponent.text = statusHtmlText
-    }
-
-    private fun getStatusHtmlText(value: PropertyValue<PropertyT>): String {
-
-      val (parsedValue, _) = value.parsedValue
-      val resolvedValue = value.resolved
-      val effectiveEditorValue = when (parsedValue) {
-        is ParsedValue.Set.Parsed -> parsedValue.value
-        is ParsedValue.NotSet -> {
-          val defaultValueGetter = property.defaultValueGetter ?: return ""
-          defaultValueGetter()
         }
       }
-      val resolvedValueText = when (resolvedValue) {
-        is ResolvedValue.Set -> when {
-          effectiveEditorValue != resolvedValue.resolved -> resolvedValue.resolved?.formatter()
-          else -> null
-        }
-        is ResolvedValue.NotResolved -> null
-      }
-      return buildString {
-        if (resolvedValueText != null) {
-          append(" -> ")
-          append(resolvedValueText)
-        }
-      }
-    }
 
-    @VisibleForTesting
-    fun reloadValue() {
-      val value = property.getValue()
-      setValue(value.parsedValue)
-      setStatusHtmlText(getStatusHtmlText(value))
+    internal fun reloadValue(annotatedPropertyValue: Annotated<PropertyValue<PropertyT>>) {
+      setValue(annotatedPropertyValue.value.parsedValue)
+      setStatus(getStatusRenderer(annotatedPropertyValue.annotation))
       updateModified()
     }
 
@@ -168,8 +139,15 @@ class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<P
       property.setParsedValue(annotatedValue.value)
     }
 
+    private fun onEditorChanged() =
+      when (updateProperty()) {
+        UpdatePropertyOutcome.UPDATED -> reloadValue(property.getValue())
+        UpdatePropertyOutcome.NOT_CHANGED -> Unit
+        UpdatePropertyOutcome.INVALID -> Unit
+      }
+
     private fun getAvailableVariables(): List<Annotated<ParsedValue.Set.Parsed<PropertyT>>>? =
-      variablesProvider?.getAvailableVariablesFor(propertyContext)
+      variablesScope?.getAvailableVariablesFor(propertyContext)
 
     fun addFocusGainedListener(listener: () -> Unit) {
       val focusListener = object : FocusListener {
@@ -182,49 +160,48 @@ class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<P
 
     /**
      * Returns [true] if the value currently being edited in the combo-box editor differs the last manually set value.
+     *
+     * (Returns [false] if the editor has not yet been initialized).
      */
-    fun isEditorChanged() = editor.item != lastValueSet?.value
+    fun isEditorChanged() = lastValueSet != null && getValue().value != lastValueSet?.value
 
     init {
       setEditable(true)
 
-      loadKnownValues()
-
       addActionListener {
         if (!disposed && !beingLoaded) {
-          updateProperty()
-          reloadValue()
+          onEditorChanged()
         }
       }
 
       addFocusGainedListener {
         if (!disposed) {
-          loadKnownValues()
-          reloadValue()
+          reloadIfNotChanged()
         }
       }
     }
   }
 
   override val component: RenderedComboBox<Annotated<ParsedValue<PropertyT>>> = renderedComboBox
-  override val statusComponent: HtmlLabel = HtmlLabel().also {
-    // Note: this is important to be the first step to prevent automatic scrolling of the container to the last added label.
-    (it.caret as DefaultCaret).updatePolicy = DefaultCaret.NEVER_UPDATE
-    HtmlLabel.setUpAsHtmlLabel(it, renderedComboBox.font)
-  }
+  override val statusComponent: SimpleColoredComponent = SimpleColoredComponent()
+  private val statusComponentRenderer = statusComponent.toRenderer()
 
   override fun getValue(): Annotated<ParsedValue<PropertyT>> =
     @Suppress("UNCHECKED_CAST")
     (renderedComboBox.editor.item as Annotated<ParsedValue<PropertyT>>)
 
-  override fun updateProperty() {
+  override fun updateProperty(): UpdatePropertyOutcome {
     if (disposed) throw IllegalStateException()
     // It is important to avoid applying the unchanged values since the application
     // process while not intended may change the "psi"-representation of the value.
     // it is especially important in the case of invalid/unparsed values.
     if (renderedComboBox.isEditorChanged()) {
-      renderedComboBox.applyChanges(getValue())
+      val annotatedValue = getValue()
+      if (annotatedValue.annotation is ValueAnnotation.Error) return UpdatePropertyOutcome.INVALID
+      renderedComboBox.applyChanges(annotatedValue)
+      return UpdatePropertyOutcome.UPDATED
     }
+    return UpdatePropertyOutcome.NOT_CHANGED
   }
 
   override fun dispose() {
@@ -232,24 +209,22 @@ class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<P
     disposed = true
   }
 
-  @VisibleForTesting
-  fun reload() {
+  override fun reload() {
     renderedComboBox.loadKnownValues()
-    renderedComboBox.reloadValue()
+    renderedComboBox.reloadValue(property.getValue())
+  }
+
+  internal fun reloadIfNotChanged() {
+    renderedComboBox.loadKnownValues()
+    if (!renderedComboBox.isEditorChanged()) {  // Do not override a not applied invalid value.
+      renderedComboBox.reloadValue(property.getValue())
+    }
   }
 
   override fun createNew(property: ModelPropertyT): ModelPropertyEditor<PropertyT> =
-    simplePropertyEditor(property, propertyContext, variablesProvider, extensions)
+    SimplePropertyEditor(property, propertyContext, variablesScope, extensions)
 
   init {
-    renderedComboBox.reloadValue()
+    reload()
   }
 }
-
-fun <PropertyT : Any, ModelPropertyT : ModelPropertyCore<PropertyT>> simplePropertyEditor(
-  property: ModelPropertyT,
-  propertyContext: ModelPropertyContext<PropertyT>,
-  variablesProvider: VariablesProvider? = null,
-  extensions: List<EditorExtensionAction> = listOf()
-): SimplePropertyEditor<PropertyT, ModelPropertyT> =
-  SimplePropertyEditor(property, propertyContext, variablesProvider, extensions)

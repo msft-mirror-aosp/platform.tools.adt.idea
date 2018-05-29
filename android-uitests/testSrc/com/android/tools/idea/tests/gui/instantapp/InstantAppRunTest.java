@@ -28,7 +28,6 @@ import com.android.tools.idea.tests.gui.emulator.AvdSpec;
 import com.android.tools.idea.tests.gui.emulator.EmulatorGenerator;
 import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule;
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.ExecutionToolWindowFixture;
@@ -233,12 +232,11 @@ public class InstantAppRunTest {
     cmdLine.add("shell");
     cmdLine.add("am");
     cmdLine.add("start");
-    cmdLine.add("-a");
-    cmdLine.add("android.intent.action.VIEW");
-    cmdLine.add("-c");
-    cmdLine.add("android.intent.category.BROWSABLE");
-    cmdLine.add("-d");
-    cmdLine.add("http://topeka.samples.androidinstantapps.com/");
+    // Intent.FLAG_ACTIVITY_MATCH_EXTERNAL is required to launch in P+; ignored in pre-O.
+    cmdLine.add("-f");
+    cmdLine.add("0x00000800");
+    cmdLine.add("-n");
+    cmdLine.add("com.google.samples.apps.topeka/.activity.SignInActivity");
     return new ProcessBuilder(cmdLine);
   }
 

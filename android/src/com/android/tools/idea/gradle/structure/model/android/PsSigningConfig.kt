@@ -19,6 +19,7 @@ import com.android.builder.model.SigningConfig
 import com.android.tools.idea.gradle.dsl.api.android.SigningConfigModel
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.structure.model.PsChildModel
+import com.android.tools.idea.gradle.structure.model.helpers.matchFiles
 import com.android.tools.idea.gradle.structure.model.helpers.parseFile
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
 import com.android.tools.idea.gradle.structure.model.meta.*
@@ -38,7 +39,6 @@ class PsSigningConfig(
 
   var storeFile by SigningConfigDescriptors.storeFile
   var storePassword by SigningConfigDescriptors.storePassword
-  var storeType by SigningConfigDescriptors.storeType
   var keyAlias by SigningConfigDescriptors.keyAlias
   var keyPassword by SigningConfigDescriptors.keyPassword
 
@@ -60,8 +60,9 @@ class PsSigningConfig(
       parsedPropertyGetter = { storeFile() },
       getter = { asFile() },
       // TODO: Store project relative path if possible.
-      setter = { setValue(it.absolutePath) },
-      parser = ::parseFile
+      setter = { setValue(it.toString()) },
+      parser = ::parseFile,
+      matcher = { model, parsedValue, resolvedValue -> matchFiles(model.parent.gradleModel.rootDirPath, parsedValue, resolvedValue) }
     )
 
     val storePassword: SimpleProperty<PsSigningConfig, String> = property(
@@ -95,7 +96,8 @@ class PsSigningConfig(
 
     val keyPassword: SimpleProperty<PsSigningConfig, String> = property(
       "Key Password",
-      resolvedValueGetter = { keyPassword },
+      // TODO(b/70501607): uiProperty(PsSigningConfig.SigningConfigDescriptors.storeType, ::simplePropertyEditor),
+      resolvedValueGetter = { null },
       parsedPropertyGetter = { keyPassword().resolve() },
       // TODO: Properly handle other password types.
       getter = { asString() },

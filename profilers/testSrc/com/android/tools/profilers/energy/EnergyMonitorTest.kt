@@ -121,7 +121,7 @@ class EnergyMonitorTest {
   @Test
   fun testLegends() {
     val legends = monitor.legends
-    assertThat(legends.usageLegend.value).isEqualTo(EnergyAxisFormatter.LABELS[0])
+    assertThat(legends.usageLegend.value).isEqualTo("Light")
   }
 
   @Test
@@ -142,10 +142,14 @@ class EnergyMonitorTest {
 
     monitor.enter()
     timer.tick(1)
-    assertThat(usageUpdated).isTrue()
+    assertThat(usageUpdated).isTrue() // LineChartModel always updates on first update.
     assertThat(legendUpdated).isTrue()
     assertThat(tooltipLegendUpated).isTrue()
-    assertThat(axisUpdated).isTrue()
+    assertThat(axisUpdated).isTrue() // This would change since it's first update.
+    usageUpdated = false
+
+    profilers.timeline.viewRange.set(1.0, 2.0)
+    assertThat(usageUpdated).isTrue() // This should triger a LINE_CHART aspect since the view range changed.
   }
 
   @Test

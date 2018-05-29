@@ -60,6 +60,10 @@ class AtraceParserTest {
     assertThat(cpuThreadInfo.id).isEqualTo(TEST_PID)
     // Atrace only contains the last X characters, in the log file.
     assertThat(cpuThreadInfo.name).isEqualTo("splayingbitmaps")
+    assertThat(cpuThreadInfo.id).isEqualTo(TEST_PID)
+    // Validate capture trees sets the process name and id for threads.
+    assertThat(cpuThreadInfo.processName).isEqualTo("splayingbitmaps")
+    assertThat(cpuThreadInfo.processId).isEqualTo(TEST_PID)
     assertThat(myParser.mainThreadName).isEqualTo(cpuThreadInfo.name)
 
     // Base node is a root node that is equivlant to the length of capture.
@@ -143,15 +147,72 @@ class AtraceParserTest {
     assertThat(expectedExceptionCaught).isTrue()
   }
 
+  @Test
+  fun getProcessListReturnsProcessList() {
+    val headOfListExpected = arrayOf(CpuThreadInfo(1510, "system_server"),
+                                     CpuThreadInfo(2652, "splayingbitmaps"),
+                                     CpuThreadInfo(1371, "surfaceflinger"))
+    val tailOfListExpected = arrayOf(CpuThreadInfo(1404, "<1404>"),
+                                     CpuThreadInfo(2732, "<2732>"),
+                                     CpuThreadInfo(2713, "<2713>"))
+    val parser = AtraceParser(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"))
+    val processes = parser.getProcessList("")
+    // Validate the head of our list is organized as expected
+    for (i in headOfListExpected.indices) {
+      val threadInfo = headOfListExpected[i]
+      assertThat(processes[i].id).isEqualTo(threadInfo.id)
+      assertThat(processes[i].name).isEqualTo(threadInfo.name)
+    }
+    // Validate the tail of the list has all the <> values.
+    for (i in tailOfListExpected.indices) {
+      val threadInfo = tailOfListExpected[i]
+      val endIndex = processes.size - (i + 1)
+      assertThat(processes[endIndex].id).isEqualTo(threadInfo.id)
+      assertThat(processes[endIndex].name).isEqualTo(threadInfo.name)
+    }
+  }
+
+  @Test
+  fun hintedProcessNameIsTop() {
+    val parser = AtraceParser(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"))
+    // No hint is alphabetical
+    var processes = parser.getProcessList("")
+    assertThat(processes[0].processName).isEqualTo("system_server")
+    // No matching hint is still alphabetical.
+    processes = parser.getProcessList("something.crazy.nothing.matches")
+    assertThat(processes[0].processName).isEqualTo("system_server")
+    // Substring matches
+    processes = parser.getProcessList("com.google.package.atrace")
+    assertThat(processes[0].processName).isEqualTo("atrace")
+    // Exact string
+    processes = parser.getProcessList("atrace")
+    assertThat(processes[0].processName).isEqualTo("atrace")
+  }
+
+  @Test
+  fun settingSelectedProcessReturnsParseWithThatProesssId() {
+    val parser = AtraceParser(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"))
+    parser.setSelectProcess(parser.getProcessList("")[0])
+    val parsedFile = parser.parse(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"), 0)
+    assertThat(parsedFile.mainThreadId).isEqualTo(parser.getProcessList("")[0].id)
+  }
+
+  @Test
+  fun processNameThatWouldBePidUsesThreadNameInstead() {
+    val parser = AtraceParser(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"))
+    val info = parser.getProcessList(".gms.persistent")[0]
+    assertThat(info.processName).isEqualTo(".gms.persistent")
+  }
+
   companion object {
     private val DELTA = .00000001
 
     // Setting const for atrace file in one location so if we update file we can update const in one location.
-    private val EXPECTED_MIN_RANGE = 8.7688546875E10
-    private val EXPECTED_MAX_RANGE = 8.7701855499E10
-    private val SINGLE_CHILD_EXPECTED_START = 87691109747
-    private val SINGLE_CHILD_EXPECTED_END = 87691109965
-    private val EXPECTED_THREAD_END_TIME = 87691120751
+    private val EXPECTED_MIN_RANGE = 8.7688546852E10
+    private val EXPECTED_MAX_RANGE = 8.7701855476E10
+    private val SINGLE_CHILD_EXPECTED_START = 87691109724
+    private val SINGLE_CHILD_EXPECTED_END = 87691109942
+    private val EXPECTED_THREAD_END_TIME = 87691120728
     private val EXPECTED_CHILD_COUNT = 213
     private val EXPECTED_METHOD_NAME = "setupGridItem"
     private val TEST_PID = 2652

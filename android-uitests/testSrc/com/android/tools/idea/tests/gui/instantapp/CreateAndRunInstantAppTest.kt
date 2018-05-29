@@ -23,7 +23,6 @@ import com.android.fakeadbserver.shellcommandhandlers.ActivityManagerCommandHand
 import com.android.tools.idea.npw.FormFactor
 import com.android.tools.idea.tests.gui.emulator.EmulatorTestRule
 import com.android.tools.idea.tests.gui.framework.GuiTestRule
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner
 import com.android.tools.idea.tests.gui.framework.RunIn
 import com.android.tools.idea.tests.gui.framework.TestGroup
 import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner
@@ -33,10 +32,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.TimeUnit
 
 @RunWith(GuiTestRemoteRunner::class)
 class CreateAndRunInstantAppTest {
-  @Rule @JvmField val guiTest = GuiTestRule()
+  @Rule @JvmField val guiTest = GuiTestRule().withTimeout(5, TimeUnit.MINUTES)
   @Rule @JvmField val emulator = EmulatorTestRule()
 
   private val projectApplicationId = "com.android.devtools.simple"
@@ -98,7 +98,7 @@ class CreateAndRunInstantAppTest {
    * </pre>
    */
   @Test
-  @RunIn(TestGroup.SANITY)
+  @RunIn(TestGroup.QA_UNRELIABLE) // http://b/79937083
   fun createAndRun() {
     val runConfigName = "instantapp"
     val newProj = guiTest.welcomeFrame().createNewProject()

@@ -65,7 +65,8 @@ public abstract class StageView<T extends Stage> extends AspectObserver {
     myComponent.setBackground(ProfilerColors.DEFAULT_BACKGROUND);
 
     // Use FlowLayout instead of the usual BorderLayout since BorderLayout doesn't respect min/preferred sizes.
-    myTooltipPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+    myTooltipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    myTooltipPanel.setBackground(ProfilerColors.TOOLTIP_BACKGROUND);
     myTooltipBinder = new ViewBinder<>();
 
     mySelectionTimeLabel = createSelectionTimeLabel();
@@ -194,16 +195,7 @@ public abstract class StageView<T extends Stage> extends AspectObserver {
       @Override
       public void mouseClicked(MouseEvent e) {
         ProfilerTimeline timeline = getStage().getStudioProfilers().getTimeline();
-        Range selectionRange = timeline.getSelectionRange();
-        if (!selectionRange.isEmpty()) {
-          // Zoom to view when the selection range is not point, otherwise adjust the view range only.
-          if (!selectionRange.isPoint()) {
-            timeline.frameViewToRange(selectionRange);
-          }
-          else {
-            timeline.adjustRangeCloseToMiddleView(selectionRange);
-          }
-        }
+        timeline.frameViewToRange(timeline.getSelectionRange());
       }
     });
     selectionTimeLabel.setToolTipText("Selected range");

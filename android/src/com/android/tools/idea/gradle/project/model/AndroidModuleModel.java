@@ -126,19 +126,11 @@ public class AndroidModuleModel implements AndroidModel, ModuleModel {
   public AndroidModuleModel(@NotNull String moduleName,
                             @NotNull File rootDirPath,
                             @NotNull AndroidProject androidProject,
-                            @NotNull Variant variant,
-                            @NotNull IdeDependenciesFactory dependenciesFactory) {
-    this(moduleName, rootDirPath, androidProject, variant.getName(), dependenciesFactory, variant);
-  }
-
-  private AndroidModuleModel(@NotNull String moduleName,
-                             @NotNull File rootDirPath,
-                             @NotNull AndroidProject androidProject,
-                             @NotNull String variantName,
-                             @NotNull IdeDependenciesFactory dependenciesFactory,
-                             @Nullable Variant variant) {
-    myAndroidProject = new IdeAndroidProjectImpl(androidProject, dependenciesFactory, variant);
-    myUsingSingleVariantSync = variant != null;
+                            @NotNull String variantName,
+                            @NotNull IdeDependenciesFactory dependenciesFactory,
+                            @Nullable Collection<Variant> variantsToAdd) {
+    myAndroidProject = new IdeAndroidProjectImpl(androidProject, dependenciesFactory, variantsToAdd);
+    myUsingSingleVariantSync = variantsToAdd != null;
 
     myProjectSystemId = GRADLE_SYSTEM_ID;
     myModuleName = moduleName;
@@ -331,6 +323,18 @@ public class AndroidModuleModel implements AndroidModel, ModuleModel {
 
   private static boolean isTestArtifact(@Nullable String artifactName) {
     return contains(artifactName, TEST_ARTIFACT_NAMES);
+  }
+
+  /**
+   * @return true if the variant model with given name has been requested before.
+   */
+  public boolean variantExists(@NotNull String variantName) {
+    for (Variant variant : myAndroidProject.getVariants()) {
+      if (variantName.equals(variant.getName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
@@ -714,7 +718,7 @@ public class AndroidModuleModel implements AndroidModel, ModuleModel {
 
   /**
    * Returns the {@link IdeAndroidArtifact} that should be used for instrumented testing.
-   * <p>
+   *
    * <p>For test-only modules this is the main artifact.
    */
   @Nullable

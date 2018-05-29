@@ -117,6 +117,8 @@ public class NetworkMonitorTest {
     assertTrue(usageUpdated[0]);
     assertTrue(legendUpdated[0]);
     assertTrue(trafficAxisUpdated[0]);
+    myProfilers.getTimeline().getViewRange().set(1.0, 2.0);
+    assertTrue(usageUpdated[0]);
   }
 
   @Test

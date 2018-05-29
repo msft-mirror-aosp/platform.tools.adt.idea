@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
-import com.android.tools.idea.gradle.structure.model.VariablesProvider
+import com.android.tools.idea.gradle.structure.configurables.ui.PropertyEditorCoreFactory
+import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.*
 import com.intellij.util.ui.AbstractTableCellEditor
 import java.awt.Component
@@ -32,10 +33,9 @@ import javax.swing.table.TableColumnModel
 class MapPropertyEditor<ValueT : Any, ModelPropertyT : ModelMapPropertyCore<ValueT>>(
   property: ModelPropertyT,
   propertyContext: ModelPropertyContext<ValueT>,
-  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
-  variablesProvider: VariablesProvider?,
-  extensions: List<EditorExtensionAction>
-) : CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesProvider, extensions),
+  editor: PropertyEditorCoreFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>,
+  variablesScope: PsVariablesScope?
+) : CollectionPropertyEditor<ModelPropertyT, ValueT>(property, propertyContext, editor, variablesScope),
     ModelPropertyEditor<Map<String, ValueT>>, ModelPropertyEditorFactory<Map<String, ValueT>, ModelPropertyT> {
 
   init {
@@ -43,6 +43,8 @@ class MapPropertyEditor<ValueT : Any, ModelPropertyT : ModelMapPropertyCore<Valu
   }
 
   override fun updateProperty() = throw UnsupportedOperationException()
+
+  override fun reload() = loadValue()
 
   override fun dispose() = Unit
 
@@ -140,13 +142,6 @@ class MapPropertyEditor<ValueT : Any, ModelPropertyT : ModelMapPropertyCore<Valu
   }
 
   override fun createNew(property: ModelPropertyT): ModelPropertyEditor<Map<String, ValueT>> =
-    mapPropertyEditor(editor)(property, propertyContext, variablesProvider, extensions)
+    MapPropertyEditor(property, propertyContext, editor, variablesScope)
 }
 
-fun <ValueT : Any, ModelPropertyT : ModelMapPropertyCore<ValueT>> mapPropertyEditor(
-  editor: PropertyEditorFactory<ModelPropertyCore<ValueT>, ModelPropertyContext<ValueT>, ValueT>
-):
-  PropertyEditorFactory<ModelPropertyT, ModelPropertyContext<ValueT>, Map<String, ValueT>> =
-  { property, propertyContext, variablesProvider, extensions ->
-    MapPropertyEditor(property, propertyContext, editor, variablesProvider, extensions)
-  }

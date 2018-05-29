@@ -16,7 +16,6 @@
 package com.android.tools.idea.tests.gui.editors.hprof;
 
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
-import com.android.tools.idea.tests.gui.framework.GuiTestRunner;
 import com.android.tools.idea.tests.gui.framework.RunIn;
 import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.HprofEditorFixture;
@@ -40,6 +39,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -51,7 +51,7 @@ public class HprofAnalysisTest {
   private static final String HPROF_GZ_PATH = "captures/" + HPROF_FILENAME +".gz";
   private static final String HPROF_PATH = "captures/" + HPROF_FILENAME;
 
-  @Rule public final GuiTestRule guiTest = new GuiTestRule();
+  @Rule public final GuiTestRule guiTest = new GuiTestRule().withTimeout(5, TimeUnit.MINUTES);
 
   @Before
   public void decompressHprofFile() throws Exception {

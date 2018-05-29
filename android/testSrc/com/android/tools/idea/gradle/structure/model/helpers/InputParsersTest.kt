@@ -15,9 +15,8 @@
  */
 package com.android.tools.idea.gradle.structure.model.helpers
 
-import com.android.tools.idea.gradle.structure.model.meta.DslText
-import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
-import com.android.tools.idea.gradle.structure.model.meta.ValueAnnotation
+import com.android.tools.idea.gradle.structure.model.android.asParsed
+import com.android.tools.idea.gradle.structure.model.meta.*
 import com.intellij.pom.java.LanguageLevel
 import junit.framework.Assert.*
 import org.junit.Test
@@ -130,5 +129,56 @@ class InputParsersTest {
     assertTrue(parsed.value is ParsedValue.Set.Parsed)
     assertEquals(ValueAnnotation.Error("'123.4' is not a valid integer value"), parsed.annotation)
     assertEquals(DslText.OtherUnparsedDslText("123.4"), (parsed.value as ParsedValue.Set.Parsed).dslText)
+  }
+
+  @Test
+  fun languageLevel_empty() {
+    val parsed = parseLanguageLevel(null, "")
+    assertTrue(parsed.value === ParsedValue.NotSet)
+    assertNull(parsed.annotation)
+  }
+
+  @Test
+  fun languageLevel() {
+    assertEquals(parseLanguageLevel(null, "1.8"), ParsedValue.Set.Parsed(LanguageLevel.JDK_1_8, DslText.Literal).annotated())
+    assertEquals(parseLanguageLevel(null, "VERSION_1_7"), ParsedValue.Set.Parsed(LanguageLevel.JDK_1_7, DslText.Literal).annotated())
+    assertEquals(parseLanguageLevel(null, "JavaVersion.VERSION_1_6"),
+                 ParsedValue.Set.Parsed(LanguageLevel.JDK_1_6, DslText.Literal).annotated())
+  }
+
+  @Test
+  fun hashString_empty() {
+    assertEquals(ParsedValue.NotSet.annotated(), parseHashString(null, ""))
+  }
+
+  @Test
+  fun hashString() {
+    assertEquals("26".asParsed().annotated(), parseHashString(null, "26"))
+    assertEquals("android-26".asParsed().annotated(), parseHashString(null, "android-26"))
+    assertEquals("android-P".asParsed().annotated(), parseHashString(null, "android-P"))
+    assertEquals("P".asParsed().annotateWithError("Invalid hash string"), parseHashString(null, "P"))
+  }
+
+  @Test
+  fun referenceOnly_empty() {
+    val parsed = parseReferenceOnly(null, "")
+    assertTrue(parsed.value === ParsedValue.NotSet)
+    assertNull(parsed.annotation)
+  }
+
+  @Test
+  fun matcher_hashStrings() {
+    assertTrue(matchHashStrings(null, "26", "26"))
+    assertFalse(matchHashStrings(null, null, "26"))
+    assertTrue(matchHashStrings(null, "android-P", "28"))
+    assertTrue(matchHashStrings(null, "android-26", "26"))
+  }
+
+  @Test
+  fun matcher_files() {
+    assertTrue(matchFiles(File("/tmp"), File("a"), File("/tmp/a")))
+    assertTrue(matchFiles(File("/tmp"), File("/tmp/a"), File("/tmp/a")))
+    assertFalse(matchFiles(File("/tmp"), null, File("/tmp/a")))
+    assertFalse(matchFiles(File("/tmp"), File("b"), File("/tmp/a")))
   }
 }

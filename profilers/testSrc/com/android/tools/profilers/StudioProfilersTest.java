@@ -50,14 +50,14 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testVersion() throws Exception {
+  public void testVersion() {
     VersionResponse response =
       myGrpcServer.getClient().getProfilerClient().getVersion(VersionRequest.getDefaultInstance());
     assertThat(response.getVersion()).isEqualTo(FakeProfilerService.VERSION);
   }
 
   @Test
-  public void testClearedOnMonitorStage() throws Exception {
+  public void testClearedOnMonitorStage() {
     StudioProfilers profilers = getProfilersWithDeviceAndProcess();
     assertThat(profilers.getTimeline().getSelectionRange().isEmpty()).isTrue();
 
@@ -128,7 +128,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testProfilerStageChange() throws Exception {
+  public void testProfilerStageChange() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
 
@@ -160,7 +160,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testLateConnectionOfPreferredProcess() throws Exception {
+  public void testLateConnectionOfPreferredProcess() {
     final String PREFERRED_PROCESS = "Preferred";
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
@@ -191,7 +191,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testSetPreferredProcessDoesNotProfileEarlierProcess() throws Exception {
+  public void testSetPreferredProcessDoesNotProfileEarlierProcess() {
     final String PREFERRED_PROCESS = "Preferred";
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
@@ -311,14 +311,15 @@ public final class StudioProfilersTest {
     profilers.addDependency(observer).onChange(ProfilerAspect.AGENT, observer::AgentStatusChanged);
 
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(profilers.isAgentAttached()).isFalse();
+    assertThat(profilers.getAgentStatus()).isEqualTo(AgentStatusResponse.getDefaultInstance());
     assertThat(observer.getAgentStatusChangedCount()).isEqualTo(0);
 
     // Test that status changes if no process is selected does nothing
-    myProfilerService.setAgentStatus(AgentStatusResponse.Status.ATTACHED);
+    AgentStatusResponse attachedResponse = AgentStatusResponse.newBuilder().setStatus(AgentStatusResponse.Status.ATTACHED).build();
+    myProfilerService.setAgentStatus(attachedResponse);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(profilers.getProcess()).isNull();
-    assertThat(profilers.isAgentAttached()).isFalse();
+    assertThat(profilers.getAgentStatus()).isEqualTo(AgentStatusResponse.getDefaultInstance());
     assertThat(observer.getAgentStatusChangedCount()).isEqualTo(0);
 
     // Test that agent status change fires after a process is selected.
@@ -333,18 +334,33 @@ public final class StudioProfilersTest {
     profilers.setProcess(process1);
 
     assertThat(profilers.getProcess()).isEqualTo(process1);
-    assertThat(profilers.isAgentAttached()).isTrue();
+    assertThat(profilers.getAgentStatus()).isEqualTo(attachedResponse);
     assertThat(observer.getAgentStatusChangedCount()).isEqualTo(1);
 
     // Test that manually setting a process fires an agent status change
     profilers.setProcess(process2);
     assertThat(profilers.getProcess()).isSameAs(process2);
-    assertThat(profilers.isAgentAttached()).isTrue();
+    assertThat(profilers.getAgentStatus()).isEqualTo(attachedResponse);
     assertThat(observer.getAgentStatusChangedCount()).isEqualTo(2);
 
-    myProfilerService.setAgentStatus(AgentStatusResponse.Status.DETACHED);
+    // Setting the same agent status should not trigger an aspect change.
+    attachedResponse = AgentStatusResponse.newBuilder().setStatus(AgentStatusResponse.Status.ATTACHED).build();
+    myProfilerService.setAgentStatus(attachedResponse);
     timer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(profilers.isAgentAttached()).isFalse();
+    assertThat(profilers.getAgentStatus()).isEqualTo(attachedResponse);
+    assertThat(observer.getAgentStatusChangedCount()).isEqualTo(2);
+
+    AgentStatusResponse detachResponse = AgentStatusResponse.newBuilder().setStatus(AgentStatusResponse.Status.DETACHED).build();
+    myProfilerService.setAgentStatus(detachResponse);
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(profilers.getAgentStatus()).isEqualTo(detachResponse);
+    assertThat(observer.getAgentStatusChangedCount()).isEqualTo(3);
+
+    // Setting the same agent status should not trigger an aspect change.
+    detachResponse = AgentStatusResponse.newBuilder().setStatus(AgentStatusResponse.Status.DETACHED).build();
+    myProfilerService.setAgentStatus(detachResponse);
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(profilers.getAgentStatus()).isEqualTo(detachResponse);
     assertThat(observer.getAgentStatusChangedCount()).isEqualTo(3);
   }
 
@@ -381,7 +397,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void shouldSelectAlivePreferredProcessWhenRestarted() throws Exception {
+  public void shouldSelectAlivePreferredProcessWhenRestarted() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
     int nowInSeconds = 42;
@@ -425,7 +441,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void shouldNotSelectPreferredAfterUserSelectsOtherProcess() throws Exception {
+  public void shouldNotSelectPreferredAfterUserSelectsOtherProcess() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
     int nowInSeconds = 42;
@@ -589,7 +605,7 @@ public final class StudioProfilersTest {
   public void preferredDeviceShouldNotOverrideSelectedDevice() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
-    profilers.setPreferredProcess("Manufacturer Model", null, null);
+    profilers.setPreferredProcess("Manufacturer Model", "ProcessName", null);
 
     // A device with a process that can be profiled
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
@@ -668,7 +684,7 @@ public final class StudioProfilersTest {
     assertThat(profilers.getProcess()).isEqualTo(preferredProcess);
 
     // Updating the preferred device should immediately switch over.
-    profilers.setPreferredProcess("Manufacturer2 Model2", null, null);
+    profilers.setPreferredProcess("Manufacturer2 Model2", "PreferredProcess", null);
     assertThat(profilers.getDevice()).isEqualTo(preferredDevice2);
     assertThat(profilers.getProcess()).isNull();
   }
@@ -837,7 +853,8 @@ public final class StudioProfilersTest {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), fakeIdeService, timer);
 
-    myProfilerService.setAgentStatus(AgentStatusResponse.Status.ATTACHED);
+    AgentStatusResponse attachedResponse = AgentStatusResponse.newBuilder().setStatus(AgentStatusResponse.Status.ATTACHED).build();
+    myProfilerService.setAgentStatus(attachedResponse);
     fakeIdeService.enableJvmtiAgent(true);
     Common.Device device = createDevice(AndroidVersion.VersionCodes.O, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process1 = createProcess(device.getDeviceId(), 1, "FakeProcess1", Common.Process.State.ALIVE);
@@ -950,16 +967,14 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testStoppingTwice() throws Exception {
+  public void testStoppingTwice() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
 
     // Should be modified when STAGE aspect is fired.
     boolean[] stageAspectTriggered = {false};
     profilers.addDependency(new AspectObserver())
-             .onChange(ProfilerAspect.STAGE, () -> {
-               stageAspectTriggered[0] = true;
-             });
+             .onChange(ProfilerAspect.STAGE, () -> stageAspectTriggered[0] = true);
 
     // Check profiler is not stopped.
     assertThat(profilers.isStopped()).isFalse();
@@ -1043,7 +1058,7 @@ public final class StudioProfilersTest {
   }
 
   @Test
-  public void testNewSessionResetsStage() throws Exception {
+  public void testNewSessionResetsStage() {
     FakeTimer timer = new FakeTimer();
     StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), new FakeIdeProfilerServices(), timer);
     assertThat(profilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
@@ -1359,7 +1374,7 @@ public final class StudioProfilersTest {
     return profilers;
   }
 
-  private Common.Device createDevice(int featureLevel, @NotNull String serial, @NotNull Common.Device.State state) {
+  private static Common.Device createDevice(int featureLevel, @NotNull String serial, @NotNull Common.Device.State state) {
     return Common.Device.newBuilder()
                         .setDeviceId(serial.hashCode())
                         .setFeatureLevel(featureLevel)

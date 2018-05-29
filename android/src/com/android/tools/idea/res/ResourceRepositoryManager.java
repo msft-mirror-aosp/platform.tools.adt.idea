@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.res;
 
-import com.android.annotations.NonNull;
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.builder.model.AaptOptions;
 import com.android.builder.model.AndroidProject;
@@ -30,6 +29,7 @@ import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.res.aar.AarResourceRepositoryCache;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
@@ -64,6 +64,7 @@ public class ResourceRepositoryManager implements Disposable {
   private static final Object MODULE_RESOURCES_LOCK = new Object();
 
   @NotNull private final AndroidFacet myFacet;
+  @NotNull private final AaptOptions.Namespacing myNamespacing;
   @Nullable private ResourceVisibilityLookup.Provider myResourceVisibilityProvider;
 
   /**
@@ -82,10 +83,20 @@ public class ResourceRepositoryManager implements Disposable {
 
   @NotNull
   public static ResourceRepositoryManager getOrCreateInstance(@NotNull AndroidFacet facet) {
+    AaptOptions.Namespacing namespacing = getNamespacing(facet);
     ResourceRepositoryManager instance = facet.getUserData(KEY);
-    if (instance == null) {
-      instance = facet.putUserDataIfAbsent(KEY, new ResourceRepositoryManager(facet));
+
+    if (instance != null && instance.myNamespacing != namespacing) {
+      if (facet.replace(KEY, instance, null)) {
+        Disposer.dispose(instance);
+      }
+      instance = null;
     }
+
+    if (instance == null) {
+      instance = facet.putUserDataIfAbsent(KEY, new ResourceRepositoryManager(facet, namespacing));
+    }
+
     return instance;
   }
 
@@ -117,7 +128,7 @@ public class ResourceRepositoryManager implements Disposable {
    * @return the resource repository or null if the module is not an Android module
    */
   @Nullable
-  public static LocalResourceRepository getAppResources(@NonNull Module module) {
+  public static LocalResourceRepository getAppResources(@NotNull Module module) {
     AndroidFacet facet = AndroidFacet.getInstance(module);
     return facet != null ? getAppResources(facet) : null;
   }
@@ -128,7 +139,7 @@ public class ResourceRepositoryManager implements Disposable {
    * @see #getAppResources(boolean)
    */
   @NotNull
-  public static LocalResourceRepository getAppResources(@NonNull AndroidFacet facet) {
+  public static LocalResourceRepository getAppResources(@NotNull AndroidFacet facet) {
     return getOrCreateInstance(facet).getAppResources(true);
   }
 
@@ -176,8 +187,9 @@ public class ResourceRepositoryManager implements Disposable {
     return getOrCreateInstance(facet).getModuleResources(true);
   }
 
-  private ResourceRepositoryManager(@NotNull AndroidFacet facet) {
+  private ResourceRepositoryManager(@NotNull AndroidFacet facet, @NotNull AaptOptions.Namespacing namespacing) {
     myFacet = facet;
+    myNamespacing = namespacing;
     Disposer.register(facet, this);
   }
 
@@ -232,7 +244,7 @@ public class ResourceRepositoryManager implements Disposable {
       }
       GradleVersion modelVersion = androidModuleModel.getModelVersion();
       assert modelVersion != null;
-      return findAarLibrariesFromGradle(modelVersion, dependentFacets, libraries);
+      return findAarLibrariesFromGradle(dependentFacets, libraries);
     }
     Project project = facet.getModule().getProject();
     if (GradleProjectInfo.getInstance(project).isBuildWithGradle()) {
@@ -261,10 +273,9 @@ public class ResourceRepositoryManager implements Disposable {
    * resource directories.
    */
   @NotNull
-  private static Map<File, String> findAarLibrariesFromGradle(@NotNull GradleVersion modelVersion,
-                                                              @NotNull List<AndroidFacet> dependentFacets,
+  private static Map<File, String> findAarLibrariesFromGradle(@NotNull List<AndroidFacet> dependentFacets,
                                                               @NotNull List<Library> libraries) {
-    // Pull out the unique directories, in case multiple modules point to the same .aar folder
+    // Pull out the unique directories, in case multiple modules point to the same .aar folder.
     Map<File, String> files = new HashMap<>(libraries.size());
 
     Set<String> moduleNames = new HashSet<>();
@@ -274,9 +285,15 @@ public class ResourceRepositoryManager implements Disposable {
     try {
       for (Library library : libraries) {
         // We should only add .aar dependencies if they aren't already provided as modules.
-        // For now, the way we associate them with each other is via the library name;
-        // in the future the model will provide this for us
+        // For now, the way we associate them with each other is via the library name.
+        // In the future the model will provide this for us.
         String libraryName = library.getArtifactAddress();
+        // Strip the build system prefix and the "@aar" suffix, if present (b/79942260).
+        // For example, both, "Gradle: com.android.support:appcompat-v7-27.1.0" and
+        // "com.android.support:appcompat-v7:27.1.0@aar", become "com.android.support:appcompat-v7:27.1.0".
+        int prefixEnd = libraryName.lastIndexOf(' ') + 1;
+        int suffixStart = libraryName.endsWith("@aar") ? libraryName.length() - "@aar".length() : libraryName.length();
+        libraryName = libraryName.substring(prefixEnd, suffixStart);
         if (!moduleNames.contains(libraryName)) {
           File resFolder = new File(library.getResFolder());
           if (resFolder.exists()) {
@@ -288,8 +305,7 @@ public class ResourceRepositoryManager implements Disposable {
       }
     }
     catch (UnsupportedOperationException e) {
-      // This happens when there is an incompatibility between the builder-model interfaces embedded in Android Studio and the
-      // cached model.
+      // This happens when there is an incompatibility between the builder-model interfaces embedded in Android Studio and the cached model.
       // If we got here, it is because this code got invoked before project sync happened (e.g. when reopening a project with open editors).
       // Project sync now is smart enough to handle this case and will trigger a full sync.
       LOG.warn("Incompatibility found between the IDE's builder-model and the cached Gradle model", e);
@@ -300,7 +316,8 @@ public class ResourceRepositoryManager implements Disposable {
   /**
    * Returns the repository with all non-framework resources available to a given module (in the current variant). This includes not just
    * the resources defined in this module, but in any other modules that this module depends on, as well as any libraries those modules may
-   * depend on (such as appcompat).
+   * depend on (such as appcompat). This repository also contains sample data resources associated with the {@link ResourceNamespace#TOOLS}
+   * namespace.
    *
    * <p>When a layout is rendered in the layout, it is fetching resources from the app resource repository: it should see all the resources
    * just like the app does.
@@ -326,12 +343,12 @@ public class ResourceRepositoryManager implements Disposable {
    *
    * <p>It doesn't contain resources from AAR dependencies.
    *
-   * <p>An example of where this is useful is the layout editor; in its “Language” menu it lists all the relevant languages in the project and
-   * lets you choose between them. Here we don’t want to include resources from libraries; If you depend on Google Play Services, and it
-   * provides 40 translations for its UI, we don’t want to show all 40 languages in the language menu, only the languages actually locally in
-   * the user’s source code.
+   * <p>An example of where this is useful is the layout editor; in its “Language” menu it lists all the relevant languages in the project
+   * and lets you choose between them. Here we don’t want to include resources from libraries; If you depend on Google Play Services, and it
+   * provides 40 translations for its UI, we don’t want to show all 40 languages in the language menu, only the languages actually locally
+   * in the user’s source code.
    *
-   * @return the computed repository or null of {@code createIfNecessary} is false and no other action caused the creation of the repository.
+   * @return the computed repository or null of {@code createIfNecessary} is false and no other action caused the creation of the repository
    */
   @Contract("true -> !null")
   @Nullable
@@ -348,10 +365,10 @@ public class ResourceRepositoryManager implements Disposable {
   }
 
   /**
-   * Returns the resource repository for a single module (which can possibly have multiple resource folders). Does not include
-   * resources from any dependencies.
+   * Returns the resource repository for a single module (which can possibly have multiple resource folders). Does not include resources
+   * from any dependencies.
    *
-   * @return the computed repository or null of {@code createIfNecessary} is false and no other action caused the creation of the repository.
+   * @return the computed repository or null of {@code createIfNecessary} is false and no other action caused the creation of the repository
    */
   @Contract("true -> !null")
   @Nullable
@@ -382,6 +399,24 @@ public class ResourceRepositoryManager implements Disposable {
     }
 
     return androidPlatform.getSdkData().getTargetData(androidPlatform.getTarget()).getFrameworkResources(needLocales);
+  }
+
+  /**
+   * If namespacing is disabled, the namespace parameter is ignored and the method returns a list containing the single resource repository
+   * returned by {@link #getAppResources(boolean)}. Otherwise the method returns a list of module, library, or sample data resource
+   * repositories for the given namespace. In a well formed Android project the returned list will contain at most one resource repository.
+   * Multiple repositories may be returned only when there is a package name collision between modules or libraries.
+   *
+   * @param namespace the namespace to return resource repositories for
+   * @return the repositories for the given namespace
+   */
+  @NotNull
+  public List<LocalResourceRepository> getAppResourcesForNamespace(@NotNull ResourceNamespace namespace) {
+    AppResourceRepository appRepository = (AppResourceRepository)getAppResources(true);
+    if (getNamespacing() == AaptOptions.Namespacing.DISABLED) {
+      return ImmutableList.of(appRepository);
+    }
+    return appRepository.getRepositoriesForNamespace(namespace);
   }
 
   public void resetResources() {
@@ -418,7 +453,7 @@ public class ResourceRepositoryManager implements Disposable {
   public void resetAllCaches() {
     resetResources();
     ConfigurationManager.getOrCreateInstance(myFacet.getModule()).getResolverCache().reset();
-    ResourceFolderRegistry.reset();
+    ResourceFolderRegistry.getInstance(myFacet.getModule().getProject()).reset();
     AarResourceRepositoryCache.getInstance().clear();
   }
 
@@ -428,7 +463,12 @@ public class ResourceRepositoryManager implements Disposable {
 
   @NotNull
   public AaptOptions.Namespacing getNamespacing() {
-    AndroidModel model = myFacet.getConfiguration().getModel();
+    return myNamespacing;
+  }
+
+  @NotNull
+  private static AaptOptions.Namespacing getNamespacing(@NotNull AndroidFacet facet) {
+    AndroidModel model = facet.getConfiguration().getModel();
     if (model != null) {
       return model.getNamespacing();
     } else {

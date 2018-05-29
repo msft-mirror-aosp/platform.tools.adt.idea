@@ -17,7 +17,6 @@ package com.android.tools.profilers.network;
 
 import com.android.tools.adtui.model.*;
 import com.android.tools.adtui.model.legend.LegendComponentModel;
-import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.cpu.FakeCpuService;
@@ -43,6 +42,8 @@ import java.util.zip.GZIPOutputStream;
 
 import static com.android.tools.profiler.proto.NetworkProfiler.ConnectivityData;
 import static com.android.tools.profiler.proto.NetworkProfiler.NetworkProfilerData;
+import static com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE;
+import static com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_DETACHED_RESPONSE;
 import static com.google.common.truth.Truth.assertThat;
 
 public class NetworkProfilerStageTest {
@@ -52,8 +53,10 @@ public class NetworkProfilerStageTest {
     new ImmutableList.Builder<NetworkProfilerData>()
       .add(FakeNetworkService.newSpeedData(0, 1, 2))
       .add(FakeNetworkService.newSpeedData(10, 3, 4))
+      .add(FakeNetworkService.newSpeedData(100, 3000000, 4000000))
       .add(FakeNetworkService.newConnectionData(0, 4))
       .add(FakeNetworkService.newConnectionData(10, 6))
+      .add(FakeNetworkService.newConnectionData(100, 8000))
       .add(FakeNetworkService.newRadioData(5, ConnectivityData.NetworkType.MOBILE, ConnectivityData.RadioState.HIGH))
       .build();
 
@@ -75,12 +78,14 @@ public class NetworkProfilerStageTest {
 
   private FakeTimer myTimer;
 
+  private StudioProfilers myStudioProfilers;
+
   @Before
   public void setUp() {
     myTimer = new FakeTimer();
-    StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), new FakeIdeProfilerServices(), myTimer);
-    profilers.setPreferredProcess(FakeProfilerService.FAKE_DEVICE_NAME, FakeProfilerService.FAKE_PROCESS_NAME, null);
-    myStage = new NetworkProfilerStage(profilers);
+    myStudioProfilers = new StudioProfilers(myGrpcChannel.getClient(), new FakeIdeProfilerServices(), myTimer);
+    myStudioProfilers.setPreferredProcess(FakeProfilerService.FAKE_DEVICE_NAME, FakeProfilerService.FAKE_PROCESS_NAME, null);
+    myStage = new NetworkProfilerStage(myStudioProfilers);
     myStage.getStudioProfilers().getTimeline().getViewRange().set(TimeUnit.SECONDS.toMicros(0), TimeUnit.SECONDS.toMicros(5));
     myStage.getStudioProfilers().setStage(myStage);
   }
@@ -271,6 +276,16 @@ public class NetworkProfilerStageTest {
     assertThat(connectionAxisUpdated[0]).isTrue();
     assertThat(legendsUpdated[0]).isTrue();
     assertThat(tooltipLegendsUpdated[0]).isTrue();
+
+    myStudioProfilers.getTimeline().getViewRange().set(TimeUnit.SECONDS.toMicros(1), TimeUnit.SECONDS.toMicros(2));
+    assertThat(networkUsageUpdated[0]).isTrue();
+
+    // Make sure the axis lerps correctly when we move the range there.
+    myStudioProfilers.getTimeline().getDataRange().setMax(TimeUnit.SECONDS.toMicros(101));
+    myStudioProfilers.getTimeline().getViewRange().set(TimeUnit.SECONDS.toMicros(99), TimeUnit.SECONDS.toMicros(101));
+    myTimer.tick(100);
+    assertThat(trafficAxisUpdated[0]).isTrue();
+    assertThat(connectionAxisUpdated[0]).isTrue();
   }
 
   @Test
@@ -465,17 +480,18 @@ public class NetworkProfilerStageTest {
   public void selectionDisabledWithoutAgent() {
     Range selection = myStage.getStudioProfilers().getTimeline().getSelectionRange();
 
-    myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.ATTACHED);
+    myProfilerService.setAgentStatus(DEFAULT_AGENT_ATTACHED_RESPONSE);
     myTimer.tick(TimeUnit.SECONDS.toNanos(1));
     // Need to re-enter the stage again given the device/process can be set and return to the default StudioMonitorStage.
     myStage.getStudioProfilers().setStage(myStage);
 
     assertThat(myStage.getStudioProfilers().isAgentAttached()).isTrue();
+
     myStage.getSelectionModel().set(0, 100);
     assertThat(selection.getMin()).isWithin(EPSILON).of(0);
     assertThat(selection.getMax()).isWithin(EPSILON).of(100);
 
-    myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.Status.DETACHED);
+    myProfilerService.setAgentStatus(DEFAULT_AGENT_DETACHED_RESPONSE);
     myTimer.tick(TimeUnit.SECONDS.toNanos(1));
     assertThat(myStage.getStudioProfilers().isAgentAttached()).isFalse();
 

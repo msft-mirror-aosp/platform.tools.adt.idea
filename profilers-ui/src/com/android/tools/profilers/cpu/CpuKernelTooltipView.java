@@ -16,7 +16,6 @@
 package com.android.tools.profilers.cpu;
 
 import com.android.tools.adtui.TabularLayout;
-import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.profilers.ProfilerColors;
 import com.android.tools.profilers.ProfilerTimeline;
@@ -27,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 
-import static com.android.tools.profilers.ProfilerFonts.TOOLTIP_FONT;
+import static com.android.tools.profilers.ProfilerFonts.TOOLTIP_BODY_FONT;
 
 /**
  * This class manages the elements shown in the tooltip when the tooltip is visible.
@@ -50,9 +49,9 @@ public class CpuKernelTooltipView extends ProfilerTooltipView {
     myTimeline = view.getTimeline();
     myTooltip = tooltip;
     myContent = new JPanel();
-    myThread = new JLabel();
-    myProcess = new JLabel();
-    myCpu = new JLabel();
+    myThread = createTooltipLabel();
+    myProcess = createTooltipLabel();
+    myCpu = createTooltipLabel();
     myUnavailableDetails = new JPanel(new TabularLayout("*", "Fit,Fit"));
     tooltip.addDependency(this).onChange(CpuKernelTooltip.Aspect.CPU_KERNEL_THREAD_INFO, this::threadInfoChanged);
   }
@@ -73,34 +72,33 @@ public class CpuKernelTooltipView extends ProfilerTooltipView {
     myThread.setText(String.format("Thread: %s", threadInfo.getName()));
     myContent.add(myThread, new TabularLayout.Constraint(0, 0));
     myProcess.setText(String.format("Process: %s", threadInfo.getProcessName()));
-    myContent.add(myProcess, new TabularLayout.Constraint(1, 0));
+    myContent.add(myProcess, new TabularLayout.Constraint(2, 0));
     myCpu.setText(String.format("CPU: %d", myTooltip.getCpuId()));
-    myContent.add(myCpu, new TabularLayout.Constraint(2, 0));
+    myContent.add(myCpu, new TabularLayout.Constraint(4, 0));
     if (myProcessId != threadInfo.getProcessId()) {
-      myContent.add(myUnavailableDetails, new TabularLayout.Constraint(4, 0));
+      myContent.add(myUnavailableDetails, new TabularLayout.Constraint(5, 0));
     }
   }
 
   @NotNull
   @Override
   protected JComponent createTooltip() {
-    myContent.setLayout(new TabularLayout("*", "Fit,Fit"));
-    myContent.setFont(TOOLTIP_FONT);
-    myContent.setForeground(ProfilerColors.MONITORS_HEADER_TEXT);
+    myContent.setLayout(new TabularLayout("*", "Fit-,8px,Fit-,8px,Fit"));
     JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
-    separator.setBorder(JBUI.Borders.empty(5, 0));
+    separator.setBorder(JBUI.Borders.empty(8, 0));
     myUnavailableDetails.add(separator, new TabularLayout.Constraint(0, 0));
     JLabel unavailableLabel = new JLabel("Other (not selectable)");
-    unavailableLabel.setFont(AdtUiUtils.DEFAULT_FONT);
-    unavailableLabel.setForeground(ProfilerColors.TOOLTIP_TIME_COLOR);
+    unavailableLabel.setFont(TOOLTIP_BODY_FONT);
+    unavailableLabel.setForeground(ProfilerColors.TOOLTIP_LOW_CONTRAST);
     myUnavailableDetails.add(unavailableLabel, new TabularLayout.Constraint(1, 0));
-    // JLabel doesn't pull font characteristics from the panel.
-    myThread.setFont(TOOLTIP_FONT);
-    myProcess.setFont(TOOLTIP_FONT);
-    myCpu.setFont(TOOLTIP_FONT);
-    myThread.setBorder(JBUI.Borders.emptyBottom(2));
-    myProcess.setBorder(JBUI.Borders.emptyBottom(2));
     myContent.add(myUnavailableDetails, new TabularLayout.Constraint(0, 0));
     return myContent;
+  }
+
+  private static JLabel createTooltipLabel() {
+    JLabel label = new JLabel();
+    label.setFont(TOOLTIP_BODY_FONT);
+    label.setForeground(ProfilerColors.TOOLTIP_TEXT);
+    return label;
   }
 }

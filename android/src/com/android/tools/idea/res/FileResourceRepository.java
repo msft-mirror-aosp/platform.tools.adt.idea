@@ -53,7 +53,7 @@ import static com.android.SdkConstants.FN_RESOURCE_TEXT;
  * consistent with what happens at build time.
  */
 // TODO: Rename to AarSourceResourceRepository and move to the com.android.tools.idea.res.aar package.
-public class FileResourceRepository extends LocalResourceRepository  implements LeafResourceRepository {
+public class FileResourceRepository extends LocalResourceRepository implements SingleNamespaceResourceRepository {
   private static final Logger LOG = Logger.getInstance(FileResourceRepository.class);
   protected final ResourceTable myFullTable = new ResourceTable();
   /** @see #getAllDeclaredIds() */
@@ -91,7 +91,7 @@ public class FileResourceRepository extends LocalResourceRepository  implements 
 
   /**
    * Creates and loads a resource repository. Consider calling
-   * {@link com.android.tools.idea.res.aar.AarResourceRepositoryCache#get(File, String)} instead of this method.
+   * {@link com.android.tools.idea.res.aar.AarResourceRepositoryCache#get} instead of this method.
    *
    * @param resourceDirectory the directory containing resources
    * @param libraryName the name of the library

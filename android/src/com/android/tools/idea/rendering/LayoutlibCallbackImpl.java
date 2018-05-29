@@ -103,7 +103,9 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
   @NotNull private final ResourceIdManager myIdManager;
   @NotNull final private LayoutLibrary myLayoutLib;
   @Nullable private final Object myCredential;
-  private final boolean myHasAppCompat;
+  private final boolean myHasLegacyAppCompat;
+  private final boolean myHasAndroidXAppCompat;
+  private final AaptOptions.Namespacing myNamespacing;
   @NotNull private String myNamespace;
   @NotNull private IRenderLogger myLogger;
   @NotNull private final ViewLoader myClassLoader;
@@ -154,8 +156,8 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
     myClassLoader = new ViewLoader(myLayoutLib, facet, logger, credential);
     myActionBarHandler = actionBarHandler;
     myLayoutPullParserFactory = parserFactory;
-    myHasAppCompat = DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.APP_COMPAT_V7) ||
-                     DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.ANDROIDX_APP_COMPAT_V7);
+    myHasLegacyAppCompat = DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.APP_COMPAT_V7);
+    myHasAndroidXAppCompat = DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.ANDROIDX_APP_COMPAT_V7);
 
     String javaPackage = MergedManifest.get(myModule).getPackage();
     if (javaPackage != null && !javaPackage.isEmpty()) {
@@ -164,7 +166,8 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
       myNamespace = AUTO_URI;
     }
 
-    if (ResourceRepositoryManager.getOrCreateInstance(facet).getNamespacing() == AaptOptions.Namespacing.DISABLED) {
+    myNamespacing = ResourceRepositoryManager.getOrCreateInstance(facet).getNamespacing();
+    if (myNamespacing == AaptOptions.Namespacing.DISABLED) {
       myImplicitNamespaces = ResourceNamespace.Resolver.TOOLS_ONLY;
     } else {
       myImplicitNamespaces = ResourceNamespace.Resolver.EMPTY_RESOLVER;
@@ -389,7 +392,7 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
     if (!myAaptDeclaredResources.isEmpty() && value.startsWith(AAPT_ATTR_PREFIX)) {
       TagSnapshot aaptResource = myAaptDeclaredResources.get(StringUtil.trimStart(value, AAPT_ATTR_PREFIX));
       // TODO(namespaces, b/74003372): figure out where to get the namespace from.
-      parser = LayoutPsiPullParser.create(aaptResource, ResourceNamespace.TODO, myLogger);
+      parser = LayoutPsiPullParser.create(aaptResource, ResourceNamespace.TODO(), myLogger);
     }
     else {
       parser = getParser(layoutResource.getName(), layoutResource.getNamespace(), new File(value));
@@ -464,7 +467,7 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
               // Do not honor the merge tag for layouts that are inflated via this call. This is just being inflated as part of a different
               // layout so we already have a parent.
               LayoutPsiPullParser parser = LayoutPsiPullParser.create((XmlFile)psiFile, myLogger, false);
-              parser.setUseSrcCompat(myHasAppCompat);
+              parser.setUseSrcCompat(myHasLegacyAppCompat || myHasAndroidXAppCompat);
               if (parentName.startsWith(FD_RES_LAYOUT)) {
                 // For included layouts, we don't normally see view cookies; we want the leaf to point back to the include tag
                 parser.setProvideViewCookies(myRenderTask != null && myRenderTask.getProvideCookiesForIncludedViews());
@@ -842,6 +845,21 @@ public class LayoutlibCallbackImpl extends LayoutlibCallback {
 
   public void setAdaptiveIconMaskPath(@NotNull String adaptiveIconMaskPath) {
     myAdaptiveIconMaskPath = adaptiveIconMaskPath;
+  }
+
+  @Override
+  public boolean hasLegacyAppCompat() {
+    return myHasLegacyAppCompat;
+  }
+
+  @Override
+  public boolean hasAndroidXAppCompat() {
+    return myHasAndroidXAppCompat;
+  }
+
+  @Override
+  public boolean isResourceNamespacingRequired() {
+    return myNamespacing == AaptOptions.Namespacing.REQUIRED;
   }
 
   private static class NamedXmlParser extends KXmlParser {

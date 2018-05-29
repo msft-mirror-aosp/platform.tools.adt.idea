@@ -50,7 +50,8 @@ import java.awt.geom.Rectangle2D;
 import java.util.*;
 import java.util.List;
 
-import static com.android.tools.profilers.ProfilerLayout.*;
+import static com.android.tools.profilers.ProfilerLayout.TABLE_COLUMN_HEADER_BORDER;
+import static com.android.tools.profilers.ProfilerLayout.TOOLTIP_BORDER;
 
 /**
  * Displays network connection information of all threads.
@@ -108,7 +109,7 @@ final class ThreadsView {
       }
     });
 
-    TooltipView.install(myThreadsTable, stageView.getStage());
+    TooltipView.install(myThreadsTable, stageView);
 
     myObserver = new AspectObserver();
     stageView.getStage().getAspect().addDependency(myObserver)
@@ -265,9 +266,8 @@ final class ThreadsView {
     @NotNull
     private AxisComponent createAxis() {
       ProfilerTimeline timeline = myStage.getStudioProfilers().getTimeline();
-      AxisComponentModel model = new AxisComponentModel(timeline.getSelectionRange(), new TimeAxisFormatter(1, 5, 1));
-      model.setClampToMajorTicks(false);
-      model.setGlobalRange(timeline.getDataRange());
+      AxisComponentModel model = new AxisComponentModel.Builder(timeline.getSelectionRange(), new TimeAxisFormatter(1, 5, 1), false)
+        .setGlobalRange(timeline.getDataRange()).build();
 
       AxisComponent axis = new AxisComponent(model, AxisComponent.AxisOrientation.BOTTOM);
       axis.setShowAxisLine(false);
@@ -369,22 +369,22 @@ final class ThreadsView {
   }
 
   private final static class TooltipView extends MouseAdapter {
-    @NotNull private final NetworkProfilerStage myStage;
     @NotNull private final JTable myTable;
+    @NotNull private final Range myRange;
 
     @NotNull private final TooltipComponent myTooltipComponent;
     @NotNull private final JPanel myContent;
 
-    private TooltipView(@NotNull JTable table, @NotNull NetworkProfilerStage stage) {
+    private TooltipView(@NotNull JTable table, @NotNull NetworkProfilerStageView stageView) {
       myTable = table;
-      myStage = stage;
+      myRange = stageView.getStage().getStudioProfilers().getTimeline().getSelectionRange();
 
       myContent = new JPanel(new TabularLayout("*", "*"));
       myContent.setBorder(TOOLTIP_BORDER);
       myContent.setBackground(ProfilerColors.TOOLTIP_BACKGROUND);
-      myContent.setFont(ProfilerFonts.TOOLTIP_FONT);
+      myContent.setFont(ProfilerFonts.TOOLTIP_BODY_FONT);
 
-      myTooltipComponent = new TooltipComponent.Builder(myContent, table).setPreferredParentClass(ProfilerLayeredPane.class).build();
+      myTooltipComponent = new TooltipComponent.Builder(myContent, table, stageView.getProfilersView().getComponent()).build();
       myTooltipComponent.registerListenersOn(table);
       myTooltipComponent.setVisible(false);
     }
@@ -392,8 +392,7 @@ final class ThreadsView {
     @Override
     public void mouseMoved(MouseEvent e) {
       myTooltipComponent.setVisible(false);
-      Range selection = myStage.getStudioProfilers().getTimeline().getSelectionRange();
-      HttpData data = findHttpDataUnderCursor(myTable, selection, e);
+      HttpData data = findHttpDataUnderCursor(myTable, myRange, e);
       if (data != null) {
         showTooltip(data);
       }
@@ -408,7 +407,7 @@ final class ThreadsView {
       myContent.removeAll();
       addToContent(newTooltipLabel(urlName));
       JLabel durationLabel = newTooltipLabel(TimeFormatter.getSingleUnitDurationString(duration));
-      durationLabel.setForeground(ProfilerColors.TOOLTIP_TIME_COLOR);
+      durationLabel.setForeground(ProfilerColors.TOOLTIP_TEXT);
       addToContent(durationLabel);
 
       if (data.getJavaThreads().size() > 1) {
@@ -442,15 +441,15 @@ final class ThreadsView {
     private static JLabel newTooltipLabel(String text) {
       JLabel label = new JLabel(text);
       label.setForeground(ProfilerColors.TOOLTIP_TEXT);
-      label.setFont(ProfilerFonts.TOOLTIP_FONT);
+      label.setFont(ProfilerFonts.TOOLTIP_BODY_FONT);
       return label;
     }
 
     /**
      * Construct our tooltip view and attach it to the target table.
      */
-    public static void install(@NotNull JTable table, @NotNull NetworkProfilerStage stage) {
-      table.addMouseMotionListener(new TooltipView(table, stage));
+    public static void install(@NotNull JTable table, @NotNull NetworkProfilerStageView stageView) {
+      table.addMouseMotionListener(new TooltipView(table, stageView));
     }
   }
 }

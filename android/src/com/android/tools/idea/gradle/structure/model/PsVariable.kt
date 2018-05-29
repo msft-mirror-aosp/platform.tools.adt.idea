@@ -16,21 +16,29 @@
 package com.android.tools.idea.gradle.structure.model
 
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
+import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference
+import com.android.tools.idea.gradle.structure.model.meta.GradleModelCoreProperty
+import com.android.tools.idea.gradle.structure.model.meta.ModelPropertyCore
 import java.lang.IllegalStateException
 
 /**
  * Model for handling Gradle properties in the Project Structure Dialog
  */
-class PsVariable(private val property: GradlePropertyModel, val module: PsModule) {
+class PsVariable(
+  private val property: GradlePropertyModel,
+  private val resolvedProperty: ResolvedPropertyModel,
+  val model: PsModel,
+  val scopePsVariables: PsVariablesScope) {
   val valueType = property.valueType
+  val resolvedValueType = resolvedProperty.valueType
 
   fun <T> getUnresolvedValue(type: TypeReference<T>): T? {
     return property.getRawValue(type)
   }
 
   fun <T> getResolvedValue(type: TypeReference<T>): T? {
-    return property.getValue(type)
+    return resolvedProperty.getValue(type)
   }
 
   fun setValue(aValue: Any) {
@@ -39,17 +47,17 @@ class PsVariable(private val property: GradlePropertyModel, val module: PsModule
     } else {
       property.setValue(aValue)
     }
-    module.isModified = true
+    model.isModified = true
   }
 
   fun delete() {
     property.delete()
-    module.isModified = true
+    model.isModified = true
   }
 
   fun setName(newName: String) {
     property.rename(newName)
-    module.isModified = true
+    model.isModified = true
   }
 
   fun getName() = property.name
@@ -61,8 +69,8 @@ class PsVariable(private val property: GradlePropertyModel, val module: PsModule
 
     val listValue = property.addListValue()
     listValue.setValue(value)
-    module.isModified = true
-    return PsVariable(listValue, module)
+    model.isModified = true
+    return PsVariable(listValue, listValue.resolve(), model, scopePsVariables)
   }
 
   fun addMapValue(key: String): PsVariable? {
@@ -74,6 +82,15 @@ class PsVariable(private val property: GradlePropertyModel, val module: PsModule
     if (mapValue.psiElement != null) {
       return null
     }
-    return PsVariable(mapValue, module)
+    return PsVariable(mapValue, mapValue.resolve(), model, scopePsVariables)
   }
+
+  /**
+   * Binds a new property to the underlying Gradle property using the binding configuration from the [prototype].
+   */
+  @Suppress("UNCHECKED_CAST")
+  fun <T : Any, PropertyCoreT : ModelPropertyCore<T>> bindNewPropertyAs(prototype: PropertyCoreT): PropertyCoreT? =
+    // Note: the as? test is only to test whether the interface is implemented.
+    // If it is, the generic type arguments will match.
+    (prototype as? GradleModelCoreProperty<T, PropertyCoreT>)?.rebind(resolvedProperty, { model.isModified = true })
 }

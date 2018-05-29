@@ -23,6 +23,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElementFinder
 import com.intellij.ui.AppUIUtil
 import java.nio.file.Path
 
@@ -30,7 +31,10 @@ import java.nio.file.Path
  * This implementation of AndroidProjectSystem is used during integration tests and includes methods
  * to stub project system functionalities.
  */
-class TestProjectSystem(val project: Project) : AndroidProjectSystem, AndroidProjectSystemProvider {
+class TestProjectSystem(val project: Project,
+                        private val allowedFutureDependencies: List<GradleCoordinate> = listOf())
+  : AndroidProjectSystem, AndroidProjectSystemProvider {
+
   data class TestDependencyVersion(override val mavenVersion: GradleVersion?) : GoogleMavenArtifactVersion {
     override fun equals(other: Any?) = other is GoogleMavenArtifactVersion && other.mavenVersion?.equals(mavenVersion) ?: false
     override fun hashCode() = mavenVersion?.hashCode() ?: 0
@@ -40,7 +44,20 @@ class TestProjectSystem(val project: Project) : AndroidProjectSystem, AndroidPro
     val TEST_VERSION_LATEST = TestDependencyVersion(GradleVersion.parse("+"))
   }
 
-  private val myDependenciesByModule: HashMultimap<Module, GradleCoordinate> = HashMultimap.create()
+  private val dependenciesByModule: HashMultimap<Module, GradleCoordinate> = HashMultimap.create()
+
+  /**
+   * Adds the given artifact to the given module's list of dependencies.
+   */
+  fun addDependency(artifactId: GoogleMavenArtifactId, module: Module, mavenVersion: GradleVersion) {
+    val coordinate = artifactId.getCoordinate(mavenVersion.toString())
+    dependenciesByModule.put(module, coordinate)
+  }
+
+  /**
+   * @return the set of dependencies added to the given module.
+   */
+  fun getAddedDependencies(module: Module) = dependenciesByModule.get(module)
 
   override val id: String = "com.android.tools.idea.projectsystem.TestProjectSystem"
 
@@ -48,32 +65,23 @@ class TestProjectSystem(val project: Project) : AndroidProjectSystem, AndroidPro
 
   override fun isApplicable(): Boolean = true
 
-  fun addDependency(artifactId: GoogleMavenArtifactId, module: Module, mavenVersion: GradleVersion) {
-    val coordinate = artifactId.getCoordinate(mavenVersion.toString())
-    myDependenciesByModule.put(module, coordinate)
-  }
-
-  override fun getAvailableDependency(coordinate: GradleCoordinate, includePreview: Boolean): GradleCoordinate? = coordinate
+  override fun getAvailableDependency(coordinate: GradleCoordinate, includePreview: Boolean): GradleCoordinate? =
+    allowedFutureDependencies.firstOrNull { coordinate.matches(it) }
 
   override fun getModuleSystem(module: Module): AndroidModuleSystem {
     return object : AndroidModuleSystem {
       override fun registerDependency(coordinate: GradleCoordinate) {
-        myDependenciesByModule.put(module, coordinate)
+        dependenciesByModule.put(module, coordinate)
       }
 
       override fun getDependencies(): Sequence<GoogleMavenArtifactId> =
-        myDependenciesByModule[module].asSequence().mapNotNull { GoogleMavenArtifactId.forCoordinate(it) }
-
-      override fun addDependencyWithoutSync(artifactId: GoogleMavenArtifactId, version: GoogleMavenArtifactVersion?, includePreview: Boolean) {
-        val versionToAdd = version ?: TEST_VERSION_LATEST
-        myDependenciesByModule.put(module, artifactId.getCoordinate(versionToAdd.mavenVersion.toString()))
-      }
+        dependenciesByModule[module].asSequence().mapNotNull { GoogleMavenArtifactId.forCoordinate(it) }
 
       override fun getRegisteredDependency(coordinate: GradleCoordinate): GradleCoordinate? =
-        myDependenciesByModule[module].firstOrNull { it.matches(coordinate) }
+        dependenciesByModule[module].firstOrNull { it.matches(coordinate) }
 
       override fun getResolvedDependency(coordinate: GradleCoordinate): GradleCoordinate? =
-        myDependenciesByModule[module].firstOrNull { it.matches(coordinate) }
+        dependenciesByModule[module].firstOrNull { it.matches(coordinate) }
 
       override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> {
         return emptyList()
@@ -127,4 +135,8 @@ class TestProjectSystem(val project: Project) : AndroidProjectSystem, AndroidPro
   override fun mergeBuildFiles(dependencies: String, destinationContents: String, supportLibVersionFilter: String?): String {
     TODO("not implemented")
   }
+
+  override fun getPsiElementFinders() = emptyList<PsiElementFinder>()
+
+  override fun getAugmentRClasses() = true
 }
