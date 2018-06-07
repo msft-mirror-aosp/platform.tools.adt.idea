@@ -353,7 +353,7 @@ public final class StudioFlags {
   private static final FlagGroup NAVIGATION = new FlagGroup(FLAGS, "navigation", "Navigation Editor");
   public static final Flag<Boolean> ENABLE_NAV_EDITOR = Flag.create(
     NAVIGATION, "enable.nav.editor", "Enable the Navigation Editor",
-    "If enabled, it will be possible to create and edit navigation resource files", true);
+    "If enabled, it will be possible to create and edit navigation resource files", false);
 
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
   public static final Flag<Boolean> IN_MEMORY_R_CLASSES = Flag.create(
