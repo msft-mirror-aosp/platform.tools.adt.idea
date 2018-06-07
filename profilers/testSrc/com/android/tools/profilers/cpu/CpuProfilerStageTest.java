@@ -24,6 +24,7 @@ import com.android.tools.profilers.*;
 import com.android.tools.profilers.analytics.FilterMetadata;
 import com.android.tools.profilers.cpu.atrace.AtraceParser;
 import com.android.tools.profilers.cpu.atrace.CpuKernelTooltip;
+import com.android.tools.profilers.cpu.atrace.CpuThreadSliceInfo;
 import com.android.tools.profilers.event.FakeEventService;
 import com.android.tools.profilers.memory.FakeMemoryService;
 import com.android.tools.profilers.network.FakeNetworkService;
@@ -643,25 +644,25 @@ public class CpuProfilerStageTest extends AspectObserver {
 
     // Null series
     tooltip.setCpuSeries(0, null);
-    assertThat(tooltip.getCpuThreadInfo()).isNull();
+    assertThat(tooltip.getCpuThreadSliceInfo()).isNull();
 
     // Test Series
     tooltipRange.set(11, 11);
-    List<SeriesData<CpuThreadInfo>> cpuSeriesData = new ArrayList<>();
-    cpuSeriesData.add(new SeriesData<>(5, CpuThreadInfo.NULL_THREAD));
-    cpuSeriesData.add(new SeriesData<>(10, new CpuThreadInfo(0, "Test", 0, "Test")));
-    AtraceDataSeries<CpuThreadInfo> series = new AtraceDataSeries<>(myStage, (capture) -> cpuSeriesData);
+    List<SeriesData<CpuThreadSliceInfo>> cpuSeriesData = new ArrayList<>();
+    cpuSeriesData.add(new SeriesData<>(5, CpuThreadSliceInfo.NULL_THREAD));
+    cpuSeriesData.add(new SeriesData<>(10, new CpuThreadSliceInfo(0, "Test", 0, "Test")));
+    AtraceDataSeries<CpuThreadSliceInfo> series = new AtraceDataSeries<>(myStage, (capture) -> cpuSeriesData);
     tooltip.setCpuSeries(1, series);
-    assertThat(tooltip.getCpuThreadInfo().getProcessName()).isEqualTo("Test");
+    assertThat(tooltip.getCpuThreadSliceInfo().getProcessName()).isEqualTo("Test");
 
     // Tooltip before all data.
     long tooltipTimeUs = TimeUnit.SECONDS.toMicros(0);
     tooltipRange.set(tooltipTimeUs, tooltipTimeUs);
-    assertThat(tooltip.getCpuThreadInfo()).isNull();
+    assertThat(tooltip.getCpuThreadSliceInfo()).isNull();
 
     // Tooltip null process is null.
     tooltipRange.set(0, 9);
-    assertThat(tooltip.getCpuThreadInfo()).isNull();
+    assertThat(tooltip.getCpuThreadSliceInfo()).isNull();
   }
 
   @Test
@@ -924,6 +925,28 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(1);
     assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries().get(0).value.getDurationUs()).isEqualTo(Long.MAX_VALUE);
     myCpuService.setValidTrace(true);
+
+    Iterator<CpuProfilerStage.CaptureState> comingStates = Iterators.forArray(CpuProfilerStage.CaptureState.STOPPING,
+                                                                              CpuProfilerStage.CaptureState.PARSING,
+                                                                              CpuProfilerStage.CaptureState.IDLE);
+
+    AspectObserver observer = new AspectObserver();
+    myStage.getAspect().addDependency(observer).onChange(CpuProfilerAspect.CAPTURE_STATE, () -> {
+      assertThat(myStage.getCaptureState()).isEqualTo(comingStates.next());
+      switch (myStage.getCaptureState()) {
+        case IDLE:
+          assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(0);
+          break;
+        case STOPPING:
+        case PARSING:
+          assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(1);
+          assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries().get(0).value.getDurationUs()).isLessThan(Long.MAX_VALUE);
+          break;
+        default:
+          throw new RuntimeException("Unreachable code");
+      }
+    });
+
     stopCapturing();
     assertThat(myStage.getInProgressTraceDuration().getSeries().getSeries()).hasSize(0);
   }
@@ -1339,10 +1362,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Sanity check to see if we reached the final capture state
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
 
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.CAPTURE_START_FAILURE_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.CAPTURE_START_FAILURE_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
-    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.CAPTURE_START_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.CAPTURE_START_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
+    assertThat(myServices.getBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
   }
 
   @Test
@@ -1367,10 +1390,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     stopCapturing();
     // Sanity check to see if we reached the final capture state
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.CAPTURE_STOP_FAILURE_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.CAPTURE_STOP_FAILURE_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
-    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.CAPTURE_STOP_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.CAPTURE_STOP_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
+    assertThat(myServices.getBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
   }
 
   @Test
@@ -1397,10 +1420,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     stopCapturing();
     // Sanity check to see if we reached the final capture state
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FAILURE_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FAILURE_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
-    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
+    assertThat(myServices.getBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
   }
 
   @Test
@@ -1458,10 +1481,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(stage.isImportTraceMode()).isTrue();
 
     // We should show a balloon saying the import has failed
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
-    assertThat(myServices.getErrorBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_FILE_FAILURE_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isEqualTo(CpuProfilerStage.CPU_BUG_TEMPLATE_URL);
+    assertThat(myServices.getBalloonUrlText()).isEqualTo(CpuProfilerStage.REPORT_A_BUG_TEXT);
 
     // We should track failed imports
     assertThat(tracker.getLastCpuProfilerType()).isEqualTo(CpuProfiler.CpuProfilerType.UNSPECIFIED_PROFILER);
@@ -1482,10 +1505,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     assertThat(stage.isImportTraceMode()).isTrue();
 
     // We should show a balloon saying the parsing was aborted, because FakeParserCancelParsing emulates a cancelled parsing task
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_ABORTED_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_IMPORTED_TRACE_ABORTED_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isNull();
-    assertThat(myServices.getErrorBalloonUrlText()).isNull();
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_ABORTED_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_IMPORTED_TRACE_ABORTED_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isNull();
+    assertThat(myServices.getBalloonUrlText()).isNull();
   }
 
   @Test
@@ -1500,10 +1523,10 @@ public class CpuProfilerStageTest extends AspectObserver {
     stopCapturing(stage);
 
     // We should show a balloon saying the parsing was aborted, because FakeParserCancelParsing emulates a cancelled parsing task
-    assertThat(myServices.getErrorBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_ABORTED_BALLOON_TITLE);
-    assertThat(myServices.getErrorBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_RECORDED_TRACE_ABORTED_BALLOON_TEXT);
-    assertThat(myServices.getErrorBalloonUrl()).isNull();
-    assertThat(myServices.getErrorBalloonUrlText()).isNull();
+    assertThat(myServices.getBalloonTitle()).isEqualTo(CpuProfilerStage.PARSING_ABORTED_BALLOON_TITLE);
+    assertThat(myServices.getBalloonBody()).isEqualTo(CpuProfilerStage.PARSING_RECORDED_TRACE_ABORTED_BALLOON_TEXT);
+    assertThat(myServices.getBalloonUrl()).isNull();
+    assertThat(myServices.getBalloonUrlText()).isNull();
   }
 
   @Test

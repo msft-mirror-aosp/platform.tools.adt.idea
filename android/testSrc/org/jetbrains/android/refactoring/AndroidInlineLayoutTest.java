@@ -1,12 +1,16 @@
 package org.jetbrains.android.refactoring;
 
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.refactoring.actions.InlineAction;
+import com.intellij.testFramework.MapDataContext;
+import com.intellij.testFramework.TestActionEvent;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.containers.MultiMap;
 import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author Eugene.Kudelevsky
@@ -52,23 +56,33 @@ public class AndroidInlineLayoutTest extends AndroidTestCase {
     doTestCommonInlineAll();
   }
 
-  // fails after IDEA 181.3263.15 merge
-  public void ignore_test9() throws Exception {
+  public void test9() throws Exception {
     final String testName = getTestName(true);
     myFixture.copyFileToProject(BASE_PATH + testName + ".xml", "res/layout/test.xml");
     final VirtualFile f = myFixture.copyFileToProject(BASE_PATH + testName + "_included.xml", "res/layout/included.xml");
     myFixture.configureFromExistingVirtualFile(f);
     AndroidInlineLayoutHandler.setTestConfig(new AndroidInlineTestConfig(true));
     try {
-      final Presentation p = myFixture.testAction(new InlineAction());
-      assertTrue(p.isEnabled());
-      assertTrue(p.isVisible());
+      TestActionEvent e = doInlineFileTest();
+      assertTrue(e.getPresentation().isEnabled());
+      assertTrue(e.getPresentation().isVisible());
     }
     finally {
       AndroidInlineLayoutHandler.setTestConfig(null);
     }
     myFixture.checkResultByFile("res/layout/test.xml", BASE_PATH + testName + "_after.xml", true);
     assertNull(myFixture.getTempDirFixture().getFile("res/layout/included.xml"));
+  }
+
+  @NotNull
+  private TestActionEvent doInlineFileTest() {
+    MapDataContext context = new MapDataContext();
+    context.put(CommonDataKeys.PROJECT, getProject());
+    context.put(CommonDataKeys.EDITOR, myFixture.getEditor());
+    context.put(CommonDataKeys.PSI_ELEMENT, myFixture.getFile());
+    TestActionEvent e = new TestActionEvent(context);
+    new InlineAction().actionPerformed(e);
+    return e;
   }
 
   public void test10() throws Exception {
@@ -91,15 +105,13 @@ public class AndroidInlineLayoutTest extends AndroidTestCase {
     doTestCommonInlineThisOnly();
   }
 
-  // fails after IDEA 181.3263.15 merge
-  public void ignore_test15() throws Exception {
+  public void test15() throws Exception {
     myFixture.copyFileToProject(BASE_PATH + getTestName(true) + "_included.xml", "res/layout-land/included.xml");
     doTestCommonInlineActionWithConflicts(false, true);
     myFixture.checkResultByFile("res/layout/test.xml", BASE_PATH + getTestName(true) + "_after.xml", true);
   }
 
-  // fails after IDEA 181.3263.15 merge
-  public void ignore_test16() throws Exception {
+  public void test16() throws Exception {
     myFixture.copyFileToProject("R.java", "gen/p1/p2/R.java");
     myFixture.copyFileToProject(BASE_PATH + "MyActivity.java", "src/p1/p2/MyActivity.java");
     doTestCommonInlineActionWithConflicts(false, true);
@@ -162,7 +174,7 @@ public class AndroidInlineLayoutTest extends AndroidTestCase {
     final AndroidInlineTestConfig config = new AndroidInlineTestConfig(inlineThisOnly);
     AndroidInlineLayoutHandler.setTestConfig(config);
     try {
-      myFixture.testAction(new InlineAction());
+      doInlineFileTest();
       final MultiMap<PsiElement, String> conflicts = config.getConflicts();
       assertEquals(1, conflicts.keySet().size());
       assertEquals(1, conflicts.values().size());

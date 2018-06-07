@@ -54,11 +54,11 @@ final class RemoveKeysAction extends AnAction {
     StringResourceRepository repository = model.getRepository();
     Project project = myPanel.getFacet().getModule().getProject();
 
-    PsiElement[] keys = Arrays.stream(table.getSelectedRowModelIndices())
-      .mapToObj(index -> model.getStringResourceAt(index).getKey())
-      .flatMap(key -> repository.getItems(key).stream())
-      .map(item -> LocalResourceRepository.getItemTag(project, item))
-      .toArray(PsiElement[]::new);
+    PsiElement[] keys = Arrays.stream(table.getSelectedModelRowIndices())
+                              .mapToObj(index -> model.getStringResourceAt(index).getKey())
+                              .flatMap(key -> repository.getItems(key).stream())
+                              .map(item -> LocalResourceRepository.getItemTag(project, item))
+                              .toArray(PsiElement[]::new);
 
     if (keys.length == 0) {
       return;

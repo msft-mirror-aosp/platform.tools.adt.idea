@@ -26,7 +26,8 @@ import java.util.List;
 @Styleable(value = "MotionScene", packageName = "android.support.constraint")
 public interface MotionScene extends MotionElement {
   OnSwipe getOnSwipe();
-  Transition getTransition();
+  List<Transition> getTransitions();
+  StateSet getStateSet();
   List<ConstraintSet> getConstraintSets();
-  KeyFrameSet getKeyFrameSet();
+  List<KeyFrameSet> getKeyFrameSets();
 }

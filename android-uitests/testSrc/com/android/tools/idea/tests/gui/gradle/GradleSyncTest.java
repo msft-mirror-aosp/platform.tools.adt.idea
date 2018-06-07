@@ -601,7 +601,6 @@ public class GradleSyncTest {
     assertThat(buildTarget.getAdditionalLibraries()).hasSize(0);
   }
 
-  @RunIn(TestGroup.UNRELIABLE) // b/77709192
   @Test
   public void gradleModelCache() throws IOException {
     guiTest.importSimpleLocalApplication();
@@ -618,7 +617,7 @@ public class GradleSyncTest {
         try {
           ProjectManagerEx projectManager = ProjectManagerEx.getInstanceEx();
           Project project = projectManager.convertAndLoadProject(projectPath.getPath());
-          GradleSyncState.subscribe(project, new GradleSyncListener.Adapter() {
+          GradleSyncState.subscribe(project, new GradleSyncListener() {
             @Override
             public void syncSkipped(@NotNull Project project) {
               syncSkipped.set(true);

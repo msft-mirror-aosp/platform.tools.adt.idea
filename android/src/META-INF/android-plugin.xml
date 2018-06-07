@@ -52,31 +52,25 @@
     </component>
     <component>
       <implementation-class>com.android.tools.idea.editors.theme.AndroidThemePreviewToolWindowManager</implementation-class>
-      <skipForDefaultProject/>
       <headless-implementation-class/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.gradle.project.AndroidGradleProjectComponent</implementation-class>
-      <skipForDefaultProject/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.res.PsiProjectListener</implementation-class>
-      <skipForDefaultProject/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.res.ResourceNotificationManager</implementation-class>
-      <skipForDefaultProject/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild</implementation-class>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.profiling.view.EmptyManager</implementation-class>
-      <skipForDefaultProject/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.profiling.view.AnalysisResultsManager</implementation-class>
-      <skipForDefaultProject/>
     </component>
     <component>
       <implementation-class>com.android.tools.idea.res.ResourceClassRegistry</implementation-class>
@@ -244,7 +238,7 @@
             description="Migrate App To AppCompat">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
-    <action id="AndroidMigrateToAndroidxAction" class="org.jetbrains.android.refactoring.MigrateToAndroidxAction" text="Refactor to AndroidX..."
+    <action id="AndroidMigrateToAndroidxAction" class="org.jetbrains.android.refactoring.MigrateToAndroidxAction" text="Migrate to AndroidX..."
             description="Migrate To AndroidX Package Names">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
@@ -665,6 +659,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintEasterEgg" displayName="Code contains easter egg" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintEasterEggInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintEllipsizeMaxLines" displayName="Combining Ellipsize and Maxlines" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintEllipsizeMaxLinesInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintEnforceUTF8" displayName="Encoding used in resource files is not UTF-8" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintEnforceUTF8Inspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintEnqueueWork" displayName="WorkManager Enqueue" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintEnqueueWorkInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintExifInterface" displayName="Using android.media.ExifInterface" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintExifInterfaceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintExpiredTargetSdkVersion" displayName="TargetSdkVersion No Longer Supported" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintExpiredTargetSdkVersionInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintExpiringTargetSdkVersion" displayName="TargetSdkVersion Soon Expiring" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintExpiringTargetSdkVersionInspection"/>

@@ -19,6 +19,7 @@ import com.android.builder.model.AndroidProject
 import com.intellij.codeInsight.daemon.impl.analysis.XmlUnusedNamespaceInspection
 import com.intellij.openapi.application.runUndoTransparentWriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture
 import com.intellij.testFramework.fixtures.TestFixtureBuilder
 import org.jetbrains.android.AndroidTestCase
@@ -28,6 +29,8 @@ import org.jetbrains.android.inspections.AndroidElementNotAllowedInspection
 import org.jetbrains.android.inspections.AndroidUnknownAttributeInspection
 
 class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
+
+  private lateinit var libXml: PsiFile
 
   override fun configureAdditionalModules(
     projectBuilder: TestFixtureBuilder<IdeaProjectTestFixture>,
@@ -57,12 +60,16 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!.manifest!!.`package`.value = "com.example.lib"
     }
 
-    myFixture.addFileToProject(
+    libXml = myFixture.addFileToProject(
       "${getAdditionalModulePath("lib")}/res/values/lib.xml",
       // language=xml
       """
         <resources>
           <string name="libString">Hello from lib</string>
+          <attr name="libAttr" format="string" />
+
+          <style name="LibTheme">
+          </style>
         </resources>
       """.trimIndent()
     )
@@ -87,6 +94,16 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
           <string name="appString">Hello from app</string>
           <string name="s1">@string/appString</string>
           <string name="s2">@string/libString</string>
+          <attr name="text" format="string" />
+
+          <style name="AppStyle" parent="LibTheme">
+            <item name="libAttr">@string/libString</item>
+            <item name="text">@string/appString</item>
+            <item name="android:text">hello</item>
+          </style>
+
+          <style name="Another" parent="@style/LibTheme">
+          </style>
         </resources>
       """.trimIndent()
     )
@@ -95,8 +112,41 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       "/res/layout/layout.xml",
       // language=xml
       """
-        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android">
-          <TextView android:text="@string/appString" />
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            app:libAttr="layout">
+          <TextView android:text="@string/appString" app:libAttr="view" />
+          <TextView android:text="@string/libString" />
+        </LinearLayout>
+      """.trimIndent()
+    )
+
+    myFixture.addFileToProject(
+      "/res/layout/layout2.xml",
+      // language=xml
+      """
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:existing="http://schemas.android.com/apk/res/com.example.lib"
+            app:libAttr="layout">
+          <TextView android:text="@string/appString" app:libAttr="view" />
+          <TextView android:text="@string/libString" />
+        </LinearLayout>
+      """.trimIndent()
+    )
+
+    myFixture.addFileToProject(
+      "/res/layout/layout3.xml",
+      // language=xml
+      """
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:lib="http://example.com"
+            app:libAttr="layout">
+          <TextView android:text="@string/appString" app:libAttr="view" />
           <TextView android:text="@string/libString" />
         </LinearLayout>
       """.trimIndent()
@@ -108,9 +158,46 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       "/res/layout/layout.xml",
       // language=xml
       """
-        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android">
-          <TextView android:text="@string/appString" />
-          <TextView android:text="@com.example.lib:string/libString" />
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:lib="http://schemas.android.com/apk/res/com.example.lib"
+            lib:libAttr="layout">
+          <TextView android:text="@string/appString" lib:libAttr="view" />
+          <TextView android:text="@lib:string/libString" />
+        </LinearLayout>
+      """.trimIndent(),
+      true
+    )
+
+    myFixture.checkResult(
+      "/res/layout/layout2.xml",
+      // language=xml
+      """
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:existing="http://schemas.android.com/apk/res/com.example.lib"
+            existing:libAttr="layout">
+          <TextView android:text="@string/appString" existing:libAttr="view" />
+          <TextView android:text="@existing:string/libString" />
+        </LinearLayout>
+      """.trimIndent(),
+      true
+    )
+
+    myFixture.checkResult(
+      "/res/layout/layout3.xml",
+      // language=xml
+      """
+        <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:lib="http://example.com"
+            xmlns:lib2="http://schemas.android.com/apk/res/com.example.lib"
+            lib2:libAttr="layout">
+          <TextView android:text="@string/appString" lib2:libAttr="view" />
+          <TextView android:text="@lib2:string/libString" />
         </LinearLayout>
       """.trimIndent(),
       true
@@ -122,10 +209,20 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
     myFixture.checkResult(
       // language=xml
       """
-        <resources>
+        <resources xmlns:lib="http://schemas.android.com/apk/res/com.example.lib">
           <string name="appString">Hello from app</string>
           <string name="s1">@string/appString</string>
-          <string name="s2">@com.example.lib:string/libString</string>
+          <string name="s2">@lib:string/libString</string>
+          <attr name="text" format="string" />
+
+          <style name="AppStyle" parent="lib:LibTheme">
+            <item name="lib:libAttr">@lib:string/libString</item>
+            <item name="text">@string/appString</item>
+            <item name="android:text">hello</item>
+          </style>
+
+          <style name="Another" parent="@lib:style/LibTheme">
+          </style>
         </resources>
       """.trimIndent(),
       true
@@ -146,9 +243,10 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
       """
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-                  package="com.example.app">
+            xmlns:lib="http://schemas.android.com/apk/res/com.example.lib"
+            package="com.example.app">
             <application android:icon="@drawable/icon"
-                android:label="@com.example.lib:string/libString">
+                android:label="@lib:string/libString">
             </application>
         </manifest>
       """.trimIndent(),
@@ -284,7 +382,12 @@ class MigrateToResourceNamespacesProcessorTest : AndroidTestCase() {
    * Runs the refactoring and changes the model to enable namespacing, like the sync would do.
    */
   private fun refactorAndSync() {
+    val before = libXml.modificationStamp
+
     MigrateToResourceNamespacesProcessor(myFacet).run()
+
+    assertEquals(before, libXml.modificationStamp)
+
     enableNamespacing(myFacet, "com.example.app")
     enableNamespacing(AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!, "com.example.lib")
   }

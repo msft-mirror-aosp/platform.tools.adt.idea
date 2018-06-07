@@ -15,11 +15,14 @@
  */
 package org.jetbrains.android.refactoring
 
+import com.android.SdkConstants.AUTO_URI
+import com.android.SdkConstants.URI_PREFIX
 import com.android.builder.model.AaptOptions
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.AbstractResourceRepository
 import com.android.ide.common.resources.SingleNamespaceResourceRepository
 import com.android.resources.ResourceType
+import com.android.resources.ResourceUrl
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.res.ResourceRepositoryManager
@@ -41,8 +44,11 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.migration.PsiMigrationManager
+import com.intellij.psi.impl.source.xml.SchemaPrefixReference
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlAttribute
+import com.intellij.psi.xml.XmlDocument
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
 import com.intellij.refactoring.BaseRefactoringProcessor
@@ -58,6 +64,8 @@ import com.intellij.util.xml.GenericDomValue
 import com.intellij.util.xml.WrappingConverter
 import org.jetbrains.android.dom.converters.AndroidResourceReference
 import org.jetbrains.android.dom.converters.ResourceReferenceConverter
+import org.jetbrains.android.dom.converters.StyleItemNameConverter
+import org.jetbrains.android.dom.layout.LayoutElement
 import org.jetbrains.android.dom.manifest.AndroidManifestUtils
 import org.jetbrains.android.dom.resources.ResourceValue
 import org.jetbrains.android.facet.AndroidFacet
@@ -109,11 +117,13 @@ class MigrateToResourceNamespacesHandler : RefactoringActionHandler {
 }
 
 private sealed class ResourceUsageInfo(element: PsiElement, startOffset: Int, endOffset: Int) : UsageInfo(element, startOffset, endOffset) {
+  constructor(element: PsiElement) : this(element, 0, element.textLength)
+
   abstract val resourceType: ResourceType
   abstract val name: String
 }
 
-private class DomUsageInfo(
+private class DomValueUsageInfo(
   ref: PsiReference,
   val domValue: GenericDomValue<ResourceValue>
 ) : ResourceUsageInfo( // We don't use the UsageInfo(PsiReference) constructor to avoid resolving the reference.
@@ -134,7 +144,17 @@ private class CodeUsageInfo(
   val classReference: PsiReference,
   override val resourceType: ResourceType,
   override val name: String
-) : ResourceUsageInfo(fieldReferenceExpression, 0, fieldReferenceExpression.textLength)
+) : ResourceUsageInfo(fieldReferenceExpression)
+
+private class XmlAttributeUsageInfo(attribute: XmlAttribute) : ResourceUsageInfo(attribute) {
+  override val resourceType: ResourceType get() = ResourceType.ATTR
+  override val name: String = attribute.localName
+}
+
+private class StyleItemUsageInfo(val domValue: GenericDomValue<*>, url: ResourceUrl) : ResourceUsageInfo(domValue.xmlElement!!) {
+  override val resourceType: ResourceType = url.type
+  override val name: String = url.name
+}
 
 /**
  * Implements the "migrate to resource namespaces" refactoring by finding all references to resources and rewriting them.
@@ -150,18 +170,20 @@ class MigrateToResourceNamespacesProcessor(
   private val inferredNamespaces: Table<ResourceType, String, String> =
     Tables.newCustomTable(Maps.newEnumMap(ResourceType::class.java), { mutableMapOf<String, String>() })
 
+  private val elementFactory = XmlElementFactory.getInstance(myProject)
+
   override fun findUsages(): Array<out UsageInfo> {
     val progressIndicator = ProgressManager.getInstance().progressIndicator
 
     progressIndicator.text = "Analyzing XML resource files..."
     val result = mutableListOf<ResourceUsageInfo>()
-    result.addAll(findResUsages())
+    result += findResUsages()
 
     progressIndicator.text = "Analyzing manifest files..."
-    result.addAll(findManifestUsages())
+    result += findManifestUsages()
 
     progressIndicator.text = "Analyzing code files..."
-    result.addAll(findCodeUsages())
+    result += findCodeUsages()
 
     progressIndicator.text = "Inferring namespaces..."
     progressIndicator.text2 = null
@@ -205,7 +227,7 @@ class MigrateToResourceNamespacesProcessor(
           if (vf.fileType == StdFileTypes.XML) {
             val psiFile = psiManager.findFile(vf)
             if (psiFile is XmlFile) {
-              result.addAll(findXmlUsages(psiFile, facet))
+              result += findXmlUsages(psiFile, facet)
             }
           }
 
@@ -221,13 +243,11 @@ class MigrateToResourceNamespacesProcessor(
     val result = mutableListOf<ResourceUsageInfo>()
 
     for (facet in allFacets) {
-      result.addAll(
-        IdeaSourceProvider.getCurrentSourceProviders(facet)
-          .asSequence()
-          .mapNotNull { it.manifestFile }
-          .mapNotNull { psiManager.findFile(it) as? XmlFile }
-          .flatMap { findXmlUsages(it, facet).asSequence() }
-      )
+      result += IdeaSourceProvider.getCurrentSourceProviders(facet)
+        .asSequence()
+        .mapNotNull { it.manifestFile }
+        .mapNotNull { psiManager.findFile(it) as? XmlFile }
+        .flatMap { findXmlUsages(it, facet).asSequence() }
     }
 
     return result
@@ -242,21 +262,34 @@ class MigrateToResourceNamespacesProcessor(
     val domManager = DomManager.getDomManager(myProject)
     val moduleRepo = ResourceRepositoryManager.getModuleResources(currentFacet)
 
+    fun referenceNeedsRewriting(resourceType: ResourceType, name: String): Boolean {
+      return !moduleRepo.hasResourceItem(ResourceNamespace.RES_AUTO, resourceType, name)
+    }
+
     xmlFile.accept(object : XmlRecursiveElementVisitor() {
       override fun visitXmlTag(tag: XmlTag) {
-        val domValue = domManager.getDomElement(tag) as? GenericDomValue<*>
-        if (domValue != null) {
-          handleDomValue(domValue)
+        val domElement = domManager.getDomElement(tag)
+
+        when (domElement) {
+          is LayoutElement -> {
+            for (attribute in tag.attributes) {
+              if (attribute.namespace == AUTO_URI) {
+                result += XmlAttributeUsageInfo(attribute)
+              }
+            }
+          }
+          is GenericDomValue<*> -> handleGenericDomValue(domElement)
         }
+
         super.visitXmlTag(tag)
       }
 
       override fun visitXmlAttribute(attribute: XmlAttribute) {
-        handleDomValue(domManager.getDomElement(attribute) as? GenericDomValue<*> ?: return)
+        handleGenericDomValue(domManager.getDomElement(attribute) as? GenericDomValue<*> ?: return)
         super.visitXmlAttribute(attribute)
       }
 
-      private fun handleDomValue(domValue: GenericDomValue<*>) {
+      private fun handleGenericDomValue(domValue: GenericDomValue<*>) {
         val converter = WrappingConverter.getDeepestConverter(domValue.converter, domValue)
         val psiElement = DomUtil.getValueElement(domValue) ?: return
         when (converter) {
@@ -276,16 +309,22 @@ class MigrateToResourceNamespacesProcessor(
                   // See if this resource is defined in the same module, otherwise it needs to be rewritten.
                   val name = resourceValue.resourceName.nullize(nullizeSpaces = true) ?: continue@references
                   val resourceType = resourceValue.type ?: continue@references
-                  if (!moduleRepo.hasResourceItem(ResourceNamespace.RES_AUTO, resourceType, name)) {
+                  if (referenceNeedsRewriting(resourceType, name)) {
                     // We know this GenericDomValue used ResourceReferenceConverter, which is for ResourceValue.
                     @Suppress("UNCHECKED_CAST")
-                    result.add(DomUsageInfo(reference, domValue as GenericDomValue<ResourceValue>))
+                    result += DomValueUsageInfo(reference, domValue as GenericDomValue<ResourceValue>)
                   }
                 }
               }
             }
           }
-        // TODO(b/78765120): handle other relevant converters.
+          is StyleItemNameConverter -> {
+            val url = domValue.stringValue?.let(ResourceUrl::parseAttrReference) ?: return
+            if (url.namespace == null && referenceNeedsRewriting(url.type, url.name)) {
+              result += StyleItemUsageInfo(domValue, url)
+            }
+          }
+          // TODO(b/78765120): handle other relevant converters.
         }
       }
     })
@@ -317,13 +356,11 @@ class MigrateToResourceNamespacesProcessor(
         val name = nameRef.referenceName ?: continue
         val resourceType = ResourceType.getEnum(typeRef.referenceName ?: continue) ?: continue
         if (!moduleRepo.hasResourceItem(ResourceNamespace.RES_AUTO, resourceType, name)) {
-          result.add(
-            CodeUsageInfo(
-              fieldReferenceExpression = nameRef,
-              classReference = psiReference,
-              resourceType = resourceType,
-              name = name
-            )
+          result += CodeUsageInfo(
+            fieldReferenceExpression = nameRef,
+            classReference = psiReference,
+            resourceType = resourceType,
+            name = name
           )
         }
       }
@@ -342,25 +379,37 @@ class MigrateToResourceNamespacesProcessor(
     usages.forEachIndexed { index, usageInfo ->
       if (usageInfo !is ResourceUsageInfo) error("Don't know how to handle ${usageInfo.javaClass.name}.")
 
-      val inferredNamespace = inferredNamespaces[usageInfo.resourceType, usageInfo.name] ?: return@forEachIndexed
+      val inferredPackage = inferredNamespaces[usageInfo.resourceType, usageInfo.name] ?: return@forEachIndexed
       when (usageInfo) {
-        is DomUsageInfo -> {
+        is DomValueUsageInfo -> {
           val oldResourceValue = usageInfo.domValue.value ?: return@forEachIndexed
+          val prefix = findOrCreateNamespacePrefix(usageInfo.domValue.xmlTag, inferredPackage)
           val newResourceValue = ResourceValue.referenceTo(
             oldResourceValue.prefix,
-            inferredNamespace,
+            prefix,
             oldResourceValue.resourceType,
             oldResourceValue.resourceName
           )
-
           usageInfo.domValue.value = newResourceValue
+        }
+        is XmlAttributeUsageInfo -> {
+          val element = usageInfo.element as? XmlAttribute ?: return@forEachIndexed
+          val prefix = findOrCreateNamespacePrefix(element.parent, inferredPackage)
+          element.references
+            .find {it is SchemaPrefixReference}
+            ?.handleElementRename(prefix)
+        }
+        is StyleItemUsageInfo -> {
+          val prefix = findOrCreateNamespacePrefix(usageInfo.domValue.xmlTag, inferredPackage)
+          val newUrl = ResourceUrl.create(prefix, ResourceType.ATTR, usageInfo.name)
+          usageInfo.domValue.stringValue = newUrl.qualifiedName
         }
         is CodeUsageInfo -> {
           usageInfo.classReference.bindToElement(
             AndroidRefactoringUtil.findOrCreateClass(
               myProject,
               psiMigration,
-              AndroidResourceUtil.packageToRClass(inferredNamespace)
+              AndroidResourceUtil.packageToRClass(inferredPackage)
             )
           )
         }
@@ -390,6 +439,42 @@ class MigrateToResourceNamespacesProcessor(
     }
   }
 
+  /**
+   * Finds the xmlns prefix used for the given resource package name in the context of the given [tag]. If no such prefix is defined,
+   * it gets added to the root tag of the document.
+   */
+  private fun findOrCreateNamespacePrefix(tag: XmlTag, inferredPackage: String): String {
+    return tag.getPrefixByNamespace(URI_PREFIX + inferredPackage) ?: run {
+      var newPrefix = choosePrefix(inferredPackage)
+      if (tag.getNamespaceByPrefix(newPrefix).isNotEmpty()) {
+        var i = 2
+        while (tag.getNamespaceByPrefix(newPrefix + i).isNotEmpty()) {
+          i++
+        }
+
+        newPrefix += i
+      }
+
+      tag.parentOfType<XmlDocument>()?.rootTag?.let { addXmlnsDeclaration(it, newPrefix, URI_PREFIX + inferredPackage) }
+      newPrefix
+    }
+  }
+
+  /**
+   * Picks the short namespace prefix for the given resource package name.
+   *
+   * TODO(b/80284538): Decide how to pick a short name for a library. For now we're using the last component of the package name, but we
+   *                   discussed storing the suggested short prefix in an AAR's metadata, so that library authors can provide a suggestion.
+   */
+  private fun choosePrefix(packageName: String): String = packageName.substringAfterLast('.')
+
+  private fun addXmlnsDeclaration(tag: XmlTag, prefix: String, uri: String) {
+    tag.addBefore(
+      elementFactory.createAttribute("xmlns:$prefix", uri, tag),
+      tag.attributes.firstOrNull { it.namespacePrefix != "xmlns" }
+    )
+  }
+
   override fun preprocessUsages(refUsages: Ref<Array<UsageInfo>>): Boolean {
     // TODO(b/78765120): Report conflicts and any other issues. This method runs on the UI thread, so we need to do the actual work in [findUsages].
     return if (refUsages.get().isNotEmpty()) {
@@ -406,4 +491,3 @@ class MigrateToResourceNamespacesProcessor(
     override fun getProcessedElementsHeader() = "Resource references to migrate"
   }
 }
-

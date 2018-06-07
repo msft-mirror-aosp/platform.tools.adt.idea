@@ -15,7 +15,6 @@
  */
 package com.android.tools.profilers.cpu;
 
-import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.CpuProfiler.*;
@@ -24,6 +23,7 @@ import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -88,7 +88,7 @@ public class CpuCaptureSessionArtifact implements SessionArtifact<TraceInfo> {
     else if (isImportedSession()) {
       // For imported sessions, we show the time the file was imported, as it doesn't make sense to show the capture start time within the
       // session, which is always going to be 00:00:00
-      return SessionArtifact.getDisplayTime(TimeUnit.NANOSECONDS.toMillis(mySession.getStartTimestamp()));
+      return TimeFormatter.getLocalizedDateTime(TimeUnit.NANOSECONDS.toMillis(mySession.getStartTimestamp()));
     }
     else {
       // Otherwise, we show the formatted timestamp of the capture relative to the session start time.
@@ -139,8 +139,20 @@ public class CpuCaptureSessionArtifact implements SessionArtifact<TraceInfo> {
                .trackSessionArtifactSelected(this, myProfilers.getSessionsManager().isSessionAlive());
   }
 
-  public boolean isOngoingCapture() {
+  @Override
+  public boolean isOngoing() {
     return myIsOngoingCapture;
+  }
+
+  @Override
+  public boolean canExport() {
+    return !isOngoing();
+  }
+
+  @Override
+  public void export(@NotNull OutputStream outputStream) {
+    assert canExport();
+    CpuProfiler.saveCaptureToFile(getArtifactProto(), outputStream);
   }
 
   private boolean isImportedSession() {

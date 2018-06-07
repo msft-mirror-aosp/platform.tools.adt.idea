@@ -52,6 +52,7 @@ import static com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile;
 public abstract class GradleDslSimpleExpression extends GradleDslElementImpl implements GradleDslExpression {
   @NotNull private static final String SINGLE_QUOTES = "\'";
   @NotNull private static final String DOUBLE_QUOTES = "\"";
+  protected boolean myIsReference;
   @Nullable private PsiElement myUnsavedConfigBlock;
 
   @Nullable protected PsiElement myExpression;
@@ -143,7 +144,7 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
 
   @Nullable
   public final Object getRawValue() {
-    return  myRawCachedValue.getValue();
+    return myRawCachedValue.getValue();
   }
 
   /**
@@ -170,6 +171,19 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
   @NotNull
   public List<GradleReferenceInjection> getResolvedVariables() {
     return myDependencies.stream().filter(e -> e.isResolved()).collect(Collectors.toList());
+  }
+
+  public boolean isReference() {
+    return myIsReference;
+  }
+
+  public void setReference(boolean isReference) {
+    myIsReference = isReference;
+  }
+
+  @Nullable
+  public String getReferenceText() {
+    return null; // Overridden by subclasses.
   }
 
   @Override
@@ -425,9 +439,14 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
   @Nullable
   private static GradleDslElement resolveReferenceOnElement(@NotNull GradleDslElement element,
                                                             @NotNull List<String> nameParts,
-                                                            boolean resolveWithOrder) {
+                                                            boolean resolveWithOrder,
+                                                            int ignoreParentNumber) {
     // We need to keep track of the last element we saw to ensure we only check items BEFORE the one we are resolving.
-    GradleDslElement lastElement = null;
+    GradleDslElement lastElement = (resolveWithOrder) ? element : null;
+    // Make sure we don't check any nested scope for the element.
+    while (ignoreParentNumber-- > 0 && element != null && !(element instanceof GradleDslFile)) {
+      element = element.getParent();
+    }
     while (element != null) {
       if (isPropertiesElementOrMap(element)) {
         GradleDslElement propertyElement = resolveReferenceOnPropertiesElement((GradlePropertiesDslElement)element, nameParts, lastElement);
@@ -461,7 +480,8 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
                                                                @NotNull List<String> referenceText,
                                                                boolean resolveWithOrder) {
     // Try to resolve in the build.gradle file the startElement is belongs to.
-    GradleDslElement element = resolveReferenceOnElement(startElement, referenceText, resolveWithOrder);
+    GradleDslElement element =
+      resolveReferenceOnElement(startElement, referenceText, resolveWithOrder, startElement.getNameElement().fullNameParts().size());
     if (element != null) {
       return element;
     }
@@ -616,19 +636,20 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
       return ImmutableList.of();
     }
     return ApplicationManager.getApplication()
-      .runReadAction((Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getInjections(this, element));
+                             .runReadAction(
+                               (Computable<List<GradleReferenceInjection>>)() -> getDslFile().getParser().getInjections(this, element));
   }
 
   protected void setupDependencies(@Nullable PsiElement element) {
     // Unregister any registered dependencies.
     myDependencies.stream().filter(e -> e.getToBeInjected() != null).forEach(e -> e.getToBeInjected().unregisterDependent(e));
     myDependencies.stream().filter(e -> e.getToBeInjected() == null)
-      .forEach(e -> getDslFile().getContext().getDependencyManager().unregisterUnresolvedReference(e));
+                  .forEach(e -> getDslFile().getContext().getDependencyManager().unregisterUnresolvedReference(e));
     myDependencies.clear();
     myDependencies.addAll(fetchDependencies(element));
     // Register any resolved dependencies with the elements they depend on.
     myDependencies.stream().filter(e -> e.getToBeInjected() != null).forEach(e -> e.getToBeInjected().registerDependent(e));
     myDependencies.stream().filter(e -> e.getToBeInjected() == null)
-      .forEach(e -> getDslFile().getContext().getDependencyManager().registerUnresolvedReference(e));
+                  .forEach(e -> getDslFile().getContext().getDependencyManager().registerUnresolvedReference(e));
   }
 }

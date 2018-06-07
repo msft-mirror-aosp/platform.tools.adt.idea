@@ -22,22 +22,22 @@ import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.LocalQuickFixProvider;
 import com.intellij.ide.hierarchy.JavaHierarchyUtil;
+import com.intellij.lang.jvm.JvmModifier;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.source.resolve.ResolveCache;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.ClassInheritorsSearch;
 import com.intellij.psi.xml.XmlAttributeValue;
-import com.intellij.util.ArrayUtil;
-import com.intellij.util.Consumer;
-import com.intellij.util.IncorrectOperationException;
-import com.intellij.util.Query;
+import com.intellij.util.*;
 import com.intellij.util.xml.*;
+import org.jetbrains.android.dom.CompleteLibraryClasses;
 import org.jetbrains.android.dom.manifest.Manifest;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.IdeaSourceProvider;
@@ -56,17 +56,21 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
 
   private final boolean myUseManifestBasePackage;
   private final String[] myExtendClassesNames;
-  private final boolean myCompleteNonModuleClass;
+  private final boolean myCompleteLibraryClasses;
 
   /**
+   * Constructs a new {@link PackageClassConverter}.
+   *
    * @param useManifestBasePackage if true, even when the attribute it's not defined within the manifest, the resolution will use the
-   *                               manifest package for completion.
-   * @param completeNonModuleClasses if true, find classes outside of the current module
+   *                               manifest package for completion
+   * @param completeLibraryClasses if true, offer library classes in code completion
    * @param extendClassesNames     list of the classes that the searched class can extend
+   *
+   * @see CompleteLibraryClasses
    */
-  public PackageClassConverter(boolean useManifestBasePackage, boolean completeNonModuleClasses, String... extendClassesNames) {
+  public PackageClassConverter(boolean useManifestBasePackage, boolean completeLibraryClasses, String... extendClassesNames) {
     myUseManifestBasePackage = useManifestBasePackage;
-    myCompleteNonModuleClass = completeNonModuleClasses;
+    myCompleteLibraryClasses = completeLibraryClasses;
     myExtendClassesNames = extendClassesNames;
   }
 
@@ -133,7 +137,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
   public PsiReference[] createReferences(GenericDomValue<PsiClass> value, final PsiElement element, ConvertContext context) {
     assert element instanceof XmlAttributeValue;
     final XmlAttributeValue attrValue = (XmlAttributeValue)element;
-    final String strValue = attrValue.getValue();
+    final String strValue = StringUtil.notNullize(attrValue.getValue());
 
     final boolean startsWithPoint = strValue.startsWith(".");
     final int start = attrValue.getValueTextRange().getStartOffset() - attrValue.getTextRange().getStartOffset();
@@ -145,7 +149,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
     final String[] extendClassesNames = extendClassAnnotation != null
                                         ? new String[]{extendClassAnnotation.value()}
                                         : myExtendClassesNames;
-    final boolean inModuleOnly = !myCompleteNonModuleClass && domElement.getAnnotation(CompleteNonModuleClass.class) == null;
+    final boolean completeLibraryClasses = myCompleteLibraryClasses || domElement.getAnnotation(CompleteLibraryClasses.class) != null;
 
     AndroidFacet facet = AndroidFacet.getInstance(context);
     // If the source XML file is contained within the test folders, we'll also allow to resolve test classes
@@ -159,9 +163,8 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
     final List<PsiReference> result = new ArrayList<>();
     final Module module = context.getModule();
 
-    /**
-     * Using inner class here as opposed to anonymous one as with anonymous class it wouldn't be possible to access {@code myPartStart} later
-     */
+    // Using inner class here as opposed to anonymous one as with anonymous class it wouldn't be possible to access {@code myPartStart}
+    // later.
     class CustomConsumer implements Consumer<Integer> {
       int myPartStart = 0;
       private boolean myIsPackage = true;
@@ -171,8 +174,8 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
         if (index > myPartStart) {
           final TextRange range = new TextRange(start + myPartStart, start + index);
           final MyReference reference =
-            new MyReference(element, range, manifestPackage, startsWithPoint, start, myIsPackage, module, extendClassesNames, inModuleOnly,
-                            isTestFile);
+            new MyReference(element, range, manifestPackage, startsWithPoint, start, myIsPackage, module, extendClassesNames,
+                            completeLibraryClasses, isTestFile);
           result.add(reference);
         }
 
@@ -187,7 +190,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
     AndroidTextUtils.forEachOccurrence(strValue, '$', consumer.myPartStart, consumer);
     consumer.consume(strValue.length());
 
-    return result.toArray(new PsiReference[result.size()]);
+    return result.toArray(PsiReference.EMPTY_ARRAY);
   }
 
   @Nullable
@@ -264,20 +267,6 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
     return qName;
   }
 
-  @NotNull
-  public static Collection<PsiClass> findInheritors(@NotNull Project project, @Nullable final Module module,
-                                                    @NotNull final String className, boolean inModuleOnly) {
-    PsiClass base = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project));
-    if (base != null) {
-      GlobalSearchScope scope = inModuleOnly && module != null
-                                ? GlobalSearchScope.moduleWithDependenciesScope(module)
-                                : GlobalSearchScope.allScope(project);
-      Query<PsiClass> query = ClassInheritorsSearch.search(base, scope, true);
-      return query.findAll();
-    }
-    return new ArrayList<>();
-  }
-
   private static class MyReference extends PsiReferenceBase<PsiElement> implements EmptyResolveMessageProvider, LocalQuickFixProvider {
     private final int myStart;
     private final String myBasePackage;
@@ -285,7 +274,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
     private final boolean myIsPackage;
     @Nullable private final Module myModule;
     private final String[] myExtendsClasses;
-    private final boolean myCompleteOnlyModuleClasses;
+    private final boolean myCompleteLibraryClasses;
     private final boolean myIncludeTests;
 
     public MyReference(PsiElement element,
@@ -296,7 +285,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
                        boolean isPackage,
                        @Nullable Module module,
                        String[] extendsClasses,
-                       boolean completeOnlyModuleClasses,
+                       boolean completeLibraryClasses,
                        boolean includeTests) {
       super(element, range, true);
       myBasePackage = basePackage;
@@ -305,7 +294,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
       myIsPackage = isPackage;
       myModule = module;
       myExtendsClasses = extendsClasses;
-      myCompleteOnlyModuleClasses = completeOnlyModuleClasses;
+      myCompleteLibraryClasses = completeLibraryClasses;
       myIncludeTests = includeTests;
     }
 
@@ -368,7 +357,7 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
       if (myExtendsClasses != null) {
         final List<PsiClass> classes = new ArrayList<>();
         for (String extendsClass : myExtendsClasses) {
-          classes.addAll(findInheritors(myElement.getProject(), myModule, extendsClass, myCompleteOnlyModuleClasses));
+          classes.addAll(findInheritors(extendsClass));
         }
         final List<Object> result = new ArrayList<>(classes.size());
 
@@ -386,6 +375,28 @@ public class PackageClassConverter extends ResolvingConverter<PsiClass> implemen
         return ArrayUtil.toObjectArray(result);
       }
       return EMPTY_ARRAY;
+    }
+
+    @NotNull
+    public Collection<PsiClass> findInheritors(@NotNull final String className) {
+      Project project = myElement.getProject();
+      PsiClass base = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project));
+      if (base == null) {
+        return new ArrayList<>();
+      }
+
+      GlobalSearchScope scope;
+      if (myModule == null) {
+        scope = GlobalSearchScope.allScope(project);
+      }
+      else if (myCompleteLibraryClasses) {
+        scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(myModule, false);
+      } else {
+        scope = GlobalSearchScope.moduleWithDependenciesScope(myModule);
+      }
+      Query<PsiClass> query = new FilteredQuery<>(ClassInheritorsSearch.search(base, scope, true),
+                                                  psiClass -> psiClass.hasModifier(JvmModifier.PUBLIC));
+      return query.findAll();
     }
 
     @Override

@@ -16,6 +16,9 @@
 package com.android.tools.profilers.cpu;
 
 import com.android.tools.adtui.model.*;
+import com.android.tools.adtui.model.axis.AxisComponentModel;
+import com.android.tools.adtui.model.axis.ClampedAxisComponentModel;
+import com.android.tools.adtui.model.axis.ResizingAxisComponentModel;
 import com.android.tools.adtui.model.formatter.SingleUnitAxisFormatter;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.model.legend.LegendComponentModel;
@@ -266,10 +269,10 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     myCpuUsage = new DetailedCpuUsage(profilers);
 
-    myCpuUsageAxis = new AxisComponentModel.Builder(myCpuUsage.getCpuRange(), CPU_USAGE_FORMATTER, true).build();
-    myThreadCountAxis = new AxisComponentModel.Builder(myCpuUsage.getThreadRange(), NUM_THREADS_AXIS, true).build();
+    myCpuUsageAxis = new ClampedAxisComponentModel.Builder(myCpuUsage.getCpuRange(), CPU_USAGE_FORMATTER).build();
+    myThreadCountAxis = new ClampedAxisComponentModel.Builder(myCpuUsage.getThreadRange(), NUM_THREADS_AXIS).build();
     myTimeAxisGuide =
-      new AxisComponentModel.Builder(viewRange, TimeAxisFormatter.DEFAULT_WITHOUT_MINOR_TICKS, false).setGlobalRange(dataRange).build();
+      new ResizingAxisComponentModel.Builder(viewRange, TimeAxisFormatter.DEFAULT_WITHOUT_MINOR_TICKS).setGlobalRange(dataRange).build();
 
     myLegends = new CpuStageLegends(myCpuUsage, dataRange);
 
@@ -586,9 +589,13 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
                                                                      myProfilerConfigModel.getProfilingConfiguration().getProfilerType())
                                                                    .setSession(mySession)
                                                                    .build();
+    // Setting duration of the in progress trace series, so it's temporarily displayed in the chart while the trace is being parsed.
+    myInProgressTraceSeries.clear();
+    long captureStartTimeUs = TimeUnit.NANOSECONDS.toMicros(myCaptureStartTimeNs);
+    long currentTimeUs = TimeUnit.NANOSECONDS.toMicros(currentTimeNs());
+    myInProgressTraceSeries.add(captureStartTimeUs, new DefaultDurationData(currentTimeUs - captureStartTimeUs));
 
     setCaptureState(CaptureState.STOPPING);
-    myInProgressTraceSeries.clear();
     CompletableFuture.supplyAsync(
       () -> cpuService.stopProfilingApp(request), getStudioProfilers().getIdeServices().getPoolExecutor())
                      .thenAcceptAsync(this::stopCapturingCallback, getStudioProfilers().getIdeServices().getMainExecutor());
@@ -759,6 +766,7 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     // TODO (b/79244375): extract callback to its own method
     Consumer<CpuCapture> parsingCallback = (parsedCapture) -> {
+      myInProgressTraceSeries.clear();
       if (parsedCapture != null) {
         setCaptureState(CaptureState.IDLE);
         setAndSelectCapture(parsedCapture);

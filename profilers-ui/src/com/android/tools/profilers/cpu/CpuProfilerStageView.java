@@ -31,14 +31,15 @@ import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.adtui.ui.HideablePanel;
 import com.android.tools.profiler.proto.CpuProfiler.TraceInitiationType;
 import com.android.tools.profilers.*;
+import com.android.tools.profilers.cpu.atrace.AtraceCpuCapture;
 import com.android.tools.profilers.cpu.atrace.CpuKernelTooltip;
+import com.android.tools.profilers.cpu.atrace.CpuThreadSliceInfo;
 import com.android.tools.profilers.event.*;
 import com.android.tools.profilers.sessions.SessionAspect;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.stacktrace.ContextMenuItem;
 import com.android.tools.profilers.stacktrace.LoadingPanel;
 import com.google.common.annotations.VisibleForTesting;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.JBSplitter;
@@ -110,6 +111,13 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
   private static final int DETAILS_PANEL_ROW = 1;
   private static final int DETAILS_KERNEL_PANEL_ROW = 0;
   private static final int DETAILS_THREADS_PANEL_ROW = 1;
+
+  @VisibleForTesting
+  static final String ATRACE_BUFFER_OVERFLOW_TITLE = "System Trace Buffer Overflow Detected";
+
+  @VisibleForTesting
+  static final String ATRACE_BUFFER_OVERFLOW_MESSAGE = "Your capture exceeded the buffer limit, some data may be missing. Consider recording a shorter trace.";
+
 
   /**
    * Default ratio of splitter. The splitter ratio adjust the first elements size relative to the bottom elements size.
@@ -381,6 +389,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       // to properly set the layout to be expanded. If we set initially expanded to true, then the StateChangedListener will never
       // get triggered and we will not update our layout.
       .setInitiallyExpanded(false)
+      .setClickableComponent(HideablePanel.ClickableComponent.TITLE)
       .build();
 
     // Handle when we get CPU data we want to show the cpu list.
@@ -498,6 +507,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
 
     final HideablePanel threadsPanel = new HideablePanel.Builder("THREADS", threads)
       .setShowSeparator(false)
+      .setClickableComponent(HideablePanel.ClickableComponent.TITLE)
       .build();
     threadsPanel.addStateChangedListener((actionEvent) -> {
       getStage().getStudioProfilers().getIdeServices().getFeatureTracker().trackToggleCpuThreadsHideablePanel();
@@ -534,7 +544,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     InstructionsPanel infoMessage = new InstructionsPanel.Builder(
       new TextInstruction(headerMetrics, "Thread details unavailable"),
       new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
-      new TextInstruction(bodyMetrics, "Click the record button to start CPU profiling"),
+      new TextInstruction(bodyMetrics, "Click Record to start capturing CPU activity"),
       new NewRowInstruction(NewRowInstruction.DEFAULT_ROW_MARGIN),
       new TextInstruction(bodyMetrics, "or select a capture in the timeline."))
       .setColors(JBColor.foreground(), null)
@@ -712,8 +722,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     }
     CpuKernelModel.CpuState state = cpuModel.getElementAt(selectedIndex);
     Range tooltipRange = myStage.getStudioProfilers().getTimeline().getTooltipRange();
-    List<SeriesData<CpuThreadInfo>> process =
-      state.getModel().getSeries().get(0).getDataSeries().getDataForXRange(tooltipRange);
+    List<SeriesData<CpuThreadSliceInfo>> process = state.getModel().getSeries().get(0).getDataSeries().getDataForXRange(tooltipRange);
     if (process.isEmpty()) {
       return;
     }
@@ -834,7 +843,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     assert parent.getLayout().getClass() == TabularLayout.class;
     FontMetrics metrics = SwingUtilities2.getFontMetrics(parent, ProfilerFonts.H2_FONT);
     InstructionsPanel panel =
-      new InstructionsPanel.Builder(new TextInstruction(metrics, "Click the record button to start method profiling"))
+      new InstructionsPanel.Builder(new TextInstruction(metrics, "Click Record to start capturing CPU activity"))
         .setEaseOut(getStage().getInstructionsEaseOutModel(), instructionsPanel -> parent.remove(instructionsPanel))
         .setBackgroundCornerRadius(PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER, PROFILING_INSTRUCTIONS_BACKGROUND_ARC_DIAMETER)
         .build();
@@ -892,7 +901,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     myCaptureViewLoading.stopLoading();
     switch (myStage.getCaptureState()) {
       case IDLE:
-        myCaptureButton.setEnabled(true);
+        myCaptureButton.setEnabled(shouldEnableCaptureButton());
         myCaptureButton.setText("Record");
         myCaptureStatus.setText("");
         myCaptureButton.setToolTipText("Record a trace");
@@ -903,7 +912,7 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
           myCaptureButton.setEnabled(false);
         }
         else {
-          myCaptureButton.setEnabled(true);
+          myCaptureButton.setEnabled(shouldEnableCaptureButton());
         }
         myCaptureButton.setText("Stop");
         myCaptureStatus.setText("");
@@ -960,9 +969,18 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
       myCaptureView = new CpuCaptureView(this);
       mySplitter.setSecondComponent(myCaptureView.getComponent());
       ensureCaptureInViewRange();
-      if (myStage.isImportTraceMode() && capture.getType() == com.android.tools.profiler.proto.CpuProfiler.CpuProfilerType.ATRACE) {
-        myImportedSelectedProcessLabel.setText("Process: " + capture.getCaptureNode(capture.getMainThreadId()).getData().getName());
-      } else {
+      if (capture.getType() == com.android.tools.profiler.proto.CpuProfiler.CpuProfilerType.ATRACE) {
+        if (myStage.isImportTraceMode()) {
+          myImportedSelectedProcessLabel.setText("Process: " + capture.getCaptureNode(capture.getMainThreadId()).getData().getName());
+        }
+        else if (((AtraceCpuCapture)capture).isMissingData()) {
+          myStage.getStudioProfilers().getIdeServices().showWarningBalloon(ATRACE_BUFFER_OVERFLOW_TITLE,
+                                                                         ATRACE_BUFFER_OVERFLOW_MESSAGE,
+                                                                         null,
+                                                                         null);
+        }
+      }
+      else {
         myImportedSelectedProcessLabel.setText("");
       }
     }

@@ -23,9 +23,7 @@ import com.android.tools.profilers.StudioProfilers;
 import com.google.common.annotations.VisibleForTesting;
 import org.jetbrains.annotations.NotNull;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.io.OutputStream;
 
 /**
  * A SessionArtifact is any session-related entity that should show up in the sessions panel as its own row. (e.g. A session, a memory
@@ -72,18 +70,30 @@ public interface SessionArtifact<T extends GeneratedMessageV3> extends Updatable
   long getTimestampNs();
 
   /**
+   * @return whether the artifact is still in progress.
+   */
+  boolean isOngoing();
+
+  /**
+   * @return whether the artifact can be exported to disk for later use.
+   */
+  default boolean canExport() {
+    return false;
+  }
+
+  /**
    * The {@link SessionArtifact} has been selected. Perform the corresponding navigation and selection change in the model.
    */
   void onSelect();
 
-  @Override
-  default void update(long elapseNs) {
+  /**
+   * Export operation to the given outputStream.
+   */
+  default void export(@NotNull OutputStream outputStream) {
   }
 
-  @NotNull
-  static String getDisplayTime(long timeMs) {
-    DateFormat timeFormat = new SimpleDateFormat("MM/dd/yyyy, hh:mm a");
-    return timeFormat.format(new Date(timeMs));
+  @Override
+  default void update(long elapseNs) {
   }
 
   /**

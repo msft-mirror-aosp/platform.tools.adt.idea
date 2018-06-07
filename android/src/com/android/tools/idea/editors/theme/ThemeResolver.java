@@ -15,19 +15,24 @@
  */
 package com.android.tools.idea.editors.theme;
 
+import com.android.builder.model.AaptOptions;
 import com.android.ide.common.rendering.api.ResourceNamespace;
+import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.StyleResourceValue;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.ResourceValueMap;
+import com.android.ide.common.resources.SingleNamespaceResourceRepository;
 import com.android.resources.ResourceType;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.configurations.ResourceResolverCache;
 import com.android.tools.idea.editors.theme.datamodels.ConfiguredThemeEditorStyle;
+import com.android.tools.idea.projectsystem.GoogleMavenArtifactId;
 import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.tools.idea.res.ResourceRepositoryManager;
+import com.android.tools.idea.util.DependencyManagementUtil;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.Pair;
@@ -46,18 +51,24 @@ import static com.google.common.collect.Maps.newHashMapWithExpectedSize;
  * Resolves themes for a given configuration.
  */
 public class ThemeResolver {
-  private final Map<String, ConfiguredThemeEditorStyle> myThemeByName = new HashMap<>();
+  private final Map<ResourceReference, ConfiguredThemeEditorStyle> myThemesByStyle = new HashMap<>();
   private final ImmutableList<ConfiguredThemeEditorStyle> myFrameworkThemes;
   private final ImmutableList<ConfiguredThemeEditorStyle> myLocalThemes;
   private final ImmutableList<ConfiguredThemeEditorStyle> myExternalLibraryThemes;
 
   private final Configuration myConfiguration;
   private final ResourceResolver myResolver;
+  private List<ResourceReference> myRecommendedThemes;
 
   public ThemeResolver(@NotNull Configuration configuration) {
     myConfiguration = configuration;
-    myResolver = configuration.getResourceResolver();
 
+    ResourceRepositoryManager repositoryManager = ResourceRepositoryManager.getOrCreateInstance(configuration.getModule());
+    if (repositoryManager == null) {
+      throw new IllegalArgumentException("\"" + configuration.getModule().getName() + "\" is not an Android module");
+    }
+
+    myResolver = configuration.getResourceResolver();
     if (myResolver == null) {
       throw new IllegalArgumentException("Acquired ResourceResolver is null, not an Android module?");
     }
@@ -80,21 +91,21 @@ public class ThemeResolver {
   }
 
   /**
-   * Create a ThemeEditorStyle instance stored in ThemeResolver, which can be added to one of theme lists.
+   * Creates a ThemeEditorStyle instance stored in ThemeResolver, which can be added to one of theme lists.
    *
    * @returns The style, or null if theme with this name was already added or resolution has failed
    */
   @Nullable
   private ConfiguredThemeEditorStyle constructThemeFromResourceValue(@NotNull StyleResourceValue value, @Nullable Module sourceModule) {
-    String name = ResolutionUtils.getQualifiedStyleName(value);
+    ResourceReference styleReference = value.asReference();
 
-    if (myThemeByName.containsKey(name)) {
+    if (myThemesByStyle.containsKey(styleReference)) {
       return null;
     }
 
-    ConfiguredThemeEditorStyle theme = ResolutionUtils.getStyle(myConfiguration, name, sourceModule);
+    ConfiguredThemeEditorStyle theme = ResolutionUtils.getThemeEditorStyle(myConfiguration, styleReference, sourceModule);
     if (theme != null) {
-      myThemeByName.put(name, theme);
+      myThemesByStyle.put(styleReference, theme);
     }
 
     return theme;
@@ -125,27 +136,26 @@ public class ThemeResolver {
 
     Map<ResourceType, ResourceValueMap> resources = resolverCache.getConfiguredFrameworkResources(target, myConfiguration.getFullConfig());
     ResourceValueMap styles = resources.get(ResourceType.STYLE);
-    return getThemes(styles, true);
+    return getFrameworkThemes(styles);
   }
 
   /**
-   * Resolve all non-framework themes available from module of passed Configuration
+   * Resolves all non-framework themes available from module of passed Configuration
    */
   @NotNull
   private List<StyleResourceValue> resolveNonFrameworkThemes() {
-    LocalResourceRepository repository = ResourceRepositoryManager.getAppResources(myConfiguration.getModule());
-    if (repository == null) {
+    ResourceRepositoryManager repositoryManager = ResourceRepositoryManager.getOrCreateInstance(myConfiguration.getModule());
+    if (repositoryManager == null) {
       return Collections.emptyList();
     }
-
-    return getThemes(repository.getConfiguredResources(ResourceNamespace.TODO(),
-                                                       ResourceType.STYLE,
-                                                       myConfiguration.getFullConfig()),
-                     false /*isFramework*/);
+    LocalResourceRepository repository = repositoryManager.getAppResources(true);
+    return getNonFrameworkThemes(repository.getConfiguredResources(repositoryManager.getNamespace(),
+                                                                   ResourceType.STYLE,
+                                                                   myConfiguration.getFullConfig()));
   }
 
   /**
-   * Resolve all themes available from passed Configuration's source module and its dependencies which are defined
+   * Resolves all themes available from passed Configuration's source module and its dependencies which are defined
    * in the current project (doesn't include themes available from libraries)
    */
   @NotNull
@@ -170,31 +180,20 @@ public class ThemeResolver {
       return;
     }
 
-    ResourceValueMap configuredResources = repository.getConfiguredResources(ResourceNamespace.TODO(),
+    ResourceNamespace namespace = ((SingleNamespaceResourceRepository) repository).getNamespace();
+    ResourceValueMap configuredResources = repository.getConfiguredResources(namespace,
                                                                              ResourceType.STYLE,
                                                                              myConfiguration.getFullConfig());
-    for (StyleResourceValue value : getThemes(configuredResources, false)) {
+    for (StyleResourceValue value : getNonFrameworkThemes(configuredResources)) {
       sink.add(Pair.create(value, module));
     }
   }
 
   @NotNull
-  private List<StyleResourceValue> getThemes(@NotNull ResourceValueMap styles,
-                                             boolean isFramework) {
+  private List<StyleResourceValue> getNonFrameworkThemes(@NotNull ResourceValueMap styles) {
     // Collect the themes out of all the styles.
     Collection<ResourceValue> values = styles.values();
     List<StyleResourceValue> themes = new ArrayList<>(values.size());
-
-    if (isFramework) {
-      // For the framework themes the computation is easier.
-      for (ResourceValue value : values) {
-        String name = value.getName();
-        if (name.startsWith(THEME_NAME_DOT) || name.equals(THEME_NAME)) {
-          themes.add((StyleResourceValue)value);
-        }
-      }
-      return themes;
-    }
 
     Map<ResourceValue, Boolean> cache = newHashMapWithExpectedSize(values.size());
     for (ResourceValue value : values) {
@@ -208,9 +207,41 @@ public class ThemeResolver {
     return themes;
   }
 
+  @NotNull
+  private static List<StyleResourceValue> getFrameworkThemes(@NotNull ResourceValueMap styles) {
+    // Collect the themes out of all the styles.
+    Collection<ResourceValue> values = styles.values();
+    List<StyleResourceValue> themes = new ArrayList<>(values.size());
+
+    for (ResourceValue value : values) {
+      String name = value.getName();
+      if (name.startsWith(THEME_NAME_DOT) || name.equals(THEME_NAME)) {
+        themes.add((StyleResourceValue)value);
+      }
+    }
+    return themes;
+  }
+
+  /**
+   * @deprecated Use {@link #getTheme(ResourceReference)}.
+   */
+  @Deprecated
   @Nullable
   public ConfiguredThemeEditorStyle getTheme(@NotNull String themeName) {
-    return myThemeByName.get(themeName);
+    ResourceReference styleReference = ResolutionUtils.getStyleReference(themeName);
+    return myThemesByStyle.get(styleReference);
+  }
+
+  /**
+   * Returns the configured theme given a style reference.
+   *
+   * @param styleReference the reference to the style to get the theme for
+   * @return the theme, or null if there is no theme matching the style reference
+   */
+  @Nullable
+  public ConfiguredThemeEditorStyle getTheme(@NotNull ResourceReference styleReference) {
+    assert styleReference.getResourceType() == ResourceType.STYLE;
+    return myThemesByStyle.get(styleReference);
   }
 
   /**
@@ -244,5 +275,52 @@ public class ThemeResolver {
   @NotNull
   Configuration getConfiguration() {
     return myConfiguration;
+  }
+
+  /**
+   * Checks if the given theme is recommended or not.
+   *
+   * @see #getRecommendedThemes()
+   */
+  public boolean isRecommendedTheme(@NotNull ResourceReference styleReference) {
+    return getRecommendedThemes().contains(styleReference);
+  }
+
+  /**
+   * Returns the recommended themes. These are the themes we encourage developers to use. They will be
+   * displayed as an option in dropdown menu. The returned themes depend on whether the module of this
+   * ThemeResolver depends on appcompat or not, and whether namespacing is enabled or not.
+   */
+  @NotNull
+  public List<ResourceReference> getRecommendedThemes() {
+    if (myRecommendedThemes == null) {
+      myRecommendedThemes = computeRecommendedThemes(myConfiguration.getModule());
+    }
+    return myRecommendedThemes;
+  }
+
+  @NotNull
+  private static List<ResourceReference> computeRecommendedThemes(@NotNull Module module) {
+    ResourceNamespace appcompatNamespace;
+    if (DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.ANDROIDX_APP_COMPAT_V7)) {
+      appcompatNamespace = isNamespacingEnabled(module) ? ResourceNamespace.APPCOMPAT : ResourceNamespace.RES_AUTO;
+    } else if (DependencyManagementUtil.dependsOn(module, GoogleMavenArtifactId.APP_COMPAT_V7)) {
+      appcompatNamespace = isNamespacingEnabled(module) ? ResourceNamespace.APPCOMPAT_LEGACY : ResourceNamespace.RES_AUTO;
+    } else {
+      return ImmutableList.of(
+          ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.Light.NoActionBar"),
+          ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.NoActionBar"));
+    }
+
+    return ImmutableList.of(
+        ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.Light.NoActionBar"),
+        ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.NoActionBar"),
+        ResourceReference.style(appcompatNamespace, "Theme.AppCompat.Light.NoActionBar"),
+        ResourceReference.style(appcompatNamespace, "Theme.AppCompat.NoActionBar"));
+  }
+
+  private static boolean isNamespacingEnabled(@NotNull Module module) {
+    ResourceRepositoryManager repositoryManager = ResourceRepositoryManager.getOrCreateInstance(module);
+    return repositoryManager != null && repositoryManager.getNamespacing() == AaptOptions.Namespacing.REQUIRED;
   }
 }

@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.builder.model.level2.Library
-import com.android.ide.common.repository.GradleVersion
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel
 import com.android.tools.idea.gradle.structure.model.*
@@ -42,9 +41,9 @@ open class PsDeclaredLibraryAndroidDependency(
   private val groupResolvedProperty = parsedModel.group()
   private val versionResolvedProperty = parsedModel.version()
   override val spec: PsArtifactDependencySpec
-    get() = PsArtifactDependencySpec(
-      nameResolvedProperty.forceString(),
+    get() = PsArtifactDependencySpec.create(
       groupResolvedProperty.toString(),
+      nameResolvedProperty.forceString(),
       versionResolvedProperty.toString()
     )
   override val resolvedModel: Any? = null
@@ -100,38 +99,29 @@ open class PsDeclaredLibraryAndroidDependency(
 
 open class PsResolvedLibraryAndroidDependency(
   parent: PsAndroidModule,
+  val collection: PsAndroidArtifactDependencyCollection,
   override val spec: PsArtifactDependencySpec,
-  containers: Collection<PsAndroidArtifact>,
+  val artifact: PsAndroidArtifact,
   override val resolvedModel: Library,
-  private val parsedModels: Collection<ArtifactDependencyModel>
-) : PsLibraryAndroidDependency(parent, containers), PsResolvedDependency, PsResolvedLibraryDependency {
-  override val isDeclared: Boolean get() = !parsedModels.isEmpty()
+  internal val declaredDependencies: Collection<PsDeclaredLibraryAndroidDependency>
+) : PsLibraryAndroidDependency(parent, listOf(artifact)), PsResolvedDependency, PsResolvedLibraryDependency {
+  private val parsedModels = declaredDependencies.map { it.parsedModel }
+  override val isDeclared: Boolean get() = !declaredDependencies.isEmpty()
   override val joinedConfigurationNames: String get() = parsedModels.joinToString(separator = ", ") { it.configurationName() }
 
   override fun getParsedModels(): List<DependencyModel> = parsedModels.toList()
 
-  override fun hasPromotedVersion(): Boolean {
-    val declaredSpecs = getParsedModels().map {
-      PsArtifactDependencySpec.create(it as ArtifactDependencyModel)
-    }
-    for (declaredSpec in declaredSpecs) {
-      if (spec.version != null && declaredSpec.version != null) {
-        val declaredVersion = GradleVersion.tryParse(declaredSpec.version!!)
-        if (declaredVersion != null && declaredVersion < spec.version!!) {
-          return true
-        }
-      }
-    }
-    return false
-  }
+  override fun hasPromotedVersion(): Boolean = getReverseDependencies().any { it.isPromoted }
 
+  fun getReverseDependencies(): Set<ReverseDependency> =
+    artifact.dependencies.reverseDependencies[spec.toLibraryKey()].orEmpty()
 }
 
 abstract class PsLibraryAndroidDependency internal constructor(
   parent: PsAndroidModule,
   containers: Collection<PsAndroidArtifact>
 ) : PsAndroidDependency(parent, containers), PsLibraryDependency {
-  private val pomDependencies = mutableListOf<PsArtifactDependencySpec>()
+  internal val pomDependencies = mutableListOf<PsArtifactDependencySpec>()
 
 
   internal fun setDependenciesFromPomFile(value: List<PsArtifactDependencySpec>) {
@@ -139,7 +129,7 @@ abstract class PsLibraryAndroidDependency internal constructor(
     pomDependencies.addAll(value)
   }
 
-  fun getTransitiveDependencies(artifactDependencies: PsAndroidDependencyCollection): Set<PsLibraryAndroidDependency> {
+  fun getTransitiveDependencies(artifactDependencies: PsAndroidArtifactDependencyCollection): Set<PsLibraryAndroidDependency> {
     val transitive = ImmutableSet.builder<PsLibraryAndroidDependency>()
     for (dependency in pomDependencies) {
       // TODO(b/74948244): Include the requested version as a parsed model so that we see any promotions.
@@ -166,4 +156,3 @@ fun ArtifactRepositorySearchResults.toVersionValueDescriptors(): List<ValueDescr
     .distinct()
     .sortedDescending()
     .map { version -> ValueDescriptor(version.toString()) }
-

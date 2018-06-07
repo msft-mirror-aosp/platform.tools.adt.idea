@@ -28,7 +28,9 @@ import com.android.sdklib.repository.targets.PlatformTarget;
 import com.android.tools.idea.model.MergedManifest;
 import com.android.tools.idea.model.MergedManifest.ActivityAttributes;
 import com.android.tools.idea.rendering.Locale;
-import com.android.tools.idea.res.*;
+import com.android.tools.idea.res.LocalResourceRepository;
+import com.android.tools.idea.res.ResourceHelper;
+import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.intellij.openapi.Disposable;
@@ -158,8 +160,7 @@ public class ConfigurationManager implements Disposable {
   }
 
   /**
-   * Creates a new {@link Configuration} associated with this manager
-   * @return a new {@link Configuration}
+   * Creates and returns a new {@link Configuration} associated with this manager.
    */
   @NotNull
   private Configuration create(@NotNull VirtualFile file) {
@@ -171,8 +172,7 @@ public class ConfigurationManager implements Disposable {
       config = new FolderConfiguration();
     }
     Configuration configuration = Configuration.create(this, file, fileState, config);
-    LocalResourceRepository resources = ResourceRepositoryManager.getAppResources(getModule());
-    ConfigurationMatcher matcher = new ConfigurationMatcher(configuration, resources, file);
+    ConfigurationMatcher matcher = new ConfigurationMatcher(configuration, file);
     if (fileState != null) {
       matcher.adaptConfigSelection(true);
     } else {
@@ -207,8 +207,7 @@ public class ConfigurationManager implements Disposable {
     if (baseConfig != null) {
       configuration.setEffectiveDevice(baseConfig.getDevice(), baseConfig.getDeviceState());
     }
-    LocalResourceRepository resources = ResourceRepositoryManager.getAppResources(getModule());
-    ConfigurationMatcher matcher = new ConfigurationMatcher(configuration, resources, file);
+    ConfigurationMatcher matcher = new ConfigurationMatcher(configuration, file);
     matcher.adaptConfigSelection(true /*needBestMatch*/);
     myCache.put(file, configuration);
 
@@ -347,8 +346,7 @@ public class ConfigurationManager implements Disposable {
   public String computePreferredTheme(@NotNull Configuration configuration) {
     MergedManifest manifest = MergedManifest.get(getModule());
 
-    // TODO: If we are rendering a layout in included context, pick the theme
-    // from the outer layout instead
+    // TODO: If we are rendering a layout in included context, pick the theme from the outer layout instead.
 
     String activity = configuration.getActivity();
     if (activity != null) {
@@ -361,7 +359,7 @@ public class ConfigurationManager implements Disposable {
       ActivityAttributes attributes = manifest.getActivityAttributes(activityFqcn);
       if (attributes != null) {
         String theme = attributes.getTheme();
-        // Check that the theme looks like a reference
+        // Check that the theme looks like a reference.
         if (theme != null && theme.startsWith(SdkConstants.PREFIX_RESOURCE_REF)) {
           return theme;
         }
@@ -371,16 +369,15 @@ public class ConfigurationManager implements Disposable {
       attributes = manifest.getActivityAttributes(activity);
       if (attributes != null) {
         String theme = attributes.getTheme();
-        // Check that the theme looks like a reference
+        // Check that the theme looks like a reference.
         if (theme != null && theme.startsWith(SdkConstants.PREFIX_RESOURCE_REF)) {
           return theme;
         }
       }
     }
 
-    // Look up the default/fallback theme to use for this project (which
-    // depends on the screen size when no particular theme is specified
-    // in the manifest)
+    // Look up the default/fallback theme to use for this project (which depends on
+    // the screen size when no particular theme is specified in the manifest).
     return manifest.getDefaultTheme(configuration.getTarget(), configuration.getScreenSize(), configuration.getDevice());
   }
 
@@ -527,7 +524,7 @@ public class ConfigurationManager implements Disposable {
       // configuration too!
       boolean updateTheme = false;
       String theme = configuration.getTheme();
-      if (theme != null && theme.startsWith(ANDROID_STYLE_RESOURCE_PREFIX)) {
+      if (theme.startsWith(ANDROID_STYLE_RESOURCE_PREFIX)) {
         updateTheme = true;
         configuration.startBulkEditing();
         configuration.setTheme(null);

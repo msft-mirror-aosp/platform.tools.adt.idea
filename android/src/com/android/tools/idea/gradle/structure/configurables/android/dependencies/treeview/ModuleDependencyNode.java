@@ -59,7 +59,7 @@ public class ModuleDependencyNode extends AbstractDependencyNode<PsModuleAndroid
   @Override
   @NotNull
   public SimpleNode[] getChildren() {
-    return myChildren.toArray(new SimpleNode[myChildren.size()]);
+    return myChildren.toArray(new SimpleNode[0]);
   }
 
   @Override
@@ -70,7 +70,7 @@ public class ModuleDependencyNode extends AbstractDependencyNode<PsModuleAndroid
 
       List<PsModuleAndroidDependency> models = getModels();
       for (PsModuleAndroidDependency ourModel : models) {
-        List<DependencyModel> ourParsedModels = getDependencyParsedModels(ourModel);
+        List<DependencyModel> ourParsedModels = Companion.getDependencyParsedModels(ourModel);
         if (ourParsedModels == null) continue;
         for (DependencyModel resolvedFromParsedDependency : ourParsedModels) {
           // other.getParsedModels() always contains just one model since it is a declared dependency.
