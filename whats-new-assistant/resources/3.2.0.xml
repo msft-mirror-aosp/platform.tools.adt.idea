@@ -25,7 +25,7 @@
     <tutorial
         key="whats-new"
         label=" What's New in 3.2"
-        icon="core/whats_new_icon.png"
+        icon="core/stable/whats_new_icon.png"
         remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/canary-release-notes.html"
         remoteLinkLabel="Read in a browser">
       <description>
@@ -94,7 +94,9 @@
           <ul>
             <li><b>New Navigation Editor:</b>
             A visual editor for the XML resource that the new Navigation Component uses to
-            handle navigation actions at runtime.
+            handle navigation actions at runtime. The Navigation Editor is an experimental feature,
+            so you must first enable it by opening the IDE <b>Settings/Preferences</b> dialog, selecting
+            <b>Experimental</b> in the left pane, and checking the box next to <b>Enable Navigation Editor</b>.
             <a href="https://d.android.com/topic/libraries/architecture/navigation/navigation-implementing?utm_source=android-studio&utm_medium=studio-assistant#tour_the_navigation_editor">
             Learn more</a></li>
 
@@ -102,6 +104,14 @@
             Easily add the new Architecture Components to your project, such as the <code>ViewModel</code>,
             using the <b>New Project Wizard</b>.
             <a href="https://d.android.com/topic/libraries/architecture?utm_source=android-studio&utm_medium=studio-assistant">
+            Learn more</a></li>
+
+            <li><b>AndroidX migration tools:</b>
+            The new <a href="https://d.android.com/topic/libraries/support-library/androidx-rn?utm_source=android-studio&utm_medium=studio-assistant">
+            Android extension libraries (AndroidX)</a> represent the future of the Android Support Library.
+            You can easily migrate an existing project to use AndroidX (including migrating Maven dependencies
+            that do not yet use AndroidX) by selecting <b>Refactor &gt; Migrate to AndroidX</b>.
+            <a href="https://d.android.com/studio/preview/features?utm_source=android-studio&utm_medium=studio-assistant#androidx_refactoring">
             Learn more</a></li>
            ]]>
           </section>
@@ -133,18 +143,6 @@
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#energy_profiler">
             Learn more</a></li>
 
-            <li><b>Sessions:</b> Save profiler data as "sessions" to
-            revisit and inspect later.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#sessions">
-            Learn more</a></li>
-
-            <li><b>Start method traces using the Debug API:</b>
-            Call <code>Debug.startMethodTracing(String tracePath)</code> and
-            <code>Debug.stopMethodTracing()</code> in your app's code to programmatically start and stop
-            recording method traces in the CPU profiler.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#debug_api">
-            Learn more</a></li>
-
             <li><b>System Trace:</b> In the CPU Profiler, inspect your device's
             system CPU and thread activity using the new <b>System Trace</b>
             configuration. It's built on
@@ -152,6 +150,10 @@
             <code>systrace</code></a> and is useful for investigating
             system-level issues, such as UI jank.
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#system_trace">
+            Learn more</a></li>
+
+            <li><b>Sessions:</b> Inspect and revisit data across multiple profiler "sessions".
+            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#sessions">
             Learn more</a></li>
 
             <li><b>Export CPU trace files:</b>
@@ -191,7 +193,38 @@
             to a device running Android 8.0 (API level 26) or higher.
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#jni_memory">
             Learn more</a></li>
+
+            <li><b>Start method traces using the Debug API:</b>
+            Call <code>Debug.startMethodTracing(String tracePath)</code> and
+            <code>Debug.stopMethodTracing()</code> in your app's code to programmatically start and stop
+            recording method traces in the CPU profiler.
+            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#debug_api">
+            Learn more</a></li>
           </ul>
+           ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Android Emulator Snapshots">
+        <stepElement>
+          <section>
+            <![CDATA[
+          <br>
+          <img src="https://d.android.com/studio/releases/assistant/3.2.0/emulator-snapshots.gif"
+          width="428"
+          height="324"
+          alt="">
+
+          <br><br>
+          Using the Android Emulator 27.3.0 or higher, you can now save and load snapshots of an AVD (Android virtual device) at any time,
+          making it fast and easy to return to a known state for testing. You can also edit an AVD using the AVD Manager to specify a
+          default snapshot to load when the AVD starts.
+
+          <br><br>
+          Controls for saving, loading, and managing AVD snapshots are now in the <b>Snapshots</b> tab in the emulator's <b>Extended
+          controls</b> window.
+          <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#emulator_improvements">
+            Learn more</li>
            ]]>
           </section>
         </stepElement>
@@ -226,7 +259,7 @@
             files from external C/C++ library dependencies that you import into
             your project using CMake.
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#navigate_headers">
-            Learn more</li>
+            Learn more</a>
           </ul>
           </div>
            ]]>
@@ -247,12 +280,6 @@
             <a href="https://developer.android.com/studio/report-bugs.html?utm_source=android-studio&utm_medium=studio-assistant">
             report a bug</a>.
             </li>
-
-            <li><b>Specify default snapshot from the AVD Manager:</b> If you have Android Emulator
-            27.2.8 or higher installed, you can select an existing snapshot to load by default when
-            launching a virtual device.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#avdsnapshots">
-            Learn more</a>
 
             <li><b>Preview with sample data in the Layout Editor:</b> Use auto-generated sample data to
             preview your views in the Layout Editor. In the editor's design view, click the
@@ -301,8 +328,6 @@ allprojects.repositories {
             you want to enable under <b>Kotlin Interoperability</b>.
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#java_kotlin_interop">
             Learn more</a></li>
-            </div>
-            </li>
 
             <li><b>Native multi-dex enabled by default:</b>
             The Android plugin for Gradle now enables native multidex for all modules that set
@@ -316,11 +341,6 @@ allprojects.repositories {
             <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#default_abis">
             Learn more</a></li>
           </ul>
-
-          <br><hr><br>
-          <a href="https://d.android.com/r/studio-wna/feedback.html">Submit feedback</a> for this panel.
-          <br><br>
-        </div>
         ]]>
           </section>
         </stepElement>
