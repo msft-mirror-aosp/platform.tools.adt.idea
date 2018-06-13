@@ -34,10 +34,7 @@ import com.android.tools.idea.naveditor.model.ActionType;
 import com.android.tools.idea.naveditor.model.NavComponentHelperKt;
 import com.android.tools.idea.naveditor.model.NavCoordinate;
 import com.android.tools.idea.naveditor.scene.decorator.NavSceneDecoratorFactory;
-import com.android.tools.idea.naveditor.scene.layout.DummyAlgorithm;
-import com.android.tools.idea.naveditor.scene.layout.ManualLayoutAlgorithm;
-import com.android.tools.idea.naveditor.scene.layout.NavSceneLayoutAlgorithm;
-import com.android.tools.idea.naveditor.scene.layout.NewDestinationLayoutAlgorithm;
+import com.android.tools.idea.naveditor.scene.layout.*;
 import com.android.tools.idea.naveditor.scene.targets.NavScreenTargetProvider;
 import com.android.tools.idea.naveditor.scene.targets.NavigationTargetProvider;
 import com.android.tools.idea.naveditor.surface.NavDesignSurface;
@@ -100,9 +97,8 @@ public class NavSceneManager extends SceneManager {
   public NavSceneManager(@NotNull NlModel model, @NotNull NavDesignSurface surface) {
     super(model, surface);
     createSceneView();
-    NavigationSchema schema = getSchema();
     myLayoutAlgorithms =
-      ImmutableList.of(new NewDestinationLayoutAlgorithm(), new ManualLayoutAlgorithm(model.getModule()), new DummyAlgorithm(schema));
+      ImmutableList.of(new NewDestinationLayoutAlgorithm(), new ManualLayoutAlgorithm(model.getModule()), new ElkLayeredLayoutAlgorithm());
     mySavingLayoutAlgorithm = myLayoutAlgorithms.stream().filter(algorithm -> algorithm.canSave()).findFirst().orElse(null);
     myScreenTargetProvider = new NavScreenTargetProvider();
     myNavigationTargetProvider = new NavigationTargetProvider(surface);
@@ -360,17 +356,18 @@ public class NavSceneManager extends SceneManager {
       destination.setPosition(0, 0);
     }
 
-    for (SceneComponent destination : destinations) {
-      for (NavSceneLayoutAlgorithm algorithm : myLayoutAlgorithms) {
-        if (algorithm.layout(destination)) {
-          // If the algorithm that laid out the component can't persist the position, assume the position hasn't been persisted and
-          // needs to be
-          if (!algorithm.canSave()) {
-            save(destination);
-          }
-          break;
-        }
+    for (NavSceneLayoutAlgorithm algorithm : myLayoutAlgorithms) {
+      List<SceneComponent> remaining = algorithm.layout(destinations);
+      destinations.removeAll(remaining);
+      // If the algorithm that laid out the component can't persist the position, assume the position hasn't been persisted and
+      // needs to be
+      if (!algorithm.canSave()) {
+        save(destinations);
       }
+      if (remaining.isEmpty()) {
+        break;
+      }
+      destinations = remaining;
     }
 
     HashSet<String> connectedActionSources = new HashSet<>();
@@ -408,9 +405,9 @@ public class NavSceneManager extends SceneManager {
     }
   }
 
-  public void save(@NotNull SceneComponent component) {
+  public void save(@NotNull List<SceneComponent> components) {
     if (mySavingLayoutAlgorithm != null) {
-      mySavingLayoutAlgorithm.save(component);
+      components.forEach(mySavingLayoutAlgorithm::save);
     }
   }
 
@@ -548,6 +545,7 @@ public class NavSceneManager extends SceneManager {
       updateHierarchy(model, model);
       getDesignSurface().refreshRoot();
       requestRender();
+      model.notifyListenersModelUpdateComplete();
     }
 
     @Override

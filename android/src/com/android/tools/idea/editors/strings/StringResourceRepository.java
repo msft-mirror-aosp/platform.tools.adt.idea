@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.editors.strings;
 
-import com.android.ide.common.resources.AbstractResourceRepository;
+import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.configuration.Configurable;
 import com.android.ide.common.resources.configuration.LocaleQualifier;
@@ -38,43 +38,43 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class StringResourceRepository {
-  private final Map<VirtualFile, LocalResourceRepository> myResourceDirectoryRespositoryMap;
+  private final Map<VirtualFile, LocalResourceRepository> myResourceDirectoryRepositoryMap;
 
   // TODO Drop support for dynamic resources?
   private final LocalResourceRepository myDynamicResourceRepository;
 
   private StringResourceRepository(@NotNull MultiResourceRepository parent) {
     Collection<LocalResourceRepository> children = parent.getChildren();
-    Map<VirtualFile, LocalResourceRepository> resourceDirectoryRespositoryMap = Maps.newLinkedHashMapWithExpectedSize(children.size());
-    LocalResourceRepository dynamicResourceRespository = null;
+    Map<VirtualFile, LocalResourceRepository> resourceDirectoryRepositoryMap = Maps.newLinkedHashMapWithExpectedSize(children.size());
+    LocalResourceRepository dynamicResourceRepository = null;
 
     for (LocalResourceRepository child : children) {
       child.sync();
 
       if (child instanceof ResourceFolderRepository) {
-        resourceDirectoryRespositoryMap.put(((ResourceFolderRepository)child).getResourceDir(), child);
+        resourceDirectoryRepositoryMap.put(((ResourceFolderRepository)child).getResourceDir(), child);
       }
       else {
-        assert dynamicResourceRespository == null;
-        dynamicResourceRespository = child;
+        assert dynamicResourceRepository == null;
+        dynamicResourceRepository = child;
       }
     }
 
-    myResourceDirectoryRespositoryMap = resourceDirectoryRespositoryMap;
-    myDynamicResourceRepository = dynamicResourceRespository;
+    myResourceDirectoryRepositoryMap = resourceDirectoryRepositoryMap;
+    myDynamicResourceRepository = dynamicResourceRepository;
   }
 
   private StringResourceRepository(@NotNull ResourceFolderRepository repository) {
     repository.sync();
 
-    myResourceDirectoryRespositoryMap = Collections.singletonMap(repository.getResourceDir(), repository);
+    myResourceDirectoryRepositoryMap = Collections.singletonMap(repository.getResourceDir(), repository);
     myDynamicResourceRepository = null;
   }
 
   private StringResourceRepository(@NotNull LocalResourceRepository repository) {
     repository.sync();
 
-    myResourceDirectoryRespositoryMap = Collections.emptyMap();
+    myResourceDirectoryRepositoryMap = Collections.emptyMap();
     myDynamicResourceRepository = repository;
   }
 
@@ -101,23 +101,25 @@ public class StringResourceRepository {
     Map<StringResourceKey, StringResource> map = new LinkedHashMap<>();
     Project project = facet.getModule().getProject();
 
-    myResourceDirectoryRespositoryMap.entrySet().stream()
-      .flatMap(StringResourceRepository::getKeys)
-      .forEach(key -> map.put(key, new StringResource(key, this, project)));
+    myResourceDirectoryRepositoryMap.entrySet().stream()
+                                    .flatMap(StringResourceRepository::getKeys)
+                                    .forEach(key -> map.put(key, new StringResource(key, this, project)));
 
     if (myDynamicResourceRepository != null) {
-      myDynamicResourceRepository.getItemsOfType(ResourceType.STRING).stream()
-        .map(name -> new StringResourceKey(name, null))
-        .forEach(key -> map.put(key, new StringResource(key, this, project)));
+      myDynamicResourceRepository.getItemsOfType(ResourceNamespace.TODO(), ResourceType.STRING).stream()
+                                 .map(name -> new StringResourceKey(name, null))
+                                 .forEach(key -> map.put(key, new StringResource(key, this, project)));
     }
 
-    return new StringResourceData(facet, map);
+    return new StringResourceData(facet, map, this);
   }
 
   @NotNull
   private static Stream<StringResourceKey> getKeys(@NotNull Entry<VirtualFile, LocalResourceRepository> entry) {
     VirtualFile directory = entry.getKey();
-    return entry.getValue().getItemsOfType(ResourceType.STRING).stream().map(name -> new StringResourceKey(name, directory));
+
+    return entry.getValue().getItemsOfType(ResourceNamespace.TODO(), ResourceType.STRING).stream()
+                .map(name -> new StringResourceKey(name, directory));
   }
 
   @NotNull
@@ -143,11 +145,10 @@ public class StringResourceRepository {
   @Nullable
   private ResourceItem getItem(@NotNull StringResourceKey key, @NotNull Predicate<ResourceItem> predicate) {
     LocalResourceRepository repository = getRepository(key);
-    repository.sync();
 
     Optional<ResourceItem> optionalItem = getItems(repository, key).stream()
-      .filter(predicate)
-      .findFirst();
+                                                                   .filter(predicate)
+                                                                   .findFirst();
 
     return optionalItem.orElse(null);
   }
@@ -155,12 +156,12 @@ public class StringResourceRepository {
   @NotNull
   private LocalResourceRepository getRepository(@NotNull StringResourceKey key) {
     VirtualFile directory = key.getDirectory();
-    return directory == null ? myDynamicResourceRepository : myResourceDirectoryRespositoryMap.get(directory);
+    return directory == null ? myDynamicResourceRepository : myResourceDirectoryRepositoryMap.get(directory);
   }
 
   @NotNull
-  private static Collection<ResourceItem> getItems(@NotNull AbstractResourceRepository repository, @NotNull StringResourceKey key) {
-    Collection<ResourceItem> items = repository.getResourceItem(ResourceType.STRING, key.getName());
-    return items == null ? Collections.emptyList() : items;
+  private static Collection<ResourceItem> getItems(@NotNull LocalResourceRepository repository, @NotNull StringResourceKey key) {
+    repository.sync();
+    return repository.getResourceItems(ResourceNamespace.TODO(), ResourceType.STRING, key.getName());
   }
 }

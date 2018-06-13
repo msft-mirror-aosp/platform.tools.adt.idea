@@ -178,8 +178,6 @@ var NlComponent.inclusive: Boolean by BooleanAutoAttributeDelegate(NavigationSch
 var NlComponent.popEnterAnimation: String? by StringAutoAttributeDelegate(NavigationSchema.ATTR_POP_ENTER_ANIM)
 var NlComponent.popExitAnimation: String? by StringAutoAttributeDelegate(NavigationSchema.ATTR_POP_EXIT_ANIM)
 var NlComponent.singleTop: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_SINGLE_TOP)
-var NlComponent.document: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_DOCUMENT)
-var NlComponent.clearTask: Boolean by BooleanAutoAttributeDelegate(NavigationSchema.ATTR_CLEAR_TASK)
 
 var NlComponent.startDestination: String? by IdAutoAttributeDelegate(ATTR_START_DESTINATION)
 
@@ -293,6 +291,12 @@ class NavComponentMixin(component: NlComponent)
     }
 
     return null
+  }
+
+  override fun beforeMove(insertType: InsertType, receiver: NlComponent, ids: MutableSet<String>) {
+    if (receiver.children.any { it.id == component.id }) {
+      component.incrementId(ids)
+    }
   }
 
   override fun getTooltipText(): String? {

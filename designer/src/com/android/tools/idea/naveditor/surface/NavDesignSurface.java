@@ -42,7 +42,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
@@ -155,6 +154,9 @@ public class NavDesignSurface extends DesignSurface {
    */
   @Override
   public CompletableFuture<?> goingToSetModel(NlModel model) {
+    // So it's cached in the future
+    model.getConfiguration().getResourceResolver();
+
     AndroidFacet facet = model.getFacet();
     CompletableFuture<?> result = new CompletableFuture<>();
     Application application = ApplicationManager.getApplication();
@@ -542,5 +544,11 @@ public class NavDesignSurface extends DesignSurface {
       ourConfigurationManagers.put(facet, new SoftReference<>(result));
     }
     return result;
+  }
+
+  @Override
+  protected boolean getSupportPinchAndZoom() {
+    // TODO: Enable pinch and zoom for navigation editor
+    return false;
   }
 }

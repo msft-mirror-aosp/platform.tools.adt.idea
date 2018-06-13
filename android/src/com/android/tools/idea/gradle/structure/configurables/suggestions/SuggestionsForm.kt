@@ -17,7 +17,6 @@ import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.configurables.issues.IssuesByTypeAndTextComparator
 import com.android.tools.idea.gradle.structure.model.PsIssue
 import com.android.tools.idea.gradle.structure.model.PsIssueType.PROJECT_ANALYSIS
-import com.android.tools.idea.gradle.structure.model.PsModule
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.ActionCallback
 import com.intellij.openapi.util.Disposer
@@ -30,14 +29,16 @@ class SuggestionsForm(
 
   val panel = myMainPanel!!
 
-  private val issuesViewer = SuggestionsViewer(context, suggestionsViewIssueRenderer)
+  private val issuesViewer = SuggestionsViewer(context, suggestionsViewIssueRenderer).also {
+    Disposer.register(this, it)
+  }
 
   init {
     setViewComponent(issuesViewer.panel)
     renderIssues(listOf())
 
     context.project.forEachModule { module ->
-      module.add(PsModule.DependenciesChangeListener { dependencyChanged() }, this)
+      module.addDependencyChangedListener(this) { dependencyChanged() }
     }
   }
 

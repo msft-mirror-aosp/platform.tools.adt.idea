@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.model.CachedValue;
 import com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
+import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
@@ -41,6 +42,7 @@ import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.isPropertiesElementOrMap;
+import static com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement.BUILDSCRIPT_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT_BLOCK_NAME;
 import static com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslElement.getStandardProjectKey;
 import static com.intellij.openapi.util.io.FileUtil.filesEqual;
@@ -68,12 +70,14 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
                                       @NotNull GradleNameElement name,
                                       @Nullable PsiElement expression) {
     super(parent, psiElement, name);
-    myResolvedCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceValue);
-    myUnresolvedCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceUnresolvedValue);
-    myRawCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceRawValue);
     myExpression = expression;
     myHasCycle = ThreeState.UNSURE;
     resolve();
+    // Resolved values must be created after resolve() is called. If the debugger calls toString to trigger
+    // any of the producers they will be stuck with the wrong value as dependencies have not been computed.
+    myResolvedCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceValue);
+    myUnresolvedCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceUnresolvedValue);
+    myRawCachedValue = new CachedValue<>(this, GradleDslSimpleExpression::produceRawValue);
   }
 
   @Nullable
@@ -464,6 +468,18 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
             }
           }
         }
+
+        if (!(lastElement instanceof BuildScriptDslElement)) {
+          GradleDslElement bsDslElement =
+            ((GradlePropertiesDslElement)element).getPropertyElementBefore(element, BUILDSCRIPT_BLOCK_NAME);
+          if (bsDslElement instanceof BuildScriptDslElement) {
+            GradleDslElement bsElement =
+              resolveReferenceOnElement(bsDslElement, nameParts, true /* Must be true or we just jump between buildscipt -> parent */, -1);
+            if (bsElement != null) {
+              return bsElement;
+            }
+          }
+        }
       }
 
       if (resolveWithOrder) {
@@ -523,6 +539,14 @@ public abstract class GradleDslSimpleExpression extends GradleDslElementImpl imp
         GradleDslElement extPropertyElement = resolveReferenceOnPropertiesElement(extDslElement, referenceText, null);
         if (extPropertyElement != null) {
           return extPropertyElement;
+        }
+      }
+
+      BuildScriptDslElement bsDslElement = parentDslFile.getPropertyElement(BUILDSCRIPT_BLOCK_NAME, BuildScriptDslElement.class);
+      if (bsDslElement != null) {
+        GradleDslElement bsElement = resolveReferenceOnElement(bsDslElement, referenceText, false, -1);
+        if (bsElement != null) {
+          return bsElement;
         }
       }
 

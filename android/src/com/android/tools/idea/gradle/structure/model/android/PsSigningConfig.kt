@@ -17,7 +17,6 @@ package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.builder.model.SigningConfig
 import com.android.tools.idea.gradle.dsl.api.android.SigningConfigModel
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.structure.model.PsChildModel
 import com.android.tools.idea.gradle.structure.model.helpers.matchFiles
 import com.android.tools.idea.gradle.structure.model.helpers.parseFile
@@ -26,16 +25,19 @@ import com.android.tools.idea.gradle.structure.model.meta.*
 import java.io.File
 
 class PsSigningConfig(
-  override val parent: PsAndroidModule,
-  override val resolvedModel: SigningConfig?,
-  private val parsedModel: SigningConfigModel?
-) : PsChildModel(parent), PsAndroidModel {
+  override val parent: PsAndroidModule
+) : PsChildModel() {
 
-  override val name = when {
-    resolvedModel != null -> resolvedModel.name
-    parsedModel != null -> parsedModel.name()
-    else -> ""
+  var resolvedModel: SigningConfig? = null
+  private var parsedModel: SigningConfigModel? = null
+
+  internal fun init(resolvedModel: SigningConfig?,
+                    parsedModel: SigningConfigModel?) {
+    this.resolvedModel = resolvedModel
+    this.parsedModel = parsedModel
   }
+
+  override val name get() = resolvedModel?.name ?:    parsedModel?.name() ?: ""
 
   var storeFile by SigningConfigDescriptors.storeFile
   var storePassword by SigningConfigDescriptors.storePassword
@@ -43,7 +45,6 @@ class PsSigningConfig(
   var keyPassword by SigningConfigDescriptors.keyPassword
 
   override val isDeclared: Boolean get() = parsedModel != null
-  override val gradleModel: AndroidModuleModel = parent.gradleModel
 
   object SigningConfigDescriptors : ModelDescriptor<PsSigningConfig, SigningConfig, SigningConfigModel> {
     override fun getResolved(model: PsSigningConfig): SigningConfig? = model.resolvedModel
@@ -62,7 +63,7 @@ class PsSigningConfig(
       // TODO: Store project relative path if possible.
       setter = { setValue(it.toString()) },
       parser = ::parseFile,
-      matcher = { model, parsedValue, resolvedValue -> matchFiles(model.parent.gradleModel.rootDirPath, parsedValue, resolvedValue) }
+      matcher = { model, parsedValue, resolvedValue -> matchFiles(model.parent.resolvedModel?.rootDirPath, parsedValue, resolvedValue) }
     )
 
     val storePassword: SimpleProperty<PsSigningConfig, String> = property(

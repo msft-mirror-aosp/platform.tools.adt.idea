@@ -506,7 +506,7 @@ public class NlPreviewForm implements Disposable, CaretListener {
 
       disposeActionsToolbar();
 
-      myActionsToolbar = new ActionsToolbar(null, mySurface);
+      myActionsToolbar = new ActionsToolbar(mySurface, mySurface);
 
       myContentPanel.add(myActionsToolbar.getToolbarComponent(), BorderLayout.NORTH);
 

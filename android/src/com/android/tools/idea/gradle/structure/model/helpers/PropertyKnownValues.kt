@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.structure.model.meta.ValueDescriptor
 import com.android.tools.idea.gradle.structure.model.meta.getText
 import com.google.common.util.concurrent.Futures.immediateFuture
 import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.search.FilenameIndex
 import java.io.File
@@ -55,18 +56,26 @@ fun signingConfigs(module: PsAndroidModule): ListenableFuture<List<ValueDescript
 })
 
 fun proGuardFileValuesCore(module: PsAndroidModule): List<ValueDescriptor<File>> =
-  module.resolvedModel?.let { ideModule ->
+  ModuleManager.getInstance(module.parent.resolvedModel).findModuleByName(module.name)?.let { ideModule ->
     FilenameIndex.getAllFilesByExt(
       ideModule.project,
       "pro",
       ideModule.moduleContentScope)
-      .map { ValueDescriptor(ParsedValue.Set.Parsed(File(it.path).relativeTo(module.gradleModel.rootDirPath), DslText.Literal)) } +
+      .mapNotNull {
+        module.resolvedModel?.rootDirPath?.let { rootPath ->
+          ValueDescriptor(ParsedValue.Set.Parsed(File(it.path).relativeTo(rootPath), DslText.Literal))
+        }
+      } +
     FilenameIndex.getAllFilesByExt(
       ideModule.project,
       "txt",
       ideModule.moduleContentScope)
       .filter { it.name.startsWith("proguard", ignoreCase = true) }
-      .map { ValueDescriptor(ParsedValue.Set.Parsed(File(it.path).relativeTo(module.gradleModel.rootDirPath), DslText.Literal)) }
+      .mapNotNull {
+        module.resolvedModel?.rootDirPath?.let { rootPath ->
+          ValueDescriptor(ParsedValue.Set.Parsed(File(it.path).relativeTo(rootPath), DslText.Literal))
+        }
+      }
   }.orEmpty() +
   ValueDescriptor(ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText("getDefaultProguardFile('proguard-android.txt')")))
 

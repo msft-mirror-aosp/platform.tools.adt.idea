@@ -123,6 +123,7 @@ iml_module(
         "//tools/adt/idea/android/lib:pepk",
         "//tools/idea/.idea/libraries:protobuf",
         "//tools/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/android/src/com/android/tools/idea/gradle/project/sync/ng/nosyncbuilder/proto:nosyncbuilder-jarjar-lib",
     ],
 )
 
@@ -152,6 +153,7 @@ iml_module(
         "//prebuilts/studio/sdk:ndk-bundle",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
+        "//prebuilts/studio/sdk:platforms/latest-preview",
         "//prebuilts/studio/sdk:sources",
         "//prebuilts/studio/sdk:support_latest",
         "//prebuilts/studio/sdk:test-runner_latest",
@@ -261,6 +263,7 @@ iml_module(
         "//tools/adt/idea/android/lib:pepk[test]",
         "//tools/idea/.idea/libraries:protobuf",
         "//tools/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/android/src/com/android/tools/idea/gradle/project/sync/ng/nosyncbuilder/proto:nosyncbuilder-jarjar-lib[test]",
     ],
 )
 
@@ -302,6 +305,14 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "nosyncbuilder-artifacts",
+    srcs = [
+        "//tools/adt/idea/android/src/com/android/tools/idea/gradle/project/sync/ng/nosyncbuilder/proto:nosyncbuilder-jarjar.jar",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 # Various artifacts that the ANT and within-idea studio build depend on.
 filegroup(
     name = "artifacts",
@@ -309,6 +320,7 @@ filegroup(
         ":aapt-proto-artifacts",
         ":aia-artifacts",
         ":analytics-artifacts",
+        ":nosyncbuilder-artifacts",
         ":profiler-artifacts",
         "//tools/base/build-system:gradle-api_neverlink",  # Provided when run in Gradle.
     ],
@@ -346,6 +358,8 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/androidx/arch/core/core-runtime/2.0.0-alpha1:aar",
         "//prebuilts/tools/common/m2/repository/androidx/asynclayoutinflater/asynclayoutinflater/1.0.0-alpha1:aar",
         "//prebuilts/tools/common/m2/repository/androidx/collection/collection/1.0.0-alpha1:jar",
+        "//prebuilts/tools/common/m2/repository/androidx/constraintlayout/constraintlayout-solver/1.1.0:jar",
+        "//prebuilts/tools/common/m2/repository/androidx/constraintlayout/constraintlayout/1.1.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/coordinatorlayout/coordinatorlayout/1.0.0-alpha1:aar",
         "//prebuilts/tools/common/m2/repository/androidx/core/core/1.0.0-alpha1:aar",
         "//prebuilts/tools/common/m2/repository/androidx/cursoradapter/cursoradapter/1.0.0-alpha1:aar",
@@ -377,6 +391,8 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/android/support/animated-vector-drawable/27.1.1:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/27.1.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout-solver/1.1.0:jar",
+        "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout/1.1.0:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/design/27.1.1:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/leanback-v17/27.1.1:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/multidex/1.0.1:aar",

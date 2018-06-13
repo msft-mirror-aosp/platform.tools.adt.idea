@@ -17,16 +17,17 @@ package com.android.tools.idea.gradle.dsl.model.ext
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
+import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.*
-import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.INTEGER
-import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.STRING
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.*
 import com.android.tools.idea.gradle.dsl.api.ext.PasswordPropertyModel.PasswordType.PLAIN_TEXT
-import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR
+import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.*
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall
+import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.hasItem
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
@@ -52,7 +53,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
     return field.get(unresolved) as GradleDslElement
   }
 
-  private fun GradlePropertyModel.fileModelToElement() : GradleDslElement {
+  private fun GradlePropertyModel.fileModelToElement(): GradleDslElement {
     val methodCallElement = element() as GradleDslMethodCall
     assertSize(1, methodCallElement.arguments)
     return methodCallElement.arguments[0]
@@ -153,7 +154,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
   private fun assertDependencyNumbers(
     element: GradleDslElement,
     numResolvedDependencies: Int,
-    numTotalDependencies : Int,
+    numTotalDependencies: Int,
     numUnresolvedDependencies: Int,
     numDependents: Int
   ) {
@@ -166,7 +167,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
   private fun assertDependencyNumbers(
     model: GradlePropertyModel,
     numResolvedDependencies: Int,
-    numTotalDependencies : Int,
+    numTotalDependencies: Int,
     numUnresolvedDependencies: Int,
     numDependents: Int
   ) {
@@ -206,7 +207,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
     val seventhModel = ext.findProperty("prop2")
 
     assertDependencyNumbers(firstModel, 0, 0, 0, 1)
-    assertDependencyNumbers(secondModel, 0, 0,  0, 1)
+    assertDependencyNumbers(secondModel, 0, 0, 0, 1)
     assertDependencyNumbers(thirdModel, 0, 0, 0, 1)
     // Note: Unresolved dependencies are only counted at the item level.
     assertDependencyNumbers(fourthModel, 3, 3, 0, 1)
@@ -267,8 +268,8 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
     val appliedSigningVarModel = appliedSigningModel.dependencies[0]!!
     val storeFModel = appliedSigningVarModel.toMap()!!["storeF"]!!
     val storePModel = appliedSigningVarModel.toMap()!!["storeP"]!!
-    val keyFModel   = appliedSigningVarModel.toMap()!!["keyF"]!!
-    val keyPModel   = appliedSigningVarModel.toMap()!!["keyP"]!!
+    val keyFModel = appliedSigningVarModel.toMap()!!["keyF"]!!
+    val keyPModel = appliedSigningVarModel.toMap()!!["keyP"]!!
     assertDependencyNumbers(varsModel, 2, 2, 0, 0)
     assertDependencyNumbers(appliedMinSdkModel, 0, 0, 0, 2)
     assertDependencyNumbers(appliedMaxDskModel, 1, 1, 0, 1)
@@ -346,7 +347,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
     val otherNewModel = buildModel.ext().findProperty("otherNewProp")
     otherNewModel.setValue(ReferenceTo("N0"))
     assertDependencyNumbers(otherNewModel, 1, 1, 0, 0)
-    assertDependencyBetween(otherNewModel,  buildModel.ext().findProperty("N0"), "N0")
+    assertDependencyBetween(otherNewModel, buildModel.ext().findProperty("N0"), "N0")
     val keyPass = buildModel.android()!!.signingConfigs()[0]!!.keyPassword()
     keyPass.setValue(PLAIN_TEXT, iStr("${'$'}{prop2['key']}${'$'}{N1}"))
     assertDependencyNumbers(keyPass, 2, 2, 0, 0)
@@ -378,7 +379,7 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
     // Create a variable in the child model that used applied and parents.
     val newModel = childModel.ext().findProperty("newProp")
     newModel.setValue(iStr("${'$'}{vars.maxSdk} - 12 - ${'$'}{numbers[4]} = ${'$'}{varInt}"))
-    assertDependencyNumbers(newModel, 3,3, 0, 0)
+    assertDependencyNumbers(newModel, 3, 3, 0, 0)
     assertDependencyBetween(newModel, maxSdkModel, "vars.maxSdk")
     assertDependencyBetween(newModel, number4Model, "numbers[4]")
     assertDependencyBetween(newModel, varIntModel, "varInt")
@@ -526,5 +527,231 @@ class PropertyDependencyTest : GradleFileModelTestCase() {
       val newMapReference = childModel.ext().findProperty("mapItem")
       verifyPropertyModel(newMapReference.resolve(), STRING_TYPE, "myDebugFile.txt", STRING, REGULAR, 1, "mapItem")
     }
+  }
+
+  @Test
+  fun testBuildScriptAppliedDependencies() {
+    val text = """
+                 buildscript {
+                 apply from: 'versions.gradle'
+                 dependencies {
+                   classpath deps.android_gradle_plugin
+                 }
+               }
+
+               dependencies {
+                 compile deps.android_gradle_plugin
+               }
+               """.trimIndent()
+    val appliedText = """
+                      ext.deps = [:]
+                      def versions = [:]
+                      versions.android_gradle_plugin = "3.1.0"
+
+                      def deps = [:]
+                      deps.android_gradle_plugin = "com.android.tools.build:gradle:${'$'}versions.android_gradle_plugin"
+                      ext.deps = deps
+                      """.trimIndent()
+    writeToNewProjectFile("versions.gradle", appliedText)
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val classPathProperty = buildModel.buildscript().dependencies().artifacts()[0]
+    val depsProperty = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(classPathProperty.completeModel(), STRING_TYPE, "com.android.tools.build:gradle:3.1.0", STRING, REGULAR, 1)
+
+    // Set the value of the result of the version
+    classPathProperty.version().resultModel.setValue("3.2.0")
+
+    fun verify(model: ArtifactDependencyModel) {
+      verifyPropertyModel(model.completeModel(), STRING_TYPE, "com.android.tools.build:gradle:3.2.0", STRING, REGULAR, 1)
+      verifyPropertyModel(model.completeModel().unresolvedModel, STRING_TYPE, "deps.android_gradle_plugin", REFERENCE, REGULAR,
+                          1)
+      assertThat(model.completeModel().resultModel.getRawValue(STRING_TYPE),
+                 equalTo("com.android.tools.build:gradle:${'$'}versions.android_gradle_plugin"))
+      verifyPropertyModel(model.version(), STRING_TYPE, "3.2.0", STRING, FAKE, 1)
+      verifyPropertyModel(model.version().resultModel, STRING_TYPE, "3.2.0", STRING, REGULAR, 0)
+    }
+    verify(classPathProperty)
+    verify(depsProperty)
+    applyChangesAndReparse(buildModel)
+    verify(classPathProperty)
+    verify(depsProperty)
+  }
+
+  @Test
+  fun testBuildScriptAppliedInParentModule() {
+    val text = """
+               buildscript {
+                 apply from: 'versions.gradle'
+               }
+               """.trimIndent()
+    val childText = """
+                    dependencies {
+                      compile rootProject.ext.deps.android_gradle_plugin
+                    }
+                    """.trimIndent()
+    val appliedText = """
+                      ext.deps = [:]
+                      def versions = [:]
+                      versions.android_gradle_plugin = "3.1.0"
+
+                      def deps = [:]
+                      deps.android_gradle_plugin = "com.android.tools.build:gradle:${'$'}versions.android_gradle_plugin"
+                      ext.deps = deps
+                      """.trimIndent()
+    writeToNewProjectFile("versions.gradle", appliedText)
+    writeToBuildFile(text)
+    writeToSubModuleBuildFile(childText)
+    writeToSettingsFile("include ':${SUB_MODULE_NAME}'")
+
+    val buildModel = subModuleGradleBuildModel
+    val artModel = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(artModel.completeModel(), STRING_TYPE, "com.android.tools.build:gradle:3.1.0", STRING, REGULAR, 1)
+    verifyPropertyModel(artModel.completeModel().unresolvedModel, STRING_TYPE, "rootProject.ext.deps.android_gradle_plugin", REFERENCE,
+                        REGULAR,
+                        1)
+    assertThat(artModel.completeModel().resultModel.getRawValue(STRING_TYPE),
+               equalTo("com.android.tools.build:gradle:${'$'}versions.android_gradle_plugin"))
+    verifyPropertyModel(artModel.version(), STRING_TYPE, "3.1.0", STRING, FAKE, 1)
+    verifyPropertyModel(artModel.version().resultModel, STRING_TYPE, "3.1.0", STRING, REGULAR, 0)
+  }
+
+  @Test
+  fun testSubProjectsAppliedDependencies() {
+    runApplyFileToChildrenTest("subprojects")
+  }
+
+  @Test
+  fun testAllProjectsAppliedDependencies() {
+    runApplyFileToChildrenTest("allprojects")
+  }
+
+  private fun runApplyFileToChildrenTest(function : String) {
+    val text = """
+               $function { project ->
+                 apply from: "versions.gradle"
+               }
+               """.trimIndent()
+    val appliedText = "ext.property = 'boo'"
+    val childText = """
+                    dependencies {
+                      compile "${'$'}{property}:${'$'}property:2.0"
+                    }
+                    """.trimIndent()
+    writeToNewProjectFile("versions.gradle", appliedText)
+    writeToBuildFile(text)
+    writeToSubModuleBuildFile(childText)
+    writeToSettingsFile("include ':${SUB_MODULE_NAME}'")
+
+    val buildModel = subModuleGradleBuildModel
+    val artModel = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(artModel.completeModel(), STRING_TYPE, "boo:boo:2.0", STRING, REGULAR, 2)
+  }
+
+  @Test
+  fun testApplyFileWithVariables() {
+    val text = """
+               def namePart1 = 'super'
+               ext.namePart2 = 'awesome'
+               apply from: "${'$'}{namePart1}${'$'}{namePart2}.gradle"
+
+               dependencies {
+                 api("${'$'}group:${'$'}name:${'$'}version")
+               }
+               """.trimIndent()
+    val appliedText = """
+                      ext.group   = 'super'
+                      ext.name    = 'powers'
+                      ext.version = '1.0.0'
+                      """.trimIndent()
+    writeToNewProjectFile("superawesome.gradle", appliedText)
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val artModel = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(artModel.completeModel(), STRING_TYPE, "super:powers:1.0.0", STRING, DERIVED, 3)
+  }
+
+  @Test
+  fun testApplyFileWithRootDirVariables() {
+    val text = """
+               apply from: "${'$'}rootDir/deps.gradle"
+
+               dependencies {
+                 api("${'$'}group:${'$'}name:${'$'}version")
+               }
+               """.trimIndent()
+    val appliedText = """
+                      ext.group   = 'super'
+                      ext.name    = 'powers'
+                      ext.version = '1.0.0'
+                      """.trimIndent()
+    writeToNewProjectFile("deps.gradle", appliedText)
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+    val artModel = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(artModel.completeModel(), STRING_TYPE, "super:powers:1.0.0", STRING, DERIVED, 3)
+  }
+
+  @Test
+  fun testMultipleAllProjectBlocks() {
+    val text = """
+               allprojects { project ->
+                 apply from: "versions.gradle"
+               }
+               subprojects { project ->
+                 apply from: "versions2.gradle"
+               }
+               """.trimIndent()
+    val allProjectsText = "rootProject.ext.property = 'boo'"
+    val subProjectsText = "ext.other = 'agh'"
+    val childText = """
+                    dependencies {
+                      compile "${'$'}{property}:${'$'}other:2.0"
+                    }
+                    """.trimIndent()
+    writeToNewProjectFile("versions.gradle", allProjectsText)
+    writeToNewProjectFile("versions2.gradle", subProjectsText)
+    writeToBuildFile(text)
+    writeToSubModuleBuildFile(childText)
+    writeToSettingsFile("include ':${SUB_MODULE_NAME}'")
+
+    val buildModel = subModuleGradleBuildModel
+    val artModel = buildModel.dependencies().artifacts()[0]
+
+    verifyPropertyModel(artModel.completeModel(), STRING_TYPE, "boo:agh:2.0", STRING, REGULAR, 2)
+  }
+
+  @Test
+  fun testReferenceBlockElement() {
+    val text = """
+               android {
+                 compileSdkVersion 26
+               }
+
+               ext {
+                 prop1 = android
+               }
+               """.trimIndent()
+    writeToBuildFile(text)
+
+    val buildModel = gradleBuildModel
+
+    // Access the repository block to ensure nothing bad happens when resolving the reference
+    val repos = buildModel.repositories()
+    assertSize(0, repos.repositories())
+
+    val prop1Model = buildModel.ext().findProperty("prop1")
+    val prop2Model = buildModel.ext().findProperty("prop2")
+    prop2Model.setValue(ReferenceTo("repositories"))
+    verifyPropertyModel(prop1Model.resolve(), STRING_TYPE, "android", UNKNOWN, REGULAR, 1)
+    verifyPropertyModel(prop2Model.resolve(), STRING_TYPE, "repositories", REFERENCE, REGULAR, 0)
   }
 }

@@ -17,7 +17,9 @@ package com.android.tools.idea.gradle.structure.model
 
 import javax.swing.Icon
 
-abstract class PsModel protected constructor(open val parent: PsModel?) {
+abstract class PsModel protected constructor() {
+
+  abstract val parent: PsModel?
 
   open var isModified: Boolean = false
     set(value) {
@@ -30,8 +32,6 @@ abstract class PsModel protected constructor(open val parent: PsModel?) {
   abstract val name: String
 
   abstract val isDeclared: Boolean
-
-  abstract val resolvedModel: Any?
 
   open val icon: Icon? get() = null
 

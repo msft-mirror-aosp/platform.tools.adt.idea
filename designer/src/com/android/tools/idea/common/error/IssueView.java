@@ -31,8 +31,11 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.text.Element;
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.StyleConstants;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -49,13 +52,14 @@ public class IssueView extends JPanel {
   private static final int BORDER_THICKNESS = 1;
   private static final JBColor SELECTED_BG_COLOR = new JBColor(0xf2f2f2, 0x232425);
   private static final RoundedLineBorder SELECTED_BORDER = IdeBorderFactory.createRoundedBorder(BORDER_THICKNESS);
-  private static final Border UNSELECTED_BORDER = IdeBorderFactory.createEmptyBorder(SELECTED_BORDER.getThickness());
+  private static final Border UNSELECTED_BORDER = JBUI.Borders.empty(SELECTED_BORDER.getThickness());
 
   static {
     SELECTED_BORDER.setColor(UIUtil.getTreeSelectionBorderColor());
   }
 
   private final IssuePanel myContainerIssuePanel;
+  @SuppressWarnings("FieldCanBeLocal") // Used for the form
   private JPanel myContent;
   private JBLabel myExpandIcon;
   private JLabel myErrorIcon;
@@ -117,7 +121,7 @@ public class IssueView extends JPanel {
   private void setupDescriptionPanel(@NotNull Issue issue) {
     String description = issue.getDescription();
     String formattedText = new HtmlBuilder().openHtmlBody().addHtml(description).closeHtmlBody().getHtml();
-    myErrorDescription.setEditorKit(UIUtil.getHTMLEditorKit());
+    myErrorDescription.setEditorKit(new IssueHTMLEditorKit());
     myErrorDescription.addHyperlinkListener(issue.getHyperlinkListener());
     myErrorDescription.setText(formattedText);
     myErrorDescription.setFont(UIUtil.getToolTipFont());
@@ -128,7 +132,6 @@ public class IssueView extends JPanel {
         setFocused(true);
       }
     });
-    applyIssueDescriptionStyle(myErrorDescription);
   }
 
   /**
@@ -204,7 +207,7 @@ public class IssueView extends JPanel {
 
   /**
    * Set the size of the source {@link JLabel}
-   *
+   * <p>
    * The method is used my the {@link IssuePanel} to ensure that every {@link IssueView}'s category
    * label has the same size.
    *
@@ -248,7 +251,7 @@ public class IssueView extends JPanel {
     StyleConstants.setBold(attrs, (font.getStyle() & Font.BOLD) != 0);
 
     textPane.getStyledDocument()
-      .setCharacterAttributes(0, textPane.getStyledDocument().getLength() + 1, attrs, false);
+            .setCharacterAttributes(0, textPane.getStyledDocument().getLength() + 1, attrs, false);
   }
 
   /**
@@ -276,7 +279,7 @@ public class IssueView extends JPanel {
    * from left to right
    */
   @NotNull
-  int[] getColumsX() {
+  int[] getColumnsX() {
     return new int[]{myExpandIcon.getX(), mySourceLabel.getX()};
   }
 
@@ -293,6 +296,32 @@ public class IssueView extends JPanel {
 
     private void createUIComponents() {
       myComponent = this;
+    }
+  }
+
+  private static class IssueHTMLEditorKit extends HTMLEditorKit {
+
+    StyleSheet style = createStyleSheet();
+
+    public StyleSheet createStyleSheet() {
+      StyleSheet style = new StyleSheet();
+      style.addStyleSheet(UIUtil.JBHtmlEditorKit.createStyleSheet());
+      style.addRule("body { font-family: Sans-Serif; }");
+      style.addRule("code { font-size: 100%; font-family: monospace; }"); // small by Swing's default
+      style.addRule("small { font-size: small; }"); // x-small by Swing's default
+      style.addRule("a { text-decoration: none;}");
+      return style;
+    }
+
+    @Override
+    public StyleSheet getStyleSheet() {
+      return style;
+    }
+
+    @Override
+    protected void createInputAttributes(Element element, MutableAttributeSet set) {
+      // Do Nothing, the super implementation stripped out the <BR/> tags but
+      // we need them
     }
   }
 }

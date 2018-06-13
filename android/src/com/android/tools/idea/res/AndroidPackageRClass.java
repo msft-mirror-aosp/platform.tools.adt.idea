@@ -16,15 +16,14 @@
 package com.android.tools.idea.res;
 
 import com.android.resources.ResourceType;
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableSet;
 import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.DumbService;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiFileFactory;
-import com.intellij.psi.PsiManager;
+import com.intellij.psi.*;
 import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValueProvider.Result;
 import com.intellij.psi.util.CachedValuesManager;
@@ -53,10 +52,10 @@ public class AndroidPackageRClass extends AndroidLightClassBase {
 
   public AndroidPackageRClass(
       @NotNull PsiManager psiManager, @NotNull String packageName, @NotNull Module module) {
-    super(psiManager);
+    super(psiManager, ImmutableSet.of(PsiModifier.PUBLIC, PsiModifier.FINAL));
 
     myModule = module;
-    myFullyQualifiedName = packageName + AndroidResourceClassFinder.INTERNAL_R_CLASS_SHORTNAME;
+    myFullyQualifiedName = packageName + ".R";
     myFile =
         PsiFileFactory.getInstance(myManager.getProject())
             .createFileFromText("R.java", JavaFileType.INSTANCE, "package " + packageName + ";");
@@ -73,7 +72,7 @@ public class AndroidPackageRClass extends AndroidLightClassBase {
 
   @Override
   public String toString() {
-    return "AndroidPackageRClass";
+    return MoreObjects.toStringHelper(this).addValue(getQualifiedName()).toString();
   }
 
   @Nullable

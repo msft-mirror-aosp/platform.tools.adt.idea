@@ -80,7 +80,7 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
                                "Insert image here 2\n");
     myFixture.addFileToProject("sampledata/images/image3.png",
                                "Insert image here 3\n");
-    SampleDataResourceRepository repo = new SampleDataResourceRepository(myFacet);
+    SampleDataResourceRepository repo = SampleDataResourceRepository.getInstance(myFacet);
 
     assertEquals(2, onlyProjectSources(repo).size());
     assertEquals(1, onlyProjectSources(repo, "strings").size());
@@ -172,14 +172,17 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
 
 
     assertNull(resolver.findResValue("@sample/invalid", false));
+
+    ResourceReference elementRef = new ResourceReference(ResourceNamespace.TODO(), ResourceType.SAMPLE_DATA, "strings[1]");
+    assertNotNull(resolver.getResolvedResource(elementRef));
   }
 
   public void testSampleDataFileInvalidation() throws IOException {
-    SampleDataResourceRepository repo = new SampleDataResourceRepository(myFacet);
+    SampleDataResourceRepository repo = SampleDataResourceRepository.getInstance(myFacet);
 
     assertTrue(onlyProjectSources(repo).isEmpty());
 
-    myFixture.addFileToProject("sampledata/strings",
+    PsiFile strings = myFixture.addFileToProject("sampledata/strings",
                                "string1\n" +
                                "string2\n" +
                                "string3\n");
@@ -190,13 +193,23 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
                                "string1\n");
     assertEquals(2, onlyProjectSources(repo).size());
 
+    ApplicationManager.getApplication().runWriteAction(() -> {
+      try {
+        strings.getVirtualFile().delete(null);
+      }
+      catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
+    assertEquals(1, onlyProjectSources(repo).size());
+
     VirtualFile sampleDir = SampleDataResourceRepository.getSampleDataDir(myFacet, false);
     ApplicationManager.getApplication().runWriteAction(() -> {
       try {
         sampleDir.delete(null);
       }
       catch (IOException e) {
-        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     });
     assertTrue(onlyProjectSources(repo).isEmpty());
@@ -228,7 +241,7 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
                                "      \"name\": \"Name1\",\n" +
                                "      \"surname\": \"Surname1\"\n" +
                                "    },\n");
-    SampleDataResourceRepository repo = new SampleDataResourceRepository(myFacet);
+    SampleDataResourceRepository repo = SampleDataResourceRepository.getInstance(myFacet);
 
     // Three different items are expected, one for the users/name path, other for users/surname and a last one for users/phone
     assertEquals(3, onlyProjectSources(repo).size());
@@ -241,7 +254,7 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
                                "Name1,Surname1\n" +
                                "Name2,Surname2\n" +
                                "Name3,Surname3,555-00000");
-    SampleDataResourceRepository repo = new SampleDataResourceRepository(myFacet);
+    SampleDataResourceRepository repo = SampleDataResourceRepository.getInstance(myFacet);
 
     // Three different items are expected, one for the users/name path, other for users/surname and a last one for users/phone
     assertEquals(3, onlyProjectSources(repo).size());
@@ -303,7 +316,7 @@ public class SampleDataResourceRepositoryTest extends AndroidTestCase {
   // Temporarily disabled to debug the failed leak test
   public void ignorePredefinedSources() {
     // No project sources defined so only predefined sources should be available
-    SampleDataResourceRepository repo = new SampleDataResourceRepository(myFacet);
+    SampleDataResourceRepository repo = SampleDataResourceRepository.getInstance(myFacet);
 
     assertFalse(repo.getMap(null, ResourceType.SAMPLE_DATA, false).isEmpty());
 

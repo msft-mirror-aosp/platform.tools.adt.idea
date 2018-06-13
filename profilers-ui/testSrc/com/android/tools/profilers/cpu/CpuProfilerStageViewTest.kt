@@ -21,11 +21,13 @@ import com.android.tools.adtui.SelectionComponent
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.chart.linechart.OverlayComponent
 import com.android.tools.adtui.instructions.InstructionsPanel
+import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.ui.HideablePanel
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.CpuProfiler
+import com.android.tools.profiler.protobuf3jarjar.ByteString
 import com.android.tools.profilers.*
 import com.android.tools.profilers.FakeProfilerService.FAKE_DEVICE_NAME
 import com.android.tools.profilers.FakeProfilerService.FAKE_PROCESS_NAME
@@ -36,6 +38,7 @@ import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.memory.FakeMemoryService
 import com.android.tools.profilers.network.FakeNetworkService
 import com.android.tools.profilers.stacktrace.ContextMenuItem
+import com.google.common.collect.Iterators
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ui.ExpandedItemListCellRendererWrapper
 import com.intellij.ui.JBSplitter
@@ -45,6 +48,7 @@ import org.junit.Test
 import org.mockito.Mockito
 import java.awt.Graphics2D
 import java.io.File
+import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JList
 
@@ -52,6 +56,8 @@ import javax.swing.JList
 private const val TOOLTIP_TRACE_DATA_FILE = "tools/adt/idea/profilers-ui/testData/cputraces/atrace.ctrace"
 
 private const val ATRACE_MISSING_DATA_FILE = "tools/adt/idea/profilers-ui/testData/cputraces/atrace_processid_1.ctrace"
+
+private const val ART_TRACE_FILE = "tools/adt/idea/profilers-ui/testData/valid_trace.trace"
 
 class CpuProfilerStageViewTest {
 
@@ -186,7 +192,6 @@ class CpuProfilerStageViewTest {
     assertThat(items[5].text).isEqualTo("Previous capture")
     assertThat(items[5].isEnabled).isFalse()
   }
-
 
   @Test
   fun testCpuCellRendererHasSessionPid() {
@@ -368,14 +373,69 @@ class CpuProfilerStageViewTest {
     val cpuStageView = CpuProfilerStageView(myProfilersView, myStage)
     // Select valid capture no dialog should be presented.
     myStage.setAndSelectCapture(0)
-    assertThat(myIdeServices.balloonTitle).isNull();
-    assertThat(myIdeServices.balloonBody).isNull();
+    assertThat(myIdeServices.balloonTitle).isNull()
+    assertThat(myIdeServices.balloonBody).isNull()
     // Select invalid capture we should see dialog.
     myCpuService.setTrace(CpuProfilerTestUtils.traceFileToByteString(TestUtils.getWorkspaceFile(ATRACE_MISSING_DATA_FILE)))
     myStage.setAndSelectCapture(1)
     assertThat(myIdeServices.balloonTitle).isEqualTo(CpuProfilerStageView.ATRACE_BUFFER_OVERFLOW_TITLE)
     assertThat(myIdeServices.balloonBody).isEqualTo(CpuProfilerStageView.ATRACE_BUFFER_OVERFLOW_MESSAGE)
   }
+
+  @Test
+  fun recordTraceMenuItemOnlyEnabledInLiveSessions() {
+    // Clear any context menu items added to the service to make sure we'll have only the items created in CpuProfilerStageView
+    myComponents.clearContextMenuItems()
+    // Create a CpuProfilerStageView. We don't need its value, so we don't store it in a variable.
+    CpuProfilerStageView(myProfilersView, myStage)
+
+    var recordTraceEntry = myComponents.allContextMenuItems[0]
+    assertThat(recordTraceEntry.text).isEqualTo("Record CPU trace")
+    // As the current session is alive, the item should be enabled.
+    assertThat(recordTraceEntry.isEnabled).isTrue()
+
+    myStage.studioProfilers.sessionsManager.endCurrentSession()
+    // Clear the components again and create a new instance of CpuProfilerStageView to re-add the components.
+    myComponents.clearContextMenuItems()
+    CpuProfilerStageView(myProfilersView, myStage)
+    recordTraceEntry = myComponents.allContextMenuItems[0]
+    assertThat(recordTraceEntry.text).isEqualTo("Record CPU trace")
+    // As the current session is dead, the item should be disabled.
+    assertThat(recordTraceEntry.isEnabled).isFalse()
+  }
+
+  @Test
+  fun recordButtonDisabledInDeadSessions() {
+    // Create a valid capture and end the current session afterwards.
+    myCpuService.profilerType = CpuProfiler.CpuProfilerType.ART
+    myCpuService.setGetTraceResponseStatus(CpuProfiler.GetTraceResponse.Status.SUCCESS)
+    myCpuService.setTrace(ByteString.copyFrom(TestUtils.getWorkspaceFile(ART_TRACE_FILE).readBytes()))
+    myStage.studioProfilers.sessionsManager.endCurrentSession()
+
+    val stageView = CpuProfilerStageView(myProfilersView, myStage)
+    val recordButton = TreeWalker(stageView.toolbar).descendants().filterIsInstance<JButton>().first { it.text == "Record" }
+    // When creating the stage view, the record button should be disabled as the current session is dead.
+    assertThat(recordButton.isEnabled).isFalse()
+
+    var transitionHappened = false
+    // Listen to CAPTURE_STATE changes and check if the new state is equal to what we expect.
+    val captureStates = Iterators.forArray(CpuProfilerStage.CaptureState.PARSING,
+                                           CpuProfilerStage.CaptureState.IDLE)
+    val observer = AspectObserver()
+    myStage.aspect.addDependency(observer).onChange(CpuProfilerAspect.CAPTURE_STATE) {
+      assertThat(myStage.captureState).isEqualTo(captureStates.next())
+      transitionHappened = true
+    }
+
+    // Set and select a capture, which will trigger a transition of states. First PARSING then IDLE.
+    myStage.setAndSelectCapture(FakeCpuService.FAKE_TRACE_ID)
+
+    assertThat(transitionHappened).isTrue() // Sanity check to verify we actually changed states.
+
+    // Even after parsing the capture, the record button should remain disabled.
+    assertThat(recordButton.isEnabled).isFalse()
+  }
+
   /**
    * Checks that the menu items common to all profilers are installed in the CPU profiler context menu.
    * They should be at the bottom of the context menu, starting at a given index.

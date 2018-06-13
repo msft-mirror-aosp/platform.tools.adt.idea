@@ -15,33 +15,38 @@
  */
 package com.android.tools.idea.gradle.structure.model.android
 
-import com.android.builder.model.AndroidProject.PROJECT_TYPE_APP
+import com.android.builder.model.AndroidProject.*
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
-import com.android.tools.idea.gradle.structure.model.*
+import com.android.tools.idea.gradle.structure.model.PsArtifactDependencySpec
+import com.android.tools.idea.gradle.structure.model.PsDeclaredDependency
+import com.android.tools.idea.gradle.structure.model.PsModule
+import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
+import com.android.tools.idea.gradle.structure.model.meta.asString
 import com.android.tools.idea.gradle.structure.model.repositories.search.AndroidSdkRepositories
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepository
 import com.android.tools.idea.gradle.util.GradleUtil.getAndroidModuleIcon
 import com.android.utils.StringHelper
-import com.intellij.openapi.module.Module
+import java.io.File
 import javax.swing.Icon
 
 class PsAndroidModule(
   parent: PsProject,
-  resolvedModel: Module,
+  name: String,
+  val resolvedModel: AndroidModuleModel?,
   gradlePath: String,
-  override val gradleModel: AndroidModuleModel,
-  parsedModel: GradleBuildModel
-) : PsModule(parent, resolvedModel, gradlePath, parsedModel), PsAndroidModel {
+  parsedModel: GradleBuildModel?
+) : PsModule(parent, name, gradlePath, parsedModel) {
   private var buildTypeCollection: PsBuildTypeCollection? = null
   private var productFlavorCollection: PsProductFlavorCollection? = null
   private var variantCollection: PsVariantCollection? = null
   private var dependencyCollection: PsAndroidModuleDependencyCollection? = null
   private var signingConfigCollection: PsSigningConfigCollection? = null
 
-  val isLibrary: Boolean get() = gradleModel.androidProject.projectType != PROJECT_TYPE_APP
+  val projectType: Int? get() = resolvedModel?.androidProject?.projectType ?: parsedModel?.parsedModelModuleType()
+  val isLibrary: Boolean get() = projectType != PROJECT_TYPE_APP
 
   val buildTypes: List<PsBuildType> get() = getOrCreateBuildTypeCollection().items()
   val productFlavors: List<PsProductFlavor> get() = getOrCreateProductFlavorCollection().items()
@@ -52,7 +57,7 @@ class PsAndroidModule(
   val flavorDimensions: Collection<String>
     get() {
       val result = mutableSetOf<String>()
-      result.addAll(gradleModel.androidProject.flavorDimensions)
+      result.addAll(resolvedModel?.androidProject?.flavorDimensions.orEmpty())
       val parsedFlavorDimensions = parsedModel?.android()?.flavorDimensions()?.toList()
       if (parsedFlavorDimensions != null) {
         result.addAll(parsedFlavorDimensions.map { v -> v.toString() })
@@ -72,7 +77,10 @@ class PsAndroidModule(
     // 'module' is either a Java library or an AAR module.
     (module as? PsAndroidModule)?.isLibrary == true
 
-  override val icon: Icon? get() = getAndroidModuleIcon(gradleModel)
+  override val rootDir: File?
+    get() = resolvedModel?.rootDirPath ?: parsedModel?.virtualFile?.path?.let { File(it).parentFile }
+
+  override val icon: Icon? get() = projectType?.let { getAndroidModuleIcon(it) }
 
   override fun populateRepositories(repositories: MutableList<ArtifactRepository>) {
     super.populateRepositories(repositories)
@@ -242,4 +250,17 @@ class PsAndroidModule(
   private fun resetDeclaredDependencies() {
     dependencyCollection = null
   }
+}
+
+private fun GradleBuildModel.parsedModelModuleType(): Int? =
+  plugins().mapNotNull { moduleProjectTypeFromPlugin(it.name().asString().orEmpty()) }.firstOrNull()
+
+private fun moduleProjectTypeFromPlugin(plugin: String): Int? = when (plugin) {
+  "com.android.application", "android" -> PROJECT_TYPE_APP
+  "com.android.library", "android-library" -> PROJECT_TYPE_LIBRARY
+  "com.android.instantapp" -> PROJECT_TYPE_INSTANTAPP
+  "com.android.feature" -> PROJECT_TYPE_FEATURE
+  "com.android.dynamic-feature" -> PROJECT_TYPE_DYNAMIC_FEATURE
+  "com.android.test" -> PROJECT_TYPE_TEST
+  else -> null
 }

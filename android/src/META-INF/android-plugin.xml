@@ -397,8 +397,8 @@
 
     <applicationConfigurable groupId="editor" groupWeight="115" id="nele.options"
                              provider="com.android.tools.idea.uibuilder.options.NlOptionsConfigurableProvider"/>
-    <projectConfigurable instance="com.android.tools.idea.gradle.project.GradleExperimentalSettingsConfigurable"
-                         id ="gradle.experimental" displayName="Experimental" parentId="reference.settingsdialog.project.gradle"/>
+    <projectConfigurable instance="com.android.tools.idea.flags.ExperimentalSettingsConfigurable"
+                         id ="experimental" displayName="Experimental" groupId="root" groupWeight="-999"/>
     <applicationService serviceInterface="com.android.tools.idea.gradle.project.GradleExperimentalSettings"
                         serviceImplementation="com.android.tools.idea.gradle.project.GradleExperimentalSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.sdk.StudioSettingsController"/>
@@ -627,6 +627,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintBackButton" displayName="Back button" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintBackButtonInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintBadHostnameVerifier" displayName="Insecure HostnameVerifier" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintBadHostnameVerifierInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintBatteryLife" displayName="Battery Life Issues" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintBatteryLifeInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintBottomAppBar" displayName="BottomAppBar Problems" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintBottomAppBarInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintButtonCase" displayName="Cancel/OK dialog button capitalization" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintButtonCaseInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintButtonOrder" displayName="Button order" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintButtonOrderInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintButtonStyle" displayName="Button should be borderless" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintButtonStyleInspection"/>
@@ -786,6 +787,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNewerVersionAvailable" displayName="Newer Library Versions Available" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintNewerVersionAvailableInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNfcTechWhitespace" displayName="Whitespace in NFC tech lists" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNfcTechWhitespaceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNoHardKeywords" displayName="No Hard Kotlin Keywords" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintNoHardKeywordsInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintNotificationIconCompatibility" displayName="Raster image is required for notification icon" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintNotificationIconCompatibilityInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNotInterpolated" displayName="Incorrect Interpolation" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNotInterpolatedInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintNotSibling" displayName="RelativeLayout Invalid Constraints" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintNotSiblingInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintObjectAnimatorBinding" displayName="Incorrect ObjectAnimator Property" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintObjectAnimatorBindingInspection"/>
@@ -1053,6 +1055,7 @@
     <projectService serviceImplementation="com.android.tools.idea.gradle.dependencies.GradleDependencyManager"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ProjectResourceRepositoryRootListener"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceFolderRegistry"/>
+    <projectService serviceImplementation="com.android.tools.idea.res.SampleDataListener"/>
     <projectService serviceImplementation="com.android.tools.idea.structure.services.DeveloperServices" />
     <projectService serviceImplementation="com.android.tools.idea.npw.assetstudio.wizard.GenerateIconsModel$StateStorage" />
 
@@ -1095,6 +1098,7 @@
     <lang.psiAugmentProvider implementation="org.jetbrains.android.augment.AndroidPsiAugmentProvider"/>
     <java.elementFinder implementation="com.android.tools.idea.res.ProjectSystemPsiElementFinder" order="first, before java"/>
     <java.elementFinder implementation="com.android.tools.idea.res.AndroidInternalRClassFinder"/>
+    <projectService serviceImplementation="com.android.tools.idea.res.ProjectLightResourceClassService" />
 
     <packaging.elementType implementation="org.jetbrains.android.compiler.artifact.AndroidFinalPackageElementType"/>
     <packaging.sourceItemProvider implementation="org.jetbrains.android.compiler.artifact.AndroidSourceItemsProvider"/>

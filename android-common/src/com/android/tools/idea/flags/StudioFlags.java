@@ -253,6 +253,11 @@ public final class StudioFlags {
     "Enable the new Property Panel",
     false);
 
+  public static final Flag<Boolean> NELE_NEW_COLOR_PICKER = Flag.create(
+    NELE, "new.color.picker", "New Color Picker",
+    "Enable new Color Picker in layout Editor",
+    false);
+
   private static final FlagGroup RUNDEBUG_GROUP = new FlagGroup(FLAGS, "rundebug", "Run/Debug");
   public static final Flag<Boolean> RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED = Flag.create(
     RUNDEBUG_GROUP, "logcat.console.output.enabled", "Show logcat process output in Run/Debug console window",
@@ -339,7 +344,7 @@ public final class StudioFlags {
             "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
   public static final Flag<Boolean> LLDB_ASSEMBLY_DEBUGGING = Flag.create(
     NDK, "debugging.assembly", "Enable assembly debugging",
-    "If enabled, frames without sources will show the assembly of the function and allow breakpoints to be set there", true);
+    "If enabled, frames without sources will show the assembly of the function and allow breakpoints to be set there", false);
 
   public static final Flag<Boolean> ENABLE_ENHANCED_NATIVE_HEADER_SUPPORT = Flag
     .create(NDK, "enhancednativeheadersupport", "Enable enhanced native header support",
@@ -348,7 +353,7 @@ public final class StudioFlags {
   private static final FlagGroup NAVIGATION = new FlagGroup(FLAGS, "navigation", "Navigation Editor");
   public static final Flag<Boolean> ENABLE_NAV_EDITOR = Flag.create(
     NAVIGATION, "enable.nav.editor", "Enable the Navigation Editor",
-    "If enabled, it will be possible to create and edit navigation resource files", true);
+    "If enabled, it will be possible to create and edit navigation resource files", false);
 
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
   public static final Flag<Boolean> IN_MEMORY_R_CLASSES = Flag.create(

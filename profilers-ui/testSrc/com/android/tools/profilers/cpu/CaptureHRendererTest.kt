@@ -16,7 +16,6 @@ package com.android.tools.profilers.cpu
 import com.android.tools.profilers.ProfilerColors
 import com.android.tools.profilers.cpu.nodemodel.*
 import com.google.common.truth.Truth.assertThat
-import com.intellij.ui.ColorUtil
 import com.intellij.ui.Graphics2DDelegate
 import com.intellij.util.ui.UIUtil
 import org.junit.Assert.fail
@@ -97,6 +96,26 @@ class CaptureNodeHRendererTest {
   }
 
   @Test
+  fun renderIdleTimeWithNegativeStartFillsIdleTime() {
+    val simpleNode = CaptureNode(AtraceNodeModel("SomeName"))
+    simpleNode.startGlobal = 10;
+    simpleNode.endGlobal = 110;
+    simpleNode.startThread = 10;
+    simpleNode.endThread = 15;
+    val renderer = CaptureNodeHRenderer(CaptureModel.Details.Type.CALL_CHART)
+    val renderWindow = Rectangle2D.Float(-100.0f, 0.0f, 300.0f,10.0f)
+    val clampWindow = Rectangle2D.Float(0f, 0f, 10f, 10f);
+    val fakeGraphics = TestGraphics2D()
+    renderer.render(fakeGraphics, simpleNode, renderWindow, clampWindow,false)
+    assertThat(fakeGraphics.fillShapes).hasSize(2)
+
+    // Validate we get the expected size of the window.
+    // Our first render should be only 10px on screen,
+    // The second (idle) should be this entire 10px.
+    fakeGraphics.expectFillShapes(clampWindow, clampWindow)
+  }
+
+  @Test
   fun renderInvalidNodeShouldThrowException() {
     val unsupportedNode = CaptureNode(StubCaptureNodeModel())
     val renderer = CaptureNodeHRenderer(CaptureModel.Details.Type.CALL_CHART)
@@ -153,7 +172,7 @@ class CaptureNodeHRendererTest {
   fun testAtraceColors() {
     val invalidModel = SyscallModel("write")
     try {
-      AtraceNodeModelHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false)
+      AtraceNodeModelHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false, false)
       fail()
     }
     catch (e: IllegalStateException) {
@@ -162,24 +181,36 @@ class CaptureNodeHRendererTest {
 
     val model = AtraceNodeModel("SomeName")
 
-    var color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.CALL_CHART, false)
+    var color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.CALL_CHART, false, false)
     assertThat(color).isEqualTo(ProfilerColors.CPU_USAGE_CAPTURED)
 
-    color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.FLAME_CHART, false)
+    color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.CALL_CHART, false, true)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_USAGE_CAPTURED_HOVER)
+
+    color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.FLAME_CHART, false, false)
     assertThat(color).isEqualTo(ProfilerColors.CPU_FLAMECHART_APP)
 
-    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.CALL_CHART, false)
-    assertThat(color).isEqualTo(ColorUtil.darker(ProfilerColors.CPU_USAGE_CAPTURED, 3))
+    color = AtraceNodeModelHChartColors.getFillColor(model, CaptureModel.Details.Type.FLAME_CHART, false, true)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_FLAMECHART_APP_HOVER)
 
-    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.FLAME_CHART, false)
-    assertThat(color).isEqualTo(ColorUtil.darker(ProfilerColors.CPU_FLAMECHART_APP, 3))
+    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.CALL_CHART, false, false)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_TRACE_IDLE)
+
+    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.CALL_CHART, false, true)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_TRACE_IDLE_HOVER)
+
+    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.FLAME_CHART, false, false)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_FLAMECHART_APP)
+
+    color = AtraceNodeModelHChartColors.getIdleCpuColor(model, CaptureModel.Details.Type.FLAME_CHART, false, true)
+    assertThat(color).isEqualTo(ProfilerColors.CPU_FLAMECHART_APP_HOVER)
   }
 
   @Test
   fun testJavaColors() {
     val invalidModel = SyscallModel("write")
     try {
-      JavaMethodHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false)
+      JavaMethodHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false, false)
       fail()
     }
     catch (e: IllegalStateException) {
@@ -187,20 +218,23 @@ class CaptureNodeHRendererTest {
     }
 
     val vendorModel = JavaMethodModel("toString", "java.lang.String")
-    doTestJavaMethodColors(vendorModel, ProfilerColors.CPU_CALLCHART_VENDOR, ProfilerColors.CPU_FLAMECHART_VENDOR)
+    doTestJavaMethodColors(vendorModel, ProfilerColors.CPU_CALLCHART_VENDOR, ProfilerColors.CPU_FLAMECHART_VENDOR,
+                           ProfilerColors.CPU_CALLCHART_VENDOR_HOVER, ProfilerColors.CPU_FLAMECHART_VENDOR_HOVER)
 
     val platformModel = JavaMethodModel("inflate", "com.android.Activity")
-    doTestJavaMethodColors(platformModel, ProfilerColors.CPU_CALLCHART_PLATFORM, ProfilerColors.CPU_FLAMECHART_PLATFORM)
+    doTestJavaMethodColors(platformModel, ProfilerColors.CPU_CALLCHART_PLATFORM, ProfilerColors.CPU_FLAMECHART_PLATFORM,
+                           ProfilerColors.CPU_CALLCHART_PLATFORM_HOVER, ProfilerColors.CPU_FLAMECHART_PLATFORM_HOVER)
 
     val appModel = JavaMethodModel("toString", "com.example.MyClass")
-    doTestJavaMethodColors(appModel, ProfilerColors.CPU_CALLCHART_APP, ProfilerColors.CPU_FLAMECHART_APP)
+    doTestJavaMethodColors(appModel, ProfilerColors.CPU_CALLCHART_APP, ProfilerColors.CPU_FLAMECHART_APP,
+                           ProfilerColors.CPU_CALLCHART_APP_HOVER, ProfilerColors.CPU_FLAMECHART_APP_HOVER)
   }
 
   @Test
   fun testNativeColors() {
     val invalidModel = JavaMethodModel("toString", "com.example.MyClass")
     try {
-      NativeModelHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false)
+      NativeModelHChartColors.getFillColor(invalidModel, CaptureModel.Details.Type.CALL_CHART, false, false)
       fail()
     }
     catch (e: IllegalStateException) {
@@ -208,13 +242,16 @@ class CaptureNodeHRendererTest {
     }
 
     val vendorModel = CppFunctionModel.Builder("Load").setIsUserCode(false).setClassOrNamespace("glClear").build()
-    doTestNativeColors(vendorModel, ProfilerColors.CPU_CALLCHART_VENDOR, ProfilerColors.CPU_FLAMECHART_VENDOR)
+    doTestNativeColors(vendorModel, ProfilerColors.CPU_CALLCHART_VENDOR, ProfilerColors.CPU_FLAMECHART_VENDOR,
+                       ProfilerColors.CPU_CALLCHART_VENDOR_HOVER, ProfilerColors.CPU_FLAMECHART_VENDOR_HOVER)
 
     val platformModel = CppFunctionModel.Builder("Inflate").setIsUserCode(false).setClassOrNamespace("android::Activity").build()
-    doTestNativeColors(platformModel, ProfilerColors.CPU_CALLCHART_PLATFORM, ProfilerColors.CPU_FLAMECHART_PLATFORM)
+    doTestNativeColors(platformModel, ProfilerColors.CPU_CALLCHART_PLATFORM, ProfilerColors.CPU_FLAMECHART_PLATFORM,
+                       ProfilerColors.CPU_CALLCHART_PLATFORM_HOVER, ProfilerColors.CPU_FLAMECHART_PLATFORM_HOVER)
 
     val appModel = CppFunctionModel.Builder("DoFrame").setIsUserCode(true).setClassOrNamespace("PlayScene").build()
-    doTestNativeColors(appModel, ProfilerColors.CPU_CALLCHART_APP, ProfilerColors.CPU_FLAMECHART_APP)
+    doTestNativeColors(appModel, ProfilerColors.CPU_CALLCHART_APP, ProfilerColors.CPU_FLAMECHART_APP,
+                       ProfilerColors.CPU_CALLCHART_APP_HOVER, ProfilerColors.CPU_FLAMECHART_APP_HOVER)
   }
 
   @Test
@@ -225,7 +262,7 @@ class CaptureNodeHRendererTest {
         "c.e.MyClass.toString",
         "c.e.M.toString",
         "toString",
-        "toStrin"
+        "toSt..."
     ))
   }
 
@@ -236,7 +273,7 @@ class CaptureNodeHRendererTest {
         "MyNativeClass::myNativeMethod",
         "M::myNativeMethod",
         "myNativeMethod",
-        "myNativeMetho"
+        "myNativeMe..."
     ))
   }
 
@@ -255,41 +292,59 @@ class CaptureNodeHRendererTest {
     }
   }
 
-  private fun doTestJavaMethodColors(model: JavaMethodModel, callChartFill: Color, flameChartFill: Color) {
+  private fun doTestJavaMethodColors(model: JavaMethodModel,
+                                     callChartFill: Color,
+                                     flameChartFill: Color,
+                                     callChartFillHover: Color,
+                                     flameChartFillHover: Color) {
     val callChart = CaptureModel.Details.Type.CALL_CHART
     val flameChart = CaptureModel.Details.Type.FLAME_CHART
 
     // Call chart not unmatched
-    var color = JavaMethodHChartColors.getFillColor(model, callChart, false)
+    var color = JavaMethodHChartColors.getFillColor(model, callChart, false, false)
     assertThat(color).isEqualTo(callChartFill)
     // Call chart unmatched
-    color = JavaMethodHChartColors.getFillColor(model, callChart, true)
+    color = JavaMethodHChartColors.getFillColor(model, callChart, true, false)
     assertThat(color).isEqualTo(CaptureNodeHRenderer.toUnmatchColor(callChartFill))
+    // Call chart hover
+    color = JavaMethodHChartColors.getFillColor(model, callChart, false, true)
+    assertThat(color).isEqualTo(callChartFillHover)
     // Flame chart not unmatched
-    color = JavaMethodHChartColors.getFillColor(model, flameChart, false)
+    color = JavaMethodHChartColors.getFillColor(model, flameChart, false, false)
     assertThat(color).isEqualTo(flameChartFill)
     // Flame chart unmatched
-    color = JavaMethodHChartColors.getFillColor(model, flameChart, true)
+    color = JavaMethodHChartColors.getFillColor(model, flameChart, true, false)
     assertThat(color).isEqualTo(CaptureNodeHRenderer.toUnmatchColor(flameChartFill))
+    // Flame chart hover
+    color = JavaMethodHChartColors.getFillColor(model, flameChart, false, true)
+    assertThat(color).isEqualTo(flameChartFillHover)
   }
 
   private fun doTestNativeColors(model: NativeNodeModel, callChartFill: Color,
-                                 flameChartFill: Color) {
+                                 flameChartFill: Color,
+                                 callChartFillHover: Color,
+                                 flameChartFillHover: Color) {
     val callChart = CaptureModel.Details.Type.CALL_CHART
     val flameChart = CaptureModel.Details.Type.FLAME_CHART
 
     // Call chart not unmatched
-    var color = NativeModelHChartColors.getFillColor(model, callChart, false)
+    var color = NativeModelHChartColors.getFillColor(model, callChart, false, false)
     assertThat(color).isEqualTo(callChartFill)
     // Call chart unmatched
-    color = NativeModelHChartColors.getFillColor(model, callChart, true)
+    color = NativeModelHChartColors.getFillColor(model, callChart, true, false)
     assertThat(color).isEqualTo(CaptureNodeHRenderer.toUnmatchColor(callChartFill))
+    // Call chart hover
+    color = NativeModelHChartColors.getFillColor(model, callChart, false, true)
+    assertThat(color).isEqualTo(callChartFillHover)
     // Flame chart not unmatched
-    color = NativeModelHChartColors.getFillColor(model, flameChart, false)
+    color = NativeModelHChartColors.getFillColor(model, flameChart, false, false)
     assertThat(color).isEqualTo(flameChartFill)
     // Flame chart unmatched
-    color = NativeModelHChartColors.getFillColor(model, flameChart, true)
+    color = NativeModelHChartColors.getFillColor(model, flameChart, true, false)
     assertThat(color).isEqualTo(CaptureNodeHRenderer.toUnmatchColor(flameChartFill))
+    // Flame chart hover
+    color = NativeModelHChartColors.getFillColor(model, flameChart, false, true)
+    assertThat(color).isEqualTo(flameChartFillHover)
   }
 
   private class TestGraphics2D : Graphics2DDelegate(UIUtil.createImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()) {

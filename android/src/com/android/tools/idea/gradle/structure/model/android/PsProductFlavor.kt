@@ -23,16 +23,22 @@ import com.google.common.util.concurrent.Futures.immediateFuture
 import java.io.File
 
 open class PsProductFlavor(
-  final override val parent: PsAndroidModule,
-  final override val resolvedModel: ProductFlavor?,
-  private val parsedModel: ProductFlavorModel?
-) : PsChildModel(parent), PsAndroidModel {
+  final override val parent: PsAndroidModule
+) : PsChildModel() {
 
-  override val name = when {
-    resolvedModel != null -> resolvedModel.name
-    parsedModel != null -> parsedModel.name()
-    else -> ""
+  var resolvedModel: ProductFlavor? = null
+  private var parsedModel: ProductFlavorModel? = null
+
+  constructor(parent: PsAndroidModule, resolvedModel: ProductFlavor?, parsedModel: ProductFlavorModel?) : this(parent) {
+    init(resolvedModel, parsedModel)
   }
+
+  fun init(resolvedModel: ProductFlavor?, parsedModel: ProductFlavorModel?) {
+    this.resolvedModel = resolvedModel
+    this.parsedModel = parsedModel
+  }
+
+  override val name: String get() = resolvedModel?.name ?: parsedModel?.name() ?: ""
 
   var applicationId by ProductFlavorDescriptors.applicationId
   var dimension by ProductFlavorDescriptors.dimension
@@ -50,7 +56,6 @@ open class PsProductFlavor(
   var testInstrumentationRunnerArguments by ProductFlavorDescriptors.testInstrumentationRunnerArguments
 
   override val isDeclared: Boolean get() = parsedModel != null
-  override val gradleModel: AndroidModuleModel = parent.gradleModel
 
   object ProductFlavorDescriptors : ModelDescriptor<PsProductFlavor, ProductFlavor, ProductFlavorModel> {
     override fun getResolved(model: PsProductFlavor): ProductFlavor? = model.resolvedModel

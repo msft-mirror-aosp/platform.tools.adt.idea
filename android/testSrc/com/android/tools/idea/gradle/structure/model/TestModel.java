@@ -20,14 +20,15 @@ import org.jetbrains.annotations.Nullable;
 
 public class TestModel extends PsModel {
   @NotNull private final String myName;
+  @Nullable private final PsModel myParent;
 
   protected TestModel(@NotNull String name) {
     this(name, null);
   }
 
   protected TestModel(@NotNull String name, @Nullable PsModel parent) {
-    super(parent);
     myName = name;
+    myParent = parent;
   }
 
   @NotNull
@@ -43,7 +44,7 @@ public class TestModel extends PsModel {
 
   @Nullable
   @Override
-  public Object getResolvedModel() {
-    return null;
+  public PsModel getParent() {
+    return myParent;
   }
 }

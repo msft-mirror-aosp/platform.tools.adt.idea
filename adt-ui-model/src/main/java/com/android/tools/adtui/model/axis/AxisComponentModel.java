@@ -22,13 +22,14 @@ import com.android.tools.adtui.model.updater.Updatable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.Aspect> implements Updatable {
+public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.Aspect> {
 
   public enum Aspect {
     AXIS
   }
 
   @NotNull protected final Range myRange;
+  @NotNull protected final Range myMarkerRange;
   @NotNull protected final BaseAxisFormatter myFormatter;
   @NotNull protected String myLabel;
 
@@ -39,13 +40,14 @@ public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.
 
   protected AxisComponentModel(@NotNull BaseBuilder<? extends AxisComponentModel> builder) {
     myRange = builder.myRange;
+    myMarkerRange = builder.myMarkerRange;
     myFormatter = builder.myFormatter;
     myLabel = builder.myLabel;
+    myRange.addDependency(this).onChange(Range.Aspect.RANGE, this::updateImmediately);
   }
 
   public abstract void updateImmediately();
 
-  @Override
   public void reset() {
     myFirstUpdate = true;
     updateImmediately();
@@ -59,6 +61,11 @@ public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.
   @NotNull
   public Range getRange() {
     return myRange;
+  }
+
+  @NotNull
+  public Range getMarkerRange() {
+    return myMarkerRange;
   }
 
   public double getDataRange() {
@@ -78,6 +85,7 @@ public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.
     @NotNull protected final Range myRange;
     @NotNull protected final BaseAxisFormatter myFormatter;
 
+    @NotNull protected Range myMarkerRange = new Range(0, Double.MAX_VALUE);
     @Nullable protected Range myGlobalRange;
     @NotNull protected String myLabel = "";
 
@@ -96,6 +104,16 @@ public abstract class AxisComponentModel extends AspectModel<AxisComponentModel.
     @NotNull
     public BaseBuilder<T> setLabel(@NotNull String label) {
       myLabel = label;
+      return this;
+    }
+
+    /**
+     * Sets the range of the axis's markers, there could be an range visible on the axis but
+     * no markers are shown.
+     */
+    @NotNull
+    public AxisComponentModel.BaseBuilder<T> setMarkerRange(@NotNull Range range) {
+      myMarkerRange = range;
       return this;
     }
 

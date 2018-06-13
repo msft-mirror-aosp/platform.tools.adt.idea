@@ -26,17 +26,21 @@ import com.android.tools.profilers.StudioProfilers;
 import org.jetbrains.annotations.NotNull;
 
 public class EnergyMonitor extends ProfilerMonitor {
-  public static final int MAX_EXPECTED_USAGE = 400;
+  // Shows the left axis range as "Medium" by default.
+  public static final int MAX_EXPECTED_USAGE = EnergyAxisFormatter.DEFAULT_MAJOR_INTERVAL * 2;
+  public static final Range AXIS_MARKER_RANGE =
+    new Range(0, EnergyAxisFormatter.DEFAULT_MAJOR_INTERVAL * EnergyAxisFormatter.LABELS.length);
 
   @NotNull private final EnergyUsage myUsage;
-  @NotNull private final AxisComponentModel myAxis;
+  @NotNull private final ClampedAxisComponentModel myAxis;
   @NotNull private final Legends myLegends;
   @NotNull private final Legends myTooltipLegends;
 
   public EnergyMonitor(@NotNull StudioProfilers profilers) {
     super(profilers);
     myUsage = new EnergyUsage(profilers);
-    myAxis = new ClampedAxisComponentModel.Builder(myUsage.getUsageRange(), EnergyAxisFormatter.DEFAULT).build();
+    myAxis = new ClampedAxisComponentModel.Builder(myUsage.getUsageRange(), EnergyAxisFormatter.DEFAULT)
+      .setMarkerRange(AXIS_MARKER_RANGE).build();
     myLegends = new Legends(myUsage, getTimeline().getDataRange(), false);
     myTooltipLegends = new Legends(myUsage, getTimeline().getTooltipRange(), true);
     changed(Aspect.ENABLE);
