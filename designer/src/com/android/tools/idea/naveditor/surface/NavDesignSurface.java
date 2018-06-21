@@ -20,6 +20,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.tools.adtui.common.SwingCoordinate;
+import com.android.tools.idea.common.editor.NlEditorPanel;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
@@ -28,6 +29,7 @@ import com.android.tools.idea.common.scene.*;
 import com.android.tools.idea.common.surface.*;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
+import com.android.tools.idea.configurations.ConfigurationStateManager;
 import com.android.tools.idea.naveditor.editor.NavActionManager;
 import com.android.tools.idea.naveditor.model.NavComponentHelperKt;
 import com.android.tools.idea.naveditor.model.NavCoordinate;
@@ -44,6 +46,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
@@ -62,6 +65,7 @@ import org.jetbrains.android.dom.navigation.NavigationSchema;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 import javax.swing.*;
 import java.awt.*;
@@ -79,6 +83,7 @@ import java.util.stream.Collectors;
 import static com.android.SdkConstants.ATTR_GRAPH;
 import static com.android.SdkConstants.TAG_INCLUDE;
 import static com.android.annotations.VisibleForTesting.Visibility;
+import static com.android.tools.idea.projectsystem.ProjectSystemSyncUtil.PROJECT_SYSTEM_SYNC_TOPIC;
 
 /**
  * {@link DesignSurface} for the navigation editor.
@@ -89,15 +94,25 @@ public class NavDesignSurface extends DesignSurface {
   private NlComponent myCurrentNavigation;
   @VisibleForTesting
   AtomicReference<Future<?>> myScheduleRef = new AtomicReference<>();
+  private final NlEditorPanel myEditorPanel;
 
   private static final WeakHashMap<AndroidFacet, SoftReference<ConfigurationManager>> ourConfigurationManagers = new WeakHashMap<>();
 
+  @TestOnly
   public NavDesignSurface(@NotNull Project project, @NotNull Disposable parentDisposable) {
+    this(project, null, parentDisposable);
+  }
+
+  /**
+   * {@code editorPanel} should only be null in tests
+   */
+  public NavDesignSurface(@NotNull Project project, @Nullable NlEditorPanel editorPanel, @NotNull Disposable parentDisposable) {
     super(project, new SelectionModel(), parentDisposable);
     setBackground(JBColor.white);
 
     // TODO: add nav-specific issues
     // getIssueModel().addIssueProvider(new NavIssueProvider(project));
+    myEditorPanel = editorPanel;
   }
 
   @Override
@@ -160,7 +175,6 @@ public class NavDesignSurface extends DesignSurface {
     AndroidFacet facet = model.getFacet();
     CompletableFuture<?> result = new CompletableFuture<>();
     Application application = ApplicationManager.getApplication();
-    Project project = model.getProject();
     application.executeOnPooledThread(() -> {
       // First, try to create the schema. It should work if our project depends on the nav library.
       if (tryToCreateSchema(facet)) {
@@ -168,7 +182,7 @@ public class NavDesignSurface extends DesignSurface {
       }
       // If it didn't work, it's probably because the nav library isn't included. Prompt for it to be added.
       else if (requestAddDependency(facet)) {
-        ListenableFuture<?> syncResult = ProjectSystemUtil.getSyncManager(project)
+        ListenableFuture<?> syncResult = ProjectSystemUtil.getSyncManager(getProject())
           .syncProject(ProjectSystemSyncManager.SyncReason.PROJECT_MODIFIED, true);
         // When sync is done, try to create the schema again.
         Futures.addCallback(syncResult, new FutureCallback<Object>() {
@@ -176,7 +190,7 @@ public class NavDesignSurface extends DesignSurface {
           public void onSuccess(@Nullable Object unused) {
             application.executeOnPooledThread(() -> {
               if (!tryToCreateSchema(facet)) {
-                showFailToAddMessage(project, result);
+                showFailToAddMessage(result, model);
               }
               else {
                 result.complete(null);
@@ -186,20 +200,34 @@ public class NavDesignSurface extends DesignSurface {
 
           @Override
           public void onFailure(@Nullable Throwable t) {
-            showFailToAddMessage(project, result);
+            showFailToAddMessage(result, model);
           }
         });
       }
       else {
-        showFailToAddMessage(project, result);
+        showFailToAddMessage(result, model);
       }
     });
     return result;
   }
 
-  private static void showFailToAddMessage(@NotNull Project project, @NotNull CompletableFuture<?> result) {
+  private void showFailToAddMessage(@NotNull CompletableFuture<?> result, @NotNull NlModel model) {
+    if (myEditorPanel != null) {
+      ProjectSystemSyncManager.SyncResultListener syncFailedListener = new ProjectSystemSyncManager.SyncResultListener() {
+        @Override
+        public void syncEnded(@NotNull ProjectSystemSyncManager.SyncResult result) {
+          ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            if (tryToCreateSchema(model.getFacet())) {
+              myEditorPanel.initNeleModel();
+              getProject().getMessageBus().connect(NavDesignSurface.this).disconnect();
+            }
+          });
+        }
+      };
+      getProject().getMessageBus().connect(this).subscribe(PROJECT_SYSTEM_SYNC_TOPIC, syncFailedListener);
+    }
     ApplicationManager.getApplication().invokeLater(() -> Messages.showErrorDialog(
-      project, "Failed to add navigation library dependency", "Failed to Add Dependency"));
+      getProject(), "Failed to add navigation library dependency", "Failed to Add Dependency"));
     result.completeExceptionally(new Exception("Failed to add nav library dependency"));
   }
 
@@ -540,7 +568,13 @@ public class NavDesignSurface extends DesignSurface {
       result = ref.get();
     }
     if (result == null) {
-      result = ConfigurationManager.create(facet.getModule());
+      result = new ConfigurationManager(facet.getModule()) {
+        @Override
+        public ConfigurationStateManager getStateManager() {
+          // Nav editor doesn't want persistent configuration state
+          return new ConfigurationStateManager();
+        }
+      };
       ourConfigurationManagers.put(facet, new SoftReference<>(result));
     }
     return result;

@@ -27,6 +27,7 @@ import com.android.tools.idea.naveditor.surface.NavDesignSurface;
 import com.android.tools.idea.tests.gui.framework.GuiTests;
 import com.android.tools.idea.tests.gui.framework.fixture.ComponentFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.CreateResourceDirectoryDialogFixture;
+import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.WorkBenchLoadingPanelFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.*;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.NavDesignSurfaceFixture;
@@ -50,6 +51,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.util.List;
+
+import static junit.framework.TestCase.assertTrue;
 
 /**
  * Fixture wrapping the the layout editor for a particular file
@@ -134,6 +137,11 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, NlEditorP
     return !myLoadingPanelFixture.hasError() && myDesignSurfaceFixture.target().isShowing();
   }
 
+  public NlEditorFixture assertCanInteractWithSurface() {
+    assertTrue(canInteractWithSurface());
+    return this;
+  }
+
   public boolean hasRenderErrors() {
     return myDesignSurfaceFixture.hasRenderErrors();
   }
@@ -145,6 +153,11 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, NlEditorP
   @NotNull
   public DesignSurfaceFixture getSurface() {
     return myDesignSurfaceFixture;
+  }
+
+  @NotNull
+  public NavDesignSurfaceFixture getNavSurface() {
+    return (NavDesignSurfaceFixture)myDesignSurfaceFixture;
   }
 
   @NotNull

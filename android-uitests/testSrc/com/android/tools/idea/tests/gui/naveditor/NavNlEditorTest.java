@@ -16,7 +16,10 @@
 package com.android.tools.idea.tests.gui.naveditor;
 
 import com.android.tools.idea.common.model.NlComponent;
-import com.android.tools.idea.tests.gui.framework.*;
+import com.android.tools.idea.tests.gui.framework.GuiTestRule;
+import com.android.tools.idea.tests.gui.framework.GuiTests;
+import com.android.tools.idea.tests.gui.framework.RunIn;
+import com.android.tools.idea.tests.gui.framework.TestGroup;
 import com.android.tools.idea.tests.gui.framework.fixture.CreateResourceFileDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.EditorFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
@@ -27,8 +30,8 @@ import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.Add
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.DestinationListFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.NavDesignSurfaceFixture;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.util.ui.UIUtil;
 import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner;
+import com.intellij.util.ui.UIUtil;
 import org.fest.swing.driver.BasicJListCellReader;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,11 +40,10 @@ import org.junit.runner.RunWith;
 import java.awt.event.KeyEvent;
 import java.util.List;
 
-import static com.android.SdkConstants.ANDROID_URI;
-import static com.android.SdkConstants.ATTR_LABEL;
 import static com.google.common.truth.Truth.assertThat;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 
 /**
@@ -114,18 +116,110 @@ public class NavNlEditorTest {
   }
 
   @Test
+  public void testCreateAndCancel() throws Exception {
+    IdeFrameFixture frame = guiTest.importProject("Navigation");
+    // Open file as XML and switch to design tab, wait for successful render
+    NlEditorFixture layout = guiTest
+      .ideFrame()
+      .getEditor()
+      .open("app/src/main/res/navigation/mobile_navigation.xml", EditorFixture.Tab.DESIGN)
+      .frame()
+      // This is separate to catch the case where we have a problem opening the file before sync is complete.
+      .waitForGradleProjectSyncToFinish()
+      .getEditor()
+      .getLayoutEditor(true);
+
+    layout
+      .waitForRenderToFinish()
+      .getNavSurface()
+      .openAddDestinationMenu()
+      .clickCreateBlank()
+      .getConfigureTemplateParametersStep()
+      .enterTextFieldValue("Fragment Name:", "TestCreateAndCancelFragment")
+      .selectComboBoxItem("Source Language:", "Java")
+      .wizard()
+      .clickFinish();
+
+    ApplicationManager.getApplication().invokeAndWait(() -> UIUtil.dispatchAllInvocationEvents());
+
+    long matchingComponents = frame
+      .waitForGradleProjectSyncToFinish()
+      .getEditor()
+      .getLayoutEditor(true)
+      .waitForRenderToFinish()
+      .getAllComponents().stream()
+      .filter(component -> "testCreateAndCancelFragment".equals(component.getComponent().getId()))
+      .count();
+
+    assertEquals(1, matchingComponents);
+
+    int countAfterAdd = layout.getAllComponents().size();
+
+    layout
+      .getNavSurface()
+      .openAddDestinationMenu()
+      .clickCreateBlank()
+      .getConfigureTemplateParametersStep()
+      .enterTextFieldValue("Fragment Name:", "TestCreateAndCancelFragment2")
+      .selectComboBoxItem("Source Language:", "Java")
+      .wizard()
+      .clickCancel();
+
+    ApplicationManager.getApplication().invokeAndWait(() -> UIUtil.dispatchAllInvocationEvents());
+    layout.waitForRenderToFinish();
+
+    assertEquals(countAfterAdd, layout.getAllComponents().size());
+  }
+
+  @Test
   public void testAddDependency() throws Exception {
     IdeFrameFixture frame = guiTest.importSimpleLocalApplication();
     frame.getProjectView().selectAndroidPane().clickPath("app");
     frame.invokeMenuPath("File", "New", "Android Resource File");
     CreateResourceFileDialogFixture.find(guiTest.robot())
-      .setFilename("nav")
-      .setType("navigation")
-      .clickOk();
+                                   .setFilename("nav")
+                                   .setType("navigation")
+                                   .clickOk();
     GuiTests.findAndClickOkButton(frame.waitForDialog("Add Project Dependency"));
-    EditorFixture editor = guiTest.ideFrame().getEditor();
-    NlEditorFixture layout = editor.getLayoutEditor(false);
-    layout.waitForRenderToFinish();
+    guiTest
+      .ideFrame()
+      .waitForGradleProjectSyncToFinish()
+      .getEditor()
+      .getLayoutEditor(false)
+      .waitForRenderToFinish()
+      .assertCanInteractWithSurface();
+  }
+
+  @Test
+  public void testCancelAddDependency() throws Exception {
+    IdeFrameFixture frame = guiTest.importSimpleLocalApplication();
+    frame.getProjectView().selectAndroidPane().clickPath("app");
+    frame.invokeMenuPath("File", "New", "Android Resource File");
+    CreateResourceFileDialogFixture.find(guiTest.robot())
+                                   .setFilename("nav")
+                                   .setType("navigation")
+                                   .clickOk();
+    GuiTests.findAndClickCancelButton(frame.waitForDialog("Add Project Dependency"));
+    GuiTests.findAndClickOkButton(frame.waitForDialog("Failed to Add Dependency"));
+    assertFalse(guiTest
+      .ideFrame()
+      .getEditor()
+      .getLayoutEditor(false)
+      .canInteractWithSurface());
+
+    frame
+      .getEditor()
+      .open("app/build.gradle")
+      .moveBetween("", "testImplementation")
+      .enterText("    implementation 'android.arch.navigation:navigation-fragment:+'\n")
+      .getIdeFrame()
+      .requestProjectSync()
+      .waitForGradleProjectSyncToFinish()
+      .getEditor()
+      .open("app/src/main/res/navigation/nav.xml")
+      .getLayoutEditor(true)
+      .waitForRenderToFinish()
+      .assertCanInteractWithSurface();
   }
 
   @Test
@@ -154,7 +248,7 @@ public class NavNlEditorTest {
     guiTest.robot().pressAndReleaseKey(KeyEvent.VK_PLUS);
     guiTest.robot().releaseKey(KeyEvent.VK_SHIFT);
     double zoomInScale = fixture.getScale();
-    assertTrue(zoomInScale >  zoomOutScale);
+    assertTrue(zoomInScale > zoomOutScale);
 
     guiTest.robot().pressAndReleaseKey(KeyEvent.VK_0);
     double fitScale = fixture.getScale();
