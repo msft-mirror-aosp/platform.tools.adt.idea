@@ -79,4 +79,28 @@ class NavSceneManagerTest : NavTestCase() {
     assertEquals(153, component.drawWidth)
     assertEquals(256, component.drawHeight)
   }
+
+  fun testActivateUpdates() {
+    lateinit var root: NavModelBuilderUtil.NavigationComponentDescriptor
+
+    val modelBuilder = modelBuilder("nav.xml") {
+      navigation {
+        fragment("fragment1")
+      }.also { root = it }
+    }
+    val model = modelBuilder.build()
+
+    val sceneManager = model.surface.sceneManager as NavSceneManager
+    sceneManager.update()
+    val scene = model.surface.scene!!
+    assertEquals(1, scene.root!!.childCount)
+
+    root.fragment("f2")
+    modelBuilder.updateModel(model)
+
+    assertEquals(1, scene.root!!.childCount)
+    model.activate(this)
+
+    assertEquals(2, scene.root!!.childCount)
+  }
 }
