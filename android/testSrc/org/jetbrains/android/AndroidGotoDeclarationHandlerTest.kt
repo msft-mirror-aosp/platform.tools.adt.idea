@@ -21,14 +21,22 @@ import com.android.resources.ResourceType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.res.ResourceRepositoryManager
 import com.android.tools.idea.res.addAarDependency
+import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.goToElementAtCaret
 import com.android.utils.FileUtils
+import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiUtilCore
+import com.intellij.psi.util.parentOfType
+import com.intellij.psi.xml.XmlAttribute
+import com.intellij.psi.xml.XmlTag
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.TestFixtureBuilder
 import org.jetbrains.android.dom.AndroidValueResourcesTest
 import org.jetbrains.android.facet.AndroidFacet
@@ -204,7 +212,8 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
     val stylesXml = FileUtils.join(aarDir, "values", "styles.xml")
     FileUtils.createFile(stylesXml,
                          "<resources>\n" +
-                         "<style name=\"LibStyle\"></style>\n" +
+                         "<style name=\"ParentStyle\"></style>\n" +
+                         "<style name=\"LibStyle\" parent=\"ParentStyle\"></style>\n" +
                          "<declare-styleable name=\"LibStyleable\">\n" +
                          "  <attr name=\"libAttr\" format=\"string\" />\n" +
                          "</declare-styleable>\n" +
@@ -221,9 +230,9 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
   open fun testGotoAarResourceFromCode_libRClass() {
     addAarDependency()
 
-    assertEquals("values/styles.xml:2:\n" +
-                 "  <style name=\"LibStyle\"></style>\n" +
-                 "              ~|~~~~~~~~~        \n",
+    assertEquals("values/styles.xml:3:\n" +
+                 "  <style name=\"LibStyle\" parent=\"ParentStyle\"></style>\n" +
+                 "              ~|~~~~~~~~~                             \n",
                  describeElements(
                    getDeclarationsFrom(
                      myFixture.addFileToProject(
@@ -243,7 +252,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
                  )
     )
 
-    assertEquals("values/styles.xml:4:\n" +
+    assertEquals("values/styles.xml:5:\n" +
                  "  <attr name=\"libAttr\" format=\"string\" />\n" +
                  "             ~|~~~~~~~~                  \n",
                  describeElements(
@@ -326,9 +335,9 @@ class AndroidGotoDeclarationHandlerTestNonNamespaced : AndroidGotoDeclarationHan
   fun testGotoAarResourceFromCode_ownRClass() {
     addAarDependency()
 
-    assertEquals("values/styles.xml:2:\n" +
-                 "  <style name=\"LibStyle\"></style>\n" +
-                 "              ~|~~~~~~~~~        \n",
+    assertEquals("values/styles.xml:3:\n" +
+                 "  <style name=\"LibStyle\" parent=\"ParentStyle\"></style>\n" +
+                 "              ~|~~~~~~~~~                             \n",
                  describeElements(
                    getDeclarationsFrom(
                      myFixture.addFileToProject(
@@ -348,7 +357,7 @@ class AndroidGotoDeclarationHandlerTestNonNamespaced : AndroidGotoDeclarationHan
                  )
     )
 
-    assertEquals("values/styles.xml:4:\n" +
+    assertEquals("values/styles.xml:5:\n" +
                  "  <attr name=\"libAttr\" format=\"string\" />\n" +
                  "             ~|~~~~~~~~                  \n",
                  describeElements(
@@ -374,6 +383,69 @@ class AndroidGotoDeclarationHandlerTestNonNamespaced : AndroidGotoDeclarationHan
   override fun testGotoAarResourceFromCode_libRClass() {
     // TODO(b/109652745): fix handling of AAR R classes.
   }
+
+  fun testGotoAarResourceFromAarXml() = with(myFixture) {
+    addAarDependency()
+
+    configureFromExistingVirtualFile(
+      addFileToProject(
+        "res/values/styles.xml",
+        // language=xml
+        """
+      <!--suppress CheckTagEmptyBody -->
+      <resources>
+        <style name="AppStyle" parent="Lib${caret}Style"></style>
+      </resources>
+    """.trimIndent()
+      ).virtualFile
+    )
+
+    navigateToElementAtCaretFromDifferentFile()
+    assertThat(elementAtCurrentOffset.text).isEqualTo("LibStyle")
+    assertThat(elementAtCaret.parentOfType<XmlTag>()!!.text).isEqualTo("<style name=\"LibStyle\" parent=\"ParentStyle\"></style>")
+    editor.caretModel.moveToOffset(editor.caretModel.offset + 20)
+    assertThat(elementAtCurrentOffset.text).isEqualTo("ParentStyle")
+    goToElementAtCaret()
+    assertThat(elementAtCurrentOffset.text).isEqualTo("ParentStyle")
+    assertThat(elementAtCurrentOffset.parentOfType<XmlTag>()!!.text).isEqualTo("<style name=\"ParentStyle\"></style>")
+  }
+
+  fun testGotoFrameworkResourceFromFrameworkXml() = with(myFixture) {
+    addAarDependency()
+
+    configureFromExistingVirtualFile(
+      addFileToProject(
+        "res/values/styles.xml",
+        // language=xml
+        """
+      <!--suppress CheckTagEmptyBody -->
+      <resources>
+        <style name="AppStyle" parent="android:Theme.${caret}InputMethod"></style>
+      </resources>
+    """.trimIndent()
+      ).virtualFile
+    )
+
+    navigateToElementAtCaretFromDifferentFile()
+    assertThat(elementAtCurrentOffset.text).isEqualTo("Theme.InputMethod")
+    editor.caretModel.moveToOffset(editor.caretModel.offset + 35)
+    assertThat(elementAtCurrentOffset.text).isEqualTo("Theme.Panel")
+    assertThat(elementAtCurrentOffset.parentOfType<XmlAttribute>()!!.text).isEqualTo("parent=\"Theme.Panel\"")
+    goToElementAtCaret()
+    assertThat(elementAtCurrentOffset.parentOfType<XmlAttribute>()!!.text).isEqualTo("name=\"Theme.Panel\"")
+  }
+
+  private fun navigateToElementAtCaretFromDifferentFile() = with(myFixture) {
+    val element =
+      GotoDeclarationAction.findTargetElement(project, editor, editor.caretModel.offset) as NavigatablePsiElement
+    val destinationFile = element.navigationElement.containingFile.virtualFile
+    assertThat(destinationFile).isNotEqualTo(myFixture.file.virtualFile)
+
+    openFileInEditor(destinationFile)
+    element.navigate(true)
+  }
+
+  private val JavaCodeInsightTestFixture.elementAtCurrentOffset: PsiElement get() = file.findElementAt(editor.caretModel.offset)!!
 }
 
 class AndroidGotoDeclarationHandlerTestNamespaced : AndroidGotoDeclarationHandlerTestBase() {
