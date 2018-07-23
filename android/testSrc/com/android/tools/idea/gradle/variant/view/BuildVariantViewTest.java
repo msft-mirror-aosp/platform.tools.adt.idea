@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.variant.view;
 
+import com.android.ide.common.gradle.model.IdeAndroidProject;
 import com.android.ide.common.gradle.model.IdeVariant;
 import com.android.ide.common.gradle.model.level2.IdeDependencies;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
@@ -29,6 +30,7 @@ import org.mockito.Mock;
 
 import static com.android.tools.idea.testing.Facets.createAndAddAndroidFacet;
 import static java.util.Collections.emptyList;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -82,6 +84,7 @@ public class BuildVariantViewTest extends IdeaTestCase {
   public void testSelectVariantWithSuccessfulUpdate() {
     String variantToSelect = "release";
     when(myAndroidModel.variantExists(variantToSelect)).thenReturn(true);
+    when(myAndroidModel.getAndroidProject()).thenReturn(mock(IdeAndroidProject.class));
     // Changing selected variant from "debug" to "release".
     myView.buildVariantSelected(myModule.getName(), variantToSelect);
     // Verify listener is invoked.
