@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.Objects;
 
 /**
  * Cache of AAR resource repositories. This class is thread-safe.
@@ -66,12 +65,7 @@ public final class AarResourceRepositoryCache {
         }
         return repository;});
 
-      if (!Objects.equals(libraryName, aarRepository.getLibraryName())) {
-        Logger logger = Logger.getInstance(AarResourceRepositoryCache.class);
-        logger.error(new Exception("Library name mismatch: " + libraryName + " vs " + aarRepository.getLibraryName()));
-      }
       return aarRepository;
-
   }
 
   public void remove(@NotNull File aarDirectory) {
