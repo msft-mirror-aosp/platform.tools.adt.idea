@@ -133,7 +133,7 @@ public class RemoveSdkFromManifestHyperlinkTest extends AndroidGradleTestCase {
     );
   }
 
-  public void testMoveMinSdkVersionToBuildFile() throws Exception {
+  public void ignore_testMoveMinSdkVersionToBuildFile() throws Exception {
     loadSimpleApplication();
     Project project = getProject();
     Module appModule = getModule("app");
