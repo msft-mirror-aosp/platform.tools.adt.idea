@@ -26,7 +26,7 @@
         key="whats-new"
         label=" What's New in 3.2"
         icon="core/stable/whats_new_icon.png"
-        remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/canary-release-notes.html"
+        remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/studio-release-notes"
         remoteLinkLabel="Read in a browser">
       <description>
         <![CDATA[
@@ -36,6 +36,9 @@
           <br><br>
           To open this panel again later, select <b>Help &gt; What's New in Android Studio</b>
           from the main menu.
+
+          <br><br>
+          <a href="https://d.android.com/r/studio-wna/3.2.0/video-overview">Watch an overview</a>
           ]]>
       </description>
       <step label="Support for Android App Bundles">
@@ -111,7 +114,7 @@
             Android extension libraries (AndroidX)</a> represent the future of the Android Support Library.
             You can easily migrate an existing project to use AndroidX (including migrating Maven dependencies
             that do not yet use AndroidX) by selecting <b>Refactor &gt; Migrate to AndroidX</b>.
-            <a href="https://d.android.com/studio/preview/features?utm_source=android-studio&utm_medium=studio-assistant#androidx_refactoring">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/androidx_migration">
             Learn more</a></li>
            ]]>
           </section>
@@ -129,7 +132,7 @@
           alt="">
 
           <br><br>
-          The <a href="https://developer.android.com/studio/profile/android-profiler.html?utm_source=android-studio&utm_medium=studio-assistant">
+          The <a href="https://d.android.com/studio/profile/android-profiler.html?utm_source=android-studio&utm_medium=studio-assistant">
           Android Profiler</a>
           <img src="https://d.android.com/studio/images/buttons/toolbar-android-profiler_dark.png" width="16" height="16">
           now includes the following new features:
@@ -140,7 +143,7 @@
             <li><b>Energy Profiler:</b> Estimates your app's energy usage of a device's CPU, Network,
             and GPS resources. This new profiler also highlights background events that may contribute
             to battery drain, such as wake locks, alarms, jobs, and location requests.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#energy_profiler">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/energy-profiler">
             Learn more</a></li>
 
             <li><b>System Trace:</b> In the CPU Profiler, inspect your device's
@@ -149,11 +152,11 @@
             <a href="https://d.android.com/studio/command-line/systrace.html?utm_source=android-studio&utm_medium=studio-assistant">
             <code>systrace</code></a> and is useful for investigating
             system-level issues, such as UI jank.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#system_trace">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/system-trace">
             Learn more</a></li>
 
             <li><b>Sessions:</b> Inspect and revisit data across multiple profiler "sessions".
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#sessions">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/profiler-sessions">
             Learn more</a></li>
 
             <li><b>Export CPU trace files:</b>
@@ -162,7 +165,7 @@
             record CPU activity</a> with the CPU profiler, export the data as a
             <code>.trace</code> file by right-clicking on the recording in the CPU timeline and selecting
             <b>Export trace</b> from the context menu.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#export_cpu_traces">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/export-traces">
             Learn more</a></li>
 
             <li><b>Import and inspect CPU trace files:</b>
@@ -174,7 +177,7 @@
             Import your trace file by clicking <b>Start a new profiling session</b>
             <img src="https://d.android.com/studio/images/buttons/ic_plus_dark.png" width="16" height="16">
             in the profiler's <b>Sessions</b> pane and then selecting <b>Load from file</b>.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#import_trace">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/import-traces">
             Learn more</a></li>
 
             <li><b>Record CPU activity during app startup:</b>
@@ -185,20 +188,20 @@
             recording a method trace on startup</b>. Now deploy
             your app to a device running Android 8.0 (API level 26) or higher by
             selecting <b>Run &gt; Profile</b>.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#trace_startup">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/trace-startup">
             Learn more</a></li>
 
             <li><b>Inspect JNI references:</b>
             Inspect memory allocations for your app’s JNI code when you deploy
             to a device running Android 8.0 (API level 26) or higher.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#jni_memory">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/jni-memory">
             Learn more</a></li>
 
             <li><b>Start method traces using the Debug API:</b>
             Call <code>Debug.startMethodTracing(String tracePath)</code> and
             <code>Debug.stopMethodTracing()</code> in your app's code to programmatically start and stop
             recording method traces in the CPU profiler.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#debug_api">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/debug-api">
             Learn more</a></li>
           </ul>
            ]]>
@@ -223,7 +226,7 @@
           <br><br>
           Controls for saving, loading, and managing AVD snapshots are now in the <b>Snapshots</b> tab in the emulator's <b>Extended
           controls</b> window.
-          <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#emulator_improvements">
+          <a href="https://d.android.com/studio/run/emulator?utm_source=android-studio&utm_medium=studio-assistant#snapshots">
             Learn more</li>
            ]]>
           </section>
@@ -251,14 +254,14 @@
             Perform safe refactoring, code completion,
             code reformatting, and other smart editor actions when editing CMake
             build scripts.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#cmake-editor">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#cmake-editor">
             Learn more</a></li>
 
             <li><b>Navigate external header files:</b>
             In the <b>Project</b> window, view and inspect header
             files from external C/C++ library dependencies that you import into
             your project using CMake.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#navigate_headers">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#navigate_headers">
             Learn more</a>
           </ul>
           </div>
@@ -276,21 +279,18 @@
             Android Studio now includes updates up through to
             <a href="https://blog.jetbrains.com/idea/2018/04/intellij-idea-2018-1-2-is-released/">
             IntelliJ 2018.1.2</a>. You may notice changes in behavior and performance as a result of this merge.
-            If you encounter changes you believe to be regressions, please
-            <a href="https://developer.android.com/studio/report-bugs.html?utm_source=android-studio&utm_medium=studio-assistant">
-            report a bug</a>.
             </li>
 
             <li><b>Preview with sample data in the Layout Editor:</b> Use auto-generated sample data to
             preview your views in the Layout Editor. In the editor's design view, click the
             <img src="https://d.android.com/studio/images/buttons/layout-editor-wrench.png" width="16" height="16">
             button and, in the pop-up menu that appears, select the type of content you want to use.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#sampledata">
+            <a href="https://d.android.com/r/studio-wna/3.2.0/layout-sample-data">
             Learn more</a>
 
             <li><b>AAPT2 now on Google's Maven repo:</b>
             To use AAPT2, you must add Google's Maven repository to your project-level <code>build.gradle</code>, as shown below.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#aapt2_gmaven">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#aapt2_gmaven">
             Learn more</a>
 
             <br><br>
@@ -310,7 +310,7 @@ allprojects.repositories {
             <li><b>New code shrinker:</b> Preview a new code shrinker that
             also obfuscates by adding the line below to your project’s
             <code>gradle.properties</code> file.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#R8">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#R8">
             Learn more</a>
 
             <br><br>
@@ -326,7 +326,7 @@ allprojects.repositories {
             Kotlin Interop Guide</a> by first opening the IDE preferences dialog and
             navigating to <b>Editor &gt; Inspections</b>. Then, check the rules that
             you want to enable under <b>Kotlin Interoperability</b>.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#java_kotlin_interop">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#java_kotlin_interop">
             Learn more</a></li>
 
             <li><b>Native multi-dex enabled by default:</b>
@@ -338,7 +338,7 @@ allprojects.repositories {
             per-ABI APKs, Android plugin for Gradle 3.2.0 no longer
             generates APKs for the following ABIs by default: <code>mips</code>,
             <code>mips64</code>, and <code>armeabi</code>.
-            <a href="https://d.android.com/studio/preview/features/index.html?utm_source=android-studio&utm_medium=studio-assistant#default_abis">
+            <a href="https://d.android.com/studio/releases?utm_source=android-studio&utm_medium=studio-assistant#default_abis">
             Learn more</a></li>
           </ul>
         ]]>
