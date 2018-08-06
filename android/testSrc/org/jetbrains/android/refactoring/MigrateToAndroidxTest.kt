@@ -83,7 +83,7 @@ class MigrateToAndroidxTest : AndroidTestCase() {
       .run(myFixture)
   }
 
-  fun testMigrateBuildDependencies() {
+  fun ignore_testMigrateBuildDependencies() {
     // test both map notation as well as compact notation
     AndroidxMigrationBuilder()
       .withEntry(GradleDependencyMigrationEntry("com.android.support", "appcompat-v7",

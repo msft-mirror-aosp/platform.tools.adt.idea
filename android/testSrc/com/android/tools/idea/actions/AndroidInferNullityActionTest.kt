@@ -24,8 +24,6 @@ import com.intellij.openapi.extensions.Extensions
 import com.intellij.testFramework.PlatformTestUtil
 import org.jetbrains.android.AndroidTestCase
 
-import com.intellij.analysis.AnalysisUIOptions
-import com.intellij.analysis.BaseAnalysisActionDialog
 import com.intellij.codeInsight.NullableNotNullManager
 
 class AndroidInferNullityActionTest : AndroidTestCase() {
@@ -79,8 +77,7 @@ public class TestNullity {
     try {
       val action = AndroidInferNullityAnnotationAction()
       val scope = AnalysisScope(project)
-      action.getAdditionalActionSettings(project, BaseAnalysisActionDialog(
-        "nullity", "-", project, scope, myModule, false, AnalysisUIOptions.getInstance(project), null))
+      action.getAdditionalActionSettings(project, null)
       action.analyze(project, scope)
     }
     catch (e: RuntimeException) {

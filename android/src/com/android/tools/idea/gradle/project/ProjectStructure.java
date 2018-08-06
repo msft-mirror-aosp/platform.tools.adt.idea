@@ -36,6 +36,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.concurrent.GuardedBy;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 import static com.android.builder.model.AndroidProject.PROJECT_TYPE_APP;
@@ -75,16 +76,16 @@ public class ProjectStructure {
   public void analyzeProjectStructure(@NotNull ProgressIndicator progressIndicator) {
     AndroidPluginVersionsInProject pluginVersionsInProject = new AndroidPluginVersionsInProject();
 
-    List<Module> appModules = new ArrayList<>();
+    Queue<Module> appModules = new ConcurrentLinkedQueue<>();
 
     ModuleManager moduleManager = ModuleManager.getInstance(myProject);
     List<Module> modules = Arrays.asList(moduleManager.getModules());
-    List<Module> leafModules = new ArrayList<>(modules);
+    Queue<Module> leafModules = new ConcurrentLinkedQueue<>(modules);
 
     ModuleFinder moduleFinder = new ModuleFinder(myProject);
 
     JobLauncher jobLauncher = JobLauncher.getInstance();
-    jobLauncher.invokeConcurrentlyUnderProgress(modules, progressIndicator, true /* fail fast */, module -> {
+    jobLauncher.invokeConcurrentlyUnderProgress(modules, progressIndicator, false, module -> {
       GradleFacet gradleFacet = GradleFacet.getInstance(module);
       if (gradleFacet != null) {
         String gradlePath = gradleFacet.getConfiguration().GRADLE_PROJECT_PATH;
