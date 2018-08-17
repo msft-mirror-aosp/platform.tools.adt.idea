@@ -225,7 +225,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_USE_ANDROIDX_DEFAULT = Flag.create(
     NELE, "androidx.default", "Use androidx. support lib by default",
     "Enable the use of androidx dependencies by default when the old support library is not present",
-    true);
+    false);
 
   private static final FlagGroup ASSISTANT = new FlagGroup(FLAGS, "assistant", "Assistants");
   public static final Flag<Boolean> CONNECTION_ASSISTANT_ENABLED = Flag.create(
