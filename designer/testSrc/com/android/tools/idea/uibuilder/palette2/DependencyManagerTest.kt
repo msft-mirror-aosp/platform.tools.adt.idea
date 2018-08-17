@@ -27,6 +27,7 @@ import javax.swing.*
 import javax.xml.ws.Holder
 
 import com.android.SdkConstants.*
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.*
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
@@ -120,28 +121,34 @@ class DependencyManagerTest : AndroidTestCase() {
   }
 
   fun testAndroidxDependencies() {
-    // The project has no dependencies and NELE_USE_ANDROIDX_DEFAULT is set to true
-    assertTrue(myManager!!.useAndroidxDependencies())
+    StudioFlags.NELE_USE_ANDROIDX_DEFAULT.override(true)
 
-    val gradlePropertiesFile = ApplicationManager.getApplication().runWriteAction(Computable<VirtualFile> {
-      val projectDir = VfsUtil.findFileByIoFile(File(project.basePath), true)!!
-      projectDir.createChildData(null, FN_GRADLE_PROPERTIES)
-    })
+    try {
+      // The project has no dependencies and NELE_USE_ANDROIDX_DEFAULT is set to true
+      assertTrue(myManager!!.useAndroidxDependencies())
 
-    val propertiesPsi = PsiManager.getInstance(project).findFile(gradlePropertiesFile)!!
-    val propertiesDoc = PsiDocumentManager.getInstance(project).getDocument(propertiesPsi)!!
+      val gradlePropertiesFile = ApplicationManager.getApplication().runWriteAction(Computable<VirtualFile> {
+        val projectDir = VfsUtil.findFileByIoFile(File(project.basePath), true)!!
+        projectDir.createChildData(null, FN_GRADLE_PROPERTIES)
+      })
 
-    // Check explicitly setting the variable
-    ApplicationManager.getApplication().runWriteAction {
-      propertiesDoc.setText("android.useAndroidX=false")
-      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val propertiesPsi = PsiManager.getInstance(project).findFile(gradlePropertiesFile)!!
+      val propertiesDoc = PsiDocumentManager.getInstance(project).getDocument(propertiesPsi)!!
+
+      // Check explicitly setting the variable
+      ApplicationManager.getApplication().runWriteAction {
+        propertiesDoc.setText("android.useAndroidX=false")
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+      }
+      assertFalse(myManager!!.useAndroidxDependencies())
+      ApplicationManager.getApplication().runWriteAction {
+        propertiesDoc.setText("android.useAndroidX=true")
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+      }
+      assertTrue(myManager!!.useAndroidxDependencies())
+    } finally {
+      StudioFlags.NELE_USE_ANDROIDX_DEFAULT.clearOverride()
     }
-    assertFalse(myManager!!.useAndroidxDependencies())
-    ApplicationManager.getApplication().runWriteAction {
-      propertiesDoc.setText("android.useAndroidX=true")
-      PsiDocumentManager.getInstance(project).commitAllDocuments()
-    }
-    assertTrue(myManager!!.useAndroidxDependencies())
   }
 
   private fun simulateProjectSync() {
