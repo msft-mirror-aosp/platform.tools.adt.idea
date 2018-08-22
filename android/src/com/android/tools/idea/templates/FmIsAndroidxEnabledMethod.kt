@@ -18,7 +18,9 @@ package com.android.tools.idea.templates
 import com.android.tools.idea.flags.StudioFlags.NELE_USE_ANDROIDX_DEFAULT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectLocator
+import com.intellij.openapi.project.guessProjectForFile
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import freemarker.template.TemplateBooleanModel
 import freemarker.template.TemplateMethodModelEx
 import freemarker.template.TemplateModel
@@ -36,7 +38,11 @@ class FmIsAndroidxEnabledMethod(private val paramMap: Map<String, Any>) : Templa
     val modulePath = paramMap[TemplateMetadata.ATTR_PROJECT_OUT] as? String
     return modulePath?.let {
       val file = LocalFileSystem.getInstance().findFileByIoFile(File(modulePath.replace('/', File.separatorChar))) ?: return null
-      ProjectLocator.getInstance().guessProjectForFile(file)
+      val project = guessProjectForFile(file) ?: return@let null
+
+      // guessProjectForFile might return an incorrect project if the project is being created and
+      // does not exist yet. In that case, we return null.
+      if (VfsUtil.isAncestor(project.baseDir, file, false)) project else null
     }
   }
 
