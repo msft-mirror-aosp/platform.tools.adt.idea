@@ -221,14 +221,10 @@ open class MigrateToAndroidxProcessor(val project: Project,
 
     if (usages.any { it is MigrateToAppCompatUsageInfo.GradleDependencyUsageInfo }) {
       // If we modified gradle entries, request sync
-      DumbService.getInstance(project).queueTask(object: DumbModeTask() {
-        override fun performInDumbMode(indicator: ProgressIndicator) {
-          val syncRequest = GradleSyncInvoker.Request.projectModified()
-          syncRequest.generateSourcesOnSuccess = true
-          syncRequest.runInBackground = false
-          GradleSyncInvoker.getInstance().requestProjectSync(project, syncRequest)
-        }
-      })
+      val syncRequest = GradleSyncInvoker.Request.projectModified()
+      syncRequest.generateSourcesOnSuccess = true
+      syncRequest.runInBackground = false
+      GradleSyncInvoker.getInstance().requestProjectSync(project, syncRequest)
     }
   }
 
