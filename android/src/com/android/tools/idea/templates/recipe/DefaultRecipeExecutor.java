@@ -48,6 +48,7 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.LineSeparator;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateException;
+import org.jetbrains.android.refactoring.MigrateToAndroidxUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -69,6 +70,7 @@ import static com.android.tools.idea.projectsystem.ProjectSystemSyncManager.Sync
 import static com.android.tools.idea.templates.FreemarkerUtils.processFreemarkerTemplate;
 import static com.android.tools.idea.templates.TemplateMetadata.*;
 import static com.android.tools.idea.templates.TemplateUtils.*;
+import static com.android.tools.idea.util.DependencyManagementUtil.dependsOnOldSupportLib;
 import static com.android.utils.XmlUtils.XML_PROLOG;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.base.Strings.nullToEmpty;
@@ -502,15 +504,36 @@ public final class DefaultRecipeExecutor implements RecipeExecutor {
     myIO.writeFile(this, result, buildFile);
   }
 
+  private boolean useAndroidX(@NotNull Project project, @Nullable Module module) {
+    Object buildApiObj = getParamMap().get(ATTR_BUILD_API);
+    int buildApi = buildApiObj == null ? 0 : Integer.parseInt(buildApiObj.toString());
+    if (buildApi < 28) {
+      return false;
+    }
+
+    if (MigrateToAndroidxUtil.hasAndroidxProperty(project)) {
+      return MigrateToAndroidxUtil.isAndroidx(project);
+    }
+
+    if (module != null && dependsOnOldSupportLib(module)) {
+      return false;
+    }
+
+    return NELE_USE_ANDROIDX_DEFAULT.get();
+  }
+
   private String formatDependencies(Predicate<String> configurationFilter) {
     StringBuilder dependencies = new StringBuilder();
     dependencies.append("dependencies {\n");
+    boolean useAndroidX = useAndroidX(myContext.getProject(), myContext.getModule());
     for (Map.Entry<String, String> dependency : myContext.getDependencies().entries()) {
       if (configurationFilter.test(dependency.getKey())) {
         dependencies.append("  ")
           .append(dependency.getKey())
           .append(" ");
-        final String dependencyValue = convertToAndroidX(dependency.getValue());
+        final String dependencyValue =  useAndroidX ?
+                                        AndroidxNameUtils.getVersionedCoordinateMapping(dependency.getValue()) :
+                                        dependency.getValue();
         // Interpolated values need to be in double quotes
         boolean isInterpolated = dependencyValue.contains("$");
         dependencies.append(isInterpolated ? '"' : '\'')
@@ -521,14 +544,6 @@ public final class DefaultRecipeExecutor implements RecipeExecutor {
     }
     dependencies.append("}\n");
     return dependencies.toString();
-  }
-
-  private String convertToAndroidX(String dep) {
-    int buildApi = Integer.parseInt(getParamMap().get(ATTR_BUILD_API).toString());
-    if (NELE_USE_ANDROIDX_DEFAULT.get() && buildApi >= 28) {
-      return AndroidxNameUtils.getVersionedCoordinateMapping(dep);
-    }
-    return dep;
   }
 
   /**
