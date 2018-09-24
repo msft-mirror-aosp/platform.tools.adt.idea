@@ -15,14 +15,21 @@
  */
 package com.android.tools.idea.uibuilder.handlers;
 
-import com.android.SdkConstants;
+import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.uibuilder.LayoutTestCase;
+import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.handlers.flexbox.FlexboxLayoutHandler;
 import com.android.tools.idea.uibuilder.handlers.linear.LinearLayoutHandler;
 import com.android.tools.idea.uibuilder.handlers.relative.RelativeLayoutHandlerKt;
+import com.android.tools.idea.uibuilder.property.MockNlComponent;
+import com.intellij.psi.xml.XmlFile;
+
+import static com.android.SdkConstants.*;
+import static com.google.common.truth.Truth.assertThat;
 
 public class ViewHandlerManagerTest extends LayoutTestCase {
-  public void test() {
+
+  public void testBasicHandlers() {
     ViewHandlerManager viewManager = getProject().getComponent(ViewHandlerManager.class);
     assertSame(viewManager, getProject().getComponent(ViewHandlerManager.class));
 
@@ -30,10 +37,40 @@ public class ViewHandlerManagerTest extends LayoutTestCase {
     assertTrue(viewManager.getHandler("android.widget.LinearLayout") instanceof LinearLayoutHandler);
     assertTrue(viewManager.getHandler("RelativeLayout") instanceof RelativeLayoutHandlerKt);
     assertTrue(viewManager.getHandler("android.widget.RelativeLayout") instanceof RelativeLayoutHandlerKt);
+    assertTrue(viewManager.getHandler("merge") instanceof MergeHandler);
+    assertTrue(viewManager.getHandler("layout") instanceof LayoutHandler);
 
     assertSame(viewManager.getHandler("LinearLayout"), viewManager.getHandler("LinearLayout"));
     if (FlexboxLayoutHandler.FLEXBOX_ENABLE_FLAG) {
-      assertTrue(viewManager.getHandler(SdkConstants.FLEXBOX_LAYOUT) instanceof FlexboxLayoutHandler);
+      assertTrue(viewManager.getHandler(FLEXBOX_LAYOUT) instanceof FlexboxLayoutHandler);
     }
+  }
+
+  public void testMergeHandler() {
+    String xml = "<merge/>\n";
+    XmlFile file = (XmlFile)myFixture.addFileToProject("layout/merge.xml", xml);
+    NlComponent root = MockNlComponent.create(file.getRootTag());
+    ViewHandlerManager viewManager = getProject().getComponent(ViewHandlerManager.class);
+    ViewHandler handler = viewManager.getHandler(root);
+    assertTrue(handler instanceof MergeHandler);
+    assertThat(handler.getInspectorProperties()).containsExactly(
+      TOOLS_NS_NAME_PREFIX + ATTR_SHOW_IN, TOOLS_NS_NAME_PREFIX + ATTR_PARENT_TAG);
+  }
+
+  public void testMergeHandlerWithLinearLayoutParentTag() {
+    String xml = "<merge xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+                 "    xmlns:tools=\"http://schemas.android.com/tools\"\n" +
+                 "    tools:parentTag=\"LinearLayout\">\n" +
+                 "\n" +
+                 "</merge>";
+    XmlFile file = (XmlFile)myFixture.addFileToProject("layout/merge.xml", xml);
+    NlComponent root = MockNlComponent.create(file.getRootTag());
+    ViewHandlerManager viewManager = getProject().getComponent(ViewHandlerManager.class);
+    ViewHandler handler = viewManager.getHandler(root);
+    assertTrue(handler instanceof MergeDelegateHandler);
+
+    // This handler should have inspector properties from <merge> and <LinearLayout>
+    assertThat(handler.getInspectorProperties()).containsExactly(
+      TOOLS_NS_NAME_PREFIX + ATTR_SHOW_IN, TOOLS_NS_NAME_PREFIX + ATTR_PARENT_TAG, ATTR_ORIENTATION, ATTR_GRAVITY);
   }
 }
