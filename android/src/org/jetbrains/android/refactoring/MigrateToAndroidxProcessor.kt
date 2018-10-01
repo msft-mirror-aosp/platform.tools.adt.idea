@@ -43,7 +43,13 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.util.Segment
-import com.intellij.psi.*
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiMigration
+import com.intellij.psi.PsiPackage
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.impl.migration.PsiMigrationManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -53,7 +59,15 @@ import com.intellij.refactoring.listeners.RefactoringEventData
 import com.intellij.refactoring.util.RefactoringUIUtil
 import com.intellij.usageView.UsageInfo
 import com.intellij.util.IncorrectOperationException
-import org.jetbrains.android.refactoring.AppCompatMigrationEntry.*
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.CHANGE_CLASS
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.CHANGE_GRADLE_DEPENDENCY
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.CHANGE_PACKAGE
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.ClassMigrationEntry
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.GradleDependencyMigrationEntry
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.GradleMigrationEntry
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.PackageMigrationEntry
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.UPGRADE_GRADLE_DEPENDENCY_VERSION
+import org.jetbrains.android.refactoring.AppCompatMigrationEntry.UpdateGradleDepedencyVersionMigrationEntry
 import org.jetbrains.android.refactoring.MigrateToAppCompatUsageInfo.ClassMigrationUsageInfo
 import org.jetbrains.android.refactoring.MigrateToAppCompatUsageInfo.PackageMigrationUsageInfo
 import org.jetbrains.android.util.AndroidBundle
@@ -105,11 +119,53 @@ open class MigrateToAndroidxProcessor(val project: Project,
     val migration = PsiMigrationManager.getInstance(project).startMigration()
     for (entry in migrationMap) {
       when (entry) {
-        is PackageMigrationEntry -> AndroidRefactoringUtil.findOrCreatePackage(project, migration, entry.myOldName)
-        is ClassMigrationEntry -> AndroidRefactoringUtil.findOrCreateClass(project, migration, entry.myOldName)
+        is PackageMigrationEntry -> {
+          AndroidRefactoringUtil.findOrCreatePackage(project, migration, entry.myNewName)
+          AndroidRefactoringUtil.findOrCreatePackage(project, migration, entry.myOldName)
+        }
+        is ClassMigrationEntry -> {
+          AndroidRefactoringUtil.findOrCreateClass(project, migration, entry.myNewName)
+          AndroidRefactoringUtil.findOrCreateClass(project, migration, entry.myOldName)
+        }
       }
     }
     return migration
+  }
+
+  /**
+   * Workaround for b/113514500
+   * This avoids the [KotlinOptimizeImportsRefactoringHelper] kicking in for androidx refactorings.
+   */
+  private class KotlinFileWrapper(val delegate: UsageInfo) : UsageInfo(delegate.smartPointer,
+                                                                       delegate.psiFileRange,
+                                                                       delegate.isDynamicUsage,
+                                                                       delegate.isNonCodeUsage) {
+    /**
+     * Verifies if one of the calls on the stack comes from the [KotlinOptimizeImportsRefactoringHelper].
+     * We check the last 5 elements to allow for some future flow changes.
+     */
+    private fun isKotlinOptimizerCall(): Boolean = Thread.currentThread().stackTrace
+      .take(5)
+      .map { it.className }
+      .any { "org.jetbrains.kotlin.idea.codeInsight.KotlinOptimizeImportsRefactoringHelper" == it }
+
+    override fun getFile(): PsiFile? = if (isKotlinOptimizerCall()) {
+      null
+    }
+    else {
+      super.getFile()
+    }
+  }
+
+  override fun execute(usages: Array<out UsageInfo>) {
+    // As part of the workaround for b/113514500 we wrap any element from KtFile into a KotlinFileWrapper. This allows
+    // for disabling the KotlinOptimizeImportsRefactoringHelper.
+    // Once the code that decides the helpers to apply has run, we unwrap all the wrapped instances on the doRefactor method.
+    val wrapped = usages.map {
+      val file = it.file
+      if (file != null && file::class.simpleName == "KtFile") KotlinFileWrapper(it) else it
+    }.toTypedArray()
+    super.execute(wrapped)
   }
 
   override fun findUsages(): Array<UsageInfo> {
@@ -187,6 +243,8 @@ open class MigrateToAndroidxProcessor(val project: Project,
       val smartPointerManager = SmartPointerManager.getInstance(myProject)
 
       usages
+        // First, unwrap any KotlinFileWrapper
+        .map { (it as? KotlinFileWrapper)?.delegate ?: it }
         .filterIsInstance<MigrateToAppCompatUsageInfo>()
         .sortedByDescending {
           // The refactoring operations need to be done in a specific order to work correctly.

@@ -74,7 +74,8 @@ private class NewNavElementProperty(
   attrDefs: AttributeDefinitions,
   propertiesManager: NavPropertiesManager,
   val navDestinationArgumentsProperty: NavDestinationArgumentsProperty
-) : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_NAME, ANDROID_URI, attrDefs, propertiesManager), NavArgumentProperty {
+) : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_NAME, ANDROID_URI, attrDefs,
+                       propertiesManager), NavArgumentProperty {
   override fun setValue(value: Any?) {
     super.setValue(value)
     if ((value as? String)?.isEmpty() == false) {
@@ -83,7 +84,8 @@ private class NewNavElementProperty(
   }
 
   override val defaultValueProperty =
-    object : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_DEFAULT_VALUE, ANDROID_URI, attrDefs, propertiesManager) {
+    object : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_DEFAULT_VALUE, ANDROID_URI, attrDefs,
+                                propertiesManager) {
       override fun setValue(value: Any?) {
         super.setValue(value)
         if ((value as? String)?.isEmpty() == false) {
@@ -93,7 +95,7 @@ private class NewNavElementProperty(
     }
 
   override val typeProperty =
-    object : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_TYPE, AUTO_URI, attrDefs, propertiesManager) {
+    object : NewElementProperty(parent, NavigationSchema.TAG_ARGUMENT, ATTR_ARG_TYPE, AUTO_URI, attrDefs, propertiesManager) {
       override fun setValue(value: Any?) {
         super.setValue(value)
         if ((value as? String)?.isEmpty() == false) {
@@ -106,11 +108,13 @@ private class NewNavElementProperty(
 private class NavDestinationArgumentPropertyImpl(components: List<NlComponent>,
                                                  attrDefs: AttributeDefinitions,
                                                  private val navArgumentsProperty: NavDestinationArgumentsProperty) :
-  NlPropertyItem(XmlName(ATTR_NAME, ANDROID_URI), attrDefs.getAttrDefByName(ATTR_NAME), components, navArgumentsProperty.propertiesManager),
+  NlPropertyItem(XmlName(ATTR_NAME, ANDROID_URI), attrDefs.getAttrDefByName(PREFIX_ANDROID + ATTR_NAME), components,
+                 navArgumentsProperty.propertiesManager),
   NavArgumentProperty {
 
   override val defaultValueProperty: NlPropertyItem = object : NlPropertyItem(XmlName(ATTR_DEFAULT_VALUE, ANDROID_URI),
-                                                                              attrDefs.getAttrDefByName(ATTR_DEFAULT_VALUE), components,
+                                                                              attrDefs.getAttrDefByName(
+                                                                                PREFIX_ANDROID + ATTR_DEFAULT_VALUE), components,
                                                                               navArgumentsProperty.propertiesManager) {
     override fun setValue(value: Any?) {
       super.setValue(value)
@@ -118,8 +122,8 @@ private class NavDestinationArgumentPropertyImpl(components: List<NlComponent>,
     }
   }
 
-  override val typeProperty: NlPropertyItem = object : NlPropertyItem(XmlName(ATTR_TYPE, AUTO_URI),
-                                                                      attrDefs.getAttrDefByName(ATTR_TYPE), components,
+  override val typeProperty: NlPropertyItem = object : NlPropertyItem(XmlName(ATTR_ARG_TYPE, AUTO_URI),
+                                                                      attrDefs.getAttrDefByName(ATTR_ARG_TYPE), components,
                                                                       navArgumentsProperty.propertiesManager) {
     override fun setValue(value: Any?) {
       super.setValue(value)

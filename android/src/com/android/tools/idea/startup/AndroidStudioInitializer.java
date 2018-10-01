@@ -113,7 +113,7 @@ public class AndroidStudioInitializer implements Runnable {
     // We need to set this early enough in Studio before any events are logged.
     if (PlatformUtils.isAndroidStudio()) {
       UsageTracker.getInstance().setIdeBrand(
-        Arrays.stream(PluginManagerCore.getPlugins()).anyMatch(plugin -> "Android Studio with Blaze".equals(plugin.getName()))
+        Arrays.stream(PluginManagerCore.getPlugins()).anyMatch(plugin -> plugin.isBundled() && plugin.getName().contains("Blaze"))
         ? AndroidStudioEvent.IdeBrand.ANDROID_STUDIO_WITH_BLAZE
         : AndroidStudioEvent.IdeBrand.ANDROID_STUDIO);
     }

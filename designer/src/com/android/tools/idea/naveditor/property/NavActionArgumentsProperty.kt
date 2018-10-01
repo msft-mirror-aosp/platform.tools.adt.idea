@@ -69,7 +69,7 @@ class NavActionArgumentProperty(destinationArgument: NlComponent,
                                 attrDefs: AttributeDefinitions,
                                 private val navArgumentsProperty: NavActionArgumentsProperty) :
   NlPropertyItem(XmlName(ATTR_NAME, ANDROID_URI),
-                 attrDefs.getAttrDefByName(ATTR_NAME),
+                 attrDefs.getAttrDefByName(PREFIX_ANDROID + ATTR_NAME),
                  listOf(destinationArgument),
                  navArgumentsProperty.propertiesManager), NavArgumentProperty {
 
@@ -88,11 +88,11 @@ class NavActionArgumentProperty(destinationArgument: NlComponent,
   override val typeProperty: NlProperty = ActionArgumentTypePropertyItem(attrDefs, destinationArgument)
 
   private inner class ActionArgumentTypePropertyItem(attrDefs: AttributeDefinitions, destinationArgument: NlComponent)
-    : NlPropertyItem(XmlName(ATTR_TYPE, AUTO_URI), attrDefs.getAttrDefByName(ATTR_TYPE),
+    : NlPropertyItem(XmlName(ATTR_ARG_TYPE, AUTO_URI), attrDefs.getAttrDefByName(ATTR_ARG_TYPE),
                      listOf(destinationArgument), myPropertiesManager)
 
   private inner class ActionArgumentPropertyItem(attrDefs: AttributeDefinitions)
-    : NlPropertyItem(XmlName(ATTR_DEFAULT_VALUE, ANDROID_URI), attrDefs.getAttrDefByName(ATTR_DEFAULT_VALUE),
+    : NlPropertyItem(XmlName(ATTR_DEFAULT_VALUE, ANDROID_URI), attrDefs.getAttrDefByName(PREFIX_ANDROID + ATTR_DEFAULT_VALUE),
                      listOf(actionArgument), myPropertiesManager) {
     override fun setValue(value: Any?) {
       super.setValue(value)

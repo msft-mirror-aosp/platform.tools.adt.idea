@@ -17,9 +17,14 @@ package com.android.tools.idea.flags;
 
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ApplicationNamesInfo;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.application.ex.ApplicationEx;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
+import com.intellij.openapi.ui.Messages;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -100,7 +105,16 @@ public class ExperimentalSettingsConfigurable implements SearchableConfigurable,
       mySettings.MAX_MODULE_COUNT_FOR_SOURCE_GEN = value;
     }
 
-    StudioFlags.ENABLE_NAV_EDITOR.override(enableNavEditor());
+    if (StudioFlags.ENABLE_NAV_EDITOR.get() != enableNavEditor()) {
+      StudioFlags.ENABLE_NAV_EDITOR.override(enableNavEditor());
+      ApplicationEx app = (ApplicationEx) ApplicationManager.getApplication();
+      String message = "You need to restart " + ApplicationNamesInfo.getInstance().getFullProductName() + " for the changes to take effect";
+      String action = app.isRestartCapable() ? "Restart" : "Shutdown";
+      int r = Messages.showOkCancelDialog(myPanel, message, "Restart Required", action + " Now", action + " Later", Messages.getQuestionIcon());
+      if (r == Messages.OK) {
+        ApplicationManager.getApplication().invokeLater(() -> app.restart(true), ModalityState.NON_MODAL);
+      }
+    }
   }
 
   @VisibleForTesting

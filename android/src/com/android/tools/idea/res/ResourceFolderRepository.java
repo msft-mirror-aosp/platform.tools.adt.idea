@@ -81,8 +81,8 @@ import static org.jetbrains.android.util.AndroidResourceUtil.XML_FILE_RESOURCE_T
  * example, when it notices that the user is editing the value inside a <string> element in a value folder XML file, it will directly update
  * the resource value for the given resource item, and so on.
  *
- * <p>For efficiency, the ResourceFolderRepository is initialized via the same parsers as the {@link AarSourceResourceRepository} and then lazily
- * switches to PSI parsers after edits. See also {@code README.md} in this package.
+ * <p>For efficiency, the ResourceFolderRepository is initialized via the same parsers as the {@link AarSourceResourceRepository} and then
+ * lazily switches to PSI parsers after edits. See also {@code README.md} in this package.
  *
  * <p>Remaining work:
  * <ul>
@@ -702,7 +702,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository impl
       if (nameValue == null) {
         continue;
       }
-      String name = StringUtil.unescapeXml(nameValue);
+      String name = DataBindingUtil.convertToJavaFieldName(StringUtil.unescapeXml(nameValue));
       if (StringUtil.isNotEmpty(name)) {
         if (usedNames.add(name)) {
           PsiDataBindingResourceItem item = new PsiDataBindingResourceItem(name, DataBindingResourceType.VARIABLE, tag, resourceFile);
@@ -712,25 +712,25 @@ public final class ResourceFolderRepository extends LocalResourceRepository impl
     }
     Set<String> usedAliases = new HashSet<>();
     for (XmlTag tag : dataTag.findSubTags(TAG_IMPORT)) {
-      String nameValue = tag.getAttributeValue(ATTR_TYPE);
-      if (nameValue == null) {
+      String typeValue = tag.getAttributeValue(ATTR_TYPE);
+      if (typeValue == null) {
         continue;
       }
-      String name = StringUtil.unescapeXml(nameValue);
+      String type = StringUtil.unescapeXml(typeValue);
       String aliasValue = tag.getAttributeValue(ATTR_ALIAS);
       String alias = null;
       if (aliasValue != null) {
         alias = StringUtil.unescapeXml(aliasValue);
       }
       if (alias == null) {
-        int lastIndexOfDot = name.lastIndexOf('.');
+        int lastIndexOfDot = type.lastIndexOf('.');
         if (lastIndexOfDot >= 0) {
-          alias = name.substring(lastIndexOfDot + 1);
+          alias = type.substring(lastIndexOfDot + 1);
         }
       }
       if (StringUtil.isNotEmpty(alias)) {
-        if (usedAliases.add(name)) {
-          PsiDataBindingResourceItem item = new PsiDataBindingResourceItem(name, DataBindingResourceType.IMPORT, tag, resourceFile);
+        if (usedAliases.add(type)) {
+          PsiDataBindingResourceItem item = new PsiDataBindingResourceItem(alias, DataBindingResourceType.IMPORT, tag, resourceFile);
           items.add(item);
         }
       }
@@ -1218,10 +1218,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository impl
             }
           }
 
-          if (!idsBefore.equals(idsAfter)) {
-            setModificationCount(ourModificationCounter.incrementAndGet());
-          }
-          scanDataBinding(psiResourceFile, getModificationCount());
+          rescanJustDataBinding(psiFile);
           // Identities may have changed even if the ids are the same, so update maps
           invalidateParentCaches(myNamespace, ResourceType.ID);
         }
@@ -2343,6 +2340,14 @@ public final class ResourceFolderRepository extends LocalResourceRepository impl
     if (resFile != null) {
       // Data-binding files are always scanned as PsiResourceFiles.
       PsiResourceFile resourceFile = (PsiResourceFile)resFile;
+
+      // TODO: this is a targeted workaround for b/77658263, but we need to fix the invalid Psi eventually.
+      // At this point, it's possible resFile._psiFile is invalid and has a different FileViewProvider than psiFile, even though in theory
+      // they should be identical.
+      if (!resourceFile.getPsiFile().isValid()) {
+        resourceFile.setPsiFile(psiFile, resourceFile.getFolderConfiguration());
+      }
+
       setModificationCount(ourModificationCounter.incrementAndGet());
       scanDataBinding(resourceFile, getModificationCount());
     }
