@@ -95,7 +95,7 @@
     <orderEntry type="module-library" scope="TEST">
       <library name="nosyncbuilder-jarjar">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../bazel-genfiles/tools/adt/idea/android/src/com/android/tools/idea/gradle/project/sync/ng/nosyncbuilder/proto/nosyncbuilder-jarjar.jar!/" />
+          <root url="jar://$MODULE_DIR$/lib/nosyncbuilder-jarjar.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

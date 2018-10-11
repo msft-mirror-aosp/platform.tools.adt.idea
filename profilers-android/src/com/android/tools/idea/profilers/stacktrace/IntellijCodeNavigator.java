@@ -32,12 +32,14 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.util.ClassUtil;
+/* won't build in open source
 import com.intellij.util.Processor;
 import com.jetbrains.cidr.lang.symbols.OCQualifiedName;
 import com.jetbrains.cidr.lang.symbols.OCSymbol;
 import com.jetbrains.cidr.lang.symbols.cpp.OCDeclaratorSymbol;
 import com.jetbrains.cidr.lang.symbols.cpp.OCFunctionSymbol;
 import com.jetbrains.cidr.lang.symbols.symtable.OCGlobalProjectSymbolsCache;
+won't build in open source */
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -190,6 +192,7 @@ public final class IntellijCodeNavigator extends CodeNavigator {
     // false.
     Navigatable[] navigatable = new Navigatable[1]; // Workaround to set the navigatable inside the processor.
 
+/* won't build in open source
     Processor<OCSymbol> processor = symbol -> {
       if (!(symbol instanceof OCFunctionSymbol)) {
         return true; // Symbol is not a function. Continue the processing.
@@ -232,6 +235,7 @@ public final class IntellijCodeNavigator extends CodeNavigator {
 
     assert location.getMethodName() != null;
     OCGlobalProjectSymbolsCache.processByQualifiedName(myProject, processor, location.getMethodName());
+won't build in open source */
 
     return navigatable[0];
   }
