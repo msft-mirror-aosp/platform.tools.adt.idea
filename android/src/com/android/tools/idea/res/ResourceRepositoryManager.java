@@ -25,6 +25,7 @@ import com.android.ide.common.repository.ResourceVisibilityLookup;
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.ide.common.util.PathString;
 import com.android.projectmodel.ExternalLibrary;
+import com.android.projectmodel.ResourceFolder;
 import com.android.tools.idea.AndroidProjectModelUtils;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
@@ -65,6 +66,7 @@ public class ResourceRepositoryManager implements Disposable {
   private static final Object APP_RESOURCES_LOCK = new Object();
   private static final Object PROJECT_RESOURCES_LOCK = new Object();
   private static final Object MODULE_RESOURCES_LOCK = new Object();
+  private static final Object TEST_APP_RESOURCES_LOCK = new Object();
 
   @NotNull private final AndroidFacet myFacet;
   @NotNull private final AaptOptions.Namespacing myNamespacing;
@@ -83,6 +85,9 @@ public class ResourceRepositoryManager implements Disposable {
 
   @GuardedBy("MODULE_RESOURCES_LOCK")
   private LocalResourceRepository myModuleResources;
+
+  @GuardedBy("TEST_APP_RESOURCES_LOCK")
+  private LocalResourceRepository myTestAppResources;
 
   /** Libraries and their corresponding resource repositories. */
   @GuardedBy("myLibraryLock")
@@ -300,12 +305,45 @@ public class ResourceRepositoryManager implements Disposable {
     return ApplicationManager.getApplication().runReadAction((Computable<LocalResourceRepository>)() -> {
       synchronized (MODULE_RESOURCES_LOCK) {
         if (myModuleResources == null && createIfNecessary) {
-          myModuleResources = ModuleResourceRepository.create(myFacet);
+          myModuleResources = ModuleResourceRepository.forMainResources(myFacet);
           Disposer.register(this, myModuleResources);
         }
         return myModuleResources;
       }
     });
+  }
+
+  /**
+   * Returns the resource repository with all non-framework test resources available to a given module.
+   */
+  @NotNull
+  public LocalResourceRepository getTestAppResources() {
+    return ApplicationManager.getApplication().runReadAction((Computable<LocalResourceRepository>)() -> {
+      synchronized (TEST_APP_RESOURCES_LOCK) {
+        if (myTestAppResources == null) {
+          myTestAppResources = computeTestAppResources();
+          Disposer.register(this, myTestAppResources);
+        }
+        return myTestAppResources;
+      }
+    });
+  }
+
+  @NotNull
+  private LocalResourceRepository computeTestAppResources() {
+    LocalResourceRepository moduleTestResources = ModuleResourceRepository.forTestResources(myFacet);
+    if (getNamespacing() == AaptOptions.Namespacing.REQUIRED) {
+      // TODO(namespaces): Confirm that's how test resources will work.
+      return moduleTestResources;
+    }
+
+    // TODO(b/116692965): Do it properly for other build systems.
+    AndroidModuleModel model = AndroidModuleModel.get(myFacet);
+    if (model == null) {
+      return moduleTestResources;
+    }
+
+    return TestAppResourceRepository.create(myFacet, moduleTestResources, model);
   }
 
   /**
@@ -448,6 +486,14 @@ public class ResourceRepositoryManager implements Disposable {
     return myCachedNamespace;
   }
 
+  /**
+   * Returns the {@link ResourceNamespace} used by test resources of the current module.
+   */
+  @NotNull
+  public ResourceNamespace getTestNamespace() {
+    return ResourceNamespace.TODO(); // TODO(namespaces): figure out semantics of test resources with namespaces.
+  }
+
   @Nullable
   public ResourceVisibilityLookup.Provider getResourceVisibilityProvider() {
     if (myResourceVisibilityProvider == null) {
@@ -520,29 +566,9 @@ public class ResourceRepositoryManager implements Disposable {
     for (ExternalLibrary library: libraries) {
       AarSourceResourceRepository aarRepository;
       if (myNamespacing == AaptOptions.Namespacing.DISABLED) {
-        if (library.getResFolder() == null) {
-          continue;
-        }
-        File resFolder = library.getResFolder().toFile();
-        if (resFolder == null) {
-          LOG.warn("Cannot find res folder for " + library.getAddress());
-          continue;
-        }
-        aarRepository = AarResourceRepositoryCache.getInstance().getSourceRepository(resFolder, library.getAddress());
+        aarRepository = AarResourceRepositoryCache.getInstance().getSourceRepository(library);
       } else {
-        PathString resApkPath = library.getResApkFile();
-        if (resApkPath == null) {
-          LOG.warn("No res.apk for " + library.getAddress());
-          continue;
-        }
-
-        File resApkFile = resApkPath.toFile();
-        if (resApkFile == null) {
-          LOG.warn("Cannot find res.apk for " + library.getAddress());
-          continue;
-        }
-
-        aarRepository = AarResourceRepositoryCache.getInstance().getProtoRepository(resApkFile, library.getAddress());
+        aarRepository = AarResourceRepositoryCache.getInstance().getProtoRepository(library);
       }
       result.put(library, aarRepository);
     }

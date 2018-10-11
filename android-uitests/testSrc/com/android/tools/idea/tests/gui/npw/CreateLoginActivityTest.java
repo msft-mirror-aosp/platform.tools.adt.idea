@@ -48,31 +48,28 @@ public class CreateLoginActivityTest {
    *
    *   With Android Studio 3.3+
    *   1. On the Welcome Screen, select "Start a new Android Studio Project"
-   *   2. Create a default "Empty Activity" Project
-   *   3. After the Project finishes sync, "File > New > Activity > Login Activity"
-   *   4. Configure the activity details and click Finish (Verify 1)
+   *   2. Select "Login Activity" and click Next
+   *   3. Configure a project name, package and location and click Next
    *
    *   Verification
    *   1. An activity template that provides input fields and a sample implementation of
    *      an AsyncTask that asks users to login or register with their credentials is added to the project
    * </pre>
    */
-  @RunIn(TestGroup.FAT)
+  @RunIn(TestGroup.FAT_BAZEL)
   @Test
   public void activityTemplate() {
     // Create a new project with Login Activity.
     if (NPW_DYNAMIC_APPS.get()) {
       guiTest.welcomeFrame().createNewProject()
              .getChooseAndroidProjectStep()
-             .chooseActivity("Empty Activity")
+             .chooseActivity("Login Activity")
              .wizard()
              .clickNext()
-             .clickFinish();
-
-      guiTest.testSystem().waitForProjectSyncToFinish(guiTest.ideFrame());
-
-      guiTest.ideFrame()
-             .openFromMenu(NewActivityWizardFixture::find, "File", "New", "Activity", "Login Activity")
+             .getConfigureNewAndroidProjectStep()
+             .enterName("LoginActApp")
+             .enterPackageName("dev.tools")
+             .wizard()
              .clickFinish();
     }
     else {

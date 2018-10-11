@@ -88,6 +88,11 @@ public final class StudioFlags {
     "Shows fragment information in event profiler's activity bar and tooltip.",
     true);
 
+  public static final Flag<Boolean> PROFILER_UNIFIED_PIPELINE = Flag.create(
+    PROFILER, "unified.pipeline", "Enables new event pipeline to be used for core components.",
+    "Toggles usage of gRPC apis to fetch data from perfd and the datastore.",
+    false);
+
   public static final Flag<Boolean> PROFILER_SHOW_SESSIONS = Flag.create(
     PROFILER, "show.session", "Enable the sessions panel",
     "Shows the sessions panel used for managing and navigating profiling data.",
@@ -166,7 +171,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_CPU_NEW_RECORDING_WORKFLOW = Flag.create(
     PROFILER, "cpu.new.recording.workflow", "Enable new CPU recording workflow",
     "Shows recording options and status of the ongoing recording in the method trace pane.",
-    false
+    true
   );
 
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
@@ -221,10 +226,9 @@ public final class StudioFlags {
     "If enabled, the surface displays some debug information to diagnose performance",
     false);
 
-  public static final Flag<Boolean> NELE_SHOW_ON_HOVER = Flag.create(
-    NELE, "design.surface.show.hover", "Enable show on hover for the design surface",
-    "If enabled, the design surface will only display additional overlays (like constraints)" +
-    " if the mouse is over the layout",
+  public static final Flag<Boolean> NELE_SHOW_ONLY_SELECTION = Flag.create(
+    NELE, "show.only.selection", "Show only selection boundaries when mouse is not hovered in layout",
+    "Enable this flag to show selection boundaries without other decoration when mouse is not hovered in layout",
     false);
 
   private static final FlagGroup ASSISTANT = new FlagGroup(FLAGS, "assistant", "Assistants");
@@ -384,11 +388,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_CLANG_TIDY_INSPECTIONS = Flag
     .create(NDK, "clangtidyinspections", "Enable clang-tidy inspections",
             "If enabled, show inspections derived from clang-tidy.", true);
-
-  private static final FlagGroup NAVIGATION = new FlagGroup(FLAGS, "navigation", "Navigation Editor");
-  public static final Flag<Boolean> ENABLE_NAV_EDITOR = Flag.create(
-    NAVIGATION, "enable.nav.editor", "Enable the Navigation Editor",
-    "If enabled, it will be possible to create and edit navigation resource files", true);
 
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
 

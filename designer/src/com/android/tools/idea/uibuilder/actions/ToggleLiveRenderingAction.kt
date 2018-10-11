@@ -16,6 +16,7 @@
 package com.android.tools.idea.uibuilder.actions
 
 import com.android.tools.idea.common.model.NlComponent
+import com.android.tools.idea.rendering.RefreshRenderAction
 import com.android.tools.idea.rendering.RenderSettings
 import com.android.tools.idea.uibuilder.api.ViewEditor
 import com.android.tools.idea.uibuilder.api.ViewHandler
@@ -37,6 +38,7 @@ class ToggleLiveRenderingAction(label: String = "Live Rendering") :
     // We also persist the settings to the RenderSettings
     RenderSettings.getProjectSettings(editor.model.project).useLiveRendering = selected
     editor.scene.isLiveRenderingEnabled = selected
+    RefreshRenderAction.clearCacheAndRefreshSurface(editor.scene.designSurface)
   }
 
 }

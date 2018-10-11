@@ -39,6 +39,7 @@ import com.android.tools.idea.common.model.SelectionModel;
 import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.common.scene.SceneComponent;
 import com.android.tools.idea.common.scene.SceneManager;
+import com.android.tools.idea.concurrent.EdtExecutor;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationListener;
 import com.android.tools.idea.configurations.ConfigurationManager;
@@ -50,6 +51,7 @@ import com.android.utils.ImmutableCollectors;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataProvider;
@@ -316,20 +318,23 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   }
 
   /**
-   * Add an {@link NlModel} to DesignSurface. If it is added before then nothing happens.
+   * Add an {@link NlModel} to DesignSurface and return the associated SceneManager.
+   * If it is added before then nothing happens.
    * @param model the added {@link NlModel}
    */
-  private void addModelImpl(@NotNull NlModel model) {
+  @NotNull
+  private SceneManager addModelImpl(@NotNull NlModel model) {
+    SceneManager manager = myModelToSceneManagers.get(model);
     // No need to add same model twice.
-    if (myModelToSceneManagers.containsKey(model)) {
-      return;
+    if (manager != null) {
+      return manager;
     }
 
     model.addListener(myModelListener);
     model.getConfiguration().addListener(myConfigurationListener);
-    SceneManager manager = createSceneManager(model);
-
+    manager = createSceneManager(model);
     myModelToSceneManagers.put(model, manager);
+    return manager;
   }
 
   /**
@@ -339,9 +344,17 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   public void addModel(@NotNull NlModel model) {
     addModelImpl(model);
 
-    reactivateInteractionManager();
-    zoomToFit();
-    requestRender();
+    // We probably do not need to request a render for all models but it is currently the
+    // only point subclasses can override to disable the layoutlib render behaviour.
+    requestRender()
+      .whenCompleteAsync((result, ex) -> {
+        reactivateInteractionManager();
+        zoomToFit();
+
+        for (DesignSurfaceListener listener : ImmutableList.copyOf(myListeners)) {
+          listener.modelChanged(this, model);
+        }
+      }, EdtExecutor.INSTANCE);
   }
 
   /**
@@ -401,17 +414,22 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
 
     if (model != null) {
       addModelImpl(model);
+
+      requestRender()
+        .whenCompleteAsync((result, ex) -> {
+          reactivateInteractionManager();
+          zoomToFit();
+
+          // TODO: The listeners have the expectation of the call happening in the EDT. We need
+          //       to address that.
+          for (DesignSurfaceListener listener : ImmutableList.copyOf(myListeners)) {
+            listener.modelChanged(this, model);
+          }
+        }, EdtExecutor.INSTANCE);
+      
       if (myIsActive) {
         model.activate(this);
       }
-    }
-
-    reactivateInteractionManager();
-    zoomToFit();
-    requestRender();
-
-    for (DesignSurfaceListener listener : ImmutableList.copyOf(myListeners)) {
-      listener.modelChanged(this, model);
     }
   }
 
@@ -1327,11 +1345,17 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
 
   /**
    * Invalidates all models and request a render of the layout. This will re-inflate the layout and render it.
+   * The result {@link ListenableFuture} will notify when the render has completed.
    */
-  public void requestRender() {
-    for (SceneManager manager : myModelToSceneManagers.values()) {
-      manager.requestRender();
+  @NotNull
+  public CompletableFuture<Void> requestRender() {
+    if (myModelToSceneManagers.isEmpty()) {
+      return CompletableFuture.completedFuture(null);
     }
+
+    return CompletableFuture.allOf(myModelToSceneManagers.values().stream()
+                                                         .map(manager -> manager.requestRender())
+                                                         .toArray(CompletableFuture[]::new));
   }
 
   @NotNull

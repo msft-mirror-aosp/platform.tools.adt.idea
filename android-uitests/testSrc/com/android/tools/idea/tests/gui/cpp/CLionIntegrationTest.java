@@ -73,19 +73,19 @@ public class CLionIntegrationTest {
 
     guiTest.waitForBackgroundTasks();
 
-    EditorFixture editor = ideFrame.getEditor().open(NATIVE_C_FILE_PATH, EditorFixture.Tab.EDITOR);
-
     // Check unused header import and no errors.
     String inspectionResults = ideFrame.openFromMenu(InspectCodeDialogFixture::find, "Analyze", "Inspect Code...")
       .clickOk()
       .getResults();
     assertThat(inspectionResults).contains("Unused macro");
+
+    EditorFixture editor = ideFrame.getEditor().open(NATIVE_C_FILE_PATH, EditorFixture.Tab.EDITOR);
     assertThat(editor.getHighlights(HighlightSeverity.ERROR)).isEmpty();
 
     // Check code completion.
     editor.moveBetween("int kid_age = 3;", "").enterText("\nBUFFER");
     ideFrame.invokeMenuPath("Code", "Completion", "Basic");
-    Wait.seconds(5).expecting("")
+    Wait.seconds(20).expecting("")
       .until(() -> editor.getCurrentLine().contains("BUFFER_OFFSET"));
 
     // Complete the new statement.

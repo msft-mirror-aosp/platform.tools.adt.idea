@@ -98,7 +98,7 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
 
     pushNewAgentConfig(project, device);
     String agentArgs = getAttachAgentArgs(applicationId, profilerService, device, deviceId);
-    String startupProfilingResult = startStartupProfiling(applicationId, module, profilerService, device, deviceId);
+    String startupProfilingResult = startStartupProfiling(applicationId, project, profilerService, device, deviceId);
     return String.format("%s %s", agentArgs, startupProfilingResult);
   }
 
@@ -150,7 +150,7 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
    */
   @NotNull
   private static String startStartupProfiling(@NotNull String appPackageName,
-                                              @NotNull Module module,
+                                              @NotNull Project project,
                                               @NotNull ProfilerService profilerService,
                                               @NotNull IDevice device,
                                               long deviceId) {
@@ -158,22 +158,22 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
       return "";
     }
 
-    AndroidRunConfigurationBase runConfig = getSelectedRunConfiguration(module.getProject());
+    AndroidRunConfigurationBase runConfig = getSelectedRunConfiguration(project);
     if (runConfig == null || !runConfig.getProfilerState().STARTUP_CPU_PROFILING_ENABLED) {
       return "";
     }
 
     String configName = runConfig.getProfilerState().STARTUP_CPU_PROFILING_CONFIGURATION_NAME;
-    CpuProfilerConfig startupConfig = CpuProfilerConfigsState.getInstance(module.getProject()).getConfigByName(configName);
+    CpuProfilerConfig startupConfig = CpuProfilerConfigsState.getInstance(project).getConfigByName(configName);
     if (startupConfig == null) {
       return "";
     }
 
     if (!isAtLeastO(device)) {
-      AndroidNotification.getInstance(module.getProject()).showBalloon("Startup CPU Profiling",
-                                                                       "Starting a method trace recording on startup is only " +
-                                                                       "supported on devices with API levels 26 and higher.",
-                                                                       NotificationType.WARNING);
+      AndroidNotification.getInstance(project).showBalloon("Startup CPU Profiling",
+                                                           "Starting a method trace recording on startup is only " +
+                                                           "supported on devices with API levels 26 and higher.",
+                                                           NotificationType.WARNING);
       return "";
     }
 
@@ -184,7 +184,7 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
       .setConfiguration(CpuProfilerConfigConverter.toProto(startupConfig));
 
     if (requestBuilder.getConfiguration().getProfilerType() == CpuProfiler.CpuProfilerType.SIMPLEPERF) {
-      requestBuilder.setAbiCpuArch(getSimpleperfAbi(device));
+      requestBuilder.setAbiCpuArch(getSimpleperfAbiCpuArch(device));
     }
 
     CpuProfiler.StartupProfilingResponse response = profilerService
@@ -269,30 +269,32 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
 
   @NotNull
   private static String getAbiDependentLibPerfaName(IDevice device) {
-    String abi = getBestAbi(device,
-                            "plugins/android/resources/perfa",
-                            "../../bazel-bin/tools/base/profiler/native/perfa/android",
-                            "libperfa.so");
+    String abi = getBestAbiCpuArch(device,
+                                   "plugins/android/resources/perfa",
+                                   "../../bazel-bin/tools/base/profiler/native/perfa/android",
+                                   "libperfa.so");
     return abi.isEmpty() ? "" : String.format("libperfa_%s.so", abi);
   }
 
   @NotNull
-  private static String getSimpleperfAbi(IDevice device) {
-    return getBestAbi(device,
-                      "plugins/android/resources/simpleperf",
-                      "../../prebuilts/tools/common/simpleperf",
-                      "simpleperf");
+  private static String getSimpleperfAbiCpuArch(IDevice device) {
+    return getBestAbiCpuArch(device,
+                             "plugins/android/resources/simpleperf",
+                             "../../prebuilts/tools/common/simpleperf",
+                             "simpleperf");
   }
 
   /**
-   * @return the most preferred ABI according to {@link IDevice#getAbis()} for which
-   * {@param fileName} exists in {@param releaseDir} or {@param devDir}
+   * @return the most preferred CPU arch according to {@link IDevice#getAbis()} for which
+   * {@param fileName} exists in {@param releaseDir} or {@param devDir}.
+   * For example, if the preferred Abi according to {@link IDevice#getAbis()} is {@link Abi#ARMEABI} or {@link Abi#ARMEABI_V7A} and
+   * the {@param fileName} exists under it then it returns "arm".
    */
   @NotNull
-  private static String getBestAbi(@NotNull IDevice device,
-                                   @NotNull String releaseDir,
-                                   @NotNull String devDir,
-                                   @NotNull String fileName) {
+  private static String getBestAbiCpuArch(@NotNull IDevice device,
+                                          @NotNull String releaseDir,
+                                          @NotNull String devDir,
+                                          @NotNull String fileName) {
     File dir = new File(PathManager.getHomePath(), releaseDir);
     if (!dir.exists()) {
       dir = new File(PathManager.getHomePath(), devDir);
@@ -350,21 +352,24 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
           if (window != null) {
             window.setShowStripeButton(true);
 
-            // Caching the device+process info in case auto-profiling should kick in at a later time.
             String deviceName = AndroidProfilerToolWindow.getDeviceDisplayName(device);
             String processName = AndroidProfilerToolWindow.getModuleName(myModule);
             AndroidProfilerToolWindow.PreferredProcessInfo preferredProcessInfo =
               new AndroidProfilerToolWindow.PreferredProcessInfo(deviceName, processName,
                                                                  p -> p.getStartTimestampNs() >= currentDeviceTimeNs);
-            project.putUserData(LAST_RUN_APP_INFO, preferredProcessInfo);
-
             // If the window is currently not shown, either if the users click on Run/Debug or if they manually collapse/hide the window,
             // then we shouldn't start profiling the launched app.
+            boolean profileStarted = false;
             if (window.isVisible()) {
               AndroidProfilerToolWindow profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(project);
               if (profilerToolWindow != null) {
                 profilerToolWindow.profile(preferredProcessInfo);
+                profileStarted = true;
               }
+            }
+            // Caching the device+process info in case auto-profiling should kick in at a later time.
+            if (!profileStarted) {
+              project.putUserData(LAST_RUN_APP_INFO, preferredProcessInfo);
             }
           }
         });

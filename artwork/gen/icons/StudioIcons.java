@@ -283,6 +283,18 @@ public class StudioIcons {
       public static final Icon CLEAR_CONSTRAINTS_WHITE = load("/studio/icons/layout-editor/toolbar/clear-constraints-white.png"); // 16x16
       public static final Icon CLEAR_CONSTRAINTS = load("/studio/icons/layout-editor/toolbar/clear-constraints.png"); // 16x16
       public static final Icon CLEAR_WEIGHT = load("/studio/icons/layout-editor/toolbar/clear-weight.png"); // 16x16
+      public static final Icon CONSTRAIN_BOTTOM_TO_BOTTOM = load("/studio/icons/layout-editor/toolbar/constrain-bottom-to-bottom.png"); // 16x16
+      public static final Icon CONSTRAIN_BOTTOM_TO_TOP = load("/studio/icons/layout-editor/toolbar/constrain-bottom-to-top.png"); // 16x16
+      public static final Icon CONSTRAIN_END_TO_END = load("/studio/icons/layout-editor/toolbar/constrain-end-to-end.png"); // 16x16
+      public static final Icon CONSTRAIN_END_TO_START = load("/studio/icons/layout-editor/toolbar/constrain-end-to-start.png"); // 16x16
+      public static final Icon CONSTRAIN_START_TO_END = load("/studio/icons/layout-editor/toolbar/constrain-start-to-end.png"); // 16x16
+      public static final Icon CONSTRAIN_START_TO_START = load("/studio/icons/layout-editor/toolbar/constrain-start-to-start.png"); // 16x16
+      public static final Icon CONSTRAIN_TO_BOTTOM = load("/studio/icons/layout-editor/toolbar/constrain-to-bottom.png"); // 16x16
+      public static final Icon CONSTRAIN_TO_END = load("/studio/icons/layout-editor/toolbar/constrain-to-end.png"); // 16x16
+      public static final Icon CONSTRAIN_TO_START = load("/studio/icons/layout-editor/toolbar/constrain-to-start.png"); // 16x16
+      public static final Icon CONSTRAIN_TO_TOP = load("/studio/icons/layout-editor/toolbar/constrain-to-top.png"); // 16x16
+      public static final Icon CONSTRAIN_TOP_TO_BOTTOM = load("/studio/icons/layout-editor/toolbar/constrain-top-to-bottom.png"); // 16x16
+      public static final Icon CONSTRAIN_TOP_TO_TOP = load("/studio/icons/layout-editor/toolbar/constrain-top-to-top.png"); // 16x16
       public static final Icon CREATE_HORIZ_CHAIN = load("/studio/icons/layout-editor/toolbar/create-horiz-chain.png"); // 16x16
       public static final Icon CREATE_VERT_CHAIN = load("/studio/icons/layout-editor/toolbar/create-vert-chain.png"); // 16x16
       public static final Icon CYCLE_CHAIN_PACKED = load("/studio/icons/layout-editor/toolbar/cycle-chain-packed.png"); // 16x16
@@ -309,19 +321,7 @@ public class StudioIcons {
       public static final Icon INSERT_HORIZ_CHAIN = load("/studio/icons/layout-editor/toolbar/insert-horiz-chain.png"); // 16x16
       public static final Icon INSERT_VERT_CHAIN = load("/studio/icons/layout-editor/toolbar/insert-vert-chain.png"); // 16x16
       public static final Icon CONSTRAIN_MENU = load("/studio/icons/layout-editor/toolbar/constraint/constrain.png"); // 16x16
-      public static final Icon CONSTRAIN_TOP_SRC = load("/studio/icons/layout-editor/toolbar/constraint/constrain-src-top.png"); // 16x16
-      public static final Icon CONSTRAIN_BOTTOM_SRC = load("/studio/icons/layout-editor/toolbar/constraint/constrain-src-bottom.png"); // 16x16
-      public static final Icon CONSTRAIN_START_SRC = load("/studio/icons/layout-editor/toolbar/constraint/constrain-src-start.png"); // 16x16
-      public static final Icon CONSTRAIN_END_SRC = load("/studio/icons/layout-editor/toolbar/constraint/constrain-src-end.png"); // 16x16
-      public static final Icon CONSTRAIN_TOP_DES = load("/studio/icons/layout-editor/toolbar/constraint/constrain-to-top.png"); // 16x16
-      public static final Icon CONSTRAIN_BOTTOM_DES = load("/studio/icons/layout-editor/toolbar/constraint/constrain-to-bottom.png"); // 16x16
-      public static final Icon CONSTRAIN_START_DES = load("/studio/icons/layout-editor/toolbar/constraint/constrain-to-start.png"); // 16x16
-      public static final Icon CONSTRAIN_END_DES = load("/studio/icons/layout-editor/toolbar/constraint/constrain-to-end.png"); // 16x16
       public static final Icon CONSTRAIN_BASELINE_DES = load("/studio/icons/layout-editor/toolbar/constraint/constrain-to-baseline.png"); // 16x16
-      public static final Icon CONSTRAIN_TOP_PARENT = load("/studio/icons/layout-editor/toolbar/constraint/constrain-parent-top.png"); // 16x16
-      public static final Icon CONSTRAIN_BOTTOM_PARENT = load("/studio/icons/layout-editor/toolbar/constraint/constrain-parent-bottom.png"); // 16x16
-      public static final Icon CONSTRAIN_START_PARENT = load("/studio/icons/layout-editor/toolbar/constraint/constrain-parent-start.png"); // 16x16
-      public static final Icon CONSTRAIN_END_PARENT = load("/studio/icons/layout-editor/toolbar/constraint/constrain-parent-end.png"); // 16x16
       public static final Icon LANGUAGE = load("/studio/icons/layout-editor/toolbar/language.png"); // 16x16
       public static final Icon LEFT_ALIGNED_CONSTRAINT = load("/studio/icons/layout-editor/toolbar/left-aligned-constraint.png"); // 16x16
       public static final Icon LEFT_ALIGNED = load("/studio/icons/layout-editor/toolbar/left-aligned.png"); // 16x16
@@ -402,7 +402,7 @@ public class StudioIcons {
     public static class ExistingDestinations {
       public static final Icon ACTIVITY = load("/studio/icons/nav-editor/existing-destinations/activity.png"); // 146x188
       public static final Icon DESTINATION = load("/studio/icons/nav-editor/existing-destinations/destination.png"); // 146x188
-      public static final Icon NESTED = load("/studio/icons/nav-editor/existing-destinations/nested.png"); // 146x188
+      public static final Icon NESTED = load("/studio/icons/nav-editor/existing-destinations/nested.png"); // 106x156
       public static final Icon PLACEHOLDER = load("/studio/icons/nav-editor/existing-destinations/placeholder.png"); // 146x188
     }
 
@@ -410,6 +410,7 @@ public class StudioIcons {
       public static final Icon ACTION = load("/studio/icons/nav-editor/properties/action.png"); // 16x16
       public static final Icon ARGUMENT = load("/studio/icons/nav-editor/properties/argument.png"); // 16x16
       public static final Icon GLOBAL_ACTION = load("/studio/icons/nav-editor/properties/global-action.png"); // 16x16
+      public static final Icon POP_ACTION = load("/studio/icons/nav-editor/properties/pop-action.png"); // 16x16
       public static final Icon SOURCE = load("/studio/icons/nav-editor/properties/source.png"); // 16x16
     }
 
@@ -459,7 +460,9 @@ public class StudioIcons {
 
   public static class Profiler {
     public static class Events {
-      public static final Icon ALLOCATION_TRACKING_CHANGE = load("/studio/icons/profiler/events/allocation-tracking-change.png"); // 22x22
+      public static final Icon ALLOCATION_TRACKING_FULL = load("/studio/icons/profiler/events/allocation-tracking-full.png"); // 22x22
+      public static final Icon ALLOCATION_TRACKING_NONE = load("/studio/icons/profiler/events/allocation-tracking-none.png"); // 22x22
+      public static final Icon ALLOCATION_TRACKING_SAMPLED = load("/studio/icons/profiler/events/allocation-tracking-sampled.png"); // 22x22
       public static final Icon BACK_BUTTON = load("/studio/icons/profiler/events/back-button.png"); // 22x22
       public static final Icon GARBAGE_EVENT = load("/studio/icons/profiler/events/garbage-event.png"); // 22x22
       public static final Icon GPS = load("/studio/icons/profiler/events/gps.png"); // 22x22
@@ -592,6 +595,7 @@ public class StudioIcons {
       public static final Icon DEBUG = load("/studio/icons/shell/toolbar/debug.png"); // 16x16
       public static final Icon DEVICE_MANAGER = load("/studio/icons/shell/toolbar/device-manager.png"); // 16x16
       public static final Icon GRADLE_SYNC = load("/studio/icons/shell/toolbar/gradle-sync.png"); // 16x16
+      public static final Icon INSTANT_RUN_CODE_SWAP = load("/studio/icons/shell/toolbar/instant-run-code-swap.png"); // 16x16
       public static final Icon INSTANT_RUN = load("/studio/icons/shell/toolbar/instant-run.png"); // 16x16
       public static final Icon PROFILER = load("/studio/icons/shell/toolbar/profiler.png"); // 16x16
       public static final Icon PROJECT_STRUCTURE = load("/studio/icons/shell/toolbar/project-structure.png"); // 16x16

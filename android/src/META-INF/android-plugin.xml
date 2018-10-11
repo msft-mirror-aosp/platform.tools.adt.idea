@@ -392,8 +392,6 @@
                          id ="experimental" displayName="Experimental" groupId="root" groupWeight="-999"/>
     <applicationService serviceInterface="com.android.tools.idea.gradle.project.GradleExperimentalSettings"
                         serviceImplementation="com.android.tools.idea.gradle.project.GradleExperimentalSettings"/>
-    <projectService serviceInterface="com.android.tools.idea.gradle.project.GradlePerProjectExperimentalSettings"
-                    serviceImplementation="com.android.tools.idea.gradle.project.GradlePerProjectExperimentalSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.sdk.StudioSettingsController"/>
     <applicationService serviceImplementation="com.android.tools.idea.fd.InstantRunConfiguration"/>
     <projectService serviceInterface="com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings"
@@ -813,6 +811,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintRange" displayName="Outside Range" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintRangeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintRecycle" displayName="Missing recycle() calls" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintRecycleInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintRecyclerView" displayName="RecyclerView Problems" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintRecyclerViewInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintRedundantNamespace" displayName="Redundant namespace" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintRedundantNamespaceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintReferenceType" displayName="Incorrect reference types" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintReferenceTypeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintRegistered" displayName="Class is not registered in the manifest" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintRegisteredInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintRelativeOverlap" displayName="Overlapping items in RelativeLayout" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintRelativeOverlapInspection"/>
@@ -1365,8 +1364,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.android.run">
-    <!-- TODO Make sure http://b/116011467 doesn't recur when readding this -->
-    <!-- <deployTargetProvider implementation="com.android.tools.idea.run.deployment.DeviceAndSnapshotComboBoxTargetProvider"/> -->
+    <deployTargetProvider implementation="com.android.tools.idea.run.deployment.DeviceAndSnapshotComboBoxTargetProvider"/>
     <deployTargetProvider implementation="com.android.tools.idea.run.editor.ShowChooserTargetProvider"/>
     <deployTargetProvider implementation="com.android.tools.idea.run.editor.UsbDeviceTargetProvider"/>
     <deployTargetProvider implementation="com.android.tools.idea.run.editor.EmulatorTargetProvider"/>

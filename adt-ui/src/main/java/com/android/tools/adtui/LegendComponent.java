@@ -23,7 +23,11 @@ import com.android.tools.adtui.model.legend.Legend;
 import com.android.tools.adtui.model.legend.LegendComponentModel;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.JBColor;
+import com.intellij.util.IconUtil;
 import com.intellij.util.ui.JBUI;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import sun.swing.SwingUtilities2;
 
@@ -54,6 +58,11 @@ public class LegendComponent extends AnimatedComponent {
    */
   private static final int ICON_MARGIN_PX = JBUI.scale(6);
 
+  /**
+   * A cache for cropped icons.
+   */
+  private static final Map<Icon, Icon> myCroppedIconCache = new HashMap<>();
+
   private final int myLeftPadding;
   private final int myRightPadding;
   private final int myVerticalPadding;
@@ -75,6 +84,8 @@ public class LegendComponent extends AnimatedComponent {
   @NotNull
   private final List<RenderInstruction> myInstructions = new ArrayList<>();
 
+  private final Map<Legend, String> myValuesCache = new HashMap<>();
+
   /**
    * Convenience method for creating a default, horizontal legend component based on a target
    * model. If you want to override defaults, use a {@link Builder} instead.
@@ -93,8 +104,7 @@ public class LegendComponent extends AnimatedComponent {
     myLeftPadding = builder.myLeftPadding;
     myRightPadding = builder.myRightPadding;
     myVerticalPadding = builder.myVerticalPadding;
-    myModel.addDependency(myAspectObserver)
-      .onChange(LegendComponentModel.Aspect.LEGEND, this::modelChanged);
+    myModel.addDependency(myAspectObserver).onChange(LegendComponentModel.Aspect.LEGEND, this::modelChanged);
     setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(builder.myTextSize));
     modelChanged();
   }
@@ -150,6 +160,28 @@ public class LegendComponent extends AnimatedComponent {
   }
 
   private void modelChanged() {
+    boolean valuesChanged = false;
+    // Check for new/modified legends.
+    for (Legend legend : myModel.getLegends()) {
+      boolean isValueCached = myValuesCache.containsKey(legend);
+
+      String value = legend.getValue();
+      String oldValue = myValuesCache.put(legend, value);
+
+      if (!isValueCached || !Objects.equals(value, oldValue)) {
+        valuesChanged = true;
+      }
+    }
+    // Check for stale cached legend values whose Legends are no longer in the model.
+    int cacheSize = myValuesCache.size();
+    myValuesCache.keySet().retainAll(myModel.getLegends());
+    if (myValuesCache.size() != cacheSize) {
+      valuesChanged = true;
+    }
+    if (!valuesChanged) {
+      return;
+    }
+
     Dimension prevSize = getPreferredSize();
 
     myInstructions.clear();
@@ -173,10 +205,19 @@ public class LegendComponent extends AnimatedComponent {
       }
 
       if (config.getIconType() != LegendConfig.IconType.NONE) {
-        IconInstruction iconInstruction = new IconInstruction(config.getIconType(), config.getColor());
+        RenderInstruction iconInstruction;
+        int gapAdjust;
+        if (config.getIconType() == LegendConfig.IconType.CUSTOM) {
+          assert config.getIconGetter() != null;
+          iconInstruction = new IconInstruction(cropAndCacheIcon(config.getIconGetter().apply(value)), 0, config.getColor());
+          gapAdjust = 0;
+        }
+        else {
+          iconInstruction = new LegendIconInstruction(config.getIconType(), config.getColor());
+          // For vertical legends, Components after icons need be aligned to left, so adjust the gap width after icon.
+          gapAdjust = myOrientation == Orientation.VERTICAL ? LegendIconInstruction.ICON_MAX_WIDTH - iconInstruction.getSize().width : 0;
+        }
         myInstructions.add(iconInstruction);
-        // For vertical legends, Components after icons need be aligned to left, so adjust the gap width after icon.
-        int gapAdjust = myOrientation == Orientation.VERTICAL ? IconInstruction.ICON_MAX_WIDTH - iconInstruction.getSize().width : 0;
         myInstructions.add(new GapInstruction(ICON_MARGIN_PX + gapAdjust));
       }
 
@@ -207,6 +248,19 @@ public class LegendComponent extends AnimatedComponent {
       revalidate();
     }
     repaint();
+  }
+
+  /**
+   * Crop an icon and store it in a cache so we can retrieve it later without performing another expensive cropping operation.
+   *
+   * @return An icon cropped to match a LegendIconInstruction. If called with an icon cropped before will return one from cache.
+   */
+  @VisibleForTesting
+  static Icon cropAndCacheIcon(Icon icon) {
+    if (!myCroppedIconCache.containsKey(icon)) {
+      myCroppedIconCache.put(icon, IconUtil.cropIcon(icon, LegendIconInstruction.ICON_MAX_WIDTH, LegendIconInstruction.ICON_HEIGHT_PX));
+    }
+    return myCroppedIconCache.get(icon);
   }
 
   public enum Orientation {
@@ -277,7 +331,7 @@ public class LegendComponent extends AnimatedComponent {
    * An instruction to render an {@link LegendConfig.IconType} icon.
    */
   @VisibleForTesting
-  static final class IconInstruction extends RenderInstruction {
+  static final class LegendIconInstruction extends RenderInstruction {
     private static final int ICON_HEIGHT_PX = 15;
     private static final int LINE_THICKNESS = 3;
 
@@ -303,7 +357,7 @@ public class LegendComponent extends AnimatedComponent {
     final LegendConfig.IconType myType;
     @NotNull private final Color myColor;
 
-    public IconInstruction(@NotNull LegendConfig.IconType type, @NotNull Color color) {
+    public LegendIconInstruction(@NotNull LegendConfig.IconType type, @NotNull Color color) {
       switch (type) {
         case BOX:
         case LINE:

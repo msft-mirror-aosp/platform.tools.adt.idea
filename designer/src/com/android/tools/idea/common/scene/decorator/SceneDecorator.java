@@ -20,14 +20,11 @@ import com.android.tools.idea.common.scene.SceneContext;
 import com.android.tools.idea.common.scene.draw.DisplayList;
 import com.android.tools.idea.common.scene.draw.DrawComponentBackground;
 import com.android.tools.idea.common.scene.draw.DrawComponentFrame;
-import com.android.tools.idea.common.surface.SceneLayer;
 import com.android.tools.idea.flags.StudioFlags;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The generic Scene Decorator
@@ -57,8 +54,9 @@ public class SceneDecorator {
    * </ol>
    */
   public void buildList(@NotNull DisplayList list, long time, @NotNull SceneContext sceneContext, @NotNull SceneComponent component) {
-    if (SceneLayer.SHOW_ON_HOVER && sceneContext.showOnlySelection()) {
+    if (sceneContext.showOnlySelection()) {
       addFrame(list, sceneContext, component);
+      buildListTargets(list, time, sceneContext, component);
       buildListChildren(list, time, sceneContext, component);
       return;
     }

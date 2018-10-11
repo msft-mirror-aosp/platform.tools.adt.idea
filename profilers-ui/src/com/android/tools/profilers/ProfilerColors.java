@@ -20,7 +20,8 @@ import com.android.tools.profilers.cpu.CpuProfilerStage;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.Gray;
 import com.intellij.ui.JBColor;
-import java.awt.Color;
+
+import java.awt.*;
 
 public class ProfilerColors {
 
@@ -65,7 +66,6 @@ public class ProfilerColors {
   public static final Color CPU_KERNEL_APP_TEXT_HOVER = CPU_KERNEL_APP_TEXT_SELECTED;
   public static final Color CPU_KERNEL_APP_TEXT = new JBColor(0x4A877F, 0x56907D);
   public static final Color CPU_KERNEL_OTHER_TEXT = new JBColor(0x6E8C9A, 0x606D7E);
-  public static final Color CPU_KERNEL_OTHER_TEXT_SELECTED = new JBColor(0x232D31, 0xA9C7E9);
   public static final Color CPU_KERNEL_OTHER_TEXT_HOVER = new JBColor(0x232D31, 0xA9C7E9);
   public static final Color CPU_KERNEL_APP = new JBColor(0xC3E4E0, 0x33534C);
   public static final Color CPU_KERNEL_APP_SELECTED = CPU_USAGE_CAPTURED;
@@ -132,8 +132,6 @@ public class ProfilerColors {
 
   public static final Color CPU_CAPTURE_STATUS = new JBColor(0x545454, 0xCACACA);
 
-  public static final Color CPU_CAPTURE_LINES = new JBColor(0x434343, 0xBCBCBC);
-
   public static final Color CPU_THREAD_SELECTED_BACKGROUND = new JBColor(0x3476DC, 0x3476DC);
 
   public static final Color THREAD_LABEL_TEXT = new JBColor(0x434343, 0xBCBCBC);
@@ -184,6 +182,10 @@ public class ProfilerColors {
 
   public static final Color CPU_DURATION_LABEL_BACKGROUND = new JBColor(new Color(0x70000000, true), new Color(0x70000000, true));
 
+  public static final Color COMBOBOX_BORDER = new JBColor(0xAAAAAA, 0xAAAAAA);
+
+  public static final Color COMBOBOX_SELECTED_CELL = new JBColor(0x3875D6, 0x3875D6);
+
   public static final Color DEFAULT_BACKGROUND = new JBColor(0xFFFFFF, 0x313335);
 
   public static final Color DEFAULT_STAGE_BACKGROUND = new JBColor(0xFFFFFF, 0x2B2D2E);
@@ -205,12 +207,6 @@ public class ProfilerColors {
   public static final Color NETWORK_SENDING_COLOR = new JBColor(0xF4AF6F, 0xFFC187);
 
   public static final Color NETWORK_WAITING_COLOR = new JBColor(0xAAAAAA, 0xAAAAAA);
-
-  public static final Color NETWORK_RADIO_WIFI = new JBColor(0xD4DCE8, 0x535658);
-
-  public static final Color NETWORK_RADIO_LOW = new JBColor(0x99BFFF, 0x4B6690);
-
-  public static final Color NETWORK_RADIO_HIGH = new JBColor(0x335A9A, 0x669FFF);
 
   public static final Color NETWORK_THREADS_VIEW_TOOLTIP_DIVIDER = new JBColor(0xD3D3D3, 0x565656);
 

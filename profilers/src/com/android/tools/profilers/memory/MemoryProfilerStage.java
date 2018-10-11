@@ -239,8 +239,6 @@ public class MemoryProfilerStage extends Stage implements CodeNavigator.Listener
     getStudioProfilers().getUpdater().register(myAllocationDurations);
     getStudioProfilers().getUpdater().register(myMemoryAxis);
     getStudioProfilers().getUpdater().register(myObjectsAxis);
-    getStudioProfilers().getUpdater().register(myLegends);
-    getStudioProfilers().getUpdater().register(myTooltipLegends);
     getStudioProfilers().getUpdater().register(myGcStatsModel);
     getStudioProfilers().getUpdater().register(myAllocationSamplingRateDurations);
     getStudioProfilers().getUpdater().register(myCaptureElapsedTimeUpdatable);
@@ -275,8 +273,6 @@ public class MemoryProfilerStage extends Stage implements CodeNavigator.Listener
     getStudioProfilers().getUpdater().unregister(myAllocationDurations);
     getStudioProfilers().getUpdater().unregister(myMemoryAxis);
     getStudioProfilers().getUpdater().unregister(myObjectsAxis);
-    getStudioProfilers().getUpdater().unregister(myLegends);
-    getStudioProfilers().getUpdater().unregister(myTooltipLegends);
     getStudioProfilers().getUpdater().unregister(myGcStatsModel);
     getStudioProfilers().getUpdater().unregister(myAllocationSamplingRateDurations);
     getStudioProfilers().getUpdater().unregister(myCaptureElapsedTimeUpdatable);
@@ -790,7 +786,7 @@ public class MemoryProfilerStage extends Stage implements CodeNavigator.Listener
     @NotNull private final EventLegend<AllocationSamplingRateDurationData> mySamplingRateDurationLegend;
 
     public MemoryStageLegends(@NotNull MemoryProfilerStage memoryStage, @NotNull Range range, boolean isTooltip) {
-      super(ProfilerMonitor.LEGEND_UPDATE_FREQUENCY_MS);
+      super(range);
       DetailedMemoryUsage usage = memoryStage.getDetailedMemoryUsage();
       myJavaLegend = new SeriesLegend(usage.getJavaSeries(), MEMORY_AXIS_FORMATTER, range);
       myNativeLegend = new SeriesLegend(usage.getNativeSeries(), MEMORY_AXIS_FORMATTER, range);
@@ -924,13 +920,17 @@ public class MemoryProfilerStage extends Stage implements CodeNavigator.Listener
     // Sample every allocation
     FULL(1, "Full");
 
-    static final Map<Integer, LiveAllocationSamplingMode> MAP;
+    static final Map<Integer, LiveAllocationSamplingMode> SAMPLING_RATE_MAP;
+    static final Map<String, LiveAllocationSamplingMode> NAME_MAP;
     static {
-      Map<Integer, LiveAllocationSamplingMode> map = new HashMap<>();
+      Map<Integer, LiveAllocationSamplingMode> samplingRateMap = new HashMap<>();
+      Map<String, LiveAllocationSamplingMode> nameMap = new HashMap<>();
       for (LiveAllocationSamplingMode mode : LiveAllocationSamplingMode.values()) {
-        map.put(mode.getValue(), mode);
+        samplingRateMap.put(mode.getValue(), mode);
+        nameMap.put(mode.getDisplayName(), mode);
       }
-      MAP = ImmutableMap.copyOf(map);
+      SAMPLING_RATE_MAP = ImmutableMap.copyOf(samplingRateMap);
+      NAME_MAP = ImmutableMap.copyOf(nameMap);
     }
 
     private String myDisplayName;
@@ -951,7 +951,12 @@ public class MemoryProfilerStage extends Stage implements CodeNavigator.Listener
 
     @NotNull
     static LiveAllocationSamplingMode getModeFromFrequency(int frequency) {
-      return MAP.getOrDefault(frequency, DEFAULT_LIVE_ALLOCATION_SAMPLING_MODE);
+      return SAMPLING_RATE_MAP.getOrDefault(frequency, DEFAULT_LIVE_ALLOCATION_SAMPLING_MODE);
+    }
+
+    @NotNull
+    static LiveAllocationSamplingMode getModeFromDisplayName(String displayName) {
+      return NAME_MAP.getOrDefault(displayName, DEFAULT_LIVE_ALLOCATION_SAMPLING_MODE);
     }
   }
 }
