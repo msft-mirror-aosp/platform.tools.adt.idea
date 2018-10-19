@@ -39,10 +39,22 @@ iml_module(
     iml_files = ["intellij.android.guiTests.iml"],
     # do not sort: must match IML order
     test_runtime_deps = [
+        "//tools/idea/platform/credential-store:intellij.platform.credentialStore",
         "//tools/idea/java/compiler/instrumentation-util-8:intellij.java.compiler.instrumentationUtil.java8",
         "//tools/idea/jvm/jvm-analysis-impl:intellij.jvm.analysis.impl",
         "//tools/idea/plugins/IntelliLang/intellilang-jps-plugin:intellij.java.langInjection.jps",
+        "//tools/idea/platform/platform-main:intellij.platform.main",
+        "//tools/idea/plugins/cvs/cvs-plugin:intellij.vcs.cvs",
+        "//tools/idea/plugins/github:intellij.vcs.github",
+        "//tools/idea/platform/remote-servers/impl:intellij.platform.remoteServers.impl",
+        "//tools/idea/colorSchemes:intellij.platform.colorSchemes",
+        "//tools/idea/plugins/yaml:intellij.yaml",
+        "//tools/idea/plugins/groovy/structuralsearch-groovy:intellij.groovy.structuralSearch",
+        "//tools/idea/plugins/git4idea/remote-servers-git-java:intellij.java.remoteServers.git",
+        "//tools/idea/plugins/terminal:intellij.terminal",
         "//tools/idea/jps/javac-ref-scanner-8:intellij.java.jps.javacRefScanner8",
+        "//tools/idea/plugins/stats-collector:intellij.statsCollector",
+        "//tools/idea/plugins/stream-debugger:intellij.java.debugger.streams",
     ],
     test_srcs = ["testSrc"],
     test_tags = ["manual"],
@@ -167,26 +179,6 @@ java_test(
     ]) + glob(["testData/LayoutLocalTest/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BazelStartupSyncTest"],
     tags = COMMON_TAGS + ["manual"],  # b/110178024
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
-    name = "AswbGotoDeclarationTest",
-    size = "large",
-    data = COMMON_DATA + [
-        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:data/res",
-        "//prebuilts/studio/sdk:tools/support-annotations",
-        ":aswb_plugin",
-    ] + glob([
-        "testData/SimpleBazelApplication/**",
-    ]),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editing.AswbGotoDeclarationTest"],
-    tags = COMMON_TAGS + [
-        "manual",  # b/78573145
-        "no_psq",
-    ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
@@ -1165,7 +1157,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_fast",
-        "qa_unreliable",  # b/115567466
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

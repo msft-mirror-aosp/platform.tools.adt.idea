@@ -17,7 +17,7 @@ package com.android.tools.idea.gradle.project.build.invoker;
 
 import com.android.tools.idea.gradle.filters.AndroidReRunBuildFilter;
 import com.android.tools.idea.gradle.project.BuildSettings;
-import com.android.tools.idea.gradle.project.build.output.AndroidGradlePluginWarningParser;
+import com.android.tools.idea.gradle.project.build.output.AndroidGradlePluginOutputParser;
 import com.android.tools.idea.gradle.project.build.output.GradleBuildOutputParser;
 import com.android.tools.idea.gradle.util.AndroidGradleSettings;
 import com.android.tools.idea.gradle.util.BuildMode;
@@ -379,7 +379,7 @@ public class GradleBuildInvoker {
   public ExternalSystemTaskNotificationListener createBuildTaskListener(@NotNull Request request, String executionName) {
     BuildViewManager buildViewManager = ServiceManager.getService(myProject, BuildViewManager.class);
     List<BuildOutputParser> buildOutputParsers =
-      Arrays.asList(new AndroidGradlePluginWarningParser(), new JavacOutputParser(), new KotlincOutputParser(), new GradleBuildOutputParser());
+      Arrays.asList(new AndroidGradlePluginOutputParser(), new JavacOutputParser(), new KotlincOutputParser(), new GradleBuildOutputParser());
 
     // This is resource is closed when onEnd is called or an exception is generated in this function bSee b/70299236.
     // We need to keep this resource open since closing it causes BuildOutputInstantReaderImpl.myThread to stop, preventing parsers to run.
@@ -400,7 +400,7 @@ public class GradleBuildInvoker {
             }
 
             @Override
-            public void actionPerformed(AnActionEvent e) {
+            public void actionPerformed(@NotNull AnActionEvent e) {
               // Recreate the reader since the one created with the listener can be already closed (see b/73102585)
               myReader.close();
               // noinspection resource, IOResourceOpenedButNotSafelyClosed

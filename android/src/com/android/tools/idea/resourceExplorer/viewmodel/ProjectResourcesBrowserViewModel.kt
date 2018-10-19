@@ -25,7 +25,7 @@ import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.ResourceResolverCache
 import com.android.tools.idea.model.MergedManifest
 import com.android.tools.idea.res.ResourceRepositoryManager
-import com.android.tools.idea.res.aar.AarSourceResourceRepository
+import com.android.tools.idea.res.aar.AarResourceRepository
 import com.android.tools.idea.res.resolveDrawable
 import com.android.tools.idea.resourceExplorer.importer.ImportersProvider
 import com.android.tools.idea.resourceExplorer.importer.SynchronizationManager
@@ -51,15 +51,19 @@ private val SUPPORTED_RESOURCES = arrayOf(ResourceType.DRAWABLE, ResourceType.CO
 class ProjectResourcesBrowserViewModel(
   facet: AndroidFacet,
   synchronizationManager: SynchronizationManager, // TODO listen for update
-  val importerProvider: ImportersProvider
+  private val importerProvider: ImportersProvider
 ) {
   /**
    * callback called when the resource model have change. This happen when the facet is changed.
    */
   var updateCallback: (() -> Unit)? = null
 
-  var facet by Delegates.observable(facet) { _, _, _ -> updateCallback?.invoke() }
+  var facet by Delegates.observable(facet) { _, _, newFacet ->
+    updateCallback?.invoke()
+    dataManager.facet = newFacet
+  }
   val resourceResolver = createResourceResolver(facet)
+  private val dataManager = ResourceDataManager(facet)
 
   /**
    * The index in [resourceTypes] of the resource type being used.
@@ -77,10 +81,10 @@ class ProjectResourcesBrowserViewModel(
   /**
    * Returns a preview of the [DesignAsset].
    */
-  fun getDrawablePreview(dimension: Dimension, designAssetSet: DesignAssetSet): ListenableFuture<out Image?> {
-    val resolveValue = designAssetSet.resolveValue() ?: return Futures.immediateFuture(null)
+  fun getDrawablePreview(dimension: Dimension, designAsset: DesignAsset): ListenableFuture<out Image?> {
+    val resolveValue = designAsset.resolveValue() ?: return Futures.immediateFuture(null)
     val file = resourceResolver.resolveDrawable(resolveValue, facet.module.project)
-               ?: designAssetSet.getHighestDensityAsset().file
+               ?: designAsset.file
     return DesignAssetRendererManager.getInstance().getViewer(file)
       .getImage(file, facet.module, dimension)
   }
@@ -116,8 +120,8 @@ class ProjectResourcesBrowserViewModel(
     )
   }
 
-  private fun DesignAssetSet.resolveValue(): ResourceValue? {
-    val resourceItem = this.getHighestDensityAsset().resourceItem
+  private fun DesignAsset.resolveValue(): ResourceValue? {
+    val resourceItem = this.resourceItem
     val resolvedValue = resourceResolver.resolveResValue(resourceItem.resourceValue)
     if (resolvedValue == null) {
       LOG.warn("${resourceItem.name} couldn't be resolved")
@@ -127,11 +131,11 @@ class ProjectResourcesBrowserViewModel(
 
   fun getResourcesLists(): List<ResourceSection> {
     val resourceType = resourceTypes[resourceTypeIndex]
-      val moduleResources = createResourceSection(resourceType, facet.module.name, getModuleResources(resourceType))
-      val librariesResources = getLibraryResources(resourceType)
-        .map { (libName, resourceItems) ->
-          createResourceSection(resourceType, libName, resourceItems)
-        }
+    val moduleResources = createResourceSection(resourceType, facet.module.name, getModuleResources(resourceType))
+    val librariesResources = getLibraryResources(resourceType)
+      .map { (libName, resourceItems) ->
+        createResourceSection(resourceType, libName, resourceItems)
+      }
     return listOf(moduleResources) + librariesResources
   }
 
@@ -144,6 +148,10 @@ class ProjectResourcesBrowserViewModel(
 
         }
       })
+  }
+
+  fun getData(dataId: String?, selectedAssets: List<DesignAssetSet>): Any? {
+    return dataManager.getData(dataId, selectedAssets)
   }
 }
 
@@ -160,6 +168,4 @@ data class ResourceSection(val type: ResourceType,
                            val libraryName: String = "",
                            val assets: List<DesignAssetSet>)
 
-private fun userReadableLibraryName(lib: AarSourceResourceRepository) = lib.libraryName?.let {
-  GradleCoordinate.parseCoordinateString(it)?.artifactId
-} ?: ""
+private fun userReadableLibraryName(lib: AarResourceRepository) = GradleCoordinate.parseCoordinateString(lib.libraryName)?.artifactId ?: ""

@@ -25,7 +25,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import icons.StudioIcons
 
 class StartDestinationToolbarAction(surface: NavDesignSurface) :
-  ToolbarAction(surface, "Assign start destination", StudioIcons.NavEditor.Surface.START_DESTINATION) {
+  ToolbarAction(surface, "Assign start destination", StudioIcons.NavEditor.Toolbar.ASSIGN_START) {
 
   override fun isEnabled(): Boolean = surface.selectionModel.selection.let {
     if (it.size != 1) {
@@ -37,7 +37,7 @@ class StartDestinationToolbarAction(surface: NavDesignSurface) :
            && !component.isActivity && !component.isStartDestination
   }
 
-  override fun actionPerformed(e: AnActionEvent?) {
+  override fun actionPerformed(e: AnActionEvent) {
     surface.selectionModel.selection.firstOrNull()?.let {
       WriteCommandAction.runWriteCommandAction(it.model.project) {
         it.setAsStartDestination()

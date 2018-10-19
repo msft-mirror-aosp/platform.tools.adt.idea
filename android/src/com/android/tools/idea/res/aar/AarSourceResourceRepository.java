@@ -26,54 +26,44 @@ import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ResourceMerger;
 import com.android.ide.common.resources.ResourceRepositories;
 import com.android.ide.common.resources.ResourceSet;
-import com.android.ide.common.resources.ResourceTable;
-import com.android.ide.common.resources.SingleNamespaceResourceRepository;
+import com.android.ide.common.symbols.SymbolIo;
+import com.android.ide.common.symbols.SymbolTable;
 import com.android.ide.common.util.PathString;
 import com.android.ide.common.xml.AndroidManifestParser;
 import com.android.ide.common.xml.ManifestData;
 import com.android.projectmodel.ResourceFolder;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.log.LogWrapper;
-import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.utils.ILogger;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
+import com.google.common.base.Preconditions;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.NullableLazyValue;
-import com.intellij.openapi.vfs.VirtualFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
-import org.jetbrains.annotations.Contract;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * A resource repository representing unpacked contents of a non-namespaced AAR.
  */
-public class AarSourceResourceRepository extends LocalResourceRepository implements SingleNamespaceResourceRepository {
+public class AarSourceResourceRepository extends AbstractAarResourceRepository {
   private static final Logger LOG = Logger.getInstance(AarSourceResourceRepository.class);
-  protected final ResourceTable myFullTable = new ResourceTable();
-  /** @see #getAllDeclaredIds() */
-  @Nullable private Map<String, Integer> myAarDeclaredIds;
 
-  @NotNull private final File myResourceDirectory;
-  @NotNull private final ResourceNamespace myNamespace;
-  @Nullable private final String myLibraryName;
-
+  @NotNull protected final File myResourceDirectory;
+  /** @see #getIdsFromRTxt(). */
+  @Nullable private Set<String> myRTxtIds;
   /** The package name read on-demand from the manifest. */
   @NotNull private final NullableLazyValue<String> myManifestPackageName;
 
   protected AarSourceResourceRepository(@NotNull File resourceDirectory, @NotNull ResourceNamespace namespace,
-                                        @Nullable String libraryName) {
-    super(resourceDirectory.getName());
+                                        @Nullable Set<String> rTxtDeclaredIds, @NotNull String libraryName) {
+    super(namespace, libraryName);
     myResourceDirectory = resourceDirectory;
-    myNamespace = namespace;
-    myLibraryName = libraryName;
+    myRTxtIds = rTxtDeclaredIds;
 
     myManifestPackageName = NullableLazyValue.createValue(() -> {
       File manifest = new File(myResourceDirectory.getParentFile(), FN_ANDROID_MANIFEST_XML);
@@ -86,7 +76,7 @@ public class AarSourceResourceRepository extends LocalResourceRepository impleme
         return manifestData.getPackage();
       }
       catch (IOException e) {
-        LOG.error("Failed to read manifest " + manifest.getAbsolutePath() + " for library " + myLibraryName, e);
+        LOG.error("Failed to read manifest " + manifest.getAbsolutePath() + " for library " + getLibraryName(), e);
         return null;
       }
     });
@@ -101,7 +91,7 @@ public class AarSourceResourceRepository extends LocalResourceRepository impleme
    */
   @NotNull
   public static AarSourceResourceRepository create(@NotNull File resourceDirectory,
-                                                   @Nullable String libraryName) {
+                                                   @NotNull String libraryName) {
     return create(resourceDirectory, null, ResourceNamespace.RES_AUTO, libraryName);
   }
 
@@ -115,25 +105,27 @@ public class AarSourceResourceRepository extends LocalResourceRepository impleme
    */
   @NotNull
   public static AarSourceResourceRepository create(@NotNull ResourceFolder resourceFolder,
-                                                   @Nullable String libraryName) {
-    return create(resourceFolder.getRoot().toFile(), resourceFolder.getResources(), ResourceNamespace.RES_AUTO, libraryName);
+                                                   @NotNull String libraryName) {
+    File resDir = resourceFolder.getRoot().toFile();
+    Preconditions.checkArgument(resDir != null);
+    return create(resDir, resourceFolder.getResources(), ResourceNamespace.RES_AUTO, libraryName);
   }
 
   @NotNull
   private static AarSourceResourceRepository create(@NotNull File resourceDirectory,
                                                     @Nullable Collection<PathString> resourceFiles,
                                                     @NotNull ResourceNamespace namespace,
-                                                    @Nullable String libraryName) {
-    AarSourceResourceRepository repository = new AarSourceResourceRepository(resourceDirectory, namespace, libraryName);
+                                                    @NotNull String libraryName) {
+    Set<String> rTxtIds = loadIdsFromRTxt(resourceDirectory);
+    AarSourceResourceRepository repository = new AarSourceResourceRepository(resourceDirectory, namespace, rTxtIds, libraryName);
     try {
-      ResourceMerger resourceMerger = createResourceMerger(resourceDirectory, resourceFiles, repository.getNamespace(), libraryName);
+      ResourceMerger resourceMerger = createResourceMerger(resourceDirectory, resourceFiles, repository.getNamespace(), libraryName, rTxtIds == null);
       ResourceRepositories.updateTableFromMerger(resourceMerger, repository.getFullTable());
     }
     catch (Exception e) {
       LOG.error("Failed to initialize resources", e);
     }
 
-    repository.loadRTxt(resourceDirectory.getParentFile());
     return repository;
   }
 
@@ -141,71 +133,69 @@ public class AarSourceResourceRepository extends LocalResourceRepository impleme
   @NotNull
   public static AarSourceResourceRepository createForTest(@NotNull File resourceDirectory,
                                                           @NotNull ResourceNamespace namespace,
-                                                          @Nullable String libraryName) {
+                                                          @NotNull String libraryName) {
     assert ApplicationManager.getApplication() == null || ApplicationManager.getApplication().isUnitTestMode();
     return create(resourceDirectory, null, namespace, libraryName);
   }
 
   /**
-   * Loads resource IDs from R.txt file.
+   * Loads resource IDs from R.txt file and returns the list of their names, if successful.
    *
-   * @param directory the directory containing R.txt file
+   * <p>This method can return null, if the file is missing or invalid. This should not be the case for AARs built using a stable version of
+   * Android plugin for Gradle, but could happen for AARs built using other tools.
+   *
+   * @param resourceDirectory the resource directory of the AAR
    */
-  protected void loadRTxt(@NotNull File directory) {
+  @Nullable
+  private static Set<String> loadIdsFromRTxt(@NotNull File resourceDirectory) {
     // Look for a R.txt file which describes the available id's; this is available both
     // in an exploded-aar folder as well as in the build-cache for AAR files.
-    File rDotTxt = new File(directory, FN_RESOURCE_TEXT);
+    File parentDirectory = resourceDirectory.getParentFile();
+    if (parentDirectory == null) {
+      return null;
+    }
+
+    File rDotTxt = new File(parentDirectory, FN_RESOURCE_TEXT);
     if (rDotTxt.exists()) {
-      myAarDeclaredIds = RDotTxtParser.getIds(rDotTxt);
+      try {
+        SymbolTable symbolTable = SymbolIo.readFromAaptNoValues(rDotTxt, null);
+        return symbolTable.getSymbols()
+                                      .row(ResourceType.ID)
+                                      .values()
+                                      .stream()
+                                      .map(s -> s.getCanonicalName())
+                                      .collect(Collectors.toSet());
+      }
+      catch (Exception e) {
+        LOG.warn("Failed to load id resources from " + rDotTxt.getPath(), e);
+        return null;
+      }
     }
-  }
-
-  @NotNull
-  public File getResourceDirectory() {
-    return myResourceDirectory;
-  }
-
-  /**
-   * Returns the namespace of all resources in this repository.
-   */
-  @NotNull
-  @Override
-  public final ResourceNamespace getNamespace() {
-    return myNamespace;
+    return null;
   }
 
   @Override
   @Nullable
-  public final String getLibraryName() {
-    return myLibraryName;
-  }
-
-  @Nullable
-  @Override
   public String getPackageName() {
-    if (myNamespace.getPackageName() != null) {
-      return myNamespace.getPackageName();
-    }
-    else {
-      return myManifestPackageName.getValue();
-    }
+    String packageName = getNamespace().getPackageName();
+    return packageName == null ? myManifestPackageName.getValue() : packageName;
   }
 
   private static ResourceMerger createResourceMerger(@NotNull File resFolder,
                                                      @Nullable Collection<PathString> resourceFiles,
                                                      @NotNull ResourceNamespace namespace,
-                                                     @NotNull String libraryName) {
+                                                     @Nullable String libraryName,
+                                                     boolean parseResourceIds) {
     ILogger logger = new LogWrapper(LOG).alwaysLogAsDebug(true).allowVerbose(false);
     ResourceMerger merger = new ResourceMerger(0);
 
     ResourceSet resourceSet = new ResourceSet(resFolder.getName(), namespace, libraryName, false /* validateEnabled */);
-    File rDotTxt = new File(resFolder.getParent(), FN_RESOURCE_TEXT);
-    if (!rDotTxt.exists()) {
+    if (parseResourceIds) {
       resourceSet.setShouldParseResourceIds(true);
     }
 
-    // resourceFileRelativePaths contains resource files to be parsed.
-    // If it's null or empty, whole resource folder should be parsed
+    // The resourceFiles collection contains resource files to be parsed.
+    // If it's null or empty, all files in the resource folder should be parsed.
     if (resourceFiles == null || resourceFiles.isEmpty()) {
       resourceSet.addSource(resFolder);
     }
@@ -229,41 +219,22 @@ public class AarSourceResourceRepository extends LocalResourceRepository impleme
     return merger;
   }
 
-  @Override
-  @NotNull
-  protected ResourceTable getFullTable() {
-    return myFullTable;
-  }
-
-  @Override
-  @Nullable
-  @Contract("_, _, true -> !null")
-  protected ListMultimap<String, ResourceItem> getMap(@NotNull ResourceNamespace namespace, @NotNull ResourceType type, boolean create) {
-    ListMultimap<String, ResourceItem> multimap = myFullTable.get(namespace, type);
-    if (multimap == null && create) {
-      multimap = ArrayListMultimap.create();
-      myFullTable.put(namespace, type, multimap);
-    }
-    return multimap;
-  }
-
   /**
-   * Returns a collection of resource id names found in the R.txt file if the file referenced by this repository is an AAR.
-   * The Ids obtained using {@link #getResources(ResourceNamespace, ResourceType)} by passing in {@link ResourceType#ID}
-   * only contains a subset of IDs (top level ones like layout file names, and id resources in values xml file). Ids declared
-   * inside layouts and menus (using "@+id/") are not included. This is done for efficiency. However, such IDs can be obtained
-   * from the R.txt file, if present. And hence, this collection includes all id names from the R.txt file, but doesn't have
-   * the associated {@link ResourceItem} with it.
+   * Returns names of id resources found in the R.txt file if the directory referenced by this repository contained a valid one.
+   *
+   * <p>When R.txt is present, the Ids obtained using {@link #getResources(ResourceNamespace, ResourceType)} by passing in {@link
+   * ResourceType#ID} only contain a subset of Ids (top level ones like layout file names, and id resources in values xml file). Ids
+   * declared inside layouts and menus (using "@+id/") are not included. This is done for efficiency. However, such IDs can be obtained from
+   * the R.txt file. And hence, this collection includes all id names from the R.txt file, but doesn't have the associated {@link
+   * ResourceItem} with it.
+   *
+   * <p>When R.txt is missing or cannot be parsed, layout and menu files are scanned for "@+id/" declarations and this method returns null.
+   *
+   * @see #loadIdsFromRTxt(File)
    */
   @Nullable
-  public Map<String, Integer> getAllDeclaredIds() {
-    return myAarDeclaredIds;
-  }
-
-  @Override
-  @NotNull
-  protected Set<VirtualFile> computeResourceDirs() {
-    return Collections.emptySet();
+  public Set<String> getIdsFromRTxt() {
+    return myRTxtIds;
   }
 
   // For debugging only.

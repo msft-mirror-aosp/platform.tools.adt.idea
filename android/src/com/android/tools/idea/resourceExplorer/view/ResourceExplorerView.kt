@@ -16,6 +16,7 @@
 package com.android.tools.idea.resourceExplorer.view
 
 import com.android.resources.ResourceType
+import com.android.tools.idea.resourceExplorer.ImageCache
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.android.tools.idea.resourceExplorer.viewmodel.ProjectResourcesBrowserViewModel
 import com.android.tools.idea.resourceExplorer.viewmodel.ResourceSection
@@ -24,9 +25,11 @@ import com.android.tools.idea.resourceExplorer.widget.SectionList
 import com.android.tools.idea.resourceExplorer.widget.SectionListModel
 import com.intellij.ide.dnd.DnDManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.project.DumbAware
@@ -35,6 +38,7 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.Gray
 import com.intellij.ui.JBColor
+import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBMenu
 import com.intellij.ui.components.JBScrollPane
@@ -42,6 +46,8 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.Point
 import java.awt.event.InputEvent
 import javax.swing.BorderFactory
 import javax.swing.Box
@@ -82,7 +88,15 @@ private val ADD_BUTTON_SIZE = JBUI.size(30)
 class ResourceExplorerView(
   private val resourcesBrowserViewModel: ProjectResourcesBrowserViewModel,
   private val resourceImportDragTarget: ResourceImportDragTarget
-) : JPanel(BorderLayout()), Disposable {
+) : JPanel(BorderLayout()), Disposable, DataProvider {
+
+  override fun getData(dataId: String): Any? {
+    return resourcesBrowserViewModel.getData(dataId, getSelectedAssets())
+  }
+
+  private fun getSelectedAssets(): List<DesignAssetSet> {
+    return sectionList.getLists().flatMap { it.selectedValuesList }.filterIsInstance<DesignAssetSet>()
+  }
 
   private var cellWidth = DEFAULT_CELL_WIDTH
     set(value) {
@@ -100,6 +114,7 @@ class ResourceExplorerView(
   private val sectionListModel: SectionListModel = SectionListModel()
   private val sectionList: SectionList = SectionList(sectionListModel)
   private val dragHandler = resourceDragHandler()
+  private val imageCache = ImageCache()
 
   private val headerPanel = Box.createVerticalBox().apply {
     add(JPanel(BorderLayout()).apply {
@@ -158,6 +173,30 @@ class ResourceExplorerView(
       ), true).component, BorderLayout.EAST)
   }
 
+  /**
+   * Mouse listener to invoke the popup menu.
+   *
+   * This custom implementation is needed to ensure that the clicked element is selected
+   * before invoking the menu.
+   */
+  private val popupHandler = object : PopupHandler() {
+    val actionManager = ActionManager.getInstance()
+    val group = actionManager.getAction("ResourceExplorer") as ActionGroup
+
+    override fun invokePopup(comp: Component?, x: Int, y: Int) {
+      val list = comp as JList<*>
+      // Select the element before invoking the popup menu
+      val clickedIndex = list.locationToIndex(Point(x, y))
+      if (!list.isSelectedIndex(clickedIndex)) {
+        list.selectedIndex = clickedIndex
+      }
+      val popupMenu = actionManager.createActionPopupMenu("ResourceExplorer", group)
+      popupMenu.setTargetComponent(list)
+      val menu = popupMenu.component
+      menu.show(comp, x, y)
+    }
+  }
+
   init {
     DnDManager.getInstance().registerTarget(resourceImportDragTarget, this)
 
@@ -179,6 +218,7 @@ class ResourceExplorerView(
           model = CollectionListModel(assets)
           cellRenderer = getRendererForType(type, this)
           dragHandler.registerSource(this)
+          addMouseListener(popupHandler)
           setupListUI()
         }))
       }
@@ -231,10 +271,10 @@ class ResourceExplorerView(
       list.repaint(list.getCellBounds(index, index))
     }
     return when (type) {
-      ResourceType.DRAWABLE -> DrawableResourceCellRenderer(this, resourcesBrowserViewModel::getDrawablePreview, refreshCallBack)
+      ResourceType.DRAWABLE -> DrawableResourceCellRenderer(resourcesBrowserViewModel::getDrawablePreview, imageCache, refreshCallBack)
       ResourceType.COLOR -> ColorResourceCellRenderer(resourcesBrowserViewModel.facet.module.project,
                                                       resourcesBrowserViewModel.resourceResolver)
-      ResourceType.SAMPLE_DATA -> DrawableResourceCellRenderer(this, resourcesBrowserViewModel::getDrawablePreview, refreshCallBack)
+      ResourceType.SAMPLE_DATA -> DrawableResourceCellRenderer(resourcesBrowserViewModel::getDrawablePreview, imageCache, refreshCallBack)
       else -> ListCellRenderer { _, value, _, _, _ ->
         JLabel(value.name)
       }
@@ -269,7 +309,7 @@ class ResourceExplorerView(
 }
 
 private class ActionButton(icon: Icon, private val action: () -> Unit) : AnAction(icon), DumbAware {
-  override fun actionPerformed(e: AnActionEvent?) {
+  override fun actionPerformed(e: AnActionEvent) {
     action()
   }
 }

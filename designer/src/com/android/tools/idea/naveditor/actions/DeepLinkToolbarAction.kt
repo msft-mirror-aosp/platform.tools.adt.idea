@@ -23,7 +23,7 @@ import icons.StudioIcons
 import org.jetbrains.android.dom.navigation.DeeplinkElement
 
 class DeepLinkToolbarAction(surface: NavDesignSurface) :
-  ToolbarAction(surface, "Add deep link", StudioIcons.NavEditor.Surface.DEEPLINK) {
+  ToolbarAction(surface, "Add deep link", StudioIcons.NavEditor.Toolbar.DEEPLINK) {
 
   override fun isEnabled(): Boolean = surface.selectionModel.selection.let {
     if (it.size != 1) {
@@ -33,7 +33,7 @@ class DeepLinkToolbarAction(surface: NavDesignSurface) :
     return supportsSubtag(it[0], DeeplinkElement::class.java)
   }
 
-  override fun actionPerformed(e: AnActionEvent?) {
+  override fun actionPerformed(e: AnActionEvent) {
     surface.selectionModel.selection.firstOrNull()?.let {
       WriteCommandAction.runWriteCommandAction(it.model.project) {
         val dialog = AddDeeplinkDialog(null, it)

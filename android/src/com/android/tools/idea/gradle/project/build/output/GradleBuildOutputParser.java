@@ -50,7 +50,7 @@ public class GradleBuildOutputParser implements BuildOutputParser {
   @Nullable private Object myBuildId;
 
   @Override
-  public boolean parse(@NotNull String line, @NotNull BuildOutputInstantReader reader, @NotNull Consumer<MessageEvent> messageConsumer) {
+  public boolean parse(@NotNull String line, @NotNull BuildOutputInstantReader reader, @NotNull Consumer<? super MessageEvent> messageConsumer) {
     // Clear lines if build id changed
     if (reader.getBuildId() != myBuildId) {
       myBufferedLines.clear();
@@ -82,7 +82,7 @@ public class GradleBuildOutputParser implements BuildOutputParser {
    * Process an error message stored in myBufferedLines
    * @param messageConsumer
    */
-  private void processMessage(@NotNull Consumer<MessageEvent> messageConsumer) {
+  private void processMessage(@NotNull Consumer<? super MessageEvent> messageConsumer) {
     assert myBuildId != null;
     String line = myBufferedLines.get(0);
     String jsonString = line.substring(STDOUT_ERROR_TAG.length()).trim();

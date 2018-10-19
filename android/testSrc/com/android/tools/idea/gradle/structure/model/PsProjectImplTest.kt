@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.structure.model
 
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.STRING_TYPE
 import com.android.tools.idea.gradle.structure.model.android.DependencyTestCase
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidModule
 import com.android.tools.idea.gradle.structure.model.android.asParsed
@@ -34,19 +35,19 @@ class PsProjectImplTest : DependencyTestCase() {
 
     // settings.gradle does not list modules in the lexicographic order.
     assumeThat(project.parsedModel.projectSettingsModel?.modulePaths(), equalTo(listOf(
-      ":", ":app", ":lib", ":jav", ":nested1", ":nested2", ":nested1:deep", ":nested2:deep", ":nested2:trans:deep2")))
+      ":", ":app", ":lib", ":jav", ":nested1", ":nested2", ":nested1:deep", ":nested2:deep", ":nested2:trans:deep2", ":dyn_feature")))
 
     // Lexicographically ordered by gradlePath.
     val modulesBeforeGradleModelsResolved = project.modules.map { it.gradlePath }
     assertThat<List<String?>>(modulesBeforeGradleModelsResolved, equalTo(listOf(
-      ":app", ":jav", ":lib", ":nested1", ":nested1:deep", ":nested2", ":nested2:deep", ":nested2:trans:deep2")))
+      ":app", ":dyn_feature", ":jav", ":lib", ":nested1", ":nested1:deep", ":nested2", ":nested2:deep", ":nested2:trans:deep2")))
 
     project.testResolve()
 
     // Includes not declared module ":nested2:trans".
     val modulesAfterGradleModelsResolved = project.modules.map { it.gradlePath }
     assertThat<List<String?>>(modulesAfterGradleModelsResolved, equalTo(listOf(
-      ":app", ":jav", ":lib", ":nested1", ":nested1:deep", ":nested2", ":nested2:deep", ":nested2:trans", ":nested2:trans:deep2")))
+      ":app", ":dyn_feature", ":jav", ":lib", ":nested1", ":nested1:deep", ":nested2", ":nested2:deep", ":nested2:trans", ":nested2:trans:deep2")))
 
     assertThat(project.findModuleByGradlePath(":nested2:trans")?.isDeclared, equalTo(false))
   }
@@ -65,6 +66,42 @@ class PsProjectImplTest : DependencyTestCase() {
 
     project.testResolve()  // A removed module should not reappear unless it is in the middle of a hierarchy.
     assertThat(project.findModuleByGradlePath(":nested2:deep")?.isDeclared, nullValue())
+  }
+
+  fun testRemoveDynamicFeatureModule() {
+    loadProject(TestProjectPaths.PSD_SAMPLE)
+
+    val project = PsProjectImpl(myFixture.project).also { it.testResolve() }
+    assumeThat(project.findModuleByGradlePath(":dyn_feature")?.isDeclared, equalTo(true))
+    assumeThat(
+      project
+        .findModuleByGradlePath(":app")
+        ?.parsedModel
+        ?.android()
+        ?.dynamicFeatures()
+        ?.getListValue(":dyn_feature")
+        ?.getValue(STRING_TYPE),
+      equalTo(":dyn_feature"))
+
+    project.removeModule(gradlePath = ":dyn_feature")
+    assertThat(project.findModuleByGradlePath(":dyn_feature")?.isDeclared, equalTo(false))
+
+    assertThat(project.findModuleByGradlePath(":app")?.isModified, equalTo(true))
+
+    project.applyChanges()  // applyChanges() discards resolved models.
+    assertThat(project.findModuleByGradlePath(":dyn_feature")?.isDeclared, nullValue())
+    assertThat(
+      project
+        .findModuleByGradlePath(":app")
+        ?.parsedModel
+        ?.android()
+        ?.dynamicFeatures()
+        ?.getListValue(":dyn_feature")
+        ?.getValue(STRING_TYPE),
+      nullValue())
+
+    project.testResolve()  // A removed module should not reappear unless it is in the middle of a hierarchy.
+    assertThat(project.findModuleByGradlePath(":dyn_feature")?.isDeclared, nullValue())
   }
 
   fun testRemoveMiddleModule() {

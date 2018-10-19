@@ -165,7 +165,7 @@ public class BrowsePanel extends AdtSecondaryPanel {
     }
 
     @Override
-    public void actionPerformed(AnActionEvent event) {
+    public void actionPerformed(@NotNull AnActionEvent event) {
       if (myContext == null) {
         return;
       }
@@ -271,7 +271,7 @@ public class BrowsePanel extends AdtSecondaryPanel {
     EnumSet<ResourceType> types = EnumSet.noneOf(ResourceType.class);
     for (AttributeFormat format : formats) {
       if (format == AttributeFormat.REFERENCE) {
-        // TODO: Not sure is this reduced list of referenceable resource types in on purpose or not.
+        // TODO: Not sure if this reduced list of referenceable resource types is on purpose or not. See also http://b/117083114.
         types.add(ResourceType.COLOR);
         types.add(ResourceType.DRAWABLE);
         types.add(ResourceType.MIPMAP);
@@ -314,7 +314,7 @@ public class BrowsePanel extends AdtSecondaryPanel {
   private AnAction createDesignAction() {
     return new AnAction() {
       @Override
-      public void update(AnActionEvent event) {
+      public void update(@NotNull AnActionEvent event) {
         Presentation presentation = event.getPresentation();
         switch (myDesignState) {
           case MISSING_DESIGN_PROPERTY:
@@ -339,7 +339,7 @@ public class BrowsePanel extends AdtSecondaryPanel {
       }
 
       @Override
-      public void actionPerformed(AnActionEvent event) {
+      public void actionPerformed(@NotNull AnActionEvent event) {
         if (myContext == null) {
           return;
         }

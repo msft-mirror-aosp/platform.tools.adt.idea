@@ -127,12 +127,12 @@ open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProp
     val parent = parents[0]
     val actions: MutableList<AnAction> = mutableListOf(
         object : AnAction("Add Action...") {
-          override fun actionPerformed(e: AnActionEvent?) {
+          override fun actionPerformed(e: AnActionEvent) {
             showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.NORMAL, null, parent), surface)
           }
         },
         object : AnAction("Return to Source...") {
-          override fun actionPerformed(e: AnActionEvent?) {
+          override fun actionPerformed(e: AnActionEvent) {
             showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.RETURN_TO_SOURCE, null, parent), surface)
           }
         }
@@ -141,7 +141,7 @@ open class NavActionsInspectorProvider : NavListInspectorProvider<NavActionsProp
       actions.add(Separator.getInstance())
       actions.add(
           object : AnAction("Add Global...") {
-            override fun actionPerformed(e: AnActionEvent?) {
+            override fun actionPerformed(e: AnActionEvent) {
               showAndUpdateFromDialog(AddActionDialog(AddActionDialog.Defaults.GLOBAL, null, parent), surface)
             }
           }

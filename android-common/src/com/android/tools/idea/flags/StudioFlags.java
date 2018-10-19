@@ -117,6 +117,11 @@ public final class StudioFlags {
     "Add the option to export CPU trace files when right-clicking a CPU capture.",
     true);
 
+  public static final Flag<Boolean> PROFILER_SIMPLEPERF_HOST = Flag.create(
+    PROFILER, "cpu.simpleperf.host", "Enable simpleperf report-sample to be run on the host.",
+    "If enabled, simpleperf report-sample commands are going to be run on the host instead of the device.",
+    false);
+
   public static final Flag<Boolean> PROFILER_OPEN_CAPTURES = Flag.create(
     PROFILER, "profiler.open.captures", "Enable opening .trace and .hprof files",
     "Allow opening .hprof and .trace files (e.g. File -> Open; via Drag & Drop) which imports them into Android Profiler.",
@@ -442,6 +447,20 @@ public final class StudioFlags {
     true
   );
 
-  private StudioFlags() {
-  }
+  private static final FlagGroup TESTING = new FlagGroup(FLAGS, "testing", "Testing support");
+
+  public static final Flag<Boolean> PRINT_INSTRUMENTATION_STATUS = Flag.create(
+    TESTING, "print.instrumentation.status", "Print instrumentation status information when testing",
+    "If enabled, instrumentation output keys (from calling Instrumentation#sendStatus) that begin with 'android.studio.display.' "
+    + "will have their values printed after a test has finished running.",
+    false
+  );
+
+  private static final FlagGroup THEME_EDITOR = new FlagGroup(FLAGS, "theme.editor", "Theme Editor");
+  public static final Flag<Boolean> THEME_EDITOR_ENABLED = Flag.create(
+    THEME_EDITOR, "theme.editor.enabled", "Enable the theme editor",
+    "If enabled, a visual editor will be available for Android themes.",
+    false);
+
+  private StudioFlags() { }
 }

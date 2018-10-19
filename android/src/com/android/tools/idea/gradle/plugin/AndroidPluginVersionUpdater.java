@@ -29,7 +29,6 @@ import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.util.ThreeState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -94,7 +93,7 @@ public class AndroidPluginVersionUpdater {
         }
       }
       return true;
-    }, true);
+    }, false);
     return foundPlugin[0];
   }
 
@@ -194,9 +193,6 @@ public class AndroidPluginVersionUpdater {
   private void updateAndroidPluginVersion(@NotNull GradleVersion pluginVersion, @Nullable GradleVersion gradleVersion, @NotNull UpdateResult result) {
     List<GradleBuildModel> modelsToUpdate = new ArrayList<>();
 
-    // Refresh the file system to avoid reading stale cached virtual files.
-    VirtualFileManager.getInstance().refreshWithoutFileWatcher(false /* synchronous */);
-
     BuildFileProcessor.getInstance().processRecursively(myProject, buildModel -> {
       DependenciesModel dependencies = buildModel.buildscript().dependencies();
       for (ArtifactDependencyModel dependency : dependencies.artifacts(CLASSPATH)) {
@@ -218,7 +214,7 @@ public class AndroidPluginVersionUpdater {
         }
       }
       return true;
-    }, true /* process composite builds */);
+    }, false /* process composite builds */);
 
     boolean updateModels = !modelsToUpdate.isEmpty();
     if (updateModels) {
