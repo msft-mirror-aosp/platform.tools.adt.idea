@@ -48,7 +48,6 @@ iml_module(
         "//tools/idea/plugins/github:intellij.vcs.github",
         "//tools/idea/platform/remote-servers/impl:intellij.platform.remoteServers.impl",
         "//tools/idea/colorSchemes:intellij.platform.colorSchemes",
-        "//tools/idea/plugins/yaml:intellij.yaml",
         "//tools/idea/plugins/groovy/structuralsearch-groovy:intellij.groovy.structuralSearch",
         "//tools/idea/plugins/git4idea/remote-servers-git-java:intellij.java.remoteServers.git",
         "//tools/idea/plugins/terminal:intellij.terminal",
@@ -1136,12 +1135,12 @@ java_test(
         "//tools/adt/idea/android/lib:androidWidgets",
     ] + glob([
         "testData/SimpleLocalApplication/**",
+        "testData/TestImages/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.ImageAssetErrorCheckTest"],
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_fast",
-        "qa_unreliable",  # b/115539594
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

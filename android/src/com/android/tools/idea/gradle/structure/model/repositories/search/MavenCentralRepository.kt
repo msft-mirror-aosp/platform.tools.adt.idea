@@ -20,7 +20,6 @@ import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.util.JDOMUtil.load
 import com.intellij.util.io.HttpRequests
 import com.intellij.util.io.encodeUrlQueryParameter
-import com.intellij.util.text.nullize
 import org.jdom.Element
 import org.jdom.JDOMException
 import java.io.IOException
@@ -93,8 +92,8 @@ object MavenCentralRepository : ArtifactRepository() {
   fun createRequestUrl(request: SearchRequest): String = buildString {
     fun String.escapeQueryExpression() = this
 
-    val queryGroupId = request.groupId?.takeUnless { it.isBlank() }
-    val queryArtifactId = request.artifactName.nullize()?.takeUnless { it.isBlank() }
+    val queryGroupId = request.query.groupId?.takeUnless { it.isBlank() }
+    val queryArtifactId = request.query.artifactName?.takeUnless { it.isBlank() }
     val query =
       listOfNotNull(queryGroupId?.let { "g:${it.escapeQueryExpression()}" },
                     queryArtifactId?.let { "a:${it.escapeQueryExpression()}" })

@@ -25,19 +25,51 @@ import com.android.tools.datastore.database.UnifiedEventsTable;
 import com.android.tools.datastore.poller.ProfilerDevicePoller;
 import com.android.tools.datastore.poller.UnifiedEventsDataPoller;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.Profiler;
-import com.android.tools.profiler.proto.Profiler.*;
+import com.android.tools.profiler.proto.Common.Event;
+import com.android.tools.profiler.proto.Common.Stream;
+import com.android.tools.profiler.proto.Profiler.AgentStatusRequest;
+import com.android.tools.profiler.proto.Profiler.AgentStatusResponse;
+import com.android.tools.profiler.proto.Profiler.BeginSessionRequest;
+import com.android.tools.profiler.proto.Profiler.BeginSessionResponse;
+import com.android.tools.profiler.proto.Profiler.BytesRequest;
+import com.android.tools.profiler.proto.Profiler.BytesResponse;
+import com.android.tools.profiler.proto.Profiler.ConfigureStartupAgentRequest;
+import com.android.tools.profiler.proto.Profiler.ConfigureStartupAgentResponse;
+import com.android.tools.profiler.proto.Profiler.DeleteSessionRequest;
+import com.android.tools.profiler.proto.Profiler.DeleteSessionResponse;
+import com.android.tools.profiler.proto.Profiler.EndSessionRequest;
+import com.android.tools.profiler.proto.Profiler.EndSessionResponse;
+import com.android.tools.profiler.proto.Profiler.EventGroup;
+import com.android.tools.profiler.proto.Profiler.ExecuteRequest;
+import com.android.tools.profiler.proto.Profiler.ExecuteResponse;
+import com.android.tools.profiler.proto.Profiler.GetDevicesRequest;
+import com.android.tools.profiler.proto.Profiler.GetDevicesResponse;
+import com.android.tools.profiler.proto.Profiler.GetEventGroupsRequest;
+import com.android.tools.profiler.proto.Profiler.GetEventGroupsResponse;
+import com.android.tools.profiler.proto.Profiler.GetProcessesRequest;
+import com.android.tools.profiler.proto.Profiler.GetProcessesResponse;
+import com.android.tools.profiler.proto.Profiler.GetSessionMetaDataRequest;
+import com.android.tools.profiler.proto.Profiler.GetSessionMetaDataResponse;
+import com.android.tools.profiler.proto.Profiler.GetSessionsRequest;
+import com.android.tools.profiler.proto.Profiler.GetSessionsResponse;
+import com.android.tools.profiler.proto.Profiler.ImportSessionRequest;
+import com.android.tools.profiler.proto.Profiler.ImportSessionResponse;
+import com.android.tools.profiler.proto.Profiler.TimeRequest;
+import com.android.tools.profiler.proto.Profiler.TimeResponse;
+import com.android.tools.profiler.proto.Profiler.VersionRequest;
+import com.android.tools.profiler.proto.Profiler.VersionResponse;
 import com.android.tools.profiler.proto.ProfilerServiceGrpc;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
-import java.util.concurrent.atomic.AtomicLong;
-import org.jetbrains.annotations.NotNull;
-
 import java.sql.Connection;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * This class hosts an EventService that will provide callers access to all cached EventData.
@@ -227,7 +259,7 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
   /**
    * This call to startPolling maps a stream to a channel. This information is used in the new event pipeline.
    */
-  public void startPolling(Profiler.Stream stream, Channel channel) {
+  public void startPolling(Common.Stream stream, Channel channel) {
     ProfilerServiceGrpc.ProfilerServiceBlockingStub stub = ProfilerServiceGrpc.newBlockingStub(channel);
     streamConnected(stream, stub);
     UnifiedEventsDataPoller poller = new UnifiedEventsDataPoller(stream.getStreamId(), myUnifiedEventsTable, stub);
@@ -252,24 +284,24 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
     }
   }
 
-  private void streamConnected(Profiler.Stream stream, ProfilerServiceGrpc.ProfilerServiceBlockingStub stub) {
-    myUnifiedEventsTable.insertUnifiedEvents(DataStoreService.DATASTORE_RESERVED_STREAM_ID, Lists.newArrayList(Event.newBuilder()
-                      .setKind(Event.Kind.STREAM)
-                      .setEventId(stream.getStreamId())
-                      .setType(Event.Type.STREAM_CONNECTED)
-                      .setTimestamp(System.nanoTime())
-                      .setStream(stream)
-                      .build()));
+  private void streamConnected(Common.Stream stream, ProfilerServiceGrpc.ProfilerServiceBlockingStub stub) {
+    myUnifiedEventsTable.insertUnifiedEvent(DataStoreService.DATASTORE_RESERVED_STREAM_ID, Event.newBuilder()
+      .setKind(Event.Kind.STREAM)
+      .setEventId(stream.getStreamId())
+      .setType(Event.Type.STREAM_CONNECTED)
+      .setTimestamp(System.nanoTime())
+      .setStream(stream)
+      .build());
   }
 
-  private void streamDisconnected(Profiler.Stream stream) {
-    myUnifiedEventsTable.insertUnifiedEvents(DataStoreService.DATASTORE_RESERVED_STREAM_ID, Lists.newArrayList(Event.newBuilder()
-                                                                               .setKind(Event.Kind.STREAM)
-                                                                               .setType(Event.Type.STREAM_DISCONNECTED)
-                                                                               .setEventId(stream.getStreamId())
-                                                                               .setStream(stream)
-                                                                               .setTimestamp(System.nanoTime())
-                                                                               .build()));
+  private void streamDisconnected(Common.Stream stream) {
+    myUnifiedEventsTable.insertUnifiedEvent(DataStoreService.DATASTORE_RESERVED_STREAM_ID, Event.newBuilder()
+      .setKind(Event.Kind.STREAM)
+      .setType(Event.Type.STREAM_DISCONNECTED)
+      .setEventId(stream.getStreamId())
+      .setStream(stream)
+      .setTimestamp(System.nanoTime())
+      .build());
   }
 
 
@@ -319,15 +351,6 @@ public class ProfilerService extends ProfilerServiceGrpc.ProfilerServiceImplBase
       responseObserver.onNext(ExecuteResponse.getDefaultInstance());
       responseObserver.onCompleted();
     }
-  }
-
-  @Override
-  public void getEvents(GetEventsRequest request, StreamObserver<GetEventsResponse> responseObserver) {
-    GetEventsResponse.Builder response = GetEventsResponse.newBuilder();
-    Collection<Event> events = myUnifiedEventsTable.queryUnifiedEvents(request);
-    response.addAllEvents(events);
-    responseObserver.onNext(response.build());
-    responseObserver.onCompleted();
   }
 
   @Override

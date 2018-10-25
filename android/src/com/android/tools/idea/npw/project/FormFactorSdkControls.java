@@ -114,8 +114,9 @@ public class FormFactorSdkControls implements Disposable {
     myStatsDataLoadingStatus = myStatsPanel.isVisible() ? LoadStatus.LOADING : LoadStatus.LOADED;
     updateLoadingProgress();
 
-    myAndroidVersionsInfo.load();
-    myAndroidVersionsInfo.loadTargetVersions(formFactor, minSdk, items -> {
+    myAndroidVersionsInfo.loadLocalVersions();
+    myMinSdkCombobox.init(formFactor, myAndroidVersionsInfo.getKnownTargetVersions(formFactor, minSdk)); // Pre-populate
+    myAndroidVersionsInfo.loadRemoteTargetVersions(formFactor, minSdk, items -> {
       myMinSdkCombobox.init(formFactor, items);
       mySdkDataLoadingStatus = LoadStatus.LOADED;
       updateLoadingProgress();

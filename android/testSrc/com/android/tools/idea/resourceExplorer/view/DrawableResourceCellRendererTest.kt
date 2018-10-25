@@ -19,22 +19,21 @@ import com.android.resources.ResourceType
 import com.android.tools.idea.resourceExplorer.ImageCache
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
-import com.google.common.util.concurrent.Futures
+import com.google.common.truth.Truth
 import com.intellij.mock.MockVirtualFile
-import com.intellij.ui.components.JBList
 import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.UIUtil
 import org.junit.Ignore
 import org.junit.Test
 import java.awt.Color
 import java.awt.image.BufferedImage
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.swing.ImageIcon
 import javax.swing.JComponent
 import javax.swing.JLabel
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 
 class DrawableResourceCellRendererTest {
@@ -44,7 +43,7 @@ class DrawableResourceCellRendererTest {
   @Ignore("b/117130787")
   @Test
   fun getListCellRendererComponent() {
-    val jList = JBList<DesignAssetSet>().apply {
+    val jList = AssetListView(emptyList()).apply {
       fixedCellHeight = 100
       fixedCellWidth = 100
     }
@@ -56,7 +55,7 @@ class DrawableResourceCellRendererTest {
       }
     }
     val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> Futures.immediateFuture(image) }, imageCache) {
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCache) {
       jList.paintImmediately(jList.bounds)
       latch.countDown()
     }
@@ -71,9 +70,9 @@ class DrawableResourceCellRendererTest {
 
   @Test
   fun get0SizedListCellRendererComponent() {
-    val jList = JBList<DesignAssetSet>().apply {
-      fixedCellHeight = 0
-      fixedCellWidth = 0
+    val jList = AssetListView(emptyList()).apply {
+      thumbnailWidth = 0
+      isGridMode = true
     }
     @Suppress("UndesirableClassUsage")
     val image = BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB).apply {
@@ -83,7 +82,7 @@ class DrawableResourceCellRendererTest {
       }
     }
     val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> Futures.immediateFuture(image) }, imageCache) {
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCache) {
       jList.paintImmediately(jList.bounds)
       latch.countDown()
     }
@@ -93,17 +92,19 @@ class DrawableResourceCellRendererTest {
     val component = renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
     val icon = UIUtil.findComponentsOfType(component, JLabel::class.java).first().icon as ImageIcon
     val result = ImageUtil.toBufferedImage(icon.image)
-    assertNotEquals(0xff012345.toInt(), result.getRGB(0, 0))
+
+    // Check that when the thumbnail width is 0, nothing break and we don't display the image
+    Truth.assertThat(result.getRGB(0, 0)).isNotEqualTo(0xff012345.toInt())
   }
 
   @Test
   fun nullImage() {
-    val jList = JBList<DesignAssetSet>().apply {
+    val jList = AssetListView(emptyList()).apply {
       fixedCellHeight = 100
       fixedCellWidth = 100
     }
     val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> Futures.immediateFuture(null) }, imageCache) {
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(null) }, imageCache) {
       jList.paintImmediately(jList.bounds)
       latch.countDown()
     }

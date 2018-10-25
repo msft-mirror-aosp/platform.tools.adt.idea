@@ -320,6 +320,7 @@
     <postStartupActivity implementation="com.android.tools.idea.gradle.project.AndroidGradleProjectStartupActivity"/>
     <applicationService serviceInterface="com.android.tools.idea.res.ResourceFolderRepositoryFileCache"
                         serviceImplementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl"/>
+    <applicationService serviceImplementation="com.android.tools.idea.res.FrameworkResourceRepositoryManager"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$MaintenanceActivity"/>
     <cachesInvalidator implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$CacheInvalidator"/>
     <cachesInvalidator implementation="com.android.tools.idea.gradle.project.sync.idea.data.IdeaSyncCachesInvalidator"/>
@@ -376,6 +377,7 @@
     <applicationService serviceInterface="org.jetbrains.android.uipreview.AndroidEditorSettings"
                         serviceImplementation="org.jetbrains.android.uipreview.AndroidEditorSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.profiling.capture.CaptureTypeService"/>
+    <applicationService serviceImplementation="com.android.tools.idea.run.database.DexArchiveDatabaseService" />
     <fileEditorProvider implementation="com.android.tools.idea.profiling.capture.CaptureEditorProvider" />
 
     <stepsBeforeRunProvider implementation="com.android.tools.idea.gradle.run.MakeBeforeRunTaskProvider" />
@@ -411,7 +413,6 @@
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.sync.ng.ExtraGradleSyncModelsManager"/>
 
     <errorHandler        implementation="com.android.tools.idea.diagnostics.error.ErrorReporter"/>
-    <statisticsService   implementationClass="com.android.tools.idea.stats.AndroidStatisticsService" key="android-studio" />
     <dom.fileDescription implementation="org.jetbrains.android.dom.drawable.fileDescriptions.AdaptiveIconDomFileDescription"/>
     <dom.fileDescription implementation="org.jetbrains.android.dom.drawable.fileDescriptions.DrawableStateListDomFileDescription"/>
     <dom.fileDescription implementation="org.jetbrains.android.dom.drawable.fileDescriptions.CustomDrawableDomFileDescription"/>
@@ -706,6 +707,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIconMixedNinePatch" displayName="Clashing PNG and 9-PNG files" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIconMixedNinePatchInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIconNoDpi" displayName="Icon appears in both -nodpi and dpi folders" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIconNoDpiInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIconXmlAndPng" displayName="Icon is specified both as .xml file and as a bitmap" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIconXmlAndPngInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintIgnoreWithoutReason" displayName="@Ignore without Reason" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIgnoreWithoutReasonInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIllegalResourceRef" displayName="Name and version must be integer or string, not resource" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIllegalResourceRefInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintImpliedQuantity" displayName="Implied Quantities" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintImpliedQuantityInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintImpliedTouchscreenHardware" displayName="Missing declaration of uses-feature for touchscreen" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintImpliedTouchscreenHardwareInspection"/>

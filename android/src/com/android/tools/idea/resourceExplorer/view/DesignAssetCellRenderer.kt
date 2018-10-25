@@ -24,8 +24,6 @@ import com.android.tools.idea.resourceExplorer.ImageCache
 import com.android.tools.idea.resourceExplorer.editor.RESOURCE_DEBUG
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
-import com.android.tools.idea.resourceExplorer.toCompletableFuture
-import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.ColorUtil
@@ -40,6 +38,7 @@ import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Image
 import java.awt.image.BufferedImage
+import java.util.concurrent.CompletableFuture
 import java.util.function.BiConsumer
 import javax.swing.ImageIcon
 import javax.swing.JComponent
@@ -72,10 +71,6 @@ fun createIcon(color: Color?): BufferedImage = UIUtil.createImage(
  */
 abstract class DesignAssetCellRenderer : ListCellRenderer<DesignAssetSet> {
 
-  private val cardView = SingleAssetCard().apply {
-    withChessboard = true
-  }
-
   override fun getListCellRendererComponent(
     list: JList<out DesignAssetSet>,
     value: DesignAssetSet,
@@ -83,18 +78,16 @@ abstract class DesignAssetCellRenderer : ListCellRenderer<DesignAssetSet> {
     isSelected: Boolean,
     cellHasFocus: Boolean
   ): Component {
-    cardView.title = value.name
-    cardView.subtitle = value.getHighestDensityAsset().type.displayName
+    val assetView = (list as AssetListView).assetView
+    assetView.withChessboard = true
+    assetView.title = value.name
+    assetView.subtitle = value.getHighestDensityAsset().type.displayName
     val size = value.designAssets.size
-    cardView.metadata = "$size $VERSION".pluralize(size)
-    val width = cardView.viewWidth
-    if (width != list.fixedCellWidth) {
-      cardView.viewWidth = list.fixedCellWidth
-    }
-    val thumbnailSize = cardView.thumbnailSize
-    cardView.thumbnail = getContent(value, thumbnailSize.width, thumbnailSize.height, isSelected, index)
-    cardView.selected = isSelected
-    return cardView
+    assetView.metadata = "$size $VERSION".pluralize(size)
+    val thumbnailSize = assetView.thumbnailSize
+    assetView.thumbnail = getContent(value, thumbnailSize.width, thumbnailSize.height, isSelected, index)
+    assetView.selected = isSelected
+    return assetView
   }
 
   abstract fun getContent(
@@ -158,7 +151,7 @@ class ColorResourceCellRenderer(
  * called once it's finished.
  */
 class DrawableResourceCellRenderer(
-  private val imageProvider: (size: Dimension, designAsset: DesignAsset) -> ListenableFuture<out Image?>,
+  private val imageProvider: (size: Dimension, designAsset: DesignAsset) -> CompletableFuture<out Image?>,
   private val imageCache: ImageCache,
   private val refreshListCallback: (index: Int) -> Unit
 ) : DesignAssetCellRenderer() {

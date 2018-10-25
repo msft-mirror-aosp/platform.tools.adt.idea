@@ -30,7 +30,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -48,7 +48,7 @@ public class StringResourceRepository {
 
   private StringResourceRepository(@NotNull MultiResourceRepository parent) {
     Collection<LocalResourceRepository> localResources = parent.getLocalResources();
-    Map<VirtualFile, LocalResourceRepository> resourceDirectoryRepositoryMap = Maps.newLinkedHashMapWithExpectedSize(localResources.size());
+    Map<VirtualFile, LocalResourceRepository> resourceDirectoryRepositoryMap = Maps.newHashMapWithExpectedSize(localResources.size());
     LocalResourceRepository dynamicResourceRepository = null;
 
     for (LocalResourceRepository child : localResources) {
@@ -101,17 +101,17 @@ public class StringResourceRepository {
 
   @NotNull
   public final StringResourceData getData(@NotNull AndroidFacet facet) {
-    Map<StringResourceKey, StringResource> map = new LinkedHashMap<>();
+    Map<StringResourceKey, StringResource> map = new HashMap<>();
     Project project = facet.getModule().getProject();
 
     myResourceDirectoryRepositoryMap.entrySet().stream()
-                                    .flatMap(StringResourceRepository::getKeys)
-                                    .forEach(key -> map.put(key, new StringResource(key, this, project)));
+      .flatMap(StringResourceRepository::getKeys)
+      .forEach(key -> map.put(key, new StringResource(key, this, project)));
 
     if (myDynamicResourceRepository != null) {
       myDynamicResourceRepository.getResources(ResourceNamespace.TODO(), ResourceType.STRING).keySet().stream()
-                                 .map(name -> new StringResourceKey(name, null))
-                                 .forEach(key -> map.put(key, new StringResource(key, this, project)));
+        .map(name -> new StringResourceKey(name, null))
+        .forEach(key -> map.put(key, new StringResource(key, this, project)));
     }
 
     return new StringResourceData(facet, map, this);
@@ -122,7 +122,7 @@ public class StringResourceRepository {
     VirtualFile directory = entry.getKey();
 
     return entry.getValue().getResources(ResourceNamespace.TODO(), ResourceType.STRING).keySet().stream()
-                .map(name -> new StringResourceKey(name, directory));
+      .map(name -> new StringResourceKey(name, directory));
   }
 
   @NotNull
@@ -150,8 +150,8 @@ public class StringResourceRepository {
     LocalResourceRepository repository = getRepository(key);
 
     Optional<ResourceItem> optionalItem = getItems(repository, key).stream()
-                                                                   .filter(predicate)
-                                                                   .findFirst();
+      .filter(predicate)
+      .findFirst();
 
     return optionalItem.orElse(null);
   }

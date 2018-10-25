@@ -27,18 +27,15 @@ import com.android.tools.idea.model.MergedManifest
 import com.android.tools.idea.res.ResourceRepositoryManager
 import com.android.tools.idea.res.aar.AarResourceRepository
 import com.android.tools.idea.res.resolveDrawable
-import com.android.tools.idea.resourceExplorer.importer.ImportersProvider
 import com.android.tools.idea.resourceExplorer.importer.SynchronizationManager
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
-import com.android.tools.idea.resourceExplorer.plugin.ConfigurationDoneCallback
 import com.android.tools.idea.resourceExplorer.plugin.DesignAssetRendererManager
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.diagnostic.Logger
 import org.jetbrains.android.facet.AndroidFacet
 import java.awt.Dimension
 import java.awt.Image
+import java.util.concurrent.CompletableFuture
 import kotlin.properties.Delegates
 
 private val LOG = Logger.getInstance(ProjectResourcesBrowserViewModel::class.java)
@@ -50,8 +47,7 @@ private val SUPPORTED_RESOURCES = arrayOf(ResourceType.DRAWABLE, ResourceType.CO
  */
 class ProjectResourcesBrowserViewModel(
   facet: AndroidFacet,
-  synchronizationManager: SynchronizationManager, // TODO listen for update
-  private val importerProvider: ImportersProvider
+  synchronizationManager: SynchronizationManager
 ) {
   /**
    * callback called when the resource model have change. This happen when the facet is changed.
@@ -81,8 +77,8 @@ class ProjectResourcesBrowserViewModel(
   /**
    * Returns a preview of the [DesignAsset].
    */
-  fun getDrawablePreview(dimension: Dimension, designAsset: DesignAsset): ListenableFuture<out Image?> {
-    val resolveValue = designAsset.resolveValue() ?: return Futures.immediateFuture(null)
+  fun getDrawablePreview(dimension: Dimension, designAsset: DesignAsset): CompletableFuture<out Image?> {
+    val resolveValue = designAsset.resolveValue() ?: return CompletableFuture.completedFuture(null)
     val file = resourceResolver.resolveDrawable(resolveValue, facet.module.project)
                ?: designAsset.file
     return DesignAssetRendererManager.getInstance().getViewer(file)
@@ -133,21 +129,11 @@ class ProjectResourcesBrowserViewModel(
     val resourceType = resourceTypes[resourceTypeIndex]
     val moduleResources = createResourceSection(resourceType, facet.module.name, getModuleResources(resourceType))
     val librariesResources = getLibraryResources(resourceType)
-      .map { (libName, resourceItems) ->
-        createResourceSection(resourceType, libName, resourceItems)
-      }
+      .asSequence()
+      .filter { (_, items) -> items.isNotEmpty() }
+      .map { (libName, resourceItems) -> createResourceSection(resourceType, libName, resourceItems) }
+      .toList()
     return listOf(moduleResources) + librariesResources
-  }
-
-  fun importSketchFile() {
-    val configurationPanel = importerProvider
-      .getImportersForExtension("sketch")
-      .first()
-      .getConfigurationPanel(facet, object : ConfigurationDoneCallback {
-        override fun configurationDone() {
-
-        }
-      })
   }
 
   fun getData(dataId: String?, selectedAssets: List<DesignAssetSet>): Any? {

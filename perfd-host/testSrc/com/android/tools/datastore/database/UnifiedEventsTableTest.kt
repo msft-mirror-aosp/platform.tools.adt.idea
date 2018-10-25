@@ -15,6 +15,7 @@
  */
 package com.android.tools.datastore.database
 
+import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Profiler
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -23,147 +24,144 @@ import java.util.function.Consumer
 class UnifiedEventsTableTest : DatabaseTest<UnifiedEventsTable>() {
 
   // List of events to generate in the database. This list is broken up by event id to make things easier to validate.
-  val events = mutableListOf(mutableListOf(eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 1, 1, 1),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 1, 1, 2),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 1, 1, 3),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 1, 1, 4),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 2, 1, 3),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 2, 1, 4)),
-                             mutableListOf(eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 1, 2, 3),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 2, 2, 2),
-                                           eventBuilder(Profiler.Event.Kind.SESSION, Profiler.Event.Type.SESSION_ENDED, 2, 2, 3)))
+  val events = mutableListOf(mutableListOf(eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 1, 1, 1),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 1, 1, 2),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 1, 1, 3),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 1, 1, 4),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 2, 1, 3),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 2, 1, 4)),
+                             mutableListOf(eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 1, 2, 3),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 2, 2, 2),
+                                           eventBuilder(Common.Event.Kind.SESSION, Common.Event.Type.SESSION_ENDED, 2, 2, 3)))
 
   override fun createTable(): UnifiedEventsTable {
     return UnifiedEventsTable()
   }
 
   override fun getTableQueryMethodsForVerification(): List<Consumer<UnifiedEventsTable>> {
-    val events = mutableListOf(Profiler.Event.newBuilder().build())
+    val events = mutableListOf(Common.Event.newBuilder().build())
     return mutableListOf(
-      (Consumer { it.insertUnifiedEvents(1, events) }),
+      (Consumer { it.insertUnifiedEvent(1, events[0]) }),
       (Consumer {
         it.queryUnifiedEventGroups(
-          Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION).setSessionId(1).setToTimestamp(10).build())
+          Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION).setSessionId(1).setToTimestamp(10).build())
       }),
-      (Consumer { it.queryUnifiedEvents(Profiler.GetEventsRequest.getDefaultInstance()) }))
+      (Consumer { it.queryUnifiedEvents() }))
   }
 
-  private fun insertData(count: Int, incrementSession: Boolean, incrementEventId: Boolean): List<Profiler.Event> {
-    val events = mutableListOf<Profiler.Event>()
+  private fun insertData(count: Int, incrementSession: Boolean, incrementEventId: Boolean): List<Common.Event> {
+    val events = mutableListOf<Common.Event>()
     for (i in 0 until count) {
-      events.add(eventBuilder(Profiler.Event.Kind.SESSION,
-                              Profiler.Event.Type.SESSION_STARTED,
-                              if (!incrementSession) 1L else i + 1L,
-                              if (!incrementEventId) 1L else i + 1L,
-                              i + 1L))
+      val event = eventBuilder(Common.Event.Kind.SESSION,
+                               Common.Event.Type.SESSION_STARTED,
+                               if (!incrementSession) 1L else i + 1L,
+                               if (!incrementEventId) 1L else i + 1L,
+                               i + 1L)
+      events.add(event)
+      table.insertUnifiedEvent(1, event)
     }
-    table.insertUnifiedEvents(1, events)
     return events
   }
 
   @Test
   fun insertDuplicatedData() {
     // This validates that sql should not throw an exception
-    val events = mutableListOf(Profiler.Event.newBuilder().apply {
-      kind = Profiler.Event.Kind.SESSION
-      type = Profiler.Event.Type.SESSION_STARTED
+    val event = Common.Event.newBuilder().apply {
+      kind = Common.Event.Kind.SESSION
+      type = Common.Event.Type.SESSION_STARTED
       sessionId = 1
       eventId = 1
-      sessionStarted = Profiler.SessionStarted.newBuilder().setPid(1).build()
-    }.build())
-    table.insertUnifiedEvents(1, events)
+      sessionStarted = Common.SessionStarted.newBuilder().setPid(1).build()
+    }.build()
+    table.insertUnifiedEvent(1, event)
 
-    val updatedEvents = mutableListOf(events[0].toBuilder().apply {
-      sessionStarted = Profiler.SessionStarted.newBuilder().setPid(2).build()
-    }.build())
-    table.insertUnifiedEvents(1, updatedEvents)
+    val updatedEvent = event.toBuilder().apply {
+      sessionStarted = Common.SessionStarted.newBuilder().setPid(2).build()
+    }.build()
+
+    table.insertUnifiedEvent(1, updatedEvent)
+
     // Validate that no data got updated.
-    var eventResult = table.queryUnifiedEvents(Profiler.GetEventsRequest.newBuilder().setFromTimestamp(0)
-                                                 .setToTimestamp(3).build())
-    assertThat(eventResult).containsExactlyElementsIn(events)
+    val eventResult = table.queryUnifiedEvents()
+    assertThat(eventResult).containsExactlyElementsIn(listOf(event))
   }
 
   @Test
   fun queryEvents() {
     val events = insertData(2, true, true)
     // Validate we have data inserted
-    var eventResult = table.queryUnifiedEvents(Profiler.GetEventsRequest.newBuilder().setFromTimestamp(0)
-                                                 .setToTimestamp(3).build())
+    val eventResult = table.queryUnifiedEvents()
     assertThat(eventResult).containsExactlyElementsIn(events)
-    // Validate request filters on timestamp.
-    eventResult = table.queryUnifiedEvents(Profiler.GetEventsRequest.newBuilder().setFromTimestamp(0)
-                                             .setToTimestamp(1).build())
-    assertThat(eventResult).containsExactly(events[0])
   }
 
   @Test
   fun filterNoKind() {
     insertData(5, false, true)
-    val result = table.queryUnifiedEventGroups(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.NONE).build())
+    val result = table.queryUnifiedEventGroups(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.NONE).build())
     assertThat(result).isEmpty()
   }
 
   @Test
   fun filterKind() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION).build())
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION).build())
   }
 
   @Test
   fun filterKindFromTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setFromTimestamp(2).build())
   }
 
   @Test
   fun filterKindToTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setToTimestamp(2).build())
   }
 
   @Test
   fun filterKindFromTimestampToTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setFromTimestamp(2)
                      .setToTimestamp(4).build())
   }
 
   @Test
   fun filterKindSession() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setSessionId(1).build())
   }
 
   @Test
   fun filterKindSessionFromTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setSessionId(1)
                      .setFromTimestamp(3).build())
   }
 
   @Test
   fun filterKindSessionToTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setSessionId(1)
                      .setToTimestamp(3).build())
   }
 
   @Test
   fun filterKindSessionFromTimestampToTimestamp() {
-    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Profiler.Event.Kind.SESSION)
+    validateFilter(Profiler.GetEventGroupsRequest.newBuilder().setKind(Common.Event.Kind.SESSION)
                      .setSessionId(1)
                      .setFromTimestamp(2)
                      .setToTimestamp(3).build())
   }
 
   private fun validateFilter(request: Profiler.GetEventGroupsRequest) {
-    val results = mutableListOf<List<Profiler.Event>>()
+    val results = mutableListOf<List<Common.Event>>()
     for (eventGroup in events) {
       // Insert elements from our fixed list into the database.
-      table.insertUnifiedEvents(1, eventGroup)
-      val expected = mutableListOf<Profiler.Event>()
+      eventGroup.forEach { table.insertUnifiedEvent(1, it) }
+      val expected = mutableListOf<Common.Event>()
 
       // Filter our expected results to what we expect from the database.
-      eventGroup.filterTo(expected, {
+      eventGroup.filterTo(expected) {
         var result = true
         if (it.kind != request.kind) {
           result = false
@@ -178,7 +176,7 @@ class UnifiedEventsTableTest : DatabaseTest<UnifiedEventsTable>() {
           result = false
         }
         result
-      })
+      }
 
       // Add only list with elements to our expected results.
       if (!expected.isEmpty()) {
@@ -195,12 +193,12 @@ class UnifiedEventsTableTest : DatabaseTest<UnifiedEventsTable>() {
     }
   }
 
-  private fun eventBuilder(kind: Profiler.Event.Kind,
-                           type: Profiler.Event.Type,
+  private fun eventBuilder(kind: Common.Event.Kind,
+                           type: Common.Event.Type,
                            sessionId: Long,
                            eventId: Long,
-                           timestamp: Long): Profiler.Event {
-    return Profiler.Event.newBuilder()
+                           timestamp: Long): Common.Event{
+    return Common.Event.newBuilder()
       .setKind(kind)
       .setType(type)
       .setSessionId(sessionId)

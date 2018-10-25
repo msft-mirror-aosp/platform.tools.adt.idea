@@ -16,26 +16,26 @@
 package com.android.tools.idea.run.deployment;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.IDevice;
 import com.android.tools.idea.ddms.DeviceNameProperties;
+import com.android.tools.idea.run.ConnectedAndroidDevice;
+import com.android.tools.idea.run.DeviceFutures;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.intellij.execution.runners.ExecutionUtil;
+import com.intellij.openapi.project.Project;
 import icons.AndroidIcons;
+import java.util.Collections;
+import java.util.Objects;
+import javax.swing.Icon;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
 
 final class PhysicalDevice extends Device {
   private static final Icon ourIcon = ExecutionUtil.getLiveIndicator(AndroidIcons.Ddms.RealDevice);
 
-  @VisibleForTesting
-  PhysicalDevice(@NotNull String name) {
-    super(name);
-  }
-
-  PhysicalDevice(@NotNull DeviceNameProperties properties) {
-    super(getName(properties));
+  PhysicalDevice(@NotNull DeviceNameProperties properties, @NotNull IDevice ddmlibDevice) {
+    super(getName(properties), ddmlibDevice);
   }
 
   @NotNull
@@ -59,6 +59,11 @@ final class PhysicalDevice extends Device {
     return manufacturer + ' ' + model;
   }
 
+  @VisibleForTesting
+  PhysicalDevice(@NotNull String name) {
+    super(name, null);
+  }
+
   @NotNull
   @Override
   Icon getIcon() {
@@ -71,17 +76,27 @@ final class PhysicalDevice extends Device {
     return ImmutableList.of();
   }
 
+  @NotNull
+  @Override
+  DeviceFutures newDeviceFutures(@NotNull Project project) {
+    IDevice device = getDdmlibDevice();
+    assert device != null;
+
+    return new DeviceFutures(Collections.singletonList(new ConnectedAndroidDevice(device, null)));
+  }
+
   @Override
   public boolean equals(@Nullable Object object) {
     if (!(object instanceof PhysicalDevice)) {
       return false;
     }
 
-    return getName().equals(((PhysicalDevice)object).getName());
+    PhysicalDevice device = (PhysicalDevice)object;
+    return getName().equals(device.getName()) && Objects.equals(getDdmlibDevice(), device.getDdmlibDevice());
   }
 
   @Override
   public int hashCode() {
-    return getName().hashCode();
+    return 31 * getName().hashCode() + Objects.hashCode(getDdmlibDevice());
   }
 }

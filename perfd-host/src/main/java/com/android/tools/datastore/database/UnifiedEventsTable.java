@@ -15,26 +15,25 @@
  */
 package com.android.tools.datastore.database;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Profiler;
-import com.android.tools.profiler.protobuf3jarjar.*;
-import java.sql.Statement;
-import org.jetbrains.annotations.NotNull;
-
+import com.android.tools.profiler.protobuf3jarjar.InvalidProtocolBufferException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
 public class UnifiedEventsTable extends DataStoreTable<UnifiedEventsTable.Statements> {
   public enum Statements {
     // Since no data should be updated after it has been inserted we drop any duplicated request from the poller.
     INSERT(
       "INSERT OR IGNORE INTO [UnifiedEventsTable] (StreamId, SessionId, EventId, Kind, Type, Timestamp, Data) VALUES (?, ?, ?, ?, ?, ?, ?)"),
-    QUERY_WITHIN_TIME("SELECT Data FROM [UnifiedEventsTable] WHERE Timestamp >= ? AND Timestamp <= ?");
+    // Only used for test.
+    QUERY_EVENTS("SELECT Data FROM [UnifiedEventsTable]");
 
     @NotNull private final String mySqlStatement;
 
@@ -80,20 +79,19 @@ public class UnifiedEventsTable extends DataStoreTable<UnifiedEventsTable.Statem
     }
   }
 
-
-  public void insertUnifiedEvents(long streamId, @NotNull List<Profiler.Event> eventList) {
-    executeBatch(Statements.INSERT, eventList,
-            (event -> new Object[]{streamId,
-              event.getSessionId(),
-              event.getEventId(),
-              event.getKind().getNumber(),
-              event.getType().getNumber(),
-              event.getTimestamp(),
-              event.toByteArray()}));
+  public void insertUnifiedEvent(long streamId, @NotNull Common.Event event) {
+    execute(Statements.INSERT, streamId,
+            event.getSessionId(),
+            event.getEventId(),
+            event.getKind().getNumber(),
+            event.getType().getNumber(),
+            event.getTimestamp(),
+            event.toByteArray());
   }
 
-  public List<Profiler.Event> queryUnifiedEvents(@NotNull Profiler.GetEventsRequest request) {
-    return queryUnifiedEvents(Statements.QUERY_WITHIN_TIME, request.getFromTimestamp(), request.getToTimestamp());
+  @VisibleForTesting
+  public List<Common.Event> queryUnifiedEvents() {
+    return queryUnifiedEvents(Statements.QUERY_EVENTS);
   }
 
   public List<Profiler.EventGroup> queryUnifiedEventGroups(@NotNull Profiler.GetEventGroupsRequest request) {
@@ -120,25 +118,26 @@ public class UnifiedEventsTable extends DataStoreTable<UnifiedEventsTable.Statem
       ResultSet results = executeOneTimeQuery(sql.toString(), params.toArray());
       HashMap<Long, Profiler.EventGroup.Builder> builderGroups = new HashMap<>();
       while (results.next()) {
-        Profiler.Event event = Profiler.Event.parser().parseFrom(results.getBytes(1));
+        Common.Event event = Common.Event.parser().parseFrom(results.getBytes(1));
         Profiler.EventGroup.Builder group = builderGroups.computeIfAbsent(event.getEventId(), key -> Profiler.EventGroup.newBuilder());
         group.addEvents(event);
       }
       builderGroups.values().stream().forEach((builder) -> {
         groups.add(builder.build());
       });
-    } catch (SQLException | InvalidProtocolBufferException ex) {
+    }
+    catch (SQLException | InvalidProtocolBufferException ex) {
       onError(ex);
     }
     return groups;
   }
 
-  private List<Profiler.Event> queryUnifiedEvents(Statements stmt, Object... args) {
-    List<Profiler.Event> records = new ArrayList<>();
+  private List<Common.Event> queryUnifiedEvents(Statements stmt, Object... args) {
+    List<Common.Event> records = new ArrayList<>();
     try {
       ResultSet results = executeQuery(stmt, args);
       while (results.next()) {
-        records.add(Profiler.Event.parser().parseFrom(results.getBytes(1)));
+        records.add(Common.Event.parser().parseFrom(results.getBytes(1)));
       }
     }
     catch (SQLException | InvalidProtocolBufferException ex) {
