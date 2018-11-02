@@ -39,16 +39,25 @@ interface AndroidModuleSystem: ClassFileFinder, SampleDataDirectoryProvider {
   fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate>
 
   /**
-   * Returns a [GradleCoordinate] of the latest compatible artifact of the given maven project.
-   * This function returns non-null only if the build system can find a version of the artifact that is
-   * compatible with the rest of this module's dependencies.
-   * When there are multiple versions of the artifact that satisfy the above conditions, the latest
-   * stable artifact is selected. In the event that a stable artifact does not exist this function
-   * will fallback to searching for preview artifacts.
+   * Analyzes the compatibility of the [dependenciesToAdd] with the existing artifacts in the project.
+   *
+   * The version component of each of the coordinates in [dependenciesToAdd] are disregarded.
+   * The result is a triplet consisting of:
+   * <ul>
+   *   <li>A list of coordinates including a valid version found in the repository</li>
+   *   <li>A list of coordinates that were missing from the repository</li>
+   *   <li>A warning string describing the compatibility issues that could not be resolved if any</li>
+   * </ul>
+   *
+   * An incompatibility warning is either a compatibility with problem among the already existing artifacts,
+   * or a compatibility problem with one of the [dependenciesToAdd]. In the latter case the coordinates in
+   * the found coordinates are simply the latest version of the libraries, which may or may not cause build
+   * errors if they are added to the project.
    * <p>
-   * **Note**: This function may perform read actions.
+   * An empty warning value and an empty missing list of coordinates indicates a successful result.
    */
-  fun getLatestCompatibleDependency(mavenGroupId: String, mavenArtifactId: String): GradleCoordinate?
+  fun analyzeDependencyCompatibility(dependenciesToAdd: List<GradleCoordinate>)
+    : Triple<List<GradleCoordinate>, List<GradleCoordinate>, String>
 
   /**
    * Returns the dependency accessible to sources contained in this module referenced by its [GradleCoordinate] as registered with the

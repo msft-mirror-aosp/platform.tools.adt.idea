@@ -377,7 +377,6 @@
     <applicationService serviceInterface="org.jetbrains.android.uipreview.AndroidEditorSettings"
                         serviceImplementation="org.jetbrains.android.uipreview.AndroidEditorSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.profiling.capture.CaptureTypeService"/>
-    <applicationService serviceImplementation="com.android.tools.idea.run.database.DexArchiveDatabaseService" />
     <fileEditorProvider implementation="com.android.tools.idea.profiling.capture.CaptureEditorProvider" />
 
     <stepsBeforeRunProvider implementation="com.android.tools.idea.gradle.run.MakeBeforeRunTaskProvider" />
@@ -466,13 +465,9 @@
     <!--<frameworkSupport implementation="org.jetbrains.android.facet.AndroidSupportProvider"/>-->
 
     <fileTypeFactory implementation="org.jetbrains.android.fileTypes.AndroidFileTypeFactory"/>
-    <fileTypeFactory implementation="com.android.tools.idea.lang.databinding.DbFileTypeFactory" />
 
-    <lang.parserDefinition language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbParserDefinition" />
     <lang.syntaxHighlighterFactory language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbSyntaxHighlighterFactory" />
-    <lang.braceMatcher language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbPairedBraceMatcher"/>
 
-    <languageInjector implementation="com.android.tools.idea.lang.databinding.DbLanguageInjector" />
     <fileEditorProvider implementation="com.android.tools.idea.editors.NinePatchEditorProvider" />
     <fileEditorProvider implementation="com.android.tools.idea.editors.theme.ThemeEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.editors.manifest.ManifestEditorProvider"/>
@@ -897,6 +892,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUntranslatable" displayName="Translated Untranslatable" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUntranslatableInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnusedAttribute" displayName="Attribute unused on older versions" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnusedAttributeInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnusedIds" displayName="Unused id" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnusedIdsInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintUnusedNavigation" displayName="Unused Navigation" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintUnusedNavigationInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnusedQuantity" displayName="Unused quantity translations" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnusedQuantityInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUnusedResources" displayName="Unused resources" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUnusedResourcesInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintUseAlpha2" displayName="Using 3-letter Codes" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintUseAlpha2Inspection"/>
@@ -1020,6 +1016,7 @@
     <projectService serviceImplementation="com.android.tools.idea.fd.InstantRunStatsService" />
     <projectService serviceImplementation="com.android.tools.idea.stats.RunStatsService" />
     <projectService serviceImplementation="com.android.tools.idea.fd.FlightRecorder" />
+    <projectService serviceImplementation="com.android.tools.idea.run.DeploymentService" />
 
     <projectService serviceImplementation="com.android.tools.idea.run.profiler.CpuProfilerConfigsState" />
     <projectService serviceInterface="com.android.tools.idea.gradle.project.build.compiler.AndroidGradleBuildConfiguration"
@@ -1055,7 +1052,8 @@
     <projectService serviceImplementation="com.android.tools.idea.res.SampleDataListener"/>
     <projectService serviceImplementation="com.android.tools.idea.structure.services.DeveloperServices" />
     <projectService serviceImplementation="com.android.tools.idea.npw.assetstudio.wizard.GenerateIconsModel$StateStorage" />
-    <projectService serviceImplementation="com.android.tools.idea.rendering.RenderSettings"/>
+    <projectService serviceImplementation="com.android.tools.idea.rendering.RenderSettings" />
+    <projectService serviceImplementation="com.android.tools.idea.run.ui.model.ProjectExecutionState" />
 
     <moduleService serviceImplementation="org.jetbrains.android.compiler.ModuleSourceAutogenerating" />
     <moduleService serviceImplementation="org.jetbrains.android.TagToClassMapperImpl"
@@ -1288,6 +1286,8 @@
                     interface="com.android.tools.idea.gradle.dsl.api.GradleModelProvider" />
     <extensionPoint qualifiedName="com.android.rendering.renderSecurityManagerOverrides"
                     interface="com.android.tools.idea.rendering.RenderSecurityManagerOverrides"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.databinding.dataBindingExpressionProvider"
+                    interface="com.android.tools.idea.databinding.DataBindingExpressionProvider"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.android">
@@ -1388,8 +1388,6 @@
     <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingClassFinder" id="dataBinding.BindingClassFinder" order="first, before java"/>
     <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingComponentClassFinder" id="dataBinding.ComponentClassFinder" order="first, before java"/>
     <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingPackageFinder" id="dataBinding.DataBindingPackageFinder" order="last, after java"/>
-    <psi.referenceContributor implementation="com.android.tools.idea.lang.databinding.DataBindingXmlReferenceContributor"/>
-    <completion.contributor implementationClass="com.android.tools.idea.lang.databinding.DataBindingCompletionContributor" language="AndroidDataBinding"/>
     <applicationConfigurable groupId="editor" id="android.databinding"
                              provider="com.android.tools.idea.databinding.config.DataBindingConfigurableProvider"/>
     <applicationService serviceImplementation="com.android.tools.idea.databinding.config.DataBindingConfiguration"/>

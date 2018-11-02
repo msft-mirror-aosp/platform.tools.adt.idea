@@ -61,10 +61,16 @@ public final class StudioFlags {
     "Show new version of the Welcome Wizard when Studio starts",
     false);
 
-  public static final Flag<Boolean> NPW_DYNAMIC_APPS = Flag.create( // TODO: Remove in b/109788793
+  // TODO: Remove in b/109788793
+  public static final Flag<Boolean> NPW_DYNAMIC_APPS = Flag.create(
     NPW, "dynamic.apps", "New Dynamic App Project flow",
     "Use new Dynamic App flow when creating a New Mobile Project",
     true);
+
+  public static final Flag<Boolean> NPW_DYNAMIC_APPS_CONDITIONAL_DELIVERY = Flag.create(
+    NPW, "dynamic.apps.conditional.delivery", "Support for conditional delivery for dynamic feature modules",
+    "Support for conditional delivery for dynamic feature modules",
+    false);
 
   public static final Flag<Boolean> NPW_USE_HOME_FOLDER_AS_EXTRA_TEMPLATE_ROOT_FOLDER = Flag.create(
     NPW, "home.template.root", "Use .android folder as a Template Root Folder",
@@ -301,6 +307,13 @@ public final class StudioFlags {
     "Show the Select Device/Snapshot combo box next to the Select Run/Debug Configuration one in the toolbar",
     false);
 
+  public static final Flag<Boolean> SELECT_DEVICE_SNAPSHOT_COMBO_BOX_SNAPSHOTS_ENABLED = Flag.create(
+    RUNDEBUG,
+    "select.device.snapshot.combo.box.snapshots.enabled",
+    "Enable Select Device/Snapshot combo box snapshots",
+    "So the new Instant Run can use the combo box",
+    false);
+
   public static final Flag<Boolean> JVMTI_REFRESH = Flag.create(
     RUNDEBUG,
     "jvmti.refresh",
@@ -398,6 +411,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_CLANG_TIDY_INSPECTIONS = Flag
     .create(NDK, "clangtidyinspections", "Enable clang-tidy inspections",
             "If enabled, show inspections derived from clang-tidy.", true);
+
+  public static final Flag<Boolean> APK_DEBUG_BUILD_ID_CHECK = Flag
+    .create(NDK, "apkdebugbuildidcheck", "Enable build ID check in APK debugging",
+            "If enabled, the build ID of user-provided symbol files are compared against the binaries inside the APK.", false);
 
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
 

@@ -32,6 +32,23 @@ class CommonDragTargetTest : SceneTest() {
     super.tearDown()
   }
 
+  fun testDragComponent() {
+    val textView = myScreen.get("@id/textView").sceneComponent!!
+    val linearLayout = myScreen.get("@id/linear").sceneComponent!!
+
+    myInteraction.select(textView)
+    myInteraction.mouseDown("textView")
+    myInteraction.mouseRelease(150f, 200f)
+
+    textView.authoritativeNlComponent.let {
+      assertEquals("100dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X))
+      assertEquals("150dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y))
+    }
+    assertFalse(linearLayout.children.contains(textView))
+
+    assertEquals(1, myScreen.screen.selectionModel.selection.size)
+  }
+
   fun testDragMultipleComponentsInConstraintLayout() {
     // Test drag multiple components inside constraint layout
     val textView = myScreen.get("@id/textView").sceneComponent!!
@@ -75,6 +92,49 @@ class CommonDragTargetTest : SceneTest() {
 
     assertTrue(linearLayout.children.contains(textView))
     assertTrue(linearLayout.children.contains(textView2))
+
+    assertEquals(2, myScreen.screen.selectionModel.selection.size)
+  }
+
+  fun testDragComponentButCancel() {
+    val textView = myScreen.get("@id/textView").sceneComponent!!
+    val linearLayout = myScreen.get("@id/linear").sceneComponent!!
+    val button = myScreen.get("@id/button").sceneComponent!!
+
+    myInteraction.select(textView)
+    myInteraction.mouseDown("textView")
+    myInteraction.mouseCancel((button.drawX + button.drawWidth / 2).toFloat(), button.drawY.toFloat())
+
+    textView.authoritativeNlComponent.let {
+      assertEquals("0dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X))
+      assertEquals("0dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y))
+    }
+    assertFalse(linearLayout.children.contains(textView))
+  }
+
+  fun testDragMultipleComponentsButCancel() {
+    val textView = myScreen.get("@id/textView").sceneComponent!!
+    val textView2 = myScreen.get("@id/textView2").sceneComponent!!
+
+    val linearLayout = myScreen.get("@id/linear").sceneComponent!!
+    val button = myScreen.get("@id/button").sceneComponent!!
+
+    myInteraction.select(textView, textView2)
+    myInteraction.mouseDown("textView")
+    myInteraction.mouseCancel((button.drawX + button.drawWidth / 2).toFloat(), button.drawY.toFloat())
+
+    textView.authoritativeNlComponent.let {
+      assertEquals("0dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X))
+      assertEquals("0dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y))
+    }
+
+    textView2.authoritativeNlComponent.let {
+      assertEquals("100dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X))
+      assertEquals("0dp", it.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y))
+    }
+
+    assertFalse(linearLayout.children.contains(textView))
+    assertFalse(linearLayout.children.contains(textView2))
   }
 
   override fun createModel(): ModelBuilder {
@@ -90,7 +150,7 @@ class CommonDragTargetTest : SceneTest() {
                        .id("@id/textView")
                        .width("100dp")
                        .height("100dp")
-                       .withAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X, "0")
+                       .withAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_X, "0dp")
                        .withAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y, "0dp"),
                      component(SdkConstants.TEXT_VIEW)
                        .withBounds(200, 0, 200, 200)

@@ -46,17 +46,22 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   /**
    * list of dragged components. The first entry is the one which user start dragging.
    */
-  private val draggedComponents: List<SceneComponent>
+  private lateinit var draggedComponents: List<SceneComponent>
+
+  /**
+   * list of initial positions of dragged components
+   */
+  private lateinit var initialPositions: List<Point>
+
+  /**
+   * Offsets of every selected components. Their units are AndroidDpCoordinate
+   */
+  private lateinit var offsets: List<Point>
 
   /**
    * Mouse position when start dragging.
    */
   @AndroidDpCoordinate private val firstMouse = Point(-1, -1)
-
-  /**
-   * Offsets of every selected components. Their units are AndroidDpCoordinate
-   */
-  private val offsets: Array<Point>
 
   /**
    * The collected placeholder.
@@ -73,18 +78,10 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   init {
     myComponent = sceneComponent
 
-    val scene = component.scene
-    val selection = scene.selection
-    val selectedSceneComponents = selection.mapNotNull { scene.getSceneComponent(it) }
-    // Make sure myComponent is the first one which is interacted with user.
-    // Note that myComponent may not be the first one in selection, since user may drag the component which is not selected first.
-    draggedComponents = sequenceOf(component).plus(selectedSceneComponents.filterNot { it == myComponent }).toList()
-    offsets = Array(draggedComponents.size) { Point(-1, -1) }
-
     placeholders = component.scene.getPlaceholders(component).filter { it.host != component }
     dominatePlaceholders = placeholders.filter { it.dominate }
     recessivePlaceholders = placeholders.filterNot { it.dominate }
-    placeholderHosts = placeholders.map { it.host }.toSet()
+    placeholderHosts = placeholders.asSequence().map { it.host }.toSet()
   }
 
   override fun setComponent(component: SceneComponent) {
@@ -173,6 +170,22 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   override fun mouseDown(@AndroidDpCoordinate x: Int, @AndroidDpCoordinate y: Int) {
     firstMouse.x = x
     firstMouse.y = y
+
+    val scene = component.scene
+    val selection = scene.selection
+    val selectedSceneComponents = selection.mapNotNull { scene.getSceneComponent(it) }
+    if (myComponent !in selectedSceneComponents) {
+      // In case the dragging is started without selecting first.
+      draggedComponents = listOf(component)
+    }
+    else {
+      // Make sure myComponent is the first one which is interacted with user.
+      // Note that myComponent may not be the first one in selection, since user may drag the component which is not selected first.
+      draggedComponents = sequenceOf(component).plus(selectedSceneComponents.filterNot { it == myComponent }).toList()
+    }
+    initialPositions = draggedComponents.map { Point(it.drawX, it.drawY) }
+    offsets = draggedComponents.map { Point(-1, -1) }
+
 
     if (fromToolWindow) {
       if (!draggedComponents.isEmpty()) {
@@ -328,13 +341,23 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   /**
    * Reset the status when the dragging is canceled.
    */
-  fun cancel() {
-    myComponent.isDragging = false
-    myComponent.scene.needsLayout(Scene.IMMEDIATE_LAYOUT)
+  override fun mouseCancel() {
     currentSnappedPlaceholder = null
+    val liveRendered = myComponent.scene.isLiveRenderingEnabled
+    draggedComponents.forEachIndexed { index, component ->
+      component.setPosition(initialPositions[index].x, initialPositions[index].y)
+      component.isDragging = false
+      // Rollback the transaction. Some attributes may be changed due to live rendering.
+      val nlComponent = component.authoritativeNlComponent
+      if (liveRendered && nlComponent.parent?.viewHandler is ConstraintLayoutHandler) {
+        nlComponent.startAttributeTransaction().rollback()
+        nlComponent.fireLiveChangeEvent()
+      }
+    }
+    myComponent.scene.needsLayout(Scene.IMMEDIATE_LAYOUT)
   }
 
-  override fun newSelection(): List<SceneComponent> = listOf(myComponent)
+  override fun newSelection(): List<SceneComponent> = draggedComponents
 
   override fun getMouseCursor(): Cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 
@@ -350,6 +373,9 @@ private abstract class BasePlaceholderDrawRegion(@AndroidDpCoordinate private va
   final override fun paint(g: Graphics2D, sceneContext: SceneContext) {
     val defColor = g.color
     val defStroke = g.stroke
+    val defClip = g.clip
+
+    g.clip = sceneContext.bounds
 
     setBounds(sceneContext.getSwingXDip(x1.toFloat()),
               sceneContext.getSwingYDip(y1.toFloat()),
@@ -367,6 +393,7 @@ private abstract class BasePlaceholderDrawRegion(@AndroidDpCoordinate private va
 
     g.color = defColor
     g.stroke = defStroke
+    g.clip = defClip
   }
 
   abstract fun getBackgroundColor(colorSet: ColorSet): Color?

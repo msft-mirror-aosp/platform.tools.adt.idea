@@ -15,5 +15,15 @@
   -->
 <idea-plugin>
   <depends>org.intellij.intelliLang</depends>
-  <!-- TODO: Add implementations for extension points as we move code over from tools.idea.lang.databinding -->
+  <extensions defaultExtensionNs="com.intellij">
+    <completion.contributor implementationClass="com.android.tools.idea.lang.databinding.DataBindingCompletionContributor" language="AndroidDataBinding"/>
+    <fileTypeFactory implementation="com.android.tools.idea.lang.databinding.DbFileTypeFactory"/>
+    <lang.braceMatcher language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbPairedBraceMatcher"/>
+    <lang.parserDefinition language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbParserDefinition"/>
+    <languageInjector implementation="com.android.tools.idea.lang.databinding.DbLanguageInjector"/>
+    <psi.referenceContributor implementation="com.android.tools.idea.lang.databinding.DataBindingXmlReferenceContributor"/>
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.databinding">
+    <dataBindingExpressionProvider implementation="com.android.tools.idea.lang.databinding.DataBindingLangExpressionProvider"/>
+  </extensions>
 </idea-plugin>

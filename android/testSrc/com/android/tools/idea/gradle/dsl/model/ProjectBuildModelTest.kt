@@ -16,12 +16,14 @@
 package com.android.tools.idea.gradle.dsl.model
 
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
-import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.*
-import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.*
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.BOOLEAN_TYPE
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.INTEGER_TYPE
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.STRING_TYPE
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.BOOLEAN
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.INTEGER
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType.STRING
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtilCore
-import junit.framework.TestCase
 import org.gradle.internal.impldep.org.hamcrest.CoreMatchers.hasItems
 import org.gradle.internal.impldep.org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
@@ -247,7 +249,6 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
                        }""".trimIndent()
     val text = ""
     writeToSubModuleBuildFile(childText)
-    writeToSettingsFile("")
     writeToBuildFile(text)
     writeToSettingsFile("include ':" + GradleFileModelTestCase.SUB_MODULE_NAME + "'")
     var pbm = ProjectBuildModel.get(myProject)
@@ -287,5 +288,34 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     val buildModel = pbm.getModuleBuildModel(file)
     assertNotNull(buildModel)
     verifyPropertyModel(buildModel.android().compileSdkVersion(), STRING_TYPE, "28", STRING, REGULAR, 0)
+  }
+
+  @Test
+  fun testEnsureParsingAppliedFileInSubmoduleFolder() {
+    val text = """
+      buildscript {
+        apply from: "${mySubModule.name}/a.gradle"
+
+        dependencies {
+          classpath 'com.android.tools.build:gradle:${"$"}version'
+        }
+      }
+    """.trimIndent()
+    val childText = """
+      ext.someProperty = 5
+    """.trimIndent()
+    val appliedText = """
+      ext.version = '1.2.3'
+    """.trimIndent()
+    writeToSubModuleBuildFile(childText)
+    writeToBuildFile(text)
+    writeToSettingsFile("include ':" + GradleFileModelTestCase.SUB_MODULE_NAME + "'")
+    writeToNewSubModuleFile("a.gradle", appliedText)
+
+    val pbm = ProjectBuildModel.get(myProject)
+    val buildModel = pbm.getModuleBuildModel(myModule)
+
+    val pluginModel = buildModel!!.buildscript().dependencies().artifacts()[0].completeModel()
+    assertEquals("com.android.tools.build:gradle:${'$'}version", pluginModel.forceString())
   }
 }

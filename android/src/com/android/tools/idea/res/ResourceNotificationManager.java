@@ -15,10 +15,13 @@
  */
 package com.android.tools.idea.res;
 
+import static com.android.SdkConstants.ANDROID_PREFIX;
+import static com.android.SdkConstants.PREFIX_RESOURCE_REF;
+
 import com.android.annotations.NonNull;
 import com.android.annotations.Nullable;
-import com.android.resources.ResourceUrl;
 import com.android.resources.ResourceFolderType;
+import com.android.resources.ResourceUrl;
 import com.android.tools.idea.AndroidPsiUtils;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationListener;
@@ -35,18 +38,29 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
-import com.intellij.psi.*;
-import com.intellij.psi.xml.*;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiErrorElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiTreeChangeEvent;
+import com.intellij.psi.PsiTreeChangeListener;
+import com.intellij.psi.PsiWhiteSpace;
+import com.intellij.psi.xml.XmlAttribute;
+import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.psi.xml.XmlComment;
+import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
+import com.intellij.psi.xml.XmlToken;
 import com.intellij.util.messages.MessageBusConnection;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.intellij.images.fileTypes.ImageFileTypeManager;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.ResourceFolderManager;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.*;
-
-import static com.android.SdkConstants.ANDROID_PREFIX;
-import static com.android.SdkConstants.PREFIX_RESOURCE_REF;
 
 /**
  * The {@linkplain ResourceNotificationManager} provides notifications to editors that
@@ -73,7 +87,7 @@ import static com.android.SdkConstants.PREFIX_RESOURCE_REF;
  * <li>Add listener or remove listener can be done from any thread</li>
  * </ul>
  */
-@SuppressWarnings({"SynchronizeOnThis", "UseOfSystemOutOrSystemErr"})
+@SuppressWarnings({"SynchronizeOnThis"})
 public class ResourceNotificationManager {
   private final Project myProject;
 
@@ -383,10 +397,19 @@ public class ResourceNotificationManager {
     // ---- Implements ResourceFolderManager.ResourceFolderListener ----
 
     @Override
-    public void resourceFoldersChanged(@NotNull AndroidFacet facet,
-                                       @NotNull List<VirtualFile> folders,
-                                       @NotNull Collection<VirtualFile> added,
-                                       @NotNull Collection<VirtualFile> removed) {
+    public void mainResourceFoldersChanged(@NotNull AndroidFacet facet,
+                                           @NotNull List<? extends VirtualFile> folders,
+                                           @NotNull Collection<? extends VirtualFile> added,
+                                           @NotNull Collection<? extends VirtualFile> removed) {
+      myModificationCount++;
+      notice(Reason.GRADLE_SYNC);
+    }
+
+    @Override
+    public void testResourceFoldersChanged(@NotNull AndroidFacet facet,
+                                           @NotNull List<? extends VirtualFile> folders,
+                                           @NotNull Collection<? extends VirtualFile> added,
+                                           @NotNull Collection<? extends VirtualFile> removed) {
       myModificationCount++;
       notice(Reason.GRADLE_SYNC);
     }
@@ -478,7 +501,8 @@ public class ResourceNotificationManager {
         }
         else if (parent instanceof XmlAttribute && child instanceof XmlAttributeValue) {
           XmlAttributeValue attributeValue = (XmlAttributeValue)child;
-          if (attributeValue.getValue() == null || attributeValue.getValue().isEmpty()) {
+          attributeValue.getValue();
+          if (attributeValue.getValue().isEmpty()) {
             // Just added a new blank attribute; nothing to render yet
             return;
           }
@@ -521,7 +545,7 @@ public class ResourceNotificationManager {
           // Typing in attribute name. Don't need to do any rendering until there
           // is an actual value
           XmlAttributeValue valueElement = ((XmlAttribute)parent).getValueElement();
-          if (valueElement == null || valueElement.getValue() == null || valueElement.getValue().isEmpty()) {
+          if (valueElement == null || valueElement.getValue().isEmpty()) {
             return;
           }
         }
@@ -547,7 +571,7 @@ public class ResourceNotificationManager {
           // Typing in attribute name. Don't need to do any rendering until there
           // is an actual value
           XmlAttributeValue valueElement = ((XmlAttribute)parent).getValueElement();
-          if (valueElement == null || valueElement.getValue() == null || valueElement.getValue().isEmpty()) {
+          if (valueElement == null || valueElement.getValue().isEmpty()) {
             return;
           }
         }
@@ -659,7 +683,7 @@ public class ResourceNotificationManager {
     private Module myModule;
     private MessageBusConnection myMessageBusConnection;
 
-    public FileEventObserver(Module module) {
+    private FileEventObserver(Module module) {
       myModule = module;
     }
 
@@ -718,7 +742,7 @@ public class ResourceNotificationManager {
     private final Configuration myConfiguration;
     private List<ResourceChangeListener> myListeners = Lists.newArrayListWithExpectedSize(2);
 
-    public ConfigurationEventObserver(Configuration configuration) {
+    private ConfigurationEventObserver(Configuration configuration) {
       myConfiguration = configuration;
     }
 

@@ -1,24 +1,12 @@
-/*
- * Copyright 2000-2012 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 package org.jetbrains.android.exportSignedPackage;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.instantapp.InstantApps;
+import com.intellij.credentialStore.CredentialAttributesKt;
+import com.intellij.credentialStore.Credentials;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.util.ExecUtil;
 import com.intellij.ide.passwordSafe.PasswordSafe;
@@ -66,6 +54,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.intellij.credentialStore.CredentialAttributesKt.CredentialAttributes;
 import static com.intellij.openapi.ui.DialogWrapper.CANCEL_EXIT_CODE;
 
 /**
@@ -278,7 +267,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     // Return a null password in case there are problems reading it from PasswordSafe (b/70654787)
     try {
       passwordSafe = PasswordSafe.getInstance();
-      password = passwordSafe.getPassword(primaryRequestor, key);
+      password = passwordSafe.getPassword(CredentialAttributesKt.CredentialAttributes(primaryRequestor, key));
     }
     catch (Throwable t) {
         Logger.getInstance(KeystoreStep.class).info("Unable to use password safe", t);
@@ -287,7 +276,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       // Try to retrieve password previously saved with an old requestor in order to make user experience more seamless
       // while transitioning to a version which contains the fix for b/64995008, rather than having them retype all the
       // passwords at once.
-      password = passwordSafe.getPassword(KeystoreStep.class, key);
+      password = passwordSafe.getPassword(CredentialAttributesKt.CredentialAttributes(KeystoreStep.class, key));
     }
 
     return password;
@@ -295,9 +284,9 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
 
   private static void updateSavedPassword(@NotNull Class<?> primaryRequestor, @NotNull String key, @Nullable String value) {
     final PasswordSafe passwordSafe = PasswordSafe.getInstance();
-    passwordSafe.setPassword(primaryRequestor, key, value);
+    passwordSafe.set(CredentialAttributes(primaryRequestor, key), value == null ? null : new Credentials(key, value));
     // Always erase the one stored with the old requestor (the one used before the fix for b/64995008).
-    passwordSafe.setPassword(KeystoreStep.class, key, null);
+    passwordSafe.set(CredentialAttributes(KeystoreStep.class, key), null);
   }
 
   @VisibleForTesting
