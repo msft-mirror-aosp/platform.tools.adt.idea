@@ -15,7 +15,30 @@
  */
 package com.android.tools.idea.res;
 
-import com.android.ide.common.rendering.api.*;
+import static com.android.SdkConstants.ATTR_FORMAT;
+import static com.android.SdkConstants.ATTR_INDEX;
+import static com.android.SdkConstants.ATTR_NAME;
+import static com.android.SdkConstants.ATTR_PARENT;
+import static com.android.SdkConstants.ATTR_QUANTITY;
+import static com.android.SdkConstants.ATTR_VALUE;
+import static com.android.SdkConstants.TAG_ENUM;
+import static com.android.SdkConstants.TAG_FLAG;
+import static com.android.SdkConstants.TOOLS_URI;
+
+import com.android.ide.common.rendering.api.ArrayResourceValueImpl;
+import com.android.ide.common.rendering.api.AttrResourceValue;
+import com.android.ide.common.rendering.api.AttrResourceValueImpl;
+import com.android.ide.common.rendering.api.AttributeFormat;
+import com.android.ide.common.rendering.api.DensityBasedResourceValueImpl;
+import com.android.ide.common.rendering.api.PluralsResourceValueImpl;
+import com.android.ide.common.rendering.api.ResourceNamespace;
+import com.android.ide.common.rendering.api.ResourceReference;
+import com.android.ide.common.rendering.api.ResourceValue;
+import com.android.ide.common.rendering.api.ResourceValueImpl;
+import com.android.ide.common.rendering.api.StyleItemResourceValueImpl;
+import com.android.ide.common.rendering.api.StyleResourceValueImpl;
+import com.android.ide.common.rendering.api.StyleableResourceValueImpl;
+import com.android.ide.common.rendering.api.TextResourceValueImpl;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ValueXmlHelper;
 import com.android.ide.common.resources.configuration.DensityQualifier;
@@ -34,20 +57,20 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.*;
+import com.intellij.psi.PsiDirectory;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlComment;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.reference.SoftReference;
 import com.intellij.xml.util.XmlUtil;
-import com.intellij.xml.util.documentation.XmlDocumentationProvider;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
-
-import static com.android.SdkConstants.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class PsiResourceItem implements ResourceItem {
   @NotNull private final String myName;
@@ -294,20 +317,20 @@ public class PsiResourceItem implements ResourceItem {
       return null;
     }
 
-    ResourceValue value;
+    ResourceValueImpl value;
     switch (myType) {
       case STYLE:
         String parent = getAttributeValue(tag, ATTR_PARENT);
-        value = parseStyleValue(tag, new StyleResourceValueImpl(myNamespace, myType, myName, parent, null));
+        value = parseStyleValue(tag, new StyleResourceValueImpl(myNamespace, myName, parent, null));
         break;
       case STYLEABLE:
-        value = parseDeclareStyleable(tag, new StyleableResourceValueImpl(myNamespace, myType, myName, null, null));
+        value = parseDeclareStyleable(tag, new StyleableResourceValueImpl(myNamespace, myName, null, null));
         break;
       case ATTR:
-        value = parseAttrValue(tag, new AttrResourceValueImpl(myNamespace, myType, myName, null));
+        value = parseAttrValue(tag, new AttrResourceValueImpl(myNamespace, myName, null));
         break;
       case ARRAY:
-        value = parseArrayValue(tag, new ArrayResourceValueImpl(myNamespace, myType, myName, null) {
+        value = parseArrayValue(tag, new ArrayResourceValueImpl(myNamespace, myName, null) {
           // Allow the user to specify a specific element to use via tools:index
           @Override
           protected int getDefaultIndex() {
@@ -320,7 +343,7 @@ public class PsiResourceItem implements ResourceItem {
         });
         break;
       case PLURALS:
-        value = parsePluralsValue(tag, new PluralsResourceValueImpl(myNamespace, myType, myName, null, null) {
+        value = parsePluralsValue(tag, new PluralsResourceValueImpl(myNamespace, myName, null, null) {
           // Allow the user to specify a specific quantity to use via tools:quantity
           @Override
           public String getValue() {
@@ -336,7 +359,7 @@ public class PsiResourceItem implements ResourceItem {
         });
         break;
       case STRING:
-        value = parseTextValue(tag, new PsiTextResourceValue(myNamespace, myType, myName, null, null, null));
+        value = parseTextValue(tag, new PsiTextResourceValue(myNamespace, myName, null, null, null));
         break;
       default:
         value = parseValue(tag, new ResourceValueImpl(myNamespace, myType, myName, null));
@@ -389,7 +412,7 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   @NotNull
-  private static AttrResourceValue parseAttrValue(@NotNull XmlTag attrTag, @NotNull AttrResourceValueImpl attrValue) {
+  private static AttrResourceValueImpl parseAttrValue(@NotNull XmlTag attrTag, @NotNull AttrResourceValueImpl attrValue) {
     attrValue.setDescription(getDescription(attrTag));
 
     Set<AttributeFormat> formats = EnumSet.noneOf(AttributeFormat.class);
@@ -551,9 +574,9 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   private class PsiTextResourceValue extends TextResourceValueImpl {
-    public PsiTextResourceValue(@NotNull ResourceNamespace namespace, @NotNull ResourceType type, @NotNull String name,
-                                @Nullable String textValue, @Nullable String rawXmlValue, @Nullable String libraryName) {
-      super(namespace, type, name, textValue, rawXmlValue, libraryName);
+    PsiTextResourceValue(@NotNull ResourceNamespace namespace, @NotNull String name,
+                         @Nullable String textValue, @Nullable String rawXmlValue, @Nullable String libraryName) {
+      super(namespace, name, textValue, rawXmlValue, libraryName);
     }
 
     @Override

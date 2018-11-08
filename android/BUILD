@@ -34,6 +34,7 @@ iml_module(
         "//tools/idea/platform/credential-store:intellij.platform.credentialStore",
         "//tools/idea/jvm/jvm-analysis-impl:intellij.jvm.analysis.impl",
         "//tools/idea/java/compiler/instrumentation-util-8:intellij.java.compiler.instrumentationUtil.java8",
+        "//tools/idea/plugins/maven/error-prone-compiler:intellij.maven.errorProne.compiler",
         "//tools/idea/plugins/IntelliLang/intellilang-jps-plugin:intellij.java.langInjection.jps",
         "//tools/adt/idea/adt-branding:intellij.android.adt.branding",
     ],
@@ -190,6 +191,7 @@ iml_module(
         "//tools/idea/platform/tasks-platform-impl:intellij.platform.tasks.impl",
         "//tools/idea/java/compiler/instrumentation-util-8:intellij.java.compiler.instrumentationUtil.java8",
         "//tools/idea/jvm/jvm-analysis-impl:intellij.jvm.analysis.impl",
+        "//tools/idea/plugins/maven/error-prone-compiler:intellij.maven.errorProne.compiler",
         "//tools/idea/plugins/IntelliLang/intellilang-jps-plugin:intellij.java.langInjection.jps",
     ],
     test_shard_count = 50,
@@ -380,14 +382,14 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/android/arch/lifecycle/runtime/1.1.1:aar",
         "//prebuilts/tools/common/m2/repository/android/arch/lifecycle/viewmodel/1.1.0:aar",
         "//prebuilts/tools/common/m2/repository/android/arch/lifecycle/viewmodel/1.1.1:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-common-ktx/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-common/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-fragment-ktx/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-fragment/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-runtime-ktx/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-runtime/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-ui-ktx/1.0.0-alpha06:aar",
-        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-ui/1.0.0-alpha06:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-common-ktx/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-common/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-fragment-ktx/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-fragment/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-runtime-ktx/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-runtime/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-ui-ktx/1.0.0-alpha07:aar",
+        "//prebuilts/tools/common/m2/repository/android/arch/navigation/navigation-ui/1.0.0-alpha07:aar",
         "//prebuilts/tools/common/m2/repository/android/arch/persistence/db-framework/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/android/arch/persistence/db/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/android/arch/persistence/room/common/1.0.0:jar",
@@ -1215,7 +1217,7 @@ maven_java_library(
 # ATTENTION: This file is generated from tools/buildSrc/base/dependencies.properties, see top of this file.
 maven_java_library(
     name = "org.jetbrains.kotlin_kotlin-reflect",
-    export_artifact = "//prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-reflect/1.2.71:jar",
+    export_artifact = "//prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-reflect/1.3.0:jar",
     visibility = ["//visibility:public"],
     exports = [":org.jetbrains.kotlin_kotlin-stdlib"],
 )
@@ -1223,7 +1225,7 @@ maven_java_library(
 # ATTENTION: This file is generated from tools/buildSrc/base/dependencies.properties, see top of this file.
 maven_java_library(
     name = "org.jetbrains.kotlin_kotlin-stdlib",
-    export_artifact = "//prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.2.71:jar",
+    export_artifact = "//prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.3.0:jar",
     visibility = ["//visibility:public"],
     exports = [":org.jetbrains_annotations"],
 )

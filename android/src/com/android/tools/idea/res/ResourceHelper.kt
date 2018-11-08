@@ -66,6 +66,7 @@ import com.android.tools.idea.editors.theme.MaterialColorUtils
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.rendering.GutterIconCache
 import com.android.tools.idea.res.aar.AarProtoResourceRepository
+import com.android.tools.idea.res.aar.FrameworkResourceRepository
 import com.android.tools.idea.util.toVirtualFile
 import com.android.tools.lint.detector.api.computeResourceName
 import com.android.tools.lint.detector.api.computeResourcePrefix
@@ -285,7 +286,8 @@ fun getResourceVariations(file: VirtualFile?, includeSelf: Boolean): List<Virtua
  * Returns the [VirtualFile] representing the source of the given resource item, or null
  * if the source of the resource item is unknown or there is no VirtualFile for it.
  */
-fun ResourceItem.getSourceAsVirtualFile(): VirtualFile? = if (this is PsiResourceItem) psiFile?.virtualFile else source?.toVirtualFile()
+fun ResourceItem.getSourceAsVirtualFile(): VirtualFile? =
+  runReadAction { if (this is PsiResourceItem) psiFile?.virtualFile else source?.toVirtualFile() }
 
 /**
  * Returns true if views with the given fully qualified class name need to include

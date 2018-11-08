@@ -82,9 +82,11 @@ public final class StudioFlags {
     "Checkbox mark adds a path to shipped offline repo to local.properties and references it in build.gradle's dependencies",
     false);
 
-  public static final Flag<Boolean> NPW_NAVIGATION_SUPPORT = Flag.create(
-    NPW, "navigation.support", "Add a navigation support for each template",
-    "Add a option what type of Navigation is added in the created Activity in the selected template",
+  public static final Flag<Boolean> NPW_USE_NAV_CONTROLLER = Flag.create(
+    NPW, "use.nav.controller", "Use Navigation Controller",
+    "Use Navigation Controller in a project that has multiple destinations, " +
+    "for example: Navigation Drawer Activity or Bottom Navigation Activity. This flag is used not to include the Navigation Component " +
+    "before it becomes stable.",
     false);
 
   private static final FlagGroup PROFILER = new FlagGroup(FLAGS, "profiler", "Android Profiler");
@@ -126,7 +128,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_SIMPLEPERF_HOST = Flag.create(
     PROFILER, "cpu.simpleperf.host", "Enable simpleperf report-sample to be run on the host.",
     "If enabled, simpleperf report-sample commands are going to be run on the host instead of the device.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_OPEN_CAPTURES = Flag.create(
     PROFILER, "profiler.open.captures", "Enable opening .trace and .hprof files",
@@ -300,25 +302,25 @@ public final class StudioFlags {
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> JVMTI_REFRESH = Flag.create(
+    RUNDEBUG,
+    "jvmti.refresh",
+    "Application refresh with JVMTI",
+    "Use JVMTI to support application refresh. This implies incremental deployment",
+    false);
+
   public static final Flag<Boolean> SELECT_DEVICE_SNAPSHOT_COMBO_BOX_VISIBLE = Flag.create(
     RUNDEBUG,
     "select.device.snapshot.combo.box.visible",
     "Show the Select Device/Snapshot combo box",
     "Show the Select Device/Snapshot combo box next to the Select Run/Debug Configuration one in the toolbar",
-    false);
+    JVMTI_REFRESH.get());
 
   public static final Flag<Boolean> SELECT_DEVICE_SNAPSHOT_COMBO_BOX_SNAPSHOTS_ENABLED = Flag.create(
     RUNDEBUG,
     "select.device.snapshot.combo.box.snapshots.enabled",
     "Enable Select Device/Snapshot combo box snapshots",
     "So the new Instant Run can use the combo box",
-    false);
-
-  public static final Flag<Boolean> JVMTI_REFRESH = Flag.create(
-    RUNDEBUG,
-    "jvmti.refresh",
-    "Application refresh with JVMTI",
-    "Use JVMTI to support application refresh. This implies incremental deployment",
     false);
 
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
@@ -414,7 +416,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> APK_DEBUG_BUILD_ID_CHECK = Flag
     .create(NDK, "apkdebugbuildidcheck", "Enable build ID check in APK debugging",
-            "If enabled, the build ID of user-provided symbol files are compared against the binaries inside the APK.", false);
+            "If enabled, the build ID of user-provided symbol files are compared against the binaries inside the APK.", true);
 
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
 

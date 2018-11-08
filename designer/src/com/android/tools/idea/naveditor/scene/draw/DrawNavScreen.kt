@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.naveditor.scene.draw
 
+import com.android.annotations.VisibleForTesting
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.scene.SceneContext
 import com.android.tools.idea.common.scene.draw.DrawCommand
@@ -32,7 +33,6 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Font
 import java.awt.Graphics2D
-import java.awt.Rectangle
 import java.awt.geom.AffineTransform
 import java.awt.geom.Rectangle2D
 
@@ -48,7 +48,7 @@ private const val FONT_NAME = "Default"
 /**
  * [DrawCommand] that draws a screen in the navigation editor.
  */
-class DrawNavScreen(@SwingCoordinate private val rectangle: Rectangle2D.Float,
+class DrawNavScreen(@VisibleForTesting @SwingCoordinate val rectangle: Rectangle2D.Float,
                     private val image: RefinableImage) : DrawCommandBase() {
 
   private constructor(sp: Array<String>) : this(stringToRect2D(sp[0]), RefinableImage())
@@ -90,7 +90,7 @@ class DrawNavScreen(@SwingCoordinate private val rectangle: Rectangle2D.Float,
     g.color = NavColorSet.PLACEHOLDER_BACKGROUND_COLOR
     g.fill(rectangle)
 
-    g.color = NavColorSet.THUMBNAIL_BORDER_COLOR
+    g.color = NavColorSet.PLACEHOLDER_TEXT_COLOR
     g.font = Font(FONT_NAME, Font.PLAIN, sceneContext.getSwingDimension(FONT_SIZE))
 
     var x = rectangle.x + (rectangle.width - g.fontMetrics.stringWidth(text1)) / 2

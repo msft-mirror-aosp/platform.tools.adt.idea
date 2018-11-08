@@ -25,10 +25,11 @@ import com.android.tools.idea.common.scene.SceneContext
 import com.android.tools.idea.common.scene.draw.DisplayList
 import com.android.tools.idea.common.scene.draw.DrawFilledRectangle
 import com.android.tools.idea.common.scene.draw.DrawLine
+import com.android.tools.idea.naveditor.model.className
 import com.android.tools.idea.naveditor.scene.DRAW_BACKGROUND_LEVEL
 import com.android.tools.idea.naveditor.scene.DRAW_NAV_SCREEN_LEVEL
 import com.android.tools.idea.naveditor.scene.NavColorSet.PLACEHOLDER_BACKGROUND_COLOR
-import com.android.tools.idea.naveditor.scene.NavColorSet.THUMBNAIL_BORDER_COLOR
+import com.android.tools.idea.naveditor.scene.NavColorSet.PLACEHOLDER_BORDER_COLOR
 import com.android.tools.idea.naveditor.scene.RefinableImage
 import com.android.tools.idea.naveditor.scene.ThumbnailManager
 import com.android.tools.idea.naveditor.scene.draw.DrawNavScreen
@@ -59,13 +60,15 @@ abstract class NavScreenDecorator : NavBaseDecorator() {
 
   protected fun drawScreen(list: DisplayList,
                            sceneContext: SceneContext,
-                           component: SceneComponent, @SwingCoordinate rectangle: Rectangle2D.Float) {
+                           component: SceneComponent,
+                           @SwingCoordinate rectangle: Rectangle2D.Float) {
     val layout = component.nlComponent.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT)
-    if (layout == null) {
+    val className = component.nlComponent.className
+    if (layout == null && className == null) {
       drawPlaceholder(list, rectangle)
     }
     else {
-      drawImage(list, sceneContext, component, rectangle)
+      drawImage(list, sceneContext, component, layout, rectangle)
     }
   }
 
@@ -78,24 +81,31 @@ abstract class NavScreenDecorator : NavBaseDecorator() {
     val p3 = Point2D.Float(p1.x + rectangle.width, p1.y)
     val p4 = Point2D.Float(p3.x, p2.y)
 
-    list.add(DrawLine(DRAW_NAV_SCREEN_LEVEL, p1, p4, THUMBNAIL_BORDER_COLOR, stroke))
-    list.add(DrawLine(DRAW_NAV_SCREEN_LEVEL, p2, p3, THUMBNAIL_BORDER_COLOR, stroke))
+    list.add(DrawLine(DRAW_NAV_SCREEN_LEVEL, p1, p4, PLACEHOLDER_BORDER_COLOR, stroke))
+    list.add(DrawLine(DRAW_NAV_SCREEN_LEVEL, p2, p3, PLACEHOLDER_BORDER_COLOR, stroke))
   }
 
-  private fun drawImage(list: DisplayList, sceneContext: SceneContext, component: SceneComponent, rectangle: Rectangle2D.Float) {
-    val image = buildImage(sceneContext, component, Dimension(rectangle.width.toInt(), rectangle.height.toInt()))
+  private fun drawImage(list: DisplayList,
+                        sceneContext: SceneContext,
+                        component: SceneComponent,
+                        layout: String?,
+                        rectangle: Rectangle2D.Float) {
+    val image = buildImage(sceneContext, component, layout, Dimension(rectangle.width.toInt(), rectangle.height.toInt()))
     list.add(DrawNavScreen(rectangle, image))
   }
 
   private fun buildImage(sceneContext: SceneContext,
                          component: SceneComponent,
+                         layout: String?,
                          dimensions: Dimension): RefinableImage {
     val empty = RefinableImage()
+    if (layout == null) {
+      return empty
+    }
     val surface = sceneContext.surface ?: return empty
     val configuration = surface.configuration ?: return empty
     val facet = surface.model?.facet ?: return empty
 
-    val layout = component.nlComponent.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT) ?: return empty
     val resourceUrl = ResourceUrl.parse(layout) ?: return empty
     if (resourceUrl.type != ResourceType.LAYOUT) {
       return empty

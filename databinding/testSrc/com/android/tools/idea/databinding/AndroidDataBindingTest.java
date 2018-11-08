@@ -68,14 +68,9 @@ public class AndroidDataBindingTest {
   @Before
   public void setUp() {
     JavaCodeInsightTestFixture fixture = getFixture();
-    
-    String androidTestDataPath = TestUtils.getWorkspaceFile("tools/adt/idea/android/testData").getPath();
-    // First, copy a basic manifest file, which is located in the testData root
-    fixture.setTestDataPath(androidTestDataPath);
-    fixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML);
-    // All followup requests to copy files should come from our databinding project
-    fixture.setTestDataPath(androidTestDataPath + "/databinding");
 
+    fixture.setTestDataPath(TestDataPaths.TEST_DATA_ROOT + "/databinding");
+    fixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML);
     AndroidFacet androidFacet = FacetManager.getInstance(myProjectRule.module).getFacetByType(AndroidFacet.ID);
     ModuleDataBinding.getInstance(androidFacet).setMode(myDataBindingMode);
   }

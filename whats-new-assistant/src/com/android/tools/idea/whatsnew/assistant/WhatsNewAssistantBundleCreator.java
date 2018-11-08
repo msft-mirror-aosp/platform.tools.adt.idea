@@ -26,14 +26,18 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
@@ -44,6 +48,7 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
   private static AssistantBundleCreator ourTestCreator = null;
 
   private WhatsNewAssistantURLProvider myURLProvider;
+  private WhatsNewAssistantConnectionOpener myConnectionOpener;
 
   private int lastSeenVersion = -1;
 
@@ -51,11 +56,17 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
    * Constructor initializes default production field, will be replaced in testing
    */
   public WhatsNewAssistantBundleCreator() {
-    this(new WhatsNewAssistantURLProvider());
+    this(new WhatsNewAssistantURLProvider(), new WhatsNewAssistantConnectionOpener());
   }
 
   public WhatsNewAssistantBundleCreator(@NotNull WhatsNewAssistantURLProvider urlProvider) {
+    this(urlProvider, new WhatsNewAssistantConnectionOpener());
+  }
+
+  public WhatsNewAssistantBundleCreator(@NotNull WhatsNewAssistantURLProvider urlProvider,
+                                        @NotNull WhatsNewAssistantConnectionOpener connectionOpener) {
     myURLProvider = urlProvider;
+    myConnectionOpener = connectionOpener;
   }
 
   @VisibleForTesting
@@ -76,8 +87,7 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
     updateConfig();
 
     // Parse and return the new bundle
-    URL localConfig = myURLProvider.getLocalConfig(getVersion());
-    return parseBundle(localConfig);
+    return parseBundle();
   }
 
   /**
@@ -94,10 +104,9 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
    */
   public boolean isNewConfigVersion() {
     // Check the current version
-    URL localConfig = myURLProvider.getLocalConfig(getVersion());
-    File localConfigFile = new File(localConfig.getPath());
-    if (localConfigFile.exists()) {
-      WhatsNewAssistantBundle oldBundle = parseBundle(localConfig);
+    Path localConfig = myURLProvider.getLocalConfig(getVersion());
+    if (Files.exists(localConfig)) {
+      WhatsNewAssistantBundle oldBundle = parseBundle();
       if (oldBundle != null) {
         lastSeenVersion = oldBundle.getVersion();
       }
@@ -107,7 +116,7 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
     updateConfig();
 
     // Parse and return the new bundle
-    WhatsNewAssistantBundle newBundle = parseBundle(localConfig);
+    WhatsNewAssistantBundle newBundle = parseBundle();
     if (newBundle != null && newBundle.getVersion() > lastSeenVersion) {
       return true;
     }
@@ -115,18 +124,58 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
   }
 
   /**
-   * Parse and return bundle from URL
-   * @param url
+   * Parse and return bundle from URL, retrying once after deleting local
+   * cache if the first try results in an error.
    * @return the bundle, or {@code null} if there is an error while parsing
    */
   @Nullable
-  private static WhatsNewAssistantBundle parseBundle(@NotNull URL url) {
-    try (InputStream configStream = url.openStream()){
+  private WhatsNewAssistantBundle parseBundle() {
+    WhatsNewAssistantBundle bundle = parseBundleWorker();
+    if (bundle != null)
+      return bundle;
+
+    // Error can be caused by corrupt/empty .xml config. First delete the local file, then retry.
+    try {
+      Path path = myURLProvider.getLocalConfig(getVersion());
+      Files.delete(path);
+    } catch (IOException e) {
+      getLog().warn("Error deleting cached file", e);
+      return null;
+    }
+
+    getLog().info("Retrying WNA parseBundle after deleting possibly corrupt file.");
+    updateConfig();
+    return parseBundleWorker();
+  }
+
+  /**
+   * Parse and return bundle from URL
+   * @return the bundle, or {@code null} if there is an error while parsing
+   */
+  @Nullable
+  private WhatsNewAssistantBundle parseBundleWorker() {
+    Path path = myURLProvider.getLocalConfig(getVersion());
+    try (InputStream configStream = openConfigStream()) {
+      if (configStream == null)
+        return null;
       return DefaultTutorialBundle.parse(configStream, WhatsNewAssistantBundle.class);
     }
     catch (Exception e) {
-      getLog().warn(String.format("Error parsing bundle from \"%s\"", url), e);
+      getLog().warn(String.format("Error parsing bundle from \"%s\"", path.toString()), e);
       return null;
+    }
+  }
+
+  @Nullable
+  private InputStream openConfigStream() throws FileNotFoundException {
+    Path path = myURLProvider.getLocalConfig(getVersion());
+    if (Files.exists(path)) {
+      return new FileInputStream(path.toFile());
+    }
+    else {
+      // If there is no existing config file, that means it has not been downloaded recently
+      // and there is no cache, so we just display the default resource.
+      return myURLProvider.getResourceFileAsStream(this, getVersion());
     }
   }
 
@@ -135,40 +184,25 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
    */
   private void updateConfig() {
     URL webConfig = myURLProvider.getWebConfig(getVersion());
-    URL localConfigPath = myURLProvider.getLocalConfig(getVersion());
+    Path localConfigPath = myURLProvider.getLocalConfig(getVersion());
 
     // Download XML from server and overwrite the local file
     if (StudioFlags.WHATS_NEW_ASSISTANT_DOWNLOAD_CONTENT.get()) {
-      if (downloadConfig(webConfig, localConfigPath)) return;
-    }
-
-    // If downloading doesn't work and file doesn't already exist, unpack it from resources
-    File localConfigFile = new File(localConfigPath.getPath());
-    if (!localConfigFile.exists()) {
-      try (InputStream configResource = myURLProvider.getResourceFileAsStream(this, getVersion());
-           OutputStream destinationStream = new FileOutputStream(localConfigFile)) {
-        if (configResource != null) {
-          FileUtil.copy(configResource, destinationStream);
-        } else {
-          // No resource file found and download didn't work
-          throw new IllegalStateException("Cannot get or generate WNA xml file");
-        }
-      }
-      catch (IOException e) {
-        getLog().warn(String.format("Error creating local file \"%s\"", localConfigFile), e);
-      }
+      downloadConfig(webConfig, localConfigPath);
     }
   }
 
   /**
    * Download config xml from the web, using a temporary file and then moving it to the fixed location
    */
-  private static boolean downloadConfig(@NotNull URL sourceUrl, @NotNull URL destinationFileUrl) {
+  private boolean downloadConfig(@NotNull URL sourceUrl, @NotNull Path destinationFilePath) {
     ReadableByteChannel byteChannel;
     try {
-      byteChannel = Channels.newChannel(sourceUrl.openStream());
+      // If timeout is not > 0, the default values are used: 60s read and 10s connect
+      URLConnection connection = myConnectionOpener.openConnection(sourceUrl, -1);
+      byteChannel = Channels.newChannel(connection.getInputStream());
     }
-    catch (IOException e) {
+    catch (Exception e) {
       getLog().warn(e);
       return false;
     }
@@ -183,7 +217,7 @@ public class WhatsNewAssistantBundleCreator implements AssistantBundleCreator {
           FileChannel fileChannel = outputStream.getChannel()
         ) {
           fileChannel.transferFrom(byteChannel, 0, Long.MAX_VALUE);
-          FileUtil.copy(temporaryConfig, new File(destinationFileUrl.getPath()));
+          FileUtil.copy(temporaryConfig, destinationFilePath.toFile());
           return true;
         }
       }

@@ -691,7 +691,7 @@ public class SceneComponent {
     viewGroupHandler.clearAttributes(component);
   }
 
-  public void addTarget(@NotNull Target target) {
+  protected void addTarget(@NotNull Target target) {
     target.setComponent(this);
     if (target instanceof ActionTarget) {
       // Action Targets are laid out by the ActionTargetGroup
@@ -859,8 +859,6 @@ public class SceneComponent {
       return;
     }
     myTargetProvider = targetProvider;
-
-    updateTargets();
   }
 
   /**

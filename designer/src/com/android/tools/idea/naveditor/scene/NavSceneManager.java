@@ -104,8 +104,6 @@ public class NavSceneManager extends SceneManager {
 
   private SceneDecoratorFactory myDecoratorFactory;
 
-  private NavigationSchema mySchema;
-
   public NavSceneManager(@NotNull NlModel model, @NotNull NavDesignSurface surface, @NotNull RenderSettings settings) {
     super(model, surface, settings);
     createSceneView();
@@ -164,6 +162,7 @@ public class NavSceneManager extends SceneManager {
       sceneComponent.setTargetProvider(sceneComponent.getNlComponent() == getDesignSurface().getCurrentNavigation()
                                        ? myNavigationTargetProvider
                                        : myScreenTargetProvider);
+      sceneComponent.updateTargets();
 
       switch (type) {
         case NAVIGATION:
@@ -209,6 +208,7 @@ public class NavSceneManager extends SceneManager {
     }
     else if (NavComponentHelperKt.isAction(sceneComponent.getNlComponent())) {
       sceneComponent.setTargetProvider(myNavActionTargetProvider);
+      sceneComponent.updateTargets();
     }
   }
 
@@ -690,14 +690,6 @@ public class NavSceneManager extends SceneManager {
     boundingBox.grow(BOUNDING_BOX_PADDING, BOUNDING_BOX_PADDING);
 
     return boundingBox;
-  }
-
-  @NotNull
-  public NavigationSchema getSchema() {
-    if (mySchema == null) {
-      mySchema = NavigationSchema.get(getModel().getModule());
-    }
-    return mySchema;
   }
 
   @NotNull

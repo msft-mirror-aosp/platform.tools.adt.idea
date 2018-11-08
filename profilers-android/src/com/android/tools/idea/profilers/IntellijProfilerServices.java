@@ -26,6 +26,7 @@ import com.android.tools.idea.profilers.stacktrace.IntellijCodeNavigator;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.profiler.CpuProfilerConfigsState;
+import com.android.tools.nativeSymbolizer.SymbolFilesLocatorKt;
 import com.android.tools.profilers.FeatureConfig;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.Notification;
@@ -50,6 +51,8 @@ import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import java.util.Map;
+import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -89,7 +92,7 @@ public class IntellijProfilerServices implements IdeProfilerServices {
     myCodeNavigator = new IntellijCodeNavigator(project, myFeatureTracker);
     myPersistentPreferences = new IntellijProfilerPreferences();
     myTemporaryPreferences = new TemporaryProfilerPreferences();
-    mySimpleperfSampleReporter = new SimpleperfSampleReporter();
+    mySimpleperfSampleReporter = new SimpleperfSampleReporter(() -> getNativeSymbolsDirectories());
   }
 
   @NotNull
@@ -350,6 +353,16 @@ public class IntellijProfilerServices implements IdeProfilerServices {
   @Override
   public TracePreProcessor getSimpleperfTracePreProcessor() {
     return mySimpleperfSampleReporter;
+  }
+
+  /**
+   * Gets a {@link Set} of directories containing the symbol files corresponding to the architecture of the process currently selected.
+   */
+  @NotNull
+  private Set<File> getNativeSymbolsDirectories() {
+    String arch = myCodeNavigator.getCpuAbiArch();
+    Map<String, Set<File>> archToDirectories = SymbolFilesLocatorKt.getArchToSymDirsMap(myProject);
+    return archToDirectories.containsKey(arch) ? archToDirectories.get(myCodeNavigator.getCpuAbiArch()) : Collections.emptySet();
   }
 
   @Override

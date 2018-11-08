@@ -15,6 +15,8 @@
  */
 package org.jetbrains.android;
 
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_APP;
+
 import com.android.SdkConstants;
 import com.android.tools.idea.flags.StudioFlags;
 import com.intellij.codeInsight.TargetElementUtil;
@@ -24,7 +26,15 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.*;
+import com.intellij.psi.JavaDirectoryService;
+import com.intellij.psi.JavaPsiFacade;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiDirectory;
+import com.intellij.psi.PsiDocumentManager;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiPackage;
 import com.intellij.psi.impl.JavaPsiFacadeEx;
 import com.intellij.psi.impl.PsiManagerImpl;
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageUtil;
@@ -39,12 +49,9 @@ import com.intellij.refactoring.rename.RenamePsiElementProcessor;
 import com.intellij.testFramework.TestActionEvent;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.util.List;
-
-import static com.android.builder.model.AndroidProject.PROJECT_TYPE_APP;
+import org.jetbrains.annotations.NotNull;
 
 public class AndroidRenameTest extends AndroidTestCase {
   private static final String BASE_PATH = "/rename/";
@@ -143,13 +150,6 @@ public class AndroidRenameTest extends AndroidTestCase {
     myFixture.configureFromExistingVirtualFile(f);
     moveClass("p1.p2.MyApplication", "p1");
     myFixture.checkResultByFile(BASE_PATH + getTestName(true) + "_after.xml");
-  }
-
-  public void testMoveDataBindingClass() throws Throwable {
-    myFixture.copyFileToProject("databinding/src/p1/p2/DummyClass.java", "src/p1/p2/DummyClass.java");
-    myFixture.copyFileToProject("databinding/res/layout/basic_binding.xml", "res/layout/basic_binding.xml");
-    moveClassNoTextReferences("p1.p2.DummyClass", "p1");
-    myFixture.checkResultByFile("res/layout/basic_binding.xml", "databinding/res/layout/basic_binding_after.xml", true);
   }
 
   public void testAndroidManifestRenameClass1() throws Throwable {

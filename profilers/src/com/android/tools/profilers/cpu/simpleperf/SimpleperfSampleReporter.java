@@ -22,6 +22,9 @@ import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -36,13 +39,21 @@ public final class SimpleperfSampleReporter implements TracePreProcessor {
 
   private final String myHomePath;
 
-  public SimpleperfSampleReporter() {
-    this(PathManager.getHomePath());
+  /**
+   * Directories where the .so files are located. They're passed to simpleperf report-sample command using the --symdir flag.
+   * One --symdir flag should be passed for each directory provided. If the returned {@link Set} is empty, the --symdir flag is not passed.
+   */
+  @NotNull
+  private Supplier<Set<File>> mySymbolsDirs;
+
+  public SimpleperfSampleReporter(@NotNull Supplier<Set<File>> symbolsDirs) {
+    this(PathManager.getHomePath(), symbolsDirs);
   }
 
   @VisibleForTesting
-  SimpleperfSampleReporter(@NotNull String homePath) {
+  SimpleperfSampleReporter(@NotNull String homePath, @NotNull Supplier<Set<File>> symbolsDirs) {
     myHomePath = homePath;
+    mySymbolsDirs = symbolsDirs;
   }
 
   private static Logger getLogger() {
@@ -84,9 +95,17 @@ public final class SimpleperfSampleReporter implements TracePreProcessor {
     }
   }
 
-  private String getReportSampleCommand(@NotNull ByteString trace, @NotNull File processedTrace) throws IOException {
-    return String.format("%s report-sample --protobuf --show-callchain -i %s -o %s",
-                         getSimpleperfBinaryPath(), tempFileFromByteString(trace).getAbsolutePath(), processedTrace.getAbsolutePath());
+  @VisibleForTesting
+  String getReportSampleCommand(@NotNull ByteString trace, @NotNull File processedTrace) throws IOException {
+    Iterator<File> symbolsDirs = mySymbolsDirs.get().iterator();
+    StringBuilder symDirFlags = new StringBuilder();
+    while (symbolsDirs.hasNext()) {
+      symDirFlags.append(" --symdir ");
+      symDirFlags.append(symbolsDirs.next().getAbsolutePath());
+    }
+    return String.format("%s report-sample --protobuf --show-callchain -i %s -o %s %s",
+                         getSimpleperfBinaryPath(), tempFileFromByteString(trace).getAbsolutePath(),
+                         processedTrace.getAbsolutePath(), symDirFlags.toString());
   }
 
   @VisibleForTesting

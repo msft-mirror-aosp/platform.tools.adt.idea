@@ -15,141 +15,151 @@
  */
 package com.android.tools.idea.uibuilder.handlers.motion.property2;
 
-import com.android.tools.idea.common.model.NlComponent;
+import static com.android.tools.idea.uibuilder.handlers.motion.property2.MotionLayoutPropertyProvider.mapToCustomType;
+
+import com.android.SdkConstants;
 import com.android.tools.idea.common.property2.api.PropertiesModel;
-import com.android.tools.idea.common.property2.api.PropertiesModelListener;
-import com.android.tools.idea.common.property2.api.PropertiesTable;
 import com.android.tools.idea.common.surface.DesignSurface;
-import com.android.tools.idea.common.surface.DesignSurfaceListener;
+import com.android.tools.idea.uibuilder.api.AccessoryPanelInterface;
+import com.android.tools.idea.uibuilder.handlers.motion.MotionSceneString;
+import com.android.tools.idea.uibuilder.handlers.motion.timeline.GanttEventListener;
 import com.android.tools.idea.uibuilder.handlers.motion.timeline.MotionSceneModel;
+import com.android.tools.idea.uibuilder.property2.NelePropertiesModel;
+import com.android.tools.idea.uibuilder.property2.NelePropertyItem;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.TransactionGuard;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPsiElementPointer;
+import com.intellij.psi.xml.XmlTag;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * {@link PropertiesModel} for motion layout property editor.
+ */
+public class MotionLayoutAttributesModel extends NelePropertiesModel {
 
-public class MotionLayoutAttributesModel implements PropertiesModel<MotionPropertyItem>, Disposable {
-  private final List<PropertiesModelListener> myListeners;
-  private final MotionLayoutPropertyProvider myPropertyProvider;
-  private DesignSurface mySurface;
-  private DesignSurfaceListener mySurfaceListener;
-  private TimelineOwner myTimeline;
-  private TimelineListener myTimelineListener;
-  private PropertiesTable<MotionPropertyItem> myPropertiesTable;
-
-  public MotionLayoutAttributesModel(@NotNull Disposable parentDisposable) {
-    myListeners = new ArrayList<>();
-    myPropertyProvider = new MotionLayoutPropertyProvider();
-    myPropertiesTable = PropertiesTable.Companion.emptyTable();
-    mySurfaceListener = new PropertiesDesignSurfaceListener();
-    myTimelineListener = new PropertiesTimelineListener();
-    Disposer.register(parentDisposable, this);
+  public MotionLayoutAttributesModel(@NotNull Disposable parentDisposable, @NotNull AndroidFacet facet) {
+    super(parentDisposable, new MotionLayoutPropertyProvider(facet), facet);
   }
 
   @Override
-  public void dispose() {
-    setSurface(null);
-    setTimeline(null);
+  @Nullable
+  public String getPropertyValue(@NotNull NelePropertyItem property) {
+    XmlTag tag = getTag(property);
+    if (tag == null) {
+      return null;
+    }
+    if (tag.getLocalName().equals(MotionSceneString.KeyAttributes_customAttribute)) {
+      return tag.getAttributeValue(mapToCustomType(property.getType()), SdkConstants.AUTO_URI);
+    }
+    return tag.getAttributeValue(property.getName(), property.getNamespace());
+  }
+
+  @Override
+  public void setPropertyValue(@NotNull NelePropertyItem property, @Nullable String newValue) {
+    ApplicationManager.getApplication().assertIsDispatchThread();
+    TransactionGuard.submitTransaction(this, () -> {
+      XmlTag tag = getTag(property);
+      if (tag != null) {
+        WriteCommandAction.runWriteCommandAction(
+          getFacet().getModule().getProject(),
+          "Set $componentName.$name to $newValue",
+          null,
+          () -> setPropertyValue(tag, property, newValue));
+      }
+    });
+  }
+
+  private static void setPropertyValue(@NotNull XmlTag tag, @NotNull NelePropertyItem property, @Nullable String newValue) {
+    if (tag.getLocalName().equals(MotionSceneString.KeyAttributes_customAttribute)) {
+      tag.setAttribute(mapToCustomType(property.getType()), SdkConstants.AUTO_URI, newValue);
+    }
+    else {
+      tag.setAttribute(property.getName(), property.getNamespace(), newValue);
+    }
+  }
+
+  public void createCustomXmlTag(@NotNull XmlTag keyFrameOrConstraint,
+                                 @NotNull String attrName,
+                                 @NotNull String value,
+                                 @NotNull MotionSceneModel.CustomAttributes.Type type,
+                                 @NotNull Consumer<XmlTag> operation) {
+    List<XmlTag> oldTags = Arrays.stream(keyFrameOrConstraint.findSubTags(MotionSceneString.KeyAttributes_customAttribute))
+      .filter(tag -> attrName.equals(tag.getAttribute(MotionSceneString.CustomAttributes_attributeName, SdkConstants.AUTO_URI)))
+      .collect(Collectors.toList());
+
+    Runnable transaction = () -> {
+      oldTags.forEach(tag -> tag.delete());
+
+      XmlTag createdTag = keyFrameOrConstraint.createChildTag(MotionSceneString.KeyAttributes_customAttribute, null, null, false);
+      createdTag = keyFrameOrConstraint.addSubTag(createdTag, false);
+      createdTag.setAttribute(MotionSceneString.CustomAttributes_attributeName, SdkConstants.AUTO_URI, attrName);
+      createdTag.setAttribute(type.getTagName(), SdkConstants.AUTO_URI, StringUtil.isNotEmpty(value) ? value : type.getDefaultValue());
+
+      operation.accept(createdTag);
+    };
+
+    ApplicationManager.getApplication().assertIsDispatchThread();
+    TransactionGuard.submitTransaction(this, () ->
+      WriteCommandAction.runWriteCommandAction(
+        getFacet().getModule().getProject(),
+        "Set $componentName.$name to $newValue",
+        null,
+        transaction,
+        keyFrameOrConstraint.getContainingFile()));
+  }
+
+  public void deleteTag(@NotNull XmlTag tag, @NotNull Runnable operation) {
+    PsiFile file = tag.getContainingFile();
+    Runnable transaction = () -> {
+      tag.delete();
+      operation.run();
+    };
+
+    ApplicationManager.getApplication().assertIsDispatchThread();
+    TransactionGuard.submitTransaction(this, () ->
+      WriteCommandAction.runWriteCommandAction(
+        getFacet().getModule().getProject(),
+        "Set $componentName.$name to $newValue",
+        null,
+        transaction,
+        file));
+  }
+
+  @Override
+  protected void updateDesignSurface(@Nullable DesignSurface oldSurface, @Nullable DesignSurface newSurface) {
+    setAccessoryPanelListener(oldSurface, newSurface);
+    useCurrentPanel(newSurface);
+  }
+
+  @Override
+  protected boolean wantComponentSelectionUpdate(@Nullable DesignSurface surface,
+                                                 @Nullable DesignSurface activeSurface,
+                                                 @Nullable AccessoryPanelInterface activePanel) {
+    return false;
+  }
+
+  @Override
+  protected boolean wantPanelSelectionUpdate(@NotNull AccessoryPanelInterface panel, @Nullable AccessoryPanelInterface activePanel) {
+    return panel == activePanel && panel.getSelectedAccessory() != null && panel instanceof GanttEventListener;
   }
 
   @Nullable
-  public DesignSurface getSurface() {
-    return mySurface;
-  }
-
-  public void setSurface(@Nullable DesignSurface surface) {
-    if (surface == mySurface) {
-      return;
+  public static XmlTag getTag(@NotNull NelePropertyItem property) {
+    @SuppressWarnings("unchecked")
+    SmartPsiElementPointer<XmlTag> tagPointer = (SmartPsiElementPointer<XmlTag>)property.getOptionalValue();
+    if (tagPointer == null) {
+      return null;
     }
-
-    if (mySurface != null) {
-      mySurface.removeListener(mySurfaceListener);
-    }
-    mySurface = surface;
-    if (mySurface != null) {
-      mySurface.addListener(mySurfaceListener);
-    }
-  }
-
-  private void setTimeline(@Nullable TimelineOwner timeline) {
-    if (timeline == myTimeline) {
-      return;
-    }
-
-    if (myTimeline != null) {
-      myTimeline.removeTimeLineListener(myTimelineListener);
-    }
-    myTimeline = timeline;
-    if (myTimeline != null) {
-      myTimeline.addTimelineListener(myTimelineListener);
-    }
-  }
-
-  @NotNull
-  @Override
-  public PropertiesTable<MotionPropertyItem> getProperties() {
-    return myPropertiesTable;
-  }
-
-  @Override
-  public void deactivate() {
-    myPropertiesTable = PropertiesTable.Companion.emptyTable();
-  }
-
-  @Override
-  public void addListener(@NotNull PropertiesModelListener listener) {
-    myListeners.add(listener);
-  }
-
-  @Override
-  public void removeListener(@NotNull PropertiesModelListener listener) {
-    myListeners.remove(listener);
-  }
-
-  private void designSelectionUpdate(@NotNull DesignSurface surface, @NotNull List<NlComponent> selection) {
-    if (surface != mySurface) {
-      return;
-    }
-    if (selection.isEmpty()) {
-      setTimeline(null);
-      return;
-    }
-    NlComponent component = selection.get(0);
-    Object property = component.getClientProperty(TimelineOwner.TIMELINE_PROPERTY);
-    if (property instanceof TimelineOwner) {
-      setTimeline((TimelineOwner)property);
-      return;
-    }
-    NlComponent parent = component.getParent();
-    property = parent != null ? parent.getClientProperty(TimelineOwner.TIMELINE_PROPERTY) : null;
-    if (property instanceof TimelineOwner) {
-      setTimeline((TimelineOwner)property);
-    }
-    else {
-      setTimeline(null);
-    }
-  }
-
-  private void displayKeyFrame(@Nullable MotionSceneModel.KeyFrame keyFrame) {
-    if (keyFrame != null) {
-      myPropertiesTable = myPropertyProvider.getProperties(keyFrame);
-      myListeners.forEach(listener -> listener.propertiesGenerated(this));
-    }
-  }
-
-  private class PropertiesDesignSurfaceListener implements DesignSurfaceListener {
-    @Override
-    public void componentSelectionChanged(@NotNull DesignSurface surface, @NotNull List<NlComponent> newSelection) {
-      designSelectionUpdate(surface, newSelection);
-    }
-  }
-
-  private class PropertiesTimelineListener implements TimelineListener {
-    @Override
-    public void updateSelection(@Nullable MotionSceneModel.KeyFrame keyFrame) {
-      displayKeyFrame(keyFrame);
-    }
+    return tagPointer.getElement();
   }
 }

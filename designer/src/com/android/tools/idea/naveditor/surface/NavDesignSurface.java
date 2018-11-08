@@ -79,6 +79,8 @@ import com.intellij.util.ui.UIUtil;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
@@ -125,6 +127,14 @@ public class NavDesignSurface extends DesignSurface {
     // TODO: add nav-specific issues
     // getIssueModel().addIssueProvider(new NavIssueProvider(project));
     myEditorPanel = editorPanel;
+
+    addComponentListener(new ComponentAdapter() {
+      @Override
+      public void componentResized(ComponentEvent e) {
+        removeComponentListener(this);
+        requestRender();
+      }
+    });
   }
 
   @Override
@@ -135,6 +145,12 @@ public class NavDesignSurface extends DesignSurface {
     }
     getScheduleRef().set(null);
     super.dispose();
+  }
+
+  @VisibleForTesting
+  @Nullable
+  NlEditorPanel getEditorPanel() {
+    return myEditorPanel;
   }
 
   @Override
@@ -273,17 +289,27 @@ public class NavDesignSurface extends DesignSurface {
 
       NavigationSchema schema = NavigationSchema.get(module);
       if (!schema.quickValidate()) {
-        myEditorPanel.getWorkBench().showLoading("Refreshing Navigators...");
+        NlEditorPanel editorPanel = getEditorPanel();
+        if (editorPanel != null) {
+          editorPanel.getWorkBench().showLoading("Refreshing Navigators...");
+        }
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
           try {
             schema.rebuildSchema().get();
-            ApplicationManager.getApplication().invokeLater(() -> myEditorPanel.getWorkBench().hideLoading());
+            if (editorPanel != null) {
+              ApplicationManager.getApplication().invokeLater(() -> editorPanel.getWorkBench().hideLoading());
+            }
           }
           catch (Exception e) {
-            ApplicationManager.getApplication().invokeLater(
-              () -> myEditorPanel.getWorkBench().loadingStopped("Error refreshing Navigators"));
+            if (editorPanel != null) {
+              ApplicationManager.getApplication().invokeLater(
+                () -> editorPanel.getWorkBench().loadingStopped("Error refreshing Navigators"));
+            }
           }
         });
+      }
+      else {
+        schema.rebuildSchema();
       }
     }
   }
@@ -295,10 +321,31 @@ public class NavDesignSurface extends DesignSurface {
 
   @NotNull
   public NlComponent getCurrentNavigation() {
-    if (myCurrentNavigation == null || myCurrentNavigation.getModel() != getModel()) {
+    if (!validateCurrentNavigation()) {
       refreshRoot();
     }
     return myCurrentNavigation;
+  }
+
+  private Boolean validateCurrentNavigation() {
+    NlComponent current = myCurrentNavigation;
+    if (current == null || current.getModel() != getModel()) {
+      return false;
+    }
+
+    while (current.getParent() != null) {
+      NlComponent parent = current.getParent();
+      if (!parent.getChildren().contains(current)) {
+        return false;
+      }
+
+      current = parent;
+    }
+
+    List<NlComponent> components = getModel().getComponents();
+    assert (components.size() == 1);
+
+    return (current == components.get(0));
   }
 
   public void setCurrentNavigation(@NotNull NlComponent currentNavigation) {
@@ -584,7 +631,12 @@ public class NavDesignSurface extends DesignSurface {
         }
       }
     }
-    myCurrentNavigation = match;
+
+    if (myCurrentNavigation != match) {
+      myCurrentNavigation = match;
+      getSelectionModel().setSelection((ImmutableList.of(myCurrentNavigation)));
+    }
+
     zoomToFit();
   }
 
