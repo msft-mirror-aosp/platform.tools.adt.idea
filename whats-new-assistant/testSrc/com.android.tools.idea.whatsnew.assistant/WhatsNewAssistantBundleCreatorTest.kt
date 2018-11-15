@@ -206,4 +206,30 @@ class WhatsNewAssistantBundleCreatorTest : AndroidTestCase() {
       TestCase.assertEquals("Test What's New from Class Resource", bundle.name)
     }
   }
+
+  /**
+   * Test that WNA bundle creator correctly identifies when an updated config has
+   * a higher version field than the previous existing config
+   */
+  @Test
+  fun testNewConfigVersion() {
+    StudioFlags.WHATS_NEW_ASSISTANT_DOWNLOAD_CONTENT.override(false)
+
+    // Since download is disabled, the current file will be defaultresource-3.3.0.xml, version 100
+    val bundleCreator = WhatsNewAssistantBundleCreator(mockUrlProvider)
+
+    // Disabled download means last seen version is from default resource, so 100 = 100
+    TestCase.assertFalse(bundleCreator.isNewConfigVersion)
+
+    // After enabling download, the new file will be server-3.3.0.xml, version 150
+    StudioFlags.WHATS_NEW_ASSISTANT_DOWNLOAD_CONTENT.override(true)
+    TestCase.assertTrue(bundleCreator.isNewConfigVersion)
+
+    // And running once again should be false because last seen is now 150
+    TestCase.assertFalse(bundleCreator.isNewConfigVersion)
+
+    // Disabling download again should use local-3.3.0.xml, cached from the download, version 150
+    StudioFlags.WHATS_NEW_ASSISTANT_DOWNLOAD_CONTENT.override(false)
+    TestCase.assertFalse(bundleCreator.isNewConfigVersion)
+  }
 }

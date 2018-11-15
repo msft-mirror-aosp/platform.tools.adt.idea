@@ -16,7 +16,7 @@
 package com.android.tools.idea.resourceExplorer.view
 
 import com.android.resources.ResourceType
-import com.android.tools.idea.resourceExplorer.ImageCache
+import com.android.tools.idea.resourceExplorer.ImageCacheRule
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.google.common.truth.Truth
@@ -24,6 +24,7 @@ import com.intellij.mock.MockVirtualFile
 import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.UIUtil
 import org.junit.Ignore
+import org.junit.Rule
 import org.junit.Test
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -35,10 +36,12 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class DrawableResourceCellRendererTest {
 
-  private val imageCache = ImageCache()
+  @get:Rule
+  var imageCacheRule = ImageCacheRule()
 
   @Ignore("b/117130787")
   @Test
@@ -55,13 +58,14 @@ class DrawableResourceCellRendererTest {
       }
     }
     val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCache) {
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCacheRule.imageCache) {
       jList.paintImmediately(jList.bounds)
       latch.countDown()
     }
     val designAssetSet = DesignAssetSet("name", listOf(DesignAsset(MockVirtualFile("file.png"), emptyList(), ResourceType.DRAWABLE)))
     renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
-    latch.await(10, TimeUnit.MILLISECONDS)
+    assertTrue(latch.await(1, TimeUnit.SECONDS))
+
     val component = renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
     val icon = UIUtil.findComponentsOfType(component, JLabel::class.java).first().icon as ImageIcon
     val result = ImageUtil.toBufferedImage(icon.image)
@@ -81,14 +85,9 @@ class DrawableResourceCellRendererTest {
         fillRect(0, 0, 100, 100)
       }
     }
-    val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCache) {
-      jList.paintImmediately(jList.bounds)
-      latch.countDown()
-    }
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(image) }, imageCacheRule.imageCache) {}
     val designAssetSet = DesignAssetSet("name", listOf(DesignAsset(MockVirtualFile("file.png"), emptyList(), ResourceType.DRAWABLE)))
     renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
-    latch.await(10, TimeUnit.MILLISECONDS)
     val component = renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
     val icon = UIUtil.findComponentsOfType(component, JLabel::class.java).first().icon as ImageIcon
     val result = ImageUtil.toBufferedImage(icon.image)
@@ -99,18 +98,19 @@ class DrawableResourceCellRendererTest {
 
   @Test
   fun nullImage() {
-    val jList = AssetListView(emptyList()).apply {
-      fixedCellHeight = 100
-      fixedCellWidth = 100
+    val jList = AssetListView(
+      listOf(DesignAssetSet("name", listOf(DesignAsset(MockVirtualFile("file.png"), emptyList(), ResourceType.DRAWABLE))))).apply {
+      thumbnailWidth = 100
+      setBounds(0, 0, 1000, 1000)
     }
+
     val latch = CountDownLatch(1)
-    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(null) }, imageCache) {
-      jList.paintImmediately(jList.bounds)
+    val renderer = DrawableResourceCellRenderer({ _, _ -> CompletableFuture.completedFuture(null) }, imageCacheRule.imageCache) {
       latch.countDown()
     }
     val designAssetSet = DesignAssetSet("name", listOf(DesignAsset(MockVirtualFile("file.png"), emptyList(), ResourceType.DRAWABLE)))
     renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
-    latch.await(10, TimeUnit.MILLISECONDS)
+    assertTrue(latch.await(1, TimeUnit.SECONDS))
     val component = renderer.getListCellRendererComponent(jList, designAssetSet, 0, false, false) as JComponent
     val icon = UIUtil.findComponentsOfType(component, JLabel::class.java).first().icon as ImageIcon
     assertNotNull(icon)

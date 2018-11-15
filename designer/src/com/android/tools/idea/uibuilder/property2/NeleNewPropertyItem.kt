@@ -53,6 +53,11 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
       model.firePropertyValueChange()
     }
 
+  override fun isSameProperty(qualifiedName: String): Boolean {
+    val (propertyNamespace, propertyName) = parseName(qualifiedName)
+    return name == propertyName && namespace == propertyNamespace
+  }
+
   // There should only be one instance of NeleNewPropertyItem per Property panel.
   override fun equals(other: Any?) = other is NeleNewPropertyItem
   // The hashCode can be an arbitrary number since we only have 1 instance
@@ -62,7 +67,7 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
    * When the property name is set to something valid, the [delegate] will be not null.
    * All remaining properties and functions should delegate to this [delegate] if present.
    */
-  var delegate: NelePropertyItem? = null
+  override var delegate: NelePropertyItem? = null
     private set
 
   override val nameEditingSupport = object : EditingSupport {
@@ -153,6 +158,7 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
     val (propertyNamespace, propertyName) = parseName(value)
     val property = findDelegate(propertyNamespace, propertyName)
     return when {
+      value.isEmpty() -> EDITOR_NO_ERROR
       property == null -> Pair(EditingErrorCategory.ERROR, "No property found by the name: '$value'")
       property.rawValue != null -> Pair(EditingErrorCategory.ERROR, "A property by the name: '$value' is already specified")
       else -> EDITOR_NO_ERROR

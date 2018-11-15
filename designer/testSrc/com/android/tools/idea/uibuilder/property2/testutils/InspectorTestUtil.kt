@@ -45,8 +45,9 @@ import com.intellij.openapi.actionSystem.AnAction
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class InspectorTestUtil(projectRule: AndroidProjectRule, tag: String, parentTag: String = "")
-  : SupportTestUtil(projectRule, tag, parentTag) {
+class InspectorTestUtil(projectRule: AndroidProjectRule, vararg tags: String, parentTag: String = "")
+  : SupportTestUtil(projectRule, *tags, parentTag = parentTag) {
+
   private val _properties: Table<String, String, NelePropertyItem> = HashBasedTable.create()
 
   val properties: PropertiesTable<NelePropertyItem> = PropertiesTableImpl(_properties)
@@ -128,6 +129,10 @@ class FakeTableLine(override val tableModel: PTableModel) : FakeInspectorLine(Li
   override fun stopEditing() {
     selectedItem = null
   }
+
+  override fun refresh() {
+    tableModel.refresh()
+  }
 }
 
 class FakeInspectorPanel : InspectorPanel {
@@ -165,6 +170,10 @@ class FakeInspectorPanel : InspectorPanel {
     lines.add(line)
     addAsChild(line, parent)
     return line
+  }
+
+  fun refresh() {
+    lines.forEach { it.refresh() }
   }
 
   private fun addAsChild(child: FakeInspectorLine, parent: InspectorLineModel?) {

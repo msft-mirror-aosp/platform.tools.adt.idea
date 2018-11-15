@@ -49,6 +49,7 @@ class Group(name: String, vararg childItems: PTableItem) : Item(name, null), PTa
 class PTableTestModel(vararg items: PTableItem) : PTableModel {
   private val listeners = mutableListOf<PTableModelUpdateListener>()
   override val items = mutableListOf(*items)
+  override var editedItem: PTableItem? = null
 
   override fun isCellEditable(item: PTableItem, column: PTableColumn): Boolean =
     when (column) {
@@ -56,10 +57,10 @@ class PTableTestModel(vararg items: PTableItem) : PTableModel {
       PTableColumn.VALUE -> item.name != "readonly"
     }
 
-  fun updateTo(vararg newItems: PTableItem) {
+  fun updateTo(modelChanged: Boolean, vararg newItems: PTableItem) {
     items.clear()
     items.addAll(listOf(*newItems))
-    listeners.forEach { it.itemsUpdated() }
+    listeners.forEach { it.itemsUpdated(modelChanged, null) }
   }
 
   override fun addListener(listener: PTableModelUpdateListener) {
@@ -78,4 +79,3 @@ class DummyPTableCellEditorProvider : PTableCellEditorProvider {
     return editor
   }
 }
-

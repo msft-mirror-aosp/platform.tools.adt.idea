@@ -18,6 +18,7 @@ package com.android.tools.profilers.cpu.simpleperf
 import com.android.testutils.TestUtils
 import com.android.tools.profiler.protobuf3jarjar.ByteString
 import com.android.tools.profilers.cpu.CpuProfilerTestUtils
+import com.android.tools.profilers.cpu.TracePreProcessor
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.io.FileUtil
 import org.junit.Before
@@ -51,7 +52,7 @@ class SimpleperfSampleReporterTest {
   @Test
   fun preProcessingInvalidTraceReturnsFailure() {
     val processedTrace = sampleReporter.preProcessTrace(ByteString.copyFromUtf8("bad trace"))
-    assertThat(processedTrace).isEqualTo(SimpleperfSampleReporter.FAILURE)
+    assertThat(processedTrace).isEqualTo(TracePreProcessor.FAILURE)
 
     val trace = FileUtil.createTempFile("cpu_trace", ".trace", true)
     FileOutputStream(trace).use { out -> out.write(processedTrace.toByteArray()) }
@@ -64,7 +65,7 @@ class SimpleperfSampleReporterTest {
   @Test
   fun preProcessingRawTraceReturnsValidTrace() {
     val processedTrace = sampleReporter.preProcessTrace(CpuProfilerTestUtils.traceFileToByteString("simpleperf_raw_trace.trace"))
-    assertThat(processedTrace).isNotEqualTo(SimpleperfSampleReporter.FAILURE)
+    assertThat(processedTrace).isNotEqualTo(TracePreProcessor.FAILURE)
 
     val trace = FileUtil.createTempFile("cpu_trace", ".trace", true)
     FileOutputStream(trace).use { out -> out.write(processedTrace.toByteArray()) }
@@ -132,13 +133,19 @@ class SimpleperfSampleReporterTest {
   fun providingMultipleSymDirsResultsInMultipleFlags() {
     val symDir1 = TestUtils.getWorkspaceFile("tools/adt/idea/profilers/testData/cputraces")
     val symDir2 = TestUtils.getWorkspaceFile("tools/adt/idea/profilers/testData")
-    val reporter = SimpleperfSampleReporter(ideaHome.toString()) { hashSetOf(symDir1, symDir2) }
+    // Passing a linked set is important for this test so we have predictable iteration order and can make the index checks below
+    val reporter = SimpleperfSampleReporter(ideaHome.toString()) { linkedSetOf(symDir1, symDir2) }
     val rawTrace = CpuProfilerTestUtils.traceFileToByteString("simpleperf_trace_without_symbols.trace")
 
     // When providing multiples path to SimpleperfSampleReporter, we should include a --symdir flag in the report-sample command
     // corresponding to each directory passed.
     val command = reporter.getReportSampleCommand(rawTrace, FileUtil.createTempFile("any", "file", true))
-    assertThat(command).contains("--symdir " + symDir1.absolutePath)
-    assertThat(command).contains("--symdir " + symDir2.absolutePath)
+    assertThat(command.count {it == "--symdir"}).isEqualTo(2)
+
+    val firstSymDirIndex = command.indexOfFirst { it == "--symdir" }
+    assertThat(command[firstSymDirIndex + 1]).isEqualTo(symDir1.absolutePath)
+
+    val secondSymDirIndex = command.indexOfLast { it == "--symdir" }
+    assertThat(command[secondSymDirIndex + 1]).isEqualTo(symDir2.absolutePath)
   }
 }

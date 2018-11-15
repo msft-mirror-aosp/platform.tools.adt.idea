@@ -59,6 +59,7 @@ internal class CommonDragHandler(editor: ViewEditor,
     dragTarget = CommonDragTarget(component, fromToolWindow = true)
 
     component.setTargetProvider { _ -> mutableListOf<Target>(dragTarget) }
+    component.updateTargets()
     // Note: Don't use [dragged] in this lambda function since the content of components may be replaced within interaction.
     // This weird implementation may be fixed in the future, but we just work around here.
     component.setComponentProvider { _ -> components[0] }
@@ -88,6 +89,7 @@ internal class CommonDragHandler(editor: ViewEditor,
     if (dragTarget == null) {
       return
     }
+    dragTarget.insertType = insertType
     @AndroidDpCoordinate val dx = editor.pxToDp(x)
     @AndroidDpCoordinate val dy = editor.pxToDp(y)
     dragTarget.mouseRelease(dx, dy, emptyList())

@@ -28,8 +28,19 @@ interface NewPropertyItem: PropertyItem {
   override var name: String
 
   /**
+   * The [PropertyItem] designated with the [namespace] and [name] of this new property.
+   */
+  val delegate: PropertyItem?
+    get() = null
+
+  /**
    * Editing support while editing this properties name.
    */
   val nameEditingSupport: EditingSupport
     get() = EditingSupport.INSTANCE
+
+  /**
+   * Return true if the qualified name is the same as the property specified.
+   */
+  fun isSameProperty(qualifiedName: String): Boolean
 }

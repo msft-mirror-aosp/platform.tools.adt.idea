@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.diagnostics;
 
+import com.android.tools.idea.diagnostics.report.DiagnosticReport;
 import java.util.function.Consumer;
 
 public class ThreadSamplingReport {

@@ -15,41 +15,37 @@
  */
 package com.android.tools.idea.resourceExplorer.viewmodel
 
-import com.android.ide.common.resources.configuration.DensityQualifier
 import com.android.tools.idea.resourceExplorer.importer.DesignAssetImporter
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.android.tools.idea.resourceExplorer.plugin.DesignAssetRendererManager
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.ui.JBUI
 import org.jetbrains.android.facet.AndroidFacet
 import java.awt.Image
+import java.util.concurrent.CompletableFuture
 
 /**
  * ViewModel for [ResourceImportDialogViewModel]
  */
-class ResourceImportDialogViewModel(private val facet: AndroidFacet,
-                                    private val assetSets: List<DesignAssetSet>,
+class ResourceImportDialogViewModel(val facet: AndroidFacet,
+                                    val assetSets: List<DesignAssetSet>,
                                     private val designAssetImporter: DesignAssetImporter = DesignAssetImporter()
 ) {
 
   private val rendererManager = DesignAssetRendererManager.getInstance()
+  val fileCount: Int = assetSets.sumBy { it.designAssets.size }
 
   fun doImport() {
     designAssetImporter.importDesignAssets(assetSets, facet)
   }
 
-  fun getAssetDensity(asset: DesignAsset) =
-    asset.qualifiers.firstOrNull { it is DensityQualifier }?.folderSegment ?: "default"
-
-  fun getAssetPreview(asset: DesignAsset): Image? {
+  fun getAssetPreview(asset: DesignAsset): CompletableFuture<out Image?> {
     return rendererManager
       .getViewer(asset.file)
       .getImage(asset.file, facet.module, JBUI.size(50))
-      .get()
   }
 
-  fun getRealSize(asset: DesignAsset): String {
-    // TODO get the real size for this icon (without creating a BufferedImage)
-    return "64x64"
-  }
+  fun getItemNumberString(assetSet: DesignAssetSet) =
+    "(${assetSet.designAssets.size} ${StringUtil.pluralize("item", assetSet.designAssets.size)})"
 }

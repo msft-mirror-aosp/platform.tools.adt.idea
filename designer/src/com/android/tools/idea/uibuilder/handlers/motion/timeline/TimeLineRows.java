@@ -15,19 +15,28 @@
  */
 package com.android.tools.idea.uibuilder.handlers.motion.timeline;
 
-import com.intellij.openapi.ui.VerticalFlowLayout;
-import com.intellij.util.ui.JBUI;
+import static com.intellij.openapi.ui.VerticalFlowLayout.TOP;
 
-import javax.swing.*;
-import java.awt.*;
+import com.intellij.openapi.ui.VerticalFlowLayout;
+import com.intellij.psi.SmartPsiElementPointer;
+import com.intellij.psi.xml.XmlTag;
+import com.intellij.util.ui.JBUI;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import static com.android.tools.idea.uibuilder.handlers.motion.timeline.TimeLineIcons.FORWARD;
-import static com.intellij.openapi.ui.VerticalFlowLayout.TOP;
+import java.util.List;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 /**
  * The make chart that displays the Keyframes in time
@@ -42,7 +51,7 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
   public static int ourDiamondSize = JBUI.scale(10);
   private boolean myInStateChange;
   private boolean myDisplayInstructions = true;
-  static int ourBaseSelected = (Chart.ourMySelectedLineColor.getRGB() & 0xFFFFFF)|0x77000000;
+  static int ourBaseSelected = (Chart.ourMySelectedLineColor.getRGB() & 0xFFFFFF) | 0x77000000;
   static Color ourTransparent = new Color(ourBaseSelected & 0xFFFFFF, true);
   static Color ourLightColor = new Color(ourBaseSelected, true);
   ;
@@ -123,7 +132,9 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
         myDisplayInstructions = false;
         if (myChart != null
             && myChart.myModel != null
-            && (myChart.myModel.getStartConstraintSet().myConstraintViews.isEmpty() ||
+            && (myChart.myModel.getStartConstraintSet() == null ||
+                myChart.myModel.getEndConstraintSet() == null ||
+                myChart.myModel.getStartConstraintSet().myConstraintViews.isEmpty() ||
                 myChart.myModel.getEndConstraintSet().myConstraintViews.isEmpty())) {
           myDisplayInstructions = true;
         }
@@ -145,9 +156,9 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
       g.setColor(Chart.myGridColor);
       int w = getWidth();
       int h = getHeight();
-       String str = "Please add Constraints at 0% and 100%";
+      String str = "Please add Constraints at 0% and 100%";
       Rectangle2D b = g.getFontMetrics().getStringBounds(str, g);
-      g.drawString(str , (w-(int)b.getWidth())/2, (h-(int)b.getHeight())/2);
+      g.drawString(str, (w - (int)b.getWidth()) / 2, (h - (int)b.getHeight()) / 2);
     }
   }
 
@@ -186,9 +197,9 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
       addPoint++;
     }
 
-    MotionSceneModel.KeyFrame find(int x, int y, int max) {
+    MotionSceneModel.KeyFrame find(int x, int y, int max, SmartPsiElementPointer<XmlTag> previousKeyFrameTag) {
       int closeSq = Integer.MAX_VALUE;
-      MotionSceneModel.KeyFrame keyFrame = null;
+      List<MotionSceneModel.KeyFrame> possibleFrames = new ArrayList<>();
       int maxSq = max * max;
       for (int i = 0; i < keyFrames.length; i++) {
         int kf_x = location[i * 2];
@@ -199,12 +210,23 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
         int dy = Math.abs(kf_y - y);
         dy *= dy;
         if (dy > maxSq) continue;
-        if (closeSq > dy + dx) {
-          keyFrame = keyFrames[i];
+        if (closeSq >= dy + dx && !possibleFrames.contains(keyFrames[i])) {
+          possibleFrames.add(keyFrames[i]);
           closeSq = dy + dx;
         }
       }
-      return keyFrame;
+      if (possibleFrames.isEmpty()) {
+        return null;
+      }
+      int foundIndex = -1;
+      for (int i=0; i < possibleFrames.size(); i++) {
+        if (possibleFrames.get(i).getTag() == previousKeyFrameTag) {
+          foundIndex = i;
+          break;
+        }
+      }
+      int nextIndex = (foundIndex + 1) % possibleFrames.size();
+      return possibleFrames.get(nextIndex);
     }
   }
 
@@ -230,15 +252,18 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
     }
 
     private void select(int x, int y) {
-      MotionSceneModel.KeyFrame keyFrame = myLocationTable.find(x, y, 20);
+      MotionSceneModel.KeyFrame keyFrame = myLocationTable.find(x, y, 20, myChart.mySelectedKeyFrameTag);
       if (keyFrame != myChart.mySelectedKeyFrame) {
         myChart.mySelectedKeyFrame = keyFrame;
+        myChart.mySelectedKeyFrameTag = null;
+        myChart.mySelectedKeyView = null;
         myChart.mySelection = Chart.Selection.KEY;
         myChart.update(Reason.SELECTION_CHANGED);
         if (keyFrame != null) {
           float position = keyFrame.getFramePosition() / 100f;
           myChart.setCursorPosition(position);
           myChart.mySelectedKeyView = keyFrame.target;
+          myChart.mySelectedKeyFrameTag = keyFrame.getTag();
         }
       }
       else {
@@ -313,6 +338,16 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
       }
       else {
         g.fillRoundRect(x - half, pos, ourDiamondSize, ourDiamondSize, ourDiamondSize, ourDiamondSize);
+      }
+    }
+
+    public void drawConstraint(Graphics g, boolean selected, int x, int pos) {
+      int half = ourDiamondSize / 2;
+      if (selected) {
+        g.drawRoundRect(x - half, pos, ourDiamondSize, ourDiamondSize, ourDiamondSize, ourDiamondSize);
+      }
+      else {
+        g.drawRoundRect(x - half, pos, ourDiamondSize, ourDiamondSize, ourDiamondSize, ourDiamondSize);
       }
     }
 
@@ -395,13 +430,14 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
       if (myChart != null) {
         int width = getWidth() - myChart.myChartLeftInset - myChart.myChartRightInset;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        drawConstraint(g, false, JBUI.scale(10), pos + ourDiamondSize / 2);
         g.setColor(Chart.myUnSelectedLineColor);
         if (myChart.myModel != null
             && myChart.myModel.getStartConstraintSet() != null
             && myChart.myModel.getStartConstraintSet().myConstraintViews != null
             && myChart.myModel.getStartConstraintSet().myConstraintViews.get(myViewElement.myName) != null) {
           int xpos = myChart.myChartLeftInset + (int)((0 * width) / 100);
-          drawSquare(g, false, xpos, pos + ourDiamondSize);
+          drawSquare(g, false, xpos - ourDiamondSize, pos + ourDiamondSize);
           myRowHasMarks = true;
         }
         if (myChart.myModel != null
@@ -409,7 +445,7 @@ public class TimeLineRows extends JPanel implements Gantt.ChartElement {
             myChart.myModel.getEndConstraintSet().myConstraintViews != null &&
             myChart.myModel.getEndConstraintSet().myConstraintViews.get(myViewElement.myName) != null) {
           int xpos = myChart.myChartLeftInset + (int)((100 * width) / 100);
-          drawSquare(g, false, xpos, pos + ourDiamondSize);
+          drawSquare(g, false, xpos + ourDiamondSize, pos + ourDiamondSize);
           myRowHasMarks = true;
         }
         myRowHasMarks |= !myViewElement.mKeyFrames.myKeyAttributes.isEmpty();

@@ -27,6 +27,7 @@ import com.android.tools.idea.resourceExplorer.viewmodel.QualifierConfigurationV
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.PopupMenuListenerAdapter
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -37,24 +38,28 @@ import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.event.ItemEvent
 import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import javax.swing.event.PopupMenuEvent
 
-private val QUALIFIER_TYPE_COMBO_SIZE = JBUI.size(250, 30)
-private val QUALIFIER_VALUE_COMBO_SIZE = JBUI.size(220, QUALIFIER_TYPE_COMBO_SIZE.height)
-private val QUALIFIER_VALUE_GAP = JBUI.scale(4)
+private val QUALIFIER_TYPE_COMBO_SIZE = JBUI.size(330, 30)
+private val QUALIFIER_VALUE_COMBO_SIZE = QUALIFIER_TYPE_COMBO_SIZE.withWidth(390)
+private val FLOW_LAYOUT_GAP = JBUI.scale(4)
+private val ADD_BUTTON_BORDER = JBUI.Borders.empty(4, 12, 4, 0)
 
 /**
  * View to manipulate the [QualifierConfigurationViewModel]. It represents the qualifiers that will be
  * add to a resource.
  */
 class QualifierConfigurationPanel(private val viewModel: QualifierConfigurationViewModel) : JPanel(
-  BorderLayout()) {
+  BorderLayout(1, 0)) {
 
   private val addQualifierButton = ClickableLabel("Add another qualifier", StudioIcons.Common.ADD,
                                                   SwingConstants.LEFT).apply {
+    border = ADD_BUTTON_BORDER
     addActionListener {
       if (viewModel.canAddQualifier()) {
         viewModel.applyConfiguration()
@@ -65,16 +70,28 @@ class QualifierConfigurationPanel(private val viewModel: QualifierConfigurationV
 
   private val qualifierTypeLabel = JBLabel("QUALIFIER TYPE").apply {
     preferredSize = QUALIFIER_TYPE_COMBO_SIZE
+    font = JBUI.Fonts.smallFont()
   }
-  private val qualifierValueLabel = JBLabel("VALUE")
+  private val qualifierValueLabel = JBLabel("VALUE").apply {
+    border = JBUI.Borders.emptyLeft(FLOW_LAYOUT_GAP)
+    font = JBUI.Fonts.smallFont()
+  }
   private val qualifierContainer = JPanel(VerticalLayout(0, SwingConstants.LEFT))
 
   init {
-    addConfigurationRow()
+    val initialConfigurations = viewModel.getInitialConfigurations()
+    if (initialConfigurations.isEmpty()) {
+      addConfigurationRow()
+    }
+    else {
+      initialConfigurations
+        .map { (qualifier, configuration) -> ConfigurationRow(viewModel, qualifier, configuration) }
+        .forEach { qualifierContainer.add(it) }
+    }
   }
 
   init {
-    add(JPanel(FlowLayout(FlowLayout.LEFT)).apply {
+    add(JPanel(FlowLayout(FlowLayout.LEFT, FLOW_LAYOUT_GAP, 0)).apply {
       add(qualifierTypeLabel)
       add(qualifierValueLabel)
     }, BorderLayout.NORTH)
@@ -90,32 +107,44 @@ class QualifierConfigurationPanel(private val viewModel: QualifierConfigurationV
   }
 }
 
-private class ConfigurationRow(viewModel: QualifierConfigurationViewModel) : JPanel(
-  FlowLayout(FlowLayout.LEFT)) {
+private class ConfigurationRow(viewModel: QualifierConfigurationViewModel,
+                               qualifier: ResourceQualifier? = null,
+                               configuration: QualifierConfiguration? = null)
+  : JPanel(FlowLayout(FlowLayout.LEFT, FLOW_LAYOUT_GAP, 0)) {
 
-  private val valuePanel = JPanel(FlowLayout(FlowLayout.LEFT, QUALIFIER_VALUE_GAP, 0)).apply {
-    add(ComboBox<Any>().apply {
-      isEnabled = false
-      isEditable = false
-      preferredSize = QUALIFIER_VALUE_COMBO_SIZE
-    })
-  }
+  private val valuePanel = JPanel(FlowLayout(FlowLayout.LEFT, FLOW_LAYOUT_GAP, 0))
 
-  val qualifierCombo = ComboBox<ResourceQualifier>(
-    CollectionComboBoxModel(viewModel.getAvailableQualifiers().sortedBy(ResourceQualifier::getName), null)).apply {
+  val qualifierCombo = ComboBox<ResourceQualifier>(arrayOf(qualifier)).apply {
     renderer = getRenderer("Select a type", ResourceQualifier::getName)
     preferredSize = QUALIFIER_TYPE_COMBO_SIZE
-    addActionListener { event ->
-      val comboBox = event.source as ComboBox<*>
-      val qualifier = comboBox.selectedItem as? ResourceQualifier ?: return@addActionListener
-      updateValuePanel(viewModel.getQualifierConfiguration(qualifier))
+
+    addPopupMenuListener(object : PopupMenuListenerAdapter() {
+      override fun popupMenuWillBecomeVisible(e: PopupMenuEvent) {
+        // Recreate the available qualifiers each time the popup is shown
+        // because the available qualifier might have change if another
+        // comboBox has had its value changed
+        val comboBox = e.source as ComboBox<*>
+        comboBox.model = CollectionComboBoxModel<ResourceQualifier>(
+          viewModel.getAvailableQualifiers(),
+          comboBox.selectedItem as ResourceQualifier?)
+      }
+    })
+
+    addItemListener { itemEvent ->
+      when (itemEvent.stateChange) {
+        ItemEvent.DESELECTED -> viewModel.deselectQualifier(itemEvent.item as ResourceQualifier)
+        ItemEvent.SELECTED -> updateValuePanel(viewModel.selectQualifier(itemEvent.item as ResourceQualifier))
+      }
     }
+
+    selectedItem = qualifier
   }
 
   init {
     add(qualifierCombo)
     add(valuePanel)
     add(ClickableLabel("", StudioIcons.Common.CLOSE, SwingConstants.LEFT))
+    updateValuePanel(configuration)
   }
 
   private fun updateValuePanel(qualifierConfiguration: QualifierConfiguration?) {
@@ -123,8 +152,17 @@ private class ConfigurationRow(viewModel: QualifierConfigurationViewModel) : JPa
     if (qualifierConfiguration != null) {
       addFieldsForParams(qualifierConfiguration)
     }
+    else {
+      valuePanel.add(createDefaultCombo())
+    }
     revalidate()
     repaint()
+  }
+
+  private fun createDefaultCombo() = ComboBox<Any>().apply {
+    isEnabled = false
+    isEditable = false
+    preferredSize = QUALIFIER_VALUE_COMBO_SIZE
   }
 
   /**
@@ -168,19 +206,18 @@ private class ConfigurationRow(viewModel: QualifierConfigurationViewModel) : JPa
   }
 
   private fun createComboBox(qualifierParam: CollectionParam<*>) =
-    (qualifierParam as CollectionParam<Any?>).bind(createComboBox(qualifierParam.placeholder, qualifierParam.parser))
+    (qualifierParam as CollectionParam<Any?>).bind(ComboBox<Any?>().apply {
+      renderer = getRenderer(qualifierParam.placeholder, qualifierParam.parser)
+      selectedItem = qualifierParam.paramValue
+    })
 
   /**
    * Returns the dimension that each component should have so they all fit within [QUALIFIER_VALUE_COMBO_SIZE]
    */
   private fun computeFieldSize(paramNumber: Int) = Dimension(
-    QUALIFIER_VALUE_COMBO_SIZE.width() / paramNumber - (QUALIFIER_VALUE_GAP / 2 * (paramNumber - 1)),
+    QUALIFIER_VALUE_COMBO_SIZE.width() / paramNumber - (FLOW_LAYOUT_GAP / 2 * (paramNumber - 1)),
     QUALIFIER_VALUE_COMBO_SIZE.height()
   )
-
-  private fun createComboBox(placeholder: String?, parser: ((Any?) -> String?)?) = ComboBox<Any?>().apply {
-    renderer = getRenderer(placeholder, parser)
-  }
 }
 
 /**

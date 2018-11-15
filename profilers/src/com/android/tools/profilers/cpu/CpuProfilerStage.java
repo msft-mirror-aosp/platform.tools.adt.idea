@@ -429,8 +429,6 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
 
     CodeNavigator navigator = getStudioProfilers().getIdeServices().getCodeNavigator();
     navigator.addListener(this);
-    // Make sure to update the CPU ABI architecture in the code navigator, in case we need to use native symbolize the code location.
-    navigator.setCpuAbiArch(getStudioProfilers().getProcess() == null ? null : getStudioProfilers().getProcess().getAbiCpuArch());
     getStudioProfilers().getIdeServices().getFeatureTracker().trackEnterStage(getClass());
 
     getStudioProfilers().addDependency(this).onChange(ProfilerAspect.DEVICES, myProfilerConfigModel::updateProfilingConfigurations);
@@ -633,11 +631,22 @@ public class CpuProfilerStage extends Stage implements CodeNavigator.Listener {
     }
     else {
       // Capture was successful, pre-process the trace and parse it afterwards.
-      // TODO(b/118620183): Handle errors while pre-processing the trace by adding a special status to CpuCaptureMetadata.
       CompletableFuture
         .supplyAsync(() -> preProcessTrace(response.getTrace()), getStudioProfilers().getIdeServices().getPoolExecutor())
         .thenAcceptAsync((bytes) -> {
           captureMetadata.setTraceFileSizeBytes(bytes.size());
+          boolean failedToPreProcess = bytes.equals(TracePreProcessor.FAILURE);
+          if (failedToPreProcess) {
+            captureMetadata.setStatus(CpuCaptureMetadata.CaptureStatus.PREPROCESS_FAILURE);
+            getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.PREPROCESS_FAILURE);
+            getStudioProfilers().getIdeServices().getFeatureTracker().trackCaptureTrace(captureMetadata);
+            getLogger().warn("Unable to pre-process trace file.");
+            // Return to IDLE state and set the current capture to null. Parsing should not happen.
+            setCaptureState(CaptureState.IDLE);
+            setCapture(null);
+            return;
+          }
+
           handleCaptureParsing(response.getTraceId(), bytes, captureMetadata);
         }, getStudioProfilers().getIdeServices().getMainExecutor());
     }

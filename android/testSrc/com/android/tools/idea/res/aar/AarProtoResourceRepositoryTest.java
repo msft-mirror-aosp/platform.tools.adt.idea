@@ -145,7 +145,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
           }
           assertTrue("Different ResourceItem at position " + i, previousItem != null && areEquivalent(expectedItem, previousItem));
           assertTrue("Different ResourceValue at position " + i,
-                     areEquivalentResourceValues(expectedItem.getResourceValue(), previousItem.getResourceValue()));
+                     areEquivalentResourceValues(expectedItem.getResourceValue(), previousItem.getResourceValue(), false));
           FolderConfiguration expectedConfiguration = expectedItem.getConfiguration();
           FolderConfiguration previousConfiguration = previousItem.getConfiguration();
           ScreenSizeQualifier expectedQualifier = expectedConfiguration.getScreenSizeQualifier();
@@ -159,7 +159,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       } else {
         assertTrue("Different ResourceItem at position " + i, areEquivalent(expectedItem, actualItem));
         assertTrue("Different ResourceValue at position " + i,
-                   areEquivalentResourceValues(expectedItem.getResourceValue(), actualItem.getResourceValue()));
+                   areEquivalentResourceValues(expectedItem.getResourceValue(), actualItem.getResourceValue(), false));
         previousItem = actualItem;
       }
     }
@@ -227,7 +227,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
     return false;
   }
 
-  private boolean areEquivalentResourceValues(@Nullable ResourceValue value1, @Nullable ResourceValue value2) {
+  private boolean areEquivalentResourceValues(@Nullable ResourceValue value1, @Nullable ResourceValue value2, boolean allowAttrReferences) {
     if (value1 == value2) {
       return true;
     }
@@ -253,11 +253,18 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       return false;
     }
 
-    List<AttrResourceValue> attrs1 =
-      value1 instanceof StyleableResourceValue ? ((StyleableResourceValue)value1).getAllAttributes() : null;
-    List<AttrResourceValue> attrs2 =
-      value2 instanceof StyleableResourceValue ? ((StyleableResourceValue)value2).getAllAttributes() : null;
-    if (!Objects.equals(attrs1, attrs2)) {
+    if (value1 instanceof StyleableResourceValue && value2 instanceof StyleableResourceValue) {
+      List<AttrResourceValue> attrs1 = ((StyleableResourceValue)value1).getAllAttributes();
+      List<AttrResourceValue> attrs2 = ((StyleableResourceValue)value2).getAllAttributes();
+      if (attrs1.size() != attrs2.size()) {
+        return false;
+      }
+      for (int i = 0; i < attrs1.size(); i++) {
+        if (!areEquivalentResourceValues(attrs1.get(i), attrs2.get(i), true)) {
+          return false;
+        }
+      }
+    } else if ((value1 instanceof StyleableResourceValue) != (value2 instanceof StyleableResourceValue)) {
       return false;
     }
 
@@ -270,6 +277,13 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       if (!Objects.equals(attr1.getGroupName(), attr2.getGroupName())) {
         return false;
       }
+
+      if (allowAttrReferences && attr1 instanceof AarAttrReference != attr2 instanceof AarAttrReference) {
+        // In a proto resource repository a styleable contains attr references, not definitions.
+        // Attr references don't include formats or attribute values.
+        return true;
+      }
+
       if (!Objects.equals(attr1.getFormats(), attr2.getFormats())) {
         return false;
       }
@@ -305,7 +319,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       while (it1.hasNext()) {
         StyleItemResourceValue item1 = it1.next();
         StyleItemResourceValue item2 = it2.next();
-        if (!areEquivalentResourceValues(item1, item2)) {
+        if (!areEquivalentResourceValues(item1, item2, true)) {
           return false;
         }
       }
@@ -353,7 +367,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       v1 = v2;
       v2 = temp;
     }
-    if (value2 instanceof AarResourceItem && !(value1 instanceof AarResourceItem)) {
+    if (value2 instanceof AarResourceItem) {
       if (v2.startsWith("apk:")) {
         String[] parts = v2.split(":");
         if (parts.length == 3 && parts[1].endsWith("/res.apk") &&
@@ -363,6 +377,7 @@ public class AarProtoResourceRepositoryTest extends AndroidTestCase {
       }
       return true;
     }
+
     switch (value1.getResourceType()) {
       case COLOR:
       case DRAWABLE:

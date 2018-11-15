@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.structure.configurables.dependencies.module
 
 import com.android.tools.idea.gradle.structure.configurables.PsContext
+import com.android.tools.idea.gradle.structure.configurables.dependencies.details.JarDependencyDetails
 import com.android.tools.idea.gradle.structure.configurables.dependencies.details.ModuleDependencyDetails
 import com.android.tools.idea.gradle.structure.configurables.dependencies.details.SingleDeclaredLibraryDependencyDetails
 import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.DependencySelection
@@ -83,12 +84,12 @@ internal class DeclaredDependenciesPanel(
       val oldSelection = dependenciesTable.selection
       dependenciesTableModel.reset()
       var toSelect: PsBaseDependency? = null
-      if (event is PsModule.LibraryDependencyAddedEvent) {
-        dependenciesTable.clearSelection()
-        toSelect = dependenciesTableModel.findDependency(event.spec)
-      }
-      else if (event is PsModule.DependencyModifiedEvent) {
-        toSelect = event.dependency
+      when (event) {
+        is PsModule.DependencyAddedEvent -> {
+          dependenciesTable.clearSelection()
+          toSelect = event.dependency.value
+        }
+        is PsModule.DependencyModifiedEvent -> toSelect = event.dependency.value
       }
       dependenciesTable.selection = toSelect?.let { listOf(it) } ?: oldSelection
     }
@@ -107,6 +108,7 @@ internal class DeclaredDependenciesPanel(
 
   private fun initializeDependencyDetails() {
     addDetails(SingleDeclaredLibraryDependencyDetails(context))
+    addDetails(JarDependencyDetails(context))
     addDetails(ModuleDependencyDetails(context, true))
   }
 
@@ -135,13 +137,13 @@ internal class DeclaredDependenciesPanel(
 
   override fun getSelection(): PsBaseDependency? = dependenciesTable.selectionIfSingle
 
-  override fun setSelection(selection: PsBaseDependency?): ActionCallback {
+  override fun setSelection(selection: Collection<PsBaseDependency>?): ActionCallback {
     skipSelectionChangeNotification = true
-    if (selection == null) {
+    if (selection == null || selection.isEmpty()) {
       dependenciesTable.clearSelection()
     }
     else {
-      dependenciesTable.setSelection(setOf(selection))
+      dependenciesTable.setSelection(selection.toSet())
     }
     updateDetailsAndIssues()
     skipSelectionChangeNotification = false
@@ -198,7 +200,7 @@ internal class DeclaredDependenciesPanel(
     dependenciesTable.selectDependency(toSelect)
   }
 
-  private inner class RemoveDependencyAction internal constructor() : DumbAwareAction("Remove Dependency...", "", AllIcons.Actions.Delete) {
+  private inner class RemoveDependencyAction internal constructor() : DumbAwareAction("Remove Dependency...", "", AllIcons.Actions.Cancel) {
     init {
       registerCustomShortcutSet(CommonShortcuts.getDelete(), dependenciesTable)
     }

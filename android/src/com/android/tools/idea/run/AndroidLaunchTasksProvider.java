@@ -169,8 +169,9 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
       tasks.add(new RunInstantAppTask(myApkProvider.getApks(device), state.DEEP_LINK, disabledFeatures));
     }
     else {
-      // Use JVMTI deployment if it is enabled and supported.
-      if (StudioFlags.JVMTI_REFRESH.get() && device.getVersion().getApiLevel() >= UnifiedDeployTask.MIN_API_VERSION) {
+      // Use new deployment if it is enabled and supported.
+      if ((StudioFlags.UNIFIED_DEPLOYMENT.get() || StudioFlags.JVMTI_REFRESH.get())
+          && device.getVersion().getApiLevel() >= UnifiedDeployTask.MIN_API_VERSION) {
         UnifiedDeployTask.Builder builder = UnifiedDeployTask.builder().setProject(myProject);
 
         // Add packages to the deployment, filtering out any dynamic features that are disabled.
@@ -188,16 +189,15 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
         else {
           builder.setAction(new InstallAction(myLaunchOptions.getPmInstallOptions()));
         }
-
-        return ImmutableList.of(builder.build());
+        tasks.add(builder.build());
+      } else {
+        InstantRunManager.LOG.info("Using non-instant run deploy tasks (single and split apks apps)");
+        // Add tasks for each apk (or split-apk) returned by the apk provider
+        tasks.addAll(createDeployTasks(myApkProvider.getApks(device),
+                                       apks -> new DeployApkTask(myProject, myLaunchOptions, ImmutableList.copyOf(apks)),
+                                       apkInfo -> new SplitApkDeployTask(myProject,
+                                                                         new DynamicAppDeployTaskContext(apkInfo, disabledFeatures))));
       }
-
-      InstantRunManager.LOG.info("Using non-instant run deploy tasks (single and split apks apps)");
-      // Add tasks for each apk (or split-apk) returned by the apk provider
-      tasks.addAll(createDeployTasks(myApkProvider.getApks(device),
-                                     apks -> new DeployApkTask(myProject, myLaunchOptions, ImmutableList.copyOf(apks)),
-                                     apkInfo -> new SplitApkDeployTask(myProject,
-                                                                       new DynamicAppDeployTaskContext(apkInfo, disabledFeatures))));
     }
     return ImmutableList.copyOf(tasks);
   }

@@ -18,10 +18,16 @@ package com.android.tools.idea.resourceExplorer
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.openapi.Disposable
+import com.intellij.util.ui.update.MergingUpdateQueue
+import com.intellij.util.ui.update.Update
+import org.jetbrains.annotations.Async
 import java.awt.Image
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
+import kotlin.math.pow
+
+private val MAXIMUM_CACHE_WEIGHT_BYTES = (200 * 1024.0.pow(2)).toLong() // 200 MB
 
 /**
  * Helper class that caches the result of a computation of an [Image].
@@ -32,13 +38,41 @@ import java.util.concurrent.TimeUnit
  * @see CacheBuilder.softValues
  */
 class ImageCache(cacheExpirationTime: Long = 5,
-                 timeUnit: TimeUnit = TimeUnit.MINUTES) {
+                 timeUnit: TimeUnit = TimeUnit.MINUTES,
+                 mergingUpdateQueue : MergingUpdateQueue? = null
+) : Disposable {
+
+
+  private val pendingFutures = HashMap<DesignAsset, CompletableFuture<*>>()
+
+  @Async.Schedule
+  private fun MergingUpdateQueue.queue(asset: DesignAsset,
+                                       executeImmediately: Boolean = false,
+                                       runnable: () -> Unit) {
+    val update = Update.create(asset.name, runnable)
+    if (executeImmediately) {
+      run(update)
+    }
+    else {
+      queue(update)
+    }
+  }
+
+  private val updateQueue = mergingUpdateQueue ?: MergingUpdateQueue("queue", 3000, true, MergingUpdateQueue.ANY_COMPONENT, this, null, false)
+
+  override fun dispose() {
+    synchronized(pendingFutures) {
+      pendingFutures.values.forEach { it.cancel(true) }
+    }
+  }
 
   private val objectToImage: Cache<DesignAsset, Image> = CacheBuilder.newBuilder()
-    .softValues()
-    .expireAfterWrite(cacheExpirationTime, timeUnit)
-    .maximumSize(500)
+    .expireAfterAccess(cacheExpirationTime, timeUnit)
+    .weigher<DesignAsset, Image> { _, image -> imageWeigher(image) }
+    .maximumWeight(MAXIMUM_CACHE_WEIGHT_BYTES)
     .build<DesignAsset, Image>()
+
+  private fun imageWeigher(image: Image) = image.getWidth(null) * image.getHeight(null)
 
   /**
    * Return the value identified by [key] in the cache if it exists, otherwise returns the [placeholder] image
@@ -49,7 +83,8 @@ class ImageCache(cacheExpirationTime: Long = 5,
    * Note that if a value is present in the cache and [forceComputation] is true, the returned [Image] will be the value from
    * the cache.
    */
-  fun computeAndGet(key: DesignAsset,
+
+  fun computeAndGet(@Async.Schedule key: DesignAsset,
                     placeholder: Image,
                     forceComputation: Boolean,
                     computationFutureProvider: (() -> CompletableFuture<out Image?>))
@@ -60,13 +95,33 @@ class ImageCache(cacheExpirationTime: Long = 5,
       // We cache the placeholder to avoid starting another computation while the initial one is running
       objectToImage.put(key, placeholder)
     }
-    if (cachedImage == null || forceComputation) {
-      computationFutureProvider().whenComplete { image: Image?, _ ->
-        image?.also { objectToImage.put(key, it) }
+    if ((cachedImage == null || cachedImage == placeholder || forceComputation) && !pendingFutures.containsKey(key)) {
+      val executeImmediately = cachedImage == null // If we don't have any image, no need to wait.
+      updateQueue.queue(key, executeImmediately) {
+        scheduleFuture(computationFutureProvider, key)
       }
     }
     return cachedImage ?: placeholder
   }
-}
 
-internal fun <T> ListenableFuture<T>.toCompletableFuture(): CompletableFuture<T> = CompletableFuture.supplyAsync { this.get() }
+
+  private fun scheduleFuture(computationFutureProvider: () -> CompletableFuture<out Image?>,
+                             @Async.Execute key: DesignAsset) {
+    val future = computationFutureProvider().thenAccept { image: Image? ->
+      synchronized(pendingFutures) {
+        pendingFutures.remove(key)
+      }
+      if (image != null) {
+        objectToImage.put(key, image)
+      }
+      else {
+        objectToImage.invalidate(key)
+      }
+    }
+    synchronized(pendingFutures) {
+      if (!future.isDone) {
+        pendingFutures[key] = future
+      }
+    }
+  }
+}
