@@ -18,6 +18,7 @@ package com.android.tools.idea.common.property2.api
 import com.android.annotations.VisibleForTesting
 import com.android.tools.adtui.stdui.CommonTabbedPane
 import com.android.tools.idea.common.property2.impl.ui.PropertiesPage
+import com.android.tools.idea.common.property2.impl.ui.WatermarkPanel
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
@@ -35,8 +36,8 @@ private const val PROPERTY_TAB_NAME = "tab.name"
  * The top level class for creating UI classes and model classes for a properties panel.
  *
  * Creates the main [component] for the properties panel which at this point contains
- * a property inspector. SeparatThe main pagee views such as a tabular view may be added at a later
- * point.
+ * a property inspector. The panel consists of a main view followed by a tabular view.
+ *
  * The content of the inspector is controlled by a list of [PropertiesView]s which
  * must be added to this class using [addView].
  */
@@ -46,6 +47,7 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
   private var activeView: PropertiesView<*>? = null
   private val views = IdentityHashMap<PropertiesModel<*>, PropertiesView<*>>()
   private val tabbedPanel = CommonTabbedPane()
+  private val watermark = WatermarkPanel()
   private val hidden = JPanel()
   private var updatingPageVisibility = false
 
@@ -113,6 +115,7 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
     }
     pages.subList(view.tabs.size, pages.size).clear()
     val preferredTab = PropertiesComponent.getInstance().getValue(RECENT_TAB_PREFIX + escapeProperty(view.id, true))
+    watermark.model = view.watermark
     updatePageVisibility(preferredTab)
   }
 
@@ -156,7 +159,7 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
     try {
       component.removeAll()
       tabbedPanel.removeAll()
-      if (filter.isEmpty() || view.main.searchable) {
+      if ((filter.isEmpty() || view.main.searchable) && !mainPage.isEmpty) {
         component.add(mainPage.component, BorderLayout.NORTH)
       }
       else {
@@ -165,7 +168,7 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
       for (index in view.tabs.indices) {
         val tab = view.tabs[index]
         val page = pages[index]
-        val tabVisible = filter.isEmpty() || tab.searchable
+        val tabVisible = (filter.isEmpty() || tab.searchable) && !page.isEmpty
         page.component.isVisible = tabVisible
         when {
           !tabVisible -> hidden.add(page.component)
@@ -187,6 +190,12 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
           tabbedPanel.selectedIndex = preferredTabIndex
         }
       }
+      if (component.componentCount == 0) {
+        component.add(watermark, BorderLayout.CENTER)
+      }
+      else {
+        hidden.add(watermark)
+      }
       component.add(hidden, BorderLayout.SOUTH)
       component.revalidate()
       component.repaint()
@@ -198,10 +207,7 @@ class PropertiesPanel(parentDisposable: Disposable) : Disposable, PropertiesMode
 
   private fun findVisibleTabCount(): Int {
     val view = activeView ?: return 0
-    if (filter.isEmpty()) {
-      return view.tabs.size
-    }
-    return view.tabs.count { it.searchable }
+    return view.tabs.indices.count { (filter.isEmpty() || view.tabs[it].searchable) && !pages[it].isEmpty }
   }
 
   private fun filterChanged(oldValue: String, newValue: String) {

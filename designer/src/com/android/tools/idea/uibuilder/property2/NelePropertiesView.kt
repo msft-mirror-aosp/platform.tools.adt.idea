@@ -15,11 +15,9 @@
  */
 package com.android.tools.idea.uibuilder.property2
 
-import com.android.tools.idea.common.property2.api.ControlType
 import com.android.tools.idea.common.property2.api.EditorProvider
 import com.android.tools.idea.common.property2.api.PropertiesView
-import com.android.tools.idea.common.property2.api.TableUIProvider
-import com.android.tools.idea.common.property2.impl.support.SimpleControlTypeProvider
+import com.android.tools.idea.common.property2.api.Watermark
 import com.android.tools.idea.uibuilder.property2.inspector.AdvancedInspectorBuilder
 import com.android.tools.idea.uibuilder.property2.inspector.FavoritesInspectorBuilder
 import com.android.tools.idea.uibuilder.property2.inspector.IdInspectorBuilder
@@ -34,16 +32,16 @@ import com.android.tools.idea.uibuilder.property2.support.NeleEnumSupportProvide
 private const val VIEW_NAME = "LayoutEditor"
 private const val BASIC_PAGE = "Basic"
 private const val ADVANCED_PAGE = "Advanced"
+private const val WATERMARK_MESSAGE = "No component selected."
+private const val WATERMARK_ACTION_MESSAGE = "Select a component in the Component Tree or on the Design Surface."
 
 class NelePropertiesView(model : NelePropertiesModel) : PropertiesView<NelePropertyItem>(VIEW_NAME, model) {
   private val enumSupportProvider = NeleEnumSupportProvider()
   private val controlTypeProvider = NeleControlTypeProvider(enumSupportProvider)
   private val editorProvider = EditorProvider.create(enumSupportProvider, controlTypeProvider)
-  private val nameControlTypeProvider = SimpleControlTypeProvider<NeleNewPropertyItem>(ControlType.TEXT_EDITOR)
-  private val nameEditorProvider = EditorProvider.createForNames<NeleNewPropertyItem>()
-  private val tableUIProvider = TableUIProvider.create(NeleNewPropertyItem::class.java, nameControlTypeProvider, nameEditorProvider,
-                                                       NelePropertyItem::class.java, controlTypeProvider, editorProvider)
+
   init {
+    watermark = Watermark(WATERMARK_MESSAGE, WATERMARK_ACTION_MESSAGE, "")
     main.builders.add(SelectedComponentBuilder())
     val basic = addTab(BASIC_PAGE)
     basic.searchable = false
@@ -54,6 +52,6 @@ class NelePropertiesView(model : NelePropertiesModel) : PropertiesView<NelePrope
     basic.builders.add(ProgressBarInspectorBuilder(editorProvider))
     basic.builders.add(FavoritesInspectorBuilder(editorProvider))
     val advanced = addTab(ADVANCED_PAGE)
-    advanced.builders.add(AdvancedInspectorBuilder(model, tableUIProvider))
+    advanced.builders.add(AdvancedInspectorBuilder(model, controlTypeProvider, editorProvider))
   }
 }

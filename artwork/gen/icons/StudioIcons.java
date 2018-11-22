@@ -16,19 +16,19 @@ public class StudioIcons {
   }
 
   public static class Avd {
+    public static final Icon DEVICE_CAR_LARGE = load("/studio/icons/avd/device-car-large.png"); // 32x32
     public static final Icon DEVICE_CAR = load("/studio/icons/avd/device-car.png"); // 16x16
-    public static final Icon DEVICE_CAR_LARGE = load("/studio/icons/avd/device-car_large.png"); // 32x32
+    public static final Icon DEVICE_GLASS_LARGE = load("/studio/icons/avd/device-glass-large.png"); // 32x32
     public static final Icon DEVICE_GLASS = load("/studio/icons/avd/device-glass.png"); // 16x16
-    public static final Icon DEVICE_GLASS_LARGE = load("/studio/icons/avd/device-glass_large.png"); // 32x32
+    public static final Icon DEVICE_MOBILE_LARGE = load("/studio/icons/avd/device-mobile-large.png"); // 32x32
     public static final Icon DEVICE_MOBILE = load("/studio/icons/avd/device-mobile.png"); // 16x16
-    public static final Icon DEVICE_MOBILE_LARGE = load("/studio/icons/avd/device-mobile_large.png"); // 32x32
     public static final Icon DEVICE_PHONE = load("/studio/icons/avd/device-phone.png"); // 16x16
     public static final Icon DEVICE_PLAY_STORE = load("/studio/icons/avd/device-play-store.png"); // 16x16
     public static final Icon DEVICE_TABLET = load("/studio/icons/avd/device-tablet.png"); // 16x16
+    public static final Icon DEVICE_TV_LARGE = load("/studio/icons/avd/device-tv-large.png"); // 32x32
     public static final Icon DEVICE_TV = load("/studio/icons/avd/device-tv.png"); // 16x16
-    public static final Icon DEVICE_TV_LARGE = load("/studio/icons/avd/device-tv_large.png"); // 32x32
+    public static final Icon DEVICE_WEAR_LARGE = load("/studio/icons/avd/device-wear-large.png"); // 32x32
     public static final Icon DEVICE_WEAR = load("/studio/icons/avd/device-wear.png"); // 16x16
-    public static final Icon DEVICE_WEAR_LARGE = load("/studio/icons/avd/device-wear_large.png"); // 32x32
     public static final Icon EDIT = load("/studio/icons/avd/edit.png"); // 16x16
     public static final Icon QUICK_BOOT = load("/studio/icons/avd/quick-boot.png"); // 16x16
     public static final Icon RUN = load("/studio/icons/avd/run.png"); // 16x16
@@ -96,12 +96,12 @@ public class StudioIcons {
 
   public static class LayoutEditor {
     public static class Extras {
+      public static final Icon DOWNLOAD_OVERLAY_LEGACY_LARGE = load("/studio/icons/layout-editor/extras/download-overlay-legacy-large.png"); // 24x24
       public static final Icon DOWNLOAD_OVERLAY_LEGACY = load("/studio/icons/layout-editor/extras/download-overlay-legacy.png"); // 16x16
-      public static final Icon DOWNLOAD_OVERLAY_LEGACY_LARGE = load("/studio/icons/layout-editor/extras/download-overlay-legacy_large.png"); // 24x24
       public static final Icon PALETTE_DOWNLOAD_SELECTED = load("/studio/icons/layout-editor/extras/palette-download-selected.png"); // 16x16
       public static final Icon PALETTE_DOWNLOAD = load("/studio/icons/layout-editor/extras/palette-download.png"); // 16x16
+      public static final Icon PIPETTE_LARGE = load("/studio/icons/layout-editor/extras/pipette-large.png"); // 24x24
       public static final Icon PIPETTE = load("/studio/icons/layout-editor/extras/pipette.png"); // 16x16
-      public static final Icon PIPETTE_LARGE = load("/studio/icons/layout-editor/extras/pipette_large.png"); // 24x24
       public static final Icon ROOT_INLINE_SELECTED = load("/studio/icons/layout-editor/extras/root-inline-selected.png"); // 16x16
       public static final Icon ROOT_INLINE = load("/studio/icons/layout-editor/extras/root-inline.png"); // 16x16
       public static final Icon VISIBILITY_GONE_INLINE_SELECTED = load("/studio/icons/layout-editor/extras/visibility-gone-inline-selected.png"); // 16x16
@@ -403,10 +403,10 @@ public class StudioIcons {
 
   public static class NavEditor {
     public static class ExistingDestinations {
-      public static final Icon ACTIVITY = load("/studio/icons/nav-editor/existing-destinations/activity.png"); // 146x188
-      public static final Icon DESTINATION = load("/studio/icons/nav-editor/existing-destinations/destination.png"); // 146x188
-      public static final Icon NESTED = load("/studio/icons/nav-editor/existing-destinations/nested.png"); // 106x156
-      public static final Icon PLACEHOLDER = load("/studio/icons/nav-editor/existing-destinations/placeholder.png"); // 146x188
+      public static final Icon ACTIVITY = load("/studio/icons/nav-editor/existing-destinations/activity.png"); // 73x94
+      public static final Icon DESTINATION = load("/studio/icons/nav-editor/existing-destinations/destination.png"); // 73x94
+      public static final Icon NESTED = load("/studio/icons/nav-editor/existing-destinations/nested.png"); // 53x78
+      public static final Icon PLACEHOLDER = load("/studio/icons/nav-editor/existing-destinations/placeholder.png"); // 73x94
     }
 
     public static class Properties {
@@ -419,6 +419,7 @@ public class StudioIcons {
 
     public static class Surface {
       public static final Icon DEEPLINK = load("/studio/icons/nav-editor/surface/deeplink.png"); // 56x56
+      public static final Icon POP_ACTION = load("/studio/icons/nav-editor/surface/pop-action.png"); // 56x56
       public static final Icon START_DESTINATION = load("/studio/icons/nav-editor/surface/start-destination.png"); // 56x56
     }
 

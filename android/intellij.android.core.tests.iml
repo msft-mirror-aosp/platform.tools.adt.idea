@@ -83,7 +83,7 @@
     </orderEntry>
     <orderEntry type="module" module-name="analytics-crash" scope="TEST" />
     <orderEntry type="library" name="commons-io" level="project" />
-    <orderEntry type="library" name="aapt-proto-jarjar" level="project" />
+    <orderEntry type="library" name="aapt-proto" level="project" />
     <orderEntry type="module-library" scope="TEST">
       <library>
         <CLASSES>
@@ -110,5 +110,6 @@
     <orderEntry type="module" module-name="intellij.android.kotlin.output.parser" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.deploy" scope="TEST" />
     <orderEntry type="module" module-name="perf-logger" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.databinding" scope="RUNTIME" />
   </component>
 </module>

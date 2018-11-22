@@ -1,8 +1,8 @@
 package org.jetbrains.android.dom;
 
+import static com.android.builder.model.AndroidProject.PROJECT_TYPE_LIBRARY;
+
 import com.android.SdkConstants;
-import com.android.tools.idea.databinding.DataBindingMode;
-import com.android.tools.idea.databinding.ModuleDataBinding;
 import com.android.tools.idea.res.ResourcesTestsUtil;
 import com.intellij.codeInsight.TargetElementUtil;
 import com.intellij.codeInsight.completion.CompletionType;
@@ -19,22 +19,31 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.*;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiPolyVariantReference;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.ResolveResult;
 import com.intellij.spellchecker.inspections.SpellCheckingInspection;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.PsiTestUtil;
 import com.intellij.testFramework.UsefulTestCase;
 import com.intellij.util.containers.HashSet;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.android.inspections.AndroidMissingOnClickHandlerInspection;
 import org.jetbrains.android.inspections.CreateFileResourceQuickFix;
 import org.jetbrains.android.inspections.CreateValueResourceQuickFix;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.android.builder.model.AndroidProject.PROJECT_TYPE_LIBRARY;
 
 /**
  * Tests semantic highlighting and completion in layout XML files.
@@ -290,47 +299,6 @@ public class AndroidLayoutDomTest extends AndroidDomTestCase {
     myFixture.addClass(myLayoutManager);
     myFixture.addFileToProject("res/values/recyclerView_attrs.xml", recyclerViewAttrs);
     doTestHighlighting("recycler_view_1.xml");
-  }
-
-  public void testDataBindingHighlighting1() throws Throwable {
-    // TODO test w/ X
-    ModuleDataBinding.getInstance(myFacet).setMode(DataBindingMode.SUPPORT);
-    copyFileToProject("DataBindingHighlighting1.java", "src/p1/p2/DataBindingHighlighting1.java");
-    doTestHighlighting("databinding_highlighting1.xml");
-  }
-
-  public void testDataBindingHighlighting2() throws Throwable {
-    // TODO test w/ X
-    ModuleDataBinding.getInstance(myFacet).setMode(DataBindingMode.SUPPORT);
-    doTestHighlighting("databinding_highlighting2.xml");
-  }
-
-  public void testDataBindingHighlighting3() throws Throwable {
-    // TODO test w/ X
-    ModuleDataBinding.getInstance(myFacet).setMode(DataBindingMode.SUPPORT);
-    copyFileToProject("DataBindingHighlighting3.java", "src/p1/p2/DataBindingHighlighting3.java");
-    doTestHighlighting("databinding_highlighting3.xml");
-  }
-
-  public void testDataBindingCompletion1() throws Throwable {
-    doTestCompletionVariants("databinding_completion1.xml", "name", "type");
-  }
-
-  public void testDataBindingCompletion2() throws Throwable {
-    toTestCompletion("databinding_completion2.xml", "databinding_completion2_after.xml");
-  }
-
-  public void testDataBindingCompletion3() throws Throwable {
-    toTestCompletion("databinding_completion3.xml", "databinding_completion3_after.xml");
-    //doTestCompletionVariants("databinding_completion3.xml", "safeUnbox", "superCool");
-  }
-
-  /**
-   * Regression test for https://issuetracker.google.com/37104001.
-   * Code completion in views inside a <layout> tag need to pick up default layout parameters.
-   */
-  public void testDataBindingCompletion4() throws Throwable {
-    toTestCompletion("databinding_completion4.xml", "databinding_completion4_after.xml");
   }
 
   public void testCustomTagCompletion() throws Throwable {
@@ -1341,12 +1309,6 @@ public class AndroidLayoutDomTest extends AndroidDomTestCase {
   public void testAarDependencyHighlightingNamespaced() throws Throwable {
     enableNamespacing("myapp");
     ResourcesTestsUtil.addBinaryAarDependency(myModule);
-    doTestHighlighting();
-  }
-
-  public void testUnknownDataBindingAttribute() throws Throwable {
-    // Regression test for issue http://b.android.com/195485
-    // Don't highlight data binding attributes as unknown
     doTestHighlighting();
   }
 

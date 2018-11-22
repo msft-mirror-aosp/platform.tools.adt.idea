@@ -35,12 +35,25 @@ val externalResourceNamespace = ResourceNamespace.fromPackageName("external.desi
  */
 data class DesignAsset(
   val file: VirtualFile,
-  val qualifiers: List<ResourceQualifier>,
+  var qualifiers: List<ResourceQualifier>,
   val type: ResourceType,
   val name: String = file.nameWithoutExtension,
   val resourceItem: ResourceItem = ResourceMergerItem(name, externalResourceNamespace, type, null, "external")
 
 ) {
+
+  companion object {
+    fun fromResourceItem(resourceItem: ResourceItem): DesignAsset? {
+      val file = resourceItem.getSourceAsVirtualFile() ?: return null
+      return DesignAsset(
+        file = file,
+        qualifiers = resourceItem.configuration.qualifiers.toList(),
+        type = resourceItem.type,
+        name = resourceItem.name,
+        resourceItem = resourceItem)
+    }
+  }
+
   constructor(resourceItem: ResourceItem) : this(
     file = resourceItem.getSourceAsVirtualFile()!!, // TODO handle assertion
     qualifiers = resourceItem.configuration.qualifiers.toList(),

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.run.deployment;
 
+import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.internal.avd.AvdInfo;
@@ -23,14 +24,17 @@ import com.android.tools.idea.run.ApplicationIdProvider;
 import com.android.tools.idea.run.deployable.Deployable;
 import com.android.tools.idea.run.deployable.DeployableProvider;
 import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployableProvider {
+  @NotNull private final Project myProject;
   @NotNull private final ApplicationIdProvider myApplicationIdProvider;
 
-  public DeviceAndSnapshotComboBoxDeployableProvider(@NotNull ApplicationIdProvider applicationIdProvider) {
+  public DeviceAndSnapshotComboBoxDeployableProvider(@NotNull Project project, @NotNull ApplicationIdProvider applicationIdProvider) {
     myApplicationIdProvider = applicationIdProvider;
+    myProject = project;
   }
 
   @Override
@@ -42,9 +46,8 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
   @Override
   public Deployable getDeployable() throws ApkProvisionException {
     ActionManager manager = ActionManager.getInstance();
-    DeviceAndSnapshotComboBoxAction action = (DeviceAndSnapshotComboBoxAction)manager.getAction("DeviceAndSnapshotComboBox");
+    Device device = ((DeviceAndSnapshotComboBoxAction)manager.getAction("DeviceAndSnapshotComboBox")).getSelectedDevice(myProject);
 
-    Device device = action.getSelectedDevice();
     if (device == null) {
       return null;
     }
@@ -79,11 +82,15 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
 
     @Override
     public boolean isApplicationRunningOnDeployable() {
-      IDevice device = myDevice.getDdmlibDevice();
-      if (device == null) {
+      if (!myDevice.isConnected()) {
         return false;
       }
-      return myDevice.isConnected() && device.getClient(myPackageName) != null;
+      IDevice device = myDevice.getDdmlibDevice();
+      if (device == null || !device.isOnline()) {
+        return false;
+      }
+      Client client = Deployable.searchClientsForPackage(device, myPackageName);
+      return client != null && client.isValid();
     }
   }
 
@@ -108,7 +115,11 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
     public boolean isApplicationRunningOnDeployable() {
       IDevice device = myPhysicalDevice.getDdmlibDevice();
       assert device != null;
-      return device.isOnline() && device.getClient(myPackageName) != null;
+      if (!device.isOnline()) {
+        return false;
+      }
+      Client client = Deployable.searchClientsForPackage(device, myPackageName);
+      return client != null && client.isValid();
     }
   }
 }

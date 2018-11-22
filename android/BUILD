@@ -123,7 +123,7 @@ iml_module(
         "//tools/idea/.idea/libraries:batik",
         "//tools/idea/.idea/libraries:xml-apis-ext",
         "//tools/analytics-library/crash:analytics-crash[module]",
-        "//tools/idea/.idea/libraries:aapt-proto-jarjar",
+        "//tools/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/android/lib:pepk",
         "//tools/idea/.idea/libraries:protobuf",
         "//tools/idea/.idea/libraries:studio-analytics-proto",
@@ -180,14 +180,6 @@ iml_module(
         "//tools/idea/java/jdkAnnotations",
         "//tools/idea/java/mockJDK-1.7",
     ],
-    # do not sort: must match IML order
-    test_runtime_deps = [
-        "//tools/idea/platform/tasks-platform-impl:intellij.platform.tasks.impl",
-        "//tools/idea/java/compiler/instrumentation-util-8:intellij.java.compiler.instrumentationUtil.java8",
-        "//tools/idea/jvm/jvm-analysis-impl:intellij.jvm.analysis.impl",
-        "//tools/idea/plugins/maven/error-prone-compiler:intellij.maven.errorProne.compiler",
-        "//tools/idea/plugins/IntelliLang/intellilang-jps-plugin:intellij.java.langInjection.jps",
-    ],
     test_shard_count = 50,
     test_srcs = ["testSrc"],
     test_tags = [
@@ -199,6 +191,17 @@ iml_module(
     ],
     test_timeout = "eternal",
     visibility = ["//visibility:public"],
+    # do not sort: must match IML order
+    runtime_deps = [
+        "//tools/adt/idea/databinding:intellij.android.databinding",
+        "//tools/idea/xml/relaxng:intellij.relaxng",
+        "//tools/idea/platform/tasks-platform-impl:intellij.platform.tasks.impl",
+        "//tools/idea/json:intellij.json",
+        "//tools/idea/jvm/jvm-analysis-impl:intellij.jvm.analysis.impl",
+        "//tools/idea/java/compiler/instrumentation-util-8:intellij.java.compiler.instrumentationUtil.java8",
+        "//tools/idea/plugins/maven/error-prone-compiler:intellij.maven.errorProne.compiler",
+        "//tools/idea/plugins/IntelliLang/intellilang-jps-plugin:intellij.java.langInjection.jps",
+    ],
     # do not sort: must match IML order
     deps = [
         "//tools/idea/platform/lang-impl:intellij.platform.lang.impl[module, test]",
@@ -267,7 +270,7 @@ iml_module(
         "//tools/adt/idea/android/lib:instantapps-api-1.5",
         "//tools/analytics-library/crash:analytics-crash[module, test]",
         "//tools/idea/.idea/libraries:commons-io",
-        "//tools/idea/.idea/libraries:aapt-proto-jarjar",
+        "//tools/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/android/lib:pepk[test]",
         "//tools/idea/.idea/libraries:protobuf",
         "//tools/idea/.idea/libraries:studio-analytics-proto",
@@ -312,14 +315,6 @@ filegroup(
 )
 
 filegroup(
-    name = "aapt-proto-artifacts",
-    srcs = [
-        "//tools/base/sdk-common/aapt-proto-jar-generator:aapt-proto-jarjar.jar",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-filegroup(
     name = "aia-artifacts",
     srcs = [
         "//tools/base/sdk-common/aia-manifest-jar-generator:aia-manifest-proto-1.0-jarjar.jar",
@@ -345,7 +340,6 @@ filegroup(
 filegroup(
     name = "artifacts",
     srcs = [
-        ":aapt-proto-artifacts",
         ":aia-artifacts",
         ":analytics-artifacts",
         ":deploy-artifacts",
@@ -460,6 +454,7 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/android/support/support-fragment/26.0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/support-fragment/26.1.0:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/support-fragment/27.1.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/android/support/support-fragment/28.0.0:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/support-media-compat/25.4.0:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/support-media-compat/26.0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/support-media-compat/26.1.0:aar",
@@ -489,7 +484,7 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-ads-lite/15.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-ads/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-ads/15.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-audience/15.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-audience/16.0.0:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-auth-api-phone-license/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-auth-api-phone/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-auth-base-license/12.0.1:aar",
@@ -497,21 +492,21 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-auth/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-base-license/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-base/12.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-base/15.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-base/16.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-basement-license/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-basement/12.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-basement/15.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-basement/16.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-gass-license/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-gass/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-gass/15.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-maps/15.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-plus/15.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-maps/16.0.0:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-plus/16.0.0:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-tasks-license/12.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-tasks/12.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-tasks/15.0.1:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-wearable/15.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-tasks/16.0.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/gms/play-services-wearable/16.0.1:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/material/material/1.0.0-beta01:aar",
-        "//prebuilts/tools/common/m2/repository/com/google/android/support/wearable/2.3.0:aar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/support/wearable/2.4.0:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/things/androidthings/0.4-devpreview:jar",
         "//prebuilts/tools/common/m2/repository/com/google/android/things/contrib/driver-apa102/0.3:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/things/contrib/driver-bmx280/0.2:aar",
@@ -525,6 +520,7 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/google/android/things/contrib/driver-ssd1306/0.3:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/things/contrib/driver-tm1637/0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/google/android/wearable/wearable/2.3.0:jar",
+        "//prebuilts/tools/common/m2/repository/com/google/android/wearable/wearable/2.4.0:jar",
         "//prebuilts/tools/common/m2/repository/com/google/code/findbugs/jsr305/1.3.9:jar",
         "//prebuilts/tools/common/m2/repository/com/google/code/findbugs/jsr305/2.0.1:jar",
         "//prebuilts/tools/common/m2/repository/com/google/code/gson/gson/2.2.4:jar",

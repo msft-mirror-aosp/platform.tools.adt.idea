@@ -45,10 +45,8 @@ internal val RESOURCE_DEBUG = System.getProperty("res.manag.debug", "true")?.toB
 /**
  * The resource explorer lets the user browse resources from the provided [AndroidFacet]
  */
-class ResourceExplorer private constructor(
-  parentDisposable: Disposable,
-  facet: AndroidFacet
-) : JPanel(BorderLayout()), Disposable {
+class ResourceExplorer private constructor(facet: AndroidFacet)
+  : JPanel(BorderLayout()), Disposable {
 
   var facet by Delegates.observable(facet) { _, _, newValue -> updateFacet(newValue) }
 
@@ -69,27 +67,10 @@ class ResourceExplorer private constructor(
   companion object {
 
     /**
-     * Create a new instance of [ResourceExplorer] optimized to be used in an Editor tab
-     */
-    @Deprecated("use createForToolWindow instead",
-                replaceWith = ReplaceWith("ResourceExplorer.createForToolWindow(parentDisposable: Disposable, facet: AndroidFacet)"))
-    fun createForEditor(parentDisposable: Disposable, facet: AndroidFacet): ResourceExplorer {
-      return ResourceExplorer(
-        parentDisposable,
-        facet
-      )
-    }
-
-    /**
      * Create a new instance of [ResourceExplorer] optimized to be used in a [com.intellij.openapi.wm.ToolWindow]
      */
     @JvmStatic
-    fun createForToolWindow(parentDisposable: Disposable, facet: AndroidFacet): ResourceExplorer {
-      return ResourceExplorer(
-        parentDisposable,
-        facet
-      )
-    }
+    fun createForToolWindow(facet: AndroidFacet): ResourceExplorer = ResourceExplorer(facet)
   }
 
   init {
@@ -116,7 +97,6 @@ class ResourceExplorer private constructor(
       centerContainer.add(designAssetDetailView)
     }
     add(centerContainer, BorderLayout.CENTER)
-    Disposer.register(parentDisposable, this)
     Disposer.register(this, synchronizationManager)
     Disposer.register(this, projectResourcesBrowserViewModel)
     Disposer.register(this, resourceExplorerView)

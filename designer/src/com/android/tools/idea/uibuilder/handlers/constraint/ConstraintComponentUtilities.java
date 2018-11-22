@@ -19,7 +19,6 @@ import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.ide.common.repository.GradleVersion;
 import com.android.ide.common.resources.ResourceResolver;
-import com.android.tools.idea.common.command.NlWriteCommandAction;
 import com.android.tools.idea.common.model.*;
 import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.common.scene.SceneComponent;
@@ -1391,13 +1390,13 @@ public final class ConstraintComponentUtilities {
   public static int getMargin(@NotNull NlComponent component, String margin_attr) {
     int margin = 0;
 
-    String marginString = component.getLiveAttribute(NS_RESOURCES, margin_attr);
+    String marginString = component.getLiveAttribute(ANDROID_URI, margin_attr);
     if (marginString == null) {
       if (ATTR_LAYOUT_MARGIN_LEFT.equalsIgnoreCase(margin_attr)) { // left check if it is start
-        marginString = component.getLiveAttribute(NS_RESOURCES, ATTR_LAYOUT_MARGIN_START);
+        marginString = component.getLiveAttribute(ANDROID_URI, ATTR_LAYOUT_MARGIN_START);
       }
       else { // right check if it is end
-        marginString = component.getLiveAttribute(NS_RESOURCES, ATTR_LAYOUT_MARGIN_END);
+        marginString = component.getLiveAttribute(ANDROID_URI, ATTR_LAYOUT_MARGIN_END);
       }
     }
     if (marginString != null) {

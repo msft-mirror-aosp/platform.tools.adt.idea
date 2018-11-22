@@ -128,7 +128,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_SIMPLEPERF_HOST = Flag.create(
     PROFILER, "cpu.simpleperf.host", "Enable simpleperf report-sample to be run on the host.",
     "If enabled, simpleperf report-sample commands are going to be run on the host instead of the device.",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_OPEN_CAPTURES = Flag.create(
     PROFILER, "profiler.open.captures", "Enable opening .trace and .hprof files",
@@ -489,7 +489,7 @@ public final class StudioFlags {
     TESTING, "print.instrumentation.status", "Print instrumentation status information when testing",
     "If enabled, instrumentation output keys (from calling Instrumentation#sendStatus) that begin with 'android.studio.display.' "
     + "will have their values printed after a test has finished running.",
-    false
+    true
   );
 
   private static final FlagGroup THEME_EDITOR = new FlagGroup(FLAGS, "theme.editor", "Theme Editor");

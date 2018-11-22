@@ -466,14 +466,11 @@
 
     <fileTypeFactory implementation="org.jetbrains.android.fileTypes.AndroidFileTypeFactory"/>
 
-    <lang.syntaxHighlighterFactory language="AndroidDataBinding" implementationClass="com.android.tools.idea.lang.databinding.DbSyntaxHighlighterFactory" />
-
     <fileEditorProvider implementation="com.android.tools.idea.editors.NinePatchEditorProvider" />
     <fileEditorProvider implementation="com.android.tools.idea.editors.theme.ThemeEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.editors.manifest.ManifestEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.apk.viewer.ApkEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.editors.fonts.FontEditorProvider" />
-    <fileEditorProvider implementation="com.android.tools.idea.resourceExplorer.editor.ResourceExplorerEditorProvider"/>
 
     <runConfigurationProducer implementation="com.android.tools.idea.run.AndroidConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer" order="first"/>
@@ -705,6 +702,7 @@
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIconXmlAndPng" displayName="Icon is specified both as .xml file and as a bitmap" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIconXmlAndPngInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIgnoreWithoutReason" displayName="@Ignore without Reason" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIgnoreWithoutReasonInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIllegalResourceRef" displayName="Name and version must be integer or string, not resource" bundle="messages.AndroidBundle" enabledByDefault="true" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintIllegalResourceRefInspection"/>
+    <globalInspection hasStaticDescription="true" shortName="AndroidLintImplicitSamInstance" displayName="Implicit SAM Instances" bundle="messages.AndroidBundle" enabledByDefault="false" level="WARNING" implementationClass="com.android.tools.idea.lint.AndroidLintImplicitSamInstanceInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintImpliedQuantity" displayName="Implied Quantities" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintImpliedQuantityInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintImpliedTouchscreenHardware" displayName="Missing declaration of uses-feature for touchscreen" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintImpliedTouchscreenHardwareInspection"/>
     <globalInspection hasStaticDescription="true" shortName="AndroidLintIncludeLayoutParam" displayName="Ignored layout params on include" bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR" implementationClass="com.android.tools.idea.lint.AndroidLintIncludeLayoutParamInspection"/>
@@ -1055,13 +1053,11 @@
     <projectService serviceImplementation="com.android.tools.idea.structure.services.DeveloperServices" />
     <projectService serviceImplementation="com.android.tools.idea.npw.assetstudio.wizard.GenerateIconsModel$StateStorage" />
     <projectService serviceImplementation="com.android.tools.idea.rendering.RenderSettings" />
-    <projectService serviceImplementation="com.android.tools.idea.run.ui.model.ProjectExecutionState" />
 
     <moduleService serviceImplementation="org.jetbrains.android.compiler.ModuleSourceAutogenerating" />
     <moduleService serviceImplementation="org.jetbrains.android.TagToClassMapperImpl"
                    serviceInterface="com.android.tools.idea.psi.TagToClassMapper" />
     <moduleService serviceImplementation="org.jetbrains.android.resourceManagers.ModuleResourceManagers" />
-    <moduleService serviceImplementation="com.android.tools.idea.databinding.ModuleDataBinding" />
     <moduleService serviceImplementation="com.android.tools.idea.res.ResourceIdManager" />
 
     <projectConfigurable instance="org.jetbrains.android.compiler.AndroidDexCompilerSettingsConfigurable" id="android.dex.compiler"
@@ -1292,6 +1288,8 @@
                     interface="com.android.tools.idea.databinding.DataBindingExpressionProvider"/>
     <extensionPoint qualifiedName="com.android.tools.idea.lang.databinding.dataBindingCompletionProvider"
                     interface="com.android.tools.idea.lang.databinding.DataBindingCompletionProvider"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.databinding.dataBindingSupport"
+                    interface="com.android.tools.idea.databinding.DataBindingSupport"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.android">
@@ -1383,19 +1381,8 @@
     <androidDebugger implementation="com.android.tools.idea.run.editor.AndroidJavaDebugger"/>
   </extensions>
 
-  <!-- data binding-->
   <extensions defaultExtensionNs="com.intellij">
-    <java.shortNamesCache implementation="com.android.tools.idea.databinding.BrShortNamesCache"/>
-    <java.shortNamesCache implementation="com.android.tools.idea.databinding.DataBindingShortNamesCache"/>
-    <java.shortNamesCache implementation="com.android.tools.idea.databinding.DataBindingComponentShortNamesCache"/>
-    <java.elementFinder implementation="com.android.tools.idea.databinding.BrClassFinder" id="dataBinding.BrClassFinder" order="first, before java"/>
-    <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingClassFinder" id="dataBinding.BindingClassFinder" order="first, before java"/>
-    <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingComponentClassFinder" id="dataBinding.ComponentClassFinder" order="first, before java"/>
-    <java.elementFinder implementation="com.android.tools.idea.databinding.DataBindingPackageFinder" id="dataBinding.DataBindingPackageFinder" order="last, after java"/>
-    <applicationConfigurable groupId="editor" id="android.databinding"
-                             provider="com.android.tools.idea.databinding.config.DataBindingConfigurableProvider"/>
-    <applicationService serviceImplementation="com.android.tools.idea.databinding.config.DataBindingConfiguration"/>
-    <automaticRenamerFactory implementation="com.android.tools.idea.databinding.DataBindingRenamerFactory"/>
+    <executionTargetProvider implementation="com.android.tools.idea.run.deployment.DeviceAndSnapshotExecutionTargetProvider"/>
   </extensions>
 
   <module-components>
