@@ -18,13 +18,20 @@ package com.android.tools.idea.naveditor.surface;
 import static com.android.SdkConstants.ATTR_GRAPH;
 import static com.android.annotations.VisibleForTesting.Visibility;
 import static com.android.tools.idea.projectsystem.ProjectSystemSyncUtil.PROJECT_SYSTEM_SYNC_TOPIC;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.ACTIVATE_CLASS;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.ACTIVATE_INCLUDE;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.ACTIVATE_LAYOUT;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.ACTIVATE_NESTED;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.OPEN_FILE;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.SELECT_DESIGN_TAB;
+import static com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.SELECT_XML_TAB;
 
 import com.android.SdkConstants;
 import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.tools.adtui.common.SwingCoordinate;
-import com.android.tools.idea.common.editor.NlEditorPanel;
+import com.android.tools.idea.common.editor.DesignerEditorPanel;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
@@ -44,7 +51,9 @@ import com.android.tools.idea.common.surface.ZoomType;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.configurations.ConfigurationStateManager;
+import com.android.tools.idea.naveditor.analytics.NavUsageTracker;
 import com.android.tools.idea.naveditor.editor.NavActionManager;
+import com.android.tools.idea.naveditor.editor.NavEditor;
 import com.android.tools.idea.naveditor.model.NavComponentHelperKt;
 import com.android.tools.idea.naveditor.model.NavCoordinate;
 import com.android.tools.idea.naveditor.scene.NavSceneManager;
@@ -57,10 +66,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
+import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
@@ -74,6 +87,7 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.reference.SoftReference;
 import com.intellij.ui.JBColor;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.ui.UIUtil;
 import java.awt.Dimension;
@@ -84,6 +98,7 @@ import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -91,6 +106,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import javax.swing.JPanel;
 import javax.swing.JViewport;
 import org.jetbrains.android.dom.navigation.NavigationSchema;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -108,9 +124,10 @@ public class NavDesignSurface extends DesignSurface {
   private NlComponent myCurrentNavigation;
   @VisibleForTesting
   AtomicReference<Future<?>> myScheduleRef = new AtomicReference<>();
-  private final NlEditorPanel myEditorPanel;
+  private DesignerEditorPanel myEditorPanel;
 
   private static final WeakHashMap<AndroidFacet, SoftReference<ConfigurationManager>> ourConfigurationManagers = new WeakHashMap<>();
+  private static final Set<Project> PROJECTS_WITH_LISTENERS = ContainerUtil.createWeakSet();
 
   @TestOnly
   public NavDesignSurface(@NotNull Project project, @NotNull Disposable parentDisposable) {
@@ -120,7 +137,7 @@ public class NavDesignSurface extends DesignSurface {
   /**
    * {@code editorPanel} should only be null in tests
    */
-  public NavDesignSurface(@NotNull Project project, @Nullable NlEditorPanel editorPanel, @NotNull Disposable parentDisposable) {
+  public NavDesignSurface(@NotNull Project project, @Nullable DesignerEditorPanel editorPanel, @NotNull Disposable parentDisposable) {
     super(project, new SelectionModel(), parentDisposable);
     setBackground(JBColor.white);
 
@@ -135,6 +152,23 @@ public class NavDesignSurface extends DesignSurface {
         requestRender();
       }
     });
+
+    synchronized (PROJECTS_WITH_LISTENERS) {
+      if (!PROJECTS_WITH_LISTENERS.contains(project)) {
+        PROJECTS_WITH_LISTENERS.add(project);
+        project.getMessageBus().connect().subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
+          @Override
+          public void selectionChanged(@NotNull FileEditorManagerEvent event) {
+            // skip the initial opening
+            if (event.getOldEditor() != null && event.getNewEditor() != null) {
+              NavUsageTracker.Companion.getInstance(NavDesignSurface.this)
+                .createEvent(event.getNewEditor() instanceof NavEditor ? SELECT_DESIGN_TAB : SELECT_XML_TAB)
+                .log();
+            }
+          }
+        });
+      }
+    }
   }
 
   @Override
@@ -145,12 +179,6 @@ public class NavDesignSurface extends DesignSurface {
     }
     getScheduleRef().set(null);
     super.dispose();
-  }
-
-  @VisibleForTesting
-  @Nullable
-  NlEditorPanel getEditorPanel() {
-    return myEditorPanel;
   }
 
   @Override
@@ -219,13 +247,23 @@ public class NavDesignSurface extends DesignSurface {
           public void onFailure(@Nullable Throwable t) {
             showFailToAddMessage(result, model);
           }
-        });
+        }, MoreExecutors.directExecutor());
       }
       else {
         showFailToAddMessage(result, model);
       }
     });
     return result;
+  }
+
+  @Override
+  public CompletableFuture<Void> setModel(@Nullable NlModel model) {
+    CompletableFuture<Void> future = super.setModel(model);
+    NavUsageTracker.Companion.getInstance(this)
+      .createEvent(OPEN_FILE)
+      .withNavigationContents()
+      .log();
+    return future;
   }
 
   private void showFailToAddMessage(@NotNull CompletableFuture<?> result, @NotNull NlModel model) {
@@ -289,22 +327,18 @@ public class NavDesignSurface extends DesignSurface {
 
       NavigationSchema schema = NavigationSchema.get(module);
       if (!schema.quickValidate()) {
-        NlEditorPanel editorPanel = getEditorPanel();
-        if (editorPanel != null) {
-          editorPanel.getWorkBench().showLoading("Refreshing Navigators...");
+        if (myEditorPanel == null) {
+          return;
         }
+        myEditorPanel.getWorkBench().showLoading("Refreshing Navigators...");
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
           try {
             schema.rebuildSchema().get();
-            if (editorPanel != null) {
-              ApplicationManager.getApplication().invokeLater(() -> editorPanel.getWorkBench().hideLoading());
-            }
+            ApplicationManager.getApplication().invokeLater(() -> myEditorPanel.getWorkBench().hideLoading());
           }
           catch (Exception e) {
-            if (editorPanel != null) {
-              ApplicationManager.getApplication().invokeLater(
-                () -> editorPanel.getWorkBench().loadingStopped("Error refreshing Navigators"));
-            }
+            ApplicationManager.getApplication().invokeLater(
+              () -> myEditorPanel.getWorkBench().loadingStopped("Error refreshing Navigators"));
           }
         });
       }
@@ -446,9 +480,12 @@ public class NavDesignSurface extends DesignSurface {
       return;
     }
     String id;
+    NavEditorEventType metricsEventType = null;
+
     if (NavComponentHelperKt.isNavigation(component)) {
       if (NavComponentHelperKt.isInclude(component)) {
         id = component.getAttribute(SdkConstants.AUTO_URI, ATTR_GRAPH);
+        metricsEventType = ACTIVATE_INCLUDE;
         if (id == null) {
           // includes are always supposed to have a graph specified, but if not, give up.
           return;
@@ -456,11 +493,13 @@ public class NavDesignSurface extends DesignSurface {
       }
       else {
         setCurrentNavigation(component);
+        NavUsageTracker.Companion.getInstance(this).createEvent(ACTIVATE_NESTED).log();
         return;
       }
     }
     else {
       id = component.getAttribute(SdkConstants.TOOLS_URI, SdkConstants.ATTR_LAYOUT);
+      metricsEventType = ACTIVATE_LAYOUT;
     }
     if (id != null) {
       Configuration configuration = getConfiguration();
@@ -473,6 +512,7 @@ public class NavDesignSurface extends DesignSurface {
           VirtualFile virtualFile = VfsUtil.findFileByIoFile(file, false);
           if (virtualFile != null) {
             FileEditorManager.getInstance(getProject()).openFile(virtualFile, true);
+            NavUsageTracker.Companion.getInstance(this).createEvent(metricsEventType).log();
             return;
           }
         }
@@ -488,6 +528,7 @@ public class NavDesignSurface extends DesignSurface {
           VirtualFile virtualFile = file.getVirtualFile();
           if (virtualFile != null) {
             FileEditorManager.getInstance(getProject()).openFile(virtualFile, true);
+            NavUsageTracker.Companion.getInstance(this).createEvent(ACTIVATE_CLASS).log();
             return;
           }
         }

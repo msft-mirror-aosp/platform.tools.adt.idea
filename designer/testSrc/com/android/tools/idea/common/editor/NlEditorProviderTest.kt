@@ -38,6 +38,11 @@ class NlEditorProviderTest : AndroidTestCase() {
     assertFalse(provider.accept(project, file.virtualFile))
   }
 
+  fun testDoNotAcceptNavigationFile() {
+    val file = myFixture.addFileToProject("res/navigation/my_nav.xml", navigationContent())
+    assertFalse(provider.accept(project, file.virtualFile))
+  }
+
   fun testAcceptLayoutFileInAndroidModuleOnly() {
     val file = myFixture.addFileToProject("res/layout/my_layout.xml", layoutContent())
     assertTrue(provider.accept(project, file.virtualFile))
@@ -59,6 +64,14 @@ class NlEditorProviderTest : AndroidTestCase() {
       .matchParentHeight()
     val sb = StringBuilder(1000)
     layout.appendXml(sb, 0)
+    return sb.toString()
+  }
+
+  @Language("XML")
+  private fun navigationContent(): String {
+    val nav = ComponentDescriptor(SdkConstants.TAG_NAVIGATION).id("mynav")
+    val sb = StringBuilder()
+    nav.appendXml(sb, 0)
     return sb.toString()
   }
 }

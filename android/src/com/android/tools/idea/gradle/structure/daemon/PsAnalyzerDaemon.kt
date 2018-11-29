@@ -18,10 +18,16 @@ package com.android.tools.idea.gradle.structure.daemon
 import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.daemon.analysis.PsAndroidModuleAnalyzer
 import com.android.tools.idea.gradle.structure.daemon.analysis.PsJavaModuleAnalyzer
-import com.android.tools.idea.gradle.structure.daemon.analysis.PsModuleAnalyzer
-import com.android.tools.idea.gradle.structure.model.*
+import com.android.tools.idea.gradle.structure.daemon.analysis.PsModelAnalyzer
+import com.android.tools.idea.gradle.structure.model.PsGeneralIssue
+import com.android.tools.idea.gradle.structure.model.PsIssue
 import com.android.tools.idea.gradle.structure.model.PsIssue.Severity.UPDATE
+import com.android.tools.idea.gradle.structure.model.PsIssueCollection
+import com.android.tools.idea.gradle.structure.model.PsIssueType
 import com.android.tools.idea.gradle.structure.model.PsIssueType.LIBRARY_UPDATES_AVAILABLE
+import com.android.tools.idea.gradle.structure.model.PsLibraryDependency
+import com.android.tools.idea.gradle.structure.model.PsModel
+import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidModule
 import com.android.tools.idea.gradle.structure.model.java.PsJavaModule
 import com.android.tools.idea.gradle.structure.navigation.PsLibraryDependencyNavigationPath
@@ -33,7 +39,8 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.update.MergingUpdateQueue
 import com.intellij.util.ui.update.MergingUpdateQueue.ANY_COMPONENT
 import com.intellij.util.ui.update.Update
-import java.util.*
+import org.jetbrains.kotlin.utils.addToStdlib.cast
+import java.util.EventListener
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 
@@ -44,7 +51,7 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
   override val resultsUpdaterQueue: MergingUpdateQueue = createQueue("Project Structure Analysis Results Updater", ANY_COMPONENT)
   val issues: PsIssueCollection = PsIssueCollection()
 
-  private val modelAnalyzers: Map<Class<*>, PsModuleAnalyzer<out PsModule>> =
+  private val modelAnalyzers: Map<Class<*>, PsModelAnalyzer<out PsModule>> =
     analyzersMapOf(PsAndroidModuleAnalyzer(context), PsJavaModuleAnalyzer(context))
   private val running = AtomicBoolean(true)
 
@@ -118,9 +125,15 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
     mainQueue.queue(AnalyzeStructure(model))
   }
 
-  private fun doCheck(model: PsModel) {
+  /**
+   * Runs validation-essential analysis (must be invoked on EDT).
+   */
+  fun validate(model: PsModel): Sequence<PsIssue> =
+    modelAnalyzers[model.javaClass]?.cast<PsModelAnalyzer<PsModel>>()?.analyze(model) ?: sequenceOf()
+
+  private fun doAnalyzeStructure(model: PsModel) {
     running.set(true)
-    val analyzer = modelAnalyzers[model.javaClass]
+    val analyzer = modelAnalyzers[model.javaClass]?.cast<PsModelAnalyzer<PsModel>>()
     if (analyzer == null) {
       LOG.info("Failed to find analyzer for model of type " + model.javaClass.name)
       return
@@ -136,11 +149,19 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
     resultsUpdaterQueue.queue(IssuesComputed(context.project))
   }
 
+  fun addAll(newIssues: List<PsIssue>, now: Boolean = true) {
+    newIssues.forEach(issues::add)
+    if (now) issuesUpdatedEventDispatcher.multicaster.issuesUpdated(context.project)
+    else resultsUpdaterQueue.queue(IssuesComputed(context.project))
+  }
+
   private inner class AnalyzeStructure internal constructor(private val myModel: PsModel) : Update(myModel) {
 
     override fun run() {
       try {
-        doCheck(myModel)
+        if (!isDisposed && !isStopped) {
+          doAnalyzeStructure(myModel)
+        }
       }
       catch (e: Throwable) {
         LOG.error("Failed to analyze $myModel", e)
@@ -166,5 +187,5 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
   }
 }
 
-private fun analyzersMapOf(vararg analyzers: PsModuleAnalyzer<out PsModule>): Map<Class<*>, PsModuleAnalyzer<out PsModule>> =
+private fun analyzersMapOf(vararg analyzers: PsModelAnalyzer<out PsModule>): Map<Class<*>, PsModelAnalyzer<out PsModule>> =
   analyzers.associateBy { it.supportedModelType }

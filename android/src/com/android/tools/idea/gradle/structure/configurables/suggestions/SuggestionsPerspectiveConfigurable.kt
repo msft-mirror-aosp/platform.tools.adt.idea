@@ -42,8 +42,6 @@ class SuggestionsPerspectiveConfigurable(context: PsContext)
         else -> JavaModuleUnsupportedConfigurable(context, module)
       }
 
-  override val navigationPathName: String = "suggestions.place"
-
   override fun getDisplayName(): String = "Suggestions"
 
 
@@ -59,5 +57,5 @@ class SuggestionsPerspectiveConfigurable(context: PsContext)
   }
 
   private fun createConfigurable(module: PsModule) =
-      AndroidModuleSuggestionsConfigurable(context, module, extraModules).apply { setHistory(myHistory) }
+      AndroidModuleSuggestionsConfigurable(context, module).apply { setHistory(myHistory) }
 }

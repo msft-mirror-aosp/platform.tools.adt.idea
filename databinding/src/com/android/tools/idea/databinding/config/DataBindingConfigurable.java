@@ -16,7 +16,7 @@
 package com.android.tools.idea.databinding.config;
 
 import com.android.tools.idea.IdeInfo;
-import com.android.tools.idea.databinding.InternalDataBindingUtil;
+import com.android.tools.idea.databinding.DataBindingCodeGenService;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
@@ -28,9 +28,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import org.jetbrains.annotations.TestOnly;
 
-public class DataBindingConfigurable implements SearchableConfigurable {
-  private JPanel myPanel1;
+public final class DataBindingConfigurable implements SearchableConfigurable {
+  private JPanel myRootPanel;
   private JBRadioButton myGeneratedCodeRadioButton;
   private JBRadioButton myLiveCodeRadioButton;
   private JBLabel restartWarning;
@@ -39,15 +40,15 @@ public class DataBindingConfigurable implements SearchableConfigurable {
 
   public DataBindingConfigurable() {
     myConfiguration = DataBindingConfiguration.getInstance();
-    updateIU();
+    updateUi();
   }
 
-  private void updateIU() {
-    switch (myConfiguration.CODE_NAVIGATION_MODE) {
-      case XML:
+  private void updateUi() {
+    switch (myConfiguration.CODE_GEN_MODE) {
+      case IN_MEMORY:
         myLiveCodeRadioButton.setSelected(true);
         break;
-      case CODE:
+      case ON_DISK:
         myGeneratedCodeRadioButton.setSelected(true);
         break;
     }
@@ -69,28 +70,28 @@ public class DataBindingConfigurable implements SearchableConfigurable {
   @Nullable
   @Override
   public JComponent createComponent() {
-    return myPanel1;
+    return myRootPanel;
   }
 
   @Override
   public boolean isModified() {
-    boolean modified = myConfiguration.CODE_NAVIGATION_MODE != getNavigationModeFromUI();
+    boolean modified = myConfiguration.CODE_GEN_MODE != getSelectedCodeGenMode();
     restartWarning.setVisible(modified);
     return modified;
   }
 
   @Override
   public void apply() throws ConfigurationException {
-    DataBindingConfiguration.CodeNavigationMode ui = getNavigationModeFromUI();
+    DataBindingConfiguration.CodeGenMode codeGenMode = getSelectedCodeGenMode();
     ApplicationManager.getApplication().runWriteAction(() -> {
-      myConfiguration.CODE_NAVIGATION_MODE = ui;
-      InternalDataBindingUtil.recalculateEnableInMemoryClassGeneration();
+      myConfiguration.CODE_GEN_MODE = codeGenMode;
+      DataBindingCodeGenService.getInstance().handleCodeGenModeChanged();
     });
   }
 
   @Override
   public void reset() {
-    updateIU();
+    updateUi();
   }
 
   @Override
@@ -103,10 +104,22 @@ public class DataBindingConfigurable implements SearchableConfigurable {
     return IdeInfo.getInstance().isAndroidStudio() ? "Data Binding" : "Android Data Binding";
   }
 
-  private DataBindingConfiguration.CodeNavigationMode getNavigationModeFromUI() {
+  @TestOnly
+  @NotNull
+  public JBRadioButton getGeneratedCodeRadioButton() {
+    return myGeneratedCodeRadioButton;
+  }
+
+  @TestOnly
+  @NotNull
+  public JBRadioButton getLiveCodeRadioButton() {
+    return myLiveCodeRadioButton;
+  }
+
+  private DataBindingConfiguration.CodeGenMode getSelectedCodeGenMode() {
     if (myGeneratedCodeRadioButton.isSelected()) {
-      return DataBindingConfiguration.CodeNavigationMode.CODE;
+      return DataBindingConfiguration.CodeGenMode.ON_DISK;
     }
-    return DataBindingConfiguration.CodeNavigationMode.XML;
+    return DataBindingConfiguration.CodeGenMode.IN_MEMORY;
   }
 }

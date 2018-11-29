@@ -15,16 +15,20 @@
  */
 package com.android.tools.idea.res.aar;
 
+import com.android.annotations.NonNull;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.AbstractResourceRepository;
 import com.android.ide.common.resources.ResourceItem;
-import com.android.ide.common.resources.ResourceTable;
+import com.android.ide.common.resources.ResourceVisitor;
 import com.android.ide.common.util.PathString;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.res.ResourceHelper;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ListMultimap;
-import org.jetbrains.annotations.Contract;
+import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,31 +37,34 @@ import org.jetbrains.annotations.Nullable;
  */
 public abstract class AbstractAarResourceRepository extends AbstractResourceRepository implements AarResourceRepository {
   @NotNull protected final ResourceNamespace myNamespace;
-  @NotNull protected final String myLibraryName;
-  @NotNull protected final ResourceTable myFullTable = new ResourceTable();
+  @NotNull protected final Map<ResourceType, ListMultimap<String, ResourceItem>> myResources = new EnumMap<>(ResourceType.class);
+  @Nullable protected final String myLibraryName;
 
-  protected AbstractAarResourceRepository(@NotNull ResourceNamespace namespace, @NotNull String libraryName) {
+  protected AbstractAarResourceRepository(@NotNull ResourceNamespace namespace, @Nullable String libraryName) {
     myNamespace = namespace;
     myLibraryName = libraryName;
   }
 
   @Override
   @NotNull
-  protected final ResourceTable getFullTable() {
-    return myFullTable;
+  protected ListMultimap<String, ResourceItem> getResourcesInternal(
+    @NotNull ResourceNamespace namespace, @NotNull ResourceType resourceType) {
+    if (!namespace.equals(myNamespace)) {
+      return ImmutableListMultimap.of();
+    }
+    return myResources.getOrDefault(resourceType, ImmutableListMultimap.of());
+  }
+
+  @NotNull
+  protected ListMultimap<String, ResourceItem> getOrCreateMap(@NotNull ResourceType resourceType) {
+    return myResources.computeIfAbsent(resourceType, type -> ArrayListMultimap.create());
   }
 
   @Override
-  @Nullable
-  @Contract("_, _, true -> !null")
-  protected final ListMultimap<String, ResourceItem> getMap(@NotNull ResourceNamespace namespace, @NotNull ResourceType type,
-                                                            boolean create) {
-    ListMultimap<String, ResourceItem> multimap = myFullTable.get(namespace, type);
-    if (multimap == null && create) {
-      multimap = ArrayListMultimap.create();
-      myFullTable.put(namespace, type, multimap);
+  public void accept(@NonNull ResourceVisitor visitor) {
+    if (visitor.shouldVisitNamespace(myNamespace)) {
+      acceptByResources(myResources, visitor);
     }
-    return multimap;
   }
 
   @Override
@@ -67,7 +74,7 @@ public abstract class AbstractAarResourceRepository extends AbstractResourceRepo
   }
 
   @Override
-  @NotNull
+  @Nullable
   public final String getLibraryName() {
     return myLibraryName;
   }
@@ -75,7 +82,7 @@ public abstract class AbstractAarResourceRepository extends AbstractResourceRepo
   @Override
   @NotNull
   public String getDisplayName() {
-    return myLibraryName;
+    return myLibraryName == null ? "Android Framework" : myLibraryName;
   }
 
   /**
@@ -101,4 +108,11 @@ public abstract class AbstractAarResourceRepository extends AbstractResourceRepo
    */
   @NotNull
   abstract PathString getPathString(@NotNull String relativeResourcePath);
+
+  /**
+   * Returns the file or directory this resource repository was loaded from. Resource repositories loaded from
+   * the same file or directory with different file filtering options have the same origin.
+   */
+  @NotNull
+  abstract Path getOrigin();
 }

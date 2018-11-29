@@ -4,7 +4,6 @@ COMMON_DATA = [
     "//tools/adt/idea/android:test_deps.zip",
     "//prebuilts/studio/jdk",
     "//prebuilts/studio/sdk:build-tools/latest",
-    "//prebuilts/studio/sdk:constraint-layout_latest",
     "//prebuilts/studio/sdk:cmake",
     "//prebuilts/studio/sdk:ndk-bundle",
     "//prebuilts/studio/sdk:platforms/latest",
@@ -395,7 +394,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  #  b/116749607
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -428,7 +426,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [
@@ -472,7 +469,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -515,7 +511,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -532,7 +527,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -549,7 +543,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  #b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -568,7 +561,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116749607
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -585,7 +577,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116749607
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -688,7 +679,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  #b/116752977
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -722,7 +712,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_psq",
         "qa_sanity",
-        "qa_unreliable",  # b/116749607
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

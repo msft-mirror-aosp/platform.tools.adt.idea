@@ -133,6 +133,8 @@ iml_module(
         "//tools/idea/.idea/libraries:HdrHistogram",
         "//tools/idea/.idea/libraries:kotlin-plugin",
         "//tools/idea/.idea/libraries:Java_Compatibility",
+        "//tools/idea/.idea/libraries:kotlin-gradle-plugin-model",
+        "//tools/base/tracer:studio.android.sdktools.tracer[module]",
     ],
 )
 
@@ -153,7 +155,6 @@ iml_module(
         "//prebuilts/studio/layoutlib:data/res",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:cmake",
-        "//prebuilts/studio/sdk:constraint-layout_latest",
         "//prebuilts/studio/sdk:docs",
         "//prebuilts/studio/sdk:licenses",
         "//prebuilts/studio/sdk:ndk-bundle",
@@ -348,6 +349,7 @@ filegroup(
         "//tools/adt/idea/swingp:swing-instrumenter_deploy.jarjar.jar",
         "//tools/base/build-system:gradle-api_neverlink",  # Provided when run in Gradle.
         "//tools/base/third_party/kotlin:kotlin-m2repository.zip",
+        "//tools/base/tracer:trace_agent",
     ],
 )
 
@@ -426,7 +428,9 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/25.4.0:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/27.1.1:aar",
+        "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout-solver/1.0.2:jar",
         "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout-solver/1.1.3:jar",
+        "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout/1.0.2:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/constraint/constraint-layout/1.1.3:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/design/27.1.1:aar",
         "//prebuilts/tools/common/m2/repository/com/android/support/leanback-v17/27.1.1:aar",

@@ -16,7 +16,6 @@
 package com.android.tools.idea.common.scene.target
 
 import com.android.tools.idea.common.api.InsertType
-import com.android.tools.idea.common.command.NlWriteCommandAction
 import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.common.scene.*
 import com.android.tools.idea.common.scene.draw.DisplayList
@@ -318,7 +317,12 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
     val primaryNlComponent = myComponent.authoritativeNlComponent
     val model = primaryNlComponent.model
     val componentsToAdd = draggedComponents.map { it.authoritativeNlComponent }
-    val anchor = placeholder.nextComponent?.nlComponent
+    // If there is no next component and component is move within same parent, we keep its original order in xml file.
+    val anchor = placeholder.nextComponent?.nlComponent ?: if (primaryNlComponent.parent != parent) null else {
+      val siblings = parent.children
+      val currentPosition = siblings.indexOf(primaryNlComponent)
+      siblings.getOrNull(currentPosition + 1)
+    }
 
     if (model.canAddComponents(componentsToAdd, parent, anchor)) {
       val attributesTransactions = draggedComponents.map {
@@ -327,9 +331,8 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
         transaction
       }
       if (commit) {
-        NlWriteCommandAction.run(componentsToAdd, "Drag ${primaryNlComponent.tagName}") {
+        model.addComponents(componentsToAdd, parent, anchor, insertType, myComponent.scene.designSurface) {
           attributesTransactions.forEach { it.commit() }
-          model.addComponents(componentsToAdd, parent, anchor, insertType, myComponent.scene.designSurface)
         }
       }
       else {

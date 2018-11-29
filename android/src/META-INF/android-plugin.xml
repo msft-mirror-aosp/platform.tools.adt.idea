@@ -202,6 +202,7 @@
       <action internal="true" id="Android.EditFlags" class="com.android.tools.idea.flags.ShowStudioFlagsDialogAction"/>
       <action internal="true" id="Android.ShowRoomSchema" class="com.android.tools.idea.actions.ShowRoomSchemaAction"/>
       <action internal="true" id="Android.SwingProfiler" class="com.android.tools.adtui.actions.EnableSwingProfilerAction"/>
+      <action internal="true" id="Android.IdeaProjectStructure" class="com.android.tools.idea.structure.IdeaProjectStructureAction"/>
       <add-to-group group-id="Internal"/>
     </group>
     <action id="Android.GenerateSignedApk" class="org.jetbrains.android.actions.GenerateSignedApkAction">
@@ -560,12 +561,6 @@
       <className>org.jetbrains.android.intentions.AndroidAddLibraryDependencyAction</className>
       <category>Android</category>
     </intentionAction>
-
-    <intentionAction>
-      <className>com.android.tools.idea.actions.ConvertLayoutToDataBindingAction</className>
-      <category>Android</category>
-    </intentionAction>
-
 
     <localInspection language="XML" shortName="AndroidDomInspection" bundle="messages.AndroidBundle" key="android.inspections.dom.name"
                      groupKey="android.inspections.group.name" enabledByDefault="true" level="ERROR"
@@ -1090,6 +1085,8 @@
     <renameInputValidator implementation="com.android.tools.idea.gradle.refactoring.GradleAwareSourceRootRenameValidator"/>
 
     <codeInsight.unresolvedReferenceQuickFixProvider implementation="org.jetbrains.android.inspections.AndroidResourceQuickFixProvider"/>
+    <codeInsight.unresolvedReferenceQuickFixProvider implementation="com.android.tools.idea.imports.AndroidMavenImportJavaResolver"/>
+
     <lang.psiAugmentProvider implementation="org.jetbrains.android.augment.AndroidPsiAugmentProvider"/>
 
     <!-- Finder for light R classes, runs before the default finder. -->
@@ -1240,6 +1237,8 @@
                     interface="com.android.tools.idea.gradle.project.sync.setup.post.PluginVersionUpgradeStep"/>
     <extensionPoint qualifiedName="com.android.gradle.sync.extraGradleSyncJavaModels"
                     interface="com.android.tools.idea.gradle.project.sync.ng.ExtraGradleSyncJavaModels"/>
+    <extensionPoint qualifiedName="com.android.gradle.sync.extraGradleSyncAndroidModels"
+                    interface="com.android.tools.idea.gradle.project.sync.ng.ExtraGradleSyncAndroidModels"/>
     <extensionPoint qualifiedName="com.android.captureType" interface="com.android.tools.idea.profiling.capture.CaptureType"/>
     <extensionPoint qualifiedName="com.android.gradle.sync.syncErrorHandler"
                     interface="com.android.tools.idea.gradle.project.sync.errors.SyncErrorHandler"/>

@@ -53,6 +53,8 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ToolTipManager
 
+const val BASE_PERSPECTIVE_MODULE_PLACE_NAME = "base_perspective.module"
+
 abstract class BasePerspectiveConfigurable protected constructor(
   protected val context: PsContext,
   val extraModules: List<PsModule>
@@ -74,7 +76,7 @@ abstract class BasePerspectiveConfigurable protected constructor(
   private var treeInitiated: Boolean = false
   private var currentModuleSelectorStyle: ModuleSelectorStyle? = null
 
-  protected abstract val navigationPathName: String
+  val navigationPathName: String = BASE_PERSPECTIVE_MODULE_PLACE_NAME
   val selectedModule: PsModule? get() = myCurrentConfigurable?.editableObject as? PsModule
   val selectedModuleName: String? get() = selectedModule?.name
 
@@ -270,16 +272,13 @@ abstract class BasePerspectiveConfigurable protected constructor(
   override fun getSelectedConfigurable(): NamedConfigurable<*>? =
     (myTree.selectionPath?.lastPathComponent as? MasterDetailsComponent.MyNode)?.configurable
 
-  fun putNavigationPath(place: Place, moduleName: String, dependency: String) {
+  fun putNavigationPath(place: Place, moduleName: String) {
     place.putPath(navigationPathName, moduleName)
     val module = findModule(moduleName)!!
     val node = MasterDetailsComponent.findNodeByObject(myRoot, module)!!
     val configurable = node.configurable
     assert(configurable is BaseNamedConfigurable<*>)
-    val dependenciesConfigurable = configurable as BaseNamedConfigurable<*>
-    dependenciesConfigurable.putNavigationPath(place, dependency)
   }
-
 
   override fun createActions(fromPopup: Boolean): List<AnAction> =
     listOf(
@@ -351,7 +350,7 @@ abstract class BasePerspectiveConfigurable protected constructor(
 
   override fun isModified(): Boolean = context.project.isModified
 
-  override fun apply() = context.project.applyChanges()
+  final override fun apply() = context.applyChanges()
 
   override fun setHistory(history: History?) = super<MasterDetailsComponent>.setHistory(history)
 

@@ -34,13 +34,14 @@ import com.intellij.util.IconUtil
 import javax.swing.tree.TreePath
 
 const val PRODUCT_FLAVORS_DISPLAY_NAME: String = "Flavors"
+const val PRODUCT_FLAVORS_PLACE_NAME: String = "android.psd.product_flavor"
 class ProductFlavorsPanel(
   val module: PsAndroidModule,
   val treeModel: ConfigurablesTreeModel,
   uiSettings: PsUISettings
 ) : ConfigurablesMasterDetailsPanel<PsProductFlavor>(
   PRODUCT_FLAVORS_DISPLAY_NAME,
-  "android.psd.product_flavor",
+  PRODUCT_FLAVORS_PLACE_NAME,
   treeModel, uiSettings
 ) {
   override fun getRemoveAction(): AnAction? {
@@ -111,7 +112,7 @@ class ProductFlavorsPanel(
             val selectedObject = selectedConfigurable
             val currentDimension = when (selectedObject) {
               is FlavorDimensionConfigurable -> selectedObject.flavorDimension.name
-              is ProductFlavorConfigurable -> selectedObject.model.dimension.maybeValue
+              is ProductFlavorConfigurable -> selectedObject.model.effectiveDimension
               else -> {
                 Messages.showErrorDialog(
                   "All product flavors must belong to a named flavor dimension. Add a flavor dimension first.",

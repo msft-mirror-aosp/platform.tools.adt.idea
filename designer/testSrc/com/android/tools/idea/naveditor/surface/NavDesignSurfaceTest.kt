@@ -17,7 +17,7 @@ package com.android.tools.idea.naveditor.surface
 
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.adtui.workbench.WorkBench
-import com.android.tools.idea.common.editor.NlEditorPanel
+import com.android.tools.idea.common.editor.DesignerEditorPanel
 import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlComponent
@@ -30,32 +30,44 @@ import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.naveditor.NavModelBuilderUtil.navigation
 import com.android.tools.idea.naveditor.NavTestCase
+import com.android.tools.idea.naveditor.analytics.NavLogEvent
+import com.android.tools.idea.naveditor.analytics.NavUsageTracker
+import com.android.tools.idea.naveditor.analytics.TestNavUsageTracker
+import com.android.tools.idea.naveditor.editor.NAV_EDITOR_ID
+import com.android.tools.idea.naveditor.editor.NavEditor
 import com.android.tools.idea.naveditor.model.NavCoordinate
 import com.android.tools.idea.naveditor.scene.NavSceneManager
 import com.android.tools.idea.uibuilder.LayoutTestCase
 import com.android.tools.idea.uibuilder.LayoutTestUtilities
 import com.google.common.collect.ImmutableList
+import com.google.wireless.android.sdk.stats.NavEditorEvent
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.impl.ComponentManagerImpl
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl
+import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.ui.docking.DockManager
 import com.intellij.util.indexing.UnindexedFilesUpdater
 import com.intellij.util.ui.UIUtil
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.dom.navigation.NavigationSchema
 import org.jetbrains.android.sdk.AndroidSdkData
+import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
+import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.`when`
-import org.mockito.Mockito.any
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.doCallRealMethod
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyZeroInteractions
 import java.awt.Dimension
@@ -76,6 +88,43 @@ import kotlin.test.assertNotEquals
  * Tests for [NavDesignSurface]
  */
 class NavDesignSurfaceTest : NavTestCase() {
+
+  fun testSwitchTabMetrics() {
+    val file = model("nav.xml") { navigation() }.virtualFile
+    val fileEditorManager = FileEditorManagerImpl(project, DockManager.getInstance(project))
+    (project as ComponentManagerImpl).registerComponentInstance(FileEditorManager::class.java, fileEditorManager)
+
+    val editors = fileEditorManager.openFile(file, true)
+    val surface = editors.firstIsInstance<NavEditor>().component.surface
+
+    TestNavUsageTracker.create(surface).use { tracker ->
+      fileEditorManager.setSelectedEditor(file, TextEditorProvider.getInstance().editorTypeId)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.SELECT_XML_TAB).build())
+      fileEditorManager.setSelectedEditor(file, NAV_EDITOR_ID)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.SELECT_DESIGN_TAB).build())
+    }
+  }
+
+  fun testOpenFileMetrics() {
+    val surface = NavDesignSurface(project, project)
+
+    TestNavUsageTracker.create(surface).use { tracker ->
+      surface.model = model("nav2.xml") {
+        navigation {
+          fragment("f1")
+          activity("a1")
+        }
+      }
+
+      val expectedEvent = NavLogEvent(NavEditorEvent.NavEditorEventType.OPEN_FILE, tracker)
+        .withNavigationContents()
+        .getProtoForTest()
+      assertEquals(1, expectedEvent.contents.fragments)
+      verify(tracker).logEvent(expectedEvent)
+    }
+  }
+
+  private fun <T> any(): T = ArgumentMatchers.any() as T
 
   fun testSkipContentResize() {
     val surface = NavDesignSurface(project, myRootDisposable)
@@ -123,12 +172,16 @@ class NavDesignSurfaceTest : NavTestCase() {
       }
     }
     surface.model = model
-    surface.notifyComponentActivate(model.find("fragment1")!!)
-    val editorManager = FileEditorManager.getInstance(project)
-    assertEquals("activity_main.xml", editorManager.openFiles[0].name)
-    editorManager.closeFile(editorManager.openFiles[0])
-    surface.notifyComponentActivate(model.find("fragment2")!!)
-    assertEquals("activity_main2.xml", editorManager.openFiles[0].name)
+    TestNavUsageTracker.create(surface).use { tracker ->
+      surface.notifyComponentActivate(model.find("fragment1")!!)
+      val editorManager = FileEditorManager.getInstance(project)
+      assertEquals("activity_main.xml", editorManager.openFiles[0].name)
+
+      editorManager.closeFile(editorManager.openFiles[0])
+      surface.notifyComponentActivate(model.find("fragment2")!!)
+      assertEquals("activity_main2.xml", editorManager.openFiles[0].name)
+      verify(tracker, times(2)).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.ACTIVATE_LAYOUT).build())
+    }
   }
 
   fun testNoLayoutComponentActivated() {
@@ -140,12 +193,15 @@ class NavDesignSurfaceTest : NavTestCase() {
       }
     }
     surface.model = model
-    surface.notifyComponentActivate(model.find("fragment1")!!)
-    val editorManager = FileEditorManager.getInstance(project)
-    assertEquals("MainActivity.java", editorManager.openFiles[0].name)
-    editorManager.closeFile(editorManager.openFiles[0])
-    surface.notifyComponentActivate(model.find("fragment2")!!)
-    assertEquals("BlankFragment.java", editorManager.openFiles[0].name)
+    TestNavUsageTracker.create(surface).use { tracker ->
+      surface.notifyComponentActivate(model.find("fragment1")!!)
+      val editorManager = FileEditorManager.getInstance(project)
+      assertEquals("MainActivity.java", editorManager.openFiles[0].name)
+      editorManager.closeFile(editorManager.openFiles[0])
+      surface.notifyComponentActivate(model.find("fragment2")!!)
+      assertEquals("BlankFragment.java", editorManager.openFiles[0].name)
+      verify(tracker, times(2)).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.ACTIVATE_CLASS).build())
+    }
   }
 
   fun testSubflowActivated() {
@@ -159,10 +215,29 @@ class NavDesignSurfaceTest : NavTestCase() {
       }
     }
     surface.model = model
-    assertEquals(model.components[0], surface.currentNavigation)
-    val subnav = model.find("subnav")!!
-    surface.notifyComponentActivate(subnav)
-    assertEquals(subnav, surface.currentNavigation)
+    TestNavUsageTracker.create(surface).use { tracker ->
+      assertEquals(model.components[0], surface.currentNavigation)
+      val subnav = model.find("subnav")!!
+      surface.notifyComponentActivate(subnav)
+      assertEquals(subnav, surface.currentNavigation)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.ACTIVATE_NESTED).build())
+    }
+  }
+
+  fun testIncludeActivated() {
+    val surface = NavDesignSurface(project, myRootDisposable)
+    val model = model("nav.xml") {
+      navigation("root") {
+        include("navigation")
+      }
+    }
+    surface.model = model
+    TestNavUsageTracker.create(surface).use { tracker ->
+      surface.notifyComponentActivate(model.find("nav")!!)
+      val editorManager = FileEditorManager.getInstance(project)
+      assertEquals("navigation.xml", editorManager.openFiles[0].name)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder().setType(NavEditorEvent.NavEditorEventType.ACTIVATE_INCLUDE).build())
+    }
   }
 
   fun testRootActivated() {
@@ -461,7 +536,7 @@ class NavDesignSurfaceTest : NavTestCase() {
 
   fun testActivateWithSchemaChange() {
     NavigationSchema.createIfNecessary(myModule)
-    val editor = mock(NlEditorPanel::class.java)
+    val editor = mock(DesignerEditorPanel::class.java)
     val surface = NavDesignSurface(project, editor, project)
     surface.model = model("nav.xml") { navigation() }
     @Suppress("UNCHECKED_CAST")
@@ -527,7 +602,7 @@ class NavDesignSurfaceTest : NavTestCase() {
 
   fun testActivateAddNavigator() {
     NavigationSchema.createIfNecessary(myModule)
-    val surface = NavDesignSurface(project, mock(NlEditorPanel::class.java), project)
+    val surface = NavDesignSurface(project, mock(DesignerEditorPanel::class.java), project)
     surface.model = model("nav.xml") { navigation() }
 
     addClass("import androidx.navigation.*;\n" +
