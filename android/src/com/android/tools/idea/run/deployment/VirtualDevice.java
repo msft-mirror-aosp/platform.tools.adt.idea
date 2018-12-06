@@ -53,8 +53,10 @@ final class VirtualDevice extends Device {
   /**
    * Snapshot directory names displayed to the developer.
    */
-  private ImmutableCollection<String> mySnapshots;
+  @NotNull
+  private final ImmutableCollection<String> mySnapshots;
 
+  @Nullable
   private final AvdInfo myAvdInfo;
 
   @NotNull
@@ -93,12 +95,20 @@ final class VirtualDevice extends Device {
   }
 
   @Nullable
-  private static String getName(@NotNull Path snapshot) {
-    try (InputStream in = Files.newInputStream(snapshot.resolve("snapshot.pb"))) {
-      return getName(Snapshot.parseFrom(in), snapshot.getFileName().toString());
+  @VisibleForTesting
+  static String getName(@NotNull Path snapshotDirectory) {
+    Path snapshotProtocolBuffer = snapshotDirectory.resolve("snapshot.pb");
+    String snapshotDirectoryName = snapshotDirectory.getFileName().toString();
+
+    if (!Files.exists(snapshotProtocolBuffer)) {
+      return snapshotDirectoryName;
+    }
+
+    try (InputStream in = Files.newInputStream(snapshotProtocolBuffer)) {
+      return getName(Snapshot.parseFrom(in), snapshotDirectoryName);
     }
     catch (IOException exception) {
-      Logger.getInstance(VirtualDevice.class).warn(snapshot.toString(), exception);
+      Logger.getInstance(VirtualDevice.class).warn(snapshotDirectory.toString(), exception);
       return null;
     }
   }
@@ -120,10 +130,15 @@ final class VirtualDevice extends Device {
   }
 
   @NotNull
-  static VirtualDevice newConnectedVirtualDevice(@NotNull VirtualDevice virtualDevice, @NotNull IDevice ddmlibDevice) {
+  static VirtualDevice newConnectedVirtualDevice(@NotNull VirtualDevice virtualDevice,
+                                                 @NotNull ConnectionTimeService service,
+                                                 @NotNull IDevice ddmlibDevice) {
+    String key = virtualDevice.getKey();
+
     return new Builder()
       .setName(virtualDevice.getName())
-      .setKey(virtualDevice.getKey())
+      .setKey(key)
+      .setConnectionTime(service.get(key))
       .setDdmlibDevice(ddmlibDevice)
       .setConnected(true)
       .setSnapshots(virtualDevice.mySnapshots)
@@ -131,32 +146,10 @@ final class VirtualDevice extends Device {
       .build();
   }
 
-  static final class Builder {
-    private String myName;
-    private String myKey;
-    private IDevice myDdmlibDevice;
-
+  static final class Builder extends Device.Builder<Builder> {
     private boolean myConnected;
     private ImmutableCollection<String> mySnapshots;
     private AvdInfo myAvdInfo;
-
-    @NotNull
-    Builder setName(@NotNull String name) {
-      myName = name;
-      return this;
-    }
-
-    @NotNull
-    Builder setKey(@NotNull String key) {
-      myKey = key;
-      return this;
-    }
-
-    @NotNull
-    Builder setDdmlibDevice(@Nullable IDevice ddmlibDevice) {
-      myDdmlibDevice = ddmlibDevice;
-      return this;
-    }
 
     @NotNull
     Builder setConnected(boolean connected) {
@@ -177,27 +170,35 @@ final class VirtualDevice extends Device {
     }
 
     @NotNull
+    @Override
+    Builder self() {
+      return this;
+    }
+
+    @NotNull
+    @Override
     VirtualDevice build() {
       return new VirtualDevice(this);
     }
   }
 
   private VirtualDevice(@NotNull Builder builder) {
-    super(builder.myName, builder.myKey, builder.myDdmlibDevice);
+    super(builder);
 
     myConnected = builder.myConnected;
     mySnapshots = builder.mySnapshots;
     myAvdInfo = builder.myAvdInfo;
   }
 
-  boolean isConnected() {
-    return myConnected;
-  }
-
   @NotNull
   @Override
   Icon getIcon() {
     return myConnected ? ourConnectedIcon : AndroidIcons.Ddms.EmulatorDevice;
+  }
+
+  @Override
+  boolean isConnected() {
+    return myConnected;
   }
 
   @NotNull
@@ -242,6 +243,7 @@ final class VirtualDevice extends Device {
 
     return getName().equals(device.getName()) &&
            getKey().equals(device.getKey()) &&
+           Objects.equals(getConnectionTime(), device.getConnectionTime()) &&
            Objects.equals(getDdmlibDevice(), device.getDdmlibDevice()) &&
            myConnected == device.myConnected &&
            mySnapshots.equals(device.mySnapshots) &&
@@ -253,6 +255,7 @@ final class VirtualDevice extends Device {
     int hashCode = getName().hashCode();
 
     hashCode = 31 * hashCode + getKey().hashCode();
+    hashCode = 31 * hashCode + Objects.hashCode(getConnectionTime());
     hashCode = 31 * hashCode + Objects.hashCode(getDdmlibDevice());
     hashCode = 31 * hashCode + Boolean.hashCode(myConnected);
     hashCode = 31 * hashCode + mySnapshots.hashCode();

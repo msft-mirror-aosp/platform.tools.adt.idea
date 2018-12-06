@@ -33,7 +33,6 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.util.XmlTagUtil;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.idea.naveditor.model.NavComponentHelper;
 import com.android.tools.idea.rendering.RefreshRenderAction;
 import com.android.tools.idea.rendering.parsers.TagSnapshot;
 import com.android.tools.idea.res.LocalResourceRepository;
@@ -41,9 +40,7 @@ import com.android.tools.idea.res.ResourceHelper;
 import com.android.tools.idea.res.ResourceNotificationManager;
 import com.android.tools.idea.res.ResourceNotificationManager.ResourceChangeListener;
 import com.android.tools.idea.res.ResourceRepositoryManager;
-import com.android.tools.idea.uibuilder.model.NlComponentHelper;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
-import com.android.tools.idea.uibuilder.model.NlModelHelper;
 import com.android.tools.idea.util.ListenerCollection;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ArrayListMultimap;
@@ -54,7 +51,6 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.Result;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.DumbService;
@@ -78,6 +74,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import kotlin.Unit;
@@ -108,29 +105,38 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
   // Variable to track what triggered the latest render (if known)
   private ChangeType myModificationTrigger;
 
+  /**
+   * Returns the responsible for registering an {@link NlComponent} to enhance it with layout-specific properties and methods.
+   */
+  @NotNull private final Consumer<NlComponent> myComponentRegistrar;
+
   @NotNull
   public static NlModel create(@Nullable Disposable parent,
                                @NotNull AndroidFacet facet,
                                @NotNull VirtualFile file,
-                               @NotNull ConfigurationManager configurationManager) {
-    return new NlModel(parent, facet, file, configurationManager.getConfiguration(file));
+                               @NotNull ConfigurationManager configurationManager,
+                               @NotNull Consumer<NlComponent> componentRegistrar) {
+    return new NlModel(parent, facet, file, configurationManager.getConfiguration(file), componentRegistrar);
   }
 
   @NotNull
   public static NlModel create(@Nullable Disposable parent,
                                @NotNull AndroidFacet facet,
-                               @NotNull VirtualFile file) {
-    return create(parent, facet, file, ConfigurationManager.getOrCreateInstance(facet));
+                               @NotNull VirtualFile file,
+                               @NotNull Consumer<NlComponent> componentRegistrar) {
+    return create(parent, facet, file, ConfigurationManager.getOrCreateInstance(facet), componentRegistrar);
   }
 
   @VisibleForTesting
   protected NlModel(@Nullable Disposable parent,
                     @NotNull AndroidFacet facet,
                     @NotNull VirtualFile file,
-                    @NotNull Configuration configuration) {
+                    @NotNull Configuration configuration,
+                    @NotNull Consumer<NlComponent> componentRegistrar) {
     myFacet = facet;
     myFile = file;
     myConfiguration = configuration;
+    myComponentRegistrar = componentRegistrar;
     myConfigurationModificationCount = myConfiguration.getModificationCount();
     myId = System.nanoTime() ^ file.getName().hashCode();
     if (parent != null) {
@@ -807,13 +813,7 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
 
   public void delete(final Collection<NlComponent> components) {
     // Group by parent and ask each one to participate
-    WriteCommandAction<Void> action = new WriteCommandAction<Void>(myFacet.getModule().getProject(), "Delete Component", getFile()) {
-      @Override
-      protected void run(@NotNull Result<Void> result) {
-        handleDeletion(components);
-      }
-    };
-    action.execute();
+    WriteCommandAction.runWriteCommandAction(getProject(), "Delete Component", null, () -> handleDeletion(components), getFile());
     notifyModified(ChangeType.DELETE);
   }
 
@@ -828,7 +828,8 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
       }
 
       Collection<NlComponent> children = siblingLists.get(parent);
-      if (!NlModelHelper.INSTANCE.handleDeletion(parent, children)) {
+
+      if (!parent.getMixin().maybeHandleDeletion(children)) {
         for (NlComponent component : children) {
           NlComponent p = component.getParent();
           if (p != null) {
@@ -863,6 +864,7 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
    * @param before     The sibling to insert immediately before, or null to append
    * @param insertType The reason for this creation.
    */
+  @Nullable
   public NlComponent createComponent(@Nullable DesignSurface surface,
                                      @NotNull XmlTag tag,
                                      @Nullable NlComponent parent,
@@ -896,24 +898,14 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
    * Simply create a component. In most cases you probably want
    * {@link #createComponent(DesignSurface, XmlTag, NlComponent, NlComponent, InsertType)}.
    */
+  @NotNull
   public NlComponent createComponent(@NotNull XmlTag tag) {
     NlComponent component = new NlComponent(this, tag);
-    NlLayoutType layoutType = NlLayoutType.typeOf(getFile());
-    switch (layoutType) {
-      // TODO We should create a subclass of NlModel to differentiate NavEditor Behavior and Layout Editor Behaviors
-      // The difference was handled in DesignSurface before but we should not rely on the DesignSurface to add component, at
-      // least in the LayoutEditor, since it does already so many things.
-      case NAV:
-        NavComponentHelper.INSTANCE.registerComponent(component);
-        break;
-      case LAYOUT:
-      default:
-        NlComponentHelper.INSTANCE.registerComponent(component);
-        break;
-    }
+    myComponentRegistrar.accept(component);
     return component;
   }
 
+  @NotNull
   public List<NlComponent> createComponents(@NotNull DnDTransferItem item, @NotNull InsertType insertType, @NotNull DesignSurface surface) {
     List<NlComponent> components = new ArrayList<>(item.getComponents().size());
     for (DnDTransferComponent dndComponent : item.getComponents()) {
@@ -1048,6 +1040,7 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
   /**
    * Looks up the existing set of id's reachable from this model
    */
+  @NotNull
   public Set<String> getIds() {
     LocalResourceRepository resources = ResourceRepositoryManager.getAppResources(getFacet());
     Set<String> ids = new HashSet<>(resources.getResources(ResourceNamespace.TODO(), ResourceType.ID).keySet());
@@ -1110,6 +1103,7 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
     myListeners.clear();
   }
 
+  @NotNull
   @Override
   public String toString() {
     return NlModel.class.getSimpleName() + " for " + myFile;
@@ -1194,6 +1188,7 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
     myListeners.forEach(listener -> listener.modelChanged(this));
   }
 
+  @Nullable
   public ChangeType getLastChangeType() {
     return myModificationTrigger;
   }

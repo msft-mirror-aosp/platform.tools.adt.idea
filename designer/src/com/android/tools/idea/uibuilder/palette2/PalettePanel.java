@@ -18,8 +18,8 @@ package com.android.tools.idea.uibuilder.palette2;
 import com.android.annotations.VisibleForTesting;
 import com.android.tools.adtui.common.AdtSecondaryPanel;
 import com.android.tools.adtui.common.StudioColorsKt;
-import com.android.tools.adtui.workbench.StartFilteringListener;
 import com.android.tools.adtui.workbench.ToolContent;
+import com.android.tools.adtui.workbench.ToolWindowCallback;
 import com.android.tools.idea.uibuilder.analytics.NlUsageTracker;
 import com.android.tools.idea.common.api.DragType;
 import com.android.tools.idea.common.api.InsertType;
@@ -90,9 +90,7 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
 
   @NotNull private WeakReference<DesignSurface> myDesignSurface = new WeakReference<>(null);
   private NlLayoutType myLayoutType;
-  private Runnable myCloseAutoHideCallback;
-  private StartFilteringListener myStartFilteringCallback;
-  private Runnable myStopFilteringCallback;
+  private ToolWindowCallback myToolWindow;
   private Palette.Group myLastSelectedGroup;
 
   public PalettePanel(@NotNull Project project, @NotNull Disposable parentDisposable) {
@@ -227,8 +225,8 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
     return new KeyAdapter() {
       @Override
       public void keyTyped(@NotNull KeyEvent event) {
-        if (event.getKeyChar() >= KeyEvent.VK_0 && myStartFilteringCallback != null) {
-          myStartFilteringCallback.startFiltering(event.getKeyChar());
+        if (event.getKeyChar() >= KeyEvent.VK_0) {
+          startFiltering(String.valueOf(event.getKeyChar()));
         }
       }
     };
@@ -242,6 +240,16 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
     myItemList.registerKeyboardAction(event -> keyboardActionPerformed(event, myAndroidDocAction),
                                       KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.SHIFT_DOWN_MASK),
                                       JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+
+    registerKeyboardAction(event -> startFiltering(""),
+                           KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.META_MASK),
+                           JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+  }
+
+  private void startFiltering(@NotNull String initialSearchString) {
+    if (myToolWindow != null) {
+      myToolWindow.startFiltering(initialSearchString);
+    }
   }
 
   private void keyboardActionPerformed(@NotNull ActionEvent event, @NotNull AnAction action) {
@@ -309,18 +317,8 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
   }
 
   @Override
-  public void setCloseAutoHideWindow(@NotNull Runnable runnable) {
-    myCloseAutoHideCallback = runnable;
-  }
-
-  @Override
-  public void setStartFiltering(@NotNull StartFilteringListener listener) {
-    myStartFilteringCallback = listener;
-  }
-
-  @Override
-  public void setStopFiltering(@NotNull Runnable runnable) {
-    myStopFilteringCallback = runnable;
+  public void registerCallbacks(@NotNull ToolWindowCallback toolWindow) {
+    myToolWindow = toolWindow;
   }
 
   @Override
@@ -457,8 +455,8 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
       DnDTransferComponent dndComponent = new DnDTransferComponent(item.getTagName(), item.getXml(), size.width, size.height);
       Transferable transferable = new ItemTransferable(new DnDTransferItem(dndComponent));
 
-      if (myCloseAutoHideCallback != null) {
-        myCloseAutoHideCallback.run();
+      if (myToolWindow != null) {
+        myToolWindow.autoHide();
       }
       return transferable;
     }
@@ -472,8 +470,8 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
       if (component == null) {
         return;
       }
-      if (myStopFilteringCallback != null) {
-        myStopFilteringCallback.run();
+      if (myToolWindow != null) {
+        myToolWindow.stopFiltering();
       }
       NlUsageTracker.getInstance(myDesignSurface.get()).logDropFromPalette(
         component.getTag(), component.getRepresentation(), getGroupName(), myDataModel.getMatchCount());
@@ -505,7 +503,7 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
 
   private class AddToDesignAction extends AnAction {
 
-    public AddToDesignAction() {
+    private AddToDesignAction() {
       super("Add to Design");
       setShortcutSet(new CustomShortcutSet(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)));
     }
@@ -562,7 +560,7 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
 
   private class FavoriteAction extends ToggleAction {
 
-    public FavoriteAction() {
+    private FavoriteAction() {
       super("Favorite");
     }
 
@@ -589,7 +587,7 @@ public class PalettePanel extends AdtSecondaryPanel implements Disposable, DataP
   private class MaterialDocAction extends AnAction {
     private static final String MATERIAL_DEFAULT_REFERENCE = "https://material.io/guidelines/material-design/introduction.html";
 
-    public MaterialDocAction() {
+    private MaterialDocAction() {
       super("Material Guidelines");
     }
 

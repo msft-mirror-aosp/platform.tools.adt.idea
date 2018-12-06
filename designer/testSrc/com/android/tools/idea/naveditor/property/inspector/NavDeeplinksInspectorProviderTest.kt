@@ -21,11 +21,13 @@ import com.android.tools.idea.common.property.NlProperty
 import com.android.tools.idea.naveditor.NavModelBuilderUtil
 import com.android.tools.idea.naveditor.NavModelBuilderUtil.navigation
 import com.android.tools.idea.naveditor.NavTestCase
+import com.android.tools.idea.naveditor.analytics.TestNavUsageTracker
 import com.android.tools.idea.naveditor.property.NavDeeplinkProperty
 import com.android.tools.idea.naveditor.property.NavPropertiesManager
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
 import com.google.common.collect.HashBasedTable
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.NavEditorEvent
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBList
@@ -101,13 +103,19 @@ class NavDeeplinksInspectorProviderTest : NavTestCase() {
     `when`(dialog.autoVerify).thenReturn(true)
     doReturn(true).`when`(dialog).showAndGet()
 
-    NavDeeplinkInspectorProvider { _, _ -> dialog }.addItem(null, listOf(fragment), null)
-    assertEquals(1, fragment.childCount)
-    val deeplink = fragment.getChild(0)!!
-    assertEquals(TAG_DEEP_LINK, deeplink.tagName)
-    assertEquals("http://example.com", deeplink.getAttribute(AUTO_URI, ATTR_URI))
-    assertEquals("true", deeplink.getAndroidAttribute(ATTR_AUTO_VERIFY))
-    dialog.close(0)
+    TestNavUsageTracker.create(model).use { tracker ->
+      NavDeeplinkInspectorProvider { _, _ -> dialog }.addItem(null, listOf(fragment), model.surface)
+      assertEquals(1, fragment.childCount)
+      val deeplink = fragment.getChild(0)!!
+      assertEquals(TAG_DEEP_LINK, deeplink.tagName)
+      assertEquals("http://example.com", deeplink.getAttribute(AUTO_URI, ATTR_URI))
+      assertEquals("true", deeplink.getAndroidAttribute(ATTR_AUTO_VERIFY))
+      dialog.close(0)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder()
+                                 .setType(NavEditorEvent.NavEditorEventType.CREATE_DEEP_LINK)
+                                 .setSource(NavEditorEvent.Source.PROPERTY_INSPECTOR)
+                                 .build())
+    }
   }
 
   fun testModify() {
@@ -120,17 +128,22 @@ class NavDeeplinksInspectorProviderTest : NavTestCase() {
     }
     val fragment = model.find("f1")!!
     val dialog = spy(AddDeeplinkDialog(model.find("f1")!!.children[0], fragment))
-    `when`(dialog.uri).thenReturn("http://example.com")
     `when`(dialog.autoVerify).thenReturn(true)
     doReturn(true).`when`(dialog).showAndGet()
 
-    NavDeeplinkInspectorProvider { _, _ -> dialog }.addItem(null, listOf(fragment), null)
-    assertEquals(1, fragment.childCount)
-    val deeplink = fragment.getChild(0)!!
-    assertEquals(TAG_DEEP_LINK, deeplink.tagName)
-    assertEquals("http://example.com", deeplink.getAttribute(AUTO_URI, ATTR_URI))
-    assertEquals("true", deeplink.getAndroidAttribute(ATTR_AUTO_VERIFY))
-    dialog.close(0)
+    TestNavUsageTracker.create(model).use { tracker ->
+      NavDeeplinkInspectorProvider { _, _ -> dialog }.addItem(fragment.children[0], listOf(fragment), model.surface)
+      assertEquals(1, fragment.childCount)
+      val deeplink = fragment.getChild(0)!!
+      assertEquals(TAG_DEEP_LINK, deeplink.tagName)
+      assertEquals("http://example.com", deeplink.getAttribute(AUTO_URI, ATTR_URI))
+      assertEquals("true", deeplink.getAndroidAttribute(ATTR_AUTO_VERIFY))
+      dialog.close(0)
+      verify(tracker).logEvent(NavEditorEvent.newBuilder()
+                                 .setType(NavEditorEvent.NavEditorEventType.EDIT_DEEP_LINK)
+                                 .setSource(NavEditorEvent.Source.PROPERTY_INSPECTOR)
+                                 .build())
+    }
   }
 
   fun testXmlFormatting() {
@@ -141,23 +154,27 @@ class NavDeeplinksInspectorProviderTest : NavTestCase() {
     }
     val fragment = model.find("f1")!!
     val dialog = spy(AddDeeplinkDialog(null, fragment))
-    `when`(dialog.uri).thenReturn("a")
-    doReturn(true).`when`(dialog).showAndGet()
+    try {
+      `when`(dialog.uri).thenReturn("a")
+      doReturn(true).`when`(dialog).showAndGet()
 
-    val navDeeplinkInspectorProvider = NavDeeplinkInspectorProvider { _, _ -> dialog }
-    navDeeplinkInspectorProvider.addItem(null, listOf(fragment), null)
-    `when`(dialog.uri).thenReturn("b")
-    navDeeplinkInspectorProvider.addItem(null, listOf(fragment), null)
-    FileDocumentManager.getInstance().saveAllDocuments()
-    val result = String(model.virtualFile.contentsToByteArray())
-    // Don't care about other contents or indent, but deeplink tags and attributes should be on their own lines.
-    assertThat(result.replace("\n *".toRegex(), "\n")).contains("<deepLink\n" +
-                                                                "android:id=\"@+id/deepLink\"\n" +
-                                                                "app:uri=\"a\" />\n" +
-                                                                "<deepLink\n" +
-                                                                "android:id=\"@+id/deepLink2\"\n" +
-                                                                "app:uri=\"b\" />\n")
-    dialog.close(0)
+      val navDeeplinkInspectorProvider = NavDeeplinkInspectorProvider { _, _ -> dialog }
+      navDeeplinkInspectorProvider.addItem(null, listOf(fragment), null)
+      `when`(dialog.uri).thenReturn("b")
+      navDeeplinkInspectorProvider.addItem(null, listOf(fragment), null)
+      FileDocumentManager.getInstance().saveAllDocuments()
+      val result = String(model.virtualFile.contentsToByteArray())
+      // Don't care about other contents or indent, but deeplink tags and attributes should be on their own lines.
+      assertThat(result.replace("\n *".toRegex(), "\n")).contains("<deepLink\n" +
+                                                                  "android:id=\"@+id/deepLink\"\n" +
+                                                                  "app:uri=\"a\" />\n" +
+                                                                  "<deepLink\n" +
+                                                                  "android:id=\"@+id/deepLink2\"\n" +
+                                                                  "app:uri=\"b\" />\n")
+    }
+    finally {
+      dialog.close(0)
+    }
   }
 
   fun testActivateUpdates() {

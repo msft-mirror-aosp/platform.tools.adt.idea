@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.naveditor.scene.targets;
 
+import static com.android.tools.idea.naveditor.scene.NavActionHelperKt.getRegularActionIconRect;
+import static com.android.tools.idea.naveditor.scene.NavActionHelperKt.getSelfActionIconRect;
+
 import com.android.tools.adtui.common.SwingCoordinate;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.scene.SceneComponent;
@@ -28,12 +31,11 @@ import com.android.tools.idea.naveditor.scene.ConnectionDirection;
 import com.android.tools.idea.naveditor.scene.CurvePoints;
 import com.android.tools.idea.naveditor.scene.NavActionHelperKt;
 import com.google.common.collect.ImmutableList;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * An Action in the navigation editor
@@ -80,11 +82,17 @@ public class ActionTarget extends BaseTarget {
   @Override
   public void addHit(@NotNull SceneContext transform, @NotNull ScenePicker picker) {
     Rectangle2D.Float source = Coordinates.getSwingRectDip(transform, mySourceComponent.fillDrawRect2D(0, SOURCE_RECT));
+    boolean isPopAction = NavComponentHelperKt.getPopUpTo(myComponent.getNlComponent()) != null;
+    Rectangle2D.Float iconRect = null;
 
     if (myActionType == ActionType.SELF) {
       @SwingCoordinate Point2D.Float[] points = getSelfActionPoints(source, transform);
       for (int i = 1; i < points.length; i++) {
         picker.addLine(this, 0, (int)points[i - 1].x, (int)points[i - 1].y, (int)points[i].x, (int)points[i].y, 5);
+      }
+
+      if (isPopAction) {
+        iconRect = getSelfActionIconRect(points[0], transform);
       }
     }
     else {
@@ -92,6 +100,14 @@ public class ActionTarget extends BaseTarget {
       CurvePoints points = NavActionHelperKt.getCurvePoints(source, dest, transform);
       picker.addCurveTo(this, 0, (int)points.p1.x, (int)points.p1.y, (int)points.p2.x, (int)points.p2.y, (int)points.p3.x, (int)points.p3.y,
                         (int)points.p4.x, (int)points.p4.y, 10);
+
+      if (isPopAction) {
+        iconRect = getRegularActionIconRect(source, dest, transform);
+      }
+    }
+
+    if (iconRect != null) {
+      picker.addRect(this, 0, (int)iconRect.x, (int)iconRect.y, (int)(iconRect.x + iconRect.width), (int)(iconRect.y + iconRect.height));
     }
   }
 

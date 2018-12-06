@@ -26,6 +26,7 @@ import com.android.tools.idea.testing.TestProjectPaths.BASIC
 import com.android.tools.idea.testing.TestProjectPaths.PROJECT_WITH_APPAND_LIB
 import com.android.tools.idea.testing.TestProjectPaths.PSD_SAMPLE
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import java.io.File
@@ -35,7 +36,7 @@ import java.util.concurrent.TimeUnit
  * Tests for [PsAndroidModule].
  */
 class PsAndroidModuleTest : DependencyTestCase() {
-
+  val changedModules = mutableSetOf<String>()
   var buildTypesChanged = 0
   var productFlavorsChanged = 0
   var flavorDimensionsChanged = 0
@@ -146,11 +147,12 @@ class PsAndroidModuleTest : DependencyTestCase() {
     assertNotNull(appModule)
     appModule.testSubscribeToChangeNotifications()
 
-    appModule.removeFlavorDimension(appModule.findFlavorDimension("bar")!!)
-    assertThat(flavorDimensionsChanged).isEqualTo(1)
     // A product flavor must be removed for successful sync.
     appModule.removeProductFlavor(appModule.findProductFlavor("bar", "bar")!!)
     appModule.removeProductFlavor(appModule.findProductFlavor("bar", "otherBar")!!)
+
+    appModule.removeFlavorDimension(appModule.findFlavorDimension("bar")!!)
+    assertThat(flavorDimensionsChanged).isEqualTo(1)
     var flavorDimensions = getFlavorDimensions(appModule)
     assertThat(flavorDimensions).containsExactly("foo").inOrder()
     appModule.applyChanges()
@@ -298,6 +300,38 @@ class PsAndroidModuleTest : DependencyTestCase() {
       .containsExactly("basic", "bar", "otherBar").inOrder()
   }
 
+  fun testRenameProductFlavor() {
+    loadProject(PSD_SAMPLE)
+
+    val resolvedProject = myFixture.project
+    var project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+
+    var appModule = moduleWithSyncedModel(project, "app")
+    appModule.testSubscribeToChangeNotifications()
+    assertNotNull(appModule)
+
+    var productFlavors = appModule.productFlavors
+    assertThat(productFlavors.map { it.name })
+      .containsExactly("basic", "paid", "bar", "otherBar").inOrder()
+
+    appModule.findProductFlavor("foo", "paid")!!.rename("paidLittle")
+    assertThat(productFlavorsChanged).isEqualTo(1)
+
+    productFlavors = appModule.productFlavors
+    assertThat(productFlavors.map { it.name })
+      .containsExactly("basic", "paidLittle", "bar", "otherBar").inOrder()
+
+    appModule.applyChanges()
+    requestSyncAndWait()
+    project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+    appModule = moduleWithSyncedModel(project, "app")
+    assertNotNull(appModule)
+
+    productFlavors = appModule.productFlavors
+    assertThat(productFlavors.map { it.name })
+      .containsExactly("basic", "paidLittle", "bar", "otherBar").inOrder()
+  }
+
   fun testBuildTypes() {
     loadProject(PROJECT_WITH_APPAND_LIB)
 
@@ -423,6 +457,42 @@ class PsAndroidModuleTest : DependencyTestCase() {
     buildTypes = appModule.buildTypes
     assertThat(buildTypes.map { it.name })
       .containsExactly("specialRelease", "debug", "release").inOrder()  // "release" is not declared and goes last.
+
+    val release = appModule.findBuildType("release")
+    assertNotNull(release)
+    assertFalse(release!!.isDeclared)
+  }
+
+  fun testRenameBuildType() {
+    loadProject(PSD_SAMPLE)
+
+    val resolvedProject = myFixture.project
+    var project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+
+    var appModule = moduleWithSyncedModel(project, "app")
+    appModule.testSubscribeToChangeNotifications()
+    assertNotNull(appModule)
+
+    var buildTypes = appModule.buildTypes
+    assertThat(buildTypes.map { it.name })
+      .containsExactly("release", "specialRelease", "debug").inOrder()
+
+    appModule.findBuildType("release")!!.rename("almostRelease")
+    assertThat(buildTypesChanged).isEqualTo(1)
+
+    buildTypes = appModule.buildTypes
+    assertThat(buildTypes.map { it.name })
+      .containsExactly("almostRelease", "specialRelease", "debug")
+
+    appModule.applyChanges()
+    requestSyncAndWait()
+    project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+    appModule = moduleWithSyncedModel(project, "app")
+    assertNotNull(appModule)
+
+    buildTypes = appModule.buildTypes
+    assertThat(buildTypes.map { it.name })
+      .containsExactly("almostRelease", "specialRelease", "debug", "release").inOrder()  // "release" is not declared and goes last.
 
     val release = appModule.findBuildType("release")
     assertNotNull(release)
@@ -576,6 +646,36 @@ class PsAndroidModuleTest : DependencyTestCase() {
     assertThat(signingConfigs.map { it.name }).containsExactly("debug")
   }
 
+  fun testRenameSigningConfig() {
+    loadProject(BASIC)
+
+    val resolvedProject = myFixture.project
+    var project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+
+    var appModule = project.findModuleByGradlePath(":") as PsAndroidModule?
+    assertNotNull(appModule); appModule!!
+    appModule.testSubscribeToChangeNotifications()
+
+    var signingConfigs = appModule.signingConfigs
+    assertThat(signingConfigs.map { it.name }).containsExactly("myConfig", "debug").inOrder()
+
+    appModule.findSigningConfig("myConfig")!!.rename("yourConfig")
+    assertThat(signingConfigsChanged).isEqualTo(1)
+    appModule.removeBuildType(appModule.findBuildType("debug")!!)  // Remove (clean) the build type that refers to the signing config.
+
+    signingConfigs = appModule.signingConfigs
+    assertThat(signingConfigs.map { it.name }).containsExactly("yourConfig", "debug")
+
+    appModule.applyChanges()
+    requestSyncAndWait()
+    project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+    appModule = project.findModuleByGradlePath(":") as PsAndroidModule?
+    assertNotNull(appModule); appModule!!
+
+    signingConfigs = appModule.signingConfigs
+    assertThat(signingConfigs.map { it.name }).containsExactly("yourConfig", "debug")
+  }
+
   fun testApplyChangesDropsResolvedValues() {
     loadProject(BASIC)
 
@@ -704,6 +804,32 @@ class PsAndroidModuleTest : DependencyTestCase() {
     assertThat(productFlavorsChanged).isEqualTo(1)
     assertThat(signingConfigsChanged).isEqualTo(1)
     assertThat(variantsChanged).isEqualTo(1)
+  }
+
+  fun testModuleChanged() {
+    loadProject(PSD_SAMPLE)
+
+    val resolvedProject = myFixture.project
+    val project = PsProjectImpl(resolvedProject)
+    val disposable = Disposer.newDisposable()
+    project.testSubscribeToNotifications(disposable)
+
+    val appModule = moduleWithSyncedModel(project, "app")
+    val libModule = moduleWithSyncedModel(project, "lib")
+
+
+    appModule.addNewBuildType("newBuildType")
+    libModule.addNewBuildType("newBuildType")
+
+    assertThat(changedModules).containsExactly(":app", ":lib")
+
+    Disposer.dispose(disposable)
+    changedModules.clear()
+
+    appModule.removeBuildType(appModule.findBuildType("newBuildType")!!)
+    libModule.removeBuildType(libModule.findBuildType("newBuildType")!!)
+
+    assertThat(changedModules).isEmpty()
   }
 
   fun testImportantConfigurations() {
@@ -1108,8 +1234,11 @@ class PsAndroidModuleTest : DependencyTestCase() {
       "androidTestOtherBarAnnotationProcessor",
       "androidTestBasicOtherBarAnnotationProcessor",
       "androidTestPaidOtherBarAnnotationProcessor"
-    
     )
+  }
+
+  private fun PsProject.testSubscribeToNotifications(disposable: Disposable = testRootDisposable) {
+    this.onModuleChanged(disposable) { module -> changedModules.add(module.gradlePath.orEmpty()) }
   }
 
   private fun PsAndroidModule.testSubscribeToChangeNotifications() {
@@ -1121,11 +1250,11 @@ class PsAndroidModuleTest : DependencyTestCase() {
   }
 }
 
-private fun moduleWithoutSyncedModel(project: PsProject, name: String): PsAndroidModule {
+internal fun moduleWithoutSyncedModel(project: PsProject, name: String): PsAndroidModule {
   val moduleWithSyncedModel = project.findModuleByName(name) as PsAndroidModule
   return PsAndroidModule(project, moduleWithSyncedModel.gradlePath).apply {
     init(moduleWithSyncedModel.name, null, null, moduleWithSyncedModel.parsedModel)
   }
 }
 
-private fun moduleWithSyncedModel(project: PsProject, name: String): PsAndroidModule = project.findModuleByName(name) as PsAndroidModule
+internal fun moduleWithSyncedModel(project: PsProject, name: String): PsAndroidModule = project.findModuleByName(name) as PsAndroidModule

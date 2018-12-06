@@ -45,12 +45,15 @@ class SerializationTest : TestCase() {
   fun testDrawIcon() {
     val factory = { s: String -> DrawIcon(s) }
 
-    testSerialization("DrawIcon,10.0x20.0x100.0x200.0,DEEPLINK",
+    testSerialization("DrawIcon,10.0x20.0x100.0x200.0,DEEPLINK,null",
                       DrawIcon(Rectangle2D.Float(10f, 20f, 100f, 200f),
                                DrawIcon.IconType.DEEPLINK), factory)
-    testSerialization("DrawIcon,20.0x10.0x200.0x100.0,START_DESTINATION",
+    testSerialization("DrawIcon,20.0x10.0x200.0x100.0,START_DESTINATION,null",
                       DrawIcon(Rectangle2D.Float(20f, 10f, 200f, 100f),
                                DrawIcon.IconType.START_DESTINATION), factory)
+    testSerialization("DrawIcon,20.0x10.0x200.0x100.0,POP_ACTION,ffff0000",
+                      DrawIcon(Rectangle2D.Float(20f, 10f, 200f, 100f),
+                               DrawIcon.IconType.POP_ACTION, Color.RED), factory)
   }
 
   fun testDrawAction() {
@@ -215,6 +218,16 @@ class SerializationTest : TestCase() {
     testSerialization("DrawActionHandle,0,30.0x40.0,11.0,12.0,13.0,14.0,15,ff00ff00,ffffc800",
                       DrawActionHandle(0, Point2D.Float(30f, 40f),
                                        11f, 12f, 13f, 14f, 15, Color.GREEN, Color.ORANGE), factory)
+  }
+
+  fun testDrawHorizontalAction() {
+    val factory = { s: String -> DrawHorizontalAction(s) }
+
+    testSerialization("DrawHorizontalAction,0,10.0x20.0x30.0x40.0,ffff0000,false",
+                      DrawHorizontalAction(0, Rectangle2D.Float(10f, 20f, 30f, 40f), Color.RED, false), factory)
+
+    testSerialization("DrawHorizontalAction,1,50.0x60.0x70.0x80.0,ff0000ff,true",
+                      DrawHorizontalAction(1, Rectangle2D.Float(50f, 60f, 70f, 80f), Color.BLUE, true), factory)
   }
 
   companion object {

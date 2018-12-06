@@ -38,18 +38,17 @@ import javax.swing.JComponent
  *     [ATTR_FONT_FAMILY] and [ATTR_TEXT_ALIGNMENT]
  * They are present if the minSdkVersion is high enough or if AppCompat is used.
  */
-class TextViewInspectorBuilder(private val editorProvider: EditorProvider<NelePropertyItem>) :
-    InspectorBuilder<NelePropertyItem> {
+class TextViewInspectorBuilder(private val editorProvider: EditorProvider<NelePropertyItem>) {
 
-  override fun attachToInspector(inspector: InspectorPanel, properties: PropertiesTable<NelePropertyItem>) {
+  fun attachToInspector(inspector: InspectorPanel, properties: PropertiesTable<NelePropertyItem>, getTitleLine: () -> InspectorLineModel) {
     if (!isApplicable(properties)) return
 
-    val textViewLabel = inspector.addExpandableTitle("TextView")
-    addEditor(inspector, properties[ANDROID_URI, ATTR_TEXT], textViewLabel)
-    addEditor(inspector, getDesignProperty(properties, ATTR_TEXT), textViewLabel)
-    addEditor(inspector, properties[ANDROID_URI, ATTR_CONTENT_DESCRIPTION], textViewLabel)
+    val titleLine = getTitleLine()
+    addEditor(inspector, properties[ANDROID_URI, ATTR_TEXT], titleLine)
+    addEditor(inspector, getDesignProperty(properties, ATTR_TEXT), titleLine)
+    addEditor(inspector, properties[ANDROID_URI, ATTR_CONTENT_DESCRIPTION], titleLine)
 
-    val textAppearanceLabel = addEditor(inspector, properties[ANDROID_URI, ATTR_TEXT_APPEARANCE], textViewLabel)
+    val textAppearanceLabel = addEditor(inspector, properties[ANDROID_URI, ATTR_TEXT_APPEARANCE], titleLine)
     textAppearanceLabel.makeExpandable(initiallyExpanded = false)
 
     val fontFamily = getOptionalProperty(properties, ATTR_FONT_FAMILY)
@@ -62,6 +61,8 @@ class TextViewInspectorBuilder(private val editorProvider: EditorProvider<NelePr
     addEditor(inspector, properties[ANDROID_URI, ATTR_TEXT_COLOR], textAppearanceLabel)
     addTextStyle(inspector, properties, textAppearanceLabel)
     addAlignment(inspector, properties, textAppearanceLabel)
+
+    addEditor(inspector, properties[ANDROID_URI, ATTR_VISIBILITY], titleLine)
   }
 
   private fun addEditor(inspector: InspectorPanel, property: NelePropertyItem, group: InspectorLineModel): InspectorLineModel {
@@ -107,10 +108,6 @@ class TextViewInspectorBuilder(private val editorProvider: EditorProvider<NelePr
     return model to editor
   }
 
-  private fun isApplicable(properties: PropertiesTable<NelePropertyItem>): Boolean {
-    return properties.getByNamespace(ANDROID_URI).keys.containsAll(REQUIRED_PROPERTIES)
-  }
-
   private fun getDesignProperty(properties: PropertiesTable<NelePropertyItem>, attribute: String): NelePropertyItem {
     return properties.getOrNull(TOOLS_URI, attribute) ?: properties[ANDROID_URI, attribute].designProperty
   }
@@ -130,5 +127,9 @@ class TextViewInspectorBuilder(private val editorProvider: EditorProvider<NelePr
       ATTR_TEXT_STYLE,
       ATTR_TEXT_ALL_CAPS,
       ATTR_TEXT_COLOR)
+
+    fun isApplicable(properties: PropertiesTable<NelePropertyItem>): Boolean {
+      return properties.getByNamespace(ANDROID_URI).keys.containsAll(REQUIRED_PROPERTIES)
+    }
   }
 }

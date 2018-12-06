@@ -19,23 +19,18 @@ import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.scene.SceneComponent
 import com.android.tools.idea.common.scene.SceneContext
-import com.android.tools.idea.common.scene.draw.ArrowDirection
 import com.android.tools.idea.common.scene.draw.DisplayList
-import com.android.tools.idea.common.scene.draw.DrawArrow
-import com.android.tools.idea.common.scene.draw.DrawLine
 import com.android.tools.idea.naveditor.model.ActionType
 import com.android.tools.idea.naveditor.model.effectiveDestination
 import com.android.tools.idea.naveditor.model.getActionType
 import com.android.tools.idea.naveditor.model.getEffectiveSource
-import com.android.tools.idea.naveditor.scene.ACTION_STROKE
+import com.android.tools.idea.naveditor.model.popUpTo
 import com.android.tools.idea.naveditor.scene.DRAW_ACTION_LEVEL
 import com.android.tools.idea.naveditor.scene.NavColorSet
-import com.android.tools.idea.naveditor.scene.NavSceneManager
 import com.android.tools.idea.naveditor.scene.draw.DrawAction
+import com.android.tools.idea.naveditor.scene.draw.DrawHorizontalAction
 import com.android.tools.idea.naveditor.scene.draw.DrawSelfAction
 import java.awt.Color
-import java.awt.geom.Point2D
-import java.awt.geom.Rectangle2D
 
 const val HIGHLIGHTED_CLIENT_PROPERTY = "actionHighlighted"
 
@@ -48,21 +43,12 @@ object ActionDecorator : NavBaseDecorator() {
     val color = actionColor(sceneContext, component)
     val view = component.scene.designSurface.currentSceneView ?: return
     val actionType = nlComponent.getActionType(component.scene.root?.nlComponent)
+    val isPopAction = nlComponent.popUpTo != null
     when (actionType) {
       ActionType.NONE -> return
       ActionType.GLOBAL, ActionType.EXIT -> {
         @SwingCoordinate val drawRect = Coordinates.getSwingRectDip(view, component.fillDrawRect2D(0, null))
-        @SwingCoordinate val x1 = drawRect.x
-        @SwingCoordinate val x2 = x1 + drawRect.width - Coordinates.getSwingDimension(view, NavSceneManager.ACTION_ARROW_PARALLEL)
-        @SwingCoordinate val y = drawRect.y + drawRect.height / 2
-        list.add(DrawLine(DRAW_ACTION_LEVEL, Point2D.Float(x1, y), Point2D.Float(x2, y), color, ACTION_STROKE))
-
-        val arrowRect = Rectangle2D.Float()
-        arrowRect.x = x2
-        arrowRect.y = drawRect.y
-        arrowRect.width = Coordinates.getSwingDimension(view, NavSceneManager.ACTION_ARROW_PARALLEL)
-        arrowRect.height = drawRect.height
-        list.add(DrawArrow(DRAW_ACTION_LEVEL, ArrowDirection.RIGHT, arrowRect, color))
+        list.add(DrawHorizontalAction(DRAW_ACTION_LEVEL, drawRect, color, isPopAction))
       }
       else -> {
         val scene = component.scene
@@ -72,14 +58,14 @@ object ActionDecorator : NavBaseDecorator() {
         val sourceRect = Coordinates.getSwingRectDip(view, sourceSceneComponent.fillDrawRect2D(0, null))
 
         if (actionType == ActionType.SELF) {
-          DrawSelfAction.buildDisplayList(list, view, sourceRect, color)
+          DrawSelfAction.buildDisplayList(list, view, sourceRect, color, isPopAction)
         }
         else {
           val targetNlComponent = nlComponent.effectiveDestination ?: return
           val destinationSceneComponent = scene.getSceneComponent(targetNlComponent) ?: return
           val destRect = Coordinates.getSwingRectDip(view, destinationSceneComponent.fillDrawRect2D(0, null))
 
-          DrawAction.buildDisplayList(list, view, actionType, sourceRect, destRect, color)
+          DrawAction.buildDisplayList(list, view, actionType, isPopAction, sourceRect, destRect, color)
         }
       }
     }

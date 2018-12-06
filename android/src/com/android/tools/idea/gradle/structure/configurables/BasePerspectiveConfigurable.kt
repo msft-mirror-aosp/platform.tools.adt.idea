@@ -94,14 +94,13 @@ abstract class BasePerspectiveConfigurable protected constructor(
     }, this)
 
     @Suppress("LeakingThis")
-    context.analyzerDaemon.add(
-      {
-        if (myTree.isShowing) {
-          // If issues are updated and the tree is showing, trigger a repaint so the proper highlight and tooltip is applied.
-          invokeLaterIfNeeded { revalidateAndRepaint(myTree) }
-        }
-        Unit
-      }, this)
+    context.analyzerDaemon.onIssuesChange(this) {
+      if (myTree.isShowing) {
+        // If issues are updated and the tree is showing, trigger a repaint so the proper highlight and tooltip is applied.
+        invokeLaterIfNeeded { revalidateAndRepaint(myTree) }
+      }
+      Unit
+    }
 
     @Suppress("LeakingThis")
     context.uiSettings.addListener(PsUISettings.ChangeListener { reconfigureForCurrentSettings() }, this)
@@ -223,7 +222,7 @@ abstract class BasePerspectiveConfigurable protected constructor(
     myTree.model =
       createTreeModel(
         object : NamedContainerConfigurableBase<PsModule>("root") {
-          override fun getChildrenModels(): Collection<PsModule> = context.project.modules.filter { it.isDeclared } + extraModules
+          override fun getChildrenModels(): Collection<PsModule> = extraModules + context.project.modules.filter { it.isDeclared }
           override fun createChildConfigurable(model: PsModule) = createConfigurableFor(model).also { it.setHistory(myHistory) }
           override fun onChange(disposable: Disposable, listener: () -> Unit) = context.project.modules.onChange(disposable, listener)
           override fun dispose() = Unit

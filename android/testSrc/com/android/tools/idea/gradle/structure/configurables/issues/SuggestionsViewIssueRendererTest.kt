@@ -15,7 +15,13 @@ package com.android.tools.idea.gradle.structure.configurables.issues
 
 import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.configurables.suggestions.SuggestionsViewIssueRenderer
-import com.android.tools.idea.gradle.structure.model.*
+import com.android.tools.idea.gradle.structure.model.PsGeneralIssue
+import com.android.tools.idea.gradle.structure.model.PsIssue
+import com.android.tools.idea.gradle.structure.model.PsIssueType
+import com.android.tools.idea.gradle.structure.model.PsPath
+import com.android.tools.idea.gradle.structure.model.PsQuickFix
+import com.android.tools.idea.gradle.structure.model.TestPath
+import com.android.tools.idea.gradle.structure.model.parents
 import org.hamcrest.CoreMatchers.equalTo
 import org.junit.Assert.assertThat
 import org.junit.Before
@@ -27,8 +33,9 @@ class SuggestionsViewIssueRendererTest {
   @Mock private lateinit var context: PsContext
   private var viewUsagePath = TestPath("/WITH_USAGE", null, "href-dest")
   private var quickFix = object: PsQuickFix {
-    override fun getHyperlinkDestination(context: PsContext): String? = "link"
-    override fun getHtml(context: PsContext): String = "html"
+    override fun execute(context: PsContext): Unit = TODO("not implemented")
+
+    override val text = "text"
   }
   private val testIssuePath = TestPath("/PATH")
   private val testIssueParentPath = TestPath("/PATH", null, "url:parentpath")
@@ -40,7 +47,7 @@ class SuggestionsViewIssueRendererTest {
   }
 
   private fun createIssue(testIssuePath: PsPath, quickFix: PsQuickFix? = null) : PsIssue =
-      PsGeneralIssue("TEXT", "DESCRIPTION", testIssuePath, PsIssueType.PROJECT_ANALYSIS, PsIssue.Severity.ERROR, quickFix)
+    PsGeneralIssue("TEXT", "DESCRIPTION", testIssuePath, PsIssueType.PROJECT_ANALYSIS, PsIssue.Severity.ERROR, listOfNotNull(quickFix))
 
   data class RenderResult(val header: String?, val details: String?)
 

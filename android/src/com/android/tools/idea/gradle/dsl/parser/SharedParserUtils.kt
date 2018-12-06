@@ -99,12 +99,25 @@ import com.android.tools.idea.gradle.dsl.parser.repositories.RepositoriesDslElem
 import com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslElement
 
 /**
+ * Set of classes whose properties should not be merged into each other.
+ */
+private val makeDistinctClassSet = setOf(MavenRepositoryDslElement::class.java, FlatDirRepositoryDslElement::class.java)
+
+/**
  * Get the block element that is given be repeat
  */
-fun GradleDslFile.getBlockElement(nameParts: List<String>, parentElement: GradlePropertiesDslElement): GradlePropertiesDslElement? {
+fun GradleDslFile.getBlockElement(
+    nameParts: List<String>,
+    parentElement: GradlePropertiesDslElement,
+    nameElement: GradleNameElement? = null
+): GradlePropertiesDslElement? {
   return nameParts.map { namePart -> namePart.trim { it <= ' ' } }.fold(parentElement) { resultElement, nestedElementName ->
-    val elementName = GradleNameElement.fake(nestedElementName)
-    val element = resultElement.getElement(nestedElementName)
+    val elementName = nameElement ?: GradleNameElement.fake(nestedElementName)
+    var element = resultElement.getElement(nestedElementName)
+
+    if (element != null && makeDistinctClassSet.contains(element::class.java)) {
+      element = null // Force recreation of the element
+    }
 
     if (element is GradlePropertiesDslElement) {
       return@fold element

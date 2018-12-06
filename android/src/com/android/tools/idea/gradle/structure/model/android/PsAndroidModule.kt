@@ -233,6 +233,11 @@ class PsAndroidModule(
     resetResolvedDependencies()
   }
 
+  fun resetProductFlavors() {
+    productFlavorCollection?.refresh()
+    flavorDimensionCollection?.refresh()  // (invalid) dimension may appear or disappear.
+  }
+
   internal fun resetResolvedDependencies() {
     variants.forEach { variant -> variant.forEachArtifact { artifact -> artifact.resetDependencies() } }
   }

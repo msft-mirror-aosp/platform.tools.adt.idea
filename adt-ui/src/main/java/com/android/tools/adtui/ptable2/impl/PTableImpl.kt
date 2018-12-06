@@ -189,22 +189,37 @@ class PTableImpl(override val tableModel: PTableModel,
    * Also add logic to continue editing after the update.
    */
   override fun tableChanged(event: TableModelEvent) {
+    when (event) {
+      is PTableModelRepaintEvent -> repaint()
+      is PTableModelEvent -> tableChangedWithNextEditedRow(event, event.nextEditedRow)
+      else -> tableChangedWithoutNextEditedRow(event)
+    }
+  }
+
+  private fun tableChangedWithoutNextEditedRow(event: TableModelEvent) {
+    if (isEditing) {
+      removeEditor()
+    }
+    super.tableChanged(event)
+  }
+
+  private fun tableChangedWithNextEditedRow(event: TableModelEvent, nextEditedRow: Int) {
     val wasEditing = isEditing
-    val lastEditingColumn = editingColumn
-    var editedRow: Any? = null
     if (wasEditing) {
-      editedRow = getValueAt(editingRow, editingColumn)
       removeEditor()
     }
     super.tableChanged(event)
 
     if (wasEditing) {
-      var newEditingRow = model.tableModel.items.indexOf(editedRow)
-      var newEditingColumn = lastEditingColumn
-      if (event is PTableModelEvent && event.nextEditedRow >= 0) {
-        val modelRow = event.nextEditedRow
-        newEditingRow = if (modelRow < 0) -1 else convertRowIndexToView(modelRow)
+      val newEditingRow: Int
+      val newEditingColumn: Int
+      if (nextEditedRow >= 0 && model.rowCount > nextEditedRow) {
+        newEditingRow = convertRowIndexToView(nextEditedRow)
         newEditingColumn = 0
+      }
+      else {
+        newEditingRow = -1
+        newEditingColumn = -1
       }
       if (newEditingRow >= 0) {
         startEditing(newEditingRow, newEditingColumn)

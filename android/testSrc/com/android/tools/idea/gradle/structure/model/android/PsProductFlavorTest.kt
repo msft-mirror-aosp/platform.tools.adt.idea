@@ -190,13 +190,34 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
       hasItems(ValueDescriptor("foo", "foo"), ValueDescriptor("bar", "bar")))
   }
 
+  fun testChangingDimensions() {
+    loadProject(TestProjectPaths.PSD_SAMPLE)
+
+    val resolvedProject = myFixture.project
+    val project = PsProjectImpl(resolvedProject)
+
+    val appModule = project.findModuleByName("app") as PsAndroidModule
+    assertThat(appModule, notNullValue())
+
+    val productFlavor = appModule.findProductFlavor("foo", "paid")
+    assertThat(productFlavor, notNullValue()); productFlavor!!
+
+    assertThat(productFlavor.configuredDimension, equalTo("foo".asParsed()))
+
+    var changed = false
+    appModule.productFlavors.onChange(testRootDisposable) { changed = true}
+
+    productFlavor.configuredDimension = "bar".asParsed()
+    assertThat(productFlavor.configuredDimension, equalTo("bar".asParsed()))
+    assertThat(changed, equalTo(true))
+  }
+
   fun testEffectiveDimensions() {
     loadProject(TestProjectPaths.PSD_SAMPLE)
     val resolvedProject = myFixture.project
     val project = PsProjectImpl(resolvedProject)
 
     run {
-
       val appModule = project.findModuleByName("app") as PsAndroidModule
       assertThat(appModule, notNullValue())
 
@@ -207,7 +228,6 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
       assertThat(productFlavor.effectiveDimension, nullValue())
     }
     run {
-
       val nested2Module = project.findModuleByName("nested2") as PsAndroidModule
       assertThat(nested2Module, notNullValue())
 
@@ -215,6 +235,15 @@ class PsProductFlavorTest : AndroidGradleTestCase() {
       assertThat(productFlavor, notNullValue()); productFlavor!!
       assertThat(productFlavor.configuredDimension, equalTo<ParsedValue<String>>(ParsedValue.NotSet))
       assertThat(productFlavor.effectiveDimension, equalTo("foo"))
+    }
+    run {
+      val nested1Module = project.findModuleByName("nested1") as PsAndroidModule
+      assertThat(nested1Module, notNullValue())
+
+      val productFlavor = nested1Module.addNewProductFlavor("new_bad", "new_with_bad")
+      assertThat(productFlavor, notNullValue())
+      assertThat(productFlavor.configuredDimension, equalTo<ParsedValue<String>>("new_bad".asParsed()))
+      assertThat(productFlavor.effectiveDimension, nullValue())
     }
   }
 

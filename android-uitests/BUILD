@@ -155,7 +155,6 @@ java_test(
         "//prebuilts/studio/sdk:tools/support-annotations",
         "//prebuilts/studio/layoutlib:data/res",
         "//prebuilts/tools/common/m2/repository/com/android/support/appcompat-v7/26.1.0:aar",
-        ":aswb_plugin",
     ] + glob([
         "testData/SimpleLocalApplication/**",
     ]) + glob(["testData/LayoutLocalTest/**"]),
@@ -482,7 +481,6 @@ java_test(
         "//prebuilts/studio/layoutlib:data/fonts",
         "//prebuilts/studio/layoutlib:data/res",
         "//tools/adt/idea/android/lib:androidWidgets",
-        ":aswb_plugin",
     ] + glob([
         "testData/SimpleLocalApplication/**",
     ]),
@@ -1455,21 +1453,4 @@ java_test(
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-genrule(
-    name = "aswb_plugin",
-    srcs = ["@blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip"],
-    outs = [
-        "aswb/aspect/WORKSPACE",
-        "aswb/aspect/BUILD.bazel",
-        "aswb/aspect/artifacts.bzl",
-        "aswb/aspect/intellij_info_bundled.bzl",
-        "aswb/aspect/intellij_info_impl.bzl",
-        "aswb/aspect/java_classpath.bzl",
-        "aswb/aspect/tools/JarFilter_deploy.jar",
-        "aswb/aspect/tools/PackageParser_deploy.jar",
-        "aswb/lib/aswb_bazel.jar",
-    ],
-    cmd = "unzip $(location @blaze//third_party/intellij/bazel/plugin/aswb:aswb_bazel_zip) -d $(@D)",
 )

@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.resourceExplorer.view
 
-import com.android.resources.ResourceType
 import com.android.tools.idea.resourceExplorer.ImageCache
+import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.android.tools.idea.resourceExplorer.viewmodel.ProjectResourcesBrowserViewModel
 import com.android.tools.idea.resourceExplorer.viewmodel.ResourceSection
@@ -53,12 +53,10 @@ import java.awt.event.MouseEvent
 import java.awt.font.TextAttribute
 import javax.swing.BorderFactory
 import javax.swing.JComponent
-import javax.swing.JLabel
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JTabbedPane
-import javax.swing.ListCellRenderer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -70,9 +68,6 @@ private val LIST_CELL_SIZE = JBUI.scale(60)
 private val MIN_CELL_WIDTH = JBUI.scale(150)
 private const val DEFAULT_GRID_MODE = false
 private val DEFAULT_CELL_WIDTH = LIST_CELL_SIZE
-private val SECTION_CELL_MARGIN = JBUI.scale(4)
-private val SECTION_CELL_MARGIN_LEFT = JBUI.scale(8)
-private val COLORED_BORDER_WIDTH = JBUI.scale(4)
 private val SECTION_HEADER_SECONDARY_COLOR = JBColor.border()
 
 private val SECTION_HEADER_BORDER = BorderFactory.createCompoundBorder(
@@ -80,7 +75,7 @@ private val SECTION_HEADER_BORDER = BorderFactory.createCompoundBorder(
   JBUI.Borders.customLine(SECTION_HEADER_SECONDARY_COLOR, 0, 0, 1, 0)
 )
 
-private val SECTION_LIST_BORDER = JBUI.Borders.empty(0, 4)
+private val SECTION_LIST_BORDER = JBUI.Borders.empty()
 
 private val SECTION_HEADER_LABEL_FONT = JBUI.Fonts.label().deriveFont(mapOf(
   TextAttribute.WEIGHT to TextAttribute.WEIGHT_SEMIBOLD,
@@ -104,8 +99,11 @@ class ResourceExplorerView(
     return resourcesBrowserViewModel.getData(dataId, getSelectedAssets())
   }
 
-  private fun getSelectedAssets(): List<DesignAssetSet> {
-    return sectionList.getLists().flatMap { it.selectedValuesList }.filterIsInstance<DesignAssetSet>()
+  private fun getSelectedAssets(): List<DesignAsset> {
+    return sectionList.getLists()
+      .flatMap { it.selectedValuesList }
+      .filterIsInstance<DesignAssetSet>()
+      .flatMap(DesignAssetSet::designAssets)
   }
 
   private var previewSize = DEFAULT_CELL_WIDTH
@@ -246,9 +244,9 @@ class ResourceExplorerView(
     sectionListModel.clear()
     val sections = resourcesBrowserViewModel.getResourcesLists()
       .filterNot { it.assets.isEmpty() }
-      .map { (type, libName, assets): ResourceSection ->
+      .map { (_, libName, assets): ResourceSection ->
         AssetSection(libName, AssetListView(assets).apply {
-          cellRenderer = getRendererForType(type, this)
+          cellRenderer = DesignAssetCellRenderer(resourcesBrowserViewModel.assetPreviewManager)
           dragHandler.registerSource(this)
           addMouseListener(popupHandler)
           addMouseListener(doubleClickListener)
@@ -282,22 +280,6 @@ class ResourceExplorerView(
 
   interface SelectionListener {
     fun onDesignAssetSetSelected(designAssetSet: DesignAssetSet?)
-  }
-
-  private fun getRendererForType(type: ResourceType, list: JList<*>): ListCellRenderer<DesignAssetSet> {
-    val refreshCallBack = { index: Int ->
-      list.repaint(list.getCellBounds(index, index))
-    }
-    return when (type) {
-      ResourceType.DRAWABLE, ResourceType.LAYOUT -> DrawableResourceCellRenderer(resourcesBrowserViewModel::getPreview, imageCache,
-                                                                                 refreshCallBack)
-      ResourceType.COLOR -> ColorResourceCellRenderer(resourcesBrowserViewModel.facet.module.project,
-                                                      resourcesBrowserViewModel.resourceResolver)
-      ResourceType.SAMPLE_DATA -> DrawableResourceCellRenderer(resourcesBrowserViewModel::getPreview, imageCache, refreshCallBack)
-      else -> ListCellRenderer { _, value, _, _, _ ->
-        JLabel(value.name)
-      }
-    }
   }
 
   private class AssetSection<T>(

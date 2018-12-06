@@ -15,18 +15,22 @@
  */
 package com.android.tools.idea.common.scene.target
 
+import com.android.annotations.VisibleForTesting
 import com.android.tools.idea.common.api.InsertType
 import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.common.scene.*
 import com.android.tools.idea.common.scene.draw.DisplayList
 import com.android.tools.idea.common.scene.draw.DrawRegion
 import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintLayoutHandler
+import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintPlaceholder
 import com.android.tools.idea.uibuilder.handlers.constraint.drawing.ColorSet
 import com.android.tools.idea.uibuilder.handlers.relative.targets.drawBottom
 import com.android.tools.idea.uibuilder.handlers.relative.targets.drawLeft
 import com.android.tools.idea.uibuilder.handlers.relative.targets.drawRight
 import com.android.tools.idea.uibuilder.handlers.relative.targets.drawTop
 import com.android.tools.idea.uibuilder.model.viewHandler
+import com.android.tools.idea.uibuilder.scene.target.TargetSnapper
+import com.google.common.collect.ImmutableList
 import com.intellij.ui.JBColor
 import java.awt.Color
 import java.awt.Cursor
@@ -67,22 +71,26 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
    * Needs to be lazy because [myComponent] doesn't exist when constructing the [Target].
    * But it will be set immediately after [Target] is created.
    */
-  private val placeholders: List<Placeholder>
-  private val dominatePlaceholders: List<Placeholder>
-  private val recessivePlaceholders: List<Placeholder>
-  private val placeholderHosts: Set<SceneComponent>
+  private lateinit var placeholders: List<Placeholder>
+  private lateinit var dominatePlaceholders: List<Placeholder>
+  private lateinit var recessivePlaceholders: List<Placeholder>
+
+  /**
+   * Host of placeholders. This is used for rendering.
+   */
+  private var placeholderHosts: Set<SceneComponent> = emptySet()
 
   private var currentSnappedPlaceholder: Placeholder? = null
 
   var insertType: InsertType = InsertType.MOVE_WITHIN
 
+  /**
+   * To handle Live Rendering case.
+   */
+  private val targetSnapper = TargetSnapper()
+
   init {
     myComponent = sceneComponent
-
-    placeholders = component.scene.getPlaceholders(component).filter { it.host != component }
-    dominatePlaceholders = placeholders.filter { it.dominate }
-    recessivePlaceholders = placeholders.filterNot { it.dominate }
-    placeholderHosts = placeholders.asSequence().map { it.host }.toSet()
   }
 
   override fun setComponent(component: SceneComponent) {
@@ -163,6 +171,8 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
           list.add(DrawNonHoveredHost(h.drawLeft, h.drawTop, h.drawRight, h.drawBottom))
         }
       }
+
+      targetSnapper.renderSnappedNotches(list, sceneContext, myComponent)
     }
   }
 
@@ -171,6 +181,16 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   override fun mouseDown(@AndroidDpCoordinate x: Int, @AndroidDpCoordinate y: Int) {
     firstMouse.x = x
     firstMouse.y = y
+
+    placeholders = component.scene.getPlaceholders(component).filter { it.host != component }
+
+    val dominateBuilder = ImmutableList.builder<Placeholder>()
+    val recessiveBuilder = ImmutableList.builder<Placeholder>()
+    placeholders.forEach { (if (it.dominate) dominateBuilder else recessiveBuilder).add(it) }
+    dominatePlaceholders = dominateBuilder.build()
+    recessivePlaceholders = recessiveBuilder.build()
+
+    placeholderHosts = placeholders.asSequence().map { it.host }.toSet()
 
     val scene = component.scene
     val selection = scene.selection
@@ -214,23 +234,15 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
       }
     }
     currentSnappedPlaceholder = null
+
+    targetSnapper.reset()
+    targetSnapper.gatherNotches(myComponent)
   }
 
   override fun mouseDrag(@AndroidDpCoordinate x: Int, @AndroidDpCoordinate y: Int, unused: List<Target>) {
     draggedComponents.forEach { it.isDragging = true }
-    val ph = snap(x, y)
-    if (myComponent.scene.isLiveRenderingEnabled
-        && ph?.host?.authoritativeNlComponent?.viewHandler is ConstraintLayoutHandler
-        && myComponent.parent == ph.host) {
-      // For Live Rendering in ConstraintLayout. Live Rendering only works when component is dragged in the same ConstraintLayout
-      // TODO: Makes Live Rendering works when dragging widget between different ViewGroups
-      applyPlaceholder(ph, commit = false)
-      myComponent.authoritativeNlComponent.fireLiveChangeEvent()
-      myComponent.scene.needsLayout(Scene.IMMEDIATE_LAYOUT)
-    }
-    else {
-      myComponent.scene.repaint()
-    }
+    snap(x, y)
+    myComponent.scene.repaint()
   }
 
   /**
@@ -280,14 +292,34 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
       doSnap(recessivePlaceholders)
     }
 
-    currentSnappedPlaceholder = targetPlaceholder
-    if (currentSnappedPlaceholder?.dominate == true) {
-      draggedComponents.forEach { it.setPosition(snappedX, snappedY) }
+    val ph = targetPlaceholder
+    currentSnappedPlaceholder = ph
+    // TODO: Makes Live Rendering works when dragging widget between different ViewGroups
+    if (myComponent.scene.isLiveRenderingEnabled && ph is ConstraintPlaceholder && myComponent.parent == ph.host) {
+      // For Live Rendering in ConstraintLayout. Live Rendering only works when component is dragged in the same ConstraintLayout
+      val primaryX = targetSnapper.trySnapHorizontal(snappedX).orElse(snappedX)
+      val primaryY = targetSnapper.trySnapVertical(snappedY).orElse(snappedY)
+
+      draggedComponents.forEachIndexed { index, it -> when (index) {
+        0 -> it.setPosition(primaryX, primaryY)
+        else -> it.setPosition(primaryX + offsets[0].x - offsets[index].x, primaryY + offsets[0].y - offsets[index].y)
+      } }
+
+      applyPlaceholder(ph, commit = false)
+
+      myComponent.authoritativeNlComponent.fireLiveChangeEvent()
+      myComponent.scene.needsLayout(Scene.IMMEDIATE_LAYOUT)
     }
     else {
-      draggedComponents.forEachIndexed { index, it -> it.setPosition(mouseX - offsets[index].x, mouseY - offsets[index].y) }
+      if (currentSnappedPlaceholder?.dominate == true) {
+        draggedComponents.forEach { it.setPosition(snappedX, snappedY) }
+      }
+      else {
+        draggedComponents.forEachIndexed { index, it -> it.setPosition(mouseX - offsets[index].x, mouseY - offsets[index].y) }
+      }
+      myComponent.scene.needsLayout(Scene.NO_LAYOUT)
     }
-    return targetPlaceholder
+    return ph
   }
 
   override fun mouseRelease(@AndroidDpCoordinate x: Int, @AndroidDpCoordinate y: Int, unused: List<Target>) {
@@ -299,54 +331,51 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
     val ph = snap(x, y)
     if (ph != null) {
       applyPlaceholder(ph)
-      myComponent.scene.needsLayout(Scene.ANIMATED_LAYOUT)
     }
     else {
       draggedComponents.forEachIndexed { index, sceneComponent ->
         sceneComponent.setPosition(firstMouse.x - offsets[index].x, firstMouse.y - offsets[index].y)
       }
     }
+
+    currentSnappedPlaceholder = null
+    placeholderHosts = emptySet()
+    myComponent.scene.needsLayout(Scene.ANIMATED_LAYOUT)
   }
 
   /**
    * Apply the given [Placeholder]. Returns true if succeed, false otherwise. If [commit] is true, the applied attributes will be
    * write to file directly.
    */
-  private fun applyPlaceholder(placeholder: Placeholder, commit: Boolean = true): Boolean {
+  @VisibleForTesting
+  fun applyPlaceholder(placeholder: Placeholder, commit: Boolean = true) {
     val parent = placeholder.host.authoritativeNlComponent
     val primaryNlComponent = myComponent.authoritativeNlComponent
     val model = primaryNlComponent.model
     val componentsToAdd = draggedComponents.map { it.authoritativeNlComponent }
-    // If there is no next component and component is move within same parent, we keep its original order in xml file.
-    val anchor = placeholder.nextComponent?.nlComponent ?: if (primaryNlComponent.parent != parent) null else {
-      val siblings = parent.children
-      val currentPosition = siblings.indexOf(primaryNlComponent)
-      siblings.getOrNull(currentPosition + 1)
-    }
+    val anchor = placeholder.findNextSibling(myComponent, placeholder.host)?.nlComponent
 
-    if (model.canAddComponents(componentsToAdd, parent, anchor)) {
-      val attributesTransactions = draggedComponents.map {
-        val transaction = it.authoritativeNlComponent.startAttributeTransaction()
-        placeholder.updateAttribute(it, transaction)
-        transaction
-      }
-      if (commit) {
-        model.addComponents(componentsToAdd, parent, anchor, insertType, myComponent.scene.designSurface) {
-          attributesTransactions.forEach { it.commit() }
-        }
-      }
-      else {
-        attributesTransactions.forEach { it.apply() }
-      }
-      return true
+    val attributesTransactions = draggedComponents.map {
+      val transaction = it.authoritativeNlComponent.startAttributeTransaction()
+      placeholder.updateAttribute(it, transaction)
+      transaction
     }
-    return false
+    if (commit) {
+      model.addComponents(componentsToAdd, parent, anchor, insertType, myComponent.scene.designSurface) {
+        attributesTransactions.forEach { it.commit() }
+      }
+    }
+    else {
+      attributesTransactions.forEach { it.apply() }
+    }
   }
 
   /**
    * Reset the status when the dragging is canceled.
    */
   override fun mouseCancel() {
+    draggedComponents.forEach { it.isDragging = false }
+    placeholderHosts = emptySet()
     currentSnappedPlaceholder = null
     val liveRendered = myComponent.scene.isLiveRenderingEnabled
     draggedComponents.forEachIndexed { index, component ->

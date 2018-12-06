@@ -23,9 +23,13 @@ import com.android.tools.idea.gradle.structure.configurables.ui.continueOnEdt
 import com.android.tools.idea.gradle.structure.configurables.ui.handleFailureOnEdt
 import com.android.tools.idea.gradle.structure.daemon.PsAnalyzerDaemon
 import com.android.tools.idea.gradle.structure.daemon.PsLibraryUpdateCheckerDaemon
+import com.android.tools.idea.gradle.structure.daemon.analysis.PsAndroidModuleAnalyzer
+import com.android.tools.idea.gradle.structure.daemon.analysis.PsJavaModuleAnalyzer
+import com.android.tools.idea.gradle.structure.daemon.analysis.PsModelAnalyzer
 import com.android.tools.idea.gradle.structure.model.PsIssue
 import com.android.tools.idea.gradle.structure.model.PsIssueType
 import com.android.tools.idea.gradle.structure.model.PsModule
+import com.android.tools.idea.gradle.structure.model.PsPath
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
 import com.android.tools.idea.gradle.structure.model.repositories.search.ArtifactRepositorySearchService
 import com.android.tools.idea.structure.dialog.ProjectStructureConfigurable
@@ -72,16 +76,33 @@ class PsContextImpl constructor(
     // The UI has not yet subscribed to notifications which is fine since we don't want to see "Loading..." at startup.
     requestGradleModels()
 
-    libraryUpdateCheckerDaemon = PsLibraryUpdateCheckerDaemon(this, cachingRepositorySearchFactory)
+    libraryUpdateCheckerDaemon = PsLibraryUpdateCheckerDaemon(this, project, cachingRepositorySearchFactory)
     if (!disableAnalysis) {
       libraryUpdateCheckerDaemon.reset()
       libraryUpdateCheckerDaemon.queueAutomaticUpdateCheck()
     }
 
-    analyzerDaemon = PsAnalyzerDaemon(this, libraryUpdateCheckerDaemon)
+    analyzerDaemon = PsAnalyzerDaemon(
+      this,
+      project,
+      libraryUpdateCheckerDaemon,
+      analyzersMapOf(
+        PsAndroidModuleAnalyzer(this, PsPathRendererImpl().also { it.context = this }),
+        PsJavaModuleAnalyzer(this))
+    )
     if (!disableAnalysis) {
       analyzerDaemon.reset()
       project.forEachModule(Consumer { analyzerDaemon.queueCheck(it) })
+    }
+
+    if (!disableAnalysis) {
+      project.onModuleChanged(this) { module ->
+        analyzerDaemon.queueCheck(module)
+        project
+          .modules
+          .filter { it.dependencies.modules.any { moduleDependency -> moduleDependency.gradlePath == module.gradlePath } }
+          .forEach { analyzerDaemon.queueCheck(it) }
+      }
     }
 
     Disposer.register(parentDisposable, this)
@@ -93,7 +114,7 @@ class PsContextImpl constructor(
     gradleSync
       .requestProjectResolved(project, this)
       .handleFailureOnEdt {
-        gradleSyncEventDispatcher.multicaster.syncFailed(project, it?.let { ExceptionUtil.getRootCause(it).message }.orEmpty())
+        gradleSyncEventDispatcher.multicaster.syncFailed(project, it?.let { e -> ExceptionUtil.getRootCause(e).message }.orEmpty())
       }
       .continueOnEdt {
         this.project.refreshFrom(it)
@@ -166,3 +187,15 @@ class PsContextImpl constructor(
     }
   }
 }
+
+class PsPathRendererImpl : PsPathRenderer {
+  var context: PsContext? = null
+  override fun PsPath.renderNavigation(specificPlace: PsPath): String {
+    val text = this.toString()
+    val href = specificPlace.getHyperlinkDestination(context!!).orEmpty()
+    return """<a href="$href">$text</a>"""
+  }
+}
+
+private fun analyzersMapOf(vararg analyzers: PsModelAnalyzer<out PsModule>): Map<Class<*>, PsModelAnalyzer<out PsModule>> =
+  analyzers.associateBy { it.supportedModelType }

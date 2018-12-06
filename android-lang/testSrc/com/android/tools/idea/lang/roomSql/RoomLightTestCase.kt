@@ -43,7 +43,7 @@ abstract class RoomLightTestCase : LightCodeInsightFixtureTestCase() {
       """
       package androidx.room;
 
-      public @interface Database { Class[] entities(); int version(); }
+      public @interface Database { Class[] tables(); int version(); }
       """.trimIndent()
     )
 
@@ -67,7 +67,7 @@ abstract class RoomLightTestCase : LightCodeInsightFixtureTestCase() {
       """
       package androidx.room;
 
-      public @interface DatabaseView { String value(); }
+      public @interface DatabaseView { String value() default ""; String viewName() default ""  }
       """.trimIndent()
     )
 
@@ -92,6 +92,22 @@ abstract class RoomLightTestCase : LightCodeInsightFixtureTestCase() {
       package androidx.room;
 
       public @interface Embedded { String prefix() default ""; }
+      """.trimIndent()
+    )
+
+    myFixture.addClass(
+      """
+      package androidx.room;
+
+      public @interface Fts3 {}
+      """.trimIndent()
+    )
+
+    myFixture.addClass(
+      """
+      package androidx.room;
+
+      public @interface Fts4 {}
       """.trimIndent()
     )
   }

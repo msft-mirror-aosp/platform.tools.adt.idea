@@ -16,17 +16,21 @@
 package com.android.tools.idea.resourceExplorer.model
 
 import com.android.ide.common.rendering.api.ResourceNamespace
+import com.android.ide.common.rendering.api.ResourceValue
 import com.android.ide.common.resources.ResourceItem
 import com.android.ide.common.resources.ResourceMergerItem
+import com.android.ide.common.resources.ResourceResolver
 import com.android.ide.common.resources.configuration.DensityQualifier
 import com.android.ide.common.resources.configuration.ResourceQualifier
 import com.android.resources.ResourceType
 import com.android.tools.idea.res.getSourceAsVirtualFile
 import com.android.tools.idea.resourceExplorer.importer.QualifierMatcher
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 
 val externalResourceNamespace = ResourceNamespace.fromPackageName("external.design.resource")
+private val LOG = Logger.getInstance(DesignAsset::class.java)
 
 /**
  * A Design asset on disk.
@@ -53,14 +57,6 @@ data class DesignAsset(
         resourceItem = resourceItem)
     }
   }
-
-  constructor(resourceItem: ResourceItem) : this(
-    file = resourceItem.getSourceAsVirtualFile()!!, // TODO handle assertion
-    qualifiers = resourceItem.configuration.qualifiers.toList(),
-    type = resourceItem.type,
-    name = resourceItem.name,
-    resourceItem = resourceItem
-  )
 }
 
 /**
@@ -98,20 +94,17 @@ fun getAssetSets(
   qualifierMatcher: QualifierMatcher
 ): List<DesignAssetSet> {
   return getDesignAssets(directory, supportedTypes, directory, qualifierMatcher)
-    .groupBy(
-      { (drawableName, _) -> drawableName },
-      { (_, designAsset) -> designAsset }
-    )
+    .groupBy { designAsset -> designAsset.name }
     .map { (drawableName, designAssets) -> DesignAssetSet(drawableName, designAssets) }
     .toList()
 }
 
-private fun getDesignAssets(
+fun getDesignAssets(
   directory: VirtualFile,
   supportedTypes: Set<String>,
   root: VirtualFile,
   qualifierMatcher: QualifierMatcher
-): List<Pair<String, DesignAsset>> {
+): List<DesignAsset> {
   return directory.children
     .filter { it.isDirectory || supportedTypes.contains(it.extension) }
     .flatMap {
@@ -120,12 +113,16 @@ private fun getDesignAssets(
     }
 }
 
-private fun createAsset(child: VirtualFile, root: VirtualFile, matcher: QualifierMatcher): Pair<String, DesignAsset> {
+private fun createAsset(child: VirtualFile, root: VirtualFile, matcher: QualifierMatcher): DesignAsset {
   val relativePath = VfsUtil.getRelativePath(child, root) ?: child.path
   val (resourceName, qualifiers1) = matcher.parsePath(relativePath)
-  return resourceName to DesignAsset(
-    child,
-    qualifiers1.toList(),
-    ResourceType.DRAWABLE
-  )
+  return DesignAsset(child, qualifiers1.toList(), ResourceType.DRAWABLE, resourceName)
+}
+
+fun ResourceResolver.resolveValue(designAsset: DesignAsset): ResourceValue? {
+  val resolvedValue = resolveResValue(designAsset.resourceItem.resourceValue)
+  if (resolvedValue == null) {
+    LOG.warn("${designAsset.resourceItem.name} couldn't be resolved")
+  }
+  return resolvedValue
 }

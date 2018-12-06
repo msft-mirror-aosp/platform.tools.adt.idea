@@ -55,15 +55,12 @@ import java.io.File
 data class PsProductFlavorKey(val dimension: String, val name: String)
 
 open class PsProductFlavor(
-  final override val parent: PsAndroidModule
+  final override val parent: PsAndroidModule,
+  private val renamed: (PsProductFlavorKey, PsProductFlavorKey) -> Unit
 ) : PsChildModel() {
   override val descriptor by ProductFlavorDescriptors
   var resolvedModel: ProductFlavor? = null
   private var parsedModel: ProductFlavorModel? = null
-
-  constructor(parent: PsAndroidModule, resolvedModel: ProductFlavor?, parsedModel: ProductFlavorModel?) : this(parent) {
-    init(resolvedModel, parsedModel)
-  }
 
   fun init(resolvedModel: ProductFlavor?, parsedModel: ProductFlavorModel?) {
     this.resolvedModel = resolvedModel
@@ -71,12 +68,14 @@ open class PsProductFlavor(
   }
 
   override val name: String get() = resolvedModel?.name ?: parsedModel?.name() ?: ""
-  override val path: PsPath get() = PsProductFlavorNavigationPath(parent.path.productFlavorsPath, name)
+  override val path: PsProductFlavorNavigationPath get() = PsProductFlavorNavigationPath(parent.path.productFlavorsPath, name)
 
   /**
    * The dimension the product flavor belongs to, i.e. either the configured dimension or the default dimension.
    */
-  val effectiveDimension: String? get() = configuredDimension.maybeValue ?: parent.flavorDimensions.singleOrNull()?.name
+  val effectiveDimension: String? get() =
+    (configuredDimension.maybeValue ?: parent.flavorDimensions.singleOrNull()?.name)
+      ?.takeIf { parent.findFlavorDimension(it) != null }
 
   var applicationId by ProductFlavorDescriptors.applicationId
   var applicationIdSuffix by ProductFlavorDescriptors.applicationIdSuffix
@@ -106,10 +105,18 @@ open class PsProductFlavor(
 
   override val isDeclared: Boolean get() = parsedModel != null
 
+  fun rename(newName: String) {
+    val oldName = name
+    parsedModel!!.rename(newName)
+    renamed(PsProductFlavorKey(effectiveDimension.orEmpty(), oldName), PsProductFlavorKey(effectiveDimension.orEmpty(), newName))
+  }
+
   object ProductFlavorDescriptors : ModelDescriptor<PsProductFlavor, ProductFlavor, ProductFlavorModel> {
     override fun getResolved(model: PsProductFlavor): ProductFlavor? = model.resolvedModel
 
     override fun getParsed(model: PsProductFlavor): ProductFlavorModel? = model.parsedModel
+
+    override fun prepareForModification(model: PsProductFlavor) = Unit
 
     override fun setModified(model: PsProductFlavor) {
       model.isModified = true
@@ -139,6 +146,7 @@ open class PsProductFlavor(
       parsedPropertyGetter = { dimension() },
       getter = { asString() },
       setter = { setValue(it) },
+      refresher = { parent.resetProductFlavors() },
       parser = ::parseString,
       knownValuesGetter = { model -> immediateFuture(model.parent.flavorDimensions.map { ValueDescriptor(it.name, it.name) }) }
     )

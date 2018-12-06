@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.res.aar;
 
-import static com.android.SdkConstants.ANDROID_NS_NAME_PREFIX;
+import static com.android.SdkConstants.ANDROID_NS_NAME;
 import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.ATTR_FORMAT;
 import static com.android.SdkConstants.ATTR_ID;
@@ -42,7 +42,6 @@ import static com.android.ide.common.resources.ResourceItem.ATTR_EXAMPLE;
 import static com.android.ide.common.resources.ResourceItem.XLIFF_G_TAG;
 import static com.android.ide.common.resources.ResourceItem.XLIFF_NAMESPACE_PREFIX;
 
-import com.android.annotations.NonNull;
 import com.android.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.AttrResourceValue;
 import com.android.ide.common.rendering.api.AttributeFormat;
@@ -51,14 +50,9 @@ import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.StyleItemResourceValue;
 import com.android.ide.common.rendering.api.StyleItemResourceValueImpl;
-import com.android.ide.common.resources.DuplicateDataException;
-import com.android.ide.common.resources.MergeConsumer;
-import com.android.ide.common.resources.MergingException;
 import com.android.ide.common.resources.PatternBasedFileFilter;
 import com.android.ide.common.resources.ResourceItem;
-import com.android.ide.common.resources.ResourceMerger;
-import com.android.ide.common.resources.ResourceMergerItem;
-import com.android.ide.common.resources.ResourceSet;
+import com.android.ide.common.resources.ResourceNameKeyedMap;
 import com.android.ide.common.resources.ResourceVisitor;
 import com.android.ide.common.resources.ValueResourceNameValidator;
 import com.android.ide.common.resources.ValueXmlHelper;
@@ -75,11 +69,8 @@ import com.android.resources.FolderTypeRelationship;
 import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceVisibility;
-import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.res.aar.Base128InputStream.StreamFormatException;
 import com.android.tools.lint.detector.api.Lint;
-import com.android.utils.ILogger;
 import com.android.utils.SdkUtils;
 import com.android.utils.XmlUtils;
 import com.google.common.base.Preconditions;
@@ -119,7 +110,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.kxml2.io.KXmlParser;
@@ -221,86 +211,7 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
     return myResourceDirectory;
   }
 
-  private void loadUsingResourceMerger(@Nullable Collection<PathString> resourceFilesAndFolders) {
-    try {
-      ILogger logger = new LogWrapper(LOG).alwaysLogAsDebug(true).allowVerbose(false);
-      ResourceMerger merger = new ResourceMerger(0);
-
-      ResourceSet resourceSet = new ResourceSet(myResourceDirectory.getFileName().toString(), getNamespace(), myLibraryName, false);
-      if (myRTxtIds == null) {
-        resourceSet.setShouldParseResourceIds(true);
-      }
-
-      // The resourceFilesAndFolders collection contains resource files to be parsed.
-      // If it is null, all files in the resource folder are parsed.
-      if (resourceFilesAndFolders == null) {
-        resourceSet.addSource(myResourceDirectory.toFile());
-      }
-      else {
-        for (PathString resourceFile : resourceFilesAndFolders) {
-          resourceSet.addSource(resourceFile.toFile());
-        }
-      }
-      resourceSet.setTrackSourcePositions(false);
-      try {
-        resourceSet.loadFromFiles(logger);
-      }
-      catch (DuplicateDataException e) {
-        // This should not happen; resourceSet validation is disabled.
-        assert false;
-      }
-      catch (MergingException e) {
-        LOG.warn(e);
-      }
-      merger.addDataSet(resourceSet);
-      updateTableFromMerger(merger);
-    }
-    catch (Exception e) {
-      LOG.error("Failed to load resources from " + myResourceDirectory.toString(), e);
-    }
-  }
-
-  public void updateTableFromMerger(@NonNull ResourceMerger merger) {
-    MergeConsumer<ResourceMergerItem> consumer =
-      new MergeConsumer<ResourceMergerItem>() {
-        @Override
-        public void start(@NonNull DocumentBuilderFactory factory) {}
-
-        @Override
-        public void end() {}
-
-        @Override
-        public void addItem(@NonNull ResourceMergerItem item) {
-          ListMultimap<String, ResourceItem> multimap = getOrCreateMap(item.getType());
-          if (!multimap.containsEntry(item.getName(), item)) {
-            multimap.put(item.getName(), item);
-          }
-        }
-
-        @Override
-        public void removeItem(@NonNull ResourceMergerItem removedItem, @Nullable ResourceMergerItem replacedBy) {
-          throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean ignoreItemInMerge(ResourceMergerItem item) {
-          return false; // Never ignore any item.
-        }
-      };
-
-    try {
-      merger.mergeData(consumer, true);
-    } catch (MergingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   private void load(@Nullable Collection<PathString> resourceFilesAndFolders) {
-    if (!StudioFlags.LIGHTWEIGHT_DATA_STRUCTURES_FOR_AAR.get()) {
-      loadUsingResourceMerger(resourceFilesAndFolders);
-      return;
-    }
-
     try {
       boolean shouldParseResourceIds = myRTxtIds == null;
 
@@ -464,6 +375,7 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
       }
       stream.setStringCache(Maps.newHashMapWithExpectedSize(10000)); // Enable string instance sharing to minimize memory consumption.
       loadFromStream(stream);
+      populatePublicResourcesMap();
       myLoadedFromCache = true;
       return true;
     }
@@ -530,7 +442,7 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
   }
 
   private static void writeStrings(@NotNull ObjectIntHashMap<String> qualifierStringIndexes, @NotNull Base128OutputStream stream)
-    throws IOException {
+      throws IOException {
     String[] strings = new String[qualifierStringIndexes.size()];
     qualifierStringIndexes.forEachEntry((str, index2) -> { strings[index2] = str; return true; });
     stream.writeInt(strings.length);
@@ -629,6 +541,7 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
     @NotNull private final Map<FolderConfiguration, AarConfiguration> myConfigCache = new HashMap<>();
     @NotNull private final ValueResourceXmlParser myParser = new ValueResourceXmlParser();
     @NotNull private final XmlTextExtractor myTextExtractor = new XmlTextExtractor();
+    @NotNull private final ResourceUrlParser myUrlParser = new ResourceUrlParser();
     // Used to keep track of resources defined in the current value resource file.
     @NotNull private final Table<ResourceType, String, AbstractAarValueResourceItem> myValueFileResources =
         Tables.newCustomTable(new EnumMap<>(ResourceType.class), () -> new LinkedHashMap<>());
@@ -648,6 +561,8 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
           loadResourceFile(file, folderInfo, configuration, shouldParseResourceIds);
         }
       }
+
+      populatePublicResourcesMap();
     }
 
     @Override
@@ -888,23 +803,18 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
     private AarAttrResourceItem createAttrItem(@NotNull String name, @NotNull AarSourceFile sourceFile)
         throws IOException, XmlPullParserException, XmlSyntaxException {
       ResourceNamespace.Resolver namespaceResolver = myParser.getNamespaceResolver();
-      ResourceNamespace attrNamespace = myNamespace;
-      int colonPos = name.indexOf(':');
-      if (colonPos >= 0) {
-        if (colonPos == name.length() - 1) {
-          throw new XmlSyntaxException("Invalid attr resource name \"" + name + "\"", myParser, getFile(sourceFile));
+      ResourceNamespace attrNamespace;
+      myUrlParser.parseResourceUrl(name);
+      if (myUrlParser.hasNamespacePrefix(ANDROID_NS_NAME)) {
+        attrNamespace = ResourceNamespace.ANDROID;
+      } else {
+        String prefix = myUrlParser.getNamespacePrefix();
+        attrNamespace = ResourceNamespace.fromNamespacePrefix(prefix, myNamespace, myParser.getNamespaceResolver());
+        if (attrNamespace == null) {
+          throw new XmlSyntaxException("Undefined prefix of attr resource name \"" + name + "\"", myParser, getFile(sourceFile));
         }
-        if (name.startsWith(ANDROID_NS_NAME_PREFIX)) {
-          attrNamespace = ResourceNamespace.ANDROID;
-        } else {
-          String prefix = name.substring(0, colonPos);
-          attrNamespace = ResourceNamespace.fromNamespacePrefix(prefix, myNamespace, myParser.getNamespaceResolver());
-          if (attrNamespace == null) {
-            throw new XmlSyntaxException("Undefined prefix of attr resource name \"" + name + "\"", myParser, getFile(sourceFile));
-          }
-        }
-        name = name.substring(colonPos + 1);
       }
+      name = myUrlParser.getName();
 
       String description = myParser.getLastComment();
       String groupName = myParser.getAttrGroupComment();
@@ -998,6 +908,10 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
         throws IOException, XmlPullParserException {
       ResourceNamespace.Resolver namespaceResolver = myParser.getNamespaceResolver();
       String parentStyle = myParser.getAttributeValue(null, ATTR_PARENT);
+      if (parentStyle != null && !parentStyle.isEmpty()) {
+        myUrlParser.parseResourceUrl(parentStyle);
+        myUrlParser.getQualifiedName();
+      }
       List<StyleItemResourceValue> styleItems = new ArrayList<>();
       forSubTags(TAG_ITEM, () -> {
         ResourceNamespace.Resolver itemNamespaceResolver = myParser.getNamespaceResolver();
@@ -1036,8 +950,9 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
           }
         }
       });
-      ResourceVisibility visibility = getVisibility(ResourceType.STYLEABLE, name);
-      AarStyleableResourceItem item = new AarStyleableResourceItem(name, sourceFile, visibility, attrs);
+      // AAPT2 always treats styleable resources as public.
+      // See https://android.googlesource.com/platform/frameworks/base/+/master/tools/aapt2/ResourceParser.cpp#1539
+      AarStyleableResourceItem item = new AarStyleableResourceItem(name, sourceFile, ResourceVisibility.PUBLIC, attrs);
       item.setNamespaceResolver(namespaceResolver);
       return item;
     }
@@ -1111,7 +1026,16 @@ public class AarSourceResourceRepository extends AbstractAarResourceRepository {
     @NotNull
     private ResourceVisibility getVisibility(@NotNull ResourceType resourceType, @NotNull String resourceName) {
       Set<String> names = myPublicResources.get(resourceType);
-      return names != null && names.contains(resourceName) ? ResourceVisibility.PUBLIC : myDefaultVisibility;
+      return names != null && names.contains(getKeyForVisibilityLookup(resourceName)) ? ResourceVisibility.PUBLIC : myDefaultVisibility;
+    }
+
+    /**
+     * Transforms the given resource name to a key for lookup in myPublicResources.
+     */
+    @NotNull
+    protected String getKeyForVisibilityLookup(@NotNull String resourceName) {
+      // In public.txt all resource names are transformed by replacing dots, colons and dashes with underscores.
+      return ResourceNameKeyedMap.flattenResourceName(resourceName);
     }
 
     @NotNull

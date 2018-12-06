@@ -52,10 +52,11 @@ class ViewInspectorBuilderTest {
   fun testAllButtonProperties() {
     val util = InspectorTestUtil(projectRule, BUTTON)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(8)
-    checkTitle(util.inspector.lines[0], "Button")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(9)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_STATE_LIST_ANIMATOR)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_ON_CLICK)
@@ -63,33 +64,37 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[5], ANDROID_URI, ATTR_BACKGROUND)
     checkProperty(util.inspector.lines[6], ANDROID_URI, ATTR_BACKGROUND_TINT)
     checkProperty(util.inspector.lines[7], ANDROID_URI, ATTR_BACKGROUND_TINT_MODE)
+    checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
   fun testButtonWithSomeMissingProperties() {
     val util = InspectorTestUtil(projectRule, BUTTON)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
     util.removeProperty(ANDROID_URI, ATTR_BACKGROUND)
     util.removeProperty(ANDROID_URI, ATTR_BACKGROUND_TINT)
     util.removeProperty(ANDROID_URI, ATTR_ON_CLICK)
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(5)
-    checkTitle(util.inspector.lines[0], "Button")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(6)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_STATE_LIST_ANIMATOR)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_ELEVATION)
     checkProperty(util.inspector.lines[4], ANDROID_URI, ATTR_BACKGROUND_TINT_MODE)
+    checkProperty(util.inspector.lines[5], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
   fun testImageViewWithAppCompatProperties() {
     val util = InspectorTestUtil(projectRule, IMAGE_VIEW)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     addImageViewProperties(util, true)
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(8)
-    checkTitle(util.inspector.lines[0], "ImageView")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(9)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], AUTO_URI, ATTR_SRC_COMPAT)
     checkProperty(util.inspector.lines[2], TOOLS_URI, ATTR_SRC_COMPAT)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_CONTENT_DESCRIPTION)
@@ -97,16 +102,18 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[5], ANDROID_URI, ATTR_SCALE_TYPE)
     checkProperty(util.inspector.lines[6], ANDROID_URI, ATTR_ADJUST_VIEW_BOUNDS)
     checkProperty(util.inspector.lines[7], ANDROID_URI, ATTR_CROP_TO_PADDING)
+    checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
   fun testImageViewWithoutAppCompatProperties() {
     val util = InspectorTestUtil(projectRule, IMAGE_VIEW)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     addImageViewProperties(util, false)
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(8)
-    checkTitle(util.inspector.lines[0], "ImageView")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(9)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], ANDROID_URI, ATTR_SRC)
     checkProperty(util.inspector.lines[2], TOOLS_URI, ATTR_SRC)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_CONTENT_DESCRIPTION)
@@ -114,6 +121,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[5], ANDROID_URI, ATTR_SCALE_TYPE)
     checkProperty(util.inspector.lines[6], ANDROID_URI, ATTR_ADJUST_VIEW_BOUNDS)
     checkProperty(util.inspector.lines[7], ANDROID_URI, ATTR_CROP_TO_PADDING)
+    checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -122,10 +130,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("BottomAppBar.java", "src/java/com/google/android/material/bottomappbar/BottomAppBar.java")
     val util = InspectorTestUtil(projectRule, BOTTOM_APP_BAR, parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(8)
-    checkTitle(util.inspector.lines[0], "BottomAppBar")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(9)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_BACKGROUND_TINT)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_FAB_ALIGNMENT_MODE)
@@ -133,6 +142,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[5], AUTO_URI, ATTR_FAB_CRADLE_MARGIN)
     checkProperty(util.inspector.lines[6], AUTO_URI, ATTR_FAB_CRADLE_ROUNDED_CORNER_RADIUS)
     checkProperty(util.inspector.lines[7], AUTO_URI, ATTR_FAB_CRADLE_VERTICAL_OFFSET)
+    checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -142,10 +152,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("MaterialButton.java", "src/java/com/google/android/material/button/MaterialButton.java")
     val util = InspectorTestUtil(projectRule, MATERIAL_BUTTON, parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(22)
-    checkTitle(util.inspector.lines[0], "MaterialButton")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(23)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_STATE_LIST_ANIMATOR)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_ON_CLICK)
@@ -167,6 +178,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[19], AUTO_URI, ATTR_STROKE_WIDTH)
     checkProperty(util.inspector.lines[20], AUTO_URI, ATTR_CORNER_RADIUS)
     checkProperty(util.inspector.lines[21], AUTO_URI, ATTR_RIPPLE_COLOR)
+    checkProperty(util.inspector.lines[22], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -175,10 +187,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("ChipGroup.java", "src/java/com/google/android/material/chip/ChipGroup.java")
     val util = InspectorTestUtil(projectRule, CHIP_GROUP, parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(8)
-    checkTitle(util.inspector.lines[0], "ChipGroup")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(9)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], AUTO_URI, ATTR_CHIP_SPACING)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_CHIP_SPACING_HORIZONTAL)
@@ -186,6 +199,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[5], AUTO_URI, ATTR_SINGLE_LINE)
     checkProperty(util.inspector.lines[6], AUTO_URI, ATTR_SINGLE_SELECTION)
     checkProperty(util.inspector.lines[7], AUTO_URI, ATTR_CHECKED_CHIP)
+    checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -195,10 +209,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("Chip.java", "src/java/com/google/android/material/chip/Chip.java")
     val util = InspectorTestUtil(projectRule, CHIP, parentTag = CHIP_GROUP)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(10)
-    checkTitle(util.inspector.lines[0], "Chip")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(11)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_CHECKABLE)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_TEXT)
@@ -208,6 +223,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[7], AUTO_URI, ATTR_CHECKED_ICON_VISIBLE)
     checkProperty(util.inspector.lines[8], AUTO_URI, ATTR_CLOSE_ICON)
     checkProperty(util.inspector.lines[9], AUTO_URI, ATTR_CLOSE_ICON_VISIBLE)
+    checkProperty(util.inspector.lines[10], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -216,10 +232,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("BottomNavigationView.java", "src/java/android/support/design/widget/BottomNavigationView.java")
     val util = InspectorTestUtil(projectRule, BOTTOM_NAVIGATION_VIEW.oldName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(9)
-    checkTitle(util.inspector.lines[0], "BottomNavigationView")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(10)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], AUTO_URI, ATTR_ITEM_HORIZONTAL_TRANSLATION_ENABLED)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_LABEL_VISIBILITY_MODE)
@@ -228,6 +245,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[6], AUTO_URI, ATTR_ITEM_BACKGROUND)
     checkProperty(util.inspector.lines[7], AUTO_URI, ATTR_ITEM_TEXT_COLOR)
     checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_ELEVATION)
+    checkProperty(util.inspector.lines[9], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -237,10 +255,11 @@ class ViewInspectorBuilderTest {
                                           "src/java/com/google/android/material/bottomnavigation/BottomNavigationView.java")
     val util = InspectorTestUtil(projectRule, BOTTOM_NAVIGATION_VIEW.newName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(9)
-    checkTitle(util.inspector.lines[0], "BottomNavigationView")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(10)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], AUTO_URI, ATTR_ITEM_HORIZONTAL_TRANSLATION_ENABLED)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_LABEL_VISIBILITY_MODE)
@@ -249,6 +268,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[6], AUTO_URI, ATTR_ITEM_BACKGROUND)
     checkProperty(util.inspector.lines[7], AUTO_URI, ATTR_ITEM_TEXT_COLOR)
     checkProperty(util.inspector.lines[8], ANDROID_URI, ATTR_ELEVATION)
+    checkProperty(util.inspector.lines[9], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -258,10 +278,11 @@ class ViewInspectorBuilderTest {
                                           "src/java/android/support/design/floatingactionbutton/FloatingActionButton.java")
     val util = InspectorTestUtil(projectRule, FLOATING_ACTION_BUTTON.oldName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(17)
-    checkTitle(util.inspector.lines[0], "FloatingActionButton")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(18)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], ANDROID_URI, ATTR_SRC)
     checkProperty(util.inspector.lines[2], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_BACKGROUND_TINT)
@@ -278,6 +299,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[14], AUTO_URI, ATTR_MAX_IMAGE_SIZE)
     checkProperty(util.inspector.lines[15], AUTO_URI, ATTR_SHOW_MOTION_SPEC)
     checkProperty(util.inspector.lines[16], AUTO_URI, ATTR_HIDE_MOTION_SPEC)
+    checkProperty(util.inspector.lines[17], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -287,10 +309,11 @@ class ViewInspectorBuilderTest {
                                           "src/java/com/google/android/material/floatingactionbutton/FloatingActionButton.java")
     val util = InspectorTestUtil(projectRule, FLOATING_ACTION_BUTTON.newName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(17)
-    checkTitle(util.inspector.lines[0], "FloatingActionButton")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(18)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], ANDROID_URI, ATTR_SRC)
     checkProperty(util.inspector.lines[2], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[3], ANDROID_URI, ATTR_BACKGROUND_TINT)
@@ -307,6 +330,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[14], AUTO_URI, ATTR_MAX_IMAGE_SIZE)
     checkProperty(util.inspector.lines[15], AUTO_URI, ATTR_SHOW_MOTION_SPEC)
     checkProperty(util.inspector.lines[16], AUTO_URI, ATTR_HIDE_MOTION_SPEC)
+    checkProperty(util.inspector.lines[17], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -315,10 +339,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("TabLayout.java", "src/java/android/support/design/TabLayout.java")
     val util = InspectorTestUtil(projectRule, TAB_LAYOUT.oldName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(29)
-    checkTitle(util.inspector.lines[0], "TabLayout")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(30)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], AUTO_URI, ATTR_TAB_INDICATOR_COLOR)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_TAB_INDICATOR_HEIGHT)
@@ -347,6 +372,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[26], AUTO_URI, ATTR_TAB_UNBOUNDED_RIPPLE)
     checkProperty(util.inspector.lines[27], ANDROID_URI, ATTR_THEME)
     checkProperty(util.inspector.lines[28], ANDROID_URI, ATTR_BACKGROUND)
+    checkProperty(util.inspector.lines[29], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -355,10 +381,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("TabLayoutX.java", "src/java/com/google/android/material/tabs/TabLayout.java")
     val util = InspectorTestUtil(projectRule, TAB_LAYOUT.newName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(29)
-    checkTitle(util.inspector.lines[0], "TabLayout")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(30)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], "", ATTR_STYLE)
     checkProperty(util.inspector.lines[2], AUTO_URI, ATTR_TAB_INDICATOR_COLOR)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_TAB_INDICATOR_HEIGHT)
@@ -387,6 +414,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[26], AUTO_URI, ATTR_TAB_UNBOUNDED_RIPPLE)
     checkProperty(util.inspector.lines[27], ANDROID_URI, ATTR_THEME)
     checkProperty(util.inspector.lines[28], ANDROID_URI, ATTR_BACKGROUND)
+    checkProperty(util.inspector.lines[29], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -395,10 +423,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("TextInputLayout.java", "src/java/android/support/design/text/TextInputLayout.java")
     val util = InspectorTestUtil(projectRule, TEXT_INPUT_LAYOUT.oldName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(25)
-    checkTitle(util.inspector.lines[0], "TextInputLayout")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(26)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], ANDROID_URI, ATTR_TEXT_COLOR_HINT)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_HINT)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_HINT_ENABLED)
@@ -423,6 +452,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[22], AUTO_URI, ATTR_BOX_STROKE_COLOR)
     checkProperty(util.inspector.lines[23], AUTO_URI, ATTR_BOX_BACKGROUND_COLOR)
     checkProperty(util.inspector.lines[24], AUTO_URI, ATTR_BOX_STROKE_WIDTH)
+    checkProperty(util.inspector.lines[25], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   @Test
@@ -431,10 +461,11 @@ class ViewInspectorBuilderTest {
     projectRule.fixture.copyFileToProject("TextInputLayoutX.java", "src/java/com/google/android/material/textfield/TextInputLayout.java")
     val util = InspectorTestUtil(projectRule, TEXT_INPUT_LAYOUT.newName(), parentTag = LINEAR_LAYOUT)
     val builder = ViewInspectorBuilder(projectRule.project, util.editorProvider)
+    val generator = BasicAttributesInspectorBuilder.TitleGenerator(util.inspector)
     util.loadProperties()
-    builder.attachToInspector(util.inspector, util.properties)
-    assertThat(util.inspector.lines).hasSize(25)
-    checkTitle(util.inspector.lines[0], "TextInputLayout")
+    builder.attachToInspector(util.inspector, util.properties) { generator.title }
+    assertThat(util.inspector.lines).hasSize(26)
+    checkTitle(util.inspector.lines[0], "Common Attributes")
     checkProperty(util.inspector.lines[1], ANDROID_URI, ATTR_TEXT_COLOR_HINT)
     checkProperty(util.inspector.lines[2], ANDROID_URI, ATTR_HINT)
     checkProperty(util.inspector.lines[3], AUTO_URI, ATTR_HINT_ENABLED)
@@ -459,6 +490,7 @@ class ViewInspectorBuilderTest {
     checkProperty(util.inspector.lines[22], AUTO_URI, ATTR_BOX_STROKE_COLOR)
     checkProperty(util.inspector.lines[23], AUTO_URI, ATTR_BOX_BACKGROUND_COLOR)
     checkProperty(util.inspector.lines[24], AUTO_URI, ATTR_BOX_STROKE_WIDTH)
+    checkProperty(util.inspector.lines[25], ANDROID_URI, ATTR_VISIBILITY)
   }
 
   private fun checkTitle(line: FakeInspectorLine, title: String) {
@@ -484,5 +516,6 @@ class ViewInspectorBuilderTest {
     util.addProperty(ANDROID_URI, ATTR_SCALE_TYPE, NelePropertyType.INTEGER)
     util.addProperty(ANDROID_URI, ATTR_ADJUST_VIEW_BOUNDS, NelePropertyType.THREE_STATE_BOOLEAN)
     util.addProperty(ANDROID_URI, ATTR_CROP_TO_PADDING, NelePropertyType.THREE_STATE_BOOLEAN)
+    util.addProperty(ANDROID_URI, ATTR_VISIBILITY, NelePropertyType.ENUM)
   }
 }

@@ -22,9 +22,11 @@ import com.android.tools.idea.common.fixtures.ComponentDescriptor;
 import com.android.tools.idea.common.fixtures.ModelBuilder;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.NlModel;
+import com.android.tools.idea.common.scene.Scene;
 import com.android.tools.idea.rendering.RenderTestUtil;
 import com.android.tools.idea.uibuilder.api.ViewEditor;
 import com.android.tools.idea.uibuilder.fixtures.ScreenFixture;
+import com.android.tools.idea.uibuilder.model.NlComponentHelper;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.scene.SyncLayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
@@ -84,7 +86,7 @@ public abstract class LayoutTestCase extends AndroidTestCase {
                               LayoutlibSceneManager
                                 .updateHierarchy(AndroidPsiUtils.getRootTagSafely(newModel.getFile()), buildViewInfos(newModel, root),
                                                  model),
-                            "layout", NlDesignSurface.class);
+                            "layout", NlDesignSurface.class, (component) -> NlComponentHelper.INSTANCE.registerComponent(component));
   }
 
   private static List<ViewInfo> buildViewInfos(@NotNull NlModel model, @NotNull ComponentDescriptor root) {
@@ -116,6 +118,8 @@ public abstract class LayoutTestCase extends AndroidTestCase {
     ViewEditor editor = Mockito.mock(ViewEditor.class);
     NlModel model = screenView.getModel();
     when(editor.getModel()).thenReturn(model);
+    Scene scene = screenView.getScene();
+    when(editor.getScene()).thenReturn(scene);
     when(editor.dpToPx(ArgumentMatchers.anyInt())).thenAnswer(i -> Coordinates.dpToPx(screenView, (Integer)i.getArguments()[0]));
     when(editor.pxToDp(ArgumentMatchers.anyInt())).thenAnswer(i -> Coordinates.pxToDp(screenView, (Integer)i.getArguments()[0]));
 

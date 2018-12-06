@@ -45,7 +45,7 @@ abstract class RoomQueryOnlyInspection : LocalInspectionTool() {
     return if (isThisRoomQuery(session)) super.buildVisitor(holder, isOnTheFly, session) else PsiElementVisitor.EMPTY_VISITOR
   }
 
-  private fun isThisRoomQuery(session: LocalInspectionToolSession) = (session.file as? RoomSqlFile)?.hostRoomAnnotation != null
+  private fun isThisRoomQuery(session: LocalInspectionToolSession) = (session.file as? RoomSqlFile)?.findHostRoomAnnotation() != null
 }
 
 class RoomUnresolvedReferenceInspection : RoomQueryOnlyInspection() {
@@ -82,7 +82,7 @@ class RoomUnresolvedReferenceInspection : RoomQueryOnlyInspection() {
         if (roomSqlFile.getUserData(InjectedLanguageManager.FRANKENSTEIN_INJECTION) == true) return
 
         // Make sure we're inside a Room annotation, otherwise we don't know the schema.
-        if (roomSqlFile.hostRoomAnnotation == null) return
+        if (roomSqlFile.findHostRoomAnnotation() == null) return
 
         if (!(isWellUnderstood(PsiTreeUtil.findPrevParent(referenceElement.containingFile, referenceElement)))) return
 
@@ -105,6 +105,7 @@ class RoomUnresolvedReferenceInspection : RoomQueryOnlyInspection() {
         return if (reference is RoomColumnPsiReference) {
           when (reference.element.nameAsString.toLowerCase()) {
             "rowid", "_rowid_", "oid" -> true
+            "docid" -> true // TODO(b/120407095): do this only in FTS tables.
             else -> false
           }
         } else {

@@ -265,11 +265,16 @@ public final class StudioFlags {
   public static final Flag<Boolean> WHATS_NEW_ASSISTANT_DOWNLOAD_CONTENT = Flag.create(
     ASSISTANT, "whats.new.download", "Downloads \"What's New\" assistant content from web",
     "If enabled, the \"What's New\" assistant will update its contents from the web whenever it is opened.",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_NEW_PROPERTY_PANEL = Flag.create(
     NELE, "new.property", "Enable the new Property Panel",
     "Enable the new Property Panel",
+    true);
+
+  public static final Flag<Boolean> NELE_NEW_PROPERTY_PANEL_WITH_TABS = Flag.create(
+    NELE, "new.property.tabs", "Use a tab panel to switch to the advanced table",
+    "Use a tab panel to switch to advanced",
     false);
 
   public static final Flag<Boolean> NELE_NEW_COLOR_PICKER = Flag.create(
@@ -354,7 +359,7 @@ public final class StudioFlags {
     "Turns on Single-Variant Sync.", false);
   public static final Flag<Boolean> COMPOUND_SYNC_ENABLED = Flag.create(
     GRADLE_IDE, "compound.sync", "Enable new \"Compound Sync\"",
-    "Turns on Compound Sync.", false);
+    "Turns on Compound Sync.", true);
   public static final Flag<Boolean> SHIPPED_SYNC_ENABLED = Flag.create(
     GRADLE_IDE, "shipped.sync", "Enable \"Shipped Sync\"",
     "Use shipped Gradle Sync when possible e.g. in freshly created projects. Allows to avoid running an actual Gradle Sync.",
@@ -375,12 +380,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RESOURCE_MANAGER_ENABLED = Flag.create(
     RESOURCES_MANAGEMENT, "enabled", "Enable the new resources management tools",
     "If enabled, the new resource management tools are enabled. Subflags will also need to be enabled to enable all available new tools",
-    false);
-
-  private static final FlagGroup RESOURCE_REPOSITORIES = new FlagGroup(FLAGS, "res.repo", "Resource Repositories");
-  public static final Flag<Boolean> LIGHTWEIGHT_DATA_STRUCTURES_FOR_AAR = Flag.create(
-    RESOURCE_REPOSITORIES, "lightweight.resources.aar", "Use lightweight data structures for AAR resources",
-    "If enabled, use lightweight data structures for AAR resources.", true);
+    true);
 
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
   public static final Flag<Boolean> LAYOUT_INSPECTOR_LOAD_OVERLAY_ENABLED = Flag.create(

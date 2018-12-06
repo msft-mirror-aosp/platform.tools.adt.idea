@@ -21,10 +21,13 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.ui.InputValidator
 import com.intellij.openapi.ui.MasterDetailsComponent
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.NamedConfigurable
 import com.intellij.openapi.util.ActionCallback
+import com.intellij.openapi.util.component1
+import com.intellij.openapi.util.component2
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.navigation.Place
 import com.intellij.ui.navigation.Place.goFurther
@@ -51,6 +54,7 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
   private var inQuietSelection = false
 
   abstract fun getRemoveAction(): AnAction?
+  abstract fun getRenameAction(): AnAction?
   abstract fun getCreateActions(): List<AnAction>
   abstract fun PsUISettings.getLastEditedItem(): String?
   abstract fun PsUISettings.setLastEditedItem(value: String?)
@@ -101,6 +105,11 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
     val removeAction = getRemoveAction()
     if (removeAction != null) {
       result.add(removeAction)
+    }
+
+    val renameAction = getRenameAction()
+    if (renameAction != null) {
+      result.add(renameAction)
     }
 
     return Lists.newArrayList(result)
@@ -198,3 +207,32 @@ abstract class ConfigurablesMasterDetailsPanel<ModelT>(
 
 fun validateAndShow(title: String = "Error", validateAction: () -> String?): Boolean =
   validateAction()?.also { Messages.showErrorDialog(it, title) } == null
+
+class NameValidator(val validator: (String?) -> String?) : InputValidator {
+  override fun checkInput(inputString: String?): Boolean = !inputString.isNullOrBlank()
+  override fun canClose(inputString: String?): Boolean =
+    validateAndShow { validator(inputString) }
+}
+
+fun renameWithDialog(
+  message: String,
+  title: String,
+  renameReferencesMessage: String,
+  currentName: String?,
+  validator: NameValidator,
+  block: (newName: String, renameReferences: Boolean) -> Unit
+) {
+  val (newName, alsoRenameRelated) = Messages.showInputDialogWithCheckBox(
+    message,
+    title,
+    renameReferencesMessage,
+    false,
+    false,
+    null,
+    currentName.orEmpty(),
+    validator
+  )
+  if (newName != null) {
+    block(newName, alsoRenameRelated)
+  }
+}

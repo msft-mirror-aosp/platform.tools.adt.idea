@@ -15,22 +15,23 @@
  */
 package com.android.tools.idea.gradle.structure.daemon
 
-import com.android.tools.idea.gradle.structure.configurables.PsContext
-import com.android.tools.idea.gradle.structure.daemon.analysis.PsAndroidModuleAnalyzer
-import com.android.tools.idea.gradle.structure.daemon.analysis.PsJavaModuleAnalyzer
 import com.android.tools.idea.gradle.structure.daemon.analysis.PsModelAnalyzer
+import com.android.tools.idea.gradle.structure.model.PsDeclaredLibraryDependency
 import com.android.tools.idea.gradle.structure.model.PsGeneralIssue
 import com.android.tools.idea.gradle.structure.model.PsIssue
 import com.android.tools.idea.gradle.structure.model.PsIssue.Severity.UPDATE
 import com.android.tools.idea.gradle.structure.model.PsIssueCollection
 import com.android.tools.idea.gradle.structure.model.PsIssueType
 import com.android.tools.idea.gradle.structure.model.PsIssueType.LIBRARY_UPDATES_AVAILABLE
-import com.android.tools.idea.gradle.structure.model.PsLibraryDependency
+import com.android.tools.idea.gradle.structure.model.PsIssueType.PROJECT_ANALYSIS
 import com.android.tools.idea.gradle.structure.model.PsModel
 import com.android.tools.idea.gradle.structure.model.PsModule
+import com.android.tools.idea.gradle.structure.model.PsPath
+import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidModule
 import com.android.tools.idea.gradle.structure.model.java.PsJavaModule
-import com.android.tools.idea.gradle.structure.navigation.PsLibraryDependencyNavigationPath
+import com.android.tools.idea.gradle.structure.model.meta.DslText
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.gradle.structure.quickfix.PsLibraryDependencyVersionQuickFixPath
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
@@ -46,13 +47,17 @@ import java.util.function.Consumer
 
 private val LOG = Logger.getInstance(PsAnalyzerDaemon::class.java)
 
-class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibraryUpdateCheckerDaemon) : PsDaemon(context) {
+class PsAnalyzerDaemon(
+  parentDisposable: Disposable,
+  private val project: PsProject,
+  private val libraryUpdateCheckerDaemon: PsLibraryUpdateCheckerDaemon,
+  private val modelAnalyzers: Map<Class<*>, PsModelAnalyzer<out PsModule>>
+) :
+  PsDaemon(parentDisposable) {
   override val mainQueue: MergingUpdateQueue = createQueue("Project Structure Daemon Analyzer", null)
   override val resultsUpdaterQueue: MergingUpdateQueue = createQueue("Project Structure Analysis Results Updater", ANY_COMPONENT)
   val issues: PsIssueCollection = PsIssueCollection()
 
-  private val modelAnalyzers: Map<Class<*>, PsModelAnalyzer<out PsModule>> =
-    analyzersMapOf(PsAndroidModuleAnalyzer(context), PsJavaModuleAnalyzer(context))
   private val running = AtomicBoolean(true)
 
   private val issuesUpdatedEventDispatcher = EventDispatcher.create(IssuesUpdatedListener::class.java)
@@ -67,9 +72,8 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
   }
 
   private fun addApplicableUpdatesAsIssues() {
-    val context = context
     UIUtil.invokeAndWaitIfNeeded(Runnable {
-      context.project.forEachModule (Consumer { module ->
+      project.forEachModule(Consumer { module ->
         var updatesFound = false
         if (module is PsAndroidModule) {
           module.dependencies.forEachLibraryDependency { dependency ->
@@ -89,40 +93,51 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
         }
 
         if (updatesFound) {
-          resultsUpdaterQueue.queue(IssuesComputed(module))
+          resultsUpdaterQueue.queue(IssuesComputed())
         }
       })
     })
   }
 
-  private fun checkForUpdates(dependency: PsLibraryDependency): Boolean {
-    val context = context
-    val results = context.libraryUpdateCheckerDaemon.getAvailableUpdates()
+  private fun checkForUpdates(dependency: PsDeclaredLibraryDependency): Boolean {
+    val results = libraryUpdateCheckerDaemon.getAvailableUpdates()
     val spec = dependency.spec
     val update = results.findUpdateFor(spec)
     if (update != null) {
       val text = String.format("Newer version available: <b>%1\$s</b> (%2\$s)", update.version, update.repository)
 
-      val mainPath = PsLibraryDependencyNavigationPath(dependency)
-      val issue = PsGeneralIssue(text, mainPath, LIBRARY_UPDATES_AVAILABLE, UPDATE,
-                                 PsLibraryDependencyVersionQuickFixPath(dependency, update.version, "[Update]"))
-
+      val mainPath = dependency.path
+      val versionValue = dependency.versionProperty.bind(Unit).getParsedValue().value
+      val valueIsReference = versionValue is ParsedValue.Set.Parsed && versionValue.dslText is DslText.Reference
+      val issue = PsGeneralIssue(
+        text,
+        "",
+        mainPath,
+        LIBRARY_UPDATES_AVAILABLE, UPDATE,
+        if (!valueIsReference)
+          listOf(PsLibraryDependencyVersionQuickFixPath(dependency, update.version))
+        else
+          listOf(
+            PsLibraryDependencyVersionQuickFixPath(dependency, update.version, updateVariable = true),
+            PsLibraryDependencyVersionQuickFixPath(dependency, update.version, updateVariable = false)
+          ))
       issues.add(issue)
       return true
     }
     return false
   }
 
-  fun add(listener: (PsModel) -> Unit, parentDisposable: Disposable) {
+  fun onIssuesChange(parentDisposable: Disposable, listener: () -> Unit) {
     issuesUpdatedEventDispatcher.addListener(object : IssuesUpdatedListener {
-      override fun issuesUpdated(model: PsModel) = listener(model)
+      override fun issuesUpdated() = listener()
     }, parentDisposable)
   }
 
   override val isRunning: Boolean get() = running.get()
 
-  fun queueCheck(model: PsModel) {
-    mainQueue.queue(AnalyzeStructure(model))
+  fun queueCheck(model: PsModule) {
+    removeIssues(PROJECT_ANALYSIS, byPath = model.path)
+    mainQueue.queue(AnalyzeModuleStructure(model))
   }
 
   /**
@@ -141,21 +156,21 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
     if (!isStopped) {
       analyzer.analyze(model, issues)
     }
-    resultsUpdaterQueue.queue(IssuesComputed(model))
+    resultsUpdaterQueue.queue(IssuesComputed(stop = true))
   }
 
-  fun removeIssues(type: PsIssueType) {
-    issues.remove(type)
-    resultsUpdaterQueue.queue(IssuesComputed(context.project))
+  fun removeIssues(type: PsIssueType, byPath: PsPath? = null) {
+    issues.remove(type, byPath)
+    resultsUpdaterQueue.queue(IssuesComputed())
   }
 
   fun addAll(newIssues: List<PsIssue>, now: Boolean = true) {
     newIssues.forEach(issues::add)
-    if (now) issuesUpdatedEventDispatcher.multicaster.issuesUpdated(context.project)
-    else resultsUpdaterQueue.queue(IssuesComputed(context.project))
+    if (now) issuesUpdatedEventDispatcher.multicaster.issuesUpdated()
+    else resultsUpdaterQueue.queue(IssuesComputed())
   }
 
-  private inner class AnalyzeStructure internal constructor(private val myModel: PsModel) : Update(myModel) {
+  private inner class AnalyzeModuleStructure internal constructor(private val myModel: PsModule) : Update(myModel) {
 
     override fun run() {
       try {
@@ -170,22 +185,18 @@ class PsAnalyzerDaemon(context: PsContext, libraryUpdateCheckerDaemon: PsLibrary
     }
   }
 
-  private inner class IssuesComputed(private val myModel: PsModel) : Update(myModel) {
+  private inner class IssuesComputed(val stop: Boolean = false) : Update(IssuesComputed::class.java) {
 
     override fun run() {
-      if (isStopped) {
+      issuesUpdatedEventDispatcher.multicaster.issuesUpdated()
+      if (stop) {
         running.set(false)
-        return
       }
-      issuesUpdatedEventDispatcher.multicaster.issuesUpdated(myModel)
-      running.set(false)
     }
   }
 
   private interface IssuesUpdatedListener : EventListener {
-    fun issuesUpdated(model: PsModel)
+    fun issuesUpdated()
   }
 }
 
-private fun analyzersMapOf(vararg analyzers: PsModelAnalyzer<out PsModule>): Map<Class<*>, PsModelAnalyzer<out PsModule>> =
-  analyzers.associateBy { it.supportedModelType }

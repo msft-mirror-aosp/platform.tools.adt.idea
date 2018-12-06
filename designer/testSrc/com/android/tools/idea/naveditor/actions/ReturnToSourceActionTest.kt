@@ -34,12 +34,12 @@ class ReturnToSourceActionTest : NavTestCase() {
         fragment("f2")
       }
     }
-    TestNavUsageTracker.create(model.surface).use { tracker ->
+    TestNavUsageTracker.create(model).use { tracker ->
       val f2 = model.find("f2")!!
       ReturnToSourceAction(model.surface, f2).actionPerformed(Mockito.mock(AnActionEvent::class.java))
       val action = f2.children.first { it.isAction }
       assertEquals("f2", action.popUpTo)
-      assertTrue(action.inclusive)
+      assertEquals(true, action.inclusive)
       assertSameElements(model.surface.selectionModel.selection, action)
       Mockito.verify(tracker).logEvent(NavEditorEvent.newBuilder()
                                          .setType(NavEditorEvent.NavEditorEventType.CREATE_ACTION)

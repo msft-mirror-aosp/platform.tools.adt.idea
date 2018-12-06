@@ -21,18 +21,27 @@ import com.android.tools.idea.gradle.structure.model.PsChildModel
 import com.android.tools.idea.gradle.structure.model.helpers.matchFiles
 import com.android.tools.idea.gradle.structure.model.helpers.parseFile
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
-import com.android.tools.idea.gradle.structure.model.meta.*
+import com.android.tools.idea.gradle.structure.model.meta.ModelDescriptor
+import com.android.tools.idea.gradle.structure.model.meta.ModelProperty
+import com.android.tools.idea.gradle.structure.model.meta.SimpleProperty
+import com.android.tools.idea.gradle.structure.model.meta.asFile
+import com.android.tools.idea.gradle.structure.model.meta.asString
+import com.android.tools.idea.gradle.structure.model.meta.getValue
+import com.android.tools.idea.gradle.structure.model.meta.property
 import java.io.File
 
 class PsSigningConfig(
-  override val parent: PsAndroidModule
+  override val parent: PsAndroidModule,
+  private val renamed: (String, String) -> Unit
 ) : PsChildModel() {
   override val descriptor by SigningConfigDescriptors
   var resolvedModel: SigningConfig? = null ; private set
   private var parsedModel: SigningConfigModel? = null
 
-  internal fun init(resolvedModel: SigningConfig?,
-                    parsedModel: SigningConfigModel?) {
+  internal fun init(
+    resolvedModel: SigningConfig?,
+    parsedModel: SigningConfigModel?
+  ) {
     this.resolvedModel = resolvedModel
     this.parsedModel = parsedModel
   }
@@ -53,13 +62,23 @@ class PsSigningConfig(
     }
   }
 
+  fun rename(newName: String) {
+    ensureDeclared()
+    val oldname = name
+    parsedModel!!.rename(newName)
+    renamed(oldname, newName)
+  }
+
   object SigningConfigDescriptors : ModelDescriptor<PsSigningConfig, SigningConfig, SigningConfigModel> {
     override fun getResolved(model: PsSigningConfig): SigningConfig? = model.resolvedModel
 
     override fun getParsed(model: PsSigningConfig): SigningConfigModel? = model.parsedModel
 
-    override fun setModified(model: PsSigningConfig) {
+    override fun prepareForModification(model: PsSigningConfig) {
       model.ensureDeclared()
+    }
+
+    override fun setModified(model: PsSigningConfig) {
       model.isModified = true
     }
 

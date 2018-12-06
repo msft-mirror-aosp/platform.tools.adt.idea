@@ -49,4 +49,3 @@ interface PsContext : Disposable {
   @Throws(ConfigurationException::class)
   fun applyChanges()
 }
-

@@ -77,7 +77,7 @@ import java.util.stream.Collectors
 class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker: NavUsageTracker) {
 
   private val navEventBuilder: NavEditorEvent.Builder = NavEditorEvent.newBuilder()
-  private val schema: NavigationSchema? = tracker.surface?.model?.schema
+  private val schema: NavigationSchema? = tracker.model?.schema
 
   init {
     navEventBuilder.type = event
@@ -92,9 +92,13 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
     return navEventBuilder.build()
   }
 
-  fun withPropertyInfo(property: NlProperty, wasEmpty: Boolean): NavLogEvent {
+  fun withPropertyInfo(property: NlProperty, wasEmpty: Boolean) = withAttributeInfo(property.name, property.tagName, wasEmpty)
+
+  fun withAttributeInfo(attrName: String,
+                        tagName: String?,
+                        wasEmpty: Boolean): NavLogEvent {
     val builder = navEventBuilder.propertyInfoBuilder
-    builder.property = when (property.name) {
+    builder.property = when (attrName) {
       ATTR_ACTION -> NavPropertyInfo.Property.ACTION
       ATTR_ARG_TYPE -> NavPropertyInfo.Property.ARG_TYPE
       ATTR_AUTO_VERIFY -> NavPropertyInfo.Property.AUTO_VERIFY
@@ -121,7 +125,7 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
 
       else -> NavPropertyInfo.Property.CUSTOM
     }
-    property.tagName?.let { builder.setContainingTag(convertTag(it)) }
+    tagName?.let { builder.setContainingTag(convertTag(it)) }
     builder.wasEmpty = wasEmpty
     navEventBuilder.setPropertyInfo(builder)
     return this
@@ -155,7 +159,7 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
     if (actionComponent.popUpTo != null) {
       builder.hasPop = true
     }
-    if (actionComponent.inclusive) {
+    if (actionComponent.inclusive == true) {
       builder.inclusive = true
     }
     builder.countFromSource = actionComponent.parent?.children?.count { it.isAction } ?: 0
@@ -219,8 +223,7 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
   }
 
   private fun getCustomAttributeCount(): Int {
-    val surface = tracker.surface ?: return 0
-    val model = surface.model ?: return 0
+    val model = tracker.model ?: return 0
     if (schema == null) {
       return 0
     }
@@ -239,8 +242,7 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
 
   fun withNavigationContents(): NavLogEvent {
     val builder = navEventBuilder.contentsBuilder
-    val surface = tracker.surface ?: return this
-    val model = surface.model ?: return this
+    val model = tracker.model ?: return this
     var fragments = 0
     var activities = 0
     var customDestinations = 0
@@ -300,8 +302,8 @@ class NavLogEvent(event: NavEditorEvent.NavEditorEventType, private val tracker:
     return this
   }
 
-  fun withSource(source: NavEditorEvent.Source): NavLogEvent {
-    navEventBuilder.source = source
+  fun withSource(source: NavEditorEvent.Source?): NavLogEvent {
+    source?.let { navEventBuilder.source = source }
     return this
   }
 }

@@ -48,6 +48,7 @@ abstract class PsModule protected constructor(
   private var myParsedDependencies: PsParsedDependencies? = null
   private var myVariables: PsVariables? = null
   private val dependenciesChangeEventDispatcher = EventDispatcher.create(DependenciesChangeListener::class.java)
+  private val changedListener = EventDispatcher.create(ModuleChangedListener::class.java)
 
   abstract val dependencies: PsDependencyCollection<
     PsModule, PsDeclaredLibraryDependency, PsDeclaredJarDependency, PsDeclaredModuleDependency>
@@ -154,7 +155,8 @@ abstract class PsModule protected constructor(
   fun setLibraryDependencyVersion(
     spec: PsArtifactDependencySpec,
     configurationName: String,
-    newVersion: String
+    newVersion: String,
+    updateVariable: Boolean
   ) {
     var modified = false
     val matchingDependencies = findLibraryDependencies(spec.group, spec.name)
@@ -168,7 +170,8 @@ abstract class PsModule protected constructor(
       val parsedDependency = dependency.parsedModel
       assert(parsedDependency is ArtifactDependencyModel)
       val artifactDependencyModel = parsedDependency as ArtifactDependencyModel
-      artifactDependencyModel.version().setValue(newVersion)
+      if (updateVariable) artifactDependencyModel.version().resultModel.setValue(newVersion)
+      else artifactDependencyModel.version().setValue(newVersion)
       modified = true
     }
     if (modified) {
@@ -186,6 +189,17 @@ abstract class PsModule protected constructor(
     val repositories = mutableListOf<ArtifactRepository>()
     populateRepositories(repositories)
     return repositories.toSet()
+  }
+
+  fun onChange(disposable: Disposable, handler: (PsModule) -> Unit) {
+    changedListener.addListener(object : ModuleChangedListener {
+      override fun changed() = handler(this@PsModule)
+    }, disposable)
+  }
+
+  override fun changed() {
+    super.changed()
+    changedListener.multicaster.changed()
   }
 
   fun add(listener: DependenciesChangeListener, parentDisposable: Disposable) {
@@ -303,6 +317,10 @@ abstract class PsModule protected constructor(
       }
     }
     return null
+  }
+
+  interface ModuleChangedListener : EventListener {
+    fun changed()
   }
 
   interface DependenciesChangeListener : EventListener {

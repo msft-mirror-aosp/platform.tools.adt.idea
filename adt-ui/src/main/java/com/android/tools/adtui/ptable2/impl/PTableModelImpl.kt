@@ -15,7 +15,12 @@
  */
 package com.android.tools.adtui.ptable2.impl
 
-import com.android.tools.adtui.ptable2.*
+import com.android.annotations.VisibleForTesting
+import com.android.tools.adtui.ptable2.PTableColumn
+import com.android.tools.adtui.ptable2.PTableGroupItem
+import com.android.tools.adtui.ptable2.PTableItem
+import com.android.tools.adtui.ptable2.PTableModel
+import com.android.tools.adtui.ptable2.PTableModelUpdateListener
 import javax.swing.table.AbstractTableModel
 
 /**
@@ -23,20 +28,28 @@ import javax.swing.table.AbstractTableModel
  */
 class PTableModelImpl(val tableModel: PTableModel) : AbstractTableModel() {
   private val items = mutableListOf<PTableItem>()
-  private val expandedItems = mutableSetOf<PTableGroupItem>()
+  private val parentItems = mutableMapOf<PTableItem, PTableGroupItem>()
+
+  @VisibleForTesting
+  val expandedItems = mutableSetOf<PTableGroupItem>()
 
   init {
     items.addAll(tableModel.items)
+    recomputeParents()
+
     tableModel.addListener(object : PTableModelUpdateListener {
       override fun itemsUpdated(modelChanged: Boolean, nextEditedItem: PTableItem?) {
         if (!modelChanged) {
-          fireTableDataChanged()
+          fireTableChanged(PTableModelRepaintEvent(this@PTableModelImpl))
         }
         else {
           items.clear()
           items.addAll(tableModel.items)
+          recomputeParents()
           expandedItems.retainAll { isGroupItem(it) }
-          expandedItems.forEach { restoreExpanded(it) }
+          val previousExpandedItems = HashSet(expandedItems)
+          expandedItems.clear()
+          restoreExpanded(previousExpandedItems)
           val index = if (nextEditedItem != null) items.indexOf(nextEditedItem) else -1
           fireTableChanged(PTableModelEvent(this@PTableModelImpl, index))
         }
@@ -84,6 +97,16 @@ class PTableModelImpl(val tableModel: PTableModel) : AbstractTableModel() {
     collapse(item, index)
   }
 
+  fun depth(item: PTableItem): Int {
+    var parent = parentItems[item]
+    var depth = 0
+    while (parent != null) {
+      depth++
+      parent = parentItems[parent]
+    }
+    return depth
+  }
+
   private fun groupAt(index: Int): PTableGroupItem? {
     if (index < 0 || index >= items.size) {
       return null
@@ -92,24 +115,74 @@ class PTableModelImpl(val tableModel: PTableModel) : AbstractTableModel() {
     return if (isGroupItem(item)) item as PTableGroupItem else null
   }
 
-  private fun restoreExpanded(item: PTableGroupItem) {
-    val index = items.indexOf(item)
-    if (index >= 0) {
-      items.addAll(index + 1, item.children)
+  private fun restoreExpanded(previousExpandedItems: Set<PTableGroupItem>) {
+    previousExpandedItems.forEach { restoreExpandedInnerGroup(it) }
+    previousExpandedItems.forEach { restoreExpandedOuterGroup(it) }
+  }
+
+  private fun restoreExpandedInnerGroup(oldItem: PTableGroupItem) {
+    val newParent = parentItems[oldItem] ?: return
+    val index = newParent.children.indexOf(oldItem)
+    // Note that the item added may be a different instance than oldItem:
+    expandedItems.add(newParent.children[index] as PTableGroupItem)
+  }
+
+  private fun restoreExpandedOuterGroup(oldItem: PTableGroupItem) {
+    if (!expandedItems.contains(oldItem)) {
+      val index = items.indexOf(oldItem)
+      if (index >= 0) {
+        // Note that the item expanded may be a different instance than oldItem:
+        val newItem = items[index] as PTableGroupItem
+        expand(newItem, index)
+      }
     }
   }
 
   private fun expand(item: PTableGroupItem, index: Int) {
     if (expandedItems.add(item)) {
-      items.addAll(index + 1, item.children)
+      val list = mutableListOf<PTableItem>()
+      computeExpanded(item, expandedItems, list)
+      items.addAll(index + 1, list)
       fireTableDataChanged()
     }
   }
 
+  private fun computeExpanded(item: PTableGroupItem, expanded: Set<PTableGroupItem>, list: MutableList<PTableItem>) {
+    item.children.forEach {
+      list.add(it)
+      if (it is PTableGroupItem && expanded.contains(it)) {
+        computeExpanded(it, expanded, list)
+      }
+    }
+  }
+
   private fun collapse(item: PTableGroupItem, row: Int) {
+    val rowsToRemove = expandedRowCount(item)
     if (expandedItems.remove(item)) {
-      items.subList(row + 1, row + 1 + item.children.size).clear()
+      items.subList(row + 1, row + 1 + rowsToRemove).clear()
       fireTableDataChanged()
+    }
+  }
+
+  private fun expandedRowCount(group: PTableGroupItem): Int {
+    return group.children.sumBy { if (it is PTableGroupItem && expandedItems.contains(it)) 1 + expandedRowCount(it) else 1 }
+  }
+
+  private fun recomputeParents() {
+    parentItems.clear()
+    items.forEach {
+      if (it is PTableGroupItem) {
+        computeParents(it)
+      }
+    }
+  }
+
+  private fun computeParents(group: PTableGroupItem) {
+    group.children.forEach {
+      parentItems[it] = group
+      if (it is PTableGroupItem) {
+        computeParents(it)
+      }
     }
   }
 }
