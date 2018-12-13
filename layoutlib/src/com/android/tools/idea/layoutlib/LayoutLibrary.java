@@ -147,17 +147,19 @@ public class LayoutLibrary {
      *
      * @param platformProperties The build properties for the platform.
      * @param fontLocation the location of the fonts in the SDK target.
+     * @param icuDataPath the location of the ICU data used natively.
      * @param enumValueMap map attrName ⇒ { map enumFlagName ⇒ Integer value }. This is typically
      *          read from attrs.xml in the SDK target.
      * @param log a {@link LayoutLog} object. Can be null.
      * @return true if success.
      */
     public boolean init(Map<String, String> platformProperties,
-            File fontLocation,
-            Map<String, Map<String, Integer>> enumValueMap,
-            LayoutLog log) {
+                        File fontLocation,
+                        String icuDataPath,
+                        Map<String, Map<String, Integer>> enumValueMap,
+                        LayoutLog log) {
         if (mBridge != null) {
-            return mBridge.init(platformProperties, fontLocation, enumValueMap, log);
+            return mBridge.init(platformProperties, fontLocation, icuDataPath, enumValueMap, log);
         }
 
         return false;
@@ -236,6 +238,17 @@ public class LayoutLibrary {
     public void clearCaches(Object projectKey) {
         if (mBridge != null) {
             mBridge.clearCaches(projectKey);
+        }
+    }
+
+    /**
+     * Removes a font from the Typeface cache inside layoutlib.
+     *
+     * @param path the path of the font file to be removed from the cache.
+     */
+    public void clearFontCache(String path) {
+        if (mBridge != null) {
+            mBridge.clearFontCache(path);
         }
     }
 

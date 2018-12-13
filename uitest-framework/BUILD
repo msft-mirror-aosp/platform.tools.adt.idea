@@ -52,6 +52,7 @@ iml_module(
         "//tools/adt/idea/profilers-android:intellij.android.profilersAndroid[module, test]",
         "//tools/idea/platform/testFramework/bootstrap:intellij.tools.testsBootstrap[module, test]",
         "//tools/base/layoutinspector:studio.android.sdktools.layoutinspector[module, test]",
+        "//tools/adt/idea/naveditor:intellij.android.naveditor[module, test]",
     ],
 )
 
@@ -63,12 +64,12 @@ maven_repo(
         "//prebuilts/tools/common/m2/repository/android/arch/lifecycle/runtime/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/constraintlayout/constraintlayout/1.1.2:aar",
         "//prebuilts/tools/common/m2/repository/androidx/constraintlayout/constraintlayout-solver/1.1.2:jar",
-        "//prebuilts/tools/common/m2/repository/androidx/leanback/leanback/1.0.0-alpha1:aar",
+        "//prebuilts/tools/common/m2/repository/androidx/leanback/leanback/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/legacy/legacy-support-v4/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/media/media/1.0.0:aar",
-        "//prebuilts/tools/common/m2/repository/androidx/percentlayout/percentlayout/1.0.0-alpha1:aar",
+        "//prebuilts/tools/common/m2/repository/androidx/percentlayout/percentlayout/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/recyclerview/recyclerview/1.0.0:aar",
-        "//prebuilts/tools/common/m2/repository/androidx/wear/wear/1.0.0-alpha3:aar",
+        "//prebuilts/tools/common/m2/repository/androidx/wear/wear/1.0.0:aar",
         "//prebuilts/tools/common/m2/repository/androidx/test/espresso/espresso-core/3.1.0-alpha3:aar",
         "//prebuilts/tools/common/m2/repository/androidx/test/espresso/espresso-idling-resource/3.1.0-alpha3:aar",
         "//prebuilts/tools/common/m2/repository/androidx/test/monitor/1.1.0-alpha3:aar",

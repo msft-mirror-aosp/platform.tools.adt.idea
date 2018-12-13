@@ -98,31 +98,18 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
     assertThat(myManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
   }
 
-  @Test
-  fun testBeginSessionWithNullProcess() {
-    beginSessionHelper(Common.Device.getDefaultInstance(), null)
-    assertThat(myManager.sessionArtifacts).isEmpty()
-    assertThat(myManager.selectedSession).isEqualTo(Common.Session.getDefaultInstance())
-    assertThat(myManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
-    assertThat(myObserver.sessionsChangedCount).isEqualTo(0)
-    assertThat(myObserver.profilingSessionChangedCount).isEqualTo(0)
-    assertThat(myObserver.selectedSessionChangedCount).isEqualTo(0)
+  @Test(expected = AssertionError::class)
+  fun testBeginSessionWithOfflineDevice() {
+    val offlineDevice = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.DISCONNECTED).build()
+    val onlineProcess = Common.Process.newBuilder().setPid(20).setState(Common.Process.State.DEAD).build()
+    beginSessionHelper(offlineDevice, onlineProcess)
   }
 
-  @Test
-  fun testBeginSessionWithOfflineDeviceOrProcess() {
-    val offlineDevice = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.DISCONNECTED).build()
+  @Test(expected = AssertionError::class)
+  fun testBeginSessionWithDeadProcess() {
     val onlineDevice = Common.Device.newBuilder().setDeviceId(2).setState(Common.Device.State.ONLINE).build()
     val offlineProcess = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.DEAD).build()
-    val onlineProcess = Common.Process.newBuilder().setPid(20).setState(Common.Process.State.DEAD).build()
-    beginSessionHelper(offlineDevice, offlineProcess)
-    beginSessionHelper(offlineDevice, onlineProcess)
     beginSessionHelper(onlineDevice, offlineProcess)
-    assertThat(myManager.sessionArtifacts).isEmpty()
-    assertThat(myManager.selectedSession).isEqualTo(Common.Session.getDefaultInstance())
-    assertThat(myManager.profilingSession).isEqualTo(Common.Session.getDefaultInstance())
-    assertThat(myObserver.sessionsChangedCount).isEqualTo(0)
-    assertThat(myObserver.selectedSessionChangedCount).isEqualTo(0)
   }
 
   @Test
@@ -298,6 +285,17 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
   }
 
   @Test
+  fun testEndSessionIsNotAlive() {
+    val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
+    val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
+    val session1Timestamp = 1L
+    myProfilerService.setTimestampNs(session1Timestamp)
+    beginSessionHelper(device, process1)
+    endSessionHelper()
+    assertThat(SessionsManager.isSessionAlive(myManager.profilingSession)).isFalse()
+  }
+
+  @Test
   fun testSessionArtifactsUpToDate() {
     val device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build()
     val process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build()
@@ -436,12 +434,11 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
     myProfilerService.addProcess(device, process2)
     myProfilerService.addProcess(device, process3)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    myProfilers.device = device
-    myProfilers.process = process1
+    myProfilers.setProcess(device, process1)
 
     // Create a finished session and a ongoing profiling session.
     endSessionHelper()
-    myProfilers.process = process2
+    myProfilers.setProcess(device, process2)
     myManager.update()
     val session1 = myManager.sessionArtifacts[1].session
     val session2 = myManager.selectedSession
@@ -463,8 +460,7 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
     assertThat(myManager.sessionArtifacts[0].session).isEqualTo(session1)
 
     // Begin another profiling session and delete it while it is still selected
-    myProfilers.device = device
-    myProfilers.process = process3
+    myProfilers.setProcess(device, process3)
     myManager.update()
     val session3 = myManager.selectedSession
     assertThat(myManager.profilingSession).isEqualTo(session3)
@@ -515,11 +511,10 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
     myProfilerService.addProcess(device, process1)
     myProfilerService.addProcess(device, process2)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    myProfilers.device = device
-    myProfilers.process = process1
+    myProfilers.setProcess(device, process1)
     // Create a finished session and a ongoing profiling session.
     endSessionHelper()
-    myProfilers.process = process2
+    myProfilers.setProcess(device, process2)
     myManager.update()
     val session1 = myManager.sessionArtifacts[1].session
     val session2 = myManager.selectedSession
@@ -540,7 +535,7 @@ class SessionsManagerTest(private val useUnifiedEvents: Boolean) {
     assertThat(myManager.sessionArtifacts[0].session).isEqualTo(session2)
   }
 
-  fun beginSessionHelper(device: Common.Device, process: Common.Process?) {
+  fun beginSessionHelper(device: Common.Device, process: Common.Process) {
     if (useUnifiedEvents) {
       myManager.beginSession(1, device, process)
       myManager.update()

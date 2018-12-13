@@ -59,8 +59,11 @@ import com.android.tools.idea.uibuilder.api.ViewHandler
 import com.android.tools.idea.uibuilder.handlers.ViewEditorImpl
 import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager
 import com.google.common.collect.ImmutableSet
+import com.intellij.ide.util.PsiNavigationSupport
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Computable
+import com.intellij.pom.Navigatable
+import com.intellij.util.PsiNavigateUtil
 
 /*
  * Layout editor-specific helper methods and data for NlComponent
@@ -397,8 +400,48 @@ fun NlComponent.createChild(editor: ViewEditor,
   return model.createComponent(editor.scene.designSurface, tag, this, before, insertType)
 }
 
+/**
+ * Create a new child component based on tag name, namespace and body text.
+ * Temporary API to help remove XmlTag dependencies.
+ */
+fun NlComponent.createChild(tagName: String,
+                            enforceNamespacesDeep: Boolean = false,
+                            namespace: String? = null,
+                            bodyText: String? = null,
+                            surface: DesignSurface? = null,
+                            before: NlComponent? = null,
+                            insertType: InsertType = InsertType.CREATE
+): NlComponent? {
+  val childTag = tag.createChildTag(tagName, namespace, bodyText, enforceNamespacesDeep)
+  return model.createComponent(surface, childTag, this, before, insertType)
+}
+
+fun NlComponent.navigateTo(): Boolean {
+  if (!tag.isValid) {
+    return false
+  }
+
+  PsiNavigateUtil.navigate(tag)
+  return true
+}
+
 fun NlComponent.clearAttributes() {
   viewGroupHandler?.clearAttributes(this)
+}
+
+/**
+ * Temporary API to help remoe XmlTag dependencies. One navigate functionality to support both needs later.
+ * Warp to the text editor and show the corresponding XML for the clicked widget.
+ *
+ * @param needsFocusEditor true for focusing the editor after navigation. false otherwise.
+ */
+fun NlComponent.tryNavigateTo(needsFocusEditor: Boolean): Boolean {
+  val element = tag.navigationElement
+  if (PsiNavigationSupport.getInstance().canNavigate(element) && element is Navigatable) {
+    (element as Navigatable).navigate(needsFocusEditor)
+    return true
+  }
+  return false
 }
 
 val NlComponent.hasNlComponentInfo: Boolean

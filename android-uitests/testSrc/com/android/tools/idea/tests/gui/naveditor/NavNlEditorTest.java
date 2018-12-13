@@ -229,7 +229,7 @@ public class NavNlEditorTest {
 
   @Test
   public void testAddDependency() throws Exception {
-    IdeFrameFixture frame = guiTest.importSimpleLocalApplication();
+    IdeFrameFixture frame = guiTest.importSimpleApplication();
     frame.getProjectView().selectAndroidPane().clickPath("app");
     frame.invokeMenuPath("File", "New", "Android Resource File");
     CreateResourceFileDialogFixture.find(guiTest.robot())
@@ -246,10 +246,9 @@ public class NavNlEditorTest {
       .assertCanInteractWithSurface();
   }
 
-  @RunIn(TestGroup.UNRELIABLE)  // b/110939241
   @Test
   public void testCancelAddDependency() throws Exception {
-    IdeFrameFixture frame = guiTest.importSimpleLocalApplication();
+    IdeFrameFixture frame = guiTest.importSimpleApplication();
     frame.getProjectView().selectAndroidPane().clickPath("app");
     frame.invokeMenuPath("File", "New", "Android Resource File");
     CreateResourceFileDialogFixture.find(guiTest.robot())

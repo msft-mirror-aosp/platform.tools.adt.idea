@@ -396,6 +396,18 @@ class CommonDragTarget @JvmOverloads constructor(sceneComponent: SceneComponent,
   override fun getMouseCursor(): Cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 
   override fun isHittable() = if (myComponent.isSelected) myComponent.canShowBaseline() || !myComponent.isDragging else true
+
+  companion object {
+    /**
+     * Determine if the [Target] could be replaced by [CommonDragTarget]
+     */
+    @JvmStatic
+    fun isSupported(target: Target): Boolean = when (target) {
+      !is NonPlaceholderDragTarget -> false
+      is LegacyDragTarget -> false
+      else -> true
+    }
+  }
 }
 
 private abstract class BasePlaceholderDrawRegion(@AndroidDpCoordinate private val x1: Int,

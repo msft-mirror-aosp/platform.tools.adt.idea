@@ -74,8 +74,8 @@ public class ChangeManifestTest {
       "test_device",
       "Google",
       "Nexus 5X",
-      "8.1",
-      "27",
+      "9.0",
+      "28",
       DeviceState.HostConnectionType.LOCAL
     ).get();
     fakeDevice.setDeviceStatus(DeviceState.DeviceStatus.ONLINE);
@@ -111,7 +111,7 @@ public class ChangeManifestTest {
   public void changeManifest() throws Exception {
     IdeFrameFixture ideFrameFixture;
     try {
-      guiTest.importSimpleLocalApplication();
+      guiTest.importSimpleApplication();
     } catch (WaitTimedOutError indexSyncTimeout) {
       // We really do not care about timeouts during project indexing and sync.
       GuiTests.waitForBackgroundTasks(guiTest.robot(), Wait.seconds(300));

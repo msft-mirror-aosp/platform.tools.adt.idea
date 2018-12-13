@@ -23,6 +23,7 @@ import com.android.tools.adtui.model.filter.FilterModel;
 import com.android.tools.perflib.vmtrace.ClockType;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.CpuProfiler;
+import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
 import com.android.tools.profilers.*;
 import com.android.tools.profilers.analytics.FilterMetadata;
@@ -1678,20 +1679,18 @@ public class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void importTraceModeOnlyEnabledWhenImportAndSessionsFlagsAreSet() {
+  public void importTraceModeOnlyEnabledWhenImportSessionFlagIsSet() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(false);
-    myServices.enableSessionsView(false);
 
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
-    // Import trace flag is not set. Nor is sessions flag. Inspect trace mode should be disabled.
+    // Import trace flag is not set. Inspect trace mode should be disabled.
     assertThat(stage.isImportTraceMode()).isFalse();
 
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
     stage = new CpuProfilerStage(profilers, traceFile);
-    // Both flags are enabled, passing a non-null file to the constructor will set the stage to inspect trace mode.
+    // Flag is enabled, passing a non-null file to the constructor will set the stage to inspect trace mode.
     assertThat(stage.isImportTraceMode()).isTrue();
 
     stage = new CpuProfilerStage(profilers, null);
@@ -1701,25 +1700,12 @@ public class CpuProfilerStageTest extends AspectObserver {
     stage = new CpuProfilerStage(profilers);
     // Not specifying whether the stage is initiated in inspect trace mode is the same as initializing it in normal mode.
     assertThat(stage.isImportTraceMode()).isFalse();
-
-    myServices.enableImportTrace(true);
-    myServices.enableSessionsView(false);
-    stage = new CpuProfilerStage(profilers, traceFile);
-    // Import trace flag is set, but sessions flag isn't. Inspect trace mode should be disabled.
-    assertThat(stage.isImportTraceMode()).isFalse();
-
-    myServices.enableImportTrace(false);
-    myServices.enableSessionsView(true);
-    stage = new CpuProfilerStage(profilers, traceFile);
-    // Sessions flag is not set, but Import trace flag isn't. Inspect trace mode should be disabled.
-    assertThat(stage.isImportTraceMode()).isFalse();
   }
 
   @Test
   public void corruptedTraceInImportTraceModeShowsABalloon() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
 
     FakeFeatureTracker tracker = (FakeFeatureTracker)myServices.getFeatureTracker();
     // Sanity check to verify the last import trace status was not set yet
@@ -1743,7 +1729,6 @@ public class CpuProfilerStageTest extends AspectObserver {
   public void abortParsingImportTraceFileShowsABalloon() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
 
     FakeParserCancelParsing parser = new FakeParserCancelParsing(myServices);
@@ -1787,7 +1772,6 @@ public class CpuProfilerStageTest extends AspectObserver {
   public void captureIsSetWhenOpeningStageInImportTraceMode() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
 
     FakeFeatureTracker tracker = (FakeFeatureTracker)myServices.getFeatureTracker();
     // Sanity check to verify the last import trace status was not set yet
@@ -1817,7 +1801,6 @@ public class CpuProfilerStageTest extends AspectObserver {
   public void threadsDataComesFromCaptureInImportTraceMode() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
     stage.enter();
@@ -1841,7 +1824,6 @@ public class CpuProfilerStageTest extends AspectObserver {
   public void captureAlwaysSelectedInImportTraceMode() {
     StudioProfilers profilers = myStage.getStudioProfilers();
     myServices.enableImportTrace(true);
-    myServices.enableSessionsView(true);
     File traceFile = CpuProfilerTestUtils.getTraceFile("valid_trace.trace");
     CpuProfilerStage stage = new CpuProfilerStage(profilers, traceFile);
     stage.enter();
@@ -1928,6 +1910,7 @@ public class CpuProfilerStageTest extends AspectObserver {
                                                                      CpuProfiler.CpuProfilerMode.INSTRUMENTED);
     config.setDisableLiveAllocation(false);
     myStage.getProfilerConfigModel().setProfilingConfiguration(config);
+    myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.getDefaultInstance());
 
     // Live allocation sampling rate should remain the same.
     startCapturingSuccess();
@@ -1938,6 +1921,17 @@ public class CpuProfilerStageTest extends AspectObserver {
     // Enable feature flag.
     // Live allocation sampling rate should still remain the same.
     myServices.enableLiveAllocationsSampling(true);
+    startCapturingSuccess();
+    assertThat(myMemoryService.getSamplingRate()).isEqualTo(1);
+    stopCapturing();
+    assertThat(myMemoryService.getSamplingRate()).isEqualTo(1);
+
+    // Set agent status to ATTACHED.
+    // Live allocation sampling rate should still remain the same.
+    myProfilerService.setAgentStatus(Profiler.AgentStatusResponse.newBuilder()
+                                       .setStatus(Profiler.AgentStatusResponse.Status.ATTACHED)
+                                       .build());
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     startCapturingSuccess();
     assertThat(myMemoryService.getSamplingRate()).isEqualTo(1);
     stopCapturing();
@@ -2023,7 +2017,7 @@ public class CpuProfilerStageTest extends AspectObserver {
     myProfilerService.addProcess(device, process);
 
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS); // One second must be enough for new device to be picked up
-    myStage.getStudioProfilers().setDevice(device);
+    myStage.getStudioProfilers().setProcess(device, null);
     // Setting the device will change the stage. We need to go back to CpuProfilerStage
     myStage.getStudioProfilers().setStage(myStage);
   }

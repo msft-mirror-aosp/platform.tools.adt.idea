@@ -253,6 +253,7 @@ public class StudioIcons {
       public static final Icon FAVORITES_SELECTED = load("/studio/icons/layout-editor/properties/favorites-selected.svg"); // 16x16
       public static final Icon FAVORITES = load("/studio/icons/layout-editor/properties/favorites.svg"); // 16x16
       public static final Icon FLAG = load("/studio/icons/layout-editor/properties/flag.svg"); // 14x14
+      public static final Icon IMAGE_PICKER = load("/studio/icons/layout-editor/properties/image-picker.svg"); // 16x16
       public static final Icon MODIFY_NAV = load("/studio/icons/layout-editor/properties/modify-nav.svg"); // 16x16
       public static final Icon MODIFY_TEXT = load("/studio/icons/layout-editor/properties/modify-text.svg"); // 16x16
       public static final Icon MODIFY_THEME = load("/studio/icons/layout-editor/properties/modify-theme.svg"); // 16x16
@@ -280,6 +281,7 @@ public class StudioIcons {
       public static final Icon BARRIER_HORIZONTAL = load("/studio/icons/layout-editor/toolbar/barrier-horizontal.svg"); // 16x16
       public static final Icon BARRIER_VERTICAL = load("/studio/icons/layout-editor/toolbar/barrier-vertical.svg"); // 16x16
       public static final Icon BASELINE_ALIGNED_CONSTRAINT = load("/studio/icons/layout-editor/toolbar/baseline-aligned-constraint.svg"); // 16x16
+      public static final Icon BASELINE_ALIGNED_OFF = load("/studio/icons/layout-editor/toolbar/baseline-aligned-off.svg"); // 16x16
       public static final Icon BASELINE_ALIGNED_WHITE = load("/studio/icons/layout-editor/toolbar/baseline-aligned-white.svg"); // 16x16
       public static final Icon BASELINE_ALIGNED = load("/studio/icons/layout-editor/toolbar/baseline-aligned.svg"); // 16x16
       public static final Icon BOTTOM_ALIGNED_CONSTRAINT = load("/studio/icons/layout-editor/toolbar/bottom-aligned-constraint.svg"); // 16x16

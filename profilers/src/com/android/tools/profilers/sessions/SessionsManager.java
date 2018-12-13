@@ -254,10 +254,10 @@ public class SessionsManager extends AspectModel<SessionAspect> {
    * data.
    */
   private SessionItem processSessionStarted(Event event) {
-    SessionStarted started = event.getSessionStarted();
+    SessionData.SessionStarted sessionData = event.getSession().getSessionStarted();
     Common.Session session = Common.Session.newBuilder()
                                            .setSessionId(event.getSessionId())
-                                           .setPid(event.getSessionStarted().getPid())
+                                           .setPid(sessionData.getPid())
                                            .setStartTimestamp(event.getTimestamp())
                                            .setEndTimestamp(Long.MAX_VALUE)
                                            .setDeviceId(myProfilingSessionStreamId)
@@ -265,11 +265,11 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     Common.SessionMetaData metadata = Common.SessionMetaData.newBuilder()
                                                             .setSessionId(session.getSessionId())
                                                             .setType(Common.SessionMetaData.SessionType
-                                                                       .forNumber(started.getType().getNumber()))
-                                                            .setStartTimestampEpochMs(started.getStartTimestampEpochMs())
-                                                            .setJvmtiEnabled(started.getJvmtiEnabled())
-                                                            .setSessionName(started.getSessionName())
-                                                            .setLiveAllocationEnabled(started.getLiveAllocationEnabled())
+                                                                       .forNumber(sessionData.getType().getNumber()))
+                                                            .setStartTimestampEpochMs(sessionData.getStartTimestampEpochMs())
+                                                            .setJvmtiEnabled(sessionData.getJvmtiEnabled())
+                                                            .setSessionName(sessionData.getSessionName())
+                                                            .setLiveAllocationEnabled(sessionData.getLiveAllocationEnabled())
                                                             .build();
     SessionItem sessionItem = new SessionItem(myProfilers, session, metadata);
     mySessionItems.put(session.getSessionId(), sessionItem);
@@ -316,25 +316,15 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   /**
    * Request to begin a new session using the input device and process.
    */
-  public void beginSession(@NotNull Common.Device device, @Nullable Common.Process process) {
+  public void beginSession(@NotNull Common.Device device, @NotNull Common.Process process) {
     beginSession(0, device, process);
   }
 
-  public void beginSession(long streamId, @NotNull Common.Device device, @Nullable Common.Process process) {
+  public void beginSession(long streamId, @NotNull Common.Device device, @NotNull Common.Process process) {
     // We currently don't support more than one profiling session at a time.
     assert Common.Session.getDefaultInstance().equals(myProfilingSession);
-
-    // No process is specified, starts a default empty session.
-    if (process == null) {
-      setProfilingSession(Common.Session.getDefaultInstance());
-      setSessionInternal(myProfilingSession);
-      return;
-    }
-
-    // TODO(b/77649021): This part is currently only for backward compatibility.
-    if (device.getState() != Common.Device.State.ONLINE || process.getState() != Common.Process.State.ALIVE) {
-      return;
-    }
+    assert device.getState() == Device.State.ONLINE;
+    assert process.getState() == Common.Process.State.ALIVE;
 
     if (myProfilers.getIdeServices().getFeatureConfig().isUnifiedPipelineEnabled()) {
       assert streamId != 0;
@@ -433,8 +423,8 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     // Selected session can change after we stop profiling so caching the value first.
     boolean sessionIsSelectedSession = mySelectedSession.equals(session);
     if (myProfilingSession.equals(session)) {
-      // Route to StudioProfiler to set a null device, which will stop the session properly.
-      myProfilers.setDevice(null);
+      // Route to StudioProfiler to set a null device + process, which will stop the session properly.
+      myProfilers.setProcess(null, null);
     }
 
     // When deleting a currently selected session, set the session back to default so the profilers will go to the null stage.

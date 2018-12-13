@@ -417,9 +417,7 @@ public class AndroidProfilerToolWindow implements Disposable {
           // Only shown the balloon if we detect the window is hidden for the first time.
           myIsProfilingActiveBalloonShown = true;
           String messageHtml = "A profiler session is running in the background.<br>" +
-                               (myProfilers.getIdeServices().getFeatureConfig().isSessionsEnabled() ?
-                                "To end the session, open the profiler and click the stop button in the Sessions pane." :
-                                "To end the session, open the profiler and click the \"End Session\" button");
+                                "To end the session, open the profiler and click the stop button in the Sessions pane.";
           ToolWindowManager.getInstance(myProject).notifyByBalloon(AndroidProfilerToolWindowFactory.ID, MessageType.INFO, messageHtml);
         }
       }
@@ -428,10 +426,10 @@ public class AndroidProfilerToolWindow implements Disposable {
 
   static class PreferredProcessInfo {
     @NotNull private final String deviceName;
-    @NotNull private final String processName;
+    @Nullable private final String processName;
     @NotNull private final Predicate<Common.Process> processFilter;
 
-    PreferredProcessInfo(@NotNull String deviceName, @NotNull String processName, @NotNull Predicate<Common.Process> processFilter) {
+    PreferredProcessInfo(@NotNull String deviceName, @Nullable String processName, @NotNull Predicate<Common.Process> processFilter) {
       this.deviceName = deviceName;
       this.processName = processName;
       this.processFilter = processFilter;

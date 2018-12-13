@@ -30,6 +30,3 @@ fun ProjectStructureDialogFixture.selectDependenciesConfigurable(): Dependencies
       ideFrameFixture,
       findConfigurable(DEPENDENCIES_VIEW))
 }
-
-
-

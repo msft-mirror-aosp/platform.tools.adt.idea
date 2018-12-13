@@ -236,7 +236,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     // The following lines trigger aspect changes and, therefore, can make many models to update. That might cause an exception to be thrown
     // and make some models inconsistent. In this case, we want future calls to this method to return early, as we can only make the
     // inconsistency worse if we call these lines again.
-    setDevice(null);
+    setProcess(null, null);
     changed(ProfilerAspect.STAGE);
   }
 
@@ -255,7 +255,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    *                      or process that starts after a certain time.
    */
   public void setPreferredProcess(@Nullable String deviceName,
-                                  @NotNull String processName,
+                                  @Nullable String processName,
                                   @Nullable Predicate<Common.Process> processFilter) {
     myPreferredDeviceName = deviceName;
     setPreferredProcessName(processName);
@@ -284,8 +284,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     myAutoProfilingEnabled = enabled;
 
     if (myAutoProfilingEnabled) {
-      setDevice(findPreferredDevice());
-      setProcess(null);
+      setProcess(findPreferredDevice(), null);
     }
   }
 
@@ -311,27 +310,45 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
                                                              .build();
         GetEventGroupsResponse response = myClient.getProfilerClient().getEventGroups(request);
         for (EventGroup group : response.getGroupsList()) {
-          // We only want about the last state of the stream.
-          Event event = group.getEvents(group.getEventsCount() - 1);
-          Stream stream = event.getStream();
+          boolean isStreamDead = group.getEvents(group.getEventsCount() - 1).getIsEnded();
+          Common.Event connectedEvent = getLastMatchingEvent(group, e -> e.hasStream());
+          if (connectedEvent == null) {
+            // Ignore stream event groups that do not have the connected event.
+            continue;
+          }
+          Common.Stream stream = connectedEvent.getStream().getStreamConnected().getStream();
           // We only want streams of type device to get process information.
           if (stream.getType() == Stream.Type.DEVICE) {
-            myStreamIds.computeIfAbsent(stream.getDevice(), (device) -> stream.getStreamId());
+            long streamId = stream.getStreamId();
+            if (isStreamDead) {
+              // TODO state changes are represented differently in the unified pipeline (with two separate events)
+              // remove this once we move complete away from the legacy pipeline.
+              stream = stream.toBuilder().setDevice(stream.getDevice().toBuilder().setState(Device.State.DISCONNECTED)).build();
+            }
+            myStreamIds.computeIfAbsent(stream.getDevice(), (device) -> streamId);
             // Get all processes in device streams.
             GetEventGroupsRequest processRequest = GetEventGroupsRequest.newBuilder()
-                                                                        .setStreamId(stream.getStreamId())
-                                                                        .setKind(Event.Kind.PROCESS)
-                                                                        .setEnd(Event.Type.PROCESS_ENDED)
-                                                                        .build();
+              .setStreamId(stream.getStreamId())
+              .setKind(Event.Kind.PROCESS)
+              .build();
             GetEventGroupsResponse processResponse = myClient.getProfilerClient().getEventGroups(processRequest);
             List<Common.Process> processList = new ArrayList<>();
             int lastProcessId = myProcess == null ? 0 : myProcess.getPid();
             // A group is a collection of events that happened to a single process.
             for (EventGroup groupProcess : processResponse.getGroupsList()) {
-              // We only care about the latest state of the process.
-              Event eventProcess = groupProcess.getEvents(groupProcess.getEventsCount() - 1);
-              Common.Process process = eventProcess.getProcess();
-              if (process.getState() == Common.Process.State.ALIVE || process.getPid() == lastProcessId) {
+              boolean isProcessAlive = !groupProcess.getEvents(groupProcess.getEventsCount() - 1).getIsEnded();
+              Common.Event aliveEvent = getLastMatchingEvent(groupProcess, e -> e.hasProcess());
+              if (aliveEvent == null) {
+                // Ignore process event groups that do not have the started event.
+                continue;
+              }
+              Common.Process process = aliveEvent.getProcess().getProcessStarted().getProcess();
+              if (isProcessAlive || process.getPid() == lastProcessId) {
+                if (!isProcessAlive) {
+                  // TODO state changes are represented differently in the unified pipeline (with two separate events)
+                  // remove this once we move complete away from the legacy pipeline.
+                  process = process.toBuilder().setState(Common.Process.State.DEAD).build();
+                }
                 processList.add(process);
               }
               newProcesses.put(stream.getDevice(), processList);
@@ -359,12 +376,9 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
       if (!newProcesses.equals(myProcesses)) {
         myProcesses = newProcesses;
-        // Find and set preferred device
-        setDevice(findPreferredDevice());
-        setProcess(null);
+        setProcess(findPreferredDevice(), null);
 
         // These need to be fired every time the process list changes so that the device/process dropdown always reflects the latest.
-        changed(ProfilerAspect.DEVICES);
         changed(ProfilerAspect.PROCESSES);
       }
 
@@ -395,8 +409,8 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   /**
-   * Finds and returns the preferred device if there is an online device with a matching name. Otherwise, we attempt to maintain the
-   * currently selected device. Otherwise if no preferred device is specified, return any device that has live processes in it.
+   * Finds and returns the preferred device if there is an online device with a matching name.
+   * Otherwise, we attempt to maintain the currently selected device.
    */
   @Nullable
   private Common.Device findPreferredDevice() {
@@ -425,15 +439,22 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     return null;
   }
 
+  public void setMonitoringStage() {
+    setStage(new StudioMonitorStage(this));
+  }
+
   /**
-   * Chooses the given device.
+   * Chooses a device+process combination, and starts profiling it if not already (and stops profiling the previous one).
+   *
+   * @param device the device that will be selected. If it is null, no device and process will be selected for profiling.
+   * @param process the process that will be selected. Note that the process is expected to be spawned from the specified device.
+   *                If it is null, a process will be determined automatically by heuristics.
    */
-  public void setDevice(@Nullable Common.Device device) {
+  public void setProcess(@Nullable Common.Device device, @Nullable Common.Process process) {
     if (device != null) {
       // Device can be not null in the following scenarios:
       // 1. User explicitly sets a device from the dropdown.
       // 2. The update loop has found the preferred device, in which case it will stay selected until the user selects something else.
-      // 3. There was no preferred device and the update loop found a device with live processes.
       // All of these cases mean that we can unset the preferred device.
       myPreferredDeviceName = null;
     }
@@ -443,25 +464,9 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       // First, end the current session on the previous device.
       mySessionsManager.endCurrentSession();
       myDevice = device;
-      changed(ProfilerAspect.DEVICES);
       myIdeServices.getFeatureTracker().trackChangeDevice(myDevice);
-
-      // Then set a new process.
-      setProcess(null);
     }
-  }
 
-  public void setMonitoringStage() {
-    setStage(new StudioMonitorStage(this));
-  }
-
-  /**
-   * Chooses a process, and starts profiling it if not already (and stops profiling the previous one).
-   *
-   * @param process the process that will be selected. If it is null, a process will be determined
-   *                automatically by heuristics.
-   */
-  public void setProcess(@Nullable Common.Process process) {
     List<Common.Process> processes = myProcesses.get(myDevice);
     if (process == null || processes == null || !processes.contains(process)) {
       process = getPreferredProcess(processes);
@@ -473,11 +478,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       setAutoProfilingEnabled(false);
     }
 
-    // Even if the process stays as null, the selected session could be changed.
-    // e.g. When the user stops a profiling session (session remains selected, but device + process are set to null). Then, when the user
-    // switches to a different device without processes (new process == null), SessionsManager need to reset the session to default.
-    // TODO(b/77649021): This is an edge case only for pre-sessions workflow.
-    if (process == null || !Objects.equals(process, myProcess)) {
+    if (!Objects.equals(process, myProcess)) {
       // First make sure to end the previous session.
       mySessionsManager.endCurrentSession();
 
@@ -485,9 +486,8 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       changed(ProfilerAspect.PROCESSES);
       myIdeServices.getFeatureTracker().trackChangeProcess(myProcess);
 
-      // In the case the device becomes null, keeps the previously stopped session.
-      // This happens when the user explicitly stops an ongoing session or the profiler.
-      if (myDevice != null) {
+      // Only start a new session if the process is valid.
+      if (myProcess != null && myProcess.getState() == Common.Process.State.ALIVE) {
         if (myIdeServices.getFeatureConfig().isUnifiedPipelineEnabled()) {
           mySessionsManager.beginSession(myStreamIds.get(myDevice), myDevice, myProcess);
         }
@@ -788,7 +788,8 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    */
   public void setMemoryLiveAllocationEnabled(boolean enabled) {
     if (getIdeServices().getFeatureConfig().isLiveAllocationsSamplingEnabled() &&
-        getDevice() != null && getDevice().getFeatureLevel() >= AndroidVersion.VersionCodes.O) {
+        getDevice() != null && getDevice().getFeatureLevel() >= AndroidVersion.VersionCodes.O &&
+        isAgentAttached()) {
       int savedSamplingRate = getIdeServices().getPersistentProfilerPreferences().getInt(
         MemoryProfilerStage.LIVE_ALLOCATION_SAMPLING_PREF, MemoryProfilerStage.DEFAULT_LIVE_ALLOCATION_SAMPLING_MODE.getValue());
       int samplingRateOff = MemoryProfilerStage.LiveAllocationSamplingMode.NONE.getValue();
@@ -824,5 +825,20 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     deviceNameBuilder.append(model);
 
     return deviceNameBuilder.toString();
+  }
+
+  /**
+   * Helper method to return the last even in an EventGroup that matches the input condition.
+   */
+  @Nullable
+  private Common.Event getLastMatchingEvent(@NotNull EventGroup group, @NotNull Predicate<Event> predicate) {
+    Common.Event matched = null;
+    for (Event event : group.getEventsList()) {
+      if (predicate.test(event)) {
+        matched = event;
+      }
+    }
+
+    return matched;
   }
 }
