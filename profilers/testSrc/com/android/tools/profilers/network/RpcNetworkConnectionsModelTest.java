@@ -15,24 +15,41 @@
  */
 package com.android.tools.profilers.network;
 
+import static com.android.tools.profilers.ProfilerTestData.generateNetworkConnectionData;
+import static com.android.tools.profilers.ProfilerTestData.generateNetworkThreadData;
+import static com.google.common.truth.Truth.assertThat;
+
 import com.android.tools.adtui.model.FakeTimer;
 import com.android.tools.adtui.model.Range;
+import com.android.tools.profiler.proto.Common;
+import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profiler.protobuf3jarjar.ByteString;
-import com.android.tools.profilers.*;
+import com.android.tools.profilers.FakeGrpcChannel;
+import com.android.tools.profilers.FakeIdeProfilerServices;
+import com.android.tools.profilers.FakeProfilerService;
+import com.android.tools.profilers.ProfilersTestData;
+import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.network.httpdata.HttpData;
 import com.android.tools.profilers.network.httpdata.Payload;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static com.google.common.truth.Truth.assertThat;
-
+@RunWith(Parameterized.class)
 public class RpcNetworkConnectionsModelTest {
+  @Parameterized.Parameters
+  public static Collection<Boolean> useNewEventPipelineParameter() {
+    return Arrays.asList(false, true);
+  }
+
   private static final String FAKE_REQUEST_PAYLOAD_ID = "payloadRequest";
   private static final String FAKE_RESPONSE_PAYLOAD_ID = "payloadResponse";
   private static final String FAKE_REQUEST_HEADERS = "User-Agent = Customized\n Accept = text/plain";
@@ -54,17 +71,17 @@ public class RpcNetworkConnectionsModelTest {
              .setResponsePayloadSize(TestHttpData.fakeContentSize(2))
              .build())
       // Unfinished request (3-?)
-      .add(TestHttpData.newBuilder(3, 3, 0, 0, 0, new HttpData.JavaThread(3, "threadC"))
+      .add(TestHttpData.newBuilder(3, 3, 0, 0, 0, 0, new HttpData.JavaThread(3, "threadC"))
              .setRequestFields(FAKE_REQUEST_HEADERS)
              // No request / response payload, hasn't started uploading yet
              .build())
       // Unfinished request (4-?)
-      .add(TestHttpData.newBuilder(4, 4, 5, 0, 0, new HttpData.JavaThread(4, "threadD"))
+      .add(TestHttpData.newBuilder(4, 4, 5, 0, 0, 0, new HttpData.JavaThread(4, "threadD"))
              .setRequestFields(FAKE_REQUEST_HEADERS)
              // No response payload, hasn't finished downloading yet
              .build())
       // Finished request (8-12)
-      .add(TestHttpData.newBuilder(5, 8, 9, 10, 12, new HttpData.JavaThread(5, "threadE"))
+      .add(TestHttpData.newBuilder(5, 8, 9, 10, 12, 12, new HttpData.JavaThread(5, "threadE"))
              .setRequestFields(FAKE_REQUEST_HEADERS)
              .setRequestPayloadId(FAKE_REQUEST_PAYLOAD_ID + 5)
              .setResponsePayloadId(FAKE_RESPONSE_PAYLOAD_ID + 5)
@@ -76,13 +93,36 @@ public class RpcNetworkConnectionsModelTest {
 
   @Rule public FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("RpcNetworkConnectionsModelTest", myProfilerService,
                                                                    FakeNetworkService.newBuilder().setHttpDataList(FAKE_DATA).build());
+  private boolean myUseNewEventPipeline;
   private NetworkConnectionsModel myModel;
+
+  public RpcNetworkConnectionsModelTest(boolean useNewEventPipeline) {
+    myUseNewEventPipeline = useNewEventPipeline;
+  }
 
   @Before
   public void setUp() {
     StudioProfilers profilers = new StudioProfilers(myGrpcChannel.getClient(), new FakeIdeProfilerServices(), new FakeTimer());
-    myModel = new RpcNetworkConnectionsModel(profilers.getClient().getProfilerClient(), profilers.getClient().getNetworkClient(),
-                                             ProfilersTestData.SESSION_DATA);
+
+    if (myUseNewEventPipeline) {
+      myModel = new RpcNetworkConnectionsModel(profilers.getClient().getProfilerClient(), Common.Session.getDefaultInstance());
+
+      for (HttpData data : FAKE_DATA) {
+        long groupId = data.getId();
+        // Add the http connection events
+        Profiler.EventGroup group = generateNetworkConnectionData(data).build();
+        for (Common.Event event : group.getEventsList()) {
+          myProfilerService.addEventToEventGroup(0, groupId, event);
+        }
+
+        // Add the thread data associated with the connection events.
+        myProfilerService.addEventToEventGroup(0, groupId, generateNetworkThreadData(data).build());
+      }
+    }
+    else {
+      myModel = new LegacyRpcNetworkConnectionsModel(profilers.getClient().getProfilerClient(), profilers.getClient().getNetworkClient(),
+                                                     ProfilersTestData.SESSION_DATA);
+    }
 
     for (int i = 0; i < FAKE_DATA.size(); i++) {
       long id = FAKE_DATA.get(i).getId();
@@ -138,13 +178,17 @@ public class RpcNetworkConnectionsModelTest {
       assertThat(data.getId()).isEqualTo(id);
       HttpData expectedData = FAKE_DATA.stream().filter(d -> d.getId() == id).findFirst().get();
 
-      assertThat(data.getStartTimeUs()).isEqualTo(expectedData.getStartTimeUs());
-      assertThat(data.getUploadedTimeUs()).isEqualTo(expectedData.getUploadedTimeUs());
-      assertThat(data.getDownloadingTimeUs()).isEqualTo(expectedData.getDownloadingTimeUs());
-      assertThat(data.getEndTimeUs()).isEqualTo(expectedData.getEndTimeUs());
+      assertThat(data.getRequestStartTimeUs()).isEqualTo(expectedData.getRequestStartTimeUs());
+      assertThat(data.getRequestCompleteTimeUs()).isEqualTo(expectedData.getRequestCompleteTimeUs());
+      assertThat(data.getResponseStartTimeUs()).isEqualTo(expectedData.getResponseStartTimeUs());
+      assertThat(data.getResponseCompleteTimeUs()).isEqualTo(expectedData.getResponseCompleteTimeUs());
+      assertThat(data.getConnectionEndTimeUs()).isEqualTo(expectedData.getConnectionEndTimeUs());
       assertThat(data.getMethod()).isEqualTo(expectedData.getMethod());
       assertThat(data.getUrl()).isEqualTo(expectedData.getUrl());
-      assertThat(data.getTraceId()).isEqualTo(expectedData.getTraceId());
+      // TODO add back stack trace support in new pipeline.
+      if (!myUseNewEventPipeline){
+        assertThat(data.getTraceId()).isEqualTo(expectedData.getTraceId());
+      }
       assertThat(data.getRequestPayloadId()).isEqualTo(expectedData.getRequestPayloadId());
       assertThat(data.getResponsePayloadId()).isEqualTo(expectedData.getResponsePayloadId());
       assertThat(data.getResponsePayloadSize()).isEqualTo(expectedData.getResponsePayloadSize());

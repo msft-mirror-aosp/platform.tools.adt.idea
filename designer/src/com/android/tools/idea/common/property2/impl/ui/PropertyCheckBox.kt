@@ -17,8 +17,8 @@ package com.android.tools.idea.common.property2.impl.ui
 
 import com.android.SdkConstants
 import com.android.annotations.VisibleForTesting
-import com.android.tools.adtui.stdui.registerKeyAction
 import com.android.tools.adtui.model.stdui.ValueChangedListener
+import com.android.tools.adtui.stdui.registerKeyAction
 import com.android.tools.idea.common.property2.impl.model.BooleanPropertyEditorModel
 import com.android.tools.idea.common.property2.impl.support.EditorFocusListener
 import icons.StudioIcons
@@ -45,12 +45,13 @@ class PropertyCheckBox(private val propertyModel: BooleanPropertyEditorModel) : 
     registerKeyAction({ propertyModel.shiftF1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.SHIFT_DOWN_MASK), "help2")
 
     propertyModel.addListener(ValueChangedListener { handleValueChanged() })
-    addFocusListener(EditorFocusListener(propertyModel))
+    addFocusListener(EditorFocusListener(this, propertyModel))
     model.addChangeListener {
       if (!stateChangeFromModel) {
         propertyModel.value = fromStateValue(model.isSelected)
       }
     }
+    PropertyTextField.addBorderAtTextFieldBorderSize(this)
   }
 
   private fun handleValueChanged() {

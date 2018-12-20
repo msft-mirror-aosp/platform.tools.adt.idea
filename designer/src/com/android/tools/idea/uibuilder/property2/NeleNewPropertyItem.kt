@@ -16,6 +16,8 @@
 package com.android.tools.idea.uibuilder.property2
 
 import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_STYLE
+import com.android.SdkConstants.TOOLS_PREFIX
 import com.android.SdkConstants.TOOLS_URI
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.tools.adtui.model.stdui.EDITOR_NO_ERROR
@@ -40,9 +42,11 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
     FlagsPropertyItem<NeleFlagPropertyItem> {
 
   override var namespace: String = ""
+    get() = delegate?.namespace ?: field
     private set
 
   override var name: String = ""
+    get() = delegate?.name ?: field
     set(value) {
       val (propertyNamespace, propertyName) = parseName(value)
       namespace = propertyNamespace
@@ -122,7 +126,7 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
     }
     val prefix = value.substring(0, prefixIndex)
     val name = value.substring(prefixIndex + 1)
-    val namespace = namespaceResolver.prefixToUri(prefix) ?: ANDROID_URI
+    val namespace = namespaceResolver.prefixToUri(prefix) ?: if (prefix == TOOLS_PREFIX) TOOLS_URI else ANDROID_URI
     return Pair(namespace, name)
   }
 
@@ -131,11 +135,14 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
     if (property != null) {
       return property
     }
-    if (propertyNamespace == TOOLS_URI) {
+    if (delegate?.name == propertyName) {
+      return delegate
+    }
+    if (propertyNamespace == TOOLS_URI || propertyNamespace.isEmpty()) {
       for (ns in properties.namespaces) {
         property = properties.getOrNull(ns, propertyName)
         if (property != null) {
-          return property.designProperty
+          return if (propertyNamespace == TOOLS_URI) property.designProperty else property
         }
       }
     }
@@ -144,12 +151,24 @@ class NeleNewPropertyItem(model: NelePropertiesModel,
 
   private fun getPropertyNamesWithPrefix(): List<String> {
     val resolver = namespaceResolver
-    return properties.values.filter { it.rawValue == null }.map { getPropertyNameWithPrefix(it, resolver) }
+    val result = properties.values
+      .filter { it.rawValue == null }
+      .map { getPropertyNameWithPrefix(it, resolver) }
+      .toMutableList()
+    properties.values
+      .filter {
+        it.designProperty.rawValue == null &&
+        it.name != ATTR_STYLE &&
+        properties.getOrNull(TOOLS_URI, it.name) == null
+      }
+      .mapTo(result) { getPropertyNameWithPrefix(it.designProperty, resolver) }
+    return result
   }
 
   private fun getPropertyNameWithPrefix(property: NelePropertyItem, resolver: ResourceNamespace.Resolver): String {
     val name = property.name
-    val prefix = resolver.uriToPrefix(property.namespace)
+    val prefixFromResolver = resolver.uriToPrefix(property.namespace)
+    val prefix = if (prefixFromResolver.isNullOrEmpty() && property.namespace == TOOLS_URI) TOOLS_PREFIX else prefixFromResolver
     return if (prefix.isNullOrEmpty()) name else "$prefix:$name"
   }
 

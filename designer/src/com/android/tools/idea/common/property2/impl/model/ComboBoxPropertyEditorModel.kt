@@ -70,6 +70,9 @@ class ComboBoxPropertyEditorModel(property: PropertyItem, private val enumSuppor
   override val editingSupport: EditingSupport
     get() = property.editingSupport
 
+  override val placeHolderValue: String
+    get() = property.defaultValue ?: ""
+
   fun enterKeyPressed() {
     blockUpdates = true
     try {
@@ -118,6 +121,11 @@ class ComboBoxPropertyEditorModel(property: PropertyItem, private val enumSuppor
   fun popupMenuWillBecomeInvisible(ignoreChanges: Boolean) {
     val newValue = selectedValue
     if (!ignoreChanges && newValue != null) {
+      text = value
+
+      // Be aware that we may loose focus on the next line,
+      // if the EnumValue is an action that displays a dialog.
+      // This is why we set text=value just before calling select.
       if (newValue.select(property)) {
         text = newValue.value
       }

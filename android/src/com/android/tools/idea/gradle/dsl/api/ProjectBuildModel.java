@@ -21,6 +21,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.io.File;
+import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
 public interface ProjectBuildModel {
 
   /**
-   * This method should never be called on the UI thread, it will cause a parsing of Gradle build files which can take a long time.
+   * This method should never be called on the UI thread, it will cause the parsing of Gradle build files which can take a long time.
    * The returned {@link ProjectBuildModel} is not thread safe. If you need to use the {@link ProjectBuildModel} from a multithreaded
    * environment {@link ProjectBuildModelHandler} provides some basic synchronization.
    *
@@ -42,6 +43,24 @@ public interface ProjectBuildModel {
   @NotNull
   static ProjectBuildModel get(@NotNull Project project) {
     return GradleModelProvider.get().getProjectModel(project);
+  }
+
+  /**
+   * This method should never be called on the UI thread, it will cause the parsing of Gradle build files which can take a long time.
+   * The returned {@link ProjectBuildModel} is not thread safe. If you need to use the {@link ProjectBuildModel} from a multithreaded
+   * environment {@link ProjectBuildModelHandler} provides some basic synchronization.
+   *
+   * This method should be used when the {@link Project} object does not represent the Gradle build that you need to parse,
+   * this is the case for composite build.
+   *
+   * @param hostProject the host project, this is required to create psi elements
+   * @param includedBuildRoot the root path to the included build that should be parsed
+   * @return a build model representing the Gradle build files for the Gradle project at {@param includedBuildRoot},
+   *         or null if not build or settings files were found.
+   */
+  @Nullable
+  static ProjectBuildModel getForCompositeBuild(@NotNull Project hostProject, @NotNull String includedBuildRoot) {
+    return GradleModelProvider.get().getProjectModel(hostProject, includedBuildRoot);
   }
 
   /**
@@ -111,4 +130,16 @@ public interface ProjectBuildModel {
    * This method should never be called on the UI thread, it will cause the parsing of Gradle build files which can take a long time.
    */
   void reparse();
+
+  /**
+   * This method may miss files that should be included in the build if we can't correctly parse the Gradle settings file,
+   * this method will parse any files that have not yet been parsed.
+   *
+   * This method does NOT include files from composite builds, for those another {@link ProjectBuildModel} should be obtained
+   *
+   * @return a list of all build models that can be created from Gradle build files, this does not include Gradle settings or
+   * properties files.
+   */
+  @NotNull
+  List<GradleBuildModel> getAllIncludedBuildModels();
 }

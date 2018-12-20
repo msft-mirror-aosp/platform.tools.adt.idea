@@ -203,6 +203,7 @@
       <action internal="true" id="Android.ShowRoomSchema" class="com.android.tools.idea.actions.ShowRoomSchemaAction"/>
       <action internal="true" id="Android.SwingProfiler" class="com.android.tools.adtui.actions.EnableSwingProfilerAction"/>
       <action internal="true" id="Android.IdeaProjectStructure" class="com.android.tools.idea.structure.IdeaProjectStructureAction"/>
+      <action internal="true" id="Android.ShowSatisfactionDialog" class="com.android.tools.idea.stats.ShowSatisfactionDialogAction"/>
       <add-to-group group-id="Internal"/>
     </group>
     <action id="Android.GenerateSignedApk" class="org.jetbrains.android.actions.GenerateSignedApkAction">
@@ -1042,7 +1043,7 @@
     <projectService serviceInterface="com.android.tools.idea.debug.ResourceIdResolver"
                     serviceImplementation="com.android.tools.idea.debug.ProjectResourceIdResolver"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.dependencies.GradleDependencyManager"/>
-    <projectService serviceImplementation="com.android.tools.idea.res.ProjectResourceRepositoryRootListener"/>
+    <projectService serviceImplementation="com.android.tools.idea.res.AndroidProjectRootListener"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceFolderRegistry"/>
     <projectService serviceImplementation="com.android.tools.idea.res.SampleDataListener"/>
     <projectService serviceImplementation="com.android.tools.idea.structure.services.DeveloperServices" />
@@ -1067,6 +1068,7 @@
 
     <sdkType implementation="org.jetbrains.android.sdk.AndroidSdkType"/>
     <gotoDeclarationHandler implementation="org.jetbrains.android.AndroidGotoDeclarationHandler"/>
+    <gotoSymbolContributor implementation="com.android.tools.idea.res.psi.GoToAndroidResourceContributor"/>
     <importFilter implementation="com.android.tools.idea.editors.AndroidImportFilter" />
     <overrideImplementsAnnotationsHandler implementation="com.android.tools.idea.editors.AndroidOverrideAnnotationsHandler" />
     <editorTabTitleProvider implementation="com.android.tools.idea.editors.AndroidEditorTitleProvider"/>
@@ -1180,7 +1182,6 @@
     <projectModelModifier implementation="com.android.tools.idea.gradle.AndroidGradleJavaProjectModelModifier"/>
     <resolveScopeProvider implementation="com.android.tools.idea.testartifacts.scopes.TestArtifactResolveScopeProvider" order="first"/>
     <useScopeOptimizer implementation="com.android.tools.idea.testartifacts.scopes.TestArtifactUseScopeOptimizer"/>
-    <customScopesProvider implementation="com.android.tools.idea.testartifacts.scopes.TestArtifactCustomScopeProvider"/>
     <xmlStructureViewBuilderProvider implementation="org.jetbrains.android.dom.structure.resources.ResourceStructureViewBuilderProvider"/>
     <xmlStructureViewBuilderProvider implementation="org.jetbrains.android.dom.structure.layout.LayoutStructureViewBuilderProvider"/>
 

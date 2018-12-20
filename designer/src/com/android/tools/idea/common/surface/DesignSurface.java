@@ -79,6 +79,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -948,6 +949,14 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   }
 
   /**
+   * Return the bounds which SceneView can draw on.
+   * @param rectangle The rectangle to receive the dimension. If this is null, a new instance will be created.
+   * @see JComponent#getBounds(Rectangle)
+   */
+  @NotNull
+  public abstract Rectangle getRenderableBoundsOfSceneView(@NotNull SceneView sceneView, @Nullable Rectangle rectangle);
+
+  /**
    * Return the SceneView under the given position
    *
    * @return the SceneView, or null if we are not above one.
@@ -1399,6 +1408,20 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
              PlatformDataKeys.COPY_PROVIDER.is(dataId) ||
              PlatformDataKeys.PASTE_PROVIDER.is(dataId)) {
       return createActionHandler();
+    }
+    else if (PlatformDataKeys.CONTEXT_MENU_POINT.is(dataId)) {
+      SceneView view = getCurrentSceneView();
+      NlComponent selection = getSelectionModel().getPrimary();
+      Scene scene = getScene();
+      if (view == null || scene == null || selection == null) {
+        return null;
+      }
+      SceneComponent sceneComponent = scene.getSceneComponent(selection);
+      if (sceneComponent == null) {
+        return null;
+      }
+      return new Point(Coordinates.getSwingXDip(view, sceneComponent.getCenterX()),
+                       Coordinates.getSwingYDip(view, sceneComponent.getCenterY()));
     }
     return myLayeredPane.getData(dataId);
   }

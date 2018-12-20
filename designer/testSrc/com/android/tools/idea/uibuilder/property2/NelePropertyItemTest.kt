@@ -17,6 +17,7 @@ package com.android.tools.idea.uibuilder.property2
 
 import com.android.SdkConstants.ABSOLUTE_LAYOUT
 import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_BACKGROUND
 import com.android.SdkConstants.ATTR_CONTENT_DESCRIPTION
 import com.android.SdkConstants.ATTR_LAYOUT_HEIGHT
 import com.android.SdkConstants.ATTR_LAYOUT_TO_END_OF
@@ -54,19 +55,6 @@ import com.intellij.util.ui.TwoColorsIcon
 import icons.StudioIcons
 import org.intellij.lang.annotations.Language
 import java.awt.Color
-
-internal const val EXPECTED_ID_TOOLTIP = """
-android:id:
-Supply an identifier name for this view, to later retrieve it
-             with {@link android.view.View#findViewById View.findViewById()} or
-             {@link android.app.Activity#findViewById Activity.findViewById()}.
-             This must be a
-             resource reference; typically you set this using the
-             <code>@+</code> syntax to create a new ID resources.
-             For example: <code>android:id="@+id/my_id"</code> which
-             allows you to later retrieve the view
-             with <code>findViewById(R.id.my_id)</code>.
-"""
 
 private const val STRINGS = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -265,16 +253,26 @@ class NelePropertyItemTest : PropertyTestCase() {
     assertThat(components[1].getAttribute(ANDROID_URI, ATTR_TEXT)).isEqualTo(HELLO_WORLD)
   }
 
-  fun testGetValueWithDefaultValue() {
+  fun testSetNewToolsValue() {
+    val property = createPropertyItem(ANDROID_URI, ATTR_TEXT, NelePropertyType.STRING, createTextView())
+    val design = property.designProperty
+    design.value = HELLO_WORLD
+
+    assertThat(design.value).isEqualTo(HELLO_WORLD)
+    assertThat(design.isReference).isFalse()
+    assertThat(design.resolvedValue).isEqualTo(HELLO_WORLD)
+    assertThat(property.model.properties.getOrNull(TOOLS_URI, ATTR_TEXT) != null)
+  }
+
+  fun testGetDefaultValue() {
     val components = createTextView()
     val property = createPropertyItem(ANDROID_URI, ATTR_TEXT_APPEARANCE, NelePropertyType.STYLE, components)
     val manager = getSceneManager(property)
     manager.putDefaultPropertyValue(components[0], ResourceNamespace.ANDROID, ATTR_TEXT_APPEARANCE, "?attr/textAppearanceSmall")
     waitUntilEventsProcessed(property.model)
 
-    assertThat(property.value).isEqualTo("@android:style/TextAppearance.Material.Small")
-    property.model.showResolvedValues = false
     assertThat(property.value).isNull()
+    assertThat(property.defaultValue).isEqualTo("@android:style/TextAppearance.Material.Small")
   }
 
   fun testSetParentTagValue() {
@@ -312,8 +310,7 @@ class NelePropertyItemTest : PropertyTestCase() {
     assertThat(hardcodedProperty.tooltipForValue).isEmpty()
     assertThat(referenceProperty.tooltipForValue).isEqualTo("\"@string/demo\" = \"Demo String\" ($keyStroke)")
     assertThat(hardcodedFromDefaultProperty.tooltipForValue).isEqualTo("[default] \"16sp\"")
-    assertThat(referenceFromDefaultProperty.tooltipForValue)
-      .isEqualTo("[default] \"@android:dimen/text_size_button_material\" = \"14sp\" ($keyStroke)")
+    assertThat(referenceFromDefaultProperty.tooltipForValue).isEqualTo("[default] \"14sp\"")
   }
 
   fun testCompletion() {
@@ -381,6 +378,40 @@ class NelePropertyItemTest : PropertyTestCase() {
     val components = createImageView()
     val src = createPropertyItem(ANDROID_URI, ATTR_SRC, NelePropertyType.DRAWABLE, components, model)
     assertThat(src.editingSupport.validation("@tools:sample/avatars[1]")).isEqualTo(EDITOR_NO_ERROR)
+  }
+
+  fun testColorIconOfBackgroundAttribute() {
+    val model = NelePropertiesModel(testRootDisposable, myFacet)
+    val components = createImageView()
+    val background = createPropertyItem(ANDROID_URI, ATTR_BACKGROUND, NelePropertyType.DRAWABLE, components, model)
+    assertThat(background.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Extras.PIPETTE)
+
+    background.value = "@drawable/non-existent-drawable"
+    assertThat(background.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Properties.IMAGE_PICKER)
+
+    background.value = "@color/non-existent-color"
+    assertThat(background.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Extras.PIPETTE)
+  }
+
+  fun testColorIconOfSrcAttribute() {
+    val model = NelePropertiesModel(testRootDisposable, myFacet)
+    val components = createImageView()
+    val src = createPropertyItem(ANDROID_URI, ATTR_SRC, NelePropertyType.DRAWABLE, components, model)
+    src.value = null
+    assertThat(src.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Properties.IMAGE_PICKER)
+
+    src.value = "@color/non-existent-color"
+    assertThat(src.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Extras.PIPETTE)
+
+    src.value = "@drawable/non-existent-drawable"
+    assertThat(src.colorButton?.getActionIcon(false)).isEqualTo(StudioIcons.LayoutEditor.Properties.IMAGE_PICKER)
+  }
+
+  fun testFilterRawAttributeComment() {
+    val comment = "Here is a\n" +
+                  "        comment with an\n" +
+                  "        odd formatting."
+    assertThat(NelePropertyItem.filterRawAttributeComment(comment)).isEqualTo("Here is a comment with an odd formatting.")
   }
 
   private fun createTextView(): List<NlComponent> {

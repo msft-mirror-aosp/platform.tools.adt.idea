@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.res;
 
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.module.Module;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -24,7 +27,7 @@ import org.jetbrains.android.util.AndroidUtils;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * @see ResourceRepositoryManager#getProjectResources(boolean)
+ * @see ResourceRepositoryManager#getProjectResources()
  */
 final class ProjectResourceRepository extends MultiResourceRepository {
   private final AndroidFacet myFacet;
@@ -38,10 +41,7 @@ final class ProjectResourceRepository extends MultiResourceRepository {
   @NotNull
   public static ProjectResourceRepository create(@NotNull AndroidFacet facet) {
     List<LocalResourceRepository> resources = computeRepositories(facet);
-    ProjectResourceRepository repository = new ProjectResourceRepository(facet, resources);
-
-    ProjectResourceRepositoryRootListener.ensureSubscribed(facet.getModule().getProject());
-    return repository;
+    return new ProjectResourceRepository(facet, resources);
   }
 
   @NotNull
@@ -49,7 +49,7 @@ final class ProjectResourceRepository extends MultiResourceRepository {
     LocalResourceRepository main = ResourceRepositoryManager.getModuleResources(facet);
 
     // List of module facets the given module depends on.
-    List<AndroidFacet> dependencies = AndroidUtils.getAllAndroidDependencies(facet.getModule(), true);
+    List<AndroidFacet> dependencies = AndroidUtils.getAndroidResourceDependencies(facet.getModule());
     if (dependencies.isEmpty()) {
       return Collections.singletonList(main);
     }

@@ -23,6 +23,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.BaseConfigurable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.openapi.util.Disposer
@@ -35,6 +36,7 @@ import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
 
+const val VARIABLES_VIEW = "VariablesView"
 /**
  * Configurable defining the Variables panel in the Project Structure Dialog
  */
@@ -48,25 +50,20 @@ class VariablesConfigurable(private val project: Project, private val context: P
     val panel = JPanel(BorderLayout())
     panel.border = BorderFactory.createEmptyBorder(20, 10, 20, 10)
     val table = VariablesTable(project, context.project, this)
-    panel.add(ToolbarDecorator.createDecorator(table)
+    panel.add(
+      ToolbarDecorator
+        .createDecorator(table)
         .setAddAction { createAddAction(it, table) }
+        .setAddActionUpdater { table.addVariableAvailable() }
         .setRemoveAction { table.deleteSelectedVariables() }
+        .setRemoveActionUpdater { table.removeVariableAvailable() }
         .createPanel(), BorderLayout.CENTER)
+    panel.name = VARIABLES_VIEW
     return panel
   }
 
   private fun createAddAction(button: AnActionButton, table: VariablesTable) {
-    val actions = listOf(
-      AddAction("1. Simple value", GradlePropertyModel.ValueType.STRING),
-      AddAction("2. List", GradlePropertyModel.ValueType.LIST),
-      AddAction("3. Map", GradlePropertyModel.ValueType.MAP)
-    )
-    val icons = listOf<Icon>(EmptyIcon.ICON_0, EmptyIcon.ICON_0, EmptyIcon.ICON_0)
-    val popup = JBPopupFactory.getInstance().createListPopup(object : BaseListPopupStep<AddAction>(null, actions, icons) {
-      override fun onChosen(selectedValue: AddAction?, finalChoice: Boolean): PopupStep<*>? {
-        return doFinalStep { selectedValue?.type?.let { table.addVariable(it) } }
-      }
-    })
+    val popup = table.createChooseVariableTypePopup()
     popup.show(button.preferredPopupPoint!!)
   }
 

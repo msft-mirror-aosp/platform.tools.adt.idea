@@ -18,10 +18,7 @@ package com.android.tools.idea.run.tasks;
 import com.android.tools.deployer.DeployerErrorMessagePresenter;
 import com.android.tools.deployer.DeployerException;
 import com.android.tools.idea.run.ui.ApplyChangesAction;
-import com.android.tools.idea.run.ui.CodeSwapAction;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Lists;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationListener;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -29,7 +26,6 @@ import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.ui.playback.commands.ActionCommand;
-import java.util.List;
 import javax.swing.event.HyperlinkEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -48,15 +44,13 @@ class DeploymentErrorHandler {
   private final String myFormattedErrorString;
   @Nullable
   private final NotificationListener myNotificationListener;
+  @NotNull
+  private final DeployerException myException;
 
-  DeploymentErrorHandler(@NotNull String simpleErrorString) {
-    myFormattedErrorString = simpleErrorString;
-    myNotificationListener = null;
-  }
-
-  DeploymentErrorHandler(@NotNull DeployAction action, @NotNull DeployerException exception) {
-    myFormattedErrorString = formatDeploymentErrors(action, exception);
+  DeploymentErrorHandler(@NotNull String description, @NotNull DeployerException exception) {
+    myFormattedErrorString = formatDeploymentErrors(description, exception);
     myNotificationListener = new DeploymentErrorNotificationListener();
+    myException = exception;
   }
 
   @NotNull
@@ -70,9 +64,9 @@ class DeploymentErrorHandler {
   }
 
   @NotNull
-  private String formatDeploymentErrors(@NotNull DeployAction action, @NotNull DeployerException exception) {
+  private String formatDeploymentErrors(@NotNull String description, @NotNull DeployerException exception) {
     StringBuilder builder = new StringBuilder();
-    builder.append(action.getName());
+    builder.append(description);
     builder.append(" failed.\n");
 
     builder.append(DeployerErrorMessagePresenter.createInstance().present(exception));
@@ -86,6 +80,10 @@ class DeploymentErrorHandler {
     builder.append(RERUN_OPTION);
 
     return builder.toString();
+  }
+
+  public String getErrorId() {
+    return myException.getId();
   }
 
   private static class DeploymentErrorNotificationListener implements NotificationListener {

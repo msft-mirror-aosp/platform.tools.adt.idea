@@ -65,7 +65,7 @@ class FlagPropertyEditor(val editorModel: FlagPropertyEditorModel) : AdtSecondar
       }
     })
     flagImage.registerKeyAction({ showFlagEditor() }, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "showFlagEditor")
-    flagImage.registerKeyAction({ editorModel.enterKeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter")
+    flagImage.registerKeyAction({ editorModel.commit() }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter")
     flagImage.registerKeyAction({ editorModel.f1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "help")
     flagImage.registerKeyAction({ editorModel.shiftF1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.SHIFT_DOWN_MASK), "help2")
 
@@ -181,8 +181,15 @@ class FlagPropertyPanel(private val editorModel: FlagPropertyEditorModel,
       ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
       ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
     scrollPane.border = JBUI.Borders.empty()
-    scrollPane.verticalScrollBar.unitIncrement = VERTICAL_SCROLLING_UNIT_INCREMENT
-    scrollPane.verticalScrollBar.blockIncrement = VERTICAL_SCROLLING_BLOCK_INCREMENT
+    scrollPane.addComponentListener(object : ComponentAdapter() {
+      override fun componentResized(event: ComponentEvent?) {
+        // unitIncrement affects the scroll wheel speed
+        scrollPane.verticalScrollBar.unitIncrement = scrollPane.height
+
+        // blockIncrement affects the page down speed, when clicking above/under the scroll thumb
+        scrollPane.verticalScrollBar.blockIncrement = scrollPane.height
+      }
+    })
     return scrollPane
   }
 

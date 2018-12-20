@@ -19,7 +19,6 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.Profiler;
 import com.android.tools.profilers.ProfilerAspect;
 import com.android.tools.profilers.StudioMonitorStage;
 import com.android.tools.profilers.StudioProfilers;
@@ -181,9 +180,8 @@ public class SessionItem extends AspectModel<SessionItem.Aspect> implements Sess
   private void agentStatusChanged() {
     boolean oldValue = myWaitingForAgent;
     if (SessionsManager.isSessionAlive(mySession) && mySession.equals(myProfilers.getSessionsManager().getSelectedSession())) {
-      Profiler.AgentStatusResponse agentStatusResponse = myProfilers.getAgentStatus();
-      myWaitingForAgent = agentStatusResponse.getIsAgentAttachable() &&
-                          agentStatusResponse.getStatus() == Profiler.AgentStatusResponse.Status.DETACHED;
+      Common.AgentData agentData = myProfilers.getAgentData();
+      myWaitingForAgent = agentData.getStatus() == Common.AgentData.Status.UNSPECIFIED;
     }
     else {
       myWaitingForAgent = false;

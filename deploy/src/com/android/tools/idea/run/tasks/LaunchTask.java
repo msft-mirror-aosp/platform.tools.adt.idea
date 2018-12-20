@@ -19,6 +19,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tools.idea.run.ApkInfo;
 import com.android.tools.idea.run.ConsolePrinter;
 import com.android.tools.idea.run.util.LaunchStatus;
+import com.google.wireless.android.sdk.stats.LaunchTaskDetail;
 import com.intellij.notification.NotificationListener;
 import org.jetbrains.annotations.NotNull;
 
@@ -36,9 +37,14 @@ public interface LaunchTask {
   @NotNull
   String getDescription();
 
-  @Nullable
+  @NotNull
   default String getFailureReason() {
-    return null;
+    return "Error while " + getDescription();
+  }
+
+  @NotNull
+  default String getError() {
+    return "Error " + getDescription();
   }
 
   @Nullable
@@ -54,5 +60,17 @@ public interface LaunchTask {
   String getId();
 
   @NotNull
-  default Collection<ApkInfo> getApkInfos() { return Collections.EMPTY_LIST; }
+  default Collection<ApkInfo> getApkInfos() {
+    return Collections.emptyList();
+  }
+
+  @NotNull
+  default Collection<LaunchTaskDetail> getSubTaskDetails() {
+    return Collections.emptyList();
+  }
+
+  @NotNull
+  default String getErrorId() {
+    return "";
+  }
 }

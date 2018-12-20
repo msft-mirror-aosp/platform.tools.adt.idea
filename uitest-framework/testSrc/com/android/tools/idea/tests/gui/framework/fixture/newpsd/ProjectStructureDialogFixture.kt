@@ -43,20 +43,21 @@ class ProjectStructureDialogFixture(
     return ideFrameFixture.waitForGradleProjectSyncToFinish()
   }
 
+  fun clickOkExpectConfigmrtation(): ErrorsReviewConfirmationDialogFixture {
+    GuiTests.findAndClickOkButton(this)
+    // Changing the project structure can cause a Gradle build and Studio re-indexing.
+    return ErrorsReviewConfirmationDialogFixture.find(ideFrameFixture, "Problems Found")
+  }
+
   fun clickCancel(): IdeFrameFixture {
-    GuiTests.findAndClickCancelButton(this)
-    Wait.seconds(10).expecting("dialog to disappear").until { !target().isShowing }
+    clickCancelAndWaitDialogDisappear()
     return ideFrameFixture
   }
 
   fun clickOk(waitForSync: Wait): IdeFrameFixture {
     clickOkAndWaitDialogDisappear()
+    // Changing the project structure can cause a Gradle build and Studio re-indexing.
     return ideFrameFixture.waitForGradleProjectSyncToFinish(waitForSync)
-  }
-
-  private fun clickOkAndWaitDialogDisappear() {
-    GuiTests.findAndClickOkButton(this)
-    Wait.seconds(10).expecting("dialog to disappear").until { !target().isShowing }
   }
 
   fun selectConfigurable(viewName: String): ProjectStructureDialogFixture {
@@ -82,3 +83,23 @@ class ProjectStructureDialogFixture(
   }
 }
 
+fun IdeFrameFixture.openPsd(): ProjectStructureDialogFixture =
+  openFromMenu({ ProjectStructureDialogFixture.find(it) }, arrayOf("File", "Project Structure..."))
+
+internal fun ContainerFixture<*>.clickOkAndWaitDialogDisappear() {
+  GuiTests.findAndClickOkButton(this)
+  Wait.seconds(10).expecting("dialog to disappear").until { !target().isShowing }
+  waitForIdle()
+}
+
+internal fun ContainerFixture<*>.clickCancelAndWaitDialogDisappear() {
+  GuiTests.findAndClickCancelButton(this)
+  Wait.seconds(10).expecting("dialog to disappear").until { !target().isShowing }
+  waitForIdle()
+}
+
+internal fun ContainerFixture<*>.clickButtonAndWaitDialogDisappear(text: String) {
+  GuiTests.findAndClickButton(this, text)
+  Wait.seconds(10).expecting("dialog to disappear").until { !target().isShowing }
+  waitForIdle()
+}

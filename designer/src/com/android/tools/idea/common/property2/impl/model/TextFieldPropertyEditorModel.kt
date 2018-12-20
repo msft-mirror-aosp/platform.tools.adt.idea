@@ -40,8 +40,15 @@ open class TextFieldPropertyEditorModel(property: PropertyItem, override val edi
   override val editingSupport: EditingSupport
     get() = property.editingSupport
 
-  fun enterKeyPressed() {
+  override val placeHolderValue: String
+    get() = property.defaultValue ?: ""
+
+  /**
+   * Commit the current text, and return true if focus can be transferred.
+   */
+  open fun commit(): Boolean {
     commitChange()
+    return true
   }
 
   fun escape() {

@@ -19,6 +19,7 @@ import com.android.SdkConstants
 import com.android.SdkConstants.ATTR_VISIBILITY
 import com.android.tools.adtui.model.stdui.ValueChangedListener
 import com.android.tools.idea.common.property2.api.EnumSupport
+import com.android.tools.idea.common.property2.api.EnumValue
 import com.android.tools.idea.common.property2.impl.model.util.TestAction
 import com.android.tools.idea.common.property2.impl.model.util.TestEnumSupport
 import com.android.tools.idea.common.property2.impl.model.util.TestPropertyItem
@@ -26,6 +27,8 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.property2.testutils.LineType
 import com.android.tools.idea.uibuilder.property2.testutils.FakeInspectorLine
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.*
@@ -43,6 +46,7 @@ class ComboBoxPropertyEditorModelTest {
 
   private fun createModel(enumSupport: EnumSupport): ComboBoxPropertyEditorModel {
     val property = TestPropertyItem(SdkConstants.ANDROID_URI, ATTR_VISIBILITY, "visible")
+    property.defaultValue = "defaultNone"
     return ComboBoxPropertyEditorModel(property, enumSupport, true)
   }
 
@@ -51,6 +55,13 @@ class ComboBoxPropertyEditorModelTest {
     val listener = mock(ValueChangedListener::class.java)
     model.addListener(listener)
     return model to listener
+  }
+
+  @Test
+  fun testValue() {
+    val model = createModel()
+    assertThat(model.value).isEqualTo("visible")
+    assertThat(model.placeHolderValue).isEqualTo("defaultNone")
   }
 
   @Test
@@ -70,6 +81,22 @@ class ComboBoxPropertyEditorModelTest {
     model.focusLost()
 
     assertThat(model.property.value).isEqualTo("gone")
+  }
+
+  @Test
+  fun testSelectActionItemShouldNotUpdateValueOnFocusLoss() {
+    val model = createModel()
+    val action = object : AnAction() {
+      override fun actionPerformed(event: AnActionEvent) {
+        model.focusLost()
+      }
+    }
+    model.isPopupVisible = true
+    model.selectedItem = EnumValue.action(action)
+    model.text = "More Fonts..." // Text from action enum value
+    model.popupMenuWillBecomeInvisible(false)
+
+    assertThat(model.property.value).isEqualTo("visible")
   }
 
   @Test

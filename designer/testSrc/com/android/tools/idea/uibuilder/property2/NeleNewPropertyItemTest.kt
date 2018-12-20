@@ -94,6 +94,19 @@ class NeleNewPropertyItemTest {
   }
 
   @Test
+  fun testDelegateWithoutPrefix() {
+    val properties = createTable()
+    val model = properties.first!!.model
+    val property = NeleNewPropertyItem(model, properties)
+    property.name = ATTR_TEXT
+    val delegate = property.delegate!!
+    assertThat(delegate.namespace).isEqualTo(ANDROID_URI)
+    assertThat(delegate.name).isEqualTo(ATTR_TEXT)
+    assertThat(property.namespace).isEqualTo(ANDROID_URI)
+    assertThat(property.name).isEqualTo(ATTR_TEXT)
+  }
+
+  @Test
   fun testFlagsDelegate() {
     val properties = createTable()
     val model = properties.first!!.model
@@ -118,7 +131,8 @@ class NeleNewPropertyItemTest {
     val model = properties.first!!.model
     val property = NeleNewPropertyItem(model, properties)
     val values = property.nameEditingSupport.completion()
-    assertThat(values).containsExactly("style", "android:text", "android:textSize", "android:textColor", "android:gravity", "app:srcCompat")
+    assertThat(values).containsExactly("style", "android:text", "android:textSize", "android:textColor", "android:gravity", "app:srcCompat",
+                                       "tools:text", "tools:textSize", "tools:textColor", "tools:gravity", "tools:srcCompat")
   }
 
   @Test
@@ -129,8 +143,8 @@ class NeleNewPropertyItemTest {
     properties[ANDROID_URI, ATTR_TEXT].value = "Hello"
     properties[ANDROID_URI, ATTR_TEXT_COLOR].value = "#445566"
     val values = property.nameEditingSupport.completion()
-    assertThat(values).containsExactly("style", "android:textSize", "android:gravity", "app:srcCompat")
-  }
+    assertThat(values).containsExactly("style", "android:textSize", "android:gravity", "app:srcCompat",
+                                       "tools:text", "tools:textSize", "tools:textColor", "tools:gravity", "tools:srcCompat")                   }
 
   @Test
   fun testValidationErrors() {

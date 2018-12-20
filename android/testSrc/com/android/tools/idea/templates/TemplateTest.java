@@ -218,10 +218,6 @@ public class TemplateTest extends AndroidGradleTestCase {
     if (SystemInfo.isWindows) {
       if ("AidlFile".equals(templateName)) return true;
     }
-    if ("WatchFaceService".equals(templateName)) return true; // See https://b.corp.google.com/issues/65062154
-    if ("GoogleAdMobAdsActivity".equals(templateName)) return true;  // b/72260139
-    if ("GoogleMapsActivity".equals(templateName)) return true;  // b/72260139
-    if ("SliceProvider".equals(templateName)) return true;  // b/78197770
     return false;
   }
 
@@ -379,6 +375,11 @@ public class TemplateTest extends AndroidGradleTestCase {
     templateMap.put(ATTR_ANDROIDX_SUPPORT, true);
   });
 
+  private final ProjectStateCustomizer withAndroidxAndKotlin = ((templateMap, projectMap) -> {
+    withAndroidx.customize(templateMap, projectMap);
+    withKotlin.customize(templateMap, projectMap);
+  });
+
   //--- Activity templates ---
 
   @TemplateCheck
@@ -467,8 +468,7 @@ public class TemplateTest extends AndroidGradleTestCase {
   }
 
   @TemplateCheck
-  // b/72260139
-  public void ignore_testNewProjectWithTabbedActivityWithKotlin() throws Exception {
+  public void testNewProjectWithTabbedActivityWithKotlin() throws Exception {
     checkCreateTemplate("activities", "TabbedActivity", true, withKotlin);
   }
 
@@ -568,7 +568,7 @@ public class TemplateTest extends AndroidGradleTestCase {
 
   @TemplateCheck
   public void testNewSettingsActivity() throws Exception {
-    // Note: SettingsActivity are only enabled in the UI for androidx projects
+    // Note: SettingsActivity is only enabled in the UI for androidx projects
     checkCreateTemplate("activities", "SettingsActivity", false, withAndroidx);
   }
 
@@ -579,11 +579,6 @@ public class TemplateTest extends AndroidGradleTestCase {
 
   @TemplateCheck
   public void testNewProjectWithSettingsActivityWithKotlin() throws Exception {
-    ProjectStateCustomizer withAndroidxAndKotlin = ((templateMap, projectMap) -> {
-      withAndroidx.customize(templateMap, projectMap);
-      withKotlin.customize(templateMap, projectMap);
-    });
-
     checkCreateTemplate("activities", "SettingsActivity", true, withAndroidxAndKotlin);
   }
 
@@ -623,26 +618,22 @@ public class TemplateTest extends AndroidGradleTestCase {
   }
 
   @TemplateCheck
-  // b/72260139
-  public void ignore_testGoogleAdMobAdsActivity() throws Exception {
+  public void testGoogleAdMobAdsActivity() throws Exception {
     checkCreateTemplate("activities", "GoogleAdMobAdsActivity", false);
   }
 
   @TemplateCheck
-  // b/72260139
-  public void ignore_testNewProjectWithGoogleAdMobAdsActivity() throws Exception {
+  public void testNewProjectWithGoogleAdMobAdsActivity() throws Exception {
     checkCreateTemplate("activities", "GoogleAdMobAdsActivity", true);
   }
 
   @TemplateCheck
-  // b/72260139
-  public void ignore_testGoogleMapsActivity() throws Exception {
+  public void testGoogleMapsActivity() throws Exception {
     checkCreateTemplate("activities", "GoogleMapsActivity", false);
   }
 
   @TemplateCheck
-  // b/72260139
-  public void ignore_testNewProjectWithGoogleMapsActivity() throws Exception {
+  public void testNewProjectWithGoogleMapsActivity() throws Exception {
     checkCreateTemplate("activities", "GoogleMapsActivity", true);
   }
 
@@ -691,14 +682,15 @@ public class TemplateTest extends AndroidGradleTestCase {
 
   @TemplateCheck
   public void testNewSliceProvider() throws Exception {
+    // Note: SliceProvider is only enabled in the UI for androidx projects
     myApiSensitiveTemplate = false;
-    checkCreateTemplate("other", "SliceProvider", false);
+    checkCreateTemplate("other", "SliceProvider", false, withAndroidx);
   }
 
   @TemplateCheck
   public void testNewSliceProviderWithKotlin() throws Exception {
     myApiSensitiveTemplate = false;
-    checkCreateTemplate("other", "SliceProvider", false, withKotlin);
+    checkCreateTemplate("other", "SliceProvider", false, withAndroidxAndKotlin);
   }
 
   @TemplateCheck

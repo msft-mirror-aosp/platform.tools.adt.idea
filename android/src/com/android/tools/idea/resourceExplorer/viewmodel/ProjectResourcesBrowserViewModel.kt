@@ -31,6 +31,7 @@ import com.intellij.codeInsight.navigation.NavigationUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.ui.speedSearch.SpeedSearch
 import com.intellij.util.ui.update.MergingUpdateQueue
 import org.jetbrains.android.facet.AndroidFacet
 import java.util.concurrent.CompletableFuture
@@ -88,7 +89,11 @@ class ProjectResourcesBrowserViewModel(
 
   override val resourceTypes: Array<ResourceType> get() = SUPPORTED_RESOURCES
 
-  val filterOptions: FilterOptions = FilterOptions({ resourceChangedCallback?.invoke() })
+  val speedSearch = SpeedSearch(true)
+
+  val filterOptions: FilterOptions = FilterOptions(
+    { resourceChangedCallback?.invoke() },
+    { speedSearch.updatePattern(it) })
 
   init {
     subscribeListener(facet)
@@ -127,7 +132,7 @@ class ProjectResourcesBrowserViewModel(
    * Returns a map from the library name to its resource items
    */
   private fun getLibraryResources(type: ResourceType): List<ResourceSection> {
-    val repoManager = ResourceRepositoryManager.getOrCreateInstance(facet)
+    val repoManager = ResourceRepositoryManager.getInstance(facet)
     return repoManager.libraryResources.asSequence()
       .flatMap { lib ->
         // Create a section for each library
@@ -152,24 +157,13 @@ class ProjectResourcesBrowserViewModel(
     unsubscribeListener(facet)
   }
 
-  fun getData(dataId: String?, selectedAssets: List<DesignAsset>): Any? {
+  override fun getData(dataId: String?, selectedAssets: List<DesignAsset>): Any? {
     return dataManager.getData(dataId, selectedAssets)
   }
 
-  fun openFile(asset: DesignAsset) {
+  override fun openFile(asset: DesignAsset) {
     val psiElement = dataManager.findPsiElement(asset.resourceItem)
     psiElement?.let { NavigationUtil.openFileWithPsiElement(it, true, true) }
-  }
-
-  /**
-   * Returns the file size if the [asset] is a file (e.g layout, drawables)
-   * and not contained in a file (e.g colors).
-   */
-  fun getSize(asset: DesignAsset): String {
-    if (asset.resourceItem.isFileBased) {
-      return StringUtil.formatFileSize(asset.file.length)
-    }
-    return ""
   }
 }
 

@@ -19,9 +19,13 @@ import com.android.tools.idea.common.model.AndroidDpCoordinate;
 import com.android.tools.idea.common.scene.SceneComponent;
 import com.android.tools.idea.common.scene.SceneContext;
 import com.android.tools.idea.uibuilder.handlers.constraint.drawing.ColorSet;
-
-import com.android.tools.layoutlib.annotations.NotNull;
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.Stroke;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Draw the frame of a SceneComponent
@@ -77,19 +81,16 @@ public class DrawNlComponentFrame extends DrawRegion {
 
     g.setStroke(myNormalStroke);
     g.setColor(getFrameColor(colorSet, myMode));
-    if (myLayoutWidth == myLayoutHeight || myMode == SceneComponent.DrawState.DRAG) {
-      if (myMode == SceneComponent.DrawState.DRAG) {
-        g.setStroke(myDragReceiverStroke);
-      } else {
-        g.setStroke(getStroke(myLayoutWidth));
-      }
+
+    if (myMode == SceneComponent.DrawState.DRAG) {
+      g.setStroke(myDragReceiverStroke);
       g.drawRect(x, y, width, height);
     }
     else {
       Shape clipping = g.getClip();
       if (clipping != null && !clipping.contains(x, y, x + width, x + height)) {
         // Draw dot line
-        g.setClip(sceneContext.getBounds());
+        g.setClip(sceneContext.getRenderableBounds());
         g.setStroke(ColorSet.sDashedStroke);
         g.drawLine(x, y, x, y + height);
         g.drawLine(x + width, y, x + width, y + height);

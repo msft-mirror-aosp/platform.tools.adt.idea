@@ -21,12 +21,14 @@ import com.android.tools.idea.resourceExplorer.model.FilterOptions
 import com.android.tools.idea.resourceExplorer.plugin.ResourceImporter
 import com.android.tools.idea.resourceExplorer.view.ResourceImportDialog
 import com.android.tools.idea.util.androidFacet
+import com.android.tools.idea.util.toVirtualFile
 import com.intellij.icons.AllIcons
 import com.intellij.ide.IdeView
 import com.intellij.ide.util.DirectoryChooserUtil
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.LangDataKeys
@@ -45,6 +47,7 @@ import com.intellij.psi.PsiManager
 import org.jetbrains.android.actions.CreateResourceFileAction
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.ResourceFolderManager
+import kotlin.properties.Delegates
 
 private const val MODULE_PREFIX = "Module: "
 
@@ -128,6 +131,12 @@ class ResourceExplorerToolbarViewModel(
       filterOptions.isShowLibraries = value
     }
 
+  var searchString: String by Delegates.observable("") { _, old, new ->
+    if (new != old) {
+      filterOptions.searchString = new
+    }
+  }
+
   /**
    * Implementation of [IdeView.getDirectories] that returns the resource directories of
    * the selected facet.
@@ -145,6 +154,7 @@ class ResourceExplorerToolbarViewModel(
   override fun getData(dataId: String): Any? = when (dataId) {
     LangDataKeys.MODULE.name -> facet.module
     LangDataKeys.IDE_VIEW.name -> this
+    CommonDataKeys.VIRTUAL_FILE.name -> facet.mainSourceProvider.resDirectories.firstOrNull()?.toVirtualFile()
     else -> null
   }
 

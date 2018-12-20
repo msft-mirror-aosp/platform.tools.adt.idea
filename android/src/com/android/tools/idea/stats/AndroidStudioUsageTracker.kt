@@ -16,6 +16,7 @@
 package com.android.tools.idea.stats
 
 import com.android.ddmlib.IDevice
+import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.analytics.UsageTracker
 import com.google.common.base.Strings
@@ -24,6 +25,7 @@ import com.google.wireless.android.sdk.stats.DeviceInfo
 import com.google.wireless.android.sdk.stats.ProductDetails
 import com.google.wireless.android.sdk.stats.ProductDetails.SoftwareLifeCycleChannel
 import com.google.wireless.android.sdk.stats.StudioProjectChange
+import com.google.wireless.android.sdk.stats.UserSentiment
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
@@ -34,6 +36,8 @@ import com.intellij.openapi.updateSettings.impl.ChannelStatus
 import com.intellij.openapi.updateSettings.impl.UpdateSettings
 import com.intellij.openapi.wm.ex.ToolWindowManagerEx
 import com.intellij.util.ui.UIUtil
+import org.jetbrains.concurrency.AsyncPromise
+import org.jetbrains.concurrency.Promise
 import java.io.File
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -42,7 +46,6 @@ import java.util.concurrent.TimeUnit
  * Tracks Android Studio specific metrics
  */
 object AndroidStudioUsageTracker {
-
   @JvmStatic
   val productDetails: ProductDetails
     get() {
@@ -82,6 +85,41 @@ object AndroidStudioUsageTracker {
         .setProductDetails(productDetails)
         .setMachineDetails(CommonMetricsData.getMachineDetails(File(PathManager.getHomePath())))
         .setJvmDetails(CommonMetricsData.jvmDetails))
+
+    processUserSentiment()
+  }
+
+  private fun processUserSentiment() {
+    if (!AnalyticsSettings.shouldRequestUserSentiment()) {
+      return
+    }
+    requestUserSentiment()
+  }
+
+  /**
+   * returning UNKNOWN_SATISFACTION_LEVEL means that the user hit the Cancel button in the dialog.
+   */
+  fun requestUserSentiment() {
+    val dialog = SatisfactionDialog()
+    val now = AnalyticsSettings.dateProvider.now()
+    UIUtil.invokeLaterIfNeeded {
+      dialog.showAndGetOk().doWhenDone(Runnable {
+        val result = dialog.selectedSentiment
+        UsageTracker.log(AndroidStudioEvent.newBuilder().apply {
+          userSentiment = UserSentiment.newBuilder().apply {
+            state = UserSentiment.SentimentState.POPUP_QUESTION
+            level = result
+          }.build()
+        })
+
+        AnalyticsSettings.lastSentimentQuestionDate = now
+        if (result != UserSentiment.SatisfactionLevel.UNKNOWN_SATISFACTION_LEVEL) {
+          AnalyticsSettings.lastSentimentAnswerDate = now
+        }
+        AnalyticsSettings.saveSettings()
+      }
+      )
+    }
   }
 
   private fun runHourlyReports() {

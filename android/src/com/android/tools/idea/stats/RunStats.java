@@ -90,10 +90,11 @@ public class RunStats {
     return details;
   }
 
-  public void endLaunchTask(LaunchTaskDetail.Builder detail, boolean success) {
+  public void endLaunchTask(LaunchTask task, LaunchTaskDetail.Builder detail, boolean success) {
     Trace.end();
     detail.setEndTimestampMs(System.currentTimeMillis());
     myEvent.getRunEventBuilder().addLaunchTaskDetail(detail);
+    myEvent.getRunEventBuilder().addAllLaunchTaskDetail(task.getSubTaskDetails());
   }
 
   public void beginBeforeRunTasks() {
@@ -165,6 +166,10 @@ public class RunStats {
 
   public void setDeployedFromBundle(boolean fromBundle) {
     myEvent.getRunEventBuilder().setDeployedFromBundle(fromBundle);
+  }
+
+  public void setErrorId(String id) {
+    myEvent.getRunEventBuilder().setDeployFailureId(id);
   }
 
   public static RunStats from(ExecutionEnvironment env) {
