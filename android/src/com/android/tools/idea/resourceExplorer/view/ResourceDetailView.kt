@@ -16,7 +16,6 @@
 package com.android.tools.idea.resourceExplorer.view
 
 import com.android.tools.idea.npw.assetstudio.wizard.WrappedFlowLayout
-import com.android.tools.idea.resourceExplorer.ImageCache
 import com.android.tools.idea.resourceExplorer.ResourceManagerTracking
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
@@ -43,6 +42,7 @@ import java.awt.FlowLayout
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
+import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -70,14 +70,12 @@ private val BACK_BUTTON_SIZE = JBUI.size(20)
  * A [JPanel] displaying the [DesignAsset]s composing the provided [designAssetSet].
  * When double clicking on the the [DesignAsset], it opens the corresponding file.
  *
- * @param imageCache the [ImageCache] to reuse for the rendering of the drawable asset.
  * @param viewModel an existing instance of [ResourceExplorerViewModel]
  * @param backCallback a callback that will be called to remove this view and show the previous one.
  *                     The callback receives this view as a parameter to allow the parent view to remove it.
  */
 class ResourceDetailView(
   private val designAssetSet: DesignAssetSet,
-  private val imageCache: ImageCache,
   private val viewModel: ResourceExplorerViewModel,
   private val backCallback: (ResourceDetailView) -> Unit)
   : JPanel(BorderLayout()), DataProvider {
@@ -140,6 +138,7 @@ class ResourceDetailView(
     }
     registerBackOnEscape()
     registerFocusOnClick()
+    getComponent(0).requestFocusInWindow()
   }
 
   init {
@@ -203,6 +202,13 @@ class ResourceDetailView(
         e.consume()
       }
     })
+    addKeyListener(object : KeyAdapter() {
+      override fun keyPressed(e: KeyEvent) {
+        if (KeyEvent.VK_ENTER == e.keyCode) {
+          openFile(asset)
+        }
+      }
+    })
 
     registerBackOnEscape()
     isFocusable = true
@@ -221,7 +227,7 @@ class ResourceDetailView(
   }
 
   override fun requestFocusInWindow(): Boolean {
-    return content.requestFocusInWindow()
+    return content.getComponent(0).requestFocusInWindow()
   }
 }
 
