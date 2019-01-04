@@ -106,6 +106,7 @@ public class ConfigureModuleDownloadOptionsStep extends ModelWizardStep<DynamicF
     FormFactor formFactor = FormFactor.MOBILE;
     TemplateHandle templateHandle = getModel().getTemplateHandle();
     myDownloadConditionsForm.startSdkDataLoading(formFactor, templateHandle.getMetadata().getMinSdk());
+    myFeatureTitle.selectAll();
   }
 
   @NotNull
