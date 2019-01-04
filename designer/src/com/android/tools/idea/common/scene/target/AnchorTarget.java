@@ -79,6 +79,22 @@ abstract public class AnchorTarget extends BaseTarget implements Notch.Provider 
       }
       return 0;
     }
+
+    @Override
+    public String toString() {
+      switch (this) {
+        case LEFT:
+          return DecoratorUtilities.LEFT_CONNECTION;
+        case TOP:
+          return DecoratorUtilities.TOP_CONNECTION;
+        case RIGHT:
+          return DecoratorUtilities.RIGHT_CONNECTION;
+        case BOTTOM:
+          return DecoratorUtilities.BOTTOM_CONNECTION;
+        default:
+          return DecoratorUtilities.BASELINE_CONNECTION;
+      }
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -125,6 +141,12 @@ abstract public class AnchorTarget extends BaseTarget implements Notch.Provider 
   }
 
   @Override
+  public void componentSelectionChanged(boolean selected) {
+    DecoratorUtilities.ViewStates mode = selected ? DecoratorUtilities.ViewStates.SELECTED : DecoratorUtilities.ViewStates.NORMAL;
+    DecoratorUtilities.setTimeChange(myComponent.getNlComponent(), myType.toString(), mode);
+  }
+
+  @Override
   public void setMouseHovered(boolean over) {
     if (over != mIsOver) {
       changeMouseOverState(over);
@@ -135,29 +157,11 @@ abstract public class AnchorTarget extends BaseTarget implements Notch.Provider 
 
   private void changeMouseOverState(boolean newValue) {
     mIsOver = newValue;
-    String dir;
-    switch (myType) {
-      case LEFT:
-        dir = DecoratorUtilities.LEFT_CONNECTION;
-        break;
-      case TOP:
-        dir = DecoratorUtilities.TOP_CONNECTION;
-        break;
-      case RIGHT:
-        dir = DecoratorUtilities.RIGHT_CONNECTION;
-        break;
-      case BOTTOM:
-        dir = DecoratorUtilities.BOTTOM_CONNECTION;
-        break;
-      default:
-        dir = DecoratorUtilities.BASELINE_CONNECTION;
-        break;
-    }
     DecoratorUtilities.ViewStates mode = DecoratorUtilities.ViewStates.SELECTED;
     if (mIsOver) {
       mode = DecoratorUtilities.ViewStates.WILL_DESTROY;
     }
-    DecoratorUtilities.setTimeChange(myComponent.getNlComponent(), dir, mode);
+    DecoratorUtilities.setTimeChange(myComponent.getNlComponent(), myType.toString(), mode);
   }
 
   /**
