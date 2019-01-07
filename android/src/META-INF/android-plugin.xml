@@ -375,6 +375,7 @@
     <applicationService serviceImplementation="com.android.tools.idea.res.aar.AarResourceRepositoryCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.InstalledApkCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.InstalledPatchCache"/>
+    <applicationService serviceImplementation="com.android.tools.idea.run.DeploymentApplicationService" />
     <applicationService serviceImplementation="com.android.tools.idea.templates.RepositoryUrlManager"/>
     <applicationService serviceInterface="org.jetbrains.android.uipreview.AndroidEditorSettings"
                         serviceImplementation="org.jetbrains.android.uipreview.AndroidEditorSettings"/>
@@ -1299,6 +1300,11 @@
     <moduleDescriptionProvider implementation="com.android.tools.idea.npw.instantapp.NewInstantAppModuleDescriptionProvider"/>
     <moduleDescriptionProvider implementation="com.android.tools.idea.npw.dynamicapp.NewDynamicAppModuleDescriptionProvider"/>
     <moduleDescriptionProvider implementation="com.android.tools.idea.npw.java.NewJavaModuleDescriptionProvider"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <applicationService serviceInterface="com.android.tools.idea.npw.dynamicapp.ConditionalDeliverySettings"
+                      serviceImplementation="com.android.tools.idea.npw.dynamicapp.ConditionalDeliverySettings"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.android.actions">

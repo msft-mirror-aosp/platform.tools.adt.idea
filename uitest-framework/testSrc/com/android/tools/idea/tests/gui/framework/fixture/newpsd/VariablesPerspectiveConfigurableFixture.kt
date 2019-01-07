@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.structure.configurables.ui.properties.Simpl
 import com.android.tools.idea.gradle.structure.configurables.variables.VARIABLES_VIEW
 import com.android.tools.idea.tests.gui.framework.findByType
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture
+import com.android.tools.idea.tests.gui.framework.fixture.MessagesFixture
 import com.android.tools.idea.tests.gui.framework.fixture.translations.TranslationsEditorFixture
 import com.android.tools.idea.tests.gui.framework.robot
 import com.intellij.ui.SimpleColoredComponent
@@ -52,6 +53,11 @@ class VariablesPerspectiveConfigurableFixture(
   fun clickAddMap() {
     clickToolButton("Add")
     chooseMap()
+  }
+
+  fun clickRemove(removesMultiple: Boolean = false): MessagesFixture {
+    clickToolButton("Remove")
+    return MessagesFixture.findByTitle(robot(), if (removesMultiple) "Remove Variables" else "Remove Variable", 2)
   }
 
   fun chooseSimpleValue() {
@@ -88,6 +94,7 @@ class VariablesPerspectiveConfigurableFixture(
 
   fun enterText(text: String) {
     waitForIdle() // Default implementation is buggy and may post events before really idle.
+    robot().pressAndReleaseKey(KeyEvent.VK_A, KeyEvent.CTRL_MASK)
     robot().typeText(text)
     waitForIdle()
   }
@@ -97,6 +104,7 @@ class VariablesPerspectiveConfigurableFixture(
       ideFrameFixture,
       robot().finder().findByType<SimplePropertyEditor<*, *>.EditorWrapper>(container)
     ).selectItem(value)
+    waitForIdle()
   }
 
   fun tab() {
@@ -158,18 +166,13 @@ class VariablesPerspectiveConfigurableFixture(
   }
 
   fun selectCell(text: String) {
-    findTable().let { table ->
-      val targetCell = table.cell(text)
-      if (targetCell.column() == 0) {
-        // Workaround for a bug in swing-testing library.
-        val adjacentCell = table.cell(TableCell.row(targetCell.row()).column(1))
-        adjacentCell.select()
-        editWithF2() // Release the editor if it is an editanle cell or do nothing.
-        robot().pressAndReleaseKey(KeyEvent.VK_LEFT, 0)
-      } else {
-        targetCell.select()
-      }
-    }
+    findTable().cell(text).select()
+  }
+
+  fun selectCellWithCtrl(text: String) {
+    robot().pressKey(KeyEvent.VK_CONTROL)
+    findTable().cell(text).select()
+    robot().releaseKey(KeyEvent.VK_CONTROL)
   }
 
   fun contents(): List<Pair<String, String>> =
@@ -182,3 +185,5 @@ fun ProjectStructureDialogFixture.selectVariablesConfigurable(): VariablesPerspe
       ideFrameFixture,
       findConfigurable(VARIABLES_VIEW))
 }
+
+fun MessagesFixture.clickNo() = click("No")

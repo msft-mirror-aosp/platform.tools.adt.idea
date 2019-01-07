@@ -17,55 +17,102 @@ import com.android.tools.adtui.HtmlLabel
 import com.android.tools.idea.tests.gui.framework.GuiTests
 import com.android.tools.idea.tests.gui.framework.IdeFrameContainerFixture
 import com.android.tools.idea.tests.gui.framework.find
+import com.android.tools.idea.tests.gui.framework.fixture.ActionButtonFixture
 import com.android.tools.idea.tests.gui.framework.matcher
 import com.android.tools.idea.tests.gui.framework.robot
+import com.intellij.diagnostic.ThreadDumper
 import com.intellij.ide.IdeEventQueue
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.application.impl.LaterInvocator
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBList
 import org.fest.swing.core.GenericTypeMatcher
 import org.fest.swing.exception.WaitTimedOutError
+import org.fest.swing.timing.Wait
 import org.fest.swing.util.ToolkitProvider
+import org.jetbrains.kotlin.utils.addToStdlib.cast
 import sun.awt.SunToolkit
 import java.awt.Container
+import java.awt.event.InvocationEvent
+import java.util.concurrent.ConcurrentLinkedQueue
 
 private const val WAIT_FOR_IDLE_TIMEOUT_MS: Int = 20_000
 
 fun HtmlLabel.plainText(): String = document.getText(0, document.length)
 
+private val lock = run {
+  val f = LaterInvocator::class.java.getDeclaredField("LOCK") //NoSuchFieldException
+  f.setAccessible(true)
+  f.get(null)
+}
+
 fun waitForIdle() {
   val start = System.currentTimeMillis()
+  val lastEvents = ConcurrentLinkedQueue<String>()  // Always updated on EDT but can be read immediately after timeout.
+  fun getDetails() =
+    try {
+      buildString {
+        appendln("TrueCurrentEvent: ${IdeEventQueue.getInstance().trueCurrentEvent} (${IdeEventQueue.getInstance().eventCount})")
+        appendln("peekEvent(): ${IdeEventQueue.getInstance().peekEvent()}")
+        appendln("lastEvents:")
+        lastEvents.forEach { appendln(it) }
+        appendln("EDT: ${ThreadDumper.dumpEdtStackTrace(ThreadDumper.getThreadInfos())}")
+      }
+    }
+    catch (t: Throwable) {
+      t.message.orEmpty()
+    }
+
+  var intermediate: MutableList<String>? = null
   while (System.currentTimeMillis() - start < WAIT_FOR_IDLE_TIMEOUT_MS) {
     try {
-      (ToolkitProvider.instance().defaultToolkit() as SunToolkit).realSync()
+      val d = Disposer.newDisposable()
+      try {
+        IdeEventQueue.getInstance().addDispatcher(IdeEventQueue.EventDispatcher { e ->
+          val eventString = e.toString()
+          lastEvents.offer("[${System.currentTimeMillis() - start}] ${eventString}")
+          if (e is InvocationEvent && eventString.contains("LaterInvocator.FlushQueue")) {
+            @Suppress("INACCESSIBLE_TYPE")
+            synchronized(lock) {
+              LaterInvocator.getLaterInvocatorQueue().cast<Collection<Any>>().forEach {
+                lastEvents.offer(it.toString())
+              }
+            }
+          }
+          if (lastEvents.size > 500) lastEvents.remove()
+          false
+        }, d)
+        (ToolkitProvider.instance().defaultToolkit() as SunToolkit).realSync()
+      }
+      finally {
+        Disposer.dispose(d)
+      }
       return
     }
     catch (_: SunToolkit.InfiniteLoop) {
+      intermediate = (intermediate ?: mutableListOf()).also {
+        it.add(getDetails())
+      }
       // The implementation of SunToolkit.realSync() allows up to 20 events to be processed in a batch.
       // We often have more than 20 events primarily caused by invokeLater() invocations.
     }
   }
-  val details = try {
-    buildString {
-      appendln("EventCount: ${IdeEventQueue.getInstance().eventCount}")
-      appendln("TrueCurrentEvent: ${IdeEventQueue.getInstance().trueCurrentEvent}")
-    }
-  }
-  catch (t: Throwable) {
-    t.message.orEmpty()
-  }
-  throw WaitTimedOutError("Timed out waiting for idle: $details")
+  throw WaitTimedOutError("Timed out waiting for idle:\n${intermediate?.joinToString("\n").orEmpty()}")
 }
 
 internal fun IdeFrameContainerFixture.clickToolButton(titlePrefix: String) {
   fun ActionButton.matches() = toolTipText?.startsWith(titlePrefix) ?: false
   // Find the topmost tool button. (List/Map editors may contains similar buttons)
   val button =
-    robot()
-      .finder()
-      .findAll(container, matcher<ActionButton> { it.matches() })
-      .minBy { button -> generateSequence<Container>(button) { it.parent }.count() }
-    ?: robot().finder().find<ActionButton>(container) { it.matches() }
-  robot().click(button)
+    ActionButtonFixture(
+      robot(),
+      robot()
+        .finder()
+        .findAll(container, matcher<ActionButton> { it.matches() })
+        .minBy { button -> generateSequence<Container>(button) { it.parent }.count() }
+      ?: robot().finder().find<ActionButton>(container) { it.matches() })
+  Wait.seconds(1).expecting("Enabled").until { button.isEnabled }
+  button.click()
 }
 
 /**

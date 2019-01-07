@@ -16,15 +16,18 @@
 package com.android.tools.idea.uibuilder.property2.inspector.groups
 
 import com.android.SdkConstants
+import com.android.tools.adtui.ptable2.PTableItem
+import com.android.tools.idea.common.property2.api.FilteredPTableModel
 import com.android.tools.idea.common.property2.api.GroupSpec
 import com.android.tools.idea.common.property2.api.PropertiesTable
 import com.android.tools.idea.uibuilder.property2.NelePropertyItem
+
+const val CONSTRAINT_GROUP_NAME = "layout_constraints"
 
 class ConstraintGroup(properties: PropertiesTable<NelePropertyItem>): GroupSpec<NelePropertyItem> {
   private val hasConstraints = properties.getOrNull(SdkConstants.AUTO_URI, SdkConstants.ATTR_LAYOUT_CONSTRAINTSET) != null
   private val others = setOf(
     SdkConstants.ATTR_LAYOUT_CONSTRAINTSET,
-    SdkConstants.ATTR_ORIENTATION,
     SdkConstants.ATTR_MIN_WIDTH,
     SdkConstants.ATTR_MIN_HEIGHT,
     SdkConstants.ATTR_MAX_WIDTH,
@@ -38,7 +41,7 @@ class ConstraintGroup(properties: PropertiesTable<NelePropertyItem>): GroupSpec<
     SdkConstants.ATTR_LAYOUT_EDITOR_ABSOLUTE_Y)
 
   override val name: String
-    get() = "layout_constraints"
+    get() = CONSTRAINT_GROUP_NAME
 
   override val value: String?
     get() = null
@@ -47,9 +50,13 @@ class ConstraintGroup(properties: PropertiesTable<NelePropertyItem>): GroupSpec<
     get() = {
       hasConstraints && (
         it.name.startsWith("layout_constraint") ||
+        it.name.startsWith("layout_constrained") ||
         it.name.startsWith("layout_goneMargin") ||
         others.contains(it.name))
     }
+
+  override val comparator: Comparator<PTableItem>
+    get() = FilteredPTableModel.alphabeticalSortOrder
 
   override fun hashCode(): Int {
     return name.hashCode()
