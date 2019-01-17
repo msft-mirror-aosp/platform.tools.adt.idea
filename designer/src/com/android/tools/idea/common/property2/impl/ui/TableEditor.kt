@@ -20,10 +20,17 @@ import com.android.tools.adtui.ptable2.PTable
 import com.android.tools.adtui.ptable2.PTableCellEditorProvider
 import com.android.tools.adtui.ptable2.PTableCellRendererProvider
 import com.android.tools.adtui.ptable2.PTableColumn
+import com.android.tools.idea.common.property2.impl.support.HelpSupportBinding
+
 import com.android.tools.idea.common.property2.api.PropertyItem
 import com.android.tools.idea.common.property2.impl.model.TableLineModelImpl
+import com.android.tools.idea.common.property2.impl.model.TextFieldPropertyEditorModel
+import com.intellij.util.ui.JBUI
 import java.awt.event.MouseEvent
 import javax.swing.JTable
+
+private const val DEFAULT_ROW_HEIGHT = 24
+private const val MINIMUM_ROW_HEIGHT = 20
 
 /**
  * A standard table control for editing multiple properties in a tabular form.
@@ -36,6 +43,7 @@ class TableEditor(val lineModel: TableLineModelImpl,
   val component = table.component as JTable
 
   init {
+    component.rowHeight = computeRowHeight()
     lineModel.addValueChangedListener(ValueChangedListener { handleValueChanged() })
     component.selectionModel.addListSelectionListener {
       val model = lineModel.tableModel
@@ -43,6 +51,7 @@ class TableEditor(val lineModel: TableLineModelImpl,
       val item = if (index >= 0 && index < model.items.size) model.items[index] else null
       lineModel.selectedItem = item
     }
+    HelpSupportBinding.registerHelpKeyActions(component, { lineModel.selectedItem as? PropertyItem })
   }
 
   private fun handleValueChanged() {
@@ -60,5 +69,11 @@ class TableEditor(val lineModel: TableLineModelImpl,
     val column = PTableColumn.fromColumn(tableColumn)
     val property = component.model.getValueAt(index, tableColumn) as? PropertyItem
     return PropertyTooltip.setToolTip(component, event, property, column == PTableColumn.VALUE, property?.value.orEmpty())
+  }
+
+  private fun computeRowHeight(): Int {
+    val property = lineModel.tableModel.items.find { it is PropertyItem } as? PropertyItem ?: return JBUI.scale(DEFAULT_ROW_HEIGHT)
+    val textField = PropertyTextField(TextFieldPropertyEditorModel(property, true))
+    return Integer.max(textField.preferredSize.height, JBUI.scale(MINIMUM_ROW_HEIGHT))
   }
 }

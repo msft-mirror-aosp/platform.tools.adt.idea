@@ -16,29 +16,40 @@
 package com.android.tools.idea.common.property2.impl.ui
 
 import com.android.SdkConstants
-import com.android.tools.adtui.model.stdui.ValueChangedListener
-import com.android.tools.adtui.stdui.registerKeyAction
+import com.android.annotations.VisibleForTesting
 import com.android.tools.idea.common.property2.impl.model.ThreeStateBooleanPropertyEditorModel
 import com.android.tools.idea.common.property2.impl.support.EditorFocusListener
+import com.android.tools.idea.common.property2.impl.support.HelpSupportBinding
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.util.ui.ThreeStateCheckBox
-import icons.StudioIcons
-import java.awt.event.InputEvent
-import java.awt.event.KeyEvent
-import javax.swing.KeyStroke
 
 /**
  * A standard control for editing a boolean property value with 3 states: on/off/unset.
  */
-class PropertyThreeStateCheckBox(private val propertyModel: ThreeStateBooleanPropertyEditorModel) : ThreeStateCheckBox() {
+class PropertyThreeStateCheckBox(model: ThreeStateBooleanPropertyEditorModel) :
+  PropertyTextFieldWithLeftButton(model, CustomThreeStateCheckBox(model)) {
+
+  private val checkBox = leftComponent as CustomThreeStateCheckBox
+
+  @VisibleForTesting
+  var state: ThreeStateCheckBox.State
+    get() = checkBox.state
+    set(value) { checkBox.state = value }
+
+  override fun updateFromModel() {
+    super.updateFromModel()
+    checkBox.updateFromModel()
+  }
+}
+
+private class CustomThreeStateCheckBox(private val propertyModel: ThreeStateBooleanPropertyEditorModel) : ThreeStateCheckBox(),
+                                                                                                          DataProvider {
   private var stateChangeFromModel = false
 
   init {
-    icon = StudioIcons.LayoutEditor.Properties.TEXT_ALIGN_CENTER
     state = toThreeStateValue(propertyModel.value)
-    registerKeyAction({ propertyModel.f1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "help")
-    registerKeyAction({ propertyModel.shiftF1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.SHIFT_DOWN_MASK), "help2")
+    HelpSupportBinding.registerHelpKeyActions(this, { propertyModel.property })
 
-    propertyModel.addListener(ValueChangedListener { handleValueChanged() })
     addFocusListener(EditorFocusListener(this, propertyModel))
     addPropertyChangeListener { event ->
       if (!stateChangeFromModel && event.propertyName == THREE_STATE_CHECKBOX_STATE) {
@@ -48,7 +59,7 @@ class PropertyThreeStateCheckBox(private val propertyModel: ThreeStateBooleanPro
     PropertyTextField.addBorderAtTextFieldBorderSize(this)
   }
 
-  private fun handleValueChanged() {
+  fun updateFromModel() {
     stateChangeFromModel = true
     try {
       state = toThreeStateValue(propertyModel.value)
@@ -56,14 +67,14 @@ class PropertyThreeStateCheckBox(private val propertyModel: ThreeStateBooleanPro
     finally {
       stateChangeFromModel = false
     }
-    isVisible = propertyModel.visible
-    if (propertyModel.focusRequest && !isFocusOwner) {
-      requestFocusInWindow()
-    }
   }
 
   override fun getToolTipText(): String? {
     return propertyModel.tooltip
+  }
+
+  override fun getData(dataId: String): Any? {
+    return propertyModel.getData(dataId)
   }
 
   private fun toThreeStateValue(value: String?) =

@@ -15,6 +15,11 @@
  */
 package com.android.tools.idea.gradle.notification;
 
+import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES;
+import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_TRY_AGAIN;
+import static com.intellij.ide.actions.ShowFilePathAction.openFile;
+import static com.intellij.util.ThreeState.YES;
+
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.sync.GradleFiles;
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
@@ -37,14 +42,9 @@ import com.intellij.ui.EditorNotificationPanel;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.ThreeState;
 import com.intellij.util.messages.MessageBusConnection;
+import java.io.File;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-
-import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_REQUEST;
-import static com.intellij.ide.actions.ShowFilePathAction.openFile;
-import static com.intellij.util.ThreeState.YES;
 
 /**
  * Notifies users that a Gradle project "sync" is either being in progress or failed.
@@ -211,7 +211,7 @@ public class ProjectSyncStatusNotificationProvider extends EditorNotifications.P
       super(project, type, text);
 
       createActionLabel("Sync Now",
-                        () -> GradleSyncInvoker.getInstance().requestProjectSyncAndSourceGeneration(project, TRIGGER_USER_REQUEST));
+                        () -> GradleSyncInvoker.getInstance().requestProjectSyncAndSourceGeneration(project, TRIGGER_USER_STALE_CHANGES));
     }
   }
 
@@ -220,7 +220,7 @@ public class ProjectSyncStatusNotificationProvider extends EditorNotifications.P
       super(project, type, text);
 
       createActionLabel("Try Again",
-                        () -> GradleSyncInvoker.getInstance().requestProjectSyncAndSourceGeneration(project, TRIGGER_USER_REQUEST));
+                        () -> GradleSyncInvoker.getInstance().requestProjectSyncAndSourceGeneration(project, TRIGGER_USER_TRY_AGAIN));
 
       createActionLabel("Open 'Build' View", () -> {
         final ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.BUILD);

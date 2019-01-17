@@ -16,17 +16,21 @@
 package com.android.tools.idea.common.property2.impl.ui
 
 import com.android.tools.adtui.model.stdui.ValueChangedListener
+import com.android.tools.adtui.stdui.registerActionKey
+import com.android.tools.idea.common.property2.api.HelpSupport
 import com.android.tools.idea.common.property2.api.PropertyEditorModel
+import com.android.tools.idea.common.property2.impl.model.KeyStrokes
+import com.android.tools.idea.common.property2.impl.support.ImageFocusListener
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
 import com.intellij.ui.components.JBLabel
 import java.awt.BorderLayout
-import java.awt.event.FocusEvent
-import java.awt.event.FocusListener
+import java.awt.Point
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
@@ -37,7 +41,7 @@ import javax.swing.JComponent
  * The editor component is wrapped in panel with a possible icon to the right displaying of the editor.
  */
 class ActionButtonBinding(private val model: PropertyEditorModel,
-                          private val editor: JComponent) : CellPanel() {
+                          private val editor: JComponent) : CellPanel(), DataProvider {
   private val boundImage = JBLabel()
   private val button
     get() = model.property.browseButton
@@ -47,6 +51,8 @@ class ActionButtonBinding(private val model: PropertyEditorModel,
     add(boundImage, BorderLayout.EAST)
     updateFromModel()
 
+    boundImage.registerActionKey({ buttonPressed(null) }, KeyStrokes.space, "space")
+    boundImage.registerActionKey({ buttonPressed(null) }, KeyStrokes.enter, "enter")
     model.addListener(ValueChangedListener { updateFromModel() })
 
     boundImage.addMouseListener(object: MouseAdapter() {
@@ -55,16 +61,7 @@ class ActionButtonBinding(private val model: PropertyEditorModel,
       }
     })
     boundImage.isFocusable = button?.actionButtonFocusable ?: false
-    boundImage.addFocusListener(object: FocusListener {
-      override fun focusLost(event: FocusEvent) {
-        updateFromModel()
-      }
-
-      override fun focusGained(event: FocusEvent) {
-        updateFromModel()
-        boundImage.scrollRectToVisible(boundImage.bounds)
-      }
-    })
+    boundImage.addFocusListener(ImageFocusListener(boundImage) { updateFromModel() })
   }
 
   override fun requestFocus() {
@@ -76,16 +73,33 @@ class ActionButtonBinding(private val model: PropertyEditorModel,
     isVisible = model.visible
   }
 
-  private fun buttonPressed(mouseEvent: MouseEvent) {
+  override fun getData(dataId: String): Any? {
+    if (HelpSupport.PROPERTY_ITEM.`is`(dataId)) {
+      return model.property
+    }
+    return null
+  }
+
+  private fun buttonPressed(mouseEvent: MouseEvent?) {
     val action = button?.action ?: return
     if (action is ActionGroup) {
       val popupMenu = ActionManager.getInstance().createActionPopupMenu(ToolWindowContentUi.POPUP_PLACE, action)
-      popupMenu.component.show(this, mouseEvent.x, mouseEvent.y)
+      val location = locationFromEvent(mouseEvent)
+      popupMenu.component.show(this, location.x, location.y)
     }
     else {
-      val event = AnActionEvent.createFromAnAction(action, mouseEvent, ActionPlaces.UNKNOWN, DataManager.getInstance().getDataContext(this))
+      val event = AnActionEvent.createFromAnAction(action, mouseEvent, ActionPlaces.UNKNOWN,
+                                                   DataManager.getInstance().getDataContext(editor))
       action.actionPerformed(event)
       model.refresh()
     }
+  }
+
+  private fun locationFromEvent(mouseEvent: MouseEvent?): Point {
+    if (mouseEvent != null) {
+      return mouseEvent.locationOnScreen
+    }
+    val location = boundImage.locationOnScreen
+    return Point(location.x + boundImage.width / 2, location.y + boundImage.height / 2)
   }
 }

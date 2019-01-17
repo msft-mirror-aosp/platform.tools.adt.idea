@@ -67,6 +67,8 @@ iml_module(
         "//tools/idea/plugins/gradle:intellij.gradle.common[module]",
         "//tools/idea/platform/projectModel-api:intellij.platform.projectModel[module]",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
+        "//tools/idea/.idea/libraries:protobuf",
+        "//tools/idea/.idea/libraries:studio-analytics-proto",
     ],
 )
 
@@ -157,6 +159,7 @@ iml_module(
 iml_module(
     name = "intellij.android.kotlin.tests",
     iml_files = ["intellij.android.kotlin.tests.iml"],
+    tags = ["no_test_windows"],
     test_class = "org.jetbrains.kotlin.android.KotlinAndroidTestSuite",
     test_data = [
         "//prebuilts/studio/layoutlib:data/res",

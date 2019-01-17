@@ -19,22 +19,37 @@ import com.android.annotations.VisibleForTesting
 import com.android.tools.adtui.common.AdtSecondaryPanel
 import com.android.tools.adtui.common.secondaryPanelBackground
 import com.android.tools.adtui.model.stdui.ValueChangedListener
-import com.android.tools.adtui.stdui.registerKeyAction
 import com.android.tools.idea.common.property2.impl.model.FlagPropertyEditorModel
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.ui.*
+import com.intellij.ui.BalloonImpl
+import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.HyperlinkLabel
+import com.intellij.ui.ScrollPaneFactory
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import icons.StudioIcons
-import java.awt.*
-import java.awt.event.*
-import javax.swing.*
+import java.awt.BorderLayout
+import java.awt.Color
+import java.awt.Component
+import java.awt.DefaultFocusTraversalPolicy
+import java.awt.Dimension
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
+import javax.swing.JButton
+import javax.swing.JComponent
+import javax.swing.JPanel
+import javax.swing.JScrollPane
+import javax.swing.JSeparator
+import javax.swing.JTable
+import javax.swing.ScrollPaneConstants
+import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 import kotlin.math.max
 
@@ -48,52 +63,31 @@ private const val WINDOW_MARGIN = 40
  * Clicking the flag will bring up a balloon control where the individual flags
  * can be changed.
  */
-class FlagPropertyEditor(val editorModel: FlagPropertyEditorModel) : AdtSecondaryPanel(BorderLayout()) {
-  private val editor = PropertyTextField(editorModel)
-  private val flagImage = JBLabel()
-
-  init {
-    add(editor, BorderLayout.CENTER)
-    add(flagImage, BorderLayout.EAST)
-    editor.border = JBUI.Borders.empty()
-    editor.isFocusable = false
-    flagImage.isFocusable = true
-    flagImage.icon = StudioIcons.LayoutEditor.Properties.FLAG
-    flagImage.addMouseListener(object : MouseAdapter() {
-      override fun mousePressed(event: MouseEvent) {
-        showFlagEditor()
-      }
-    })
-    flagImage.registerKeyAction({ showFlagEditor() }, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "showFlagEditor")
-    flagImage.registerKeyAction({ editorModel.commit() }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter")
-    flagImage.registerKeyAction({ editorModel.f1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "help")
-    flagImage.registerKeyAction({ editorModel.shiftF1KeyPressed() }, KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.SHIFT_DOWN_MASK), "help2")
-
-    editorModel.addListener(ValueChangedListener { handleValueChanged() })
-    handleValueChanged()
-  }
+class FlagPropertyEditor(val editorModel: FlagPropertyEditorModel) : PropertyTextFieldWithLeftButton(editorModel) {
 
   override fun requestFocus() {
-    flagImage.requestFocus()
+    leftButton?.requestFocus()
   }
 
-  private fun showFlagEditor() {
-    val restoreFocusTo: JComponent = tableParent ?: flagImage
-    val panel = FlagPropertyPanel(editorModel, restoreFocusTo, windowHeight)
+  override val buttonAction = object : AnAction() {
+    override fun actionPerformed(e: AnActionEvent) {
+      val restoreFocusTo: JComponent = tableParent ?: leftButton!!
+      val panel = FlagPropertyPanel(editorModel, restoreFocusTo, windowHeight)
 
-    val balloon = JBPopupFactory.getInstance()
-      .createBalloonBuilder(panel)
-      .setShadow(true)
-      .setHideOnAction(false)
-      .setBlockClicksThroughBalloon(true)
-      .setAnimationCycle(200)
-      .setFillColor(secondaryPanelBackground)
-      .createBalloon() as BalloonImpl
+      val balloon = JBPopupFactory.getInstance()
+        .createBalloonBuilder(panel)
+        .setShadow(true)
+        .setHideOnAction(false)
+        .setBlockClicksThroughBalloon(true)
+        .setAnimationCycle(200)
+        .setFillColor(secondaryPanelBackground)
+        .createBalloon() as BalloonImpl
 
-    panel.balloon = balloon
-    balloon.show(RelativePoint.getCenterOf(this), Balloon.Position.below)
-    balloon.setHideListener { panel.hideBalloonAndRestoreFocusOnEditor() }
-    ApplicationManager.getApplication().invokeLater { panel.searchField.requestFocus() }
+      panel.balloon = balloon
+      balloon.show(RelativePoint.getCenterOf(leftComponent), Balloon.Position.below)
+      balloon.setHideListener { panel.hideBalloonAndRestoreFocusOnEditor() }
+      ApplicationManager.getApplication().invokeLater { panel.searchField.requestFocus() }
+    }
   }
 
   /**
@@ -101,18 +95,10 @@ class FlagPropertyEditor(val editorModel: FlagPropertyEditorModel) : AdtSecondar
    */
   @VisibleForTesting
   val tableParent: JTable?
-    get() = parent?.parent as? JTable
+    get() = SwingUtilities.getAncestorOfClass(JTable::class.java, this) as? JTable
 
   private val windowHeight: Int
     get() = SwingUtilities.getWindowAncestor(this).height
-
-  private fun handleValueChanged() {
-    isVisible = editorModel.visible
-    toolTipText = editorModel.tooltip
-    if (editorModel.focusRequest && !isFocusOwner) {
-      editor.requestFocusInWindow()
-    }
-  }
 }
 
 /**
@@ -167,11 +153,11 @@ class FlagPropertyPanel(private val editorModel: FlagPropertyEditorModel,
   private fun addSearchField() {
     add(searchField)
     searchField.addDocumentListener(
-        object : DocumentAdapter() {
-          override fun textChanged(event: DocumentEvent) {
-            editorModel.filter = searchField.text.trim { it <= ' ' }
-          }
+      object : DocumentAdapter() {
+        override fun textChanged(event: DocumentEvent) {
+          editorModel.filter = searchField.text.trim { it <= ' ' }
         }
+      }
     )
   }
 

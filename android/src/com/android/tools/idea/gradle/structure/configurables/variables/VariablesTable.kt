@@ -27,9 +27,11 @@ import com.android.tools.idea.gradle.structure.configurables.ui.treeview.Shadowe
 import com.android.tools.idea.gradle.structure.configurables.ui.treeview.childNodes
 import com.android.tools.idea.gradle.structure.configurables.ui.treeview.initializeNode
 import com.android.tools.idea.gradle.structure.configurables.ui.uiProperty
+import com.android.tools.idea.gradle.structure.model.PsBuildScript
 import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.gradle.structure.model.PsVariable
+import com.android.tools.idea.gradle.structure.model.PsVariables
 import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.Annotated
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
@@ -195,6 +197,7 @@ class VariablesTable private constructor(
   fun deleteSelectedVariables() {
     fun VariableNode.moduleName() = when (this.variable.parent) {
       is PsProject -> "project '${this.variable.parent.name}'"
+      is PsBuildScript -> "the build script of project '${this.variable.parent.parent.name}'"
       is PsModule -> "module '${this.variable.parent.name}'"
       else -> ""
     }
@@ -475,7 +478,7 @@ class VariablesTable private constructor(
         selectionModel.setSelectionInterval(row, row)
         scrollRectToVisible(this.getCellRect(row, column, true))
         selectCell(row, column)
-        invokeLater { editCellAt(row, column, e) }
+        invokeLater { editCellAt(row, column, null) }
       }
   }
 
@@ -567,15 +570,13 @@ class VariablesTable private constructor(
           node is EmptyVariableNode && column == NAME -> {
             val parentNode = node.parent as? ShadowedTreeNode
             val variable = node.createVariable(aValue)
-            if (parentNode != null) {
-              tableTree?.expandPath(
-                TreePath(
-                  getPathToRoot(
-                    parentNode
-                      .childNodes
-                      .find { (it.shadowNode as? VariableShadowNode)?.variable === variable }
-                  )))
-            }
+            val newNode =
+              parentNode
+                ?.childNodes
+                ?.find { (it.shadowNode as? VariableShadowNode)?.variable === variable }
+                ?.let { newNode ->
+                  tableTree?.expandPath(TreePath(getPathToRoot(newNode)))
+                }
           }
           node is EmptyNamedNode && column == NAME -> node.createVariable(aValue)
           node is BaseVariableNode && column == NAME -> {
@@ -644,7 +645,7 @@ class EmptyVariableNode(znode: ShadowNode, private val variablesScope: PsVariabl
       setIconFor(value)
     }
 
-  override val emptyName = "+New Variable"
+  override val emptyName = "+New variable"
   override fun createVariable(key: String): PsVariable =
     when (type) {
       ValueType.LIST -> variablesScope.addNewListVariable(key)
@@ -696,7 +697,7 @@ class ListItemNode(znode: ShadowNode, val index: Int, variable: PsVariable) : Ba
 
 class EmptyListItemNode(znode: ShadowNode, private val containingList: PsVariable) : VariablesBaseNode(znode), EmptyValueNode {
   override val emptyName get() = this.parent.getIndex(this).toString()
-  override val emptyValue = "+Value"
+  override val emptyValue = "+New value"
   override fun createVariable(value: ParsedValue<Any>): PsVariable = containingList.addListValue(value)
 }
 
@@ -727,7 +728,7 @@ interface EmptyValueNode {
 }
 
 class EmptyMapItemNode(znode: ShadowNode, private val containingMap: PsVariable) : VariablesBaseNode(znode), EmptyNamedNode {
-  override val emptyName = "+New Entry"
+  override val emptyName = "+New entry"
   override fun createVariable(key: String) = containingMap.addMapValue(key)
 }
 
@@ -746,17 +747,20 @@ internal fun createTreeModel(root: ShadowNode, parentDisposable: Disposable): Va
 
 internal data class ProjectShadowNode(val project: PsProject) : ShadowNode {
   override fun getChildrenModels(): Collection<ShadowNode> =
-    listOf(RootModuleShadowNode(project)) + project.modules.sortedBy { it.name }.map { ModuleShadowNode(it) }
+    listOf(RootModuleShadowNode(project.buildScriptVariables)) +
+    listOf(RootModuleShadowNode(project.variables)) +
+    project.modules.sortedBy { it.name }.map { ModuleShadowNode(it) }
 
   override fun createNode(): VariablesBaseNode = VariablesBaseNode(this)
   override fun onChange(disposable: Disposable, listener: () -> Unit) = project.modules.onChange(disposable, listener)
 }
 
-internal data class RootModuleShadowNode(val project: PsProject) : ShadowNode {
+internal data class RootModuleShadowNode(val scope: PsVariables) : ShadowNode {
   override fun getChildrenModels(): Collection<ShadowNode> =
-    project.variables.map { VariableShadowNode(it) } + VariableEmptyShadowNode(project.variables)
-  override fun createNode(): VariablesBaseNode = ModuleNode(this, project.variables)
-  override fun onChange(disposable: Disposable, listener: () -> Unit) = project.variables.onChange(disposable, listener)
+    scope.map { VariableShadowNode(it) } + VariableEmptyShadowNode(scope)
+
+  override fun createNode(): VariablesBaseNode = ModuleNode(this, scope)
+  override fun onChange(disposable: Disposable, listener: () -> Unit) = scope.onChange(disposable, listener)
 }
 
 internal data class ModuleShadowNode(val module: PsModule) : ShadowNode {
