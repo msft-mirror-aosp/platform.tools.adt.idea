@@ -137,5 +137,6 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions[module, test]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea[module, test]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.output.parser[module, test]",
+        "//tools/vendor/intellij/cidr:intellij.c[module, test]",
     ],
 )
