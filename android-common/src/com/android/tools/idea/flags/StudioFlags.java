@@ -209,7 +209,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_DEFAULT_LIVE_RENDER = Flag.create(
     NELE, "live.render", "Enable the Live Render by default",
     "Enable the continuous rendering of the surface when moving/resizing components unless the user disables it.",
-    true);
+    false);
 
   public static final Flag<Boolean> NELE_SAMPLE_DATA_UI = Flag.create(
     NELE, "widget.assistant", "Enable the new Sample Data UI components",
