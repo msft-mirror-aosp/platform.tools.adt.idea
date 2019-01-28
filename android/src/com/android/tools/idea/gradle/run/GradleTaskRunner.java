@@ -64,12 +64,6 @@ public interface GradleTaskRunner {
     DefaultGradleTaskRunner(@NotNull Project project, @Nullable BuildAction buildAction) {
       myProject = project;
       myBuildAction = buildAction;
-      Disposer.register(myProject, new Disposable() {
-        @Override
-        public void dispose() {
-          myProject = null;
-        }
-      });
     }
 
     @Override
@@ -98,6 +92,7 @@ public interface GradleTaskRunner {
         gradleBuildInvoker.executeTasks(tasks, buildMode, commandLineArguments, myBuildAction);
       });
 
+      myProject = null; // For now (until b/123602811 is fixed), null this reference to avoid leaking the project when it's closed while gradle is running. 
       done.waitFor();
       boolean successful = success.get();
       return successful;
