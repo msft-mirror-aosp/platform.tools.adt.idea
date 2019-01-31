@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import com.android.tools.idea.testing.AndroidGradleTestCase
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.highlightedAs
-import com.android.tools.idea.util.toIoFile
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
@@ -400,6 +399,68 @@ sealed class LightClassesTestBase : AndroidTestCase() {
           .map(PsiField::getName)
       ).containsExactly("appString", "bar")
     }
+ fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(R.string.${caret}appString);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
+    }
+
+    fun testInvalidManifest() {
+      runWriteCommandAction(project) {
+        myFacet.manifest!!.`package`!!.value = "."
+      }
+
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(${"R" highlightedAs ERROR}${caret}.string.appString);
+            }
+        }
+        """.trimIndent()
+      )
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      // The R class is not reachable from Java, but we should not crash trying to create an invalid package name.
+      myFixture.checkHighlighting()
+
+
+      runWriteCommandAction(project) {
+        myFacet.manifest!!.`package`!!.value = "p1.p2"
+      }
+
+      // The first call to checkHighlighting removes error markers from the Document, so this makes sure there are no errors.
+      myFixture.checkHighlighting()
+      val rClass = resolveReferenceUnderCaret()
+      assertThat(rClass).isInstanceOf(ModuleRClass::class.java)
+      assertThat((rClass as ModuleRClass).qualifiedName).isEqualTo("p1.p2.R")
+    }
   }
 
   class SingleModuleNamespaced : SingleModule() {
@@ -556,6 +617,30 @@ sealed class LightClassesTestBase : AndroidTestCase() {
       myFixture.completeBasic()
       assertThat(myFixture.lookupElementStrings).containsExactly("my_aar_string", "class")
     }
+
+    fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
+    }
   }
 
   class NonNamespacedModuleWithAar : LightClassesTestBase() {
@@ -708,6 +793,30 @@ sealed class LightClassesTestBase : AndroidTestCase() {
         "com.example.mylibrary.R",
         "com.example.anotherLib.R"
       )
+    }
+
+    fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
     }
 
     /**
