@@ -21,6 +21,8 @@ import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessagesStu
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
+import com.google.wireless.android.sdk.stats.GradleSyncIssue;
 import com.intellij.openapi.externalSystem.service.notification.NotificationCategory;
 import com.intellij.openapi.externalSystem.service.notification.NotificationData;
 import com.intellij.openapi.module.Module;
@@ -45,6 +47,7 @@ public class BuildToolsTooLowReporterTest extends IdeaTestCase {
   @Mock private SdkBuildToolsTooLowErrorHandler myErrorHandler;
   private GradleSyncMessagesStub mySyncMessages;
   private BuildToolsTooLowReporter myIssueReporter;
+  private TestSyncIssueUsageReporter myUsageReporter;
 
   @Override
   public void setUp() throws Exception {
@@ -53,6 +56,7 @@ public class BuildToolsTooLowReporterTest extends IdeaTestCase {
     initMocks(this);
     mySyncMessages = GradleSyncMessagesStub.replaceSyncMessagesService(getProject());
     myIssueReporter = new BuildToolsTooLowReporter(myErrorHandler);
+    myUsageReporter = new TestSyncIssueUsageReporter();
   }
 
   public void testGetSupportedIssueType() {
@@ -74,7 +78,7 @@ public class BuildToolsTooLowReporterTest extends IdeaTestCase {
     when(myErrorHandler.getQuickFixHyperlinks(minVersion, ImmutableList.of(module), ImmutableMap.of()))
       .thenReturn(quickFixes);
 
-    myIssueReporter.report(mySyncIssue, module, null);
+    myIssueReporter.report(mySyncIssue, module, null, myUsageReporter);
 
     List<NotificationData> messages = mySyncMessages.getNotifications();
     assertThat(messages).hasSize(1);
@@ -85,5 +89,9 @@ public class BuildToolsTooLowReporterTest extends IdeaTestCase {
     assertEquals("Upgrade Build Tools!\nAffected Modules: testReport", message.getMessage());
 
     assertEquals(quickFixes, mySyncMessages.getNotificationUpdate().getFixes());
+    assertEquals(
+      ImmutableList.of(
+        GradleSyncIssue.newBuilder().setType(AndroidStudioEvent.GradleSyncIssueType.TYPE_BUILD_TOOLS_TOO_LOW).build()),
+      myUsageReporter.getCollectedIssue());
   }
 }

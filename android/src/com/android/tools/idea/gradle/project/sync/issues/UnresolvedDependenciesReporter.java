@@ -235,8 +235,10 @@ public class UnresolvedDependenciesReporter extends SimpleDeduplicatingSyncIssue
         return null;
       }
     }).collect(Collectors.toList());
+
+    SyncIssueUsageReporter syncIssueUsageReporter = SyncIssueUsageReporter.Companion.getInstance(module.getProject());
     reportAll(syncIssues, syncIssues.stream().collect(Collectors.toMap(Function.identity(), k -> module)),
-              buildFile == null ? ImmutableMap.of() : ImmutableMap.of(module, buildFile));
+              buildFile == null ? ImmutableMap.of() : ImmutableMap.of(module, buildFile), syncIssueUsageReporter);
   }
 
   @NotNull
