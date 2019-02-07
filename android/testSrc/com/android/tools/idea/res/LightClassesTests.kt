@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,24 @@ package com.android.tools.idea.res
 
 import com.android.SdkConstants
 import com.android.builder.model.AndroidProject
+import com.android.ide.common.rendering.api.ResourceNamespace
+import com.android.resources.ResourceType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidGradleTestCase
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.highlightedAs
-import com.android.tools.idea.util.toIoFile
+import com.android.tools.idea.testing.moveCaret
+import com.android.tools.idea.util.toVirtualFile
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
@@ -370,7 +376,7 @@ sealed class LightClassesTestBase : AndroidTestCase() {
       assertThat(myFixture.javaFacade.findClass("com.example.someLib.R", GlobalSearchScope.everythingScope(project)))
         .isNotNull()
     }
-    
+
     fun testResourceRename() {
       val strings = myFixture.addFileToProject(
         "/res/values/strings.xml",
@@ -399,6 +405,68 @@ sealed class LightClassesTestBase : AndroidTestCase() {
           .fields
           .map(PsiField::getName)
       ).containsExactly("appString", "bar")
+    }
+ fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(R.string.${caret}appString);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
+    }
+
+    fun testInvalidManifest() {
+      runWriteCommandAction(project) {
+        myFacet.manifest!!.`package`!!.value = "."
+      }
+
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(${"R" highlightedAs ERROR}${caret}.string.appString);
+            }
+        }
+        """.trimIndent()
+      )
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      // The R class is not reachable from Java, but we should not crash trying to create an invalid package name.
+      myFixture.checkHighlighting()
+
+
+      runWriteCommandAction(project) {
+        myFacet.manifest!!.`package`!!.value = "p1.p2"
+      }
+
+      // The first call to checkHighlighting removes error markers from the Document, so this makes sure there are no errors.
+      myFixture.checkHighlighting()
+      val rClass = resolveReferenceUnderCaret()
+      assertThat(rClass).isInstanceOf(ModuleRClass::class.java)
+      assertThat((rClass as ModuleRClass).qualifiedName).isEqualTo("p1.p2.R")
     }
   }
 
@@ -556,6 +624,30 @@ sealed class LightClassesTestBase : AndroidTestCase() {
       myFixture.completeBasic()
       assertThat(myFixture.lookupElementStrings).containsExactly("my_aar_string", "class")
     }
+
+    fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
+    }
   }
 
   class NonNamespacedModuleWithAar : LightClassesTestBase() {
@@ -708,6 +800,30 @@ sealed class LightClassesTestBase : AndroidTestCase() {
         "com.example.mylibrary.R",
         "com.example.anotherLib.R"
       )
+    }
+
+    fun testContainingClass() {
+      val activity = myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.java",
+        // language=java
+        """
+        package p1.p2;
+
+        import android.app.Activity;
+        import android.os.Bundle;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
+            }
+        }
+        """.trimIndent()
+      )
+
+      myFixture.configureFromExistingVirtualFile(activity.virtualFile)
+      assertThat((resolveReferenceUnderCaret() as? PsiField)?.containingClass?.name).isEqualTo("string")
     }
 
     /**
@@ -1019,5 +1135,78 @@ class TestRClassesTest : AndroidGradleTestCase() {
 
     myFixture.configureFromExistingVirtualFile(normalClass)
     myFixture.checkHighlighting()
+  }
+}
+
+
+/**
+ * Tests for resources registered as generated with Gradle.
+ */
+class GeneratedResourcesTest : AndroidGradleTestCase() {
+
+  override fun setUp() {
+    super.setUp()
+    StudioFlags.IN_MEMORY_R_CLASSES.override(true)
+  }
+
+  override fun tearDown() {
+    try {
+      StudioFlags.IN_MEMORY_R_CLASSES.clearOverride()
+    }
+    finally {
+      super.tearDown()
+    }
+  }
+
+  /**
+   * Regression test for b/120750247.
+   */
+  fun testGeneratedRawResource() {
+    val projectRoot = prepareProjectForImport(TestProjectPaths.PROJECT_WITH_APPAND_LIB)
+
+    File(projectRoot, "app/build.gradle").appendText(
+      """
+      android {
+        String resGeneratePath = "${"$"}{buildDir}/generated/my_generated_resources/res"
+        def generateResTask = tasks.create(name: 'generateMyResources').doLast {
+            def rawDir = "${"$"}{resGeneratePath}/raw"
+            mkdir(rawDir)
+            file("${"$"}{rawDir}/sample_raw_resource").write("sample text")
+        }
+
+        def resDir = files(resGeneratePath).builtBy(generateResTask)
+
+        applicationVariants.all { variant ->
+            variant.registerGeneratedResFolders(resDir)
+        }
+      }
+      """.trimIndent())
+
+    requestSyncAndWait()
+
+    AndroidProjectRootListener.ensureSubscribed(project)
+    assertThat(ResourceRepositoryManager.getAppResources(myModules.appModule)!!
+                 .getResources(ResourceNamespace.RES_AUTO, ResourceType.RAW, "sample_raw_resource")).isEmpty()
+
+    // Work around b/120750247 by invoking the right task explicitly, instead of calling generateSources.
+    invokeGradleTasks(project, "generateMyResources")
+
+    runWriteAction {
+      VfsUtil.markDirtyAndRefresh(false, true, true, projectRoot.toVirtualFile(refresh = true))
+    }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(ResourceRepositoryManager.getAppResources(myModules.appModule)!!
+                 .getResources(ResourceNamespace.RES_AUTO, ResourceType.RAW, "sample_raw_resource")).isNotEmpty()
+
+    myFixture.openFileInEditor(
+      project.guessProjectDir()!!
+        .findFileByRelativePath("app/src/main/java/com/example/projectwithappandlib/app/MainActivity.java")!!)
+
+    myFixture.moveCaret("int id = |item.getItemId();")
+    myFixture.type("R.raw.")
+    myFixture.completeBasic()
+
+    assertThat(myFixture.lookupElementStrings).containsExactly("sample_raw_resource", "class")
   }
 }

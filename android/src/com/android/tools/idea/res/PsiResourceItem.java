@@ -60,6 +60,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiInvalidElementAccessException;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlComment;
@@ -111,16 +112,26 @@ public class PsiResourceItem implements ResourceItem {
   }
 
   private void createSmartPointers() {
-    SmartPsiElementPointer<XmlTag> tagPointer = myOriginalTag == null ? null : createSmartPointer(myOriginalTag);
-    SmartPsiElementPointer<PsiFile> filePointer = createSmartPointer(myOriginalFile);
-    if (smartPsiPointerLock == null) {
-      myTagPointer = tagPointer;
-      myFilePointer = filePointer;
-    } else {
-      synchronized (smartPsiPointerLock) {
+    try {
+      SmartPsiElementPointer<XmlTag> tagPointer = myOriginalTag == null ? null : createSmartPointer(myOriginalTag);
+      SmartPsiElementPointer<PsiFile> filePointer = createSmartPointer(myOriginalFile);
+      if (smartPsiPointerLock == null) {
         myTagPointer = tagPointer;
         myFilePointer = filePointer;
       }
+      else {
+        synchronized (smartPsiPointerLock) {
+          myTagPointer = tagPointer;
+          myFilePointer = filePointer;
+        }
+      }
+    }
+    catch (PsiInvalidElementAccessException e) {
+      // The PSI element became invalid while we were waiting for this code to be executed.
+      // myTagPointer and, possibly, myFilePointer will be null. A PsiResourceItem without
+      // a pointer to a valid XmlTag element has almost no use. Resource repository update
+      // logic makes sure that such PsiResourceItem will be removed from the repository as
+      // soon as its containing file is reparsed.
     }
   }
 

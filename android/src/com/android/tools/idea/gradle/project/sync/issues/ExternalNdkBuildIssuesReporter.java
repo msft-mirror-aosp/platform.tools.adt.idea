@@ -69,7 +69,10 @@ class ExternalNdkBuildIssuesReporter extends BaseSyncIssuesReporter {
   }
 
   @Override
-  void report(@NotNull SyncIssue syncIssue, @NotNull Module module, @Nullable VirtualFile buildFile) {
+  void report(@NotNull SyncIssue syncIssue,
+              @NotNull Module module,
+              @Nullable VirtualFile buildFile,
+              @NotNull SyncIssueUsageReporter usageReporter) {
     String group = "External Native Build Issues";
 
     String nativeToolOutput = syncIssue.getData();

@@ -56,15 +56,19 @@ public abstract class SimpleDeduplicatingSyncIssueReporter extends BaseSyncIssue
    * in subclasses should different semantics be required.
    */
   @Override
-  final void report(@NotNull SyncIssue syncIssue, @NotNull Module module, @Nullable VirtualFile buildFile) {
+  final void report(@NotNull SyncIssue syncIssue,
+                    @NotNull Module module,
+                    @Nullable VirtualFile buildFile,
+                    @NotNull SyncIssueUsageReporter usageReporter) {
     reportAll(ImmutableList.of(syncIssue), ImmutableMap.of(syncIssue, module),
-              buildFile == null ? ImmutableMap.of() : ImmutableMap.of(module, buildFile));
+              buildFile == null ? ImmutableMap.of() : ImmutableMap.of(module, buildFile), usageReporter);
   }
 
   @Override
   final void reportAll(@NotNull List<SyncIssue> syncIssues,
-                 @NotNull Map<SyncIssue, Module> moduleMap,
-                 @NotNull Map<Module, VirtualFile> buildFileMap) {
+                       @NotNull Map<SyncIssue, Module> moduleMap,
+                       @NotNull Map<Module, VirtualFile> buildFileMap,
+                       @NotNull SyncIssueUsageReporter usageReporter) {
     // Group by the deduplication key.
     Map<Object, List<SyncIssue>> groupedIssues = new LinkedHashMap<>();
     for (SyncIssue issue : syncIssues) {
@@ -89,7 +93,7 @@ public abstract class SimpleDeduplicatingSyncIssueReporter extends BaseSyncIssue
         entry.stream().map(moduleMap::get).filter(Objects::nonNull).distinct().sorted(Comparator.comparing(Module::getName))
              .collect(Collectors.toList());
       boolean isError = entry.stream().anyMatch(i -> i.getSeverity() == SEVERITY_ERROR);
-      createNotificationDataAndReport(module.getProject(), entry, affectedModules, buildFileMap, isError);
+      createNotificationDataAndReport(module.getProject(), entry, affectedModules, buildFileMap, isError, usageReporter);
     }
   }
 
@@ -97,7 +101,8 @@ public abstract class SimpleDeduplicatingSyncIssueReporter extends BaseSyncIssue
                                                @NotNull List<SyncIssue> syncIssues,
                                                @NotNull List<Module> affectedModules,
                                                @NotNull Map<Module, VirtualFile> buildFileMap,
-                                               boolean isError) {
+                                               boolean isError,
+                                               @NotNull SyncIssueUsageReporter usageReporter) {
     GradleSyncMessages messages = GradleSyncMessages.getInstance(project);
     MessageType type = isError ? ERROR : WARNING;
 
@@ -107,8 +112,10 @@ public abstract class SimpleDeduplicatingSyncIssueReporter extends BaseSyncIssue
     StringBuilder builder = new StringBuilder();
 
     // Add custom links
+    final List<NotificationHyperlink> customLinks = getCustomLinks(project, syncIssues, affectedModules, buildFileMap);
     messages
-      .updateNotification(notification, notification.getMessage(), getCustomLinks(project, syncIssues, affectedModules, buildFileMap));
+      .updateNotification(notification, notification.getMessage(), customLinks);
+    SyncIssueUsageReporterUtils.collect(usageReporter, getSupportedIssueType(), customLinks);
     String message = notification.getMessage().trim();
 
     ProjectBuildModel projectBuildModel = ProjectBuildModel.getOrLog(project);

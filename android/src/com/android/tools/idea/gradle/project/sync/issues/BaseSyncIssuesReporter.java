@@ -54,20 +54,25 @@ abstract class BaseSyncIssuesReporter {
    * in favor of {@link #reportAll(List, Map, Map)} which gives more context for reporters to provide enhanced features (e.g deduplication
    * of notifications across modules).
    */
-  abstract void report(@NotNull SyncIssue syncIssue, @NotNull Module module, @Nullable VirtualFile buildFile);
+  abstract void report(@NotNull SyncIssue syncIssue,
+                       @NotNull Module module,
+                       @Nullable VirtualFile buildFile,
+                       @NotNull SyncIssueUsageReporter usageReporter);
 
   /**
-   * @param syncIssues   list of sync issues to be reported.
-   * @param moduleMap    provides the origin module of each sync issue, this map MUST contain every sync issue provided in syncIssues.
-   * @param buildFileMap map of build files per module, this map provides information to each of the reporters to support quick links to
-   *                     the build.gradle files, entries in this map are optional.
+   * @param syncIssues    list of sync issues to be reported.
+   * @param moduleMap     provides the origin module of each sync issue, this map MUST contain every sync issue provided in syncIssues.
+   * @param buildFileMap  map of build files per module, this map provides information to each of the reporters to support quick links to
+   *                      the build.gradle files, entries in this map are optional.
+   * @param usageReporter an object to report final rendered issues to.
    */
   void reportAll(@NotNull List<SyncIssue> syncIssues,
                  @NotNull Map<SyncIssue, Module> moduleMap,
-                 @NotNull Map<Module, VirtualFile> buildFileMap) {
+                 @NotNull Map<Module, VirtualFile> buildFileMap,
+                 @NotNull SyncIssueUsageReporter usageReporter) {
     // Fall back to individual reporting.
     for (SyncIssue issue : syncIssues) {
-      report(issue, moduleMap.get(issue), buildFileMap.get(moduleMap.get(issue)));
+      report(issue, moduleMap.get(issue), buildFileMap.get(moduleMap.get(issue)), usageReporter);
     }
   }
 
