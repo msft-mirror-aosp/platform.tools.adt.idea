@@ -93,6 +93,7 @@ import org.gradle.tooling.BuildCancelledException;
 import org.gradle.tooling.BuildException;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.CancellationTokenSource;
+import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.LongRunningOperation;
 import org.gradle.tooling.ProjectConnection;
 import org.jetbrains.annotations.NonNls;
@@ -211,13 +212,12 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
       Throwable buildError = null;
       InstantRunBuildProgressListener instantRunProgressListener = null;
       ExternalSystemTaskId id = myRequest.getTaskId();
-      ExternalSystemTaskNotificationListener taskListener = myRequest.getTaskListener();
-      CancellationTokenSource cancellationTokenSource = myBuildStopper.createAndRegisterTokenSource(id);
+      ExternalSystemTaskNotificationListener taskListener = getTaskListener();
+      CancellationTokenSource cancellationTokenSource = GradleConnector.newCancellationTokenSource();
+      myBuildStopper.register(id, cancellationTokenSource);
 
-      if (taskListener != null) {
-        taskListener.onStart(id, myRequest.getBuildFilePath().getPath());
-        taskListener.onTaskOutput(id, executingTasksText + SystemProperties.getLineSeparator() + SystemProperties.getLineSeparator(), true);
-      }
+      taskListener.onStart(id, myRequest.getBuildFilePath().getPath());
+      taskListener.onTaskOutput(id, executingTasksText + SystemProperties.getLineSeparator() + SystemProperties.getLineSeparator(), true);
 
       BuildMode buildMode = BuildSettings.getInstance(myProject).getBuildMode();
       GradleBuildState buildState = GradleBuildState.getInstance(myProject);
@@ -271,20 +271,16 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
         prepare(operation, id, executionSettings, new ExternalSystemTaskNotificationListenerAdapter() {
           @Override
           public void onStatusChange(@NotNull ExternalSystemTaskNotificationEvent event) {
-            if (taskListener != null) {
-              if (myBuildStopper.contains(id)) {
-                taskListener.onStatusChange(event);
-              }
+            if (myBuildStopper.contains(id)) {
+              taskListener.onStatusChange(event);
             }
           }
 
           @Override
           public void onTaskOutput(@NotNull ExternalSystemTaskId id, @NotNull String text, boolean stdOut) {
             output.append(text);
-            if (taskListener != null) {
-              if (myBuildStopper.contains(id)) {
-                taskListener.onTaskOutput(id, text, stdOut);
-              }
+            if (myBuildStopper.contains(id)) {
+              taskListener.onTaskOutput(id, text, stdOut);
             }
           }
         }, connection);
@@ -316,6 +312,7 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
         }
 
         buildState.buildFinished(SUCCESS);
+        taskListener.onSuccess(id);
       }
       catch (BuildException e) {
         buildError = e;
@@ -325,31 +322,22 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
         handleTaskExecutionError(e);
       }
       finally {
-        if (myBuildStopper.contains(id)) {
-          if (buildError != null) {
-            if (wasBuildCanceled(buildError)) {
-              buildState.buildFinished(CANCELED);
-            }
-            else {
-              buildState.buildFinished(FAILED);
-            }
+        if (buildError != null) {
+          if (wasBuildCanceled(buildError)) {
+            buildState.buildFinished(CANCELED);
+            taskListener.onCancel(id);
           }
-
-          if (taskListener != null) {
-            if (buildError != null) {
-              GradleProjectResolverExtension projectResolverChain = GradleProjectResolver.createProjectResolverChain(executionSettings);
-              ExternalSystemException userFriendlyError =
-                projectResolverChain.getUserFriendlyError(buildError, myRequest.getBuildFilePath().getPath(), null);
-              taskListener.onFailure(id, userFriendlyError);
-            }
-            else {
-              taskListener.onSuccess(id);
-            }
-            taskListener.onEnd(id);
+          else {
+            buildState.buildFinished(FAILED);
+            GradleProjectResolverExtension projectResolverChain = GradleProjectResolver.createProjectResolverChain(executionSettings);
+            ExternalSystemException userFriendlyError =
+              projectResolverChain.getUserFriendlyError(buildError, myRequest.getBuildFilePath().getPath(), null);
+            taskListener.onFailure(id, userFriendlyError);
           }
         }
-
+        taskListener.onEnd(id);
         myBuildStopper.remove(id);
+
         String gradleOutput = output.toString();
         if (instantRunProgressListener != null) {
           FlightRecorder.get(myProject).saveBuildOutput(gradleOutput, instantRunProgressListener);
@@ -405,10 +393,17 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
       if (e.getOriginalReason().startsWith("com.intellij.openapi.progress.ProcessCanceledException: java.lang.Throwable")) {
         getLogger().info("Gradle execution cancelled.", e);
       }
-      else{
+      else {
         throw e;
       }
     }
+  }
+
+  @NotNull
+  private ExternalSystemTaskNotificationListener getTaskListener() {
+    ExternalSystemTaskNotificationListener result = myRequest.getTaskListener();
+    if (result == null) result = new NoopExternalSystemTaskNotificationListener();
+    return result;
   }
 
   private static boolean wasBuildCanceled(@NotNull Throwable buildError) {
@@ -588,11 +583,6 @@ class GradleTasksExecutorImpl extends GradleTasksExecutor {
     @Override
     void onCancel() {
       stopAppIconProgress();
-      // Let listener know that the task was cancelled
-      ExternalSystemTaskNotificationListener taskListener = myRequest.getTaskListener();
-      if (taskListener != null) {
-        taskListener.onCancel(myRequest.getTaskId());
-      }
     }
 
     @Override
