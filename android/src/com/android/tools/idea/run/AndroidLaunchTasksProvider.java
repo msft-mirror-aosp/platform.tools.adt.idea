@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.fd.InstantRunBuildAnalyzer;
 import com.android.tools.idea.fd.InstantRunManager;
+import com.android.tools.idea.fd.InstantRunSettings;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.run.editor.AndroidDebugger;
@@ -172,7 +173,8 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
     }
     else {
       // Use new deployment if it is enabled and supported.
-      if ((StudioFlags.UNIFIED_DEPLOYMENT.get() || StudioFlags.JVMTI_REFRESH.get())
+      if (!InstantRunSettings.isInstantRunEnabled() &&
+          (StudioFlags.UNIFIED_DEPLOYMENT.get() || StudioFlags.JVMTI_REFRESH.get())
           && device.getVersion().getApiLevel() >= AbstractDeployTask.MIN_API_VERSION) {
 
         // Add packages to the deployment, filtering out any dynamic features that are disabled.
