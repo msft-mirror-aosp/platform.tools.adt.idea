@@ -15,6 +15,64 @@
  */
 package org.jetbrains.android.dom;
 
+import static com.android.SdkConstants.ADAPTER_VIEW;
+import static com.android.SdkConstants.ANDROIDX_PKG_PREFIX;
+import static com.android.SdkConstants.ANDROID_ARCH_PKG_PREFIX;
+import static com.android.SdkConstants.ANDROID_PKG;
+import static com.android.SdkConstants.ANDROID_PKG_PREFIX;
+import static com.android.SdkConstants.ANDROID_SUPPORT_PKG_PREFIX;
+import static com.android.SdkConstants.ANDROID_URI;
+import static com.android.SdkConstants.ATTR_ACTION_BAR_NAV_MODE;
+import static com.android.SdkConstants.ATTR_CONTEXT;
+import static com.android.SdkConstants.ATTR_DISCARD;
+import static com.android.SdkConstants.ATTR_ITEM_COUNT;
+import static com.android.SdkConstants.ATTR_KEEP;
+import static com.android.SdkConstants.ATTR_LAYOUT;
+import static com.android.SdkConstants.ATTR_LAYOUT_HEIGHT;
+import static com.android.SdkConstants.ATTR_LAYOUT_WIDTH;
+import static com.android.SdkConstants.ATTR_LISTFOOTER;
+import static com.android.SdkConstants.ATTR_LISTHEADER;
+import static com.android.SdkConstants.ATTR_LISTITEM;
+import static com.android.SdkConstants.ATTR_MENU;
+import static com.android.SdkConstants.ATTR_MOCKUP;
+import static com.android.SdkConstants.ATTR_MOCKUP_CROP;
+import static com.android.SdkConstants.ATTR_MOCKUP_OPACITY;
+import static com.android.SdkConstants.ATTR_OPEN_DRAWER;
+import static com.android.SdkConstants.ATTR_PARENT_TAG;
+import static com.android.SdkConstants.ATTR_SHOW_AS_ACTION;
+import static com.android.SdkConstants.ATTR_SHOW_IN;
+import static com.android.SdkConstants.ATTR_SHRINK_MODE;
+import static com.android.SdkConstants.ATTR_STYLE;
+import static com.android.SdkConstants.ATTR_TARGET_API;
+import static com.android.SdkConstants.AUTO_URI;
+import static com.android.SdkConstants.CLASS_DRAWER_LAYOUT;
+import static com.android.SdkConstants.CLASS_NESTED_SCROLL_VIEW;
+import static com.android.SdkConstants.CLASS_PERCENT_FRAME_LAYOUT;
+import static com.android.SdkConstants.CLASS_PERCENT_RELATIVE_LAYOUT;
+import static com.android.SdkConstants.CLASS_PREFERENCE;
+import static com.android.SdkConstants.CLASS_VIEWGROUP;
+import static com.android.SdkConstants.FQCN_GRID_LAYOUT_V7;
+import static com.android.SdkConstants.GRID_LAYOUT;
+import static com.android.SdkConstants.RECYCLER_VIEW;
+import static com.android.SdkConstants.REQUEST_FOCUS;
+import static com.android.SdkConstants.SCROLL_VIEW;
+import static com.android.SdkConstants.TABLE_LAYOUT;
+import static com.android.SdkConstants.TABLE_ROW;
+import static com.android.SdkConstants.TAG;
+import static com.android.SdkConstants.TAG_DATA;
+import static com.android.SdkConstants.TAG_IMPORT;
+import static com.android.SdkConstants.TAG_LAYOUT;
+import static com.android.SdkConstants.TAG_RESOURCES;
+import static com.android.SdkConstants.TOOLS_URI;
+import static com.android.SdkConstants.URI_PREFIX;
+import static com.android.SdkConstants.VIEW_FRAGMENT;
+import static com.android.SdkConstants.VIEW_GROUP;
+import static com.android.SdkConstants.VIEW_INCLUDE;
+import static com.android.SdkConstants.VIEW_MERGE;
+import static com.android.SdkConstants.VIEW_TAG;
+import static org.jetbrains.android.util.AndroidUtils.SYSTEM_RESOURCE_PACKAGE;
+import static org.jetbrains.android.util.AndroidUtils.VIEW_CLASS_NAME;
+
 import com.android.ide.common.rendering.api.AttributeFormat;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceReference;
@@ -40,13 +98,26 @@ import com.intellij.util.xml.DomElement;
 import com.intellij.util.xml.ResolvingConverter;
 import com.intellij.util.xml.XmlName;
 import com.intellij.util.xml.reflect.DomExtension;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import org.jetbrains.android.dom.animation.InterpolatorElement;
 import org.jetbrains.android.dom.animation.fileDescriptions.InterpolatorDomFileDescription;
-import org.jetbrains.android.dom.attrs.*;
+import org.jetbrains.android.dom.attrs.AttributeDefinition;
+import org.jetbrains.android.dom.attrs.AttributeDefinitions;
+import org.jetbrains.android.dom.attrs.StyleableDefinition;
+import org.jetbrains.android.dom.attrs.ToolsAttributeUtil;
 import org.jetbrains.android.dom.converters.CompositeConverter;
 import org.jetbrains.android.dom.converters.ManifestPlaceholderConverter;
 import org.jetbrains.android.dom.converters.ResourceReferenceConverter;
-import org.jetbrains.android.dom.layout.*;
+import org.jetbrains.android.dom.layout.Data;
+import org.jetbrains.android.dom.layout.DataBindingElement;
+import org.jetbrains.android.dom.layout.Fragment;
+import org.jetbrains.android.dom.layout.LayoutElement;
+import org.jetbrains.android.dom.layout.LayoutViewElement;
+import org.jetbrains.android.dom.layout.Tag;
 import org.jetbrains.android.dom.manifest.AndroidManifestUtils;
 import org.jetbrains.android.dom.manifest.Manifest;
 import org.jetbrains.android.dom.manifest.ManifestElement;
@@ -61,17 +132,11 @@ import org.jetbrains.android.dom.xml.Intent;
 import org.jetbrains.android.dom.xml.XmlResourceElement;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.facet.LayoutViewClassUtils;
+import org.jetbrains.android.resourceManagers.FrameworkResourceManager;
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers;
 import org.jetbrains.android.resourceManagers.ResourceManager;
-import org.jetbrains.android.resourceManagers.FrameworkResourceManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
-
-import static com.android.SdkConstants.*;
-import static org.jetbrains.android.util.AndroidUtils.SYSTEM_RESOURCE_PACKAGE;
-import static org.jetbrains.android.util.AndroidUtils.VIEW_CLASS_NAME;
 
 /**
  * Utility functions for enumerating available children attribute types in the context of a given XML tag.
@@ -460,6 +525,20 @@ public class AttributeProcessingUtil {
       if (newDrawerLayout != null && psiClass != null &&
           (psiClass.isEquivalentTo(newDrawerLayout) || psiClass.isInheritor(newDrawerLayout, true))) {
         registerToolsAttribute(ATTR_OPEN_DRAWER, callback);
+      }
+
+      PsiClass oldRecyclerView = map.get(RECYCLER_VIEW.oldName());
+      if (oldRecyclerView != null && psiClass != null &&
+          (psiClass.isEquivalentTo(oldRecyclerView) || psiClass.isInheritor(oldRecyclerView, true))) {
+        registerToolsAttribute(ATTR_ITEM_COUNT, callback);
+        registerToolsAttribute(ATTR_LISTITEM, callback);
+      }
+
+      PsiClass newRecyclerView = map.get(RECYCLER_VIEW.newName());
+      if (newRecyclerView != null && psiClass != null &&
+          (psiClass.isEquivalentTo(newRecyclerView) || psiClass.isInheritor(newRecyclerView, true))) {
+        registerToolsAttribute(ATTR_ITEM_COUNT, callback);
+        registerToolsAttribute(ATTR_LISTITEM, callback);
       }
 
       // Mockup attributes can be associated with any View, even include tag
