@@ -74,7 +74,7 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   private var activePanel: AccessoryPanelInterface? = null
   private var defaultValueProvider: NeleDefaultPropertyProvider? = null
   private val liveComponents = mutableListOf<NlComponent>()
-  private val liveChangeListener: ChangeListener = ChangeListener { firePropertyValueChange() }
+  private val liveChangeListener: ChangeListener = ChangeListener { firePropertyValueChangeIfNeeded() }
 
   constructor(parentDisposable: Disposable, facet: AndroidFacet) :
     this(parentDisposable, NelePropertiesProvider(facet), facet, true)
@@ -89,7 +89,7 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   var showResolvedValues = true
     set (value) {
       field = value
-      firePropertyValueChange()
+      firePropertyValueChangeIfNeeded()
     }
 
   @VisibleForTesting
@@ -243,8 +243,6 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   }
 
   private fun handleSelectionUpdate(surface: DesignSurface?, components: List<NlComponent>) {
-    updateLiveListeners(components)
-
     // Obtaining the properties, especially the first time around on a big project
     // can take close to a second, so we do it on a separate thread..
     val application = ApplicationManager.getApplication()
@@ -292,6 +290,7 @@ open class NelePropertiesModel(parentDisposable: Disposable,
     UIUtil.invokeLaterIfNeeded {
       try {
         if (wantUpdate()) {
+          updateLiveListeners(components)
           properties = newProperties
           defaultValueProvider = createNeleDefaultPropertyProvider()
           firePropertiesGenerated()
@@ -306,7 +305,7 @@ open class NelePropertiesModel(parentDisposable: Disposable,
 
   private fun handleRenderingCompleted() {
     if (defaultValueProvider?.hasDefaultValuesChanged() == true) {
-      ApplicationManager.getApplication().invokeLater { firePropertyValueChange() }
+      ApplicationManager.getApplication().invokeLater { firePropertyValueChangeIfNeeded() }
     }
   }
 
@@ -316,7 +315,14 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   }
 
   @VisibleForTesting
-  fun firePropertyValueChange() {
+  fun firePropertyValueChangeIfNeeded() {
+    val components = activeSurface?.selectionModel?.selection ?: return
+    if (components.isEmpty() || components != liveComponents) {
+      // If there are no components currently selected, there is nothing to update.
+      // If the currently selected components are different from the components being shown, there must be a pending selection update and
+      // therefore no need to update the property values.
+      return
+    }
     listeners.toTypedArray().forEach { it.propertyValuesChanged(this) }
   }
 
@@ -334,12 +340,12 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   private inner class NlModelListener : ModelListener {
     override fun modelChanged(model: NlModel) {
       // Move the handling onto the event dispatch thread in case this notification is sent from a different thread:
-      ApplicationManager.getApplication().invokeLater { firePropertyValueChange() }
+      ApplicationManager.getApplication().invokeLater { firePropertyValueChangeIfNeeded() }
     }
 
     override fun modelLiveUpdate(model: NlModel, animate: Boolean) {
       // Move the handling onto the event dispatch thread in case this notification is sent from a different thread:
-      ApplicationManager.getApplication().invokeLater { firePropertyValueChange() }
+      ApplicationManager.getApplication().invokeLater { firePropertyValueChangeIfNeeded() }
     }
   }
 }
