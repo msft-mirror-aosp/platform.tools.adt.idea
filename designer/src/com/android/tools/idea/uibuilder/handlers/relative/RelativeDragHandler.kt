@@ -83,19 +83,23 @@ internal class RelativeDragHandler(editor: ViewEditor,
     return result
   }
 
-  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType) {
+  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType, onSuccess: Runnable?) {
     if (component == null) {
       return
     }
-    editor.insertChildren(layout.nlComponent, components, -1, insertType)
-    assert(components.size == 1)
-    @AndroidDpCoordinate val dx = editor.pxToDp(x) + startX - component.drawWidth / 2
-    @AndroidDpCoordinate val dy = editor.pxToDp(y) + startY - component.drawHeight / 2
-    dragTarget.mouseRelease(dx, dy, emptyList())
+    val afterInsert = Runnable {
+      assert(components.size == 1)
+      @AndroidDpCoordinate val dx = editor.pxToDp(x) + startX - component.drawWidth / 2
+      @AndroidDpCoordinate val dy = editor.pxToDp(y) + startY - component.drawHeight / 2
+      dragTarget.mouseRelease(dx, dy, emptyList())
 
-    // Remove Temporary SceneComponent
-    layout.scene.removeComponent(component)
-    layout.scene.checkRequestLayoutStatus()
+      // Remove Temporary SceneComponent
+      layout.scene.removeComponent(component)
+      layout.scene.checkRequestLayoutStatus()
+
+      onSuccess?.run()
+    }
+    editor.insertChildren(layout.nlComponent, components, -1, insertType, afterInsert)
   }
 
   override fun cancel() {

@@ -273,8 +273,12 @@ public class ViewEditorImpl extends ViewEditor {
   }
 
   @Override
-  public void insertChildren(@NotNull NlComponent parent, @NotNull List<NlComponent> children, int index, @NotNull InsertType insertType) {
-    getModel().addComponents(children, parent, getChild(parent, index), insertType, this.myScene.getDesignSurface());
+  public void insertChildren(@NotNull NlComponent parent,
+                             @NotNull List<NlComponent> children,
+                             int index,
+                             @NotNull InsertType insertType,
+                             @Nullable Runnable onSuccess) {
+    getModel().addComponents(children, parent, getChild(parent, index), insertType, this.myScene.getDesignSurface(), onSuccess);
   }
 
   @NotNull

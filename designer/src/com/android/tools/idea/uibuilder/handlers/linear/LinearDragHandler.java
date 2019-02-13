@@ -107,15 +107,22 @@ class LinearDragHandler extends DragHandler {
   }
 
   @Override
-  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType) {
+  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType,
+                     @Nullable Runnable onSuccess) {
     Scene scene = editor.getScene();
     if (myComponent != null) {
       myDragTarget.mouseCancel();
       scene.removeComponent(myComponent);
       LinearSeparatorTarget closest = myDragTarget.getClosest();
       int index = closest != null ? closest.getInsertionIndex() : -1;
-      editor.insertChildren(layout.getNlComponent(), components, index, insertType);
-      scene.checkRequestLayoutStatus();
+      Runnable afterInsert = () -> {
+        scene.checkRequestLayoutStatus();
+
+        if (onSuccess != null) {
+          onSuccess.run();
+        }
+      };
+      editor.insertChildren(layout.getNlComponent(), components, index, insertType, afterInsert);
     }
   }
 }

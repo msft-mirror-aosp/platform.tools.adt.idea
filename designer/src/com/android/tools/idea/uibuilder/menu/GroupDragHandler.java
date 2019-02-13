@@ -64,7 +64,11 @@ final class GroupDragHandler extends DragHandler {
   }
 
   @Override
-  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType) {
+  public void commit(@AndroidCoordinate int x,
+                     @AndroidCoordinate int y,
+                     int modifiers,
+                     @NotNull InsertType insertType,
+                     @Nullable Runnable onSuccess) {
     NlComponent groupComponent = myGroup.getNlComponent();
     int insertIndex = getInsertIndex();
 
@@ -76,7 +80,7 @@ final class GroupDragHandler extends DragHandler {
       updateOrderInCategoryAttributes();
       updateShowAsActionAttribute();
       editor.getDependencyManager().addDependencies(myItems, editor.getModel().getFacet());
-      editor.insertChildren(groupComponent, myItems, insertIndex, insertType);
+      editor.insertChildren(groupComponent, myItems, insertIndex, insertType, onSuccess);
     });
   }
 

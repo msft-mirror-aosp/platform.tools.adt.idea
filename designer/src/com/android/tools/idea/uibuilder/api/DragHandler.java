@@ -86,9 +86,14 @@ public abstract class DragHandler {
    * @param x         the x coordinate in the Android screen pixel coordinate system
    * @param y         the y coordinate in the Android screen pixel coordinate system
    * @param modifiers the modifier key state
+   * @parem onSuccess a task to perform if the commit is successful
    */
-  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType) {
-    editor.insertChildren(layout.getNlComponent(), components, -1, insertType);
+  public void commit(@AndroidCoordinate int x,
+                     @AndroidCoordinate int y,
+                     int modifiers,
+                     @NotNull InsertType insertType,
+                     @Nullable Runnable onSuccess) {
+    editor.insertChildren(layout.getNlComponent(), components, -1, insertType, onSuccess);
   }
 
   /**
