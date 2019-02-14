@@ -15,6 +15,13 @@
  */
 package com.android.tools.profilers;
 
+import static com.android.tools.profilers.FakeProfilerService.FAKE_DEVICE;
+import static com.android.tools.profilers.FakeProfilerService.FAKE_PROCESS;
+import static com.android.tools.profilers.StudioProfilers.AGENT_STATUS_MAX_RETRY_COUNT;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.FakeTimer;
@@ -30,14 +37,11 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public final class StudioProfilersTest {
@@ -52,10 +56,13 @@ public final class StudioProfilersTest {
   private final FakeIdeProfilerServices myIdeProfilerServices;
   private final FakeTimer myTimer;
 
+  private final boolean myNewEventPipeline;
+
   public StudioProfilersTest(boolean useNewEventPipeline) {
     myIdeProfilerServices = new FakeIdeProfilerServices();
     myTimer = myProfilerService.getCommandTimer();
     myIdeProfilerServices.enableEventsPipeline(useNewEventPipeline);
+    myNewEventPipeline = useNewEventPipeline;
   }
 
   @Before
@@ -283,6 +290,30 @@ public final class StudioProfilersTest {
 
     assertThat(profilers.getTimeline().getDataRange().getMin()).isWithin(0.001).of(TimeUnit.SECONDS.toMicros(nowInSeconds));
     assertThat(profilers.getTimeline().getDataRange().getMax()).isWithin(0.001).of(TimeUnit.SECONDS.toMicros(nowInSeconds + 5));
+  }
+
+  @Test
+  public void testAgentUnattachableAfterMaxRetries() {
+    Assume.assumeFalse(myNewEventPipeline);
+    StudioProfilers profilers = new StudioProfilers(myGrpcServer.getClient(), myIdeProfilerServices, myTimer);
+    AgentData attachedResponse = AgentData.newBuilder().setStatus(AgentData.Status.UNSPECIFIED).build();
+    myProfilerService.setAgentStatus(attachedResponse);
+    myProfilerService.addDevice(FAKE_DEVICE);
+    myProfilerService.addProcess(FAKE_DEVICE, FAKE_PROCESS);
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    profilers.setProcess(FAKE_DEVICE, FAKE_PROCESS);
+
+    for (int i = 0; i < AGENT_STATUS_MAX_RETRY_COUNT; i++) {
+      assertThat(profilers.getAgentData().getStatus()).isEqualTo(AgentData.Status.UNSPECIFIED);
+      myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    }
+    assertThat(profilers.getAgentData().getStatus()).isEqualTo(AgentData.Status.UNATTACHABLE);
+
+    // Ensures that if the agent becomes attached at a later point, the status will be correct.
+    attachedResponse = AgentData.newBuilder().setStatus(AgentData.Status.ATTACHED).build();
+    myProfilerService.setAgentStatus(attachedResponse);
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(profilers.getAgentData().getStatus()).isEqualTo(AgentData.Status.ATTACHED);
   }
 
   @Test

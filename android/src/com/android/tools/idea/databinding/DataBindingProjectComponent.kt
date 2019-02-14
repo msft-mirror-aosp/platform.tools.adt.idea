@@ -15,6 +15,14 @@
  */
 package com.android.tools.idea.databinding
 
+import com.android.tools.idea.databinding.analytics.api.DataBindingTracker
+import com.android.tools.idea.gradle.project.build.BuildContext
+import com.android.tools.idea.gradle.project.build.BuildStatus
+import com.android.tools.idea.gradle.project.build.GradleBuildListener
+import com.android.tools.idea.gradle.project.build.GradleBuildState
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
+import com.android.tools.idea.gradle.project.sync.GradleSyncListener
+import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.google.common.collect.Maps
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -36,6 +44,7 @@ class DataBindingProjectComponent(val project: Project) : ModificationTracker {
   private val dataBindingEnabledModules: CachedValue<Array<AndroidFacet>>
   private val modificationCount = AtomicLong(0)
   private val dataBindingPsiPackages = Maps.newConcurrentMap<String, PsiPackage>()
+  private val dataBindingTracker = DataBindingTracker.getInstance(project)
 
   init {
     dataBindingEnabledModules = CachedValuesManager.getManager(project).createCachedValue({
@@ -54,6 +63,26 @@ class DataBindingProjectComponent(val project: Project) : ModificationTracker {
         DataBindingUtil.getDataBindingEnabledTracker(),
         ModuleManager.getInstance(project))
     }, false)
+    GradleSyncState.subscribe(project, object : GradleSyncListener {
+      override fun syncSucceeded(project: Project) {
+        dataBindingTracker.trackDataBindingEnabled()
+      }
+
+      override fun syncFailed(project: Project, errorMessage: String) {
+        dataBindingTracker.trackDataBindingEnabled()
+      }
+    })
+    GradleBuildState.subscribe(project, object : GradleBuildListener {
+      override fun buildStarted(context: BuildContext) {
+      }
+
+      override fun buildExecutorCreated(request: GradleBuildInvoker.Request) {
+      }
+
+      override fun buildFinished(status: BuildStatus, context: BuildContext?) {
+        dataBindingTracker.trackPolledMetaData()
+      }
+    })
   }
 
   fun hasAnyDataBindingEnabledFacet(): Boolean = getDataBindingEnabledFacets().isNotEmpty()

@@ -144,6 +144,7 @@ open class NelePropertyItem(
 
   // TODO: Use the namespace resolver in ResourceHelper when it no longer returns [ResourceNamespace.Resolver.TOOLS_ONLY].
   // We need to find the prefix even when namespacing is turned off.
+  // This property can be accessed from a non UI thread.
   val namespaceResolver: ResourceNamespace.Resolver
     get() {
       val element = firstTag ?: return ResourceNamespace.Resolver.EMPTY_RESOLVER
@@ -272,8 +273,12 @@ open class NelePropertyItem(
   val project: Project
     get() = model.facet.module.project
 
+  // This property can be accessed from a non UI thread.
   protected val firstTag: XmlTag?
-    get() = firstComponent?.backend?.getTag()
+    get() = ReadAction.compute<XmlTag?, RuntimeException> {
+        val tag = firstComponent?.backend?.getTagPointer()?.element
+        if (tag?.isValid == true) tag else null
+      }
 
   private val nlModel: NlModel?
     get() = firstComponent?.model
@@ -306,6 +311,7 @@ open class NelePropertyItem(
     return "$defaultText\"${currentValue?:defaultValue}\"$resolvedText"
   }
 
+  // Note: This can be called from a non UI thread.
   protected open fun getCompletionValues(): List<String> {
     if (namespace == TOOLS_URI && name == ATTR_PARENT_TAG) {
       // Exception:
