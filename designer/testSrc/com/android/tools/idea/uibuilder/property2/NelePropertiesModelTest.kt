@@ -31,7 +31,7 @@ import com.android.tools.idea.uibuilder.scene.SyncLayoutlibSceneManager
 import com.google.common.truth.Truth.assertThat
 import com.intellij.util.ui.UIUtil
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 
 class NelePropertiesModelTest: LayoutTestCase() {
@@ -119,7 +119,7 @@ class NelePropertiesModelTest: LayoutTestCase() {
 
     nlModel.notifyModified(NlModel.ChangeType.EDIT)
     UIUtil.dispatchAllInvocationEvents()
-    verify(listener).propertyValuesChanged(model)
+    verify(listener, times(2)).propertyValuesChanged(model)
   }
 
   fun testPropertyValuesChangedEventAfterLiveModelChange() {
@@ -193,13 +193,13 @@ class NelePropertiesModelTest: LayoutTestCase() {
     // Value changed should not be reported if the default values are unchanged
     manager.fireRenderCompleted()
     UIUtil.dispatchAllInvocationEvents()
-    verify(listener, never()).propertyValuesChanged(model)
+    verify(listener).propertyValuesChanged(model)
 
     // Value changed notification is expected since the default values have changed
     manager.putDefaultPropertyValue(textView, ResourceNamespace.ANDROID, ATTR_TEXT_APPEARANCE, "?attr/textAppearanceLarge")
     manager.fireRenderCompleted()
     UIUtil.dispatchAllInvocationEvents()
-    verify(listener).propertyValuesChanged(model)
+    verify(listener, times(2)).propertyValuesChanged(model)
   }
 
   fun testListenersAreConcurrentModificationSafe() {

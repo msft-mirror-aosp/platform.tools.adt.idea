@@ -304,9 +304,12 @@ open class NelePropertiesModel(parentDisposable: Disposable,
   }
 
   private fun handleRenderingCompleted() {
-    if (defaultValueProvider?.hasDefaultValuesChanged() == true) {
-      ApplicationManager.getApplication().invokeLater { firePropertyValueChangeIfNeeded() }
-    }
+    // b/122375466
+    // Temporary fix for 3.4
+    // NlComponent.getAttribute is using a potentially stale snapshot for the attribute values.
+    // For the properties panel to get the correct values we will update when rendering is
+    // complete unconditionally.
+    ApplicationManager.getApplication().invokeLater { firePropertyValueChangeIfNeeded() }
   }
 
   @VisibleForTesting
