@@ -40,7 +40,7 @@ class NeleIdPropertyItem(model: NelePropertiesModel, definition: AttributeDefini
   // Workaround for now: read the attribute directly from the XmlAttribute.
   @Suppress("DEPRECATION")
   override val rawValue: String?
-    get() = components.first().tag.getAttributeValue(ATTR_ID, ANDROID_URI)
+    get() = firstTag?.getAttributeValue(ATTR_ID, ANDROID_URI)
 
   override var value: String?
     get() = stripIdPrefix(super.value)
