@@ -115,7 +115,8 @@ public class ConstraintDragHandler extends DragHandler {
   }
 
   @Override
-  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType) {
+  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType,
+                     @Nullable Runnable onSuccess) {
     Scene scene = editor.getScene();
     if (myComponent != null) {
       NlComponent root = myComponent.getNlComponent().getRoot();
@@ -130,8 +131,14 @@ public class ConstraintDragHandler extends DragHandler {
         }
       }
     }
-    editor.insertChildren(layout.getNlComponent(), components, -1, insertType);
-    scene.removeComponent(myComponent);
-    scene.checkRequestLayoutStatus();
+    Runnable afterInsert = () -> {
+      scene.removeComponent(myComponent);
+      scene.checkRequestLayoutStatus();
+
+      if (onSuccess != null) {
+        onSuccess.run();
+      }
+    };
+    editor.insertChildren(layout.getNlComponent(), components, -1, insertType, afterInsert);
   }
 }

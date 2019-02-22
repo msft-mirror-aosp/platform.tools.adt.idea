@@ -15,16 +15,16 @@
  */
 package com.android.tools.idea.uibuilder.handlers.common
 
+import com.android.tools.idea.common.api.DragType
+import com.android.tools.idea.common.api.InsertType
 import com.android.tools.idea.common.model.AndroidCoordinate
 import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.scene.SceneComponent
 import com.android.tools.idea.common.scene.TemporarySceneComponent
+import com.android.tools.idea.common.scene.target.CommonDragTarget
 import com.android.tools.idea.common.scene.target.Target
 import com.android.tools.idea.uibuilder.api.DragHandler
-import com.android.tools.idea.common.api.DragType
-import com.android.tools.idea.common.api.InsertType
-import com.android.tools.idea.common.scene.target.CommonDragTarget
 import com.android.tools.idea.uibuilder.api.ViewEditor
 import com.android.tools.idea.uibuilder.api.ViewGroupHandler
 import com.android.tools.idea.uibuilder.handlers.DelegatingViewGroupHandler
@@ -85,7 +85,7 @@ internal class CommonDragHandler(editor: ViewEditor,
   }
 
   // Note that coordinate is AndroidCoordinate, not AndroidDpCoordinate.
-  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType) {
+  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType, onSuccess: Runnable?) {
     if (dragTarget == null) {
       return
     }
@@ -101,6 +101,7 @@ internal class CommonDragHandler(editor: ViewEditor,
     }
     component.drawState = SceneComponent.DrawState.NORMAL
     layout.scene.checkRequestLayoutStatus()
+    onSuccess?.run()
   }
 
   override fun cancel() {

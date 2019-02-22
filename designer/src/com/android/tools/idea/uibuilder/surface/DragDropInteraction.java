@@ -142,14 +142,14 @@ public class DragDropInteraction extends Interaction {
   @Override
   public void begin(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask int modifiers) {
     super.begin(x, y, modifiers);
-    moveTo(x, y, modifiers, false);
+    moveTo(x, y, modifiers, false, null);
     myDesignSurface.startDragDropInteraction();
   }
 
   @Override
   public void update(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask int modifiers) {
     super.update(x, y, modifiers);
-    moveTo(x, y, modifiers, false);
+    moveTo(x, y, modifiers, false, null);
   }
 
   /**
@@ -161,28 +161,30 @@ public class DragDropInteraction extends Interaction {
   @Override
   public void end(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask int modifiers, boolean canceled) {
     super.end(x, y, modifiers, canceled);
-    moveTo(x, y, modifiers, !canceled);
-    canceled |= myDragHandler == null;
-    mySceneView = myDesignSurface.getSceneView(x, y);
-    if (mySceneView != null && myDragReceiver != null && !canceled) {
-      mySceneView.getModel().notifyModified(NlModel.ChangeType.DND_END);
+    Runnable onCommit = canceled ? null : () -> {
+      mySceneView = myDesignSurface.getSceneView(x, y);
+      if (mySceneView != null && myDragReceiver != null && myDragHandler != null) {
+        mySceneView.getModel().notifyModified(NlModel.ChangeType.DND_END);
 
-      // We need to clear the selection otherwise the targets for the newly component are not added until
-      // another component is selected and then this one reselected
-      mySceneView.getSelectionModel().clear();
-      // Update the scene hierarchy to add the new targets
-      mySceneView.getSceneManager().update();
-      myDragReceiver.updateTargets();
-      // Select the dragged components
-      mySceneView.getSelectionModel().setSelection(myDraggedComponents);
-    }
+        // We need to clear the selection otherwise the targets for the newly component are not added until
+        // another component is selected and then this one reselected
+        mySceneView.getSelectionModel().clear();
+        // Update the scene hierarchy to add the new targets
+        mySceneView.getSceneManager().update();
+        myDragReceiver.updateTargets();
+        // Select the dragged components
+        mySceneView.getSelectionModel().setSelection(myDraggedComponents);
+      }
+    };
+    moveTo(x, y, modifiers, !canceled, onCommit);
     if (canceled && myDragHandler != null) {
       myDragHandler.cancel();
     }
     myDesignSurface.stopDragDropInteraction();
   }
 
-  private void moveTo(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask final int modifiers, boolean commit) {
+  private void moveTo(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask final int modifiers, boolean commit,
+                      @Nullable Runnable onCommit) {
     mySceneView = myDesignSurface.getSceneView(x, y);
     if (mySceneView == null) {
       return;
@@ -271,18 +273,26 @@ public class DragDropInteraction extends Interaction {
     if ((myDragHandler instanceof CommonDragHandler) || (myDragHandler != null && myCurrentHandler != null)) {
       String error = myDragHandler.update(Coordinates.pxToDp(mySceneView, ax), Coordinates.pxToDp(mySceneView, ay), modifiers);
       final List<NlComponent> added = Lists.newArrayList();
-      if (commit && error == null) {
-        added.addAll(myDraggedComponents);
-        final NlModel model = mySceneView.getModel();
-        InsertType insertType = model.determineInsertType(myType, myTransferItem, false /* not for preview */);
-        // TODO: Run this *after* making a copy
-        myDragHandler.commit(ax, ay, modifiers, insertType);
+      if (!(commit && error == null)) {
+        mySceneView.getSurface().repaint();
+        return;
+      }
+
+      added.addAll(myDraggedComponents);
+      final NlModel model = mySceneView.getModel();
+      InsertType insertType = model.determineInsertType(myType, myTransferItem, false /* not for preview */);
+      // TODO: Run this *after* making a copy
+      Runnable onSuccess = () -> {
         model.notifyModified(NlModel.ChangeType.DND_COMMIT);
         // Select newly dropped components
         myDesignSurface.getSelectionModel().setSelection(added);
         myDesignSurface.getLayeredPane().requestFocus();
-      }
-      mySceneView.getSurface().repaint();
+        mySceneView.getSurface().repaint();
+        if (onCommit != null) {
+          onCommit.run();
+        }
+      };
+      myDragHandler.commit(ax, ay, modifiers, insertType, onSuccess);
     }
   }
 

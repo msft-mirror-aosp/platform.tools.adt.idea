@@ -72,17 +72,20 @@ class CoordinatorDragHandler(editor: ViewEditor, handler: ViewGroupHandler,
     return ret
   }
 
-  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType) {
-    editor.insertChildren(layout.nlComponent, components, -1, insertType)
+  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType, onSuccess: Runnable?) {
+    val afterInsert = Runnable {
+      when (insertType) {
+        InsertType.CREATE -> dragWidgetFromPalette(x, y)
+        InsertType.MOVE_INTO -> dragWidgetFromComponentTree(x, y)
+        else -> Logger.getInstance(javaClass.name).error("Unexpected InsertType in ${javaClass.name}#commit}")
+      }
 
-    when (insertType) {
-      InsertType.CREATE -> dragWidgetFromPalette(x, y)
-      InsertType.MOVE_INTO -> dragWidgetFromComponentTree(x, y)
-      else -> Logger.getInstance(javaClass.name).error("Unexpected InsertType in ${javaClass.name}#commit}")
+      layout.scene.removeComponent(sceneComponent)
+      layout.scene.checkRequestLayoutStatus()
+
+      onSuccess?.run()
     }
-
-    layout.scene.removeComponent(sceneComponent)
-    layout.scene.checkRequestLayoutStatus()
+    editor.insertChildren(layout.nlComponent, components, -1, insertType, afterInsert)
   }
 
   private fun dragWidgetFromPalette(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int) {

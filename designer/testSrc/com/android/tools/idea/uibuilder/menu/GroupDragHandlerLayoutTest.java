@@ -61,7 +61,7 @@ public final class GroupDragHandlerLayoutTest extends LayoutTestCase {
 
     DragHandler handler = newGroupDragHandler(menuComponent, item);
     handler.update(350, 50, 0);
-    handler.commit(700, 100, 0, InsertType.MOVE_INTO);
+    handler.commit(700, 100, 0, InsertType.MOVE_INTO, null);
 
     Iterator<NlComponent> i = menuComponent.getChildren().iterator();
 
@@ -90,7 +90,7 @@ public final class GroupDragHandlerLayoutTest extends LayoutTestCase {
 
     DragHandler handler = newGroupDragHandler(menuComponent, item);
     handler.update(300, 50, 0);
-    handler.commit(600, 100, 0, InsertType.MOVE_INTO);
+    handler.commit(600, 100, 0, InsertType.MOVE_INTO, null);
 
     Iterator<NlComponent> i = menuComponent.getChildren().iterator();
 
@@ -116,7 +116,7 @@ public final class GroupDragHandlerLayoutTest extends LayoutTestCase {
 
     DragHandler handler = newGroupDragHandler(menuComponent, item);
     handler.update(370, 50, 16);
-    handler.commit(740, 100, 16, InsertType.MOVE_INTO);
+    handler.commit(740, 100, 16, InsertType.MOVE_INTO, null);
 
     Iterator<NlComponent> i = menuComponent.getChildren().iterator();
 

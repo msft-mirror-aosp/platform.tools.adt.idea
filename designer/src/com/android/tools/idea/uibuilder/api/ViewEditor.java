@@ -204,7 +204,8 @@ public abstract class ViewEditor {
   public abstract void insertChildren(@NotNull NlComponent parent,
                                       @NotNull List<NlComponent> children,
                                       int index,
-                                      @NotNull InsertType insertType);
+                                      @NotNull InsertType insertType,
+                                      @Nullable Runnable onSuccess);
 
   /**
    * Get the dependency manager to handle adding missing dependency and

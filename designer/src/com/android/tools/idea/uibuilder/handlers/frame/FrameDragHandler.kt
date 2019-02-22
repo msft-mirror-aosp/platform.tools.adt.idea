@@ -70,12 +70,15 @@ class FrameDragHandler(editor: ViewEditor,
     return result
   }
 
-  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType) {
+  override fun commit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int, modifiers: Int, insertType: InsertType, onSuccess: Runnable?) {
     if (component != null) {
       dragTarget.mouseCancel()
       layout.scene.removeComponent(component)
-      editor.insertChildren(layout.nlComponent, components, -1, insertType)
-      layout.scene.checkRequestLayoutStatus()
+      val afterInsert = Runnable {
+        onSuccess?.run()
+        layout.scene.checkRequestLayoutStatus()
+      }
+      editor.insertChildren(layout.nlComponent, components, -1, insertType, afterInsert)
     }
   }
 

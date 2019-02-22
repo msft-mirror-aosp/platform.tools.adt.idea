@@ -58,7 +58,7 @@ public final class PreferenceScreenDragHandlerLayoutTest extends PreferenceScree
                                       Collections.singletonList(preference), DragType.MOVE);
 
     handler.update(180, 251, 0);
-    handler.commit(360, 502, 0, InsertType.CREATE);
+    handler.commit(360, 502, 0, InsertType.CREATE, null);
 
     assertContainsElements(expectedCategoryChildren, actualCategoryChildren);
   }

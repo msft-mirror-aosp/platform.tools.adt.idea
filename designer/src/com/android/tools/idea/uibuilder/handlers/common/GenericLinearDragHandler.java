@@ -377,9 +377,19 @@ public class GenericLinearDragHandler extends DragHandler {
   }
 
   @Override
-  public void commit(@AndroidCoordinate int x, @AndroidCoordinate int y, int modifiers, @NotNull InsertType insertType) {
-    editor.insertChildren(layout.getNlComponent(), components, myInsertPos, insertType);
-    Scene scene = editor.getScene();
-    scene.removeComponent(myComponent);
+  public void commit(@AndroidCoordinate int x,
+                     @AndroidCoordinate int y,
+                     int modifiers,
+                     @NotNull InsertType insertType,
+                     @Nullable Runnable onSuccess) {
+    Runnable afterInsert = () -> {
+      Scene scene = editor.getScene();
+      scene.removeComponent(myComponent);
+
+      if (onSuccess != null) {
+        onSuccess.run();
+      }
+    };
+    editor.insertChildren(layout.getNlComponent(), components, myInsertPos, insertType, afterInsert);
   }
 }

@@ -99,7 +99,7 @@ public class SelectedVariantChooser implements Serializable {
       if (variantName != null) {
         AndroidModule dependencyModule = libModulesById.get(dependencyModuleId);
         if (dependencyModule != null && !dependencyModule.containsVariant(variantName)) {
-          NativeAndroidProject nativeProject = androidModule.getNativeAndroidProject();
+          NativeAndroidProject nativeProject = dependencyModule.getNativeAndroidProject();
           if (nativeProject != null) {
             abiName = syncAndAddNativeVariantAbi(dependencyModule, controller, variantName, dependency.abi);
           }
