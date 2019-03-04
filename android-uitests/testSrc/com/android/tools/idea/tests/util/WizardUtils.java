@@ -33,6 +33,12 @@ public final class WizardUtils {
   /** @deprecated Avoid until b/66680171 is otherwise addressed. */
   @Deprecated
   public static void createNewProject(@NotNull GuiTestRule guiTest, @NotNull String activity) {
+    createNewProject(guiTest, activity, false);
+  }
+
+  /** @deprecated Avoid until b/66680171 is otherwise addressed. */
+  @Deprecated
+  public static void createNewProject(@NotNull GuiTestRule guiTest, @NotNull String activity, boolean withAndroidX) {
     if (StudioFlags.NPW_DYNAMIC_APPS.get()) {
       guiTest
         .welcomeFrame()
@@ -43,6 +49,7 @@ public final class WizardUtils {
         .clickNext()
         .getConfigureNewAndroidProjectStep()
         .setSourceLanguage("Java")
+        .setUseAndroidX(withAndroidX)
         .enterPackageName("com.google.myapplication")
         .wizard()
         .clickFinish();

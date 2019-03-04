@@ -136,7 +136,7 @@ public class NewModuleTest {
 
   @Test
   public void addNewModuleToAndroidxProject() {
-    WizardUtils.createNewProject(guiTest); // Default projects are created with androidx dependencies
+    WizardUtils.createNewProject(guiTest, "Empty Activity", true);
     guiTest.ideFrame()
       .openFromMenu(NewModuleWizardFixture::find, "File", "New", "New Module...")
       .clickNext() // Default Phone & Tablet Module
