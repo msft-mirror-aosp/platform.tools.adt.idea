@@ -1004,11 +1004,11 @@ public class NlModel implements Disposable, ResourceChangeListener, Modification
                                           @Nullable Runnable attributeUpdatingTask) {
     DumbService.getInstance(getProject()).runWhenSmart(() -> {
       NlWriteCommandAction.run(toAdd, generateAddComponentsDescription(toAdd, insertType), () -> {
+        handleAddition(toAdd, receiver, before, insertType, surface);
         if (attributeUpdatingTask != null) {
           // Update the attribute before adding components, if need.
           attributeUpdatingTask.run();
         }
-        handleAddition(toAdd, receiver, before, insertType, surface);
       });
 
       notifyModified(ChangeType.ADD_COMPONENTS);
