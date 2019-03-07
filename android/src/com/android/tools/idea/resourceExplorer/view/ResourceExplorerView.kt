@@ -17,6 +17,7 @@ package com.android.tools.idea.resourceExplorer.view
 
 import com.android.tools.idea.concurrent.EdtExecutor
 import com.android.tools.idea.resourceExplorer.ImageCache
+import com.android.tools.idea.resourceExplorer.ResourceManagerTracking
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.android.tools.idea.resourceExplorer.viewmodel.ProjectResourcesBrowserViewModel
@@ -337,6 +338,7 @@ class ResourceExplorerView(
 
     override fun setSelected(e: AnActionEvent, state: Boolean) {
       if (state) {
+        ResourceManagerTracking.logSwitchToListMode()
         gridMode = false
         previewSize = LIST_CELL_SIZE
       }
@@ -354,6 +356,7 @@ class ResourceExplorerView(
 
     override fun setSelected(e: AnActionEvent, state: Boolean) {
       if (state) {
+        ResourceManagerTracking.logSwitchToGridMode()
         gridMode = true
         previewSize = MIN_CELL_WIDTH
       }
