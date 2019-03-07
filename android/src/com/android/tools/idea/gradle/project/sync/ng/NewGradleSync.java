@@ -57,6 +57,7 @@ import java.util.List;
 import static com.android.tools.idea.gradle.project.sync.setup.post.PostSyncProjectSetup.createProjectSetupFromCacheTaskWithStartMessage;
 
 public class NewGradleSync implements GradleSync {
+  private static final Logger LOG = Logger.getInstance(NewGradleSync.class);
   @NotNull private final Project myProject;
   @NotNull private final GradleSyncMessages mySyncMessages;
   @NotNull private final SyncExecutor mySyncExecutor;
@@ -193,32 +194,37 @@ public class NewGradleSync implements GradleSync {
     if (!setupRequest.usingCachedGradleModels) {
       return false;
     }
-    // Use models from the disk cache.
-    ProjectBuildFileChecksums buildFileChecksums = myBuildFileChecksumsLoader.loadFromDisk(myProject);
-
-    if (buildFileChecksums == null || !buildFileChecksums.canUseCachedData()) {
-      return false;
-    }
-
-    CachedProjectModels projectModelsCache = myProjectModelsCacheLoader.loadFromDisk(myProject);
-
-    if (projectModelsCache == null) {
-      return false;
-    }
-
-    setupRequest.generateSourcesAfterSync = false;
-    setupRequest.lastSyncTimestamp = buildFileChecksums.getLastGradleSyncTimestamp();
-
-    ExternalSystemTaskId taskId = createProjectSetupFromCacheTaskWithStartMessage(myProject);
-
     try {
-      myResultHandler.onSyncSkipped(projectModelsCache, setupRequest, indicator, syncListener, taskId);
+      // Use models from the disk cache.
+      ProjectBuildFileChecksums buildFileChecksums = myBuildFileChecksumsLoader.loadFromDisk(myProject);
+
+      if (buildFileChecksums == null || !buildFileChecksums.canUseCachedData()) {
+        return false;
+      }
+
+      CachedProjectModels projectModelsCache = myProjectModelsCacheLoader.loadFromDisk(myProject);
+
+      if (projectModelsCache == null) {
+        return false;
+      }
+
+      setupRequest.generateSourcesAfterSync = false;
+      setupRequest.lastSyncTimestamp = buildFileChecksums.getLastGradleSyncTimestamp();
+
+      ExternalSystemTaskId taskId = createProjectSetupFromCacheTaskWithStartMessage(myProject);
+
+      try {
+        myResultHandler.onSyncSkipped(projectModelsCache, setupRequest, indicator, syncListener, taskId);
+      }
+      catch (ModelNotFoundInCacheException e) {
+        Logger.getInstance(NewGradleSync.class).warn("Restoring project state from cache failed. Performing a Gradle Sync.", e);
+        return false;
+      }
     }
-    catch (ModelNotFoundInCacheException e) {
-      Logger.getInstance(NewGradleSync.class).warn("Restoring project state from cache failed. Performing a Gradle Sync.", e);
+    catch (Throwable ex) {
+      LOG.error("Sync with cached Gradle models failed.", ex);
       return false;
     }
-
     return true;
   }
 
