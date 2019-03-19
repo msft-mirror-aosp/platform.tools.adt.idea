@@ -20,6 +20,9 @@ import com.android.tools.idea.gradle.notification.ProjectSyncStatusNotificationP
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.sync.GradleSyncState;
 import com.android.tools.idea.gradle.project.sync.GradleSyncSummary;
+import com.android.tools.idea.structure.dialog.ProjectStructureConfigurable;
+import com.android.tools.idea.testing.IdeComponents;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.mock.MockDumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
