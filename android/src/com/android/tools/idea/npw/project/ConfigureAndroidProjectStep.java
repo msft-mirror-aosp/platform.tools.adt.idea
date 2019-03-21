@@ -43,11 +43,13 @@ import com.android.tools.idea.observable.BindingsManager;
 import com.android.tools.idea.observable.ListenerManager;
 import com.android.tools.idea.observable.core.BoolProperty;
 import com.android.tools.idea.observable.core.BoolValueProperty;
+import com.android.tools.idea.observable.core.ObjectProperty;
 import com.android.tools.idea.observable.core.ObservableBool;
 import com.android.tools.idea.observable.core.OptionalProperty;
 import com.android.tools.idea.observable.core.StringProperty;
 import com.android.tools.idea.observable.core.StringValueProperty;
 import com.android.tools.idea.observable.expressions.Expression;
+import com.android.tools.idea.observable.ui.SelectedItemProperty;
 import com.android.tools.idea.observable.ui.SelectedProperty;
 import com.android.tools.idea.observable.ui.TextProperty;
 import com.android.tools.idea.sdk.AndroidSdks;
@@ -162,6 +164,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     else {
       myBindings.bindTwoWay(getModel().instantApp(), new SelectedProperty(myInstantAppCheck));
     }
+    myBindings.bindTwoWay(ObjectProperty.wrap(new SelectedItemProperty<>(myProjectLanguage)), myProjectModel.language());
     myBindings.bindTwoWay(myProjectModel.useAndroidx(), new SelectedProperty(myUseAndroidxCheck));
 
 
@@ -185,8 +188,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       value.isPresent() ? Validator.Result.OK : new Validator.Result(Validator.Severity.ERROR, message("select.target.dialog.text")));
 
     myProjectLocation.addBrowseFolderListener(null, null, null, createSingleFolderDescriptor());
-
-    myProjectLanguage.setSelectedItem(myProjectModel.enableKotlinSupport().get() ? Language.KOTLIN : Language.JAVA);
 
     myListeners.listenAll(getModel().formFactor(), myProjectModel.enableCppSupport()).withAndFire(() -> {
       FormFactor formFactor = getModel().formFactor().get();
@@ -226,7 +227,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
 
   @Override
   protected void onProceeding() {
-    myProjectModel.enableKotlinSupport().set(myProjectLanguage.getSelectedItem() == Language.KOTLIN);
     getModel().hasCompanionApp().set(
       (myWearCheck.isVisible() && myWearCheck.isSelected()) ||
       (myTvCheck.isVisible() && myTvCheck.isSelected()) ||

@@ -20,6 +20,7 @@ import com.android.tools.adtui.util.FormScalingUtil;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.npw.cpp.ConfigureCppSupportStep;
+import com.android.tools.idea.npw.platform.Language;
 import com.android.tools.idea.npw.project.DomainToPackageExpression;
 import com.android.tools.idea.npw.model.NewProjectModel;
 import com.android.tools.idea.observable.BindingsManager;
@@ -33,6 +34,7 @@ import com.android.tools.idea.observable.ui.TextProperty;
 import com.android.tools.idea.ui.validation.validators.PathValidator;
 import com.android.tools.idea.ui.wizard.StudioWizardStepPanel;
 import com.android.tools.idea.ui.wizard.WizardUtils;
+import com.android.tools.idea.wizard.model.ModelWizard;
 import com.android.tools.idea.wizard.model.ModelWizardStep;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
@@ -87,8 +89,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModel
     myBindings.bindTwoWay(new TextProperty(myCompanyDomain), model.companyDomain());
     myBindings.bindTwoWay(new SelectedProperty(myCppSupportCheck), model.enableCppSupport());
 
-    myBindings.bindTwoWay(new SelectedProperty(myKotlinSupportCheck), model.enableKotlinSupport());
-
     myProjectLocation.addBrowseFolderListener(null, null, null, createSingleFolderDescriptor());
 
     myValidatorPanel = new ValidatorPanel(this, myPanel);
@@ -110,6 +110,16 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModel
 
     myRootPanel = StudioWizardStepPanel.wrappedWithVScroll(myValidatorPanel);
     FormScalingUtil.scaleComponentTree(this.getClass(), myRootPanel);
+  }
+
+  @Override
+  protected void onWizardStarting(@NotNull ModelWizard.Facade wizard) {
+    myKotlinSupportCheck.setSelected(getModel().language().get() == Language.KOTLIN);
+  }
+
+  @Override
+  protected void onProceeding() {
+    getModel().language().set(myKotlinSupportCheck.isSelected() ? Language.KOTLIN : Language.JAVA);
   }
 
   @NotNull
