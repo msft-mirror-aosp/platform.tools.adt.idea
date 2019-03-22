@@ -60,6 +60,8 @@ public class ProfilerServiceProxy extends PerfdProxyService
   }
 
   private static final String EMULATOR = "Emulator";
+  static final String PRE_LOLLIPOP_FAILURE_REASON = "Pre-Lollipop devices are not supported.";
+  static final String Q_FAILURE_REASON = "Q devices are not yet supported";
 
   private final ProfilerServiceGrpc.ProfilerServiceBlockingStub myServiceStub;
   @NotNull private final IDevice myDevice;
@@ -68,10 +70,10 @@ public class ProfilerServiceProxy extends PerfdProxyService
   private final boolean myIsDeviceApiSupported;
   private final EventQueue myEventQueue = new EventQueue();
   private Thread myEventsListenerThread;
-  
+
   public ProfilerServiceProxy(@NotNull IDevice device, @NotNull ManagedChannel channel) {
     super(ProfilerServiceGrpc.getServiceDescriptor());
-    myIsDeviceApiSupported = device.getVersion().getApiLevel() >= AndroidVersion.VersionCodes.LOLLIPOP;
+    myIsDeviceApiSupported = getDeviceUnsupportedReason(device).isEmpty();
     myDevice = device;
     myServiceStub = ProfilerServiceGrpc.newBlockingStub(channel);
 
@@ -128,6 +130,7 @@ public class ProfilerServiceProxy extends PerfdProxyService
                   .setManufacturer(getDeviceManufacturer(device))
                   .setIsEmulator(device.isEmulator())
                   .setState(convertState(device.getState()))
+                  .setUnsupportedReason(getDeviceUnsupportedReason(device))
                   .build();
   }
 
@@ -150,6 +153,19 @@ public class ProfilerServiceProxy extends PerfdProxyService
       default:
         return Common.Device.State.UNSPECIFIED;
     }
+  }
+
+  @NotNull
+  private static String getDeviceUnsupportedReason(@NotNull IDevice device) {
+    String unsupportedReason = "";
+    if (device.getVersion().getFeatureLevel() < AndroidVersion.VersionCodes.LOLLIPOP) {
+      unsupportedReason = PRE_LOLLIPOP_FAILURE_REASON;
+    }
+    else if (device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.Q) {
+      // TODO b/127838161 remove after daemon no longer freezes on Q.
+      unsupportedReason = Q_FAILURE_REASON;
+    }
+    return unsupportedReason;
   }
 
   @NotNull
