@@ -212,6 +212,27 @@ class SessionsViewTest {
   }
 
   @Test
+  fun testUnsupportedDeviceDropdown() {
+    val unsupportedReason = "Unsupported";
+    val device = Common.Device.newBuilder().setDeviceId(1).setManufacturer("Manufacturer1").setModel("Model1").setState(
+      Common.Device.State.ONLINE).setUnsupportedReason(unsupportedReason).build()
+    myProfilerService.addDevice(device)
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    var selectionAction = mySessionsView.processSelectionAction
+    assertThat(selectionAction.childrenActionCount).isEqualTo(3)
+    var loadAction = selectionAction.childrenActions.first { c -> c.text == "Load from file..." }
+    assertThat(loadAction.isEnabled).isTrue()
+    assertThat(loadAction.childrenActionCount).isEqualTo(0)
+    assertThat(selectionAction.childrenActions[1]).isInstanceOf(CommonAction.SeparatorAction::class.java)
+    var deviceAction1 = selectionAction.childrenActions.first { c -> c.text == "Manufacturer1 Model1" }
+    assertThat(deviceAction1.isEnabled).isTrue()
+    assertThat(deviceAction1.childrenActionCount).isEqualTo(1)
+    assertThat(deviceAction1.childrenActions[0].text).isEqualTo(unsupportedReason)
+    assertThat(deviceAction1.childrenActions[0].isEnabled).isFalse()
+  }
+
+  @Test
   fun testProcessDropdownHideDeadDevicesAndProcesses() {
     val deadDevice = Common.Device.newBuilder()
       .setDeviceId(1).setManufacturer("Manufacturer1").setModel("Model1").setState(Common.Device.State.DISCONNECTED).build()

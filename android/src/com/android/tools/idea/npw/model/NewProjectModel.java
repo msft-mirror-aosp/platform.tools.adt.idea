@@ -26,6 +26,7 @@ import com.android.tools.idea.gradle.project.sync.ng.nosyncbuilder.misc.NewProje
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.instantapp.InstantApps;
+import com.android.tools.idea.npw.platform.Language;
 import com.android.tools.idea.npw.project.AndroidGradleModuleUtils;
 import com.android.tools.idea.npw.project.AndroidPackageUtils;
 import com.android.tools.idea.npw.project.DomainToPackageExpression;
@@ -78,10 +79,12 @@ import static com.android.tools.idea.templates.TemplateMetadata.*;
 import static org.jetbrains.android.util.AndroidBundle.message;
 
 public class NewProjectModel extends WizardModel {
+  static final String PROPERTIES_ANDROID_PACKAGE_KEY = "SAVED_ANDROID_PACKAGE";
+  static final String PROPERTIES_KOTLIN_SUPPORT_KEY = "SAVED_PROJECT_KOTLIN_SUPPORT";
+  static final String PROPERTIES_NPW_LANGUAGE_KEY = "SAVED_ANDROID_NPW_LANGUAGE";
+
   private static final String PROPERTIES_DOMAIN_KEY = "SAVED_COMPANY_DOMAIN";
-  private static final String PROPERTIES_ANDROID_PACKAGE_KEY = "SAVED_ANDROID_PACKAGE";
   private static final String PROPERTIES_CPP_SUPPORT_KEY = "SAVED_PROJECT_CPP_SUPPORT";
-  private static final String PROPERTIES_KOTLIN_SUPPORT_KEY = "SAVED_PROJECT_KOTLIN_SUPPORT";
   private static final String EXAMPLE_DOMAIN = "example.com";
   private static final Pattern DISALLOWED_IN_DOMAIN = Pattern.compile("[^a-zA-Z0-9_]");
 
@@ -96,7 +99,7 @@ public class NewProjectModel extends WizardModel {
   private final Set<NewModuleModel> myNewModels = new HashSet<>();
   private final ProjectSyncInvoker myProjectSyncInvoker;
   private final MultiTemplateRenderer myMultiTemplateRenderer;
-  private final BoolProperty myEnableKotlinSupport = new BoolValueProperty();
+  private final ObjectProperty<Language> myLanguage = new ObjectValueProperty<>(calculateInitialLanguage(PropertiesComponent.getInstance()));
   private final BoolProperty myUseOfflineRepo = new BoolValueProperty();
   private final BoolProperty myUseAndroidx = new BoolValueProperty();
 
@@ -136,7 +139,6 @@ public class NewProjectModel extends WizardModel {
     myApplicationName.addConstraint(String::trim);
 
     myEnableCppSupport.set(getInitialCppSupport());
-    myEnableKotlinSupport.set(getInitialKotlinSupport());
     myUseAndroidx.set(getInitialUseAndroidxSupport());
   }
 
@@ -167,8 +169,8 @@ public class NewProjectModel extends WizardModel {
     return myCppFlags;
   }
 
-  public BoolProperty enableKotlinSupport() {
-    return myEnableKotlinSupport;
+  public ObjectProperty<Language> language() {
+    return myLanguage;
   }
 
   @NotNull
@@ -275,12 +277,27 @@ public class NewProjectModel extends WizardModel {
   }
 
   /**
-   * Loads saved value for Kotlin support.
+   * Calculates the initial values for the language and updates the {@link PropertiesComponent}
+   * @return If Language was previously saved, just return that saved value.
+   *         If User used the old UI check-box to select "Use Kotlin" or the User is using the Wizard for the first time => Kotlin
+   *         otherwise Java (ie user used the wizards before, and un-ticked the check-box)
    */
-  private static boolean getInitialKotlinSupport() {
-    PropertiesComponent props = PropertiesComponent.getInstance();
-    // If the value is not defined, we default to recommended (kotlin as nov-2018)
-    return !props.isValueSet(PROPERTIES_KOTLIN_SUPPORT_KEY) || props.isTrueValue(PROPERTIES_KOTLIN_SUPPORT_KEY);
+  @NotNull
+  static Language calculateInitialLanguage(@NotNull PropertiesComponent props) {
+    String languageValue = props.getValue(PROPERTIES_NPW_LANGUAGE_KEY);
+    if (languageValue != null) {
+      // We have this value saved already, nothing to do
+      return Language.fromName(languageValue, Language.KOTLIN);
+    }
+
+    boolean selectedOldUseKotlin = props.getBoolean(PROPERTIES_KOTLIN_SUPPORT_KEY);
+    boolean isFirstUsage = !props.isValueSet(PROPERTIES_ANDROID_PACKAGE_KEY);
+    Language res = (selectedOldUseKotlin || isFirstUsage) ? Language.KOTLIN : Language.JAVA;
+
+    // Save now, otherwise the user may cancel the wizard, but the property for "isFirstUsage" will be set just because it was shown.
+    props.setValue(PROPERTIES_NPW_LANGUAGE_KEY, res.getName());
+    props.unsetValue(PROPERTIES_KOTLIN_SUPPORT_KEY);
+    return res;
   }
 
   /**
@@ -296,7 +313,7 @@ public class NewProjectModel extends WizardModel {
     if (wizardResult == ModelWizard.WizardResult.FINISHED) {
       // Set the property value
       PropertiesComponent.getInstance().setValue(PROPERTIES_CPP_SUPPORT_KEY, myEnableCppSupport.get());
-      PropertiesComponent.getInstance().setValue(PROPERTIES_KOTLIN_SUPPORT_KEY, myEnableKotlinSupport.get());
+      PropertiesComponent.getInstance().setValue(PROPERTIES_NPW_LANGUAGE_KEY, myLanguage.get().getName());
     }
   }
 
@@ -394,7 +411,7 @@ public class NewProjectModel extends WizardModel {
       myTemplateValues.put(ATTR_CPP_SUPPORT, myEnableCppSupport.get());
       myTemplateValues.put(ATTR_CPP_FLAGS, myCppFlags.get());
       myTemplateValues.put(ATTR_TOP_OUT, project.getBasePath());
-      myTemplateValues.put(ATTR_KOTLIN_SUPPORT, myEnableKotlinSupport.get());
+      myTemplateValues.put(ATTR_KOTLIN_SUPPORT, myLanguage.get() == Language.KOTLIN);
 
       if (StudioFlags.NPW_OFFLINE_REPO_CHECKBOX.get()) {
         String offlineReposString = getOfflineReposString();

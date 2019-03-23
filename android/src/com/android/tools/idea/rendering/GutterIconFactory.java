@@ -47,6 +47,7 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -131,7 +132,7 @@ public class GutterIconFactory {
       else {
         Configuration configuration = ConfigurationManager.getOrCreateInstance(facet).getConfiguration(file);
         DrawableRenderer renderer = new DrawableRenderer(facet, configuration);
-        image = renderer.renderDrawable(xml, new Dimension(maxWidth * RENDERING_SCALING_FACTOR, maxHeight * RENDERING_SCALING_FACTOR)).get();
+        image = renderer.renderDrawable(xml, new Dimension(maxWidth * RENDERING_SCALING_FACTOR, maxHeight * RENDERING_SCALING_FACTOR)).get(50, TimeUnit.MILLISECONDS);
         if (image == null) {
           return null;
         }

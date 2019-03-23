@@ -18,12 +18,17 @@ package com.android.tools.idea.resourceExplorer.widget
 import com.google.common.collect.HashBiMap
 import com.intellij.openapi.ui.VerticalFlowLayout
 import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Rectangle
 import java.awt.event.AdjustmentEvent
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.Box
 import javax.swing.JComponent
 import javax.swing.JLabel
@@ -69,6 +74,17 @@ class SectionList(private val model: SectionListModel) : JBScrollPane() {
    */
   val sectionsComponent = sectionList
 
+  private val focusListener = object : FocusAdapter() {
+
+    override fun focusGained(focusEvent: FocusEvent?) {
+      val list = focusEvent?.source as JList<*>
+      if (list.selectedIndex == -1) {
+        list.selectedIndex = 0
+        scrollToSelection()
+      }
+    }
+  }
+
   init {
     model.addListDataListener(object : ListDataListener {
       override fun contentsChanged(e: ListDataEvent?) {
@@ -95,6 +111,27 @@ class SectionList(private val model: SectionListModel) : JBScrollPane() {
 
     verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_ALWAYS
     verticalScrollBar.addAdjustmentListener(createAdjustmentListener())
+    addMouseListener(object : MouseAdapter() {
+      override fun mouseClicked(p0: MouseEvent?) {
+        focusInnerList()
+      }
+    })
+  }
+
+  private fun focusInnerList() {
+    getFocusableList().requestFocusInWindow()
+  }
+
+  private fun getFocusableList(): JList<*> {
+    return allInnerLists
+             .firstOrNull { it.selectedIndex != -1 }
+           ?: allInnerLists.first()
+  }
+
+
+  private fun scrollToSelection() {
+    val (listIndex, itemIndex) = selectedIndex ?: return
+    ScrollingUtil.ensureIndexIsVisible(allInnerLists[listIndex], itemIndex, 1)
   }
 
   /**
@@ -166,6 +203,7 @@ class SectionList(private val model: SectionListModel) : JBScrollPane() {
         sectionToComponent[section] = section.header
         allInnerLists += section.list
         section.list.addListSelectionListener(selectionListener)
+        section.list.addFocusListener(focusListener)
         add(section.header)
         add(section.list)
         add(Box.createVerticalStrut(listsGap))

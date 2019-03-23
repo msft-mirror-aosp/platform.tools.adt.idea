@@ -21,10 +21,12 @@ import com.android.tools.idea.resourceExplorer.ResourceManagerTracking
 import com.android.tools.idea.resourceExplorer.model.DesignAsset
 import com.android.tools.idea.resourceExplorer.model.DesignAssetSet
 import com.android.tools.idea.resourceExplorer.viewmodel.ProjectResourcesBrowserViewModel
+import com.android.tools.idea.resourceExplorer.viewmodel.ResourceExplorerViewModel
 import com.android.tools.idea.resourceExplorer.viewmodel.ResourceSection
 import com.android.tools.idea.resourceExplorer.widget.Section
 import com.android.tools.idea.resourceExplorer.widget.SectionList
 import com.android.tools.idea.resourceExplorer.widget.SectionListModel
+import com.intellij.concurrency.JobScheduler
 import com.intellij.ide.dnd.DnDManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
@@ -35,9 +37,10 @@ import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.project.DumbAware
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.ui.GuiUtils
 import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBLabel
@@ -47,12 +50,16 @@ import com.intellij.util.ui.update.MergingUpdateQueue
 import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Component
+import java.awt.Container
 import java.awt.FlowLayout
 import java.awt.Point
 import java.awt.event.InputEvent
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.font.TextAttribute
+import java.util.concurrent.TimeUnit
 import java.util.function.BiConsumer
 import javax.swing.BorderFactory
 import javax.swing.JComponent
@@ -60,6 +67,7 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JTabbedPane
+import javax.swing.LayoutFocusTraversalPolicy
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -89,25 +97,25 @@ private val GRID_MODE_BACKGROUND = UIUtil.getPanelBackground()
 private val LIST_MODE_BACKGROUND = UIUtil.getListBackground()
 
 /**
+ * Delay to wait for before showing the "Loading" state.
+ *
+ * If we don't delay showing the loading state, user might see a quick flickering
+ * when switching tabs because of the quick change from old resources to loading view to new resources.
+ */
+private const val DELAY_BEFORE_LOADING_STATE = 100L // ms
+
+/**
  * View meant to display [com.android.tools.idea.resourceExplorer.model.DesignAsset] located
  * in the project.
  * It uses an [ProjectResourcesBrowserViewModel] to populates the views
  */
 class ResourceExplorerView(
-  private val resourcesBrowserViewModel: ProjectResourcesBrowserViewModel,
+  private val resourcesBrowserViewModel: ResourceExplorerViewModel,
   private val resourceImportDragTarget: ResourceImportDragTarget
 ) : JPanel(BorderLayout()), Disposable, DataProvider {
 
-  override fun getData(dataId: String): Any? {
-    return resourcesBrowserViewModel.getData(dataId, getSelectedAssets())
-  }
+  private var updatePending = false
 
-  private fun getSelectedAssets(): List<DesignAsset> {
-    return sectionList.getLists()
-      .flatMap { it.selectedValuesList }
-      .filterIsInstance<DesignAssetSet>()
-      .flatMap(DesignAssetSet::designAssets)
-  }
 
   private var previewSize = DEFAULT_CELL_WIDTH
     set(value) {
@@ -129,8 +137,6 @@ class ResourceExplorerView(
   private val listeners = mutableListOf<SelectionListener>()
   private val sectionListModel: SectionListModel = SectionListModel()
   private val dragHandler = resourceDragHandler()
-  private val imageCache = ImageCache(
-    mergingUpdateQueue = MergingUpdateQueue("queue", 3000, true, MergingUpdateQueue.ANY_COMPONENT, this, null, false))
 
   private val headerPanel = JTabbedPane(JTabbedPane.NORTH).apply {
     tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
@@ -192,7 +198,7 @@ class ResourceExplorerView(
   /**
    * A mouse listener that opens a [ResourceDetailView] when double clicking
    * on an item from the list.
-   * @see showDetailView
+   * @see openAssets
    */
   private val doubleClickListener = object : MouseAdapter() {
     override fun mouseClicked(e: MouseEvent) {
@@ -203,7 +209,16 @@ class ResourceExplorerView(
       val index = assetListView.locationToIndex(e.point)
       if (index >= 0) {
         val designAssetSet = assetListView.model.getElementAt(index)
-        showDetailView(designAssetSet)
+        openAssets(designAssetSet)
+      }
+    }
+  }
+
+  private val keyListener = object : KeyAdapter() {
+    override fun keyPressed(e: KeyEvent) {
+      if (KeyEvent.VK_ENTER == e.keyCode) {
+        val assetListView = e.source as AssetListView
+        openAssets(assetListView.selectedValue)
       }
     }
   }
@@ -211,15 +226,27 @@ class ResourceExplorerView(
   /**
    * Replace the content of the view with a [ResourceDetailView] for the provided [designAssetSet].
    */
+  private fun openAssets(designAssetSet: DesignAssetSet) {
+    if (designAssetSet.designAssets.size == 1) {
+      val asset = designAssetSet.designAssets.first()
+      ResourceManagerTracking.logAssetOpened(asset.type)
+      resourcesBrowserViewModel.openFile(asset)
+      return
+    }
+    showDetailView(designAssetSet)
+  }
+
   private fun showDetailView(designAssetSet: DesignAssetSet) {
     val parent = parent
     parent.remove(this)
+    val previousSelectedValue = sectionList.selectedValue
 
-    val detailView = ResourceDetailView(designAssetSet, imageCache, resourcesBrowserViewModel) { detailView ->
+    val detailView = ResourceDetailView(designAssetSet, resourcesBrowserViewModel) { detailView ->
       parent.remove(detailView)
       parent.add(this@ResourceExplorerView)
       parent.revalidate()
       parent.repaint()
+      sectionList.selectedValue = previousSelectedValue
     }
 
     parent.add(detailView)
@@ -240,36 +267,90 @@ class ResourceExplorerView(
     add(headerPanel, BorderLayout.NORTH)
     add(sectionList)
     add(footerPanel, BorderLayout.SOUTH)
-    Disposer.register(this, imageCache)
+    isFocusTraversalPolicyProvider = true
+    focusTraversalPolicy = object : LayoutFocusTraversalPolicy() {
+      override fun getFirstComponent(p0: Container?): Component {
+        return sectionList.getLists().firstOrNull() ?: this@ResourceExplorerView
+      }
+    }
+  }
+
+  private fun getSelectedAssets(): List<DesignAsset> {
+    return sectionList.getLists()
+      .flatMap { it.selectedValuesList }
+      .filterIsInstance<DesignAssetSet>()
+      .flatMap(DesignAssetSet::designAssets)
   }
 
   private fun populateResourcesLists() {
     val selectedValue = sectionList.selectedValue
     val selectedIndices = sectionList.selectedIndices
+    updatePending = true
 
-    sectionListModel.clear()
-    sectionListModel.addSection(AssetSection<DesignAssetSet>("Loading...", null, JList()))
-    resourcesBrowserViewModel.getResourcesLists()
+    val future = resourcesBrowserViewModel.getResourcesLists()
       .whenCompleteAsync(BiConsumer { resourceLists, _ ->
-        sectionListModel.clear()
-        val sections = resourceLists
-          .filterNot { it.assets.isEmpty() }
-          .map(this::createSection)
-          .toList()
-        sectionListModel.addSections(sections)
-
-        // Attempt to reselect the previously selected element
-        if (selectedValue != null) {
-          // If the value still exist in the list, just reselect it
-          sectionList.selectedValue = selectedValue
-
-          // Otherwise, like if the selected resource was renamed, we reselect the element
-          // based on the indexes
-          if (sectionList.selectedIndex == null) {
-            sectionList.selectedIndices = selectedIndices
-          }
-        }
+        updatePending = false
+        displayResources(resourceLists)
+        selectIndicesIfNeeded(selectedValue, selectedIndices)
       }, EdtExecutor.INSTANCE)
+
+    if (!future.isDone) {
+      JobScheduler.getScheduler().schedule(
+        { GuiUtils.invokeLaterIfNeeded(this::displayLoading, ModalityState.defaultModalityState()) },
+        DELAY_BEFORE_LOADING_STATE,
+        TimeUnit.MILLISECONDS)
+    }
+  }
+
+  private fun displayLoading() {
+    if (!updatePending) {
+      return
+    }
+    sectionListModel.clear()
+    sectionListModel.addSection(createLoadingSection())
+  }
+
+  private fun displayResources(resourceLists: List<ResourceSection>) {
+    sectionListModel.clear()
+    val sections = resourceLists
+      .filterNot { it.assets.isEmpty() }
+      .map(this::createSection)
+      .toList()
+    if (!sections.isEmpty()) {
+      sectionListModel.addSections(sections)
+    }
+    else {
+      sectionListModel.addSection(createEmptySection())
+    }
+  }
+
+  private fun createLoadingSection() = AssetSection<DesignAssetSet>(
+    resourcesBrowserViewModel.facet.module.name, null,
+    AssetListView(emptyList(), null).apply {
+      setPaintBusy(true)
+      setEmptyText("Loading...")
+      background = this@ResourceExplorerView.background
+    })
+
+  private fun createEmptySection() = AssetSection<DesignAssetSet>(
+    resourcesBrowserViewModel.facet.module.name, null,
+    AssetListView(emptyList(), null).apply {
+      setEmptyText("No ${resourcesBrowserViewModel.selectedTabName.toLowerCase()} available")
+      background = this@ResourceExplorerView.background
+    })
+
+  private fun selectIndicesIfNeeded(selectedValue: Any?, selectedIndices: List<IntArray?>) {
+    if (selectedValue != null) {
+        // Attempt to reselect the previously selected element
+      // If the value still exist in the list, just reselect it
+      sectionList.selectedValue = selectedValue
+
+      // Otherwise, like if the selected resource was renamed, we reselect the element
+      // based on the indexes
+      if (sectionList.selectedIndex == null) {
+        sectionList.selectedIndices = selectedIndices
+      }
+    }
   }
 
   private fun createSection(section: ResourceSection) =
@@ -278,6 +359,7 @@ class ResourceExplorerView(
       dragHandler.registerSource(this)
       addMouseListener(popupHandler)
       addMouseListener(doubleClickListener)
+      addKeyListener(keyListener)
       thumbnailWidth = this@ResourceExplorerView.previewSize
       isGridMode = this@ResourceExplorerView.gridMode
     })
@@ -313,6 +395,10 @@ class ResourceExplorerView(
     }
   }
 
+  override fun getData(dataId: String): Any? {
+    return resourcesBrowserViewModel.getData(dataId, getSelectedAssets())
+  }
+
   override fun dispose() {
     DnDManager.getInstance().unregisterTarget(resourceImportDragTarget, this)
   }
@@ -331,7 +417,7 @@ class ResourceExplorerView(
    * Button to enable the list view
    */
   private inner class ListModeButton
-    : ToggleAction(null, null, StudioIcons.LayoutEditor.Palette.LIST_VIEW),
+    : ToggleAction("List mode", "Switch to list mode", StudioIcons.LayoutEditor.Palette.LIST_VIEW),
       DumbAware {
 
     override fun isSelected(e: AnActionEvent) = !gridMode
@@ -349,7 +435,7 @@ class ResourceExplorerView(
    * Button to enable the grid view
    */
   private inner class GridModeButton
-    : ToggleAction(null, null, StudioIcons.LayoutEditor.Palette.GRID_VIEW),
+    : ToggleAction("Grid mode", "Switch to grid mode", StudioIcons.LayoutEditor.Palette.GRID_VIEW),
       DumbAware {
 
     override fun isSelected(e: AnActionEvent) = gridMode
@@ -366,7 +452,7 @@ class ResourceExplorerView(
   /**
    * Button to scale down the icons. It is only enabled in grid mode.
    */
-  private inner class ZoomMinus : AnAction(StudioIcons.Common.ZOOM_OUT), DumbAware {
+  private inner class ZoomMinus : AnAction("Zoom Out", "Decrease thumbnail size", StudioIcons.Common.ZOOM_OUT), DumbAware {
 
     override fun actionPerformed(e: AnActionEvent) {
       previewSize = max(MIN_CELL_WIDTH, (previewSize * 0.9).roundToInt())
@@ -380,7 +466,7 @@ class ResourceExplorerView(
   /**
    * Button to scale up the icons. It is only enabled in grid mode.
    */
-  private inner class ZoomPlus : AnAction(StudioIcons.Common.ZOOM_IN), DumbAware {
+  private inner class ZoomPlus : AnAction("Zoom In", "Increase thumbnail size", StudioIcons.Common.ZOOM_IN), DumbAware {
 
     override fun actionPerformed(e: AnActionEvent) {
       previewSize = min(MAX_CELL_WIDTH, (previewSize * 1.1).roundToInt())

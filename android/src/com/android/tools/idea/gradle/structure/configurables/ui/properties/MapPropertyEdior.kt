@@ -16,15 +16,20 @@
 package com.android.tools.idea.gradle.structure.configurables.ui.properties
 
 import com.android.tools.idea.gradle.structure.configurables.ui.PropertyEditorCoreFactory
+import com.android.tools.idea.gradle.structure.configurables.ui.toRenderer
 import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.android.tools.idea.gradle.structure.model.meta.*
+import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.util.ui.AbstractTableCellEditor
+import com.intellij.util.ui.UIUtil
 import java.awt.Component
-import java.awt.TextField
 import javax.swing.JTable
+import javax.swing.JTextField
 import javax.swing.table.DefaultTableColumnModel
 import javax.swing.table.DefaultTableModel
 import javax.swing.table.TableCellEditor
+import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableColumn
 import javax.swing.table.TableColumnModel
 
@@ -95,12 +100,24 @@ class MapPropertyEditor<ValueT : Any, ModelPropertyT : ModelMapPropertyCore<Valu
       addColumn(TableColumn(0, 50).apply {
         headerValue = "Key"
         cellEditor = MyKeyCellEditor()
+        cellRenderer = TableCellRenderer { table, value, isSelected, hasFocus, row, column ->
+          SimpleColoredComponent()
+              .also {
+                if (value != null) {
+                  it.toRenderer()
+                      .toSelectedTextRenderer(isSelected && hasFocus)
+                      .append(value.toString(), SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                }
+                if (isSelected) it.background = UIUtil.getListSelectionBackground(hasFocus)
+              }
+        }
       })
       addColumn(TableColumn(1).apply {
         headerValue = "Value"
         cellEditor = MyCellEditor()
         cellRenderer = MyCellRenderer()
       })
+      columnSelectionAllowed = true
     }
   }
 
@@ -111,20 +128,21 @@ class MapPropertyEditor<ValueT : Any, ModelPropertyT : ModelMapPropertyCore<Valu
   inner class MyKeyCellEditor : AbstractTableCellEditor() {
     private var currentRow: Int = -1
     private var currentKey: String? = null
-    private var lastEditor: TextField? = null
+    private var lastEditor: JTextField? = null
 
-    override fun getTableCellEditorComponent(table: JTable?, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
+    override fun getTableCellEditorComponent(table: JTable, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
       currentRow = row
       currentKey = keyAt(row)
-      lastEditor = TextField().apply {
+      lastEditor = JTextField().apply {
         text = currentKey
       }
+      lastEditor?.let { table.addTabKeySupportTo(it) }
       return lastEditor
     }
 
     override fun stopCellEditing(): Boolean {
       return super.stopCellEditing().also {
-        if (it) {
+        if (it && currentKey != null && lastEditor != null) {
           val oldKey = currentKey!!
           val newKey = lastEditor!!.text!!
           property.changeEntryKey(oldKey, newKey)

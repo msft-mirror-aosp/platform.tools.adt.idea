@@ -510,6 +510,7 @@ public class AndroidUtils {
       .getResourceModuleDependencies()
       .stream()
       .map(AndroidFacet::getInstance)
+      .filter(Objects::nonNull)
       .collect(Collectors.toList());
   }
 

@@ -24,9 +24,11 @@ import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil.getListSelectionBackground
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.event.FocusListener
 import java.awt.event.MouseWheelEvent
 import java.awt.event.MouseWheelListener
 import javax.swing.JComponent
@@ -48,7 +50,9 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
   private val logValueEdited: () -> Unit
 ) : PropertyEditorBase<ModelPropertyT, ValueT>(property, propertyContext, variablesScope) {
 
-  override val component: JPanel = JPanel(BorderLayout())
+  override val component: JPanel = JPanel(BorderLayout()).apply {
+    isFocusable = false
+  }
   val statusComponent: JComponent? = null
 
   private var beingLoaded = false
@@ -105,6 +109,10 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
   protected fun Annotated<ParsedValue<ValueT>>.toTableModelValue() = Value(this)
   protected fun ParsedValue<ValueT>.toTableModelValue() = Value(this.annotated())
 
+  fun addFocusListener(listener: FocusListener) {
+    table.addFocusListener(listener)
+  }
+
   /**
    * An [Annotated] [ParsedValue] wrapper for the table model that defines a [toString] implementation compatible with the implementation
    * in [MyCellEditor].
@@ -128,13 +136,18 @@ abstract class CollectionPropertyEditor<out ModelPropertyT : ModelCollectionProp
                                                column: Int): Component {
       @Suppress("UNCHECKED_CAST")
       val parsedValue = (value as CollectionPropertyEditor<*, ValueT>.Value?)?.value ?: ParsedValue.NotSet.annotated()
-      return SimpleColoredComponent().also { parsedValue.renderTo(it.toRenderer(), formatter, knownValueRenderers) }
+      return SimpleColoredComponent().also {
+        parsedValue.renderTo(it.toRenderer().toSelectedTextRenderer(isSelected && hasFocus), formatter, knownValueRenderers)
+        if (isSelected) it.background = getListSelectionBackground(hasFocus)
+      }
     }
   }
 
   inner class MyCellEditor : PropertyCellEditor<ValueT>() {
     override fun Annotated<ParsedValue<ValueT>>.toModelValue(): Any = toTableModelValue()
-    override fun initEditorFor(row: Int): ModelPropertyEditor<ValueT> = editor(getPropertyAt(row), propertyContext, variablesScope)
+    override fun initEditorFor(row: Int): ModelPropertyEditor<ValueT> =
+        editor(getPropertyAt(row), propertyContext, variablesScope, this)
+            .also { table.addTabKeySupportTo(it.component) }
   }
 }
 
