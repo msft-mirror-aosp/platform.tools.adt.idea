@@ -33,6 +33,7 @@ import com.intellij.facet.FacetManager
 import com.intellij.openapi.command.WriteCommandAction
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -84,6 +85,7 @@ class DataBindingTrackerTest(private val mode: DataBindingMode) {
     }
   }
 
+  @Ignore("b/129763461")
   @Test
   fun testDataBindingPollingMetadataTracking() {
     val tracker = TestUsageTracker(VirtualTimeScheduler())
