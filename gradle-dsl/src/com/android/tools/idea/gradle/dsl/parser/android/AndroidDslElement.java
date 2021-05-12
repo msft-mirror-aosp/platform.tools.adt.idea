@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
+import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
@@ -69,7 +70,9 @@ public final class AndroidDslElement extends GradleDslBlockElement {
     return CHILD_PROPERTIES_ELEMENTS_MAP;
   }
 
-  private static final ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> ktsToModelNameMap = Stream.of(new Object[][]{
+  private static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{
+    {"aidlPackagedList", property, AIDL_PACKAGED_LIST, VAL}, // TODO(xof): was aidlPackageW***eL**t, add support for old version
+    {"assetPacks", property, ASSET_PACKS, VAL}, // TODO(xof): was VAR some time ago
     {"buildToolsVersion", property, BUILD_TOOLS_VERSION, VAR},
     {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET},
     {"compileSdkVersion", property, COMPILE_SDK_VERSION, VAR}, // TODO(b/148657110): type handling of this is tricky
@@ -80,13 +83,19 @@ public final class AndroidDslElement extends GradleDslBlockElement {
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST},
     {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
     {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET},
+    {"namespace", property, NAMESPACE, VAR},
     {"ndkVersion", property, NDK_VERSION, VAR},
     {"setPublishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET},
     {"resourcePrefix", property, RESOURCE_PREFIX, VAL}, // no setResourcePrefix: not a VAR
-    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET}
+    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET},
+    {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
+    {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET},
+    {"testNamespace", property, TEST_NAMESPACE, VAR},
   }).collect(toModelMap());
 
-  private static final ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> groovyToModelNameMap = Stream.of(new Object[][]{
+  private static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
+    {"aidlPackagedList", property, AIDL_PACKAGED_LIST, VAL},
+    {"assetPacks", property, ASSET_PACKS, VAR},
     {"buildToolsVersion", property, BUILD_TOOLS_VERSION, VAR},
     {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET},
     {"compileSdkVersion", property, COMPILE_SDK_VERSION, VAR},
@@ -97,16 +106,22 @@ public final class AndroidDslElement extends GradleDslBlockElement {
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST},
     {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
     {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET},
+    {"namespace", property, NAMESPACE, VAR},
+    {"namespace", exactly(1), NAMESPACE, SET},
     {"ndkVersion", property, NDK_VERSION, VAR},
     {"ndkVersion", exactly(1), NDK_VERSION, SET},
     {"publishNonDefault", property, PUBLISH_NON_DEFAULT, VAR},
     {"publishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET},
     {"resourcePrefix", property, RESOURCE_PREFIX, VAL},
-    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET}
+    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET},
+    {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
+    {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET},
+    {"testNamespace", property, TEST_NAMESPACE, VAR},
+    {"testNamespace", exactly(1), TEST_NAMESPACE, SET},
   }).collect(toModelMap());
 
   @Override
-  public @NotNull ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
+  public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
     if (converter instanceof KotlinDslNameConverter) {
       return ktsToModelNameMap;
     }

@@ -24,6 +24,8 @@ import static com.android.tools.idea.testartifacts.instrumented.AndroidTestRunCo
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.observable.BindingsManager;
 import com.android.tools.idea.observable.expressions.bool.BooleanExpressions;
+import com.android.tools.idea.observable.ui.SelectedItemProperty;
+import com.android.tools.idea.observable.ui.SelectedProperty;
 import com.android.tools.idea.observable.ui.SelectedRadioButtonProperty;
 import com.android.tools.idea.observable.ui.TextProperty;
 import com.android.tools.idea.observable.ui.VisibleProperty;
@@ -33,14 +35,18 @@ import com.android.tools.idea.testartifacts.instrumented.AndroidInheritingClassV
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestClassBrowser;
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestClassVisibilityChecker;
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration;
+import com.android.tools.idea.testartifacts.instrumented.EnableRetention;
+import com.android.tools.idea.testartifacts.instrumented.configuration.AndroidTestConfiguration;
 import com.intellij.execution.ExecutionBundle;
 import com.intellij.execution.MethodListDlg;
 import com.intellij.execution.configuration.BrowseModuleValueActionListener;
 import com.intellij.execution.junit.JUnitUtil;
 import com.intellij.execution.ui.ConfigurationModuleSelector;
+import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.util.PackageChooserDialog;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.ComponentWithBrowseButton;
 import com.intellij.openapi.ui.LabeledComponent;
 import com.intellij.openapi.ui.Messages;
@@ -48,16 +54,21 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiPackage;
+import com.intellij.ui.ContextHelpLabel;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.EditorTextFieldWithBrowseButton;
 import com.intellij.ui.TextAccessor;
+import com.intellij.ui.TitledSeparator;
 import com.intellij.ui.UserActivityProviderComponent;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.containers.ContainerUtil;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.text.NumberFormat;
 import java.util.List;
 import java.util.Optional;
+import javax.swing.JCheckBox;
+import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.event.ChangeEvent;
@@ -69,6 +80,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTestRunConfiguration> {
+  private static final String RETENTION_ENABLE_TOOLTIP = "Enabling this feature instructs virtual devices to capture an Emulator " +
+                                                        "snapshot when a test encounters a Java assertion failure. Snapshots are then " +
+                                                        "available for you to load onto the device from the test results panel.";
+  private static final String RETENTION_ENABLE_URL = "https://developer.android.com/studio/preview/features#automated-test-snapshots";
   private JRadioButton myAllInPackageTestButton;
   private JRadioButton myClassTestButton;
   private JRadioButton myMethodTestButton;
@@ -80,6 +95,12 @@ public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTes
   private LabeledComponent<EditorTextFieldWithBrowseButton> myInstrumentationClassComponent;
   private JBLabel myLabelTest;
   private LabeledComponent<SimpleEditorTextFieldWithBrowseButton> myInstrumentationArgsComponent;
+  private LabeledComponent myMaxSnapshotsComponent;
+  private JCheckBox myCompressSnapshotsCheckBox;
+  private TitledSeparator myTestExecutionOptionsSeparator;
+  private LabeledComponent myEnableEmulatorSnapshotsComponent;
+  private JBLabel myEmulatorSnapshotsForTestFailuresHelper;
+  private ComboBox<EnableRetention> myEnableEmulatorSnapshotItemsComboBox;
 
   private final Project myProject;
   private final ConfigurationModuleSelector myModuleSelector;
@@ -93,9 +114,17 @@ public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTes
   private final TextProperty myTestMethod;
   private final TextProperty myInstrumentationClass;
   private final TextProperty myInstrumentationArgs;
+  private final SelectedItemProperty<EnableRetention> myEnableRetention;
+  private final TextProperty myMaxSnapshots;
+  private final SelectedProperty myCompressSnapshots;
 
   private boolean myIncludeGradleExtraParams = true;
   private String myUserModifiedInstrumentationExtraParams = "";
+
+  private void createUIComponents() {
+    myEmulatorSnapshotsForTestFailuresHelper = ContextHelpLabel.createWithLink(null, RETENTION_ENABLE_TOOLTIP, "Learn more",
+                                                                               () -> BrowserUtil.browse(RETENTION_ENABLE_URL));
+  }
 
   public TestRunParameters(Project project, ConfigurationModuleSelector moduleSelector) {
     myProject = project;
@@ -212,6 +241,36 @@ public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTes
 
     myContentWrapper = new ContentWrapper();
     myContentWrapper.add(myContentPanel);
+
+    if (AndroidTestConfiguration.getInstance().getRUN_ANDROID_TEST_USING_GRADLE()) {
+      NumberFormat maxSnapshotsFormat = NumberFormat.getIntegerInstance();
+      maxSnapshotsFormat.setMinimumIntegerDigits(0);
+      JFormattedTextField maxSnapshotsTextField = new JFormattedTextField(maxSnapshotsFormat);
+      myMaxSnapshotsComponent.setComponent(maxSnapshotsTextField);
+      myMaxSnapshots = new TextProperty(maxSnapshotsTextField);
+      myCompressSnapshots = new SelectedProperty(myCompressSnapshotsCheckBox);
+      myEnableEmulatorSnapshotItemsComboBox = new ComboBox<>();
+      myEnableEmulatorSnapshotItemsComboBox.addItem(EnableRetention.YES);
+      myEnableEmulatorSnapshotItemsComboBox.addItem(EnableRetention.NO);
+      myEnableEmulatorSnapshotItemsComboBox.addItem(EnableRetention.USE_GRADLE);
+      myEnableEmulatorSnapshotItemsComboBox.addItemListener(e -> {
+        EnableRetention selectedItem = (EnableRetention)e.getItem();
+        boolean enabled = selectedItem == EnableRetention.YES;
+        myMaxSnapshotsComponent.setEnabled(enabled);
+        myCompressSnapshotsCheckBox.setEnabled(enabled);
+      });
+      myEnableRetention = new SelectedItemProperty<>(myEnableEmulatorSnapshotItemsComboBox);
+      myEnableEmulatorSnapshotItemsComboBox.setSelectedItem(EnableRetention.NO);
+      myEnableEmulatorSnapshotsComponent.setComponent(myEnableEmulatorSnapshotItemsComboBox);
+    } else {
+      myEnableRetention = null;
+      myMaxSnapshots = null;
+      myCompressSnapshots = null;
+      myTestExecutionOptionsSeparator.setVisible(false);
+      myMaxSnapshotsComponent.setVisible(false);
+      myCompressSnapshotsCheckBox.setVisible(false);
+      myEnableEmulatorSnapshotsComponent.setVisible(false);
+    }
   }
 
   @Override
@@ -223,6 +282,11 @@ public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTes
     configuration.INSTRUMENTATION_RUNNER_CLASS = isBuildWithGradle ? "" : myInstrumentationClass.get();
     configuration.EXTRA_OPTIONS = myUserModifiedInstrumentationExtraParams;
     configuration.INCLUDE_GRADLE_EXTRA_OPTIONS = myIncludeGradleExtraParams;
+    if (AndroidTestConfiguration.getInstance().getRUN_ANDROID_TEST_USING_GRADLE()) {
+      configuration.RETENTION_ENABLED = myEnableEmulatorSnapshotItemsComboBox.getItem();
+      configuration.RETENTION_MAX_SNAPSHOTS = Integer.parseInt(myMaxSnapshots.get());
+      configuration.RETENTION_COMPRESS_SNAPSHOTS = myCompressSnapshots.get();
+    }
   }
 
   @Override
@@ -241,6 +305,11 @@ public class TestRunParameters implements ConfigurationSpecificEditor<AndroidTes
       : configuration.INSTRUMENTATION_RUNNER_CLASS);
     myInstrumentationArgs.set(configuration.getExtraInstrumentationOptions(androidFacet));
     myIncludeGradleExtraParams = configuration.INCLUDE_GRADLE_EXTRA_OPTIONS;
+    if (AndroidTestConfiguration.getInstance().getRUN_ANDROID_TEST_USING_GRADLE()) {
+      myEnableRetention.setValue(configuration.RETENTION_ENABLED);
+      myMaxSnapshots.set(Integer.toString(configuration.RETENTION_MAX_SNAPSHOTS));
+      myCompressSnapshots.set(configuration.RETENTION_COMPRESS_SNAPSHOTS);
+    }
   }
 
   @Override

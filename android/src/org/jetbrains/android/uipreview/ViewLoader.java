@@ -20,23 +20,20 @@ import static com.android.SdkConstants.CLASS_ATTRIBUTE_SET;
 import static com.android.SdkConstants.CLASS_RECYCLER_VIEW_ADAPTER;
 import static com.android.SdkConstants.R_CLASS;
 import static com.android.SdkConstants.VIEW_FRAGMENT;
-import static com.android.SdkConstants.VIEW_INCLUDE;
 import static com.android.tools.idea.LogAnonymizerUtil.anonymize;
 import static com.android.tools.idea.LogAnonymizerUtil.anonymizeClassName;
 import static com.intellij.lang.annotation.HighlightSeverity.WARNING;
 
-import android.view.Gravity;
 import com.android.annotations.NonNull;
-import com.google.common.annotations.VisibleForTesting;
 import com.android.ide.common.rendering.api.ILayoutLog;
-import com.android.layoutlib.bridge.MockView;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.rendering.IRenderLogger;
-import com.android.tools.idea.rendering.classloading.InconvertibleClassError;
 import com.android.tools.idea.rendering.RenderProblem;
 import com.android.tools.idea.rendering.RenderSecurityManager;
+import com.android.tools.idea.rendering.classloading.InconvertibleClassError;
 import com.android.tools.idea.res.ResourceIdManager;
 import com.android.utils.HtmlBuilder;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
@@ -132,8 +129,15 @@ public class ViewLoader {
   public Object loadClass(String className, Class<?>[] constructorSignature, Object[] constructorArgs) {
     // RecyclerView.Adapter is an abstract class, but its instance is needed for RecyclerView to work correctly. So, when LayoutLib asks for
     // its instance, we define a new class which extends the Adapter class.
-    if (CLASS_RECYCLER_VIEW_ADAPTER.isEquals(className)) {
-      className = RecyclerViewHelper.CN_CUSTOM_ADAPTER;
+    // We check whether the class being loaded is the support or the androidx one and use the appropiate adapter that references to the
+    // right namespace.
+    if (CLASS_RECYCLER_VIEW_ADAPTER.newName().equals(className)) {
+      className = RecyclerViewHelper.CN_ANDROIDX_CUSTOM_ADAPTER;
+      constructorSignature = ArrayUtil.EMPTY_CLASS_ARRAY;
+      constructorArgs = ArrayUtil.EMPTY_OBJECT_ARRAY;
+    }
+    else if (CLASS_RECYCLER_VIEW_ADAPTER.oldName().equals(className)) {
+      className = RecyclerViewHelper.CN_SUPPORT_CUSTOM_ADAPTER;
       constructorSignature = ArrayUtil.EMPTY_CLASS_ARRAY;
       constructorArgs = ArrayUtil.EMPTY_OBJECT_ARRAY;
     }
@@ -155,9 +159,9 @@ public class ViewLoader {
       if (o != null) {
         return o;
       }
-      return createMockView(className, constructorSignature, constructorArgs);
+      return myLayoutLibrary.createMockView(getShortClassName(className), constructorSignature, constructorArgs);
     }
-    catch (ClassNotFoundException | InvocationTargetException | IllegalAccessException | InstantiationException | NoSuchFieldException | NoSuchMethodException e) {
+    catch (InvocationTargetException | IllegalAccessException | InstantiationException | NoSuchMethodException e) {
       throw new ClassNotFoundException(className, e);
     }
   }
@@ -260,35 +264,6 @@ public class ViewLoader {
                       myLogger.getLinkManager().createBuildProjectUrl());
       myLogger.addMessage(problem);
     }
-  }
-
-  @NotNull
-  private MockView createMockView(@NotNull String className, @Nullable Class<?>[] constructorSignature, @Nullable Object[] constructorArgs)
-      throws
-          ClassNotFoundException,
-          InvocationTargetException,
-          NoSuchMethodException,
-          InstantiationException,
-          IllegalAccessException,
-          NoSuchFieldException {
-    MockView mockView = (MockView)createNewInstance(MockView.class, constructorSignature, constructorArgs, true);
-    String label = getShortClassName(className);
-    switch (label) {
-      case VIEW_FRAGMENT:
-        label = "<fragment>";
-        // TODO:
-        // Append "\nPick preview layout from the \"Fragment Layout\" context menu"
-        // when used from the layout editor
-        break;
-      case VIEW_INCLUDE:
-        label = "Text";
-        break;
-    }
-
-    mockView.setText(label);
-    mockView.setGravity(Gravity.CENTER);
-
-    return mockView;
   }
 
   @NotNull
@@ -465,7 +440,7 @@ public class ViewLoader {
           if (!AndroidUtils.isAbstract(psiClass)) {
             try {
               Class<?> aClass = myLoadedClasses.get(qName);
-              if (aClass == null && myLayoutLibrary.getClassLoader() != null) {
+              if (aClass == null) {
                 aClass = myLayoutLibrary.getClassLoader().loadClass(qName);
                 if (aClass != null) {
                   myLoadedClasses.put(qName, aClass);

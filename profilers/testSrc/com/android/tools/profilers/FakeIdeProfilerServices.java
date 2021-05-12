@@ -102,11 +102,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myLiveTrackingEnabled = false;
 
   /**
-   * Toggle for faking memory snapshot support in tests.
-   */
-  private boolean myMemorySnapshotEnabled = true;
-
-  /**
    * Whether a native CPU profiling configuration is preferred over a Java one.
    */
   private boolean myNativeProfilingConfigurationPreferred = false;
@@ -132,11 +127,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myCpuNewRecordingWorkflowEnabled = false;
 
   /**
-   * Toggle for live allocation sampling mode.
-   */
-  private boolean myLiveAllocationsSamplingEnabled = true;
-
-  /**
    * Toggle for cpu capture stage switching vs cpu profiler stage when handling captures.
    */
   private boolean myIsCaptureStageEnabled = false;
@@ -145,11 +135,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether custom event visualization should be visible
    */
   private boolean myCustomEventVisualizationEnabled = false;
-
-  /**
-   * Whether native memory sampling via heapprofd is enabled.
-   */
-  private boolean myNativeMemorySampleEnabled = false;
 
   /**
    * Whether we use TraceProcessor to parse Perfetto traces.
@@ -276,21 +261,8 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
-      public boolean isLiveAllocationsSamplingEnabled() {
-        return myLiveAllocationsSamplingEnabled;
-      }
-
-      @Override
       public boolean isMemoryCSVExportEnabled() {
         return false;
-      }
-
-      @Override
-      public boolean isNativeMemorySampleEnabled() { return myNativeMemorySampleEnabled; }
-
-      @Override
-      public boolean isMemorySnapshotEnabled() {
-        return myMemorySnapshotEnabled;
       }
 
       @Override
@@ -485,14 +457,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void enableCpuNewRecordingWorkflow(boolean enabled) {
     myCpuNewRecordingWorkflowEnabled = enabled;
-  }
-
-  public void enableLiveAllocationsSampling(boolean enabled) {
-    myLiveAllocationsSamplingEnabled = enabled;
-  }
-
-  public void enableNativeMemorySampling(boolean enabled) {
-    myNativeMemorySampleEnabled = enabled;
   }
 
   public void enableCpuCaptureStage(boolean enabled) { myIsCaptureStageEnabled = enabled; }

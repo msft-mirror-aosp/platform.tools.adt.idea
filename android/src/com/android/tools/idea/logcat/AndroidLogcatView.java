@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.logcat;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.ClientData;
 import com.android.ddmlib.IDevice;
 import com.android.tools.idea.ddms.DeviceContext;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
@@ -46,6 +46,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import javax.swing.DefaultComboBoxModel;
@@ -63,11 +64,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public class AndroidLogcatView {
   public static final Key<AndroidLogcatView> ANDROID_LOGCAT_VIEW_KEY = Key.create("ANDROID_LOGCAT_VIEW_KEY");
-
-  static final String SELECTED_APP_FILTER = AndroidBundle.message("android.logcat.filters.selected");
-  static final String NO_FILTERS = AndroidBundle.message("android.logcat.filters.none");
-  static final String EDIT_FILTER_CONFIGURATION = AndroidBundle.message("android.logcat.filters.edit");
-
   /**
    * This is a fake version of the selected app filter that acts as a placeholder before a real one
    * is swapped in, which happens when the pulldown of processes is populated.
@@ -80,7 +76,7 @@ public class AndroidLogcatView {
 
   private final Project myProject;
   final Disposable parentDisposable;
-  private final FormattedLogcatReceiver myLogcatReceiver;
+  private final AndroidLogcatService.LogcatListener myLogcatReceiver;
   private final AndroidLogConsole myLogConsole;
   private final DeviceContext myDeviceContext;
   private final AndroidLogFilterModel myLogFilterModel;
@@ -154,7 +150,7 @@ public class AndroidLogcatView {
 
     myLogFilterModel = new AndroidLogFilterModel(formatter, preferences);
     myLogConsole = new AndroidLogConsole(project, myLogFilterModel, formatter, this);
-    myLogcatReceiver = new ViewListener(formatter, this);
+    myLogcatReceiver = new ViewListener(this);
 
     Disposer.register(parentDisposable, () -> {
       if (myDevice != null) {
@@ -282,7 +278,7 @@ public class AndroidLogcatView {
   }
 
   boolean isActive() {
-    return ToolWindowManager.getInstance(myProject).getToolWindow("Logcat").isVisible();
+    return Objects.requireNonNull(ToolWindowManager.getInstance(myProject).getToolWindow("Logcat")).isVisible();
   }
 
   public final void activate() {
@@ -326,7 +322,7 @@ public class AndroidLogcatView {
   private void applySelectedFilter() {
     final Object filter = myFilterComboBoxModel.getSelectedItem();
     if (filter instanceof AndroidLogcatFilter) {
-      ProgressManager.getInstance().run(new Task.Backgroundable(myProject, "Applying Filter...") {
+      ProgressManager.getInstance().run(new Task.Backgroundable(myProject, "Applying filter...") {
         @Override
         public void run(@NotNull ProgressIndicator indicator) {
           myLogFilterModel.updateLogcatFilter((AndroidLogcatFilter)filter);
@@ -382,9 +378,9 @@ public class AndroidLogcatView {
 
   private void selectFilterByName(String name) {
     Optional<AndroidLogcatFilter> optionalFilter = IntStream.range(0, myFilterComboBoxModel.getSize())
-                                                            .mapToObj(i -> myFilterComboBoxModel.getElementAt(i))
-                                                            .filter(filter -> filter.getName().equals(name))
-                                                            .findFirst();
+      .mapToObj(i -> myFilterComboBoxModel.getElementAt(i))
+      .filter(filter -> filter.getName().equals(name))
+      .findFirst();
 
     optionalFilter.ifPresent(filter -> myFilterComboBoxModel.setSelectedItem(filter));
   }

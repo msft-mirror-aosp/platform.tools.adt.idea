@@ -26,10 +26,7 @@ public interface FeatureConfig {
   boolean isEnergyProfilerEnabled();
   boolean isJniReferenceTrackingEnabled();
   boolean isLiveAllocationsEnabled();
-  boolean isLiveAllocationsSamplingEnabled();
   boolean isMemoryCSVExportEnabled();
-  boolean isMemorySnapshotEnabled();
-  boolean isNativeMemorySampleEnabled(); // Added in 4.1.
   boolean isPerformanceMonitoringEnabled();
   boolean isProfileableEnabled();
   boolean isProfileableInQrEnabled();

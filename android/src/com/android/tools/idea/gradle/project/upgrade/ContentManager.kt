@@ -262,6 +262,8 @@ class ToolWindowModel(
     val root = (treeModel.root as CheckedTreeNode)
     root.removeAllChildren()
     treeModel.nodeStructureChanged(root)
+    processor?.usageView?.close()
+    processor = null
 
     if (refindPlugin) {
       current = AndroidPluginInfo.find(project)?.pluginVersion
@@ -274,8 +276,6 @@ class ToolWindowModel(
         if (newVersion >= current) AgpUpgradeRefactoringProcessor(project, current, it) else null
       }
     }
-    processor?.usageView?.close()
-    processor = newProcessor
 
     if (newProcessor == null) {
       // Preserve existing message and run button tooltips from newVersion validation.
@@ -305,6 +305,7 @@ class ToolWindowModel(
 
   private fun setEnabled(newProcessor: AgpUpgradeRefactoringProcessor, projectFilesClean: Boolean, classpathUsageFound: Boolean) {
     refreshTree(newProcessor)
+    processor = newProcessor
     if (!classpathUsageFound && newProcessor.current != newProcessor.new) {
       newProcessor.trackProcessorUsage(FAILURE_PREDICTED)
       uiState.set(UIState.AgpVersionNotLocatedError)
@@ -470,8 +471,11 @@ class ContentManager(val project: Project) {
           placeHolderValue = "Select new version"
         }
 
-        // Given the ComponentValidator installation below, one might expect this not to be necessary, but although the
-        // ComponentValidator provides the tooltip it appears not to provide the outline highlighting.
+        // Given the ComponentValidator installation below, one might expect this not to be necessary,
+        // but the outline highlighting does not work without it.
+        // This is happening because not specifying validation here does not remove validation but just using default 'accept all' one.
+        // This validation is triggered after the ComponentValidator and overrides the outline set by ComponentValidator.
+        // The solution would be either add support of the tooltip to this component validation logic or use a different component.
         override val editingSupport = object : EditingSupport {
           override val validation: EditingValidation = model::editingValidation
           override val completion: EditorCompletion = { model.suggestedVersions.getValueOr(emptyList()).map { it.toString() }}
@@ -548,7 +552,7 @@ class ContentManager(val project: Project) {
 
     val detailsPanel = JBPanel<JBPanel<*>>().apply {
       layout = VerticalLayout(0, SwingConstants.LEFT)
-      border = JBUI.Borders.empty(10)
+      border = JBUI.Borders.empty(20)
       myListeners.listen(this@View.model.uiState) { refreshDetailsPanel() }
     }
 

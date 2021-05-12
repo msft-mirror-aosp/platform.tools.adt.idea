@@ -375,11 +375,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
-    public boolean isNativeMemorySampleEnabled() {
-      return StudioFlags.PROFILER_ENABLE_NATIVE_SAMPLE.get();
-    }
-
-    @Override
     public boolean isCpuNewRecordingWorkflowEnabled() {
       return StudioFlags.PROFILER_CPU_NEW_RECORDING_WORKFLOW.get();
     }
@@ -400,18 +395,8 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
-    public boolean isLiveAllocationsSamplingEnabled() {
-      return StudioFlags.PROFILER_SAMPLE_LIVE_ALLOCATIONS.get();
-    }
-
-    @Override
     public boolean isMemoryCSVExportEnabled() {
       return StudioFlags.PROFILER_MEMORY_CSV_EXPORT.get();
-    }
-
-    @Override
-    public boolean isMemorySnapshotEnabled() {
-      return StudioFlags.PROFILER_MEMORY_SNAPSHOT.get();
     }
 
     @Override

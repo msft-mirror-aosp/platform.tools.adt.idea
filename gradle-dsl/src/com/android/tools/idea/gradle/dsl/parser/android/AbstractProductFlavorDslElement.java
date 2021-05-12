@@ -22,13 +22,13 @@ import com.android.tools.idea.gradle.dsl.parser.android.productFlavors.VectorDra
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
+import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
 import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
-import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -58,14 +58,16 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
     return CHILD_PROPERTIES_ELEMENTS_MAP;
   }
 
-  public static final ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> ktsToModelNameMap =
+  public static final ExternalToModelMap ktsToModelNameMap =
     Stream.concat(
-      AbstractFlavorTypeDslElement.ktsToModelNameMap.entrySet().stream().map(data -> new Object[]{
-        data.getKey().name, data.getKey().arity, data.getValue().property, data.getValue().semantics
+      AbstractFlavorTypeDslElement.ktsToModelNameMap.getEntrySet().stream().map(data -> new Object[]{
+        data.surfaceSyntaxDescription.name, data.surfaceSyntaxDescription.arity,
+        data.modelEffectDescription.property, data.modelEffectDescription.semantics
       }),
       Stream.of(new Object[][]{
         {"applicationId", property, APPLICATION_ID, VAR},
         {"setApplicationId", exactly(1), APPLICATION_ID, SET},
+        {"isDefault", property, DEFAULT, VAR},
         {"dimension", property, DIMENSION, VAR},
         {"setDimension", exactly(1), DIMENSION, SET},
         {"maxSdkVersion", property, MAX_SDK_VERSION, VAR},
@@ -98,14 +100,17 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
       }))
       .collect(toModelMap());
 
-  public static final ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> groovyToModelNameMap =
+  public static final ExternalToModelMap groovyToModelNameMap =
     Stream.concat(
-      AbstractFlavorTypeDslElement.groovyToModelNameMap.entrySet().stream().map(data -> new Object[]{
-        data.getKey().name, data.getKey().arity, data.getValue().property, data.getValue().semantics
+      AbstractFlavorTypeDslElement.groovyToModelNameMap.getEntrySet().stream().map(data -> new Object[]{
+        data.surfaceSyntaxDescription.name, data.surfaceSyntaxDescription.arity,
+        data.modelEffectDescription.property, data.modelEffectDescription.semantics
       }),
       Stream.of(new Object[][]{
         {"applicationId", property, APPLICATION_ID, VAR},
         {"applicationId", exactly(1), APPLICATION_ID, SET},
+        {"isDefault", property, DEFAULT, VAR},
+        {"isDefault", exactly(1), DEFAULT, SET},
         {"dimension", property, DIMENSION, VAR},
         {"dimension", exactly(1), DIMENSION, SET},
         {"maxSdkVersion", property, MAX_SDK_VERSION, VAR},
@@ -145,7 +150,7 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
       .collect(toModelMap());
 
   @Override
-  public @NotNull ImmutableMap<SurfaceSyntaxDescription, ModelEffectDescription> getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
+  public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
     if (converter instanceof KotlinDslNameConverter) {
       return ktsToModelNameMap;
     }

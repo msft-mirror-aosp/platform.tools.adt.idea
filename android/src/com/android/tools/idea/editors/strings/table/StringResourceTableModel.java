@@ -21,8 +21,11 @@ import com.android.tools.idea.editors.strings.StringResourceData;
 import com.android.tools.idea.editors.strings.StringResourceKey;
 import com.android.tools.idea.editors.strings.StringResourceRepository;
 import com.android.tools.idea.rendering.Locale;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.util.concurrency.SameThreadExecutor;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.table.AbstractTableModel;
@@ -116,31 +119,49 @@ public class StringResourceTableModel extends AbstractTableModel {
 
           fireTableRowsUpdated(0, myKeys.size() - 1);
         });
-
         break;
+
       case RESOURCE_FOLDER_COLUMN:
         break;
+
       case UNTRANSLATABLE_COLUMN:
         Boolean doNotTranslate = (Boolean)value;
         if (myData.setTranslatable(getKey(row), !doNotTranslate)) {
           fireTableCellUpdated(row, column);
         }
-
         break;
+
       case DEFAULT_VALUE_COLUMN:
-        if (getStringResourceAt(row).setDefaultValue((String)value)) {
-          fireTableCellUpdated(row, column);
-        }
+        Futures.addCallback(getStringResourceAt(row).setDefaultValue((String)value), new FutureCallback<Boolean>() {
+          @Override
+          public void onSuccess(@Nullable Boolean changed) {
+            if (changed != null && changed) {
+              fireTableCellUpdated(row, column);
+            }
+          }
 
+          @Override
+          public void onFailure(@NotNull Throwable t) {
+          }
+        }, SameThreadExecutor.INSTANCE);
         break;
+
       default:
         Locale locale = getLocale(column);
         assert locale != null;
 
-        if (getStringResourceAt(row).putTranslation(locale, (String)value)) {
-          fireTableCellUpdated(row, column);
-        }
+        Futures.addCallback(getStringResourceAt(row).putTranslation(locale, (String)value), new FutureCallback<Boolean>() {
+          @Override
+          public void onSuccess(@Nullable Boolean changed) {
+            if (changed != null && changed) {
+              fireTableCellUpdated(row, column);
+            }
+          }
 
+          @Override
+          public void onFailure(@NotNull Throwable t) {
+          }
+        }, SameThreadExecutor.INSTANCE);
         break;
     }
   }
@@ -183,7 +204,7 @@ public class StringResourceTableModel extends AbstractTableModel {
   }
 
   @Override
-  public Class getColumnClass(int column) {
+  public Class<?> getColumnClass(int column) {
     return column == UNTRANSLATABLE_COLUMN ? Boolean.class : String.class;
   }
 

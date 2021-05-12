@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.logcat;
 
+import com.android.annotations.NonNull;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
@@ -38,6 +39,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Disposer;
+import java.io.EOFException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -254,11 +256,14 @@ public final class AndroidLogcatService implements AndroidDebugBridge.IDeviceCha
     try {
       execute(device, supportsEpochFormatModifier(device) ? "logcat -v long -v epoch" : "logcat -v long", receiver, Duration.ZERO);
     }
+    catch (EOFException e) {
+      getLog().info("Logcat process terminated");
+    }
     catch (Throwable throwable) {
       getLog().warn(throwable);
 
       String app = IdeInfo.getInstance().isAndroidStudio() ? "com.android.studio" : "com.jetbrains.idea";
-      receiver.notifyLine(new LogCatHeader(LogLevel.ERROR, 0, 0, app, "AndroidLogcatService", Instant.now()), throwable.toString());
+      receiver.notifyLogcatMessage(new LogCatHeader(LogLevel.ERROR, 0, 0, app, "AndroidLogcatService", Instant.now()), throwable.toString());
     }
   }
 
@@ -275,7 +280,7 @@ public final class AndroidLogcatService implements AndroidDebugBridge.IDeviceCha
     private boolean myCancelled;
 
     @Override
-    public void processNewLines(@NotNull String[] lines) {
+    public void processNewLines(@NonNull String[] lines) {
       if (mySupportsEpochFormatModifier) {
         myCancelled = true;
         return;
@@ -391,7 +396,7 @@ public final class AndroidLogcatService implements AndroidDebugBridge.IDeviceCha
       if (!oldMessages.isEmpty()) {
         ExecutorService executor = myExecutors.get(device);
         assert executor != null;
-        executor.submit(() -> listenerConnector.processBacklog());
+        executor.submit(listenerConnector::processBacklog);
       }
     }
   }
@@ -473,7 +478,10 @@ public final class AndroidLogcatService implements AndroidDebugBridge.IDeviceCha
       myExecutors.values().forEach(executor -> {
         try {
           executor.shutdownNow();
-          executor.awaitTermination(5_000, TimeUnit.MILLISECONDS);
+          boolean terminated = executor.awaitTermination(5_000, TimeUnit.MILLISECONDS);
+          if (!terminated) {
+            getLog().info("Timed out shutting down executor");
+          }
         }
         catch (InterruptedException e) {
           getLog().info("Error shutting down executor", e);

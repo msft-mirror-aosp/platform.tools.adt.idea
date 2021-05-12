@@ -28,6 +28,7 @@ import com.android.tools.idea.compose.preview.actions.requestBuildForSurface
 import com.android.tools.idea.compose.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
+import com.android.tools.idea.compose.preview.literals.LiveLiteralsPsiFileSnapshotFilter
 import com.android.tools.idea.compose.preview.navigation.PreviewNavigationHandler
 import com.android.tools.idea.compose.preview.util.FpsCalculator
 import com.android.tools.idea.compose.preview.util.PreviewElement
@@ -234,7 +235,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
   private val module = psiFile.module
   private val psiFilePointer = SmartPointerManager.createPointer(psiFile)
 
-  private val projectBuildStatusManager = ProjectBuildStatusManager(this, psiFile)
+  private val projectBuildStatusManager = ProjectBuildStatusManager(this, psiFile, LiveLiteralsPsiFileSnapshotFilter(this, psiFile))
 
   /**
    * [PreviewElementProvider] containing the pinned previews.
@@ -743,7 +744,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     val newStatus = ComposePreviewManager.Status(
       !isRefreshing && hasErrorsAndNeedsBuild(),
       !isRefreshing && hasSyntaxErrors(),
-      !isRefreshing && projectBuildStatusManager.status == OutOfDate,
+      !isRefreshing && projectBuildStatusManager.status == ProjectStatus.OutOfDate,
       isRefreshing,
       interactiveMode)
 
@@ -831,7 +832,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     onRestoreState?.invoke()
     onRestoreState = null
 
-    val arePinsEnabled = StudioFlags.COMPOSE_PIN_PREVIEW.get() && !interactiveMode.isStartingOrReady()
+    val arePinsEnabled = StudioFlags.COMPOSE_PIN_PREVIEW.get() && interactiveMode.isStoppingOrDisabled() && !animationInspection.get()
     val hasPinnedElements = if (arePinsEnabled) {
       memoizedPinnedPreviewProvider.previewElements.any()
     } else false

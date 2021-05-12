@@ -94,12 +94,6 @@ public final class StudioFlags {
     "CpuProfilerStageView flow.",
     true);
 
-  public static final Flag<Boolean> PROFILER_ENABLE_NATIVE_SAMPLE = Flag.create(
-    PROFILER, "memory.heapprofd", "Enable heapprofd captures in the memory profiler.",
-    "Toggles if users can capture heapprofd recordings in the memory profiler. This gates mostly the UI and importing of traces. " +
-    "The perfd functionality is not gated. This feature has a dependency on the trace processor.",
-    true);
-
   public static final Flag<Boolean> PROFILER_UNIFIED_PIPELINE = Flag.create(
     PROFILER, "unified.pipeline", "Enables new event pipeline to be used for core components.",
     "Toggles usage of gRPC apis to fetch data from perfd and the datastore.",
@@ -119,20 +113,10 @@ public final class StudioFlags {
     "For Android O or newer, allocations are tracked all the time while inside the Memory Profiler.",
     true);
 
-  public static final Flag<Boolean> PROFILER_MEMORY_SNAPSHOT = Flag.create(
-    PROFILER, "memory.livealloc.snapshot", "Enable Memory Class Histogram Display",
-    "For Android O or newer, supports single-point selection which shows a snapshot of the heap at the specific time.",
-    true);
-
   public static final Flag<Boolean> PROFILER_MEMORY_CSV_EXPORT = Flag.create(
     PROFILER, "memory.csv", "Allow exporting entries in memory profiler",
     "Allow exporting entries in the views for heap dump and native/JVM recordings in CSV format.",
     false);
-
-  public static final Flag<Boolean> PROFILER_SAMPLE_LIVE_ALLOCATIONS = Flag.create(
-    PROFILER, "memory.livealloc.sampled", "Enable Sampled Live Allocation Tracking",
-    "For Android O or newer, allows users to configure the sampling mode of live allocation tracking",
-    true);
 
   public static final Flag<Boolean> PROFILER_TRACK_JNI_REFS = Flag.create(
     PROFILER, "jni", "Enable JVMTI-based JNI reference tracking.",
@@ -744,6 +728,10 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "screenshot.statistics", "Enable Collection of Screenshot Statistics",
     "Captures statistics of received Emulator screenshots",
     false);
+  public static final Flag<Integer> EMBEDDED_EMULATOR_STATISTICS_INTERVAL_SECONDS = Flag.create(
+    EMBEDDED_EMULATOR, "screenshot.statistics.interval", "Aggregation Interval for Screenshot Statistics",
+    "Aggregation interval in seconds for statistics of received Emulator screenshots",
+    120);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_GRPC_CALLS = Flag.create(
     EMBEDDED_EMULATOR, "trace.grpc.calls", "Enable Emulator gRPC Tracing",
     "Enables tracing of most Emulator gRPC calls",
@@ -915,8 +903,8 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> UTP_INSTRUMENTATION_TESTING = Flag.create(
     TESTING, "utp.instrumentation.testing", "Run instrumentation tests via UTP",
-    "If enabled, switch to running instrumentation tests via UTP.",
-    false
+    "If enabled, a checkbox to opt-in to running instrumentation tests via UTP feature is displayed in the settings.",
+    true
   );
   //endregion
 
@@ -1114,7 +1102,7 @@ public final class StudioFlags {
     COMPOSE, "preview.element.picker.enable",
     "Enable @Preview picker",
     "If enabled, the picker for @Preview elements will be available",
-    false
+    true
   );
 
   public static final Flag<Boolean> COMPOSE_BLUEPRINT_MODE = Flag.create(
@@ -1264,9 +1252,9 @@ public final class StudioFlags {
     "Enables the device groups tab in the new Device Manager",
     false
   );
-  public static final Flag<Boolean> ENABLE_DEVICE_MANAGER_VIRTUAL_RECOMMENDED_CONFIGURATIONS = Flag.create(
-    DEVICE_MANAGER, "enable.device.manager.virtual.recommended.configurations", "Enable recommended configurations",
-    "Enables the recommended configurations section of the virtual tab in the new Device Manager",
+  public static final Flag<Boolean> ENABLE_DEVICE_MANAGER_HALF_BAKED_FEATURES = Flag.create(
+    DEVICE_MANAGER, "enable.device.manager.half.baked.features", "Enable half baked Device Manager features",
+    "Enables some features that could be unpolished or unready in the new Device Manager",
     false
   );
   // endregion

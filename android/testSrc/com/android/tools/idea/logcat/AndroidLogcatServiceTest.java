@@ -45,63 +45,24 @@ import org.mockito.stubbing.Answer;
 
 public class AndroidLogcatServiceTest {
   private static final ImmutableList<String> LOG_LINES = ImmutableList.of(
-    "[ 1534635551.439 1493:1595 W/DummyFirst     ]",
+    "[ 1534635551.439 1493:1595 W/Tag1     ]",
     "First Line1",
     "First Line2",
     "First Line3",
-    "[ 1537486751.439 1493:1595 W/DummySecond     ]",
-    "Second Line1"
+    "",
+    "[ 1537486751.439 1493:1595 W/Tag2     ]",
+    "Second Line1",
+    ""
   );
 
   private static final ImmutableList<LogCatMessage> EXPECTED_LOG_MESSAGES = ImmutableList.of(
     new LogCatMessage(
-      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "DummyFirst", Instant.ofEpochMilli(1534635551439L)),
-      "First Line1"),
+      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "Tag1", Instant.ofEpochMilli(1534635551439L)),
+      "First Line1\nFirst Line2\nFirst Line3"),
     new LogCatMessage(
-      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "DummyFirst", Instant.ofEpochMilli(1534635551439L)),
-      "First Line2"),
-    new LogCatMessage(
-      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "DummyFirst", Instant.ofEpochMilli(1534635551439L)),
-      "First Line3"),
-    new LogCatMessage(
-      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "DummySecond", Instant.ofEpochMilli(1537486751439L)),
+      new LogCatHeader(Log.LogLevel.WARN, 1493, 1595, "?", "Tag2", Instant.ofEpochMilli(1537486751439L)),
       "Second Line1")
   );
-
-  private static class TestLogcatListener implements AndroidLogcatService.LogcatListener {
-
-
-    private final List<LogCatMessage> myReceivedMessages = new ArrayList<>();
-    private boolean myCleared;
-
-    @Override
-    public void onLogLineReceived(@NotNull LogCatMessage logCatMessage) {
-      myReceivedMessages.add(logCatMessage);
-    }
-
-    @Override
-    public void onCleared() {
-      myCleared = true;
-      myReceivedMessages.clear();
-    }
-
-    public void reset() {
-      myCleared = false;
-      myReceivedMessages.clear();
-    }
-
-    public void assertAllReceived() {
-      assertThat(myReceivedMessages).containsExactlyElementsIn(EXPECTED_LOG_MESSAGES);
-    }
-
-    public void assertNothingReceived() {
-      assertEquals(0, myReceivedMessages.size());
-    }
-
-    private void assertCleared() {
-      assertTrue(myCleared);
-    }
-  }
 
   private TestLogcatListener myLogcatListener;
   private final IDevice mockDevice = mock(IDevice.class);
@@ -122,33 +83,6 @@ public class AndroidLogcatServiceTest {
 
     myBufferSize = System.setProperty("idea.cycle.buffer.size", "disabled");
     myProject = mock(Project.class);
-  }
-
-  private void stubExecuteLogcatHelp() throws Exception {
-    Answer<Void> answer = invocation -> {
-      ((MultiLineReceiver)invocation.getArgument(1)).processNewLines(new String[]{"epoch"});
-      myExecuteShellCommandLatch.countDown();
-
-      return null;
-    };
-
-    doAnswer(answer).when(mockDevice).executeShellCommand(eq("logcat --help"), any(), eq(10L), eq(TimeUnit.SECONDS));
-  }
-
-  private void stubExecuteLogcatVLongVEpoch() throws Exception {
-    Answer<Void> answer = invocation -> {
-      AndroidLogcatReceiver receiver = invocation.getArgument(1);
-
-      for (String line : LOG_LINES) {
-        receiver.processNewLine(line);
-      }
-      receiver.cancel();
-
-      myExecuteShellCommandLatch.countDown();
-      return null;
-    };
-
-    doAnswer(answer).when(mockDevice).executeShellCommand(eq("logcat -v long -v epoch"), any(), eq(0L), eq(TimeUnit.MILLISECONDS));
   }
 
   @After
@@ -299,5 +233,64 @@ public class AndroidLogcatServiceTest {
     myLogcatService.clearLogcat(mockDevice, myProject);
 
     myLogcatListener.assertCleared();
+  }
+
+  private void stubExecuteLogcatHelp() throws Exception {
+    Answer<Void> answer = invocation -> {
+      ((MultiLineReceiver)invocation.getArgument(1)).processNewLines(new String[]{"epoch"});
+      myExecuteShellCommandLatch.countDown();
+
+      return null;
+    };
+
+    doAnswer(answer).when(mockDevice).executeShellCommand(eq("logcat --help"), any(), eq(10L), eq(TimeUnit.SECONDS));
+  }
+
+  private void stubExecuteLogcatVLongVEpoch() throws Exception {
+    Answer<Void> answer = invocation -> {
+      AndroidLogcatReceiver receiver = invocation.getArgument(1);
+
+      receiver.processNewLines(LOG_LINES);
+      receiver.cancel();
+
+      myExecuteShellCommandLatch.countDown();
+      return null;
+    };
+
+    doAnswer(answer).when(mockDevice).executeShellCommand(eq("logcat -v long -v epoch"), any(), eq(0L), eq(TimeUnit.MILLISECONDS));
+  }
+
+  private static class TestLogcatListener implements AndroidLogcatService.LogcatListener {
+
+    private final List<LogCatMessage> myReceivedMessages = new ArrayList<>();
+    private boolean myCleared;
+
+    @Override
+    public void onLogLineReceived(@NotNull LogCatMessage logCatMessage) {
+      myReceivedMessages.add(logCatMessage);
+    }
+
+    @Override
+    public void onCleared() {
+      myCleared = true;
+      myReceivedMessages.clear();
+    }
+
+    public void reset() {
+      myCleared = false;
+      myReceivedMessages.clear();
+    }
+
+    public void assertAllReceived() {
+      assertThat(myReceivedMessages).containsAllIn(EXPECTED_LOG_MESSAGES);
+    }
+
+    public void assertNothingReceived() {
+      assertEquals(0, myReceivedMessages.size());
+    }
+
+    private void assertCleared() {
+      assertTrue(myCleared);
+    }
   }
 }

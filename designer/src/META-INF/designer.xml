@@ -56,10 +56,18 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <applicationService serviceImplementation="com.android.tools.idea.common.model.NlDependencyManager"/>
+    <applicationConfigurable groupId="editor" groupWeight="115" id="nele.options"
+                             provider="com.android.tools.idea.uibuilder.options.NlOptionsConfigurableProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
     <keymapExtension implementation="com.android.tools.idea.DesignerKeymapExtension"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <projectService serviceImplementation="com.android.tools.idea.common.surface.DesignSurfaceSettings"/>
+    <applicationService serviceImplementation="com.android.tools.idea.uibuilder.visual.VisualizationToolSettings"/>
+    <projectService serviceImplementation="com.android.tools.idea.uibuilder.visual.VisualizationToolProjectSettings"/>
   </extensions>
 
   <module-components>
@@ -136,44 +144,15 @@
       <add-to-group group-id="Android.Designer.ToolsActions"/>
     </group>
 
-    <!-- TODO: add shortcuts and group for nav editor, multi-preview, custom view, compose, and split editor -->
-    <group id="Android.Designer.NavEditorActions" text="Navigation Editor">
+    <action id="Android.CreateSampleDataDirectory" class="com.android.tools.idea.actions.CreateSampleDataDirectory">
+      <add-to-group group-id="NewGroup" anchor="after" relative-to-action="Android.CreateResourceDirectory"/>
+    </action>
+    <action id="StoreDefaultLayout" class="com.android.tools.idea.common.actions.StoreDefaultWindowLayoutAction" overrides="true"/>
+    <action id="RestoreDefaultLayout" class="com.android.tools.idea.common.actions.RestoreDefaultWindowLayoutAction" overrides="true"/>
 
-      <action id="Android.Designer.AssignStartDestination"
-              icon="StudioIcons.NavEditor.Toolbar.ASSIGN_START"
-              class="com.android.tools.idea.naveditor.actions.StartDestinationToolbarAction"
-              text="Assign Start Destination"
-              description="Assign the start point of navigation graph">
-        <keyboard-shortcut keymap="$default" first-keystroke="H"/>
-      </action>
-
-      <action id="Android.Designer.AddDeepLink"
-              icon="StudioIcons.NavEditor.Toolbar.DEEPLINK"
-              class="com.android.tools.idea.naveditor.actions.DeepLinkToolbarAction"
-              text="Add Deep Link"
-              description="Add deep link to the selected item">
-        <keyboard-shortcut keymap="$default" first-keystroke="D"/>
-      </action>
-
-      <action id="Android.Designer.AddAction"
-              icon="StudioIcons.NavEditor.Toolbar.ACTION"
-              class="com.android.tools.idea.naveditor.actions.AddActionToolbarAction"
-              text="Add Action"
-              description="Add action to the selected item">
-        <keyboard-shortcut keymap="$default" first-keystroke="A"/>
-      </action>
-
-      <action id="Android.Designer.AutoArrange"
-              icon="StudioIcons.NavEditor.Toolbar.AUTO_ARRANGE"
-              class="com.android.tools.idea.naveditor.actions.AutoArrangeAction"
-              text="Auto Arrange"
-              description="Rearrange the items">
-        <keyboard-shortcut keymap="$default" first-keystroke="ctrl L"/>
-        <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta L" replace-all="true"/>
-      </action>
-
-      <add-to-group group-id="Android.Designer.ToolsActions"/>
-    </group>
+    <action internal="true" id="Android.GenerateLayoutTestSkeletonAction" class="com.android.tools.idea.uibuilder.actions.GenerateLayoutTestSkeletonAction">
+        <add-to-group group-id="Internal.Android" anchor="after" relative-to-action="Android.TerminateAdbAction"/>
+    </action>
   </actions>
 
   <extensions defaultExtensionNs="com.android.tools.idea.assistant">

@@ -17,20 +17,38 @@ package com.android.tools.idea.devicemanager.physicaltab;
 
 import com.android.annotations.concurrency.UiThread;
 import com.android.tools.idea.devicemanager.Device;
+import com.android.tools.idea.devicemanager.physicaltab.PhysicalDevice.ConnectionType;
+import com.google.common.annotations.VisibleForTesting;
+import icons.StudioIcons;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import javax.swing.Icon;
 import javax.swing.table.AbstractTableModel;
 import org.jetbrains.annotations.NotNull;
 
 @UiThread
 final class PhysicalDeviceTableModel extends AbstractTableModel {
-  private static final int DEVICE_MODEL_COLUMN_INDEX = 0;
+  static final int DEVICE_MODEL_COLUMN_INDEX = 0;
   private static final int API_MODEL_COLUMN_INDEX = 1;
-  private static final int TYPE_MODEL_COLUMN_INDEX = 2;
+
+  @VisibleForTesting
+  static final int TYPE_MODEL_COLUMN_INDEX = 2;
+
   private static final int ACTIONS_MODEL_COLUMN_INDEX = 3;
 
   private final @NotNull List<@NotNull PhysicalDevice> myDevices;
+
+  /**
+   * Supplies a key for JTable.defaultRenderersByColumnClass and ActionsComponent
+   */
+  static final class Actions {
+    @SuppressWarnings("InstantiationOfUtilityClass")
+    static final Actions INSTANCE = new Actions();
+
+    private Actions() {
+    }
+  }
 
   PhysicalDeviceTableModel() {
     this(Collections.emptyList());
@@ -91,12 +109,19 @@ final class PhysicalDeviceTableModel extends AbstractTableModel {
       case DEVICE_MODEL_COLUMN_INDEX:
         return Device.class;
       case API_MODEL_COLUMN_INDEX:
-      case TYPE_MODEL_COLUMN_INDEX:
-      case ACTIONS_MODEL_COLUMN_INDEX:
         return Object.class;
+      case TYPE_MODEL_COLUMN_INDEX:
+        return Icon.class;
+      case ACTIONS_MODEL_COLUMN_INDEX:
+        return Actions.class;
       default:
         throw new AssertionError(modelColumnIndex);
     }
+  }
+
+  @Override
+  public boolean isCellEditable(int modelRowIndex, int modelColumnIndex) {
+    return modelColumnIndex == ACTIONS_MODEL_COLUMN_INDEX;
   }
 
   @Override
@@ -107,12 +132,23 @@ final class PhysicalDeviceTableModel extends AbstractTableModel {
       case API_MODEL_COLUMN_INDEX:
         return myDevices.get(modelRowIndex).getApi();
       case TYPE_MODEL_COLUMN_INDEX:
-        return myDevices.get(modelRowIndex).getConnectionType();
+        return getIcon(myDevices.get(modelRowIndex).getConnectionType());
       case ACTIONS_MODEL_COLUMN_INDEX:
-        // TODO You can probably throw an exception here too
-        return "Actions";
+        return Actions.INSTANCE;
       default:
         throw new AssertionError(modelColumnIndex);
+    }
+  }
+
+  private static @NotNull Icon getIcon(@NotNull ConnectionType type) {
+    // TODO These are placeholder icons. Replace them with the real ones.
+    switch (type) {
+      case USB:
+        return StudioIcons.Common.CIRCLE_GREEN;
+      case WI_FI:
+        return StudioIcons.Common.CIRCLE_RED;
+      default:
+        throw new AssertionError(type);
     }
   }
 }

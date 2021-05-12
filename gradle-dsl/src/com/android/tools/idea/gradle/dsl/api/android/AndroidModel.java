@@ -31,7 +31,13 @@ public interface AndroidModel extends GradleDslModel {
   AdbOptionsModel adbOptions();
 
   @NotNull
+  ResolvedPropertyModel aidlPackagedList();
+
+  @NotNull
   AndroidResourcesModel androidResources();
+
+  @NotNull
+  ResolvedPropertyModel assetPacks();
 
   @NotNull
   ResolvedPropertyModel buildToolsVersion();
@@ -84,6 +90,9 @@ public interface AndroidModel extends GradleDslModel {
   LintOptionsModel lintOptions();
 
   @NotNull
+  ResolvedPropertyModel namespace();
+
+  @NotNull
   ResolvedPropertyModel ndkVersion();
 
   @NotNull
@@ -115,6 +124,12 @@ public interface AndroidModel extends GradleDslModel {
 
   @NotNull
   SplitsModel splits();
+
+  @NotNull
+  ResolvedPropertyModel targetProjectPath();
+
+  @NotNull
+  ResolvedPropertyModel testNamespace();
 
   @NotNull
   TestOptionsModel testOptions();
