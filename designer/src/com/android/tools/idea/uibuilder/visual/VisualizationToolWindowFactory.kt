@@ -18,24 +18,21 @@ package com.android.tools.idea.uibuilder.visual
 import com.android.resources.ResourceFolderType
 import com.android.tools.idea.res.getFolderType
 import com.intellij.openapi.Disposable
-import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.util.ui.update.MergingUpdateQueue
 import com.intellij.util.ui.update.Update
-import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.android.model.AndroidModelSerializationConstants.ANDROID_GRADLE_FACET_NAME
 
 /**
  * [ToolWindowFactory] for the Layout Validation Tool. The tool is registered in designer.xml and the initialization is controlled by IJ's
@@ -48,22 +45,12 @@ class VisualizationToolWindowFactory : ToolWindowFactory {
     const val TOOL_WINDOW_ID = "Layout Validation"
   }
 
-  /**
-   * [isApplicable] is called first before other functions.
-   */
-  private lateinit var project: Project
-
   override fun isApplicable(project: Project): Boolean {
-    this.project = project
-    // If the module contains AndroidFacet, then it is an Android Project.
-    // The old project structure (AndroidManifest.xml, src folder, and res folder are belong to root folder) only has Android Gradle Facet.
-    // We check it as well for backwards compatibility.
-    return ModuleManager.getInstance(project).modules
-      .flatMap { module -> FacetManager.getInstance(module).allFacets.asIterable() }
-      .any { facet -> facet.name == AndroidFacet.NAME || facet.name == ANDROID_GRADLE_FACET_NAME }
+    return true
   }
 
   override fun init(toolWindow: ToolWindow) {
+    val project = (toolWindow as ToolWindowEx).project
     project.messageBus.connect(toolWindow.disposable).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER,
       object : FileEditorManagerListener {
         override fun fileOpened(source: FileEditorManager, file: VirtualFile) = updateAvailable(toolWindow, file)

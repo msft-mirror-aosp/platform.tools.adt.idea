@@ -83,6 +83,11 @@ public final class StudioFlags {
     NPW, "new.native.module", "New Android Native Module",
     "Show template to create a new Android Native module in the new module wizard.",
     true);
+
+  public static final Flag<Boolean> NPW_NEW_MACRO_BENCHMARK_MODULE = Flag.create(
+    NPW, "new.macro.benchmark.module", "New Macro Benchmark Module",
+    "Show template to create a new Macro Benchmark module in the new module wizard.",
+    false);
   //endregion
 
   //region Profiler
@@ -289,7 +294,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_VISUALIZATION_APPLY_CONFIG_TO_LAYOUT_EDITOR = Flag.create(
     NELE, "visualization.apply.config", "Apply Selected Configuration in Validation Tool to Layout Editor",
     "Apply the configuration to Layout Editor by double clicking the preview in Validation Tool",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_SOURCE_CODE_EDITOR = Flag.create(
     NELE, "show.source.code.editor", "New Source Code Editor",

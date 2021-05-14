@@ -16,6 +16,7 @@
 package com.android.tools.idea.npw.benchmark
 
 import com.android.sdklib.SdkVersionInfo.LOWEST_ACTIVE_API
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.model.ProjectSyncInvoker
 import com.android.tools.idea.npw.module.ModuleDescriptionProvider
 import com.android.tools.idea.npw.module.ModuleGalleryEntry
@@ -26,7 +27,9 @@ import org.jetbrains.android.util.AndroidBundle.message
 import javax.swing.Icon
 
 class NewBenchmarkModuleDescriptionProvider : ModuleDescriptionProvider {
-  override fun getDescriptions(project: Project): Collection<ModuleGalleryEntry> = listOf(BenchmarkModuleTemplateGalleryEntry())
+  override fun getDescriptions(project: Project): Collection<ModuleGalleryEntry> = listOf(
+    BenchmarkModuleTemplateGalleryEntry(),
+  )
 
   private class BenchmarkModuleTemplateGalleryEntry : ModuleGalleryEntry {
     override val icon: Icon = StudioIcons.Wizards.Modules.BENCHMARK
@@ -34,6 +37,19 @@ class NewBenchmarkModuleDescriptionProvider : ModuleDescriptionProvider {
     override val description: String = message("android.wizard.module.new.benchmark.module.description")
     override fun toString(): String = name
     override fun createStep(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker): SkippableWizardStep<*> =
-      ConfigureBenchmarkModuleStep(NewBenchmarkModuleModel(project, moduleParent, projectSyncInvoker), name, LOWEST_ACTIVE_API)
+      if (StudioFlags.NPW_NEW_MACRO_BENCHMARK_MODULE.get()) {
+        ConfigureBenchmarkModuleStep(
+          model = NewBenchmarkModuleModel(
+            project = project,
+            moduleParent = moduleParent,
+            projectSyncInvoker = projectSyncInvoker,
+          )
+        )
+      }
+      else {
+        val model = NewBenchmarkModuleModel(project = project, moduleParent = moduleParent, projectSyncInvoker = projectSyncInvoker)
+        model.benchmarkModuleType.set(BenchmarkModuleType.MICROBENCHMARK)
+        ConfigureMicroBenchmarkModuleStep(model, name, LOWEST_ACTIVE_API)
+      }
   }
 }

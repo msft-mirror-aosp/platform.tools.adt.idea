@@ -15,7 +15,10 @@
  */
 package com.android.tools.idea.tests.gui.benchmark
 
+import com.android.flags.junit.SetFlagRule
 import com.android.sdklib.AndroidVersion
+import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.npw.benchmark.BenchmarkModuleType
 import com.android.tools.idea.tests.gui.framework.GuiTestRule
 import com.android.tools.idea.tests.gui.framework.fixture.npw.NewModuleWizardFixture
 import com.android.tools.idea.wizard.template.Language.Java
@@ -31,6 +34,9 @@ class AddBenchmarkModuleTest {
   @get:Rule
   val guiTest = GuiTestRule()
 
+  @get:Rule
+  val flagRule = SetFlagRule(StudioFlags.NPW_NEW_MACRO_BENCHMARK_MODULE, true)
+
   /**
    * Verifies that user is able to add a Benchmark Module through the
    * new module wizard.
@@ -40,8 +46,9 @@ class AddBenchmarkModuleTest {
    * 1. Import simple application project
    * 2. Go to File -> New module to open the new module dialog wizard.
    * 3. Choose Benchmark Module and click next.
-   * 4. Select Java as the source language.
-   * 5. Complete the wizard and wait for the build to complete.
+   * 4. Select Microbenchmark as the benchmark module type.
+   * 5. Select Java as the source language.
+   * 6. Complete the wizard and wait for the build to complete.
    * Verify:
    * 1. The new Benchmark Module is shown in the project explorer pane.
    * 2. Open the Benchmark Module manifest and check that "android:debuggable" and
@@ -54,13 +61,14 @@ class AddBenchmarkModuleTest {
    */
   @Test
   @Throws(Exception::class)
-  fun addJavaBenchmarkModule() {
+  fun addJavaMicrobenchmarkModule() {
     val ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleAndroidxApplication")
     assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful).isTrue()
 
     ideFrame.invokeMenuPath("File", "New", "New Module...")
     NewModuleWizardFixture.find(ideFrame)
       .clickNextToBenchmarkModule()
+      .selectBenchmarkType(BenchmarkModuleType.MICROBENCHMARK)
       .selectMinimumSdkApi(AndroidVersion.VersionCodes.P)
       .setSourceLanguage(Java)
       .wizard()
@@ -91,8 +99,9 @@ class AddBenchmarkModuleTest {
    * 1. Import simple application project
    * 2. Go to File -> New module to open the new module dialog wizard.
    * 3. Choose Benchmark Module and click next.
-   * 4. Select Kotlin as the source language.
-   * 5. Complete the wizard and wait for the build to complete.
+   * 4. Select Microbenchmark as the benchmark module type.
+   * 5. Select Kotlin as the source language.
+   * 6. Complete the wizard and wait for the build to complete.
    * Verify:
    * 1. The new Benchmark Module is shown in the project explorer pane.
    * 2. Open the Benchmark Module manifest and check that "android:debuggable" and
@@ -105,11 +114,12 @@ class AddBenchmarkModuleTest {
    */
   @Test
   @Throws(Exception::class)
-  fun addKotlinBenchmarkModule() {
+  fun addKotlinMicrobenchmarkModule() {
     val ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleAndroidxApplication")
     ideFrame.invokeMenuPath("File", "New", "New Module...")
     NewModuleWizardFixture.find(ideFrame)
       .clickNextToBenchmarkModule()
+      .selectBenchmarkType(BenchmarkModuleType.MICROBENCHMARK)
       .selectMinimumSdkApi(AndroidVersion.VersionCodes.P)
       .setSourceLanguage(Kotlin)
       .wizard()
@@ -128,6 +138,122 @@ class AddBenchmarkModuleTest {
       assertThat(this).contains("""testBuildType = "release"""")
       assertThat(this).contains("""testInstrumentationRunner 'androidx.benchmark.junit4.AndroidBenchmarkRunner'""")
       assertThat(this).contains("""androidTestImplementation 'androidx.benchmark:benchmark-junit4:""")
+    }
+  }
+
+  /**
+   * Verifies that user is able to add a Java Macrobenchmark Module through the
+   * new module wizard.
+   *
+   * <pre>
+   * Test steps:
+   * 1. Import simple application project
+   * 2. Go to File -> New module to open the new module dialog wizard.
+   * 3. Choose Benchmark Module and click next.
+   * 4. Select Macrobenchmark as the benchmark module type.
+   * 5. Select Java as the source language.
+   * 6. Complete the wizard and wait for the build to complete.
+   * Verify:
+   * 1. The new Marobenchmark Module is shown in the project explorer pane.
+   * 2. Open the Macrobenchmark Module main manifest and check that:
+   *     - Query for target application is declared
+   *     - android.permission.WRITE_EXTERNAL_STORAGE is declared
+   * 3. Open build.gradle and check that:
+   *     - com.android.test plugin is applied
+   *     - the macrobenchmark library added as an implementation dependency
+   *     - targetProjectPath is set to :app
+   *     - The android.experimental.self-instrumenting property is set to true
+   */
+  @Test
+  @Throws(Exception::class)
+  fun addJavaMacrobenchmarkModule() {
+    val ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleAndroidxApplication")
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful).isTrue()
+
+    ideFrame.invokeMenuPath("File", "New", "New Module...")
+    NewModuleWizardFixture.find(ideFrame)
+      .clickNextToBenchmarkModule()
+      .selectBenchmarkType(BenchmarkModuleType.MACROBENCHMARK)
+      .enterPackageName("com.example.macrobenchmark")
+      .selectTargetApplicationModule("SimpleAndroidxApplication.app")
+      .selectMinimumSdkApi(AndroidVersion.VersionCodes.Q)
+      .setSourceLanguage(Java)
+      .wizard()
+      .clickFinishAndWaitForSyncToFinish()
+      .projectView
+      .selectAndroidPane()
+      .clickPath("benchmark")
+
+    guiTest.getProjectFileText("benchmark/src/main/AndroidManifest.xml").run {
+      assertThat(this).containsMatch("<queries>\\s*<package android:name=\"com.example.google.androidx\" />\\s*</queries>")
+      assertThat(this).containsMatch(
+        "<uses-permission\\s+android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"\\s+tools:ignore=\"ScopedStorage\"\\s*/>"
+      )
+    }
+
+    guiTest.getProjectFileText("benchmark/build.gradle").run {
+      assertThat(this).contains("""id 'com.android.test'""")
+      assertThat(this).contains("""implementation 'androidx.benchmark:benchmark-macro-junit4:""")
+      assertThat(this).contains("""properties["android.experimental.self-instrumenting"] = true""")
+      assertThat(this).contains("""targetProjectPath = :app""")
+    }
+  }
+
+  /**
+   * Verifies that user is able to add a Kotlin Macrobenchmark Module through the
+   * new module wizard.
+   *
+   * <pre>
+   * Test steps:
+   * 1. Import simple application project
+   * 2. Go to File -> New module to open the new module dialog wizard.
+   * 3. Choose Benchmark Module and click next.
+   * 4. Select Macrobenchmark as the benchmark module type.
+   * 5. Select Java as the source language.
+   * 6. Complete the wizard and wait for the build to complete.
+   * Verify:
+   * 1. The new Marobenchmark Module is shown in the project explorer pane.
+   * 2. Open the Macrobenchmark Module main manifest and check that:
+   *     - Query for target application is declared
+   *     - android.permission.WRITE_EXTERNAL_STORAGE is declared
+   * 3. Open build.gradle and check that:
+   *     - com.android.test plugin is applied
+   *     - the macrobenchmark library added as an implementation dependency
+   *     - targetProjectPath is set to :app
+   *     - The android.experimental.self-instrumenting property is set to true
+   */
+  @Test
+  @Throws(Exception::class)
+  fun addKotlinMacrobenchmarkModule() {
+    val ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleAndroidxApplication")
+    assertThat(guiTest.ideFrame().invokeProjectMake().isBuildSuccessful).isTrue()
+
+    ideFrame.invokeMenuPath("File", "New", "New Module...")
+    NewModuleWizardFixture.find(ideFrame)
+      .clickNextToBenchmarkModule()
+      .selectBenchmarkType(BenchmarkModuleType.MACROBENCHMARK)
+      .enterPackageName("com.example.macrobenchmark")
+      .selectTargetApplicationModule("SimpleAndroidxApplication.app")
+      .selectMinimumSdkApi(AndroidVersion.VersionCodes.Q)
+      .setSourceLanguage(Kotlin)
+      .wizard()
+      .clickFinishAndWaitForSyncToFinish()
+      .projectView
+      .selectAndroidPane()
+      .clickPath("benchmark")
+
+    guiTest.getProjectFileText("benchmark/src/main/AndroidManifest.xml").run {
+      assertThat(this).containsMatch("<queries>\\s+<package android:name=\"com.example.google.androidx\" />\\s*</queries>")
+      assertThat(this).containsMatch(
+        "<uses-permission\\s+android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"\\s+tools:ignore=\"ScopedStorage\"\\s*/>"
+      )
+    }
+
+    guiTest.getProjectFileText("benchmark/build.gradle").run {
+      assertThat(this).contains("""id 'com.android.test'""")
+      assertThat(this).contains("""implementation 'androidx.benchmark:benchmark-macro-junit4:""")
+      assertThat(this).contains("""properties["android.experimental.self-instrumenting"] = true""")
+      assertThat(this).contains("""targetProjectPath = :app""")
     }
   }
 }
