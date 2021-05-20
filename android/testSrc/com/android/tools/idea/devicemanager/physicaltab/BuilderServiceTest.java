@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.Futures;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.EnumSet;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
@@ -63,10 +64,9 @@ public final class BuilderServiceTest {
       .setSerialNumber("86UX00F4R")
       .setLastOnlineTime(TIME)
       .setName("Google Pixel 3")
-      .setOnline(true)
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     assertEquals(device, future.get(256, TimeUnit.MILLISECONDS));
@@ -87,12 +87,13 @@ public final class BuilderServiceTest {
   @Test
   public void buildMdnsAutoConnectTls() throws Exception {
     // Arrange
+    Mockito.when(myDevice.isOnline()).thenReturn(true);
     Mockito.when(myDevice.getSerialNumber()).thenReturn("adb-86UX00F4R-cYuns7._adb-tls-connect._tcp");
 
     // Act
     Future<PhysicalDevice> future = myService.build(myDevice);
 
     // Assert
-    assertEquals(ConnectionType.WI_FI, future.get(256, TimeUnit.MILLISECONDS).getConnectionType());
+    assertEquals(EnumSet.of(ConnectionType.WI_FI), future.get(256, TimeUnit.MILLISECONDS).getConnectionTypes());
   }
 }

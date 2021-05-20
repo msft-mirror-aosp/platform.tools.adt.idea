@@ -36,20 +36,18 @@ public final class PhysicalDeviceTest {
       .setSerialNumber("serialNumber1")
       .setLastOnlineTime(time1)
       .setName("Google Pixel 3")
-      .setOnline(true)
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     Object device2 = new PhysicalDevice.Builder()
       .setSerialNumber("serialNumber2")
       .setLastOnlineTime(time2)
       .setName("Google Pixel 3")
-      .setOnline(true)
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     Object device3 = new PhysicalDevice.Builder()
@@ -58,7 +56,6 @@ public final class PhysicalDeviceTest {
       .setName("Google Pixel 3")
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
       .build();
 
     Object device4 = new PhysicalDevice.Builder()
@@ -67,7 +64,6 @@ public final class PhysicalDeviceTest {
       .setName("Google Pixel 3")
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
       .build();
 
     Object device5 = new PhysicalDevice.Builder()
@@ -75,7 +71,6 @@ public final class PhysicalDeviceTest {
       .setName("Google Pixel 3")
       .setTarget("Android 12 Preview")
       .setApi("S")
-      .setConnectionType(ConnectionType.USB)
       .build();
 
     List<Object> devices = Arrays.asList(device5, device4, device2, device1, device3);

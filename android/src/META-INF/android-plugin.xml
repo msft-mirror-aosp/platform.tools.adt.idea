@@ -293,7 +293,6 @@
     <importCustomizer implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleImportCustomizer"/>
     <taskManager implementation="com.android.tools.idea.gradle.task.AndroidGradleTaskManager"/>
     <settingsControlProvider implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleSettingsControlProvider"/>
-    <testTasksProvider implementation="com.android.tools.idea.gradle.run.AndroidGradleTestTasksProvider"/>
     <orderEnumerationHandlerFactory implementation="com.android.tools.idea.gradle.project.AndroidGradleOrderEnumeratorHandlerFactory"/>
   </extensions>
 
@@ -619,7 +618,8 @@
                       factoryClass="com.android.tools.idea.devicemanager.DeviceManagerFactory"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.AndroidPluginVersionUpdater"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidProjectBuildNotifications"/>
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker"/>
+    <projectService serviceInterface="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker"
+                    serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvokerImpl"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.apk.debugging.DexSourceFiles"/>
@@ -975,7 +975,6 @@
 
   <extensions defaultExtensionNs="com.android.rendering">
     <renderErrorContributor implementation="com.android.tools.idea.rendering.RenderErrorContributor$Provider"/>
-    <renderErrorContributor implementation="com.android.tools.idea.gradle.rendering.GradleRenderErrorContributor$GradleProvider"/>
   </extensions>
 
   <xi:include href="new-deployment-target-selection.xml" xpointer="xpointer(/idea-plugin/*)"/>

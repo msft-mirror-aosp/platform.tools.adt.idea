@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.kotlin
 
+import com.android.tools.idea.gradle.dsl.model.BuildModelContext
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.AUGMENTED_ASSIGNMENT
@@ -87,7 +88,8 @@ interface KotlinDslNameConverter: GradleDslNameConverter {
     val defaultResult = ExternalNameInfo(modelName, UNKNOWN)
     var result : ExternalNameInfo? = null
     for (e in map.entrySet) {
-      if (e.modelEffectDescription.property.name == modelName ) {
+      if (e.modelEffectDescription.property.name == modelName) {
+        if (e.versionConstraint?.isOkWith(this.context.agpVersion) == false) continue
         // prefer assignment if possible, or otherwise the first appropriate method we find
         when (e.modelEffectDescription.semantics) {
           VAR, VWO -> return ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT)
@@ -119,4 +121,9 @@ interface KotlinDslNameConverter: GradleDslNameConverter {
     }
     return null
   }
+
+  val internalContext: BuildModelContext
+
+  @JvmDefault
+  override fun getContext(): BuildModelContext = internalContext
 }

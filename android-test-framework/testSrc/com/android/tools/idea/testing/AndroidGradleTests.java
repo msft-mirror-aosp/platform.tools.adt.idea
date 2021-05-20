@@ -63,7 +63,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.application.Result;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.externalSystem.service.project.manage.SourceFolderManager;
@@ -83,6 +82,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.util.ThrowableConsumer;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -511,12 +511,7 @@ public class AndroidGradleTests {
     // Android Studio overrides GradleInstallationManager.getGradleJdk() using AndroidStudioGradleInstallationManager
     // so it doesn't require the Gradle JDK setting to be defined
     if (!IdeInfo.getInstance().isAndroidStudio()) {
-      new WriteAction() {
-        @Override
-        protected void run(@NotNull Result result) {
-          ProjectRootManager.getInstance(project).setProjectSdk(currentJdk);
-        }
-      }.execute();
+      WriteAction.runAndWait(() -> ProjectRootManager.getInstance(project).setProjectSdk(currentJdk));
     }
   }
 
@@ -623,10 +618,10 @@ public class AndroidGradleTests {
 
   public static void overrideJdkToCurrentJdk() throws IOException {
     @NotNull IdeSdks ideSdks = IdeSdks.getInstance();
-    File jdkPath = ideSdks.getJdkPath();
+    Path jdkPath = ideSdks.getJdkPath();
     assertNotNull("Could not find path of current JDK", jdkPath);
     LOG.info("Using JDK from " + jdkPath);
-    ideSdks.overrideJdkEnvVariable(jdkPath.getAbsolutePath());
+    ideSdks.overrideJdkEnvVariable(jdkPath.toAbsolutePath().toString());
     assertTrue("Could not use JDK from " + jdkPath, ideSdks.isJdkEnvVariableValid());
   }
 

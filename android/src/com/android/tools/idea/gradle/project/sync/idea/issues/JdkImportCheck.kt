@@ -33,6 +33,7 @@ import com.google.wireless.android.sdk.stats.GradleSyncStats
 import com.intellij.build.issue.BuildIssue
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.project.Project
@@ -43,7 +44,7 @@ import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
-import java.io.File
+import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 
 class JdkImportCheckException(reason: String) : AndroidSyncException(reason)
@@ -64,6 +65,7 @@ fun validateProjectGradleJdk(project: Project?, projectPath: String?) {
   }
   val jdk: Sdk? =
     if (StringUtils.isNotBlank(projectPath)) {
+      @Suppress("UnstableApiUsage")
       AndroidStudioGradleInstallationManager.getInstance().getGradleJdk(project, projectPath!!)
     }
     else {
@@ -104,18 +106,10 @@ class JdkImportIssueChecker : GradleIssueChecker {
 
     return BuildIssueComposer(message).apply {
       if (IdeInfo.getInstance().isAndroidStudio) {
-        if (StudioFlags.ALLOW_JDK_PER_PROJECT.get()) {
-          val ideaProject = fetchIdeaProjectForGradleProject(issueData.projectPath)
-          if (ideaProject != null) {
-            val gradleInstallation = (GradleInstallationManager.getInstance() as AndroidStudioGradleInstallationManager)
-            if (!gradleInstallation.isUsingJavaHomeJdk(ideaProject)) {
-              addUseJavaHomeQuickFix(this)
-            }
-          }
-        }
-        else {
-          val ideSdks = IdeSdks.getInstance()
-          if (!ideSdks.isUsingJavaHomeJdk) {
+        val ideaProject = fetchIdeaProjectForGradleProject(issueData.projectPath)
+        if (ideaProject != null) {
+          val gradleInstallation = (GradleInstallationManager.getInstance() as AndroidStudioGradleInstallationManager)
+          if (!gradleInstallation.isUsingJavaHomeJdk(ideaProject)) {
             addUseJavaHomeQuickFix(this)
           }
         }
@@ -123,7 +117,7 @@ class JdkImportIssueChecker : GradleIssueChecker {
         if (issueQuickFixes.isEmpty()) {
           val embeddedJdkPath = EmbeddedDistributionPaths.getInstance().tryToGetEmbeddedJdkPath()
           // TODO: Check we REALLY need to check isJdkRunnableOnPlatform. This spawns a process.
-          if (embeddedJdkPath != null && Jdks.isJdkRunnableOnPlatform(embeddedJdkPath.absolutePath)) {
+          if (embeddedJdkPath != null && Jdks.isJdkRunnableOnPlatform(embeddedJdkPath.toAbsolutePath().toString())) {
             addQuickFix(UseEmbeddedJdkQuickFix())
           } else {
             addQuickFix(DownloadAndroidStudioQuickFix())
@@ -139,7 +133,7 @@ class JdkImportIssueChecker : GradleIssueChecker {
   private fun addUseJavaHomeQuickFix(composer: BuildIssueComposer) {
     val ideSdks = IdeSdks.getInstance()
     val jdkFromHome = IdeSdks.getJdkFromJavaHome()
-    if (jdkFromHome != null && ideSdks.validateJdkPath(File(jdkFromHome)) != null) {
+    if (jdkFromHome != null && ideSdks.validateJdkPath(Paths.get(jdkFromHome)) != null) {
       composer.addQuickFix(UseJavaHomeAsJdkQuickFix(jdkFromHome))
     }
   }
@@ -226,7 +220,7 @@ private fun validateJdk(jdk: Sdk?): String? {
   val selectedJdkMsg = "Selected Jdk location is $jdkHomePath.\n"
   // Check if the version of selected Jdk is the same with the Jdk IDE uses.
   val runningJdkVersion = IdeSdks.getInstance().runningVersionOrDefault
-  if (!StudioFlags.ALLOW_DIFFERENT_JDK_VERSION.get() && !IdeSdks.isJdkSameVersion(File(jdkHomePath), runningJdkVersion)) {
+  if (!StudioFlags.ALLOW_DIFFERENT_JDK_VERSION.get() && !IdeSdks.isJdkSameVersion(Paths.get(jdkHomePath), runningJdkVersion)) {
     return "The version of selected Jdk doesn't match the Jdk used by Studio. Please choose a valid Jdk " +
            runningJdkVersion.description + " directory.\n" + selectedJdkMsg
   }
@@ -241,5 +235,14 @@ private fun validateJdk(jdk: Sdk?): String? {
     "with the current OS. For example, for x86 systems please choose a 32 bits download option.\n" +
     selectedJdkMsg
   }
-  else null
+  else {
+    val ideInfo = IdeInfo.getInstance()
+    if (ideInfo.isAndroidStudio || ideInfo.isGameTools) {
+      // Recreate JDK table information for this JDK (b/187205058)
+      WriteAction.runAndWait<RuntimeException> {
+        IdeSdks.getInstance().recreateOrAddJdkInTable(jdk)
+      }
+    }
+    return null
+  }
 }

@@ -590,7 +590,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
         // Force updating toolbar icons after build
         ActivityTracker.getInstance().inc()
       }
-    }, this)
+    }, this, allowMultipleSubscriptionsPerProject = true)
 
     if (COMPOSE_PREVIEW_BUILD_ON_SAVE.get()) {
       setupOnSaveListener(project, psiFile,
@@ -1014,11 +1014,6 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
         refreshProgressIndicator.processFinish()
       }
     }
-  }
-
-  private fun getSelectedLayoutManager(): String? {
-    val layoutSwitcher = surface.sceneViewLayoutManager as LayoutManagerSwitcher
-    return PREVIEW_LAYOUT_MANAGER_OPTIONS.find { layoutSwitcher.isLayoutManagerSelected(it.layoutManager) }?.displayName
   }
 
   override fun getState(): PreviewRepresentationState {

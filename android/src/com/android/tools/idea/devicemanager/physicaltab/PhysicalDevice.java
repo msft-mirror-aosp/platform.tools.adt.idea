@@ -18,7 +18,9 @@ package com.android.tools.idea.devicemanager.physicaltab;
 import com.android.tools.idea.devicemanager.Device;
 import icons.StudioIcons;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.Objects;
 import javax.swing.Icon;
 import org.jetbrains.annotations.NotNull;
@@ -32,13 +34,13 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
   private final @NotNull String mySerialNumber;
   private final @Nullable Instant myLastOnlineTime;
   private final @NotNull String myApi;
-  private final @NotNull ConnectionType myConnectionType;
+  private final @NotNull Collection<@NotNull ConnectionType> myConnectionTypes;
 
   public static final class Builder extends Device.Builder {
     private @Nullable String mySerialNumber;
     private @Nullable Instant myLastOnlineTime;
     private @Nullable String myApi;
-    private @Nullable ConnectionType myConnectionType;
+    private final @NotNull Collection<@NotNull ConnectionType> myConnectionTypes = EnumSet.noneOf(ConnectionType.class);
 
     public @NotNull Builder setSerialNumber(@NotNull String serialNumber) {
       mySerialNumber = serialNumber;
@@ -55,11 +57,6 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
       return this;
     }
 
-    public @NotNull Builder setOnline(boolean online) {
-      myOnline = online;
-      return this;
-    }
-
     public @NotNull Builder setTarget(@NotNull String target) {
       myTarget = target;
       return this;
@@ -70,8 +67,13 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
       return this;
     }
 
-    public @NotNull Builder setConnectionType(@NotNull ConnectionType connectionType) {
-      myConnectionType = connectionType;
+    public @NotNull Builder addConnectionType(@NotNull ConnectionType connectionType) {
+      myConnectionTypes.add(connectionType);
+      return this;
+    }
+
+    @NotNull Builder addAllConnectionTypes(@NotNull Collection<@NotNull ConnectionType> connectionTypes) {
+      myConnectionTypes.addAll(connectionTypes);
       return this;
     }
 
@@ -102,8 +104,7 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
     assert builder.myApi != null;
     myApi = builder.myApi;
 
-    assert builder.myConnectionType != null;
-    myConnectionType = builder.myConnectionType;
+    myConnectionTypes = builder.myConnectionTypes;
   }
 
   @NotNull String getSerialNumber() {
@@ -119,12 +120,17 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
     return StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE;
   }
 
+  @Override
+  public boolean isOnline() {
+    return !myConnectionTypes.isEmpty();
+  }
+
   @NotNull String getApi() {
     return myApi;
   }
 
-  @NotNull ConnectionType getConnectionType() {
-    return myConnectionType;
+  @NotNull Collection<@NotNull ConnectionType> getConnectionTypes() {
+    return myConnectionTypes;
   }
 
   @Override
@@ -133,10 +139,9 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
 
     hashCode = 31 * hashCode + Objects.hashCode(myLastOnlineTime);
     hashCode = 31 * hashCode + myName.hashCode();
-    hashCode = 31 * hashCode + Boolean.hashCode(myOnline);
     hashCode = 31 * hashCode + myTarget.hashCode();
     hashCode = 31 * hashCode + myApi.hashCode();
-    hashCode = 31 * hashCode + myConnectionType.hashCode();
+    hashCode = 31 * hashCode + myConnectionTypes.hashCode();
 
     return hashCode;
   }
@@ -152,10 +157,9 @@ public final class PhysicalDevice extends Device implements Comparable<@NotNull 
     return mySerialNumber.equals(device.mySerialNumber) &&
            Objects.equals(myLastOnlineTime, device.myLastOnlineTime) &&
            myName.equals(device.myName) &&
-           myOnline == device.myOnline &&
            myTarget.equals(device.myTarget) &&
            myApi.equals(device.myApi) &&
-           myConnectionType.equals(device.myConnectionType);
+           myConnectionTypes.equals(device.myConnectionTypes);
   }
 
   @Override

@@ -113,11 +113,6 @@ public final class StudioFlags {
     "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
     true);
 
-  public static final Flag<Boolean> PROFILER_USE_LIVE_ALLOCATIONS = Flag.create(
-    PROFILER, "livealloc", "Enable JVMTI-based live allocation tracking",
-    "For Android O or newer, allocations are tracked all the time while inside the Memory Profiler.",
-    true);
-
   public static final Flag<Boolean> PROFILER_MEMORY_CSV_EXPORT = Flag.create(
     PROFILER, "memory.csv", "Allow exporting entries in memory profiler",
     "Allow exporting entries in the views for heap dump and native/JVM recordings in CSV format.",
@@ -644,12 +639,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> ALLOW_DIFFERENT_JDK_VERSION = Flag.create(
     GRADLE_IDE, "jdk.allow.different", "Allow different Gradle JDK", "Allow usage of a different JDK version when running Gradle.", true);
 
-  public static final Flag<Boolean> ALLOW_JDK_PER_PROJECT = Flag.create(
-    GRADLE_IDE, "jdk.allow.jdk.per.project", "Allow Gradle JDK per project", "Allows setting JDK per project.", true);
-
-  public static final Flag<Boolean> SHOW_JDK_PATH = Flag.create(
-    GRADLE_IDE, "jdk.show.path", "Show JDK path in settings", "Shows JDK path for each item in Gradle settings.", true);
-
   public static final Flag<Boolean> GRADLE_SYNC_USE_V2_MODEL = Flag.create(
     GRADLE_IDE, "gradle.sync.use.v2", "Use V2 Builder models", "Enable fetching V2 builder models from AGP when syncing.", false);
 
@@ -718,9 +707,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_COMPOSE_SUPPORT = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.compose.support", "Show inspectables from Compose",
     "If enabled the component tree will include Composable nodes if they are wrapped in an Inspectable.", true);
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_INSPECTION = Flag.create(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.use.inspection", "Use app inspection client",
-    "If enabled, use a client built on the app inspection pipeline instead of the transport pipeline.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_SHOW_SEMANTICS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.show.semantics", "Show semantics",
     "If enabled, display semantic information found in the agent.", false);

@@ -77,15 +77,6 @@ public class AndroidProjectTaskRunner extends ProjectTaskRunner {
       }
       return;
     }
-    File projectPath = new File(rootProjectPath);
-    final String projectName;
-    if (projectPath.isFile()) {
-      projectName = projectPath.getParentFile().getName();
-    }
-    else {
-      projectName = projectPath.getName();
-    }
-    String executionName = "Build " + projectName;
     ListMultimap<Path, String> tasks = GradleTaskFinder.getInstance().findTasksToExecute(modules, buildMode, TestCompileType.ALL);
 
     GradleBuildInvoker gradleBuildInvoker = GradleBuildInvoker.getInstance(project);
@@ -100,15 +91,12 @@ public class AndroidProjectTaskRunner extends ProjectTaskRunner {
 
     ProjectTaskNotification aggregatedCallback = callback == null ? null : new MergedProjectTaskNotification(callback, rootPaths.size());
     for (Path projectRootPath : rootPaths) {
-      GradleBuildInvoker.Request request = new GradleBuildInvoker.Request(project, projectRootPath.toFile(), tasks.get(projectRootPath));
 
       BuildSettings.getInstance(project).setBuildMode(buildMode);
       // the blocking mode required because of static behaviour of the BuildSettings.setBuildMode() method
-      request.waitForCompletion();
 
-      ExternalSystemTaskNotificationListener buildTaskListener = gradleBuildInvoker.createBuildTaskListener(request, executionName);
-      ExternalSystemTaskNotificationListener listenerDelegate =
-        aggregatedCallback == null ? buildTaskListener : new ExternalSystemTaskNotificationListenerAdapter(buildTaskListener) {
+      @Nullable ExternalSystemTaskNotificationListener listenerDelegate =
+        aggregatedCallback == null ? null : new ExternalSystemTaskNotificationListenerAdapter(null) {
           @Override
           public void onSuccess(@NotNull ExternalSystemTaskId id) {
             super.onSuccess(id);
@@ -128,7 +116,11 @@ public class AndroidProjectTaskRunner extends ProjectTaskRunner {
           }
         };
 
-      request.setTaskListener(listenerDelegate);
+      GradleBuildInvoker.Request request =
+        GradleBuildInvoker.Request.builder(project, projectRootPath.toFile(), tasks.get(projectRootPath))
+        .waitForCompletion()
+        .setListener(listenerDelegate)
+        .build();
       gradleBuildInvoker.executeTasks(request);
     }
   }

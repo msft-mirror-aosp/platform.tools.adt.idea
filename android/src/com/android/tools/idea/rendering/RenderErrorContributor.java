@@ -337,9 +337,8 @@ public class RenderErrorContributor {
     if (module == null) {
       return;
     }
-    Project project = module.getProject();
-    String wrapUrl = myLinkManager.createCommandLink(new SetAttributeFix(project, tag, attribute, ANDROID_URI, VALUE_WRAP_CONTENT));
-    String fillUrl = myLinkManager.createCommandLink(new SetAttributeFix(project, tag, attribute, ANDROID_URI, fill));
+    String wrapUrl = myLinkManager.createCommandLink(new SetAttributeFix(tag, attribute, ANDROID_URI, VALUE_WRAP_CONTENT));
+    String fillUrl = myLinkManager.createCommandLink(new SetAttributeFix(tag, attribute, ANDROID_URI, fill));
 
     builder.add(String.format("%1$s does not set the required %2$s attribute: ", id, attribute))
       .newline()
@@ -410,7 +409,7 @@ public class RenderErrorContributor {
       builder.newline()
         .add("Or: ")
         .addLink("Automatically add all missing attributes",
-                 myLinkManager.createCommandLink(new AddMissingAttributesFix(project, psiFile, resourceResolver))).newline()
+                 myLinkManager.createCommandLink(new AddMissingAttributesFix(psiFile, resourceResolver))).newline()
         .newline().newline();
 
       addIssue()
@@ -444,7 +443,7 @@ public class RenderErrorContributor {
   @VisibleForTesting
   public void performClick(@NotNull RenderResult result, @NotNull String url) {
     Module module = result.getModule();
-    PsiFile file = result.getFile();
+    PsiFile file = result.getSourceFile();
 
     myLinkManager.handleUrl(url, module, file, myDataContext, result, myDesignSurface);
   }
@@ -720,7 +719,7 @@ public class RenderErrorContributor {
       HtmlBuilder builder = new HtmlBuilder();
       builder.add("(")
         .addLink("Add android:supportsRtl=\"true\" to the manifest", logger.getLinkManager().createRunnableLink(() -> {
-          new SetAttributeFix(project, applicationTag, AndroidManifest.ATTRIBUTE_SUPPORTS_RTL, ANDROID_URI, VALUE_TRUE).execute();
+          new SetAttributeFix(applicationTag, AndroidManifest.ATTRIBUTE_SUPPORTS_RTL, ANDROID_URI, VALUE_TRUE).executeCommand();
 
           if (myDesignSurface != null) {
             myDesignSurface.forceUserRequestedRefresh();
@@ -758,7 +757,7 @@ public class RenderErrorContributor {
       return;
     }
     AndroidTargetData targetData = platform.getSdkData().getTargetData(target);
-    AttributeDefinitions definitionLookup = targetData.getPublicAttrDefs(result.getFile().getProject());
+    AttributeDefinitions definitionLookup = targetData.getPublicAttrDefs(result.getSourceFile().getProject());
     String attributeName = strings[0];
     String currentValue = strings[1];
     AttributeDefinition definition = definitionLookup.getAttrDefByName(attributeName);
@@ -1362,7 +1361,7 @@ public class RenderErrorContributor {
           PsiClass clz = DumbService.getInstance(project).isDumb() ?
                          null :
                          JavaPsiFacade.getInstance(project).findClass(className, scope);
-          String layoutName = myResult.getFile().getName();
+          String layoutName = myResult.getSourceFile().getName();
           boolean separate = false;
           if (clz != null) {
             // TODO: Should instead find all R.layout elements
@@ -1449,7 +1448,7 @@ public class RenderErrorContributor {
       reportRelevantCompilationErrors(logger);
       reportMissingSizeAttributes(logger,
                                   renderContext,
-                                  (myResult.getFile() instanceof XmlFile) ? (XmlFile)myResult.getFile() : null);
+                                  (myResult.getSourceFile() instanceof XmlFile) ? (XmlFile)myResult.getSourceFile() : null);
       reportMissingClasses(logger);
     }
     reportBrokenClasses(logger);

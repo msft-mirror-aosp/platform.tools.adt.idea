@@ -26,7 +26,6 @@ import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_14;
 import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_7;
 import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8;
 import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_9;
-import static com.intellij.openapi.util.io.FileUtil.filesEqual;
 import static com.intellij.openapi.util.io.FileUtil.toSystemDependentName;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
@@ -48,7 +47,6 @@ import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.tools.idea.AndroidTestCaseHelper;
 import com.android.tools.idea.IdeInfo;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.AndroidGradleProjectSettingsControlBuilder;
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.LocalProperties;
@@ -58,15 +56,23 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.projectRoots.Sdk;
+import com.intellij.openapi.projectRoots.impl.ProjectJdkImpl;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.testFramework.PlatformTestCase;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatform;
 import org.jetbrains.android.sdk.AndroidSdkData;
@@ -206,12 +212,12 @@ public class IdeSdksTest extends PlatformTestCase {
     ApplicationManager.getApplication().runWriteAction(() -> myIdeSdks.setUseEmbeddedJdk());
 
     // The path of the JDK should be the same as the embedded one.
-    File jdkPath = myIdeSdks.getJdkPath();
+    Path jdkPath = myIdeSdks.getJdkPath();
     assertNotNull(jdkPath);
 
-    File embeddedJdkPath = myEmbeddedDistributionPaths.getEmbeddedJdkPath();
-    assertTrue(String.format("'%1$s' should be the embedded one ('%2$s')", jdkPath.getPath(), embeddedJdkPath.getPath()),
-               filesEqual(jdkPath, embeddedJdkPath));
+    Path embeddedJdkPath = myEmbeddedDistributionPaths.getEmbeddedJdkPath();
+    assertTrue(String.format("'%1$s' should be the embedded one ('%2$s')", jdkPath, embeddedJdkPath),
+               FileUtil.pathsEqual(jdkPath.toString(), embeddedJdkPath.toString()));
   }
 
   public void testIsJavaSameVersionNull() {
@@ -221,7 +227,7 @@ public class IdeSdksTest extends PlatformTestCase {
   public void testIsJavaSameVersionTrue() {
     Jdks spyJdks = spy(Jdks.getInstance());
     new IdeComponents(myProject).replaceApplicationService(Jdks.class, spyJdks);
-    File fakeFile = new File(myProject.getBasePath());
+    Path fakeFile = Paths.get(myProject.getBasePath());
     doReturn(JDK_1_8).when(spyJdks).findVersion(same(fakeFile));
     assertTrue(IdeSdks.isJdkSameVersion(fakeFile, JDK_1_8));
   }
@@ -229,7 +235,7 @@ public class IdeSdksTest extends PlatformTestCase {
   public void testIsJavaSameVersionLower() {
     Jdks spyJdks = spy(Jdks.getInstance());
     new IdeComponents(myProject).replaceApplicationService(Jdks.class, spyJdks);
-    File fakeFile = new File(myProject.getBasePath());
+    Path fakeFile = Paths.get(myProject.getBasePath());
     doReturn(JDK_1_7).when(spyJdks).findVersion(same(fakeFile));
     assertFalse(IdeSdks.isJdkSameVersion(fakeFile, JDK_1_8));
   }
@@ -237,7 +243,7 @@ public class IdeSdksTest extends PlatformTestCase {
   public void testIsJavaSameVersionHigher() {
     Jdks spyJdks = spy(Jdks.getInstance());
     new IdeComponents(myProject).replaceApplicationService(Jdks.class, spyJdks);
-    File fakeFile = new File(myProject.getBasePath());
+    Path fakeFile = Paths.get(myProject.getBasePath());
     doReturn(JDK_1_9).when(spyJdks).findVersion(same(fakeFile));
     assertFalse(IdeSdks.isJdkSameVersion(fakeFile, JDK_1_8));
   }
@@ -322,10 +328,6 @@ public class IdeSdksTest extends PlatformTestCase {
    * Confirm that the default JDK is used when it is in the JDK table
    */
   public void testDefaultJdkIsUsed() throws IOException {
-    // Only test if per project JDK is enabled
-    if (!StudioFlags.ALLOW_JDK_PER_PROJECT.get()) {
-      return;
-    }
     Sdk currentJdk = myIdeSdks.getJdk();
     assertThat(currentJdk).isNotNull();
     String homePath = currentJdk.getHomePath();
@@ -333,9 +335,42 @@ public class IdeSdksTest extends PlatformTestCase {
     assertThat(homePath).isNotEqualTo("");
 
     Sdk jdk8 = IdeSdks.findOrCreateJdk(AndroidGradleProjectSettingsControlBuilder.ANDROID_STUDIO_DEFAULT_JDK_NAME,
-                                       new File(getEmbeddedJdk8Path()));
+                                       Paths.get(getEmbeddedJdk8Path()));
     assertThat(jdk8).isNotNull();
     Sdk newJdk = myIdeSdks.getJdk();
     assertThat(newJdk).isSameAs(jdk8);
+  }
+
+  /**
+   * Verify that the field's and method's names in ProjectJDKImpl have not changed, to try to catch changes in its implementation.
+   * If this test fails, we need to confirm the changes are included as needed in
+   * {@link IdeSdks#jdksWithDifferentSettings(ProjectJdkImpl, ProjectJdkImpl)}..
+   */
+  public void testProjectJdkImplFieldsAndMethods() {
+    List<String> expectedFieldNames = Arrays.asList("ATTRIBUTE_VALUE", "ELEMENT_ADDITIONAL", "ELEMENT_NAME", "ELEMENT_TYPE");
+    List<String> currentFieldNames = Arrays.stream(ProjectJdkImpl.class.getFields())
+      .map(Field::getName)
+      .distinct()
+      .sorted()
+      .collect(Collectors.toList());
+    assertThat(currentFieldNames).isEqualTo(expectedFieldNames);
+
+    List<String> expectedMethodNames = Arrays.asList(
+      "accumulateAndGet", "addRoot", "changeType", "clone", "commitChanges", "compareAndExchange", "compareAndExchangeAcquire",
+      "compareAndExchangeRelease", "compareAndSet", "copyCopyableDataTo", "copyUserDataTo", "dispose", "equals", "get", "getAcquire",
+      "getAndAccumulate", "getAndSet", "getAndUpdate", "getClass", "getCopyableUserData", "getGlobalVirtualFilePointerListener",
+      "getHomeDirectory", "getHomePath", "getName", "getOpaque", "getPlain", "getRootProvider", "getRoots", "getSdkAdditionalData",
+      "getSdkModificator", "getSdkType", "getUrls", "getUserData", "getUserDataString", "getVersionString", "hashCode", "isUserDataEmpty",
+      "isWritable", "lazySet", "notify", "notifyAll", "putCopyableUserData", "putUserData", "putUserDataIfAbsent", "readExternal",
+      "removeAllRoots", "removeRoot", "removeRoots", "replace", "resetVersionString", "set", "setHomePath", "setName", "setOpaque",
+      "setPlain", "setRelease", "setSdkAdditionalData", "setVersionString", "toString", "updateAndGet", "wait", "weakCompareAndSet",
+      "weakCompareAndSetAcquire", "weakCompareAndSetPlain", "weakCompareAndSetRelease", "weakCompareAndSetVolatile", "writeExternal"
+    );
+    List<String> currentMethodNames = Arrays.stream(ProjectJdkImpl.class.getMethods())
+      .map(Method::getName)
+      .distinct()
+      .sorted()
+      .collect(Collectors.toList());
+    assertThat(currentMethodNames).isEqualTo(expectedMethodNames);
   }
 }

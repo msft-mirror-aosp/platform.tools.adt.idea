@@ -32,6 +32,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-junit",
         "//tools/analytics-library/tracker:analytics-tracker[module]",
+        "//tools/base/tracer:studio.android.sdktools.tracer[module]",
     ],
 )
 
@@ -54,7 +55,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle/testData",
         "//tools/base/build-system:gradle-distrib",
         "//tools/base/build-system:studio_repo",
-        "//tools/base/third_party/kotlin:kotlin-m2repository.zip",
+        "//tools/base/third_party/kotlin:kotlin-m2repository",
     ],
     test_shard_count = 2,
     test_srcs = ["testSrc"],

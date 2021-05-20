@@ -42,10 +42,9 @@ public final class PhysicalDeviceTableModelTest {
       .setSerialNumber("0A071FDD4003ZG")
       .setLastOnlineTime(Instant.parse("2021-03-24T22:38:05.890570Z"))
       .setName("Google Pixel 5")
-      .setOnline(true)
       .setTarget("Android 11.0")
       .setApi("30")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     List<PhysicalDevice> devices = Arrays.asList(TestPhysicalDevices.GOOGLE_PIXEL_3, onlinePixel5);
@@ -68,10 +67,9 @@ public final class PhysicalDeviceTableModelTest {
     PhysicalDevice onlinePixel5 = new PhysicalDevice.Builder()
       .setSerialNumber("0A071FDD4003ZG")
       .setName("Google Pixel 5")
-      .setOnline(true)
       .setTarget("Android 11.0")
       .setApi("30")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     // Act
@@ -94,10 +92,9 @@ public final class PhysicalDeviceTableModelTest {
     PhysicalDevice onlinePixel5 = new PhysicalDevice.Builder()
       .setSerialNumber("0A071FDD4003ZG")
       .setName("Google Pixel 5")
-      .setOnline(true)
       .setTarget("Android 11.0")
       .setApi("30")
-      .setConnectionType(ConnectionType.USB)
+      .addConnectionType(ConnectionType.USB)
       .build();
 
     // Act

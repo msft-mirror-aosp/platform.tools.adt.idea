@@ -34,7 +34,9 @@ import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.serviceContainer.NonInjectable;
-import java.io.File;
+import com.intellij.util.system.CpuArch;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.jetbrains.annotations.NonNls;
@@ -68,8 +70,8 @@ public class Jdks {
   }
 
   @Nullable
-  public JavaSdkVersion findVersion(@NotNull File jdkRoot) {
-    return getVersion(jdkRoot.getPath());
+  public JavaSdkVersion findVersion(@NotNull Path jdkRoot) {
+    return getVersion(jdkRoot.toString());
   }
 
   @Nullable
@@ -93,11 +95,11 @@ public class Jdks {
   @Nullable
   public Sdk createEmbeddedJdk() {
     if (myIdeInfo.isAndroidStudio() || myIdeInfo.isGameTools()) {
-      File path = EmbeddedDistributionPaths.getInstance().tryToGetEmbeddedJdkPath();
+      Path path = EmbeddedDistributionPaths.getInstance().tryToGetEmbeddedJdkPath();
       if (path == null) {
         return null;
       }
-      Sdk jdk = createJdk(path.getPath());
+      Sdk jdk = createJdk(path.toString());
       assert jdk != null;
       return jdk;
     }
@@ -109,7 +111,7 @@ public class Jdks {
       return false;
     }
 
-    if (!SystemInfo.isWindows || !SystemInfo.is32Bit) {
+    if (!(SystemInfo.isWindows && CpuArch.is32Bit())) {
       // We only care about bitness compatibility on Windows. Elsewhere we just assume things are fine, because
       // nowadays virtually all Mac and Linux installations are 64 bits. No need to spend cycles on running 'java -version'
       return true;

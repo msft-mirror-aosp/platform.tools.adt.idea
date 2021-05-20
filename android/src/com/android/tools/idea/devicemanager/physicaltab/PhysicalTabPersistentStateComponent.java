@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
-import com.android.tools.idea.devicemanager.physicaltab.PhysicalDevice.ConnectionType;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalTabPersistentStateComponent.PhysicalTabState;
 import com.android.tools.idea.util.xmlb.InstantConverter;
 import com.google.common.annotations.VisibleForTesting;
@@ -106,9 +105,6 @@ final class PhysicalTabPersistentStateComponent implements PersistentStateCompon
     @OptionTag(tag = "api", nameAttribute = "")
     private @Nullable String api;
 
-    @OptionTag(tag = "connectionType", nameAttribute = "")
-    private @Nullable ConnectionType connectionType;
-
     @SuppressWarnings("unused")
     private PhysicalDeviceState() {
     }
@@ -119,13 +115,12 @@ final class PhysicalTabPersistentStateComponent implements PersistentStateCompon
       name = device.getName();
       target = device.getTarget();
       api = device.getApi();
-      connectionType = device.getConnectionType();
     }
 
     private @Nullable PhysicalDevice asPhysicalDevice() {
       // Check all non-nullable fields are initialized. If the file used for persistence has been
       // tampered with for some reason, some of these fields could be null.
-      if (serialNumber == null || name == null || target == null || api == null || connectionType == null) {
+      if (serialNumber == null || name == null || target == null || api == null) {
         Logger.getInstance(PhysicalTabPersistentStateComponent.class).warn("Skipping device entry because some values are not set");
         return null;
       }
@@ -136,7 +131,6 @@ final class PhysicalTabPersistentStateComponent implements PersistentStateCompon
         .setName(name)
         .setTarget(target)
         .setApi(api)
-        .setConnectionType(connectionType)
         .build();
     }
 
@@ -148,7 +142,6 @@ final class PhysicalTabPersistentStateComponent implements PersistentStateCompon
       hashCode = 31 * hashCode + Objects.hashCode(name);
       hashCode = 31 * hashCode + Objects.hashCode(target);
       hashCode = 31 * hashCode + Objects.hashCode(api);
-      hashCode = 31 * hashCode + Objects.hashCode(connectionType);
 
       return hashCode;
     }
@@ -165,8 +158,7 @@ final class PhysicalTabPersistentStateComponent implements PersistentStateCompon
              Objects.equals(lastOnlineTime, device.lastOnlineTime) &&
              Objects.equals(name, device.name) &&
              Objects.equals(target, device.target) &&
-             Objects.equals(api, device.api) &&
-             Objects.equals(connectionType, device.connectionType);
+             Objects.equals(api, device.api);
     }
   }
 }
