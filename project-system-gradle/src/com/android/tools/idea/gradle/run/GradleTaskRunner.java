@@ -16,43 +16,38 @@
 package com.android.tools.idea.gradle.run;
 
 import com.android.annotations.concurrency.WorkerThread;
+import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
-import com.android.tools.idea.gradle.project.build.invoker.GradleMultiInvocationResult;
 import com.android.tools.idea.gradle.util.BuildMode;
 import com.google.common.collect.ListMultimap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
-import org.gradle.tooling.BuildAction;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.TestOnly;
 
 public interface GradleTaskRunner {
-  boolean run(@NotNull ListMultimap<Path, String> tasks, @Nullable BuildMode buildMode, @NotNull List<String> commandLineArguments)
-    throws InvocationTargetException, InterruptedException;
+  boolean run(@NotNull Module[] assembledModules, @NotNull ListMultimap<Path, String> tasks, @Nullable BuildMode buildMode, @NotNull List<String> commandLineArguments);
 
   @NotNull
-  static DefaultGradleTaskRunner newRunner(@NotNull Project project, @Nullable BuildAction<?> buildAction) {
-    return new DefaultGradleTaskRunner(project, buildAction);
+  static DefaultGradleTaskRunner newRunner(@NotNull Project project) {
+    return new DefaultGradleTaskRunner(project);
   }
 
   class DefaultGradleTaskRunner implements GradleTaskRunner {
     @NotNull private final Project myProject;
     @NotNull private final AtomicReference<Object> model = new AtomicReference<>();
 
-    @Nullable final BuildAction<?> myBuildAction;
-
-    DefaultGradleTaskRunner(@NotNull Project project, @Nullable BuildAction<?> buildAction) {
+    DefaultGradleTaskRunner(@NotNull Project project) {
       myProject = project;
-      myBuildAction = buildAction;
     }
 
     /**
@@ -60,17 +55,26 @@ public interface GradleTaskRunner {
      */
     @Override
     @WorkerThread
-    public boolean run(@NotNull ListMultimap<Path, String> tasks,
+    public boolean run(@NotNull Module[] assembledModules,
+                       @NotNull ListMultimap<Path, String> tasks,
                        @Nullable BuildMode buildMode,
                        @NotNull List<String> commandLineArguments) {
       assert !ApplicationManager.getApplication().isDispatchThread();
       GradleBuildInvoker gradleBuildInvoker = GradleBuildInvoker.getInstance(myProject);
 
-      ListenableFuture<GradleMultiInvocationResult> future =
-        gradleBuildInvoker.executeTasks(tasks, buildMode, commandLineArguments, myBuildAction);
+      List<GradleBuildInvoker.Request> requests = tasks.keySet().stream()
+        .map(path ->
+               GradleBuildInvoker.Request
+                 .builder(myProject, path.toFile(), tasks.get(path))
+                 .setMode(buildMode)
+                 .setCommandLineArguments(commandLineArguments)
+                 .build())
+        .collect(Collectors.toList());
+
+      ListenableFuture<AssembleInvocationResult> future = gradleBuildInvoker.executeAssembleTasks(assembledModules, requests);
 
       try {
-        future.get().getModels().stream()
+        future.get().getInvocationResult().getModels().stream()
           // Composite builds are not properly supported with AGPs 3.x and we ignore a possibility of receiving multiple models here.
           // `PostBuildModel`s were not designed to handle this.
           .findFirst()
@@ -89,12 +93,6 @@ public interface GradleTaskRunner {
     @Nullable
     public Object getModel() {
       return model.get();
-    }
-
-    @TestOnly
-    @Nullable
-    BuildAction<?> getBuildAction() {
-      return myBuildAction;
     }
   }
 }

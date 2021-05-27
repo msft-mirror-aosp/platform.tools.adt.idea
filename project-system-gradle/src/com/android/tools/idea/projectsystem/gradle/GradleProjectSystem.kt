@@ -15,13 +15,11 @@
  */
 package com.android.tools.idea.projectsystem.gradle
 
+import com.android.tools.apk.analyzer.AaptInvoker
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeSourceProvider
-import com.android.sdklib.AndroidVersion
-import com.android.tools.apk.analyzer.AaptInvoker
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.run.PostBuildModelProvider
-import com.android.tools.idea.gradle.util.DynamicAppUtils
 import com.android.tools.idea.gradle.util.OutputType
 import com.android.tools.idea.gradle.util.getOutputFileOrFolderFromListingFile
 import com.android.tools.idea.log.LogWrapper
@@ -42,6 +40,8 @@ import com.android.tools.idea.res.AndroidInnerClassFinder
 import com.android.tools.idea.res.AndroidManifestClassPsiElementFinder
 import com.android.tools.idea.res.AndroidResourceClassPsiElementFinder
 import com.android.tools.idea.res.ProjectLightResourceClassService
+import com.android.tools.idea.run.AndroidRunConfiguration
+import com.android.tools.idea.run.AndroidRunConfiguration.shouldDeployApkFromBundle
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.GradleApkProvider
@@ -66,7 +66,6 @@ import org.jetbrains.android.dom.manifest.getPackageName
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.createIdeaSourceProviderFromModelSourceProvider
 import java.nio.file.Path
-import java.util.function.Function
 
 class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
   private val moduleHierarchyProvider: GradleModuleHierarchyProvider = GradleModuleHierarchyProvider(project)
@@ -126,19 +125,15 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
     if (runConfiguration !is AndroidRunConfigurationBase) return null
     val facet = AndroidFacet.getInstance(module)!!
 
-    fun outputKind(targetDevicesMinVersion: AndroidVersion?): GradleApkProvider.OutputKind {
-      return when (DynamicAppUtils.useSelectApksFromBundleBuilder(facet.module, runConfiguration, targetDevicesMinVersion)) {
-        true -> GradleApkProvider.OutputKind.AppBundleOutputModel
-        false -> GradleApkProvider.OutputKind.Default
-      }
-    }
+    val isTestConfiguration = runConfiguration.isTestConfiguration
+    val alwaysDeployApkFromBundle = (runConfiguration as? AndroidRunConfiguration)?.let(::shouldDeployApkFromBundle) ?: false
 
     return GradleApkProvider(
       facet,
       getApplicationIdProvider(runConfiguration) ?: return null,
-      PostBuildModelProvider { runConfiguration.getUserData(GradleApkProvider.POST_BUILD_MODEL) },
-      runConfiguration.isTestConfiguration,
-      Function{ outputKind(it) }
+      { runConfiguration.getUserData(GradleApkProvider.POST_BUILD_MODEL) },
+      isTestConfiguration,
+      alwaysDeployApkFromBundle
     )
   }
 

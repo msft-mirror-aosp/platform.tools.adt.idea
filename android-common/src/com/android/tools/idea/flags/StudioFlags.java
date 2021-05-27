@@ -229,6 +229,16 @@ public final class StudioFlags {
     "Show the resource popup picker for picking drawable resources from the Editor's gutter icon.",
     true);
 
+  public static final Flag<Boolean> NELE_DRAWABLE_BACKGROUND_MENU = Flag.create(
+    NELE, "show.drawable.background.menu", "Enable background option menu in drawable preview panel.",
+    "Show the background option menu to switch the background when previewing drawable resources.",
+    true);
+
+  public static final Flag<Boolean> NELE_WEAR_DEVICE_FIXED_ORIENTATION = Flag.create(
+    NELE, "wear.fixed.orientation", "Fixes the orientation of wear os devices.",
+    "For wear device, force using the portrait for square and round devices and landscape for chin devices.",
+    true);
+
   public static final Flag<Boolean> NELE_LOG_ANDROID_FRAMEWORK = Flag.create(
     NELE, "log.android.framework", "Log messages coming from Layoutlib Native.",
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
@@ -443,6 +453,11 @@ public final class StudioFlags {
     "Use the 'Apply Changes 2.0' deployment pipeline for full Apply Changes",
     "Requires applychanges.optimisticswap to be true.",
     true);
+
+  public static final Flag<Boolean> NEW_EXECUTION_FLOW_ENABLED = Flag.create(
+    RUNDEBUG, "android.new.execution.flow.enabled", "Enable new Execution flow",
+    "If enabled, AS executes Run Configuration via new.AndroidRunProfileState",
+    false);
 
     /**
      * The level of APK change that will be supported by the deployment pipeline's optimistic
@@ -710,6 +725,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_SHOW_SEMANTICS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.show.semantics", "Show semantics",
     "If enabled, display semantic information found in the agent.", false);
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.snapshots", "Enable snapshots",
+    "Enable saving and loading snapshots in the layout inspector.", false);
 
   //endregion
 

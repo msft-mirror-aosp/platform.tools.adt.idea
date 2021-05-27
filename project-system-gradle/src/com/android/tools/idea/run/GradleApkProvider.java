@@ -81,7 +81,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -99,8 +98,8 @@ public class GradleApkProvider implements ApkProvider {
   @NotNull private final PostBuildModelProvider myOutputModelProvider;
   @NotNull private final BestOutputFinder myBestOutputFinder;
   private final boolean myTest;
-  private final Function<AndroidVersion, OutputKind> myOutputKindProvider;
 
+  private final boolean myAlwaysDeployApkFromBundle;
   public static final Key<PostBuildModel> POST_BUILD_MODEL = Key.create("com.android.tools.idea.post_build_model");
 
   private static final String VARIANT_DISPLAY_NAME_STUB = "<VARIANT_DISPLAY_NAME>";
@@ -123,8 +122,8 @@ public class GradleApkProvider implements ApkProvider {
                            @NotNull GradleApplicationIdProvider applicationIdProvider,
                            @NotNull PostBuildModelProvider outputModelProvider,
                            boolean test,
-                           @NotNull Function<AndroidVersion, OutputKind> outputKindProvider) {
-    this(facet, applicationIdProvider, outputModelProvider, new BestOutputFinder(), test, outputKindProvider);
+                           boolean alwaysDeployApkFromBundle) {
+    this(facet, applicationIdProvider, outputModelProvider, new BestOutputFinder(), test, alwaysDeployApkFromBundle);
   }
 
   @VisibleForTesting
@@ -133,17 +132,29 @@ public class GradleApkProvider implements ApkProvider {
                     @NotNull PostBuildModelProvider outputModelProvider,
                     @NotNull BestOutputFinder bestOutputFinder,
                     boolean test,
-                    Function<AndroidVersion, OutputKind> outputKindProvider) {
+                    boolean alwaysDeployApkFromBundle) {
     myFacet = facet;
     myApplicationIdProvider = applicationIdProvider;
     myOutputModelProvider = outputModelProvider;
     myBestOutputFinder = bestOutputFinder;
     myTest = test;
-    myOutputKindProvider = outputKindProvider;
+    myAlwaysDeployApkFromBundle = alwaysDeployApkFromBundle;
   }
 
-  @TestOnly
-  OutputKind getOutputKind(@Nullable AndroidVersion targetDevicesMinVersion) { return myOutputKindProvider.apply(targetDevicesMinVersion); }
+  @VisibleForTesting
+  OutputKind getOutputKind(@Nullable AndroidVersion targetDevicesMinVersion) {
+    if (DynamicAppUtils.useSelectApksFromBundleBuilder(
+      myFacet.getModule(),
+      myAlwaysDeployApkFromBundle,
+      isTest(),
+      targetDevicesMinVersion
+    )) {
+      return GradleApkProvider.OutputKind.AppBundleOutputModel;
+    }
+    else {
+      return GradleApkProvider.OutputKind.Default;
+    }
+  }
 
   @TestOnly
   boolean isTest() { return myTest; }
@@ -179,7 +190,7 @@ public class GradleApkProvider implements ApkProvider {
           return Collections.emptyList();
         }
 
-        switch (myOutputKindProvider.apply(deviceVersion)) {
+        switch (getOutputKind(deviceVersion)) {
           case Default:
             // Collect the base (or single) APK file, then collect the dependent dynamic features for dynamic
             // apps (assuming the androidModel is the base split).
@@ -521,7 +532,7 @@ public class GradleApkProvider implements ApkProvider {
     // Note: Instant apps and app bundles outputs are assumed to be signed
     AndroidVersion targetDevicesMinVersion = null; // NOTE: ApkProvider.validate() runs in a device-less context.
     if (androidModuleModel.getAndroidProject().getProjectType() == IdeAndroidProjectType.PROJECT_TYPE_INSTANTAPP ||
-        myOutputKindProvider.apply(targetDevicesMinVersion) == OutputKind.AppBundleOutputModel ||
+        getOutputKind(targetDevicesMinVersion) == OutputKind.AppBundleOutputModel ||
         isArtifactSigned(androidModuleModel)) {
       return result.build();
     }
@@ -563,7 +574,9 @@ public class GradleApkProvider implements ApkProvider {
     File apkFolder = androidModel.getFeatures().isBuildOutputFileSupported()
                      ? getOutputFileOrFolderFromListingFile(androidModel.getSelectedVariant().getMainArtifact().getBuildInformation(),
                                                             OutputType.ApkFromBundle)
-                     : collectApkFolderFromPostBuildModel(module, outputModelProvider, androidModel);
+                     : collectApkFolderFromPostBuildModel(outputModelProvider,
+                                                          GradleUtil.getGradlePath(module),
+                                                          androidModel.getSelectedVariant().getName());
 
     if (apkFolder == null) {
       getLogger().warn("Could not find apk folder.");
@@ -588,22 +601,22 @@ public class GradleApkProvider implements ApkProvider {
    * the folder from post build model. This method should be used for AGP prior to 4.0.
    */
   @Nullable
-  private static File collectApkFolderFromPostBuildModel(@NotNull Module module,
-                                                         @NotNull PostBuildModelProvider outputModelProvider,
-                                                         @NotNull AndroidModuleModel androidModel) {
+  private static File collectApkFolderFromPostBuildModel(@NotNull PostBuildModelProvider outputModelProvider,
+                                                         @Nullable String gradlePath,
+                                                         @Nullable String variantName) {
     PostBuildModel model = outputModelProvider.getPostBuildModel();
     if (model == null) {
       getLogger().warn("Post build model is null. Build might have failed.");
       return null;
     }
-    AppBundleProjectBuildOutput output = model.findAppBundleProjectBuildOutput(GradleUtil.getGradlePath(module));
+    AppBundleProjectBuildOutput output = model.findAppBundleProjectBuildOutput(gradlePath);
     if (output == null) {
       getLogger().warn("Project output is null. Build may have failed.");
       return null;
     }
 
     for (AppBundleVariantBuildOutput variantBuildOutput : output.getAppBundleVariantsBuildOutput()) {
-      if (variantBuildOutput.getName().equals(androidModel.getSelectedVariant().getName())) {
+      if (variantBuildOutput.getName().equals(variantName)) {
         return variantBuildOutput.getApkFolder();
       }
     }

@@ -21,7 +21,6 @@ import com.android.repository.Revision
 import com.android.repository.api.ProgressIndicator
 import com.android.repository.api.RepoManager.RepoLoadedListener
 import com.android.repository.impl.meta.RepositoryPackages
-import com.android.tools.adtui.common.linkForeground
 import com.android.tools.adtui.stdui.StandardColors
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.executeOnPooledThread
@@ -103,7 +102,7 @@ internal class PlaceholderPanel(project: Project): JBPanel<PlaceholderPanel>(Gri
       val sdkManager = sdkHandler.getSdkManager(progress)
       val listener = RepoLoadedListener { packages -> localPackagesUpdated(packages) }
       sdkManager.addLocalChangeListener(listener)
-      Disposer.register(this, Disposable { sdkManager.removeLocalChangeListener(listener) })
+      Disposer.register(this) { sdkManager.removeLocalChangeListener(listener) }
 
       localPackagesUpdated(sdkManager.packages)
     }
@@ -124,13 +123,13 @@ internal class PlaceholderPanel(project: Project): JBPanel<PlaceholderPanel>(Gri
   }
 
   private fun createContent() {
-    val linkColorString = (linkForeground.rgb and 0xFFFFFF).toString(16)
+    val linkColorString = (JBUI.CurrentTheme.Link.linkColor().rgb and 0xFFFFFF).toString(16)
     val html = if (emulatorLaunchesInToolWindow) {
       if (emulatorVersionIsSufficient) {
         """
         <center>
         No emulators are currently running.
-        To&nbsp;launch an&nbsp;emulator, use the&nbsp;<font color = ${linkColorString}><a href=''>AVD&nbsp;Manager</a></font>
+        To&nbsp;launch an&nbsp;emulator, use the&nbsp;<font color = $linkColorString><a href=''>AVD&nbsp;Manager</a></font>
         or run your app while targeting a&nbsp;virtual device.
         </center>
         """.trimIndent()
@@ -139,8 +138,8 @@ internal class PlaceholderPanel(project: Project): JBPanel<PlaceholderPanel>(Gri
         """
         <center>
         To use the Android Emulator in this
-        window, install version ${MIN_REQUIRED_EMULATOR_VERSION} or higher.
-        Please <font color = ${linkColorString}><a href=''>check for&nbsp;updates</a></font> and install
+        window, install version $MIN_REQUIRED_EMULATOR_VERSION or higher.
+        Please <font color = $linkColorString><a href=''>check for&nbsp;updates</a></font> and install
         the&nbsp;latest version of the&nbsp;Android&nbsp;Emulator.
         </center>
         """.trimIndent()
@@ -153,7 +152,7 @@ internal class PlaceholderPanel(project: Project): JBPanel<PlaceholderPanel>(Gri
       to run as a&nbsp;standalone application. To&nbsp;make
       the&nbsp;Android Emulator launch in this window
       instead, select the&nbsp;<i>Launch in a&nbsp;tool window</i>
-      option in the&nbsp;<font color = ${linkColorString}><a href=''>Emulator&nbsp;settings</a></font>.
+      option in the&nbsp;<font color = $linkColorString><a href=''>Emulator&nbsp;settings</a></font>.
       </center>
       """.trimIndent()
     }

@@ -57,7 +57,9 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import org.gradle.tooling.BuildAction;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.mockito.Mock;
 
 /**
@@ -241,8 +243,7 @@ public class GradleBuildInvokerTest extends HeavyPlatformTestCase {
         gradleModule(myProject, ":app"),
         gradleModule(myProject, ":lib")
       ).toArray(new Module[0]),
-      TestCompileType.ALL,
-      null);
+      TestCompileType.ALL);
 
     GradleBuildInvoker.Request request = myTasksExecutorFactory.getRequest();
     assertThat(request.getGradleTasks()).containsExactlyElementsIn(ImmutableList.of(":lib:assembleDebug", ":app:assembleDebug"));
@@ -264,8 +265,7 @@ public class GradleBuildInvokerTest extends HeavyPlatformTestCase {
         gradleModule(myProject, ":app"),
         gradleModule(myProject, ":lib")
       ).toArray(new Module[0]),
-      TestCompileType.ALL,
-      null);
+      TestCompileType.ALL);
 
     GradleBuildInvoker.Request request = myTasksExecutorFactory.getRequest();
     assertThat(request.getGradleTasks()).containsExactlyElementsIn(ImmutableList.of(":lib:assembleDebug", ":app:assembleDebug"));
@@ -332,6 +332,7 @@ public class GradleBuildInvokerTest extends HeavyPlatformTestCase {
     @Override
     @NotNull
     public GradleTasksExecutor create(@NotNull GradleBuildInvoker.Request request,
+                                      @Nullable BuildAction<?> buildAction,
                                       @NotNull BuildStopper buildStopper,
                                       @NotNull ExternalSystemTaskNotificationListener listener,
                                       @NotNull SettableFuture<GradleInvocationResult> resultFuture) {

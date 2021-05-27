@@ -21,7 +21,7 @@ import com.android.build.attribution.KnownGradlePluginsService
 import com.android.build.attribution.data.GradlePluginsData
 import com.android.build.attribution.data.PluginData
 import com.android.ide.common.repository.GradleVersion
-import com.android.testutils.TestUtils.getKotlinVersionForTests
+import com.android.testutils.TestUtils.KOTLIN_VERSION_FOR_TESTS
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionManager
 import com.android.tools.idea.testing.AndroidGradleProjectRule
@@ -54,7 +54,8 @@ class ConfigurationCachingCompatibilityAnalyzerTest {
     dependencies: String = "",
     pluginsApply: String = "",
     pluginsSectionInRoot: String = "",
-    useNewPluginsDsl: Boolean = false
+    useNewPluginsDsl: Boolean = false,
+    entryInGradleProperties: Boolean? = null
   ) {
     myProjectRule.load(TestProjectPaths.SIMPLE_APPLICATION) { projectRoot ->
       // Add plugins application to `app/build.gradle`.
@@ -73,6 +74,13 @@ class ConfigurationCachingCompatibilityAnalyzerTest {
           .replace(oldValue = "allprojects {", newValue = "$pluginsSectionInRoot\n\nallprojects {")
 
         FileUtil.writeToFile(rootBuildFile, newContent)
+      }
+      if (entryInGradleProperties != null) {
+        val propertiesFile = FileUtils.join(projectRoot, SdkConstants.FN_GRADLE_PROPERTIES)
+        propertiesFile.readText().let { content ->
+          val newContent = "$content\norg.gradle.unsafe.configuration-cache=$entryInGradleProperties"
+          FileUtil.writeToFile(propertiesFile, newContent)
+        }
       }
     }
   }
@@ -107,9 +115,8 @@ class ConfigurationCachingCompatibilityAnalyzerTest {
 
   @Test
   fun testNewKotlinNotDetected() {
-    val kotlinVersion = getKotlinVersionForTests()
     projectSetup(
-      dependencies = "classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion\"",
+      dependencies = "classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:$KOTLIN_VERSION_FOR_TESTS\"",
       pluginsApply = "apply plugin: 'kotlin-android'"
     )
 
@@ -205,6 +212,24 @@ class ConfigurationCachingCompatibilityAnalyzerTest {
         pluginInfo = kotlinPluginInfo()
       )))
     }
+  }
+
+  @Test
+  fun testSimpleProjectWithCCTurnedOn() {
+    projectSetup("", "", entryInGradleProperties = true)
+
+    val result = runBuildAndGetAnalyzerResult()
+
+    assertThat(result).isInstanceOf(ConfigurationCachingTurnedOn::class.java)
+  }
+
+  @Test
+  fun testSimpleProjectWithCCTurnedOff() {
+    projectSetup("", "", entryInGradleProperties = false)
+
+    val result = runBuildAndGetAnalyzerResult()
+
+    assertThat(result).isInstanceOf(ConfigurationCachingTurnedOff::class.java)
   }
 
   private fun runBuildAndGetAnalyzerResult(): ConfigurationCachingCompatibilityProjectResult {

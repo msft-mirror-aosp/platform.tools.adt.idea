@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 # A list of files not included in the SDK because they are made by files in the root lib directory
 # This should be sorted out at a different level, but for now removing them here
 HIDDEN = [
+    "/plugins/Kotlin/lib/kotlin-reflect.jar",
     "/plugins/Kotlin/lib/kotlin-stdlib-jdk8.jar",
     "/plugins/Kotlin/lib/kotlin-stdlib.jar",
     "/plugins/Kotlin/lib/kotlin-stdlib-jdk7.jar",
@@ -97,11 +98,6 @@ def write_spec_file(workspace, sdk_rel, version, sdk_jars, plugin_jars, mac_bund
     LINUX: "_linux",
   }
 
-  # If no bundle name was supplied, we are regenerating from an existing set of
-  # prebuilts, so do not regenerate the spec.bzl file
-  if not mac_bundle_name:
-    return
-
   with open(workspace + sdk_rel + "/spec.bzl", "w") as file:
     name = version.replace("-", "").replace(".", "_")
     file.write("# Auto-generated file, do not edit manually.\n")
@@ -124,6 +120,15 @@ def write_spec_file(workspace, sdk_rel, version, sdk_jars, plugin_jars, mac_bund
 
     file.write(f"    mac_bundle_name = \"{mac_bundle_name}\",\n")
     file.write(")\n")
+
+
+# When running in --existing_version mode, the mac bundle name must be extracted
+# from the preexisting spec.bzl file (since the original mac bundle artifact
+# has already been renamed by this point).
+def extract_preexisting_mac_bundle_name(workspace, version):
+  with open(workspace + "/prebuilts/studio/intellij-sdk/" + version + "/spec.bzl", "r") as spec:
+    search = re.search(r"mac_bundle_name = \"(.*)\"", spec.read())
+    return search.group(1) if search else sys.exit("Failed to find existing mac bundle name")
 
 
 def gen_lib(project_dir, name, jars, srcs):
@@ -342,6 +347,8 @@ def main(workspace, args):
     version, mac_bundle_name = extract(workspace, path, delete_path, metadata)
     if args.debug_download:
       print("Dowloaded artifacts kept at " + path)
+  else:
+    mac_bundle_name = extract_preexisting_mac_bundle_name(workspace, version)
 
 
   update_files(workspace, version, mac_bundle_name)

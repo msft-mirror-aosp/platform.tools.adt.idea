@@ -57,6 +57,7 @@ import java.awt.EventQueue
 import java.awt.KeyboardFocusManager
 import java.beans.PropertyChangeListener
 import java.nio.file.Path
+import java.util.function.IntFunction
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -134,8 +135,6 @@ class EmulatorToolWindowPanel(
 
     addToCenter(centerPanel)
     addToolbar()
-
-    KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusOwnerListener)
   }
 
   private fun addToolbar() {
@@ -188,6 +187,7 @@ class EmulatorToolWindowPanel(
       primaryEmulatorView = emulatorView
       mainToolbar.setTargetComponent(emulatorView)
       installFileDropHandler(this, emulatorView, project)
+      KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusOwnerListener)
       emulatorView.addDisplayConfigurationListener(displayConfigurator)
       emulator.addConnectionStateListener(this)
 
@@ -257,6 +257,7 @@ class EmulatorToolWindowPanel(
       })
     }
 
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusOwnerListener)
     emulator.removeConnectionStateListener(this)
     contentDisposable?.let { Disposer.dispose(it) }
     contentDisposable = null
@@ -340,10 +341,10 @@ class EmulatorToolWindowPanel(
         is LeafNode -> {
           val display = displayDescriptors[layoutNode.rectangleIndex]
           val displayId = display.displayId
-          displayPanels.computeIfAbsent(displayId) {
-            assert(displayId != PRIMARY_DISPLAY_ID)
-            EmulatorDisplayPanel(contentDisposable!!, emulator, displayId, display.size, zoomToolbarVisible)
-          }
+          displayPanels.computeIfAbsent(displayId, IntFunction {
+            assert(it != PRIMARY_DISPLAY_ID)
+            EmulatorDisplayPanel(contentDisposable!!, emulator, it, display.size, zoomToolbarVisible)
+          })
         }
         is SplitNode -> {
           EmulatorSplitPanel(layoutNode).apply {
@@ -365,10 +366,10 @@ class EmulatorToolWindowPanel(
       else {
         val displayId = state.displayId ?: throw IllegalArgumentException()
         val display = displayDescriptors.find { it.displayId == displayId } ?: throw IllegalArgumentException()
-        displayPanels.computeIfAbsent(displayId) {
-          assert(displayId != PRIMARY_DISPLAY_ID)
-          EmulatorDisplayPanel(contentDisposable!!, emulator, displayId, display.size, zoomToolbarVisible)
-        }
+        displayPanels.computeIfAbsent(displayId, IntFunction {
+          assert(it != PRIMARY_DISPLAY_ID)
+          EmulatorDisplayPanel(contentDisposable!!, emulator, it, display.size, zoomToolbarVisible)
+        })
       }
     }
 

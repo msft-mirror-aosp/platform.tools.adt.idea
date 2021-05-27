@@ -27,6 +27,7 @@ import com.android.tools.adtui.common.helpText
 import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.ide.ui.SelectProcessAction
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.model.REBOOT_FOR_LIVE_INSPECTOR_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.model.ViewNode
@@ -34,6 +35,7 @@ import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
+import com.android.tools.idea.layoutinspector.snapshots.CaptureSnapshotAction
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
@@ -92,7 +94,7 @@ const val DEVICE_VIEW_ACTION_TOOLBAR_NAME = "DeviceViewPanel.ActionToolbar"
  * Panel that shows the device screen in the layout inspector.
  */
 class DeviceViewPanel(
-  private val processes: ProcessesModel,
+  private val processes: ProcessesModel?,
   private val layoutInspector: LayoutInspector,
   private val viewSettings: DeviceViewSettings,
   disposableParent: Disposable
@@ -107,8 +109,19 @@ class DeviceViewPanel(
   private var isSpacePressed = false
   private var lastPanMouseLocation: Point? = null
 
+  private val selectProcessAction: SelectProcessAction? = if (processes != null) {
+    SelectProcessAction(processes,
+                        supportsOffline = false,
+                        createProcessLabel = (SelectProcessAction)::createCompactProcessLabel,
+                        stopPresentation = SelectProcessAction.StopPresentation(
+                          "Stop inspector",
+                          "Stop running the layout inspector against the current process"),
+                        onStopAction = { stopInspectors() })
+  } else null
+
   private val contentPanel = DeviceViewContentPanel(
-    layoutInspector.layoutInspectorModel, layoutInspector.stats, layoutInspector.treeSettings, viewSettings, disposableParent
+    layoutInspector.layoutInspectorModel, layoutInspector.stats, layoutInspector.treeSettings, viewSettings,
+    { layoutInspector.currentClient }, selectProcessAction, disposableParent
   )
 
   private val panMouseListener: MouseAdapter = object : MouseAdapter() {
@@ -173,12 +186,12 @@ class DeviceViewPanel(
 
   private val scrollPane = JBScrollPane(contentPanel)
   private val layeredPane = JLayeredPane()
-  private val loadingPane: JBLoadingPanel
+  private val loadingPane: JBLoadingPanel = JBLoadingPanel(BorderLayout(), disposableParent)
   private val deviceViewPanelActionsToolbar: DeviceViewPanelActionsToolbarProvider
   private val viewportLayoutManager = MyViewportLayoutManager(scrollPane.viewport, { contentPanel.model.layerSpacing },
                                                               { contentPanel.rootLocation })
 
-  private val actionToolbar: ActionToolbar
+  private val actionToolbar: ActionToolbar = createToolbar(selectProcessAction)
 
   private val bubbleLabel = JLabel()
 
@@ -207,7 +220,6 @@ class DeviceViewPanel(
     }
 
   init {
-    loadingPane = JBLoadingPanel(BorderLayout(), disposableParent)
     loadingPane.addListener(object: JBLoadingPanelListener {
       override fun onLoadingStart() {
         contentPanel.showEmptyText = false
@@ -217,14 +229,6 @@ class DeviceViewPanel(
         contentPanel.showEmptyText = true
       }
     })
-    val selectProcessAction = SelectProcessAction(processes,
-                                                  supportsOffline = false,
-                                                  createProcessLabel = (SelectProcessAction)::createCompactProcessLabel,
-                                                  stopPresentation = SelectProcessAction.StopPresentation(
-                                                    "Stop inspector",
-                                                    "Stop running the layout inspector against the current process"),
-                                                  onStopAction = { stopInspectors() })
-    contentPanel.selectProcessAction = selectProcessAction
     scrollPane.viewport.layout = viewportLayoutManager
     contentPanel.isFocusable = true
 
@@ -255,13 +259,12 @@ class DeviceViewPanel(
 
     scrollPane.border = JBUI.Borders.empty()
 
-    actionToolbar = createToolbar(selectProcessAction)
     val toolbarComponent = createToolbarPanel(actionToolbar)
     add(toolbarComponent, BorderLayout.NORTH)
     loadingPane.add(layeredPane, BorderLayout.CENTER)
     add(loadingPane, BorderLayout.CENTER)
     val model = layoutInspector.layoutInspectorModel
-    processes.addSelectedProcessListeners(newSingleThreadExecutor()) {
+    processes?.addSelectedProcessListeners(newSingleThreadExecutor()) {
       if (processes.selectedProcess?.isRunning == true) {
         if (model.isEmpty) {
           loadingPane.startLoading()
@@ -327,8 +330,8 @@ class DeviceViewPanel(
     }
     var prevZoom = viewSettings.scalePercent
     viewSettings.modificationListeners.add {
-      val client = LayoutInspector.get(this@DeviceViewPanel)?.currentClient
-      if (client?.isCapturing == true) {
+      val client = layoutInspector.currentClient
+      if (client.isCapturing) {
         client.updateScreenshotType(null, viewSettings.scaleFraction.toFloat())
       }
       if (prevZoom != viewSettings.scalePercent) {
@@ -346,7 +349,7 @@ class DeviceViewPanel(
 
   fun stopInspectors() {
     loadingPane.stopLoading()
-    processes.stop()
+    processes?.stop()
   }
 
   private fun updateLayeredPaneSize() {
@@ -427,16 +430,21 @@ class DeviceViewPanel(
     get() = scrollPane.viewport.viewPosition
     set(_) { }
 
-  private fun createToolbar(selectProcessAction: AnAction): ActionToolbar {
+  private fun createToolbar(selectProcessAction: AnAction?): ActionToolbar {
     val leftGroup = DefaultActionGroup()
-    leftGroup.add(selectProcessAction)
+    selectProcessAction?.let { leftGroup.add(it) }
     leftGroup.add(Separator.getInstance())
     leftGroup.add(ViewMenuAction)
     leftGroup.add(ToggleOverlayAction)
+    if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS.get() && !layoutInspector.isSnapshot) {
+      leftGroup.add(CaptureSnapshotAction)
+    }
     leftGroup.add(AlphaSliderAction)
-    leftGroup.add(Separator.getInstance())
-    leftGroup.add(PauseLayoutInspectorAction)
-    leftGroup.add(RefreshAction)
+    if (!layoutInspector.isSnapshot) {
+      leftGroup.add(Separator.getInstance())
+      leftGroup.add(PauseLayoutInspectorAction)
+      leftGroup.add(RefreshAction)
+    }
     leftGroup.add(Separator.getInstance())
     leftGroup.add(LayerSpacingSliderAction)
     val actionToolbar = ActionManager.getInstance().createActionToolbar("DynamicLayoutInspectorLeft", leftGroup, true)

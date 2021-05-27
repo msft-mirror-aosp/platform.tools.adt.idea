@@ -17,8 +17,6 @@ package com.android.tools.idea.gradle.project.build.invoker
 
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.GradleUtil
-import com.google.common.annotations.VisibleForTesting
-import com.google.common.collect.ListMultimap
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
@@ -26,62 +24,27 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotifica
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import org.gradle.tooling.BuildAction
-import org.jetbrains.annotations.TestOnly
 import java.io.File
-import java.nio.file.Path
 
 interface GradleBuildInvoker {
   fun cleanProject()
 
-  @TestOnly
-  fun generateSources()
-  fun generateSourcesForModules(modules: Array<Module>)
+  fun generateSources(modules: Array<Module>)
   fun compileJava(modules: Array<Module>, testCompileType: TestCompileType)
-  fun assemble(modules: Array<Module>, testCompileType: TestCompileType)
-  fun assemble(
-    modules: Array<Module>,
-    testCompileType: TestCompileType,
-    buildAction: BuildAction<*>?
-  )
-
-  fun bundle(
-    modules: Array<Module>,
-    buildAction: BuildAction<*>?
-  )
+  fun assemble(modules: Array<Module>, testCompileType: TestCompileType): ListenableFuture<AssembleInvocationResult>
+  fun bundle(modules: Array<Module>): ListenableFuture<AssembleInvocationResult>
 
   fun rebuild()
   fun rebuildWithTempOptions(rootProjectPath: File, options: List<String>)
-
-  @Deprecated("")
-  fun executeTasks(gradleTasks: List<String>)
 
   /**
    * Executes Gradle tasks requested for each root in separate Gradle invocations. The results (including failed sub-builds) are reported as
    * GradleInvocationResult, however, any unexpected failures are returned as a failed future.
    */
-  fun executeTasks(
-    tasks: ListMultimap<Path, String>,
-    buildMode: BuildMode?,
-    commandLineArguments: List<String>,
-    buildAction: BuildAction<*>?
-  ) : ListenableFuture<GradleMultiInvocationResult>
-
-  @VisibleForTesting
-  fun executeTasks(
-    rootProjectPath: File,
-    gradleTasks: MutableList<String>,
-    commandLineArguments: MutableList<String>
-  ): ListenableFuture<GradleInvocationResult>
-
-  fun executeTasks(
-    rootProjectPath: File,
-    gradleTasks: MutableList<String>,
-    commandLineArguments: MutableList<String>,
-    buildAction: BuildAction<*>?
-  ): ListenableFuture<GradleInvocationResult>
+  fun executeAssembleTasks(assembledModules: Array<Module>, request: List<Request>): ListenableFuture<AssembleInvocationResult>
 
   fun executeTasks(request: Request): ListenableFuture<GradleInvocationResult>
+
   fun stopBuild(id: ExternalSystemTaskId): Boolean
   fun add(task: AfterGradleInvocationTask)
   fun remove(task: AfterGradleInvocationTask)
@@ -92,6 +55,7 @@ interface GradleBuildInvoker {
   }
 
   data class Request constructor(
+    val mode: BuildMode?,
     val project: Project,
     val rootProjectPath: File,
     val gradleTasks: List<String>,
@@ -100,7 +64,6 @@ interface GradleBuildInvoker {
     val commandLineArguments: List<String> = emptyList(),
     val env: Map<String, String> = emptyMap(),
     val isPassParentEnvs: Boolean = true,
-    val buildAction: BuildAction<*>? = null,
     val isWaitForCompletion: Boolean = false,
 
     /**
@@ -131,11 +94,17 @@ interface GradleBuildInvoker {
       gradleTasks: List<String>
     ) {
       private var request: Request = Request(
+        mode = null,
         project = project,
         rootProjectPath = rootProjectPath,
         gradleTasks = gradleTasks,
         taskId = ExternalSystemTaskId.create(GradleUtil.GRADLE_SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project)
       )
+
+      fun setMode(value: BuildMode?): Builder {
+        request = request.copy(mode = value)
+        return this
+      }
 
       fun setTaskId(value: ExternalSystemTaskId): Builder {
         request = request.copy(taskId = value)
@@ -149,11 +118,6 @@ interface GradleBuildInvoker {
 
       fun setCommandLineArguments(value: List<String>): Builder {
         request = request.copy(commandLineArguments = value.toList())
-        return this
-      }
-
-      fun setBuildAction(value: BuildAction<*>?): Builder {
-        request = request.copy(buildAction = value)
         return this
       }
 

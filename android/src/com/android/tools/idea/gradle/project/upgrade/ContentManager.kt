@@ -528,7 +528,7 @@ class ContentManager(val project: Project) {
         isEnabled = uiState.runEnabled
       }
     }
-    val previewButton = JButton("Run with preview").apply {
+    val previewButton = JButton("Show Usages").apply {
       addActionListener { this@View.model.runUpgrade(true) }
       this@View.model.uiState.get().let { uiState ->
         toolTipText = uiState.runTooltip
@@ -648,7 +648,7 @@ class ContentManager(val project: Project) {
           }
           selectedStep.helpLinkUrl?.let { url ->
             // TODO(xof): what if we end near the end of the line, and this sticks out in an ugly fashion?
-            text.append("<a href='$url'>Read more</a><icon src='ide/external_link_arrow.svg'>.")
+            text.append("<a href='$url'>Read more</a><icon src='AllIcons.Ide.External_link_arrow'>.")
           }
           label.text = text.toString()
           detailsPanel.add(label)
