@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
+import java.nio.file.Path
 import java.util.EnumSet
 
 /**
@@ -113,7 +114,7 @@ class AppInspectionInspectorClient(
       }
 
       viewInspector = ViewLayoutInspectorClient.launch(apiServices, process, model, scope, composeInspector, ::fireError, ::fireTreeEvent)
-      propertiesProvider = AppInspectionPropertiesProvider(viewInspector, composeInspector, model)
+      propertiesProvider = AppInspectionPropertiesProvider(viewInspector.propertiesCache, composeInspector?.parametersCache, model)
 
       metrics.logEvent(DynamicLayoutInspectorEventType.ATTACH_SUCCESS)
 
@@ -181,5 +182,9 @@ class AppInspectionInspectorClient(
 
   override fun addDynamicCapabilities(dynamicCapabilities: Set<Capability>) {
     capabilities.addAll(dynamicCapabilities)
+  }
+
+  override fun saveSnapshot(path: Path) {
+    viewInspector.saveSnapshot(path)
   }
 }

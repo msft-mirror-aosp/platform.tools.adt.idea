@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.testing.IdeComponents
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
@@ -71,8 +72,8 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   }
 
   @Ignore("gradle-wrapper.properties is not a build file") // TODO(b/152854665)
-  fun testEverythingDisabledNoEffectOnAgpGradleVersion() {
-    everythingDisabledNoEffectOn("AgpGradleVersion/OldGradleVersion")
+  fun testEverythingDisabledNoEffectOnGradleVersion() {
+    everythingDisabledNoEffectOn("GradleVersion/OldGradleVersion")
   }
 
   @Test
@@ -155,6 +156,7 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
 
     writeToBuildFile(TestFileName("MigrateToBuildFeatures/ViewBindingEnabledLiteral"))
     val processor = AgpUpgradeRefactoringProcessor(project, GradleVersion.parse("3.6.0"), GradleVersion.parse("7.0.0"))
+    assumeTrue(processor.componentRefactoringProcessors.any { it.isMigrateBuildFeaturesRefactoringProcessor() }) // b/175097233
     processor.classpathRefactoringProcessor.isEnabled = false
     processor.componentRefactoringProcessors.forEach { it.isEnabled = it.isMigrateBuildFeaturesRefactoringProcessor() }
     processor.run()
@@ -201,12 +203,22 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   }
 
   @Ignore("gradle-wrapper.properties is not a build file") // TODO(b/152854665)
-  fun testEnabledEffectOnAgpGradleVersion() {
-    writeToBuildFile(TestFileName("AgpGradleVersion/OldGradleVersion"))
+  fun testEnabledEffectOnGradleVersion() {
+    writeToBuildFile(TestFileName("GradleVersion/OldGradleVersion"))
     val processor = AgpUpgradeRefactoringProcessor(project, GradleVersion.parse("3.5.0"), GradleVersion.parse("4.1.0"))
     processor.classpathRefactoringProcessor.isEnabled = false
-    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is AgpGradleVersionRefactoringProcessor }
+    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradleVersionRefactoringProcessor }
     processor.run()
-    verifyFileContents(buildFile, TestFileName("AgpGradleVersion/OldGradleVersion410Expected"))
+    verifyFileContents(buildFile, TestFileName("GradleVersion/OldGradleVersion410Expected"))
+  }
+
+  @Test
+  fun testEnabledEffectOnGradlePlugins() {
+    writeToBuildFile(TestFileName("GradlePlugins/KotlinPluginVersionInLiteral"))
+    val processor = AgpUpgradeRefactoringProcessor(project, GradleVersion.parse("3.4.0"), GradleVersion.parse("4.1.0"))
+    processor.classpathRefactoringProcessor.isEnabled = false
+    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradlePluginsRefactoringProcessor }
+    processor.run()
+    verifyFileContents(buildFile, TestFileName("GradlePlugins/KotlinPluginVersionInLiteralExpected"))
   }
 }
