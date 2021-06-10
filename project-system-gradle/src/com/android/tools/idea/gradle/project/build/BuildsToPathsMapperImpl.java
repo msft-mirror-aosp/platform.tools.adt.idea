@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.gradle.project.build;
 
+import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.getOutputFilesFromListingFile;
 import static com.android.tools.idea.gradle.util.GradleUtil.getGradlePath;
+import static java.util.Collections.emptyList;
 
 import com.android.build.OutputFile;
 import com.android.builder.model.AppBundleProjectBuildOutput;
@@ -27,6 +29,8 @@ import com.android.builder.model.VariantBuildOutput;
 import com.android.tools.idea.gradle.model.IdeAndroidArtifactOutput;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
 import com.android.tools.idea.gradle.actions.BuildsToPathsMapper;
+import com.android.tools.idea.gradle.model.IdeBuildTasksAndOutputInformation;
+import com.android.tools.idea.gradle.model.IdeVariantBuildInformation;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.run.OutputBuildAction;
 import com.android.tools.idea.gradle.run.PostBuildModel;
@@ -54,10 +58,10 @@ public class BuildsToPathsMapperImpl extends BuildsToPathsMapper {
   @Override
   @NotNull
   public Map<String, File> getBuildsToPaths(@Nullable Object model,
-                                     @NotNull List<String> buildVariants,
-                                     @NotNull Collection<Module> modules,
-                                     boolean isAppBundle,
-                                     @Nullable String signedApkOrBundlePath) {
+                                            @NotNull List<String> buildVariants,
+                                            @NotNull Collection<Module> modules,
+                                            boolean isAppBundle,
+                                            @Nullable String signedApkOrBundlePath) {
     boolean isSigned = !buildVariants.isEmpty();
     if (isSigned) {
       assert modules.size() == 1;
@@ -100,8 +104,15 @@ public class BuildsToPathsMapperImpl extends BuildsToPathsMapper {
     if (androidModel.getFeatures().isBuildOutputFileSupported()) {
       // get from build output listing file.
       OutputType outputType = isAppBundle ? OutputType.Bundle : OutputType.Apk;
-      outputFolderOrFile = GradleBuildOutputUtil
-        .getOutputFileOrFolderFromListingFileByVariantNameOrFromSelectedVariantTestArtifact(androidModel, buildVariant, outputType, false);
+      IdeBuildTasksAndOutputInformation outputInformation =
+        androidModel.getAndroidProject().getVariantsBuildInformation().stream()
+          .filter(it -> it.getVariantName().equals(buildVariant))
+          .findFirst()
+          .map(IdeVariantBuildInformation::getBuildInformation)
+          .orElse(null);
+      List<File> outputFiles = outputInformation != null ? getOutputFilesFromListingFile(outputInformation, outputType) : emptyList();
+      outputFolderOrFile =
+        outputFiles.size() > 1 ? outputFiles.get(0).getParentFile() : (!outputFiles.isEmpty() ? outputFiles.get(0) : null);
     }
     else if (postBuildModel != null) {
       if (androidModel.getAndroidProject().getProjectType() == IdeAndroidProjectType.PROJECT_TYPE_APP ||

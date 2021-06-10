@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.appinspection.view
 
+import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.appinspection.api.AppInspectionApiServices
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorJar
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
@@ -24,17 +25,22 @@ import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient
 import com.android.tools.idea.layoutinspector.snapshots.saveAppInspectorSnapshot
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
+import com.intellij.openapi.progress.ProgressManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.launch
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetAllParametersResponse
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetComposablesResponse
-import layoutinspector.view.inspection.LayoutInspectorViewProtocol
+import layoutinspector.view.inspection.LayoutInspectorViewProtocol.CaptureSnapshotCommand
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol.Command
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol.ErrorEvent
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol.Event
@@ -124,6 +130,8 @@ class ViewLayoutInspectorClient(
       propertiesCache.allowFetching = value
       composeInspector?.parametersCache?.allowFetching = value
       lastData.clear()
+      lastProperties.clear()
+      lastComposeParameters.clear()
     }
 
   private var generation = 0 // Update the generation each time we get a new LayoutEvent
@@ -131,6 +139,7 @@ class ViewLayoutInspectorClient(
 
   var lastData: MutableMap<Long, Data> = mutableMapOf()
   var lastProperties: MutableMap<Long, PropertiesEvent> = mutableMapOf()
+  var lastComposeParameters: MutableMap<Long, GetAllParametersResponse> = mutableMapOf()
 
   init {
     scope.launch {
@@ -215,6 +224,9 @@ class ViewLayoutInspectorClient(
 
     propertiesCache.retain(currRoots)
     composeInspector?.parametersCache?.retain(currRoots)
+    lastData.keys.retainAll(currRoots)
+    lastComposeParameters.keys.retainAll(currRoots)
+    lastProperties.keys.retainAll(currRoots)
   }
 
   private suspend fun handleLayoutEvent(layoutEvent: LayoutEvent) {
@@ -242,26 +254,66 @@ class ViewLayoutInspectorClient(
     propertiesCache.setAllFrom(propertiesEvent)
 
     composeInspector?.let {
-      it.parametersCache.setAllFrom(it.getAllParameters(propertiesEvent.rootId))
+      val composeParameters = it.getAllParameters(propertiesEvent.rootId)
+      if (!isFetchingContinuously) {
+        lastComposeParameters[propertiesEvent.rootId] = composeParameters
+      }
+      it.parametersCache.setAllFrom(composeParameters)
     }
   }
 
+  @Slow
   fun saveSnapshot(path: Path) {
     if (isFetchingContinuously) {
-      scope.launch {
-        messenger.sendCommand {
-          captureSnapshotCommand = LayoutInspectorViewProtocol.CaptureSnapshotCommand.newBuilder().apply {
-            // TODO: support bitmap
-            screenshotType = Screenshot.Type.SKP
-          }.build()
-        }.captureSnapshotResponse?.let {
-          saveAppInspectorSnapshot(path, it, processDescriptor)
-        } ?: throw Exception() // TODO: error handling
-      }
+      fetchAndSaveSnapshot(path)
     }
     else {
-      saveAppInspectorSnapshot(path, lastData, lastProperties, processDescriptor)
+      saveAppInspectorSnapshot(path, lastData, lastProperties, lastComposeParameters, processDescriptor)
     }
+  }
+
+  private fun fetchAndSaveSnapshot(path: Path) {
+    try {
+      val job = scope.launch { fetchAndSaveSnapshotAsync(path) } // TODO: error handling
+      // Watch for the progress indicator to be canceled and cancel the fetchAndSave job if so.
+      val progress = ProgressManager.getInstance().progressIndicator
+      scope.launch {
+        while (true) {
+          delay(300)
+          if (progress.isCanceled) {
+            job.cancel()
+            break
+          }
+          if (!job.isActive) {
+            break
+          }
+        }
+      }
+      job.asCompletableFuture().get()
+    }
+    catch (cancellationException: CancellationException) {
+      // ignore
+      return
+    }
+  }
+
+  private suspend fun fetchAndSaveSnapshotAsync(path: Path) {
+    messenger.sendCommand {
+      captureSnapshotCommand = CaptureSnapshotCommand.newBuilder().apply {
+        // TODO: support bitmap
+        screenshotType = Screenshot.Type.SKP
+      }.build()
+    }.captureSnapshotResponse?.let { snapshotResponse ->
+      val composeInfo = composeInspector?.let { composeInspector ->
+        generation++
+        snapshotResponse.windowRoots.idsList.associateWith { id ->
+          Pair(composeInspector.getComposeables(id, generation),
+               composeInspector.getAllParameters(id))
+        }
+      } ?: mapOf()
+
+      saveAppInspectorSnapshot(path, snapshotResponse, composeInfo, processDescriptor)
+    } ?: throw Exception()
   }
 }
 

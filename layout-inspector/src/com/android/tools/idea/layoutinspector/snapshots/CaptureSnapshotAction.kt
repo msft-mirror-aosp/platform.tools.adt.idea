@@ -23,8 +23,12 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.fileChooser.FileSaverDialog
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VfsUtil
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object CaptureSnapshotAction: AnAction(AllIcons.ToolbarDecorator.Export) {
   override fun update(event: AnActionEvent) {
@@ -45,12 +49,15 @@ object CaptureSnapshotAction: AnAction(AllIcons.ToolbarDecorator.Export) {
     val saveFileDialog: FileSaverDialog =
       FileChooserFactory.getInstance().createSaveFileDialog(descriptor, inspector.layoutInspectorModel.project)
 
+    var fileName: String = inspector.currentClient.process.name + "_" +
+                           SimpleDateFormat("yyyy.MM.dd_HH.mm", Locale.US).format(Date())
+    fileName = fileName.replace(Regex("[^._A-Za-z0-9]"), "")
     // Append extension manually to file name on MacOS because FileSaverDialog does not do it automatically.
-    // TODO: good file name
-    val fileName: String = "capture" + if (SystemInfo.isMac) LayoutInspectorFileType.DOT_EXT_LAYOUT_INSPECTOR else ""
+    fileName += if (SystemInfo.isMac) LayoutInspectorFileType.DOT_EXT_LAYOUT_INSPECTOR else ""
     val result = saveFileDialog.save(outputDir, fileName) ?: return
 
     val path = result.getVirtualFile(true)?.toNioPath() ?: return
-    inspector.currentClient.saveSnapshot(path)
+    ProgressManager.getInstance().runProcessWithProgressSynchronously(
+      { inspector.currentClient.saveSnapshot(path) }, "Saving snapshot", true, event.project)
   }
 }

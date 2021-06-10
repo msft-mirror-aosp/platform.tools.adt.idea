@@ -8,6 +8,8 @@ MODULE                        : project.app
     NdkVersion                    : 21.4.7075529
     IsBaseSplit                   : true
     GroupId                       : project
+    Namespace                     : com.example.basiccmakeapp
+    TestNamespace                 : com.example.basiccmakeapp.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -249,7 +251,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
@@ -276,7 +277,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -307,7 +307,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]

@@ -17,6 +17,8 @@ import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.stdui.registerActionKey
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.plugin.LatestKnownPluginVersionProvider
+import com.android.tools.idea.gradle.project.sync.GradleSyncListener
+import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_INDEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_CODEPENDENT
@@ -26,11 +28,10 @@ import com.android.tools.idea.observable.BindingsManager
 import com.android.tools.idea.observable.ListenerManager
 import com.android.tools.idea.observable.core.ObjectValueProperty
 import com.android.tools.idea.observable.core.OptionalValueProperty
-import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
-import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo.UpgradeAssistantEventKind.FAILURE_PREDICTED
 import com.intellij.icons.AllIcons
 import com.intellij.ide.plugins.newui.HorizontalLayout
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeLater
@@ -78,11 +79,14 @@ private val LOG = Logger.getInstance("Upgrade Assistant")
 // "Model" here loosely in the sense of Model-View-Controller
 class ToolWindowModel(
   val project: Project,
-  var current: GradleVersion?,
+  val currentVersionProvider: () -> GradleVersion?,
   val knownVersionsRequester: () -> Set<GradleVersion> = { IdeGoogleMavenRepository.getVersions("com.android.tools.build", "gradle") }
-) {
+) : GradleSyncListener, Disposable {
 
   val latestKnownVersion = GradleVersion.parse(LatestKnownPluginVersionProvider.INSTANCE.get())
+
+  var current: GradleVersion? = currentVersionProvider()
+    private set
   private var _selectedVersion: GradleVersion? = latestKnownVersion
   val selectedVersion: GradleVersion?
     get() = _selectedVersion
@@ -97,6 +101,28 @@ class ToolWindowModel(
     open val loadingText: String = ""
     open val errorMessage: Pair<Icon, String>? = null
 
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (other !is UIState) return false
+
+      if (runEnabled != other.runEnabled) return false
+      if (showLoadingState != other.showLoadingState) return false
+      if (runTooltip != other.runTooltip) return false
+      if (loadingText != other.loadingText) return false
+      if (errorMessage != other.errorMessage) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = runEnabled.hashCode()
+      result = 31 * result + showLoadingState.hashCode()
+      result = 31 * result + runTooltip.hashCode()
+      result = 31 * result + loadingText.hashCode()
+      result = 31 * result + (errorMessage?.hashCode() ?: 0)
+      return result
+    }
+
     object ReadyToRun : UIState() {
       override val runEnabled = true
       override val showLoadingState = false
@@ -108,11 +134,17 @@ class ToolWindowModel(
       override val runTooltip = ""
       override val loadingText = "Loading"
     }
-    object Running : UIState() {
+    object RunningUpgrade : UIState() {
       override val runEnabled = false
       override val showLoadingState = true
       override val runTooltip = ""
-      override val loadingText = "Running"
+      override val loadingText = "Running Upgrade"
+    }
+    object RunningSync : UIState() {
+      override val runEnabled = false
+      override val showLoadingState = true
+      override val runTooltip = ""
+      override val loadingText = "Running Sync"
     }
     object AllDone : UIState() {
       override val runEnabled = false
@@ -190,17 +222,11 @@ class ToolWindowModel(
     }
   }
 
-  val connection = project.messageBus.connect()
-
   init {
+    Disposer.register(project, this)
     refresh()
-    connection.subscribe(PROJECT_SYSTEM_SYNC_TOPIC, object : ProjectSystemSyncManager.SyncResultListener {
-      override fun syncEnded(result: ProjectSystemSyncManager.SyncResult) {
-        uiState.set(UIState.Loading)
-        refresh(true)
-      }
-    })
 
+    GradleSyncState.subscribe(project, this, this)
     // Initialize known versions (e.g. in case of offline work with no cache)
     suggestedVersions.value = suggestedVersionsList(setOf())
 
@@ -212,6 +238,20 @@ class ToolWindowModel(
         invokeLater(ModalityState.NON_MODAL) { suggestedVersions.value = suggestedVersionsList }
       }
     })
+  }
+
+  override fun syncStarted(project: Project) = uiState.set(UIState.RunningSync)
+  override fun syncFailed(project: Project, errorMessage: String) = syncFinished()
+  override fun syncSucceeded(project: Project) = syncFinished()
+  override fun syncSkipped(project: Project) = syncFinished()
+
+  private fun syncFinished() {
+    uiState.set(UIState.Loading)
+    refresh(true)
+  }
+
+  override fun dispose() {
+    processor?.usageView?.close()
   }
 
   fun editingValidation(value: String?): Pair<EditingErrorCategory, String> {
@@ -266,7 +306,7 @@ class ToolWindowModel(
     processor = null
 
     if (refindPlugin) {
-      current = AndroidPluginInfo.find(project)?.pluginVersion
+      current = currentVersionProvider()
       suggestedVersions.value = suggestedVersionsList(knownVersions.valueOrNull ?: setOf())
     }
     val newVersion = selectedVersion
@@ -345,7 +385,7 @@ class ToolWindowModel(
   }
 
   fun runUpgrade(showPreview: Boolean) = processor?.let { processor ->
-    if (!showPreview) uiState.set(UIState.Running)
+    if (!showPreview) uiState.set(UIState.RunningUpgrade)
     processor.components().forEach { it.isEnabled = false }
     CheckboxTreeHelper.getCheckedNodes(DefaultStepPresentation::class.java, null, treeModel)
       .forEach { it.processor.isEnabled = true }
@@ -420,16 +460,12 @@ class ContentManager(val project: Project) {
   }
 
   fun showContent() {
-    val current = AndroidPluginInfo.find(project)?.pluginVersion
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
     toolWindow.contentManager.removeAllContents(true)
-    val model = ToolWindowModel(project, current)
+    val model = ToolWindowModel(project, currentVersionProvider = { AndroidPluginInfo.find(project)?.pluginVersion })
     val view = View(model, toolWindow.contentManager)
     val content = ContentFactory.SERVICE.getInstance().createContent(view.content, model.current.contentDisplayName(), true)
-    content.setDisposer {
-      model.processor?.usageView?.close()
-      Disposer.dispose(model.connection)
-    }
+    content.setDisposer(model)
     content.isPinned = true
     toolWindow.contentManager.addContent(content)
     toolWindow.show()
@@ -451,6 +487,14 @@ class ContentManager(val project: Project) {
       addTreeSelectionListener { e -> refreshDetailsPanel() }
       background = primaryContentBackground
       isOpaque = true
+      isEnabled = !this@View.model.uiState.get().showLoadingState
+      myListeners.listen(this@View.model.uiState) { uiState ->
+        isEnabled = !uiState.showLoadingState
+        if (uiState.showLoadingState) {
+          selectionModel.clearSelection()
+          refreshDetailsPanel()
+        }
+      }
     }
 
     val upgradeLabel = JBLabel(model.current.upgradeLabelText()).also { it.border = JBUI.Borders.empty(0, 6) }
@@ -487,7 +531,7 @@ class ContentManager(val project: Project) {
       val textField = editor.editorComponent as CommonTextField<*>
       textField.registerActionKey({ hidePopup(); textField.enterInLookup() }, KeyStrokes.ENTER, "enter")
       textField.registerActionKey({ hidePopup(); textField.escapeInLookup() }, KeyStrokes.ESCAPE, "escape")
-      ComponentValidator(this@View.model.connection).withValidator { ->
+      ComponentValidator(this@View.model).withValidator { ->
         val text = editor.item.toString()
         val validation = this@View.model.editingValidation(text)
         when (validation.first) {

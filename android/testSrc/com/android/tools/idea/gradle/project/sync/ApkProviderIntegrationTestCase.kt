@@ -85,12 +85,44 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
           name = "APPLICATION_ID_SUFFIX run configuration",
           testProject = TestProjectPaths.APPLICATION_ID_SUFFIX,
           expectApks = """
-            ApplicationId: one.name.debug
+            ApplicationId: one.name.defaultConfig.debug
             File: project/app/build/outputs/apk/debug/app-debug.apk
             Files:
               Application_ID_Suffix_Test_App.app -> project/app/build/outputs/apk/debug/app-debug.apk
             RequiredInstallationOptions: []
           """
+        ),
+        TestDefinition(
+          name = "APPLICATION_ID_SUFFIX run configuration via bundle",
+          viaBundle = true,
+          testProject = TestProjectPaths.APPLICATION_ID_SUFFIX,
+          // TODO(b/190357145): Fix ApplicationId when fixed in AGP or decided how to handle this.
+          expectApks = mapOf(
+            CURRENT to """
+              ApplicationId: one.name
+              File: *>java.lang.IllegalArgumentException
+              Files:
+                base -> project/app/build/intermediates/extracted_apks/debug/base-master.apk
+                base -> project/app/build/intermediates/extracted_apks/debug/base-mdpi.apk
+              RequiredInstallationOptions: []
+            """,
+            AGP_40 to """
+              ApplicationId: one.name.defaultConfig.debug
+              File: *>java.lang.IllegalArgumentException
+              Files:
+                base -> project/app/build/intermediates/extracted_apks/debug/out/base-master.apk
+                base -> project/app/build/intermediates/extracted_apks/debug/out/base-mdpi.apk
+              RequiredInstallationOptions: []
+            """,
+            AGP_35 to """
+              ApplicationId: one.name.defaultConfig.debug
+              File: *>java.lang.IllegalArgumentException
+              Files:
+                base -> project/app/build/intermediates/extracted_apks/debug/extractApksForDebug/out/base-master.apk
+                base -> project/app/build/intermediates/extracted_apks/debug/extractApksForDebug/out/base-mdpi.apk
+              RequiredInstallationOptions: []
+            """
+          )
         ),
         TestDefinition(
           name = "SIMPLE_APPLICATION test run configuration",
@@ -347,6 +379,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
   data class TestDefinition(
     val IGNORE: TestDefinition.() -> Unit = { },
     val name: String = "",
+    val viaBundle: Boolean = false,
     val device: Int = 30,
     val testProject: String = "",
     val variant: Pair<String, String>? = null,
@@ -361,6 +394,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
     constructor (
       IGNORE: TestDefinition.() -> Unit = { },
       name: String = "",
+      viaBundle: Boolean = false,
       device: Int = 30,
       testProject: String = "",
       variant: Pair<String, String>? = null,
@@ -374,6 +408,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
     ) : this(
       IGNORE = IGNORE,
       name = name,
+      viaBundle = viaBundle,
       device = device,
       testProject = testProject,
       variant = variant,
@@ -415,7 +450,14 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         val runConfiguration = runReadAction {
           when (targetRunConfiguration) {
             TargetRunConfiguration.AppTargetRunConfiguration ->
-              RunManager.getInstance(project).allConfigurationsList.filterIsInstance<AndroidRunConfiguration>().single()
+              RunManager
+                .getInstance(project)
+                .allConfigurationsList
+                .filterIsInstance<AndroidRunConfiguration>()
+                .single()
+                .also {
+                  it.DEPLOY_APK_FROM_BUNDLE = viaBundle
+                }
             is TestTargetRunConfiguration ->
               createAndroidTestConfigurationFromClass(project, targetRunConfiguration.testClassFqn)!!
           }

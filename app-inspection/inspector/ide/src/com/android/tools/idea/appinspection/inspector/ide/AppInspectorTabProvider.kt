@@ -32,6 +32,17 @@ class AppInspectorLaunchConfig(
   val params: AppInspectorLaunchParams
 )
 
+/** A wrapper around a target inspector jar that either was successfully resolved or not. */
+sealed class AppInspectorMessengerTarget {
+  class Resolved(val messenger: AppInspectorMessenger) : AppInspectorMessengerTarget()
+
+  /**
+   * Represents inspectors that cannot be launched, e.g. the target library used by the app is too
+   * old or the user's app was proguarded.
+   */
+  class Unresolved(val error: String) : AppInspectorMessengerTarget()
+}
+
 interface AppInspectorTabProvider: Comparable<AppInspectorTabProvider> {
   companion object {
     @JvmField
@@ -45,7 +56,7 @@ interface AppInspectorTabProvider: Comparable<AppInspectorTabProvider> {
    *
    * The overridden value provided here must contain at least one configuration. See also: [createTab].
    */
-  val launchConfigs: Iterable<AppInspectorLaunchConfig>
+  val launchConfigs: List<AppInspectorLaunchConfig>
   val displayName: String
   val icon: Icon? get() = null
   val learnMoreUrl: String? get() = null
@@ -71,15 +82,16 @@ interface AppInspectorTabProvider: Comparable<AppInspectorTabProvider> {
    * @param ideServices Various functions which clients may use to request IDE-specific behaviors
    * @param processDescriptor Information about the process and device that the associated inspector
    *   that will drive this UI is attached to
-   * @param messengers A list of inspector messengers, one generated per config specified in
-   *   [launchConfigs]. It's possible a messenger in the list will be null if the inspector
-   *   couldn't be started for some reason, e.g. a required library to be inspected wasn't present.
+   * @param messengerTargets A list of inspector messenger targets, one generated per config
+   *   specified in [launchConfigs]. Children should check if the target is
+   *   [AppInspectorMessengerTarget.Resolved] or, if not, may want to consider showing the wrapped
+   *   error to users.
    */
   fun createTab(
     project: Project,
     ideServices: AppInspectionIdeServices,
     processDescriptor: ProcessDescriptor,
-    messengers: Iterable<AppInspectorMessenger?>,
+    messengerTargets: List<AppInspectorMessengerTarget>,
     parentDisposable: Disposable
   ): AppInspectorTab
 

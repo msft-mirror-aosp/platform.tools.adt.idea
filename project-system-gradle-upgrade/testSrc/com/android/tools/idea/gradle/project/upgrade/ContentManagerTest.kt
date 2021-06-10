@@ -17,8 +17,6 @@ package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.GradleVersion
 import com.android.testutils.ignore.IgnoreTestRule
-import com.android.testutils.ignore.IgnoreWithCondition
-import com.android.testutils.ignore.OnMac
 import com.android.tools.adtui.HtmlLabel
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.stdui.EditingErrorCategory
@@ -30,6 +28,13 @@ import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessit
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_INDEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.Java8DefaultRefactoringProcessor.NoLanguageLevelAction.ACCEPT_NEW_DEFAULT
 import com.android.tools.idea.gradle.project.upgrade.Java8DefaultRefactoringProcessor.NoLanguageLevelAction.INSERT_OLD_DEFAULT
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.AgpVersionNotLocatedError
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.AllDone
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.InvalidVersionError
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.Loading
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.ReadyToRun
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.RunningSync
+import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.RunningUpgrade
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.onEdt
@@ -39,6 +44,7 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
 import com.intellij.ui.components.JBLabel
 import org.junit.Before
@@ -57,6 +63,8 @@ class ContentManagerTest {
   val ignoreTests = IgnoreTestRule()
 
   val project by lazy { projectRule.project }
+
+  private val uiStates: MutableList<ToolWindowModel.UIState> = ArrayList()
 
   @Before
   fun replaceSyncInvoker() {
@@ -77,6 +85,8 @@ class ContentManagerTest {
     )
   }
 
+  private fun ToolWindowModel.listeningStatesChanges() = apply { uiState.addListener { uiStates.add(uiState.get()) }}
+
   @Test
   fun testContentManagerConstructable() {
     val contentManager = ContentManager(project)
@@ -90,18 +100,18 @@ class ContentManagerTest {
 
   @Test
   fun testToolWindowModelConstructable() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
   }
 
   @Test
   fun testToolWindowModelStartsWithLatestAgpVersionSelected() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     assertThat(toolWindowModel.selectedVersion).isEqualTo(latestAgpVersion)
   }
 
   @Test
   fun testToolWindowModelStartsWithValidProcessor() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     assertThat(toolWindowModel.processor?.current).isEqualTo(currentAgpVersion)
     assertThat(toolWindowModel.processor?.new).isEqualTo(latestAgpVersion)
   }
@@ -109,16 +119,14 @@ class ContentManagerTest {
   @Test
   fun testToolWindowModelStartsEnabledWithBuildGradle() {
     addMinimalBuildGradleToProject()
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
-    assertThat(toolWindowModel.uiState.get().runEnabled).isTrue()
-    assertThat(toolWindowModel.uiState.get().runTooltip).isEmpty()
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
+    assertThat(toolWindowModel.uiState.get()).isEqualTo(ReadyToRun)
   }
 
   @Test
   fun testToolWindowModelStartsDisabledWithNoFiles() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
-    assertThat(toolWindowModel.uiState.get().runEnabled).isFalse()
-    assertThat(toolWindowModel.uiState.get().runTooltip).contains("buildSrc")
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
+    assertThat(toolWindowModel.uiState.get()).isEqualTo(AgpVersionNotLocatedError)
   }
 
   @Test
@@ -133,30 +141,29 @@ class ContentManagerTest {
         }
       """.trimIndent()
     )
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
-    assertThat(toolWindowModel.uiState.get().runEnabled).isFalse()
-    assertThat(toolWindowModel.uiState.get().runTooltip).contains("buildSrc")
-  }
-
-  @Test
-  fun testToolWindowModelIsNotLoading() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
-    assertThat(toolWindowModel.uiState.get().showLoadingState).isFalse()
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
+    assertThat(toolWindowModel.uiState.get()).isEqualTo(AgpVersionNotLocatedError)
   }
 
   @Test
   fun testToolWindowModelUIStateOnFailedValidation() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion }).listeningStatesChanges()
     toolWindowModel.newVersionSet("")
-    assertThat(toolWindowModel.uiState.get().errorMessage).isEqualTo(AllIcons.General.Error to "Invalid AGP version format.")
-    assertThat(toolWindowModel.uiState.get().runEnabled).isFalse()
-    assertThat(toolWindowModel.uiState.get().showLoadingState).isFalse()
+    // The following order might be not obvious but in fact it is correct:
+    // Firstly version parser validates new version and sets the error,
+    // Then UI is cleared showing Loading state,
+    // Finally refresh logic results back in InvalidVersionError state.
+    assertThat(uiStates).containsExactly(
+      InvalidVersionError(AllIcons.General.Error to "Invalid AGP version format."),
+      Loading,
+      InvalidVersionError(AllIcons.General.Error to "Invalid AGP version format.")
+    ).inOrder()
   }
 
   @Test
   fun testTreeModelInitialState() {
     addMinimalBuildGradleToProject()
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     val treeModel = toolWindowModel.treeModel
     val root = treeModel.root as? CheckedTreeNode
     assertThat(root).isInstanceOf(CheckedTreeNode::class.java)
@@ -178,7 +185,7 @@ class ContentManagerTest {
   fun testToolWindowView() {
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
   }
 
@@ -187,15 +194,12 @@ class ContentManagerTest {
     addMinimalBuildGradleToProject()
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
-    // TODO(b/183107211): write a stringifier for the tree to better be able to test its state by comparison
-    //  with an expected string
-    assertThat(view.tree.isRootVisible).isFalse()
-    val expandedDescendants = view.tree.getExpandedDescendants(view.tree.getPathForRow(0)).toList()
-    assertThat(expandedDescendants).hasSize(1)
-    val lastPathComponent = expandedDescendants[0].lastPathComponent as CheckedTreeNode
-    assertThat(lastPathComponent.userObject).isEqualTo(MANDATORY_CODEPENDENT)
+    assertThat(treeString(view.tree)).isEqualTo("""
+      Upgrade
+        Upgrade AGP dependency from 4.1.0 to $latestAgpVersion
+    """.trimIndent())
   }
 
   @Test
@@ -203,7 +207,7 @@ class ContentManagerTest {
     addMinimalBuildGradleToProject()
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     val mandatoryCodependentNode = view.tree.getPathForRow(0).lastPathComponent as CheckedTreeNode
     assertThat(mandatoryCodependentNode.isChecked).isTrue()
@@ -219,7 +223,7 @@ class ContentManagerTest {
     addMinimalBuildGradleToProject()
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     view.tree.selectionPath = view.tree.getPathForRow(0)
     val detailsPanelContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "content" } as HtmlLabel
@@ -232,7 +236,7 @@ class ContentManagerTest {
     addMinimalBuildGradleToProject()
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     view.tree.selectionPath = view.tree.getPathForRow(1)
     val detailsPanelContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "content" } as HtmlLabel
@@ -260,7 +264,7 @@ class ContentManagerTest {
     )
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     val java8ProcessorPath = view.tree.getPathForRow(1)
     view.tree.selectionPath = java8ProcessorPath
@@ -277,7 +281,6 @@ class ContentManagerTest {
     assertThat(stepPresentation.treeText).isEqualTo("Insert directives to continue using Java 7")
   }
 
-  @IgnoreWithCondition(reason = "b/189890821", condition = OnMac::class)
   @Test
   fun testToolWindowViewWithGradleAndPluginUpgrades() {
     projectRule.fixture.addFileToProject(
@@ -285,8 +288,8 @@ class ContentManagerTest {
       """
         buildscript {
           dependencies {
-            classpath 'com.android.tools.build:gradle:4.1.0'
-            classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.20'
+            classpath 'com.android.tools.build:gradle:3.6.0'
+            classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.10'
           }
         }
       """.trimIndent()
@@ -303,14 +306,14 @@ class ContentManagerTest {
     )
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
-    assertThat(view.tree.rowCount).isEqualTo(4)
-    fun rowText(n: Int) =
-      ((view.tree.getPathForRow(n).lastPathComponent as CheckedTreeNode).userObject as ToolWindowModel.DefaultStepPresentation).treeText
-    assertThat(rowText(1)).contains("Upgrade Gradle version")
-    assertThat(rowText(2)).contains("Upgrade Gradle plugins")
-    assertThat(rowText(3)).contains("Upgrade AGP dependency")
+    assertThat(treeString(view.tree)).isEqualTo("""
+      Upgrade
+        Upgrade Gradle version to ${CompatibleGradleVersion.getCompatibleGradleVersion(latestAgpVersion).version}
+        Upgrade Gradle plugins
+        Upgrade AGP dependency from 4.1.0 to $latestAgpVersion
+    """.trimIndent())
   }
 
   @Test
@@ -318,7 +321,7 @@ class ContentManagerTest {
     addMinimalBuildGradleToProject()
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     assertThat(view.okButton.isEnabled).isTrue()
     assertThat(view.okButton.text).isEqualTo("Run selected steps")
@@ -332,7 +335,7 @@ class ContentManagerTest {
   fun testToolWindowOKButtonsAreDisabledWithNoFiles() {
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     val view = ContentManager.View(model, toolWindow.contentManager)
     assertThat(view.okButton.isEnabled).isFalse()
     assertThat(view.okButton.text).isEqualTo("Run selected steps")
@@ -346,7 +349,7 @@ class ContentManagerTest {
   fun testToolWindowDropdownInitializedWithCurrentAndLatest() {
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion) { setOf<GradleVersion>() }
+    val model = ToolWindowModel(project, { currentAgpVersion }) { setOf<GradleVersion>() }
     val view = ContentManager.View(model, toolWindow.contentManager)
     assertThat(view.versionTextField.model.selectedItem).isEqualTo(latestAgpVersion)
     assertThat(view.versionTextField.model.size).isEqualTo(2)
@@ -357,9 +360,15 @@ class ContentManagerTest {
   @Test
   fun testRunProcessor() {
     val psiFile = addMinimalBuildGradleToProject()
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    var changingCurrentAgpVersion = currentAgpVersion
+    val toolWindowModel = ToolWindowModel(project, { changingCurrentAgpVersion }).listeningStatesChanges()
+
     toolWindowModel.runUpgrade(false)
+    toolWindowModel.syncStarted(project)
+    changingCurrentAgpVersion = latestAgpVersion
+    toolWindowModel.syncSucceeded(project)
     assertThat(psiFile.text).contains("classpath 'com.android.tools.build:gradle:$latestAgpVersion")
+    assertThat(uiStates).containsExactly(RunningUpgrade, RunningSync, Loading, AllDone).inOrder()
   }
 
   @Test
@@ -397,7 +406,7 @@ class ContentManagerTest {
 
   @Test
   fun testSuggestedVersions() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     val knownVersions = listOf("4.1.0", "20000.1.0").map { GradleVersion.parse(it) }.toSet()
     val suggestedVersions = toolWindowModel.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(listOf(latestAgpVersion, currentAgpVersion))
@@ -405,7 +414,7 @@ class ContentManagerTest {
 
   @Test
   fun testSuggestedVersionsLatestExplicitlyKnown() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     val knownVersions = listOf("4.1.0", "20000.1.0").map { GradleVersion.parse(it) }.toSet().union(setOf(latestAgpVersion))
     val suggestedVersions = toolWindowModel.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(listOf(latestAgpVersion, currentAgpVersion))
@@ -413,7 +422,7 @@ class ContentManagerTest {
 
   @Test
   fun testSuggestedVersionsAlreadyAtLatestVersionExplicitlyKnown() {
-    val toolWindowModel = ToolWindowModel(project, latestAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { latestAgpVersion })
     val knownVersions = listOf("4.1.0", "20000.1.0").map { GradleVersion.parse(it) }.toSet().union(setOf(latestAgpVersion))
     val suggestedVersions = toolWindowModel.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(listOf(latestAgpVersion))
@@ -421,7 +430,7 @@ class ContentManagerTest {
 
   @Test
   fun testSuggestedVersionsAlreadyAtLatestVersionExplicitlyUnknown() {
-    val toolWindowModel = ToolWindowModel(project, latestAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { latestAgpVersion })
     val knownVersions = listOf("4.1.0", "20000.1.0").map { GradleVersion.parse(it) }.toSet()
     val suggestedVersions = toolWindowModel.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(listOf(latestAgpVersion))
@@ -429,26 +438,26 @@ class ContentManagerTest {
 
   @Test
   fun testSuggestedVersionsEmptyWhenCurrentUnknown() {
-    val toolWindowModel = ToolWindowModel(project, null)
+    val toolWindowModel = ToolWindowModel(project, { null })
     val knownVersions = listOf("4.1.0", "20000.1.0").map { GradleVersion.parse(it) }.toSet().union(setOf(latestAgpVersion))
     val suggestedVersions = toolWindowModel.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(listOf<GradleVersion>())
   }
 
-  @IgnoreWithCondition(reason = "b/189890821", condition = OnMac::class)
   @Test
   fun testSuggestedVersionsDoesNotIncludeForcedUpgrades() {
-    val toolWindowModel = ToolWindowModel(project, currentAgpVersion)
+    val toolWindowModel = ToolWindowModel(project, { currentAgpVersion })
     val knownVersions = listOf("4.1.0", "4.2.0-alpha01", "4.2.0").map { GradleVersion.parse(it) }.toSet()
     val suggestedVersions  = toolWindowModel.suggestedVersionsList(knownVersions)
-    assertThat(suggestedVersions).isEqualTo(listOf(latestAgpVersion, GradleVersion.parse("4.2.0"), currentAgpVersion))
+    assertThat(suggestedVersions)
+      .isEqualTo(setOf(latestAgpVersion, GradleVersion.parse("4.2.0"), currentAgpVersion).toList().sortedDescending())
   }
 
   @Test
   fun testAgpVersionEditingValidation() {
     val contentManager = ContentManager(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
-    val model = ToolWindowModel(project, currentAgpVersion)
+    val model = ToolWindowModel(project, { currentAgpVersion })
     assertThat(model.editingValidation("").first).isEqualTo(EditingErrorCategory.ERROR)
     assertThat(model.editingValidation("").second).isEqualTo("Invalid AGP version format.")
     assertThat(model.editingValidation("2.0.0").first).isEqualTo(EditingErrorCategory.ERROR)
@@ -470,5 +479,24 @@ class ContentManagerTest {
       assertThat(model.editingValidation(newPointVersion.toString()).first).isEqualTo(EditingErrorCategory.WARNING)
       assertThat(model.editingValidation(newPointVersion.toString()).second).isEqualTo("Upgrade to target AGP version is unverified.")
     }
+  }
+
+  fun treeString(tree: CheckboxTree): String {
+    fun addRowText(n: Int, sb: StringBuilder) {
+      val path = tree.getPathForRow(n)
+      val userObject = (path.lastPathComponent as CheckedTreeNode).userObject
+      sb.append("  ".repeat(path.pathCount - 2))
+      when(userObject) {
+        is ToolWindowModel.DefaultStepPresentation -> sb.append(userObject.treeText)
+        is AgpUpgradeComponentNecessity -> sb.append(userObject.treeText())
+        else -> sb.append("Unknown entry in tree: $userObject")
+      }
+    }
+    val sb = StringBuilder()
+    for (i in 0 until tree.rowCount) {
+      addRowText(i, sb)
+      if (i < tree.rowCount - 1) sb.append("\n")
+    }
+    return sb.toString()
   }
 }

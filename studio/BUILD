@@ -29,9 +29,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/.idea/libraries:kxml2",
-        "//tools/adt/idea/.idea/libraries:layoutinspector-compose-proto",
-        "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
-        "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
+        "//tools/adt/idea/.idea/libraries:layoutinspector-proto",
         "//tools/adt/idea/.idea/libraries:libam-instrumentation-data-proto",
         "//tools/adt/idea/.idea/libraries:libapp-processes-proto",
         "//tools/adt/idea/.idea/libraries:network_inspector_java_proto",
@@ -236,16 +234,13 @@ studio_plugin(
             "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api",
         ],
     },
-    # List of modules and libraries we expect to be provided by the platform
-    provided = [
-        "//tools/adt/idea/android-kotlin:dx",  # TODO
-    ],
     resources = {
         "resources": [
             "//prebuilts/studio/layoutlib:layoutlib",
             "//tools/adt/idea/android/lib:sample-data-bundle",
             "//tools/adt/idea/artwork:device-art-resources-bundle",  # duplicated in android.jar
             "//tools/adt/idea/android/annotations:androidAnnotations",
+            "//tools/adt/idea/emulator/native:native_lib",
             "//tools/base/app-inspection/inspectors/network:bundle",
             "//tools/base/dynamic-layout-inspector/agent/appinspection:bundle",
             "//tools/base/profiler/transform:profilers-transform",

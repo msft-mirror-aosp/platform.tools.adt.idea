@@ -7,6 +7,8 @@ MODULE                        : My_First_App.app
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
     GroupId                       : My First App
+    Namespace                     : com.example.firstapp
+    TestNamespace                 : com.example.firstapp.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -250,7 +252,6 @@ MODULE                        : My_First_App.app
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/firstapp/app/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/firstapp/app/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/firstapp/app/build/generated/ap_generated_sources/debug/out [-]
@@ -839,7 +840,6 @@ MODULE                        : My_First_App.app
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/firstapp/app/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/firstapp/app/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/firstapp/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -1431,7 +1431,6 @@ MODULE                        : My_First_App.app
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/firstapp/app/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/firstapp/app/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/firstapp/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -2021,6 +2020,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : My First App.app
+    Namespace                     : com.example.mysharedlibrary
+    TestNamespace                 : com.example.mysharedlibrary.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -2250,7 +2251,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/shared/mysharedlibrary/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/shared/mysharedlibrary/build/generated/ap_generated_sources/debug/out [-]
@@ -2803,7 +2803,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/shared/mysharedlibrary/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/shared/mysharedlibrary/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -3368,7 +3367,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/shared/mysharedlibrary/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/shared/mysharedlibrary/build/generated/ap_generated_sources/debugUnitTest/out [-]

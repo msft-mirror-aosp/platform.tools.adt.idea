@@ -22,21 +22,31 @@ import com.android.tools.adtui.stdui.CommonTabbedPane
 import com.android.tools.adtui.stdui.CommonTabbedPaneUI
 import com.android.tools.idea.appinspection.api.AppInspectionApiServices
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
+import com.android.tools.idea.appinspection.ide.APP_PROGUARDED_MESSAGE
+import com.android.tools.idea.appinspection.ide.AppInspectionToolWindowControl
 import com.android.tools.idea.appinspection.ide.AppInspectorTabLaunchSupport
 import com.android.tools.idea.appinspection.ide.InspectorArtifactService
 import com.android.tools.idea.appinspection.ide.InspectorJarTarget
 import com.android.tools.idea.appinspection.ide.InspectorTabJarTargets
 import com.android.tools.idea.appinspection.ide.analytics.AppInspectionAnalyticsTrackerService
-import com.android.tools.idea.appinspection.ide.APP_PROGUARDED_MESSAGE
 import com.android.tools.idea.appinspection.ide.model.AppInspectionBundle
-import com.android.tools.idea.appinspection.ide.toEmptyStatePanelIfSingleUnresolvedInspector
 import com.android.tools.idea.appinspection.ide.toIncompatibleVersionMessage
-import com.android.tools.idea.appinspection.inspector.api.*
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionAppProguardedException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionCrashException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionIdeServices
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionLaunchException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionLibraryMissingException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionProcessNoLongerExistsException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionVersionIncompatibleException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectorForcefullyDisposedException
+import com.android.tools.idea.appinspection.inspector.api.awaitForDisposal
 import com.android.tools.idea.appinspection.inspector.api.launch.LaunchParameters
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
+import com.android.tools.idea.appinspection.inspector.ide.AppInspectorMessengerTarget
 import com.android.tools.idea.appinspection.inspector.ide.AppInspectorTab
 import com.android.tools.idea.appinspection.inspector.ide.AppInspectorTabProvider
 import com.android.tools.idea.appinspection.inspector.ide.LibraryInspectorLaunchParams
+import com.android.tools.idea.appinspection.inspector.ide.ui.EmptyStatePanel
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AppInspectionEvent
 import com.intellij.ide.ActivityTracker
@@ -87,7 +97,7 @@ class AppInspectionView @VisibleForTesting constructor(
   private val uiDispatcher: CoroutineDispatcher,
   private val artifactService: InspectorArtifactService,
   getPreferredProcesses: () -> List<String>
-) : Disposable {
+) : AppInspectionToolWindowControl, Disposable {
   val component = JPanel(TabularLayout("*", "Fit,Fit,*"))
 
   @VisibleForTesting
@@ -121,7 +131,7 @@ class AppInspectionView @VisibleForTesting constructor(
 
   private val selectProcessAction: SelectProcessAction
 
-  private lateinit var lastSelectedTabName: String
+  private lateinit var selectedTabName: String
 
   /**
    * If enabled, this view will respond to new processes by connecting inspectors to them.
@@ -271,17 +281,23 @@ class AppInspectionView @VisibleForTesting constructor(
     try {
       val messengers = provider.launchConfigs
         .map { config ->
-          (tabTargets.targets[config.id] as? InspectorJarTarget.Resolved)?.let { resolvedTarget ->
-            apiServices.launchInspector(
-              LaunchParameters(
-                process,
-                config.id,
-                resolvedTarget.jar,
-                project.name,
-                (config.params as? LibraryInspectorLaunchParams)?.minVersionLibraryCoordinate,
-                force
+          when (val jarTarget = tabTargets.targets.getValue(config.id)) {
+            is InspectorJarTarget.Resolved -> {
+              val messenger = apiServices.launchInspector(
+                LaunchParameters(
+                  process,
+                  config.id,
+                  jarTarget.jar,
+                  project.name,
+                  (config.params as? LibraryInspectorLaunchParams)?.minVersionLibraryCoordinate,
+                  force
+                )
               )
-            )
+              AppInspectorMessengerTarget.Resolved(messenger)
+            }
+            is InspectorJarTarget.Unresolved -> {
+              AppInspectorMessengerTarget.Unresolved(jarTarget.error)
+            }
           }
         }
 
@@ -291,10 +307,10 @@ class AppInspectionView @VisibleForTesting constructor(
         tabShell.putUserData(TAB_KEY, tab)
       }
       messengers
-        .filterNotNull()
-        .forEach { messenger ->
+        .filterIsInstance<AppInspectorMessengerTarget.Resolved>()
+        .forEach { target ->
           launch {
-            val cause = messenger.awaitForDisposal()
+            val cause = target.messenger.awaitForDisposal()
             currentInspectorsJob?.cancel()
             if (cause is AppInspectorForcefullyDisposedException) {
               // TODO(b/188934519): A failure in one inspector tab shouldn't stop others
@@ -365,15 +381,9 @@ class AppInspectionView @VisibleForTesting constructor(
       }
 
       val tabs = tabTargetsList.map { tabTargets ->
-        val emptyState = tabTargets.toEmptyStatePanelIfSingleUnresolvedInspector()
-        val shell = AppInspectorTabShell(tabTargets.provider)
-        if (emptyState != null) {
-          shell.setComponent(emptyState)
-        }
-        else {
+        AppInspectorTabShell(tabTargets.provider).also { shell ->
           launchInspectorForTab(process, tabTargets, shell, force)
         }
-        shell
       }
 
       withContext(uiDispatcher)
@@ -396,8 +406,8 @@ class AppInspectionView @VisibleForTesting constructor(
     val inspectorTabsPane = CommonTabbedPane(CommonTabbedPaneUI(CommonTabbedPaneUI.TEXT_COLOR, CommonTabbedPaneUI.TEXT_COLOR))
     inspectorTabs.forEach { tab -> tab.addTo(inspectorTabsPane) }
     // Set the selected tab to the previous tab that was selected if possible. Otherwise, default to the first one.
-    inspectorTabsPane.selectedIndex = if (inspectorTabs.size > 0 && this::lastSelectedTabName.isInitialized) {
-      inspectorTabs.indexOfFirst { it.provider.displayName == lastSelectedTabName }.takeIf { it >= 0 } ?: 0
+    inspectorTabsPane.selectedIndex = if (inspectorTabs.size > 0 && this::selectedTabName.isInitialized) {
+      inspectorTabs.indexOfFirst { it.provider.displayName == selectedTabName }.takeIf { it >= 0 } ?: 0
     }
     else 0
     // Add after selection has been set to avoid setting off the listener prematurely.
@@ -405,7 +415,7 @@ class AppInspectionView @VisibleForTesting constructor(
       if (currentProcess?.isRunning == true) {
         (event.source as? CommonTabbedPane)?.let { tabbedPane ->
           if (tabbedPane.selectedIndex >= 0) {
-            lastSelectedTabName = tabbedPane.getTitleAt(tabbedPane.selectedIndex)
+            selectedTabName = tabbedPane.getTitleAt(tabbedPane.selectedIndex)
           }
         }
       }
@@ -418,7 +428,6 @@ class AppInspectionView @VisibleForTesting constructor(
     inspectorPanel.removeAll()
     val inspectorComponent = if (inspectorTabs.size > 0) createInspectorTabsPane() else noInspectorsMessage
     inspectorPanel.add(inspectorComponent)
-    inspectorPanel.repaint()
   }
 
   internal fun isInspectionActive() = processesModel.selectedProcess?.isRunning ?: false
@@ -426,5 +435,28 @@ class AppInspectionView @VisibleForTesting constructor(
   override fun dispose() {
     currentInspectorsJob?.cancel()
     inspectorTabs.forEach { Disposer.dispose(it) }
+  }
+
+  /**
+   * This allows selection of inspector tab by components outside of App Inspection.
+   *
+   * Allows other parts of Studio to open App Inspection tool window and select
+   * a tab of their choice on demand. If the tool window is not yet populated, it
+   * will set [selectedTabName] so that when it does populate with tabs, it will set
+   * the right one.
+   */
+  override fun setTab(tabName: String) {
+    scope.launch(uiDispatcher) {
+      if (inspectorTabs.isEmpty()) {
+        selectedTabName = tabName
+      }
+      else {
+        val tabIndex = inspectorTabs.indexOfFirst { it.provider.displayName == tabName }
+        if (tabIndex >= 0) {
+          val pane = inspectorPanel.getComponent(0) as CommonTabbedPane
+          pane.selectedIndex = tabIndex
+        }
+      }
+    }
   }
 }

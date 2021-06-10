@@ -7,6 +7,8 @@ MODULE                        : TestCompositeLib1.app
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
     GroupId                       : com.test.composite1
+    Namespace                     : com.test.composite1
+    TestNamespace                 : com.test.composite1.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -250,7 +252,6 @@ MODULE                        : TestCompositeLib1.app
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/app/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debug/out [-]
@@ -853,7 +854,6 @@ MODULE                        : TestCompositeLib1.app
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/app/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -1459,7 +1459,6 @@ MODULE                        : TestCompositeLib1.app
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/app/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -2055,6 +2054,8 @@ MODULE                        : TestCompositeLib1.lib
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : com.test.composite1
+    Namespace                     : com.test.composite1
+    TestNamespace                 : com.test.composite1.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -2284,7 +2285,6 @@ MODULE                        : TestCompositeLib1.lib
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/lib/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debug/out [-]
@@ -2852,7 +2852,6 @@ MODULE                        : TestCompositeLib1.lib
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/lib/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -3431,7 +3430,6 @@ MODULE                        : TestCompositeLib1.lib
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib1/lib/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -4001,6 +3999,8 @@ MODULE                        : TestCompositeLib3.app
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
     GroupId                       : TestCompositeLib3
+    Namespace                     : com.test.composite3
+    TestNamespace                 : com.test.composite3.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -4244,7 +4244,6 @@ MODULE                        : TestCompositeLib3.app
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/app/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debug/out [-]
@@ -4837,7 +4836,6 @@ MODULE                        : TestCompositeLib3.app
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/app/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -5433,7 +5431,6 @@ MODULE                        : TestCompositeLib3.app
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/app/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -6019,6 +6016,8 @@ MODULE                        : TestCompositeLib3.lib
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : com.test.composite3
+    Namespace                     : com.test.composite3
+    TestNamespace                 : com.test.composite3.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -6248,7 +6247,6 @@ MODULE                        : TestCompositeLib3.lib
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/lib/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debug/out [-]
@@ -6785,7 +6783,6 @@ MODULE                        : TestCompositeLib3.lib
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/lib/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -7333,7 +7330,6 @@ MODULE                        : TestCompositeLib3.lib
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/TestCompositeLib3/lib/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -7874,6 +7870,8 @@ MODULE                        : project.app
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
     GroupId                       : project
+    Namespace                     : com.test.compositeapp
+    TestNamespace                 : com.test.compositeapp.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -8117,7 +8115,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
@@ -8726,7 +8723,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -9338,7 +9334,6 @@ MODULE                        : project.app
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/app/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
@@ -9940,6 +9935,8 @@ MODULE                        : project.lib
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : com.test.composite
+    Namespace                     : com.test.composite0
+    TestNamespace                 : com.test.composite0.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -10169,7 +10166,6 @@ MODULE                        : project.lib
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
                 ClassFolder                   : <ROOT>/lib/build/intermediates/javac/debug/classes [-]
-                JavaResourcesFolder           : <ROOT>/lib/build/intermediates/java_res/debug/out [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debug/out [-]
@@ -10722,7 +10718,6 @@ MODULE                        : project.lib
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
                 ClassFolder                   : <ROOT>/lib/build/intermediates/javac/debugAndroidTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/lib/build/intermediates/java_res/debugAndroidTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
@@ -11287,7 +11282,6 @@ MODULE                        : project.lib
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
                 ClassFolder                   : <ROOT>/lib/build/intermediates/javac/debugUnitTest/classes [-]
-                JavaResourcesFolder           : <ROOT>/lib/build/intermediates/java_res/debugUnitTest/out [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]

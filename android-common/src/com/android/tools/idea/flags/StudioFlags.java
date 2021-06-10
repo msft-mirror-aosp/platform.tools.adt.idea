@@ -150,12 +150,17 @@ public final class StudioFlags {
     "Show profileable processes on S and later",
     false);
 
+  public static final Flag<Boolean> PROFILER_MIGRATION_TO_APPINSPECTION = Flag.create(
+    PROFILER, "profiler.migration.to.appinspection", "Enable migration support for network and system events profiling.",
+    "Show migration messaging to guide users to the App Inspection tool window",
+    false);
+
   // PROFILEABLE_IN_QR is an extension of PROFILEABLE. When it's true, it assumes PROFILEABLE is also true.
   public static final Flag<Boolean> PROFILEABLE_IN_QR = Flag.create(
     PROFILER, "profileable.qr", "Support profileable processes on Q & R",
     "Show profileable processes on Q and R",
     PROFILEABLE.get() && false);
-    //endregion
+  //endregion
 
   //region ML
   private static final FlagGroup ML = new FlagGroup(FLAGS, "ml", "ML");
@@ -349,6 +354,11 @@ public final class StudioFlags {
     "Enable the new transition panel in the motion editor",
     true);
 
+  public static final Flag<Boolean> NELE_ON_SWIPE_PANEL = Flag.create(
+    NELE, "toggle.layout.editor.on.swipe.panel", "Toggle on swipe panel in motion editor.",
+    "Enable the new on swipe panel in the motion editor",
+    true);
+
   public static final Flag<Boolean> NELE_OVERLAY_PROVIDER = Flag.create(
     NELE, "toggle.overlay.provider.extension.point", "Toggle overlay provider extension point.",
     "Enable the overlay provider extension point",
@@ -518,13 +528,6 @@ public final class StudioFlags {
     "So the new Instant Run can use the combo box",
     true);
 
-  public static final Flag<Boolean> RUN_ON_MULTIPLE_DEVICES_ACTION_ENABLED = Flag.create(
-    RUNDEBUG,
-    "run.on.multiple.devices.action.enabled",
-    "Enable the Run on Multiple Devices action",
-    "To revert to the 4.0 behavior until multiple devices are properly supported for the other executors",
-    false);
-
   public static final Flag<Boolean> ADB_CONNECTION_STATUS_WIDGET_ENABLED = Flag.create(
     RUNDEBUG,
     "adb.connection.status.widget.enabled",
@@ -553,36 +556,6 @@ public final class StudioFlags {
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
 
-  /**
-   * The strategy that {@link com.android.tools.idea.run.activity.DefaultActivityLocator}
-   * uses to obtain a list of activities from a given module's merged manifest.
-   *
-   * @see StudioFlags#DEFAULT_ACTIVITY_LOCATOR_STRATEGY
-   */
-  public enum DefaultActivityLocatorStrategy {
-    /**
-     * Unconditionally block on a fresh view of the merged manifest.
-     */
-    BLOCK,
-    /**
-     * Determine the list of activities using the {@link com.android.tools.idea.model.AndroidManifestIndex}.
-     */
-    INDEX,
-    /**
-     * Use a potentially stale view of the merged manifest if the caller is on the EDT.
-     */
-    STALE
-  }
-
-  public static final Flag<DefaultActivityLocatorStrategy> DEFAULT_ACTIVITY_LOCATOR_STRATEGY = Flag.create(
-    RUNDEBUG,
-    "default.activity.locator.strategy",
-    "Choose a strategy for selecting the default activity to launch from the merged manifest.",
-    "This can be \"BLOCK\" to unconditionally block on a fresh merged manifest, \"STALE\" to use a potentially stale manifest, "
-    + "or \"INDEX\" to use the custom Android Manifest index (only select this option if manifest indexing is enabled).",
-    DefaultActivityLocatorStrategy.INDEX
-  );
-
   public static final Flag<Boolean> DEFAULT_ACTIVITY_LOCATOR_FROM_APKS = Flag.create(
     RUNDEBUG,
     "default.activity.locator.sourceoftruth",
@@ -603,6 +576,14 @@ public final class StudioFlags {
     "coroutine.debugger.enable",
     "Enable Coroutine Debugger",
     "Enables the Coroutine Debugger, that shows up as a panel in the debugger when debugging an app that uses coroutines",
+    false
+  );
+
+  public static final Flag<Boolean> LOGCAT_EXPRESSION_FILTER_ENABLE = Flag.create(
+    RUNDEBUG,
+    "logcat.expression.filter.enable",
+    "Enable expression filter in Logcat",
+    "Enables the expression filter in Logcat",
     false
   );
   //endregion
@@ -898,12 +879,6 @@ public final class StudioFlags {
     TESTING, "print.instrumentation.status", "Print instrumentation status information when testing",
     "If enabled, instrumentation output keys (from calling Instrumentation#sendStatus) that begin with 'android.studio.display.' "
     + "will have their values printed after a test has finished running.",
-    true
-  );
-
-  public static final Flag<Boolean> MULTIDEVICE_INSTRUMENTATION_TESTS = Flag.create(
-    TESTING, "multidevice.instrumentation.tests", "Allow running instrumentation tests on multiple devices at a time.",
-    "If enabled, you can choose run-on-selected-devices for android instrumentation test run configurations.",
     true
   );
 
