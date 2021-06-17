@@ -297,6 +297,7 @@ studio_plugin(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-clangd",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-base-plugin",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-debugger-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
     ],
 )
@@ -675,6 +676,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-clangd",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-base-plugin",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-debugger-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-completionMlRanking",
     ],
 )
