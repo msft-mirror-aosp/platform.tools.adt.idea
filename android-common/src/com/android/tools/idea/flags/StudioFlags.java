@@ -87,7 +87,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_NEW_MACRO_BENCHMARK_MODULE = Flag.create(
     NPW, "new.macro.benchmark.module", "New Macro Benchmark Module",
     "Show template to create a new Macro Benchmark module in the new module wizard.",
-    false);
+    true);
   //endregion
 
   //region Profiler
@@ -586,6 +586,14 @@ public final class StudioFlags {
     "Enables the expression filter in Logcat",
     false
   );
+
+  public static final Flag<Boolean> LOGCAT_SUPPRESSED_TAGS_ENABLE = Flag.create(
+    RUNDEBUG,
+    "logcat.suppressed.tags.enable",
+    "Enable Suppressed Tags Dialog in Logcat",
+    "Enables a dialog that allows the user to maintain a global set of tags to be suppressed in Logcat",
+    false
+  );
   //endregion
 
   //region Gradle Project System
@@ -708,7 +716,7 @@ public final class StudioFlags {
     "If enabled the component tree will include Composable nodes if they are wrapped in an Inspectable.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_SHOW_SEMANTICS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.show.semantics", "Show semantics",
-    "If enabled, display semantic information found in the agent.", false);
+    "If enabled, display semantic information found in the agent.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.snapshots", "Enable snapshots",
     "Enable saving and loading snapshots in the layout inspector.", false);
@@ -1226,18 +1234,8 @@ public final class StudioFlags {
   private static final FlagGroup DEVICE_MANAGER = new FlagGroup(FLAGS, "device.manager", "Device Manager");
   public static final Flag<Boolean> ENABLE_NEW_DEVICE_MANAGER_PANEL = Flag.create(
     DEVICE_MANAGER, "enable.device.manager", "Enable new Device Manager panel",
-    "Enables the new Device Manager panel on the right. It will be a replacement for an AVD manager with additional functionality",
+    "Enables the new Device Manager panel. It replaces AVD Manager with additional functionality.",
     true
-  );
-  public static final Flag<Boolean> POINT_AVD_MANAGER_TO_DEVICE_MANAGER = Flag.create(
-    DEVICE_MANAGER, "point.avd.manager.to.device.manager", "Point AVD Manager to Device Manager",
-    "Replaces the AVD Manager entry points with Device Manager",
-    false
-  );
-  public static final Flag<Boolean> ENABLE_DEVICE_MANAGER_GROUPS = Flag.create(
-    DEVICE_MANAGER, "enable.device.manager.groups", "Enable groups tab",
-    "Enables the device groups tab in the new Device Manager",
-    false
   );
   public static final Flag<Boolean> ENABLE_DEVICE_MANAGER_HALF_BAKED_FEATURES = Flag.create(
     DEVICE_MANAGER, "enable.device.manager.half.baked.features", "Enable half baked Device Manager features",

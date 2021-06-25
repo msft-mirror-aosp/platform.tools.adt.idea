@@ -17,24 +17,23 @@ package com.android.tools.idea.gradle.dsl.parser.java;
 
 import static com.android.tools.idea.gradle.dsl.model.BaseCompileOptionsModelImpl.SOURCE_COMPATIBILITY;
 import static com.android.tools.idea.gradle.dsl.model.BaseCompileOptionsModelImpl.TARGET_COMPATIBILITY;
+import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.GROOVY;
+import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.KOTLIN;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ArityHelper.property;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.SET;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelMapCollector.toModelMap;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VAR;
 
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
+import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind;
 import com.android.tools.idea.gradle.dsl.parser.elements.BaseCompileOptionsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslLiteral;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
-import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
-import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
-import com.google.common.collect.ImmutableMap;
 import com.intellij.psi.PsiElement;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
@@ -70,15 +69,7 @@ public class JavaDslElement extends BaseCompileOptionsDslElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    if (converter instanceof KotlinDslNameConverter) {
-      return ktsToModelNameMap;
-    }
-    else if (converter instanceof GroovyDslNameConverter) {
-      return groovyToModelNameMap;
-    }
-    else {
-      return super.getExternalToModelMap(converter);
-    }
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public JavaDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
@@ -88,11 +79,11 @@ public class JavaDslElement extends BaseCompileOptionsDslElement {
   @Override
   @Nullable
   public PsiElement create() {
-    GradleDslNameConverter converter = getDslFile().getWriter();
-    if (converter instanceof KotlinDslNameConverter) {
+    Kind kind = getDslFile().getWriter().getKind();
+    if (kind == KOTLIN) {
       return super.create();
     }
-    else if (converter instanceof GroovyDslNameConverter) {
+    else if (kind == GROOVY) {
       if (myParent == null) {
         return null;
       }
@@ -110,7 +101,7 @@ public class JavaDslElement extends BaseCompileOptionsDslElement {
     // The java { ... } block, though not the top-level where this is reused, supports the normal setter methods in Groovy.  We
     // can't add those to the model description, as otherwise when writing we will write out invalid top-level configuration;
     // we therefore handle parsing of non-toplevel application statements by hand, here.
-    if (element instanceof GradleDslLiteral && element.getDslFile().getParser() instanceof GroovyDslNameConverter) {
+    if (element instanceof GradleDslLiteral && element.getDslFile().getParser().getKind() == GROOVY) {
       String name = element.getName();
       if (name.equals("sourceCompatibility") || name.equals("targetCompatibility")) {
         ModelEffectDescription effect = null;
@@ -128,11 +119,11 @@ public class JavaDslElement extends BaseCompileOptionsDslElement {
 
   @Override
   public void setPsiElement(@Nullable PsiElement psiElement) {
-    GradleDslNameConverter converter = getDslFile().getWriter();
-    if (converter instanceof KotlinDslNameConverter) {
+    Kind kind = getDslFile().getWriter().getKind();
+    if (kind == KOTLIN) {
       super.setPsiElement(psiElement);
     }
-    else if (converter instanceof GroovyDslNameConverter) {
+    else if (kind == GROOVY) {
       // do nothing
     }
     else {

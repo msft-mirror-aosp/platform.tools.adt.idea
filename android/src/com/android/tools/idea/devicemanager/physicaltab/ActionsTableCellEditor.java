@@ -15,13 +15,16 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
+import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.Tables;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDeviceTableModel.Actions;
 import com.android.tools.idea.explorer.DeviceExplorerToolWindowFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.MessageDialogBuilder;
 import java.awt.Component;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import javax.swing.AbstractCellEditor;
 import javax.swing.JTable;
 import javax.swing.table.TableCellEditor;
@@ -31,46 +34,76 @@ import org.jetbrains.annotations.Nullable;
 final class ActionsTableCellEditor extends AbstractCellEditor implements TableCellEditor {
   private @Nullable PhysicalDevice myDevice;
 
-  private final @NotNull Project myProject;
-  private final @NotNull PhysicalDeviceTableModel myModel;
+  private final @NotNull PhysicalDevicePanel myPanel;
   private final @NotNull BiConsumer<@NotNull Project, @NotNull String> myOpenAndShowDevice;
   private final @NotNull NewEditDeviceNameDialog myNewEditDeviceNameDialog;
+  private final @NotNull BiPredicate<@NotNull Device, @NotNull Project> myAskWithRemoveDeviceDialog;
   private final @NotNull ActionsComponent myComponent;
 
-  ActionsTableCellEditor(@NotNull Project project, @NotNull PhysicalDeviceTableModel model) {
-    this(project, model, DeviceExplorerToolWindowFactory::openAndShowDevice, EditDeviceNameDialog::new);
+  ActionsTableCellEditor(@NotNull PhysicalDevicePanel panel) {
+    this(panel,
+         DeviceExplorerToolWindowFactory::openAndShowDevice,
+         EditDeviceNameDialog::new,
+         ActionsTableCellEditor::askWithRemoveDeviceDialog);
   }
 
   @VisibleForTesting
-  ActionsTableCellEditor(@NotNull Project project,
-                         @NotNull PhysicalDeviceTableModel model,
+  ActionsTableCellEditor(@NotNull PhysicalDevicePanel panel,
                          @NotNull BiConsumer<@NotNull Project, @NotNull String> openAndShowDevice,
-                         @NotNull NewEditDeviceNameDialog newEditDeviceNameDialog) {
-    myProject = project;
-    myModel = model;
+                         @NotNull NewEditDeviceNameDialog newEditDeviceNameDialog,
+                         @NotNull BiPredicate<@NotNull Device, @NotNull Project> askWithRemoveDeviceDialog) {
+    myPanel = panel;
     myOpenAndShowDevice = openAndShowDevice;
     myNewEditDeviceNameDialog = newEditDeviceNameDialog;
+    myAskWithRemoveDeviceDialog = askWithRemoveDeviceDialog;
 
     myComponent = new ActionsComponent();
 
     myComponent.getActivateDeviceFileExplorerWindowButton().addActionListener(event -> activateDeviceFileExplorerWindow());
     myComponent.getEditDeviceNameButton().addActionListener(event -> editDeviceName());
+    myComponent.getRemoveButton().addActionListener(event -> remove());
+    myComponent.getViewDetailsButton().addActionListener(event -> myPanel.toggleDetailsPanel());
+  }
+
+  @VisibleForTesting
+  static boolean askWithRemoveDeviceDialog(@NotNull Device device, @NotNull Project project) {
+    return MessageDialogBuilder.okCancel("Remove " + device + " Device", device + " will be removed from the device manager.")
+      .yesText("Remove")
+      .ask(project);
   }
 
   private void activateDeviceFileExplorerWindow() {
+    Project project = myPanel.getProject();
+    assert project != null;
+
     assert myDevice != null;
-    myOpenAndShowDevice.accept(myProject, myDevice.getKey().toString());
+    myOpenAndShowDevice.accept(project, myDevice.getKey().toString());
   }
 
   private void editDeviceName() {
     assert myDevice != null;
-    EditDeviceNameDialog dialog = myNewEditDeviceNameDialog.apply(myProject, myDevice.getNameOverride(), myDevice.getName());
+    EditDeviceNameDialog dialog = myNewEditDeviceNameDialog.apply(myPanel.getProject(), myDevice.getNameOverride(), myDevice.getName());
 
     if (!dialog.showAndGet()) {
       return;
     }
 
-    myModel.setNameOverride(myDevice.getKey(), dialog.getNameOverride());
+    myPanel.getTable().getModel().setNameOverride(myDevice.getKey(), dialog.getNameOverride());
+  }
+
+  private void remove() {
+    assert myDevice != null;
+
+    Project project = myPanel.getProject();
+    assert project != null;
+
+    if (!myAskWithRemoveDeviceDialog.test(myDevice, project)) {
+      fireEditingCanceled();
+      return;
+    }
+
+    fireEditingStopped();
+    myPanel.getTable().getModel().remove(myDevice.getKey());
   }
 
   @VisibleForTesting
@@ -87,7 +120,10 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     viewColumnIndex = table.convertColumnIndexToView(PhysicalDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX);
     myDevice = (PhysicalDevice)table.getValueAt(viewRowIndex, viewColumnIndex);
 
-    myComponent.getActivateDeviceFileExplorerWindowButton().setEnabled(myDevice.isOnline());
+    boolean online = myDevice.isOnline();
+
+    myComponent.getActivateDeviceFileExplorerWindowButton().setEnabled(online);
+    myComponent.getRemoveButton().setEnabled(!online);
 
     myComponent.setBackground(Tables.getBackground(table, selected));
     myComponent.setBorder(Tables.getBorder(selected, true));

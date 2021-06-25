@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.dsl.model;
 import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
 
-import com.android.ide.common.repository.GradleVersion;
 import com.android.tools.idea.gradle.dsl.TestFileName;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
@@ -361,7 +360,7 @@ public class GradleSettingsModelTest extends GradleFileModelTestCase {
     DependencyResolutionManagementModel dependencyResolutionManagementModel = settingsModel.dependencyResolutionManagement();
     RepositoriesModel repositoriesModel = dependencyResolutionManagementModel.repositories();
 
-    repositoriesModel.addGoogleMavenRepository(GradleVersion.parse("7.0.0"));
+    repositoriesModel.addGoogleMavenRepository();
     applyChanges(settingsModel);
     verifyFileContents(mySettingsFile, TestFile.ADD_AND_APPLY_DEPENDENCY_RESOLUTION_MANAGEMENT_EXPECTED);
   }
@@ -374,7 +373,7 @@ public class GradleSettingsModelTest extends GradleFileModelTestCase {
     RepositoriesModel repositoriesModel = dependencyResolutionManagementModel.repositories();
 
     repositoriesModel.removeRepository(repositoriesModel.repositories().get(0));
-    repositoriesModel.addGoogleMavenRepository(GradleVersion.parse("7.0.0"));
+    repositoriesModel.addGoogleMavenRepository();
     applyChanges(settingsModel);
     verifyFileContents(mySettingsFile, TestFile.EDIT_AND_APPLY_DEPENDENCY_RESOLUTION_MANAGEMENT_EXPECTED);
   }
@@ -410,10 +409,24 @@ public class GradleSettingsModelTest extends GradleFileModelTestCase {
     PluginsModel pluginsModel = pluginManagementModel.plugins();
     RepositoriesModel repositoriesModel = pluginManagementModel.repositories();
 
-    repositoriesModel.addGoogleMavenRepository(GradleVersion.parse("7.0.0"));
-    pluginsModel.applyPlugin("com.android.application", "7.0.0", false);
+    repositoriesModel.addGoogleMavenRepository();
+    pluginsModel.applyPlugin("com.android.application", "7.0.0");
     applyChanges(settingsModel);
     verifyFileContents(mySettingsFile, TestFile.ADD_AND_APPLY_PLUGIN_MANAGEMENT_EXPECTED);
+  }
+
+  @Test
+  public void testAddAndApplyPluginManagementThreeArguments() throws IOException {
+    writeToSettingsFile(TestFile.ADD_AND_APPLY_PLUGIN_MANAGEMENT);
+    GradleSettingsModel settingsModel = getGradleSettingsModel();
+    PluginManagementModel pluginManagementModel = settingsModel.pluginManagement();
+    PluginsModel pluginsModel = pluginManagementModel.plugins();
+    RepositoriesModel repositoriesModel = pluginManagementModel.repositories();
+
+    repositoriesModel.addGoogleMavenRepository();
+    pluginsModel.applyPlugin("com.android.application", "7.0.0", false);
+    applyChanges(settingsModel);
+    verifyFileContents(mySettingsFile, TestFile.ADD_AND_APPLY_PLUGIN_MANAGEMENT_THREE_ARGUMENTS_EXPECTED);
   }
 
   @Test
@@ -425,11 +438,27 @@ public class GradleSettingsModelTest extends GradleFileModelTestCase {
     RepositoriesModel repositoriesModel = pluginManagementModel.repositories();
 
     pluginsModel.removePlugin("com.android.application");
-    pluginsModel.applyPlugin("com.android.library", "7.0.0", false);
+    pluginsModel.applyPlugin("com.android.library", "7.0.0");
     repositoriesModel.removeRepository(repositoriesModel.repositories().get(0));
-    repositoriesModel.addGoogleMavenRepository(GradleVersion.parse("7.0.0"));
+    repositoriesModel.addGoogleMavenRepository();
     applyChanges(settingsModel);
     verifyFileContents(mySettingsFile, TestFile.EDIT_AND_APPLY_PLUGIN_MANAGEMENT_EXPECTED);
+  }
+
+  @Test
+  public void testEditAndApplyPluginManagementThreeArguments() throws IOException {
+    writeToSettingsFile(TestFile.EDIT_AND_APPLY_PLUGIN_MANAGEMENT);
+    GradleSettingsModel settingsModel = getGradleSettingsModel();
+    PluginManagementModel pluginManagementModel = settingsModel.pluginManagement();
+    PluginsModel pluginsModel = pluginManagementModel.plugins();
+    RepositoriesModel repositoriesModel = pluginManagementModel.repositories();
+
+    pluginsModel.removePlugin("com.android.application");
+    pluginsModel.applyPlugin("com.android.library", "7.0.0", false);
+    repositoriesModel.removeRepository(repositoriesModel.repositories().get(0));
+    repositoriesModel.addGoogleMavenRepository();
+    applyChanges(settingsModel);
+    verifyFileContents(mySettingsFile, TestFile.EDIT_AND_APPLY_PLUGIN_MANAGEMENT_THREE_ARGUMENTS_EXPECTED);
   }
 
   private void applyChanges(@NotNull final GradleSettingsModel settingsModel) {
@@ -476,8 +505,10 @@ public class GradleSettingsModelTest extends GradleFileModelTestCase {
     PARSE_PLUGIN_MANAGEMENT("parsePluginManagement"),
     ADD_AND_APPLY_PLUGIN_MANAGEMENT("addAndApplyPluginManagement"),
     ADD_AND_APPLY_PLUGIN_MANAGEMENT_EXPECTED("addAndApplyPluginManagementExpected"),
+    ADD_AND_APPLY_PLUGIN_MANAGEMENT_THREE_ARGUMENTS_EXPECTED("addAndApplyPluginManagementThreeArgumentsExpected"),
     EDIT_AND_APPLY_PLUGIN_MANAGEMENT("editAndApplyPluginManagement"),
     EDIT_AND_APPLY_PLUGIN_MANAGEMENT_EXPECTED("editAndApplyPluginManagementExpected"),
+    EDIT_AND_APPLY_PLUGIN_MANAGEMENT_THREE_ARGUMENTS_EXPECTED("editAndApplyPluginManagementThreeArgumentsExpected"),
     ;
     @NotNull private @SystemDependent String path;
     TestFile(@NotNull @SystemDependent String path) {

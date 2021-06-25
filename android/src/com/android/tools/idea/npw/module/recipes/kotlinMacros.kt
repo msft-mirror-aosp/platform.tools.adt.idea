@@ -20,10 +20,6 @@ import com.android.tools.idea.wizard.template.ProjectTemplateData
 import com.android.tools.idea.wizard.template.RecipeExecutor
 
 
-fun RecipeExecutor.addKotlinPlugins()  {
-  applyPlugin("kotlin-android")
-}
-
 fun RecipeExecutor.addKotlinDependencies(androidX: Boolean) {
   if (androidX) {
     addDependency("androidx.core:core-ktx:+")
@@ -34,16 +30,10 @@ fun RecipeExecutor.setKotlinVersion(kotlinVersion: String) {
   addClasspathDependency("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
 }
 
-fun RecipeExecutor.addKotlinToBaseProject(language: Language, kotlinVersion: String, isNewProject: Boolean = false) {
-  if (!isNewProject && language == Language.Kotlin) {
-    setKotlinVersion(kotlinVersion)
-  }
-}
-
 fun RecipeExecutor.addKotlinIfNeeded(data: ProjectTemplateData, noKtx: Boolean = false) {
   if (data.language == Language.Kotlin) {
-    addKotlinToBaseProject(data.language, data.kotlinVersion)
-    addKotlinPlugins()
+    setKotlinVersion(data.kotlinVersion)
+    applyPlugin("org.jetbrains.kotlin.android", data.kotlinVersion)
     addKotlinDependencies(data.androidXSupport && !noKtx)
   }
 }

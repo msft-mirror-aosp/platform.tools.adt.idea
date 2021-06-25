@@ -25,7 +25,7 @@ iml_module(
         "//prebuilts/studio/sdk:platforms/latest",
         "//prebuilts/studio/sdk:platforms/latest-preview",
         "//prebuilts/studio/sdk:sources",
-        "//prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/1.5.10:jar",
+        "//prebuilts/tools/common/m2:org.jetbrains.kotlin.kotlin-gradle-plugin.1.5.10",
         "//tools/adt/idea/android:test_deps",
         "//tools/adt/idea/android/annotations",
         "//tools/adt/idea/android/lib:sampleData",
@@ -47,7 +47,7 @@ iml_module(
         "//tools/external/gradle:gradle-distrib-3.5",
         "//tools/external/gradle:gradle-distrib-4.5",
     ],
-    test_shard_count = 2,
+    test_shard_count = 4,
     test_srcs = ["testSrc"],
     test_tags = [
         "cpu:3",

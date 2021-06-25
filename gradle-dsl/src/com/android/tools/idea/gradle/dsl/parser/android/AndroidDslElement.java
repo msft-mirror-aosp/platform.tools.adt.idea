@@ -26,12 +26,8 @@ import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
-import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
-import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
-import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
@@ -54,6 +50,8 @@ public final class AndroidDslElement extends GradleDslBlockElement {
     {"dependenciesInfo", DependenciesInfoDslElement.DEPENDENCIES_INFO},
     {"dexOptions", DexOptionsDslElement.DEX_OPTIONS},
     {"externalNativeBuild", ExternalNativeBuildDslElement.EXTERNAL_NATIVE_BUILD},
+    {"installation", InstallationDslElement.INSTALLATION},
+    {"jacoco", JacocoDslElement.JACOCO},
     {"kotlinOptions", KotlinOptionsDslElement.KOTLIN_OPTIONS},
     {"lintOptions", LintOptionsDslElement.LINT_OPTIONS},
     {"packagingOptions", PackagingOptionsDslElement.PACKAGING_OPTIONS},
@@ -61,6 +59,7 @@ public final class AndroidDslElement extends GradleDslBlockElement {
     {"signingConfigs", SigningConfigsDslElement.SIGNING_CONFIGS},
     {"sourceSets", SourceSetsDslElement.SOURCE_SETS},
     {"splits", SplitsDslElement.SPLITS},
+    {"testCoverage", TestCoverageDslElement.TEST_COVERAGE},
     {"testOptions", TestOptionsDslElement.TEST_OPTIONS},
     {"viewBinding", ViewBindingDslElement.VIEW_BINDING}
   }).collect(toImmutableMap(data -> (String) data[0], data -> (PropertiesElementDescription) data[1]));
@@ -130,15 +129,7 @@ public final class AndroidDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    if (converter instanceof KotlinDslNameConverter) {
-      return ktsToModelNameMap;
-    }
-    else if (converter instanceof GroovyDslNameConverter) {
-      return groovyToModelNameMap;
-    }
-    else {
-      return super.getExternalToModelMap(converter);
-    }
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public AndroidDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

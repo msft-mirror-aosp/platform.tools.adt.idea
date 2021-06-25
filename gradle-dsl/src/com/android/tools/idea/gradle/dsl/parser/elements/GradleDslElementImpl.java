@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.notifications.NotificationTypeReference;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
+import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslParser;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.ModificationAware;
@@ -50,6 +51,8 @@ import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.followEle
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.isNonExpressionPropertiesElement;
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.isPropertiesElementOrMap;
 import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.METHOD;
+import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.GROOVY;
+import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.KOTLIN;
 import static com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement.*;
 import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT;
 import static com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslElement.getStandardProjectKey;
@@ -555,6 +558,17 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
+    return getExternalToModelMap(converter, ExternalToModelMap.empty, ExternalToModelMap.empty);
+  }
+
+  protected final @NotNull ExternalToModelMap getExternalToModelMap(
+    @NotNull GradleDslNameConverter converter,
+    ExternalToModelMap groovy,
+    ExternalToModelMap kts
+  ) {
+    Kind kind = converter.getKind();
+    if (kind == GROOVY) return groovy;
+    if (kind == KOTLIN) return kts;
     return ExternalToModelMap.empty;
   }
 

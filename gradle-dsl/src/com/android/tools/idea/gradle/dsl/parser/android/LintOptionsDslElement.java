@@ -25,13 +25,8 @@ import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
-import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
-import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
-import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
-import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,12 +35,12 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"isAbortOnError", property, ABORT_ON_ERROR, VAR},
     {"isAbsolutePaths", property, ABSOLUTE_PATHS, VAR},
     {"isCheckAllWarnings", property, CHECK_ALL_WARNINGS, VAR},
-    // TODO(b/144403889): {"isCheckDependencies", property, CHECK_DEPENDENCIES, VAR},
-    // TODO(b/144403889): {"isCheckGeneratedSources", property, CHECK_GENERATED_SOURCES, VAR},
+    {"isCheckDependencies", property, CHECK_DEPENDENCIES, VAR},
+    {"isCheckGeneratedSources", property, CHECK_GENERATED_SOURCES, VAR},
     {"isCheckReleaseBuilds", property, CHECK_RELEASE_BUILDS, VAR},
-    // TODO(b/144403889): {"isCheckTestSources", property, CHECK_TEST_SOURCES, VAR},
+    {"isCheckTestSources", property, CHECK_TEST_SOURCES, VAR},
     {"isExplainIssues", property, EXPLAIN_ISSUES, VAR},
-    // TODO(b/144403889): {"isIgnoreTestSources", property, IGNORE_TEST_SOURCES, VAR},
+    {"isIgnoreTestSources", property, IGNORE_TEST_SOURCES, VAR},
     {"isIgnoreWarnings", property, IGNORE_WARNINGS, VAR},
     {"isNoLines", property, NO_LINES, VAR},
     {"isQuiet", property, QUIET, VAR},
@@ -81,18 +76,18 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"absolutePaths", exactly(1), ABSOLUTE_PATHS, SET},
     {"checkAllWarnings", property, CHECK_ALL_WARNINGS, VAR},
     {"checkAllWarnings", exactly(1), CHECK_ALL_WARNINGS, SET},
-    // TODO(b/144403889): {"checkDependencies", property, CHECK_DEPENDENCIES, VAR},
-    // TODO(b/144403889): {"checkDependencies", exactly(1), CHECK_DEPENDENCIES, SET},
-    // TODO(b/144403889): {"checkGeneratedSources", property, CHECK_GENERATED_SOURCES, VAR},
-    // TODO(b/144403889): {"checkGeneratedSources", exactly(1), CHECK_GENERATED_SOURCES, SET},
+    {"checkDependencies", property, CHECK_DEPENDENCIES, VAR},
+    {"checkDependencies", exactly(1), CHECK_DEPENDENCIES, SET},
+    {"checkGeneratedSources", property, CHECK_GENERATED_SOURCES, VAR},
+    {"checkGeneratedSources", exactly(1), CHECK_GENERATED_SOURCES, SET},
     {"checkReleaseBuilds", property, CHECK_RELEASE_BUILDS, VAR},
     {"checkReleaseBuilds", exactly(1), CHECK_RELEASE_BUILDS, SET},
-    // TODO(b/144403889): {"checkTestSources", property, CHECK_TEST_SOURCES, VAR},
-    // TODO(b/144403889): {"checkTestSources", exactly(1), CHECK_TEST_SOURCES, SET},
+    {"checkTestSources", property, CHECK_TEST_SOURCES, VAR},
+    {"checkTestSources", exactly(1), CHECK_TEST_SOURCES, SET},
     {"explainIssues", property, EXPLAIN_ISSUES, VAR},
     {"explainIssues", exactly(1), EXPLAIN_ISSUES, SET},
-    // TODO(b/144403889): {"ignoreTestSources", property, IGNORE_TEST_SOURCES, VAR},
-    // TODO(b/144403889): {"ignoreTestSources", exactly(1), IGNORE_TEST_SOURCES, SET},
+    {"ignoreTestSources", property, IGNORE_TEST_SOURCES, VAR},
+    {"ignoreTestSources", exactly(1), IGNORE_TEST_SOURCES, SET},
     {"ignoreWarnings", property, IGNORE_WARNINGS, VAR},
     {"ignoreWarnings", exactly(1), IGNORE_WARNINGS, SET},
     {"noLines", property, NO_LINES, VAR},
@@ -129,15 +124,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    if (converter instanceof KotlinDslNameConverter) {
-      return ktsToModelNameMap;
-    }
-    else if (converter instanceof GroovyDslNameConverter) {
-      return groovyToModelNameMap;
-    }
-    else {
-      return super.getExternalToModelMap(converter);
-    }
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
 

@@ -22,6 +22,7 @@ import com.android.tools.idea.databinding.util.DataBindingUtil
 import com.android.tools.idea.databinding.util.LayoutBindingTypeUtil
 import com.android.tools.idea.databinding.util.isViewBindingEnabled
 import com.android.tools.idea.databinding.utils.assertExpected
+import com.android.tools.idea.databinding.viewbinding.LightViewBindingClassTest
 import com.android.tools.idea.res.ResourceRepositoryManager
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.findClass
@@ -512,7 +513,7 @@ class LightBindingClassTest {
       <layout xmlns:android="http://schemas.android.com/apk/res/android">
         <view
             android:id="@+id/test_id"
-            android:class="com.example.Test"/>
+            class="com.example.Test"/>
       </layout>
     """.trimIndent())
     val context = fixture.addClass("public class MainActivity {}")
@@ -575,7 +576,7 @@ class LightBindingClassTest {
       <layout xmlns:android="http://schemas.android.com/apk/res/android">
         <merge
             android:id="@+id/test_id"
-            android:layout="@layout/other_activity"/>
+            layout="@layout/other_activity"/>
       </layout>
     """.trimIndent())
     val context = fixture.addClass("public class MainActivity {}")
@@ -604,7 +605,7 @@ class LightBindingClassTest {
       <layout xmlns:android="http://schemas.android.com/apk/res/android">
         <include
             android:id="@+id/test_id"
-            android:layout="@layout/other_activity"/>
+            layout="@layout/other_activity"/>
       </layout>
     """.trimIndent())
     val context = fixture.addClass("public class MainActivity {}")
@@ -637,7 +638,7 @@ class LightBindingClassTest {
       <layout xmlns:android="http://schemas.android.com/apk/res/android">
         <include
             android:id="@+id/included"
-            android:layout="@layout/simple_text"/>
+            layout="@layout/simple_text"/>
       </layout>
     """.trimIndent())
     val context = fixture.addClass("public class MainActivity {}")
@@ -734,6 +735,61 @@ class LightBindingClassTest {
   }
 
   @Test
+  fun inconsistentTypesAcrossLayoutsDefaultsToView() {
+    fixture.addFileToProject("res/layout/activity_main.xml", """
+      <?xml version="1.0" encoding="utf-8"?>
+      <layout xmlns:android="http://schemas.android.com/apk/res/android">
+        <LinearLayout>
+          <TextView android:id="@+id/consistent_type" />
+          <TextView android:id="@+id/inconsistent_type" />
+        </LinearLayout>
+      </layout>
+    """.trimIndent())
+
+    fixture.addFileToProject("res/layout-land/activity_main.xml", """
+      <?xml version="1.0" encoding="utf-8"?>
+      <layout xmlns:android="http://schemas.android.com/apk/res/android">
+        <LinearLayout>
+          <TextView android:id="@+id/consistent_type" />
+          <Button android:id="@+id/inconsistent_type" />
+        </LinearLayout>
+      </layout>
+    """.trimIndent())
+    val context = fixture.addClass("public class MainActivity {}")
+
+    val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context) as LightBindingClass
+    assertThat(binding.fields).hasLength(2)
+    val consistentField = binding.fields.first { it.name == "consistentType" }
+    val inconsistentField = binding.fields.first { it.name == "inconsistentType" }
+    assertThat(consistentField.type).isEqualTo(LayoutBindingTypeUtil.parsePsiType("android.view.TextView", context))
+    assertThat(inconsistentField.type).isEqualTo(LayoutBindingTypeUtil.parsePsiType("android.view.View", context))
+  }
+
+  /** Compare with [LightViewBindingClassTest.fieldTypesCanBeOverridden] */
+  @Test
+  fun fieldTypesCannotBeOverriddenInDataBinding() {
+    fixture.addFileToProject(
+      "res/layout/activity_main.xml",
+      // language=XML
+      """
+      <?xml version="1.0" encoding="utf-8"?>
+      <layout
+         xmlns:android="http://schemas.android.com/apk/res/android"
+         xmlns:tools="http://schemas.android.com/tools">
+          <EditText android:id="@+id/ignored_type_override" tools:viewBindingType="TextView" />
+      </layout>
+    """.trimIndent())
+
+    val context = fixture.addClass("public class MainActivity {}")
+
+    val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context) as LightBindingClass
+    assertThat(binding.fields).hasLength(1)
+    val field = binding.fields.first()
+
+    assertThat(field.type.canonicalText).isEqualTo("android.widget.EditText")
+  }
+
+  @Test
   fun methodsAreAnnotatedNonNullAndNullableCorrectly() {
     fixture.addFileToProject("res/layout/activity_main.xml", """
       <?xml version="1.0" encoding="utf-8"?>
@@ -806,6 +862,28 @@ class LightBindingClassTest {
     val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context)!!
     assertThat(binding.findFieldByName("testId", false)!!.type.canonicalText)
       .isEqualTo(LayoutBindingModuleCache.getInstance(facet).dataBindingMode.viewStubProxy)
+  }
+
+  @Test
+  fun correctTypeGeneratedForViewTag() {
+    fixture.addFileToProject(
+      "res/layout/activity_main.xml",
+      // language=XML
+      """
+      <?xml version="1.0" encoding="utf-8"?>
+      <layout xmlns:android="http://schemas.android.com/apk/res/android">
+        <view class="TextView"
+            android:id="@+id/test_id"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+        />
+      </layout>
+    """.trimIndent())
+    val context = fixture.addClass("public class MainActivity {}")
+
+    val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context)!!
+    assertThat(binding.findFieldByName("testId", false)!!.type.canonicalText)
+      .isEqualTo("android.widget.TextView")
   }
 
   @Test

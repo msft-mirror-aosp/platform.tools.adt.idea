@@ -161,18 +161,23 @@ class DeviceViewPanelModel(
     var angle = 0.0
     if (maxDepth > 0) {
       rootBounds = levelLists[0].map { it.node.bounds.bounds }.reduce { acc, bounds -> acc.apply { add(bounds) } }
+      // If nodes are visible (not explicitly hidden via right-click) but filtered out (e.g. by filter system nodes) they won't be in
+      // levelLists but may still paint something. Prior to initial image generation there's no way to know if they will end up painting
+      // or not, but we still need to be able to zoom to fit correctly, so include those bounds here.
+      model.root.flatten()
+        .filter { model.isVisible(it) }
+        .forEach { node -> rootBounds.add(node.layoutBounds) }
       root.x = rootBounds.x
       root.y = rootBounds.x
       root.width = rootBounds.width
       root.height = rootBounds.height
-      transform.translate(-rootBounds.width / 2.0, -rootBounds.height / 2.0)
 
       // Don't allow rotation to completely edge-on, since some rendering can have problems in that situation. See issue 158452416.
       // You might say that this is ( •_•)>⌐■-■ / (⌐■_■) an edge-case.
       magnitude = min(0.98, hypot(xOff, yOff))
       angle = if (abs(xOff) < 0.00001) PI / 2.0 else atan(yOff / xOff)
 
-      transform.translate(rootBounds.width / 2.0 - rootBounds.x, rootBounds.height / 2.0 - rootBounds.y)
+      transform.translate(-rootBounds.x.toDouble(), -rootBounds.y.toDouble())
       transform.rotate(angle)
     }
     else {
@@ -259,9 +264,11 @@ class DeviceViewPanelModel(
   }
 
   fun resetRotation() {
-    xOff = 0.0
-    yOff = 0.0
-    refresh()
+    if (xOff != 0.0 || yOff != 0.0) {
+      xOff = 0.0
+      yOff = 0.0
+      refresh()
+    }
   }
 
   /**

@@ -108,10 +108,7 @@
             description="Opens the Wear OS emulator pairing assistant" />
     <group id="AndroidToolsGroup" class="org.jetbrains.android.actions.AndroidToolsActionGroup" text="Android" icon="StudioIcons.Common.ANDROID_HEAD" popup="true">
       <separator/>
-      <action id="Android.RunAndroidAvdManager"
-              class="org.jetbrains.android.actions.RunAndroidAvdManagerAction"
-              icon="StudioIcons.Shell.Toolbar.DEVICE_MANAGER"
-              description="Opens the Android virtual device (AVD) manager which manages emulator images and snapshots" />
+      <action id="Android.RunAndroidAvdManager" class="org.jetbrains.android.actions.RunAndroidAvdManagerAction"/>
       <action id="Android.GenerateSourcesAction" class="org.jetbrains.android.actions.AndroidRegenerateSourcesAction"/>
       <separator/>
       <action id="ResourceExplorer.open"
@@ -323,6 +320,7 @@
     <applicationService serviceInterface="com.android.tools.idea.res.ResourceFolderRepositoryFileCache"
                         serviceImplementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl"/>
     <applicationService serviceImplementation="com.android.tools.idea.res.FrameworkResourceRepositoryManager"/>
+    <applicationService serviceImplementation="com.android.tools.idea.logcat.AndroidLogcatGlobalPreferences"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$MaintenanceActivity"/>
     <cachesInvalidator implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$CacheInvalidator"/>
     <cachesInvalidator implementation="com.android.tools.idea.gradle.project.sync.idea.data.IdeaSyncCachesInvalidator"/>
@@ -382,6 +380,9 @@
                         serviceImplementation="org.jetbrains.android.facet.AndroidFacetEditorTab$Provider"/>
     <applicationService serviceInterface="com.android.tools.idea.util.CommonAndroidUtil"
                         serviceImplementation="org.jetbrains.android.util.AndroidUtils"/>
+    <applicationService serviceImplementation="com.android.tools.idea.diagnostics.crash.ExceptionDataCollection"/>
+    <applicationService serviceInterface="com.android.tools.idea.diagnostics.crash.ExceptionDataConfiguration"
+                        serviceImplementation="com.android.tools.idea.diagnostics.crash.ExceptionDataConfigurationImpl"/>
 
     <fileEditorProvider implementation="com.android.tools.idea.profiling.capture.CaptureEditorProvider" />
 
@@ -610,12 +611,11 @@
                       secondary="true"
                       icon="StudioIcons.Shell.ToolWindows.DEVICE_EXPLORER"
                       factoryClass="com.android.tools.idea.explorer.DeviceExplorerToolWindowFactory"/>
-    <!-- FIXME(qumeric): create and use custom icon -->
     <facet.toolWindow id="Device Manager"
-                      facetIdList="android,apk"
                       anchor="right"
-                      icon="StudioIcons.Shell.ToolWindows.DATABASE_INSPECTOR"
-                      factoryClass="com.android.tools.idea.devicemanager.DeviceManagerFactory"/>
+                      icon="StudioIcons.Shell.ToolWindows.MULTI_PREVIEW"
+                      factoryClass="com.android.tools.idea.devicemanager.DeviceManagerToolWindowFactory"
+                      facetIdList="android,apk"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.AndroidPluginVersionUpdater"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidProjectBuildNotifications"/>
     <projectService serviceInterface="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker"
@@ -862,6 +862,8 @@
                        order="first, before org.jetbrains.android.refactoring.GradleUsageTypeProvider"/>
     <usageGroupingRuleProvider implementation="com.android.tools.idea.gradle.project.upgrade.ComponentGroupingRuleProvider"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.ContentManager"/>
+    <applicationInitializedListener implementation="com.android.tools.idea.stats.AndroidStudioStatisticsJobScheduler"/>
+    <statistics.projectUsagesCollector implementation="com.intellij.internal.statistic.collectors.fus.fileTypes.FileTypeUsagesCollector"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij.properties">
@@ -915,8 +917,6 @@
                     dynamic="false"/>
     <extensionPoint qualifiedName="com.android.tools.idea.ui.designer.overlays.overlayProvider"
                     interface="com.android.tools.idea.ui.designer.overlays.OverlayProvider" />
-    <extensionPoint qualifiedName="com.android.tools.gradleModelProvider"
-                    interface="com.android.tools.idea.gradle.dsl.api.GradleModelProvider" />
     <extensionPoint qualifiedName="com.android.rendering.renderSecurityManagerOverrides"
                     interface="com.android.tools.idea.rendering.RenderSecurityManagerOverrides"/>
     <extensionPoint qualifiedName="com.android.tools.idea.lang.databinding.dataBindingCompletionSupport"

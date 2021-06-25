@@ -18,6 +18,7 @@ package com.android.emulator;
 import com.android.tools.idea.protobuf.ByteString;
 import com.android.tools.idea.protobuf.UnsafeByteOperations;
 import com.android.tools.idea.util.StudioPathManager;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
@@ -32,7 +33,6 @@ import org.jetbrains.annotations.VisibleForTesting;
 public class ImageConverter {
   private static Field bytesField;
   private static Field offsetField;
-  private static Field lengthField;
 
   static {
     try {
@@ -41,7 +41,7 @@ public class ImageConverter {
       initByteStringFields();
     }
     catch (Throwable e) {
-      logger().warn("Native image converter library is not available", e);
+      logError("Native image converter library is not available", e);
     }
   }
 
@@ -52,11 +52,14 @@ public class ImageConverter {
    * @param pixels the converted pixel values
    */
   public static void unpackRgb888(@NotNull ByteString imageBytes, int @NotNull [] pixels) {
+    int length = imageBytes.size();
+    if (length == 0) {
+      return;
+    }
     if (bytesField != null) {
       try {
         byte[] bytes = (byte[])bytesField.get(imageBytes);
         int offset = offsetField.getInt(imageBytes);
-        int length = lengthField.getInt(imageBytes);
         unpackRgb888(bytes, offset, length, pixels);
         return;
       }
@@ -64,7 +67,6 @@ public class ImageConverter {
         logger().warn("Unable to use reflection, will use slow path", e);
         bytesField = null;
         offsetField = null;
-        lengthField = null;
       }
     }
     unpackRgb888Slow(imageBytes, pixels);
@@ -140,14 +142,20 @@ public class ImageConverter {
       bytesField.setAccessible(true);
       offsetField = byteStringClass.getDeclaredField("bytesOffset");
       offsetField.setAccessible(true);
-      lengthField = byteStringClass.getDeclaredField("bytesLength");
-      lengthField.setAccessible(true);
     }
     catch (NoSuchFieldException e) {
-      logger().warn("Unable to access fields of " + byteStringClass.getName(), e);
+      logError("Unable to access fields of " + byteStringClass.getName(), e);
       bytesField = null;
       offsetField = null;
-      lengthField = null;
+    }
+  }
+
+  private static void logError(@NotNull String message, @NotNull Throwable e) {
+    if (ApplicationManager.getApplication() == null || ApplicationManager.getApplication().isUnitTestMode()) {
+      logger().error(message, e); // Test mode.
+    }
+    else {
+      logger().warn(message, e);
     }
   }
 

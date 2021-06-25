@@ -33,6 +33,7 @@ import org.jetbrains.android.dom.manifest.getPackageName
 import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
@@ -44,6 +45,7 @@ import org.jetbrains.kotlin.descriptors.impl.ValueParameterDescriptorImpl
 import org.jetbrains.kotlin.incremental.components.LookupLocation
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
+import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
@@ -104,8 +106,9 @@ class LightDirectionsKtClass(
 
   private val LOG get() = Logger.getInstance(LightDirectionsKtClass::class.java)
   private val _companionObject = storageManager.createLazyValue { computeCompanionObject() }
+  private val scope = storageManager.createLazyValue { DirectionsClassScope() }
 
-  override fun getUnsubstitutedMemberScope(): MemberScope = MemberScope.Empty
+  override fun getUnsubstitutedMemberScope(): MemberScope = scope()
   override fun getConstructors(): Collection<ClassConstructorDescriptor> = emptyList()
   override fun getUnsubstitutedPrimaryConstructor(): ClassConstructorDescriptor? = null
   override fun getCompanionObjectDescriptor() = _companionObject()
@@ -155,14 +158,20 @@ class LightDirectionsKtClass(
               val resolvedSourceElement = (directionsClassDescriptor.source.getPsi() as? XmlTag)
                                             ?.findFirstMatchingElementByTraversingUp(SdkConstants.TAG_ACTION, action.id)
                                             ?.let {
-                                              XmlSourceElement(SafeArgsXmlTag(it as XmlTagImpl, PlatformIcons.METHOD_ICON, methodName))
+                                              XmlSourceElement(
+                                                SafeArgsXmlTag(
+                                                  it as XmlTagImpl,
+                                                  PlatformIcons.FUNCTION_ICON,
+                                                  methodName,
+                                                  companionObject.fqNameSafe.asString()
+                                                )
+                                              )
                                             }
                                           ?: directionsClassDescriptor.source
 
-              directionsClassDescriptor.createMethod(
+              companionObject.createMethod(
                 name = methodName,
                 returnType = navDirectionType,
-                dispatchReceiver = companionObject,
                 valueParametersProvider = valueParametersProvider,
                 sourceElement = resolvedSourceElement
               )
@@ -232,6 +241,25 @@ class LightDirectionsKtClass(
           p.println(this::class.java.simpleName)
         }
       }
+    }
+  }
+
+  private inner class DirectionsClassScope : MemberScopeImpl() {
+    private val classifiers = storageManager.createLazyValue { listOf(companionObjectDescriptor) }
+
+    override fun getContributedDescriptors(
+      kindFilter: DescriptorKindFilter,
+      nameFilter: (Name) -> Boolean
+    ): Collection<DeclarationDescriptor> {
+      return classifiers().filter { kindFilter.acceptsKinds(DescriptorKindFilter.SINGLETON_CLASSIFIERS_MASK) && nameFilter(it.name) }
+    }
+
+    override fun getContributedClassifier(name: Name, location: LookupLocation): ClassifierDescriptor? {
+      return classifiers().firstOrNull { it.name == name }
+    }
+
+    override fun printScopeStructure(p: Printer) {
+      p.println(this::class.java.simpleName)
     }
   }
 }

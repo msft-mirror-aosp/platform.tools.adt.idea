@@ -22,6 +22,7 @@ import com.android.projectmodel.ARTIFACT_NAME_MAIN
 import com.android.projectmodel.ARTIFACT_NAME_UNIT_TEST
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.devices.Abi
+import com.android.testutils.TestUtils
 import com.android.testutils.TestUtils.getLatestAndroidPlatform
 import com.android.testutils.TestUtils.getSdk
 import com.android.testutils.TestUtils.getWorkspaceRoot
@@ -97,6 +98,9 @@ import com.android.utils.appendCapitalized
 import com.android.utils.cxx.CompileCommandsEncoder
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.build.BuildViewManager
+import com.intellij.build.events.BuildEvent
+import com.intellij.build.events.MessageEvent
 import com.intellij.externalSystem.JavaProjectData
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
@@ -115,6 +119,7 @@ import com.intellij.openapi.module.StdModuleTypes.JAVA
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.doNotEnableExternalStorageByDefaultInTests
 import com.intellij.openapi.project.ex.ProjectEx
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtil.toSystemDependentName
 import com.intellij.openapi.util.io.systemIndependentPath
@@ -126,6 +131,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl.ensureIndexesUpToDate
+import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ThrowableConsumer
@@ -1384,11 +1390,11 @@ private fun setupDataNodesForSelectedVariant(
     moduleNode.setupCompilerOutputPaths(newVariant)
     // Then patch in any Kapt generated sources that we need
     val libraryFilePaths = LibraryFilePaths.getInstance(project)
-    moduleNode.setupAndroidDependenciesForModule({ id: String -> moduleIdToDataMap[id] }, { id, path ->
+    moduleNode.setupAndroidDependenciesForModule({ id: String -> moduleIdToDataMap[id] }, { id ->
       AdditionalArtifactsPaths(
-        libraryFilePaths.findSourceJarPath(id, path),
-        libraryFilePaths.findJavadocJarPath(id, path),
-        libraryFilePaths.findSampleSourcesJarPath(id, path)
+        libraryFilePaths.getCachedPathsForArtifact(id)?.sources,
+        libraryFilePaths.getCachedPathsForArtifact(id)?.javaDoc,
+        libraryFilePaths.getCachedPathsForArtifact(id)?.sampleSource
       )
     }, newVariant)
     moduleNode.setupAndroidContentEntries(newVariant)
@@ -1401,21 +1407,77 @@ private fun createModuleIdToModuleDataMap(moduleNodes: Collection<DataNode<Modul
   }
 }
 
+fun injectBuildOutputDumpingBuildViewManager(
+  project: Project,
+  disposable: Disposable
+) {
+  project.replaceService(
+    BuildViewManager::class.java,
+    object : BuildViewManager(project) {
+      override fun onEvent(buildId: Any, event: BuildEvent) {
+        if (event is MessageEvent) {
+          println(event.result.details)
+        }
+      }
+    },
+    disposable
+  )
+}
+
 inline fun <T> Project.buildAndWait(invoker: (GradleBuildInvoker) -> ListenableFuture<T>): T {
   val gradleBuildInvoker = GradleBuildInvoker.getInstance(this)
-  val future = invoker(gradleBuildInvoker)
+  val disposable = Disposer.newDisposable()
   try {
-    return future.get(5, TimeUnit.MINUTES)
-  }
-  finally {
-    AndroidTestBase.refreshProjectFiles()
-    ApplicationManager.getApplication().invokeAndWait {
-      try {
-        AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(this, null)
-      }
-      catch (e: Exception) {
-        e.printStackTrace()
+    injectBuildOutputDumpingBuildViewManager(project = this, disposable = disposable)
+    val future = invoker(gradleBuildInvoker)
+    try {
+      return future.get(5, TimeUnit.MINUTES)
+    }
+    finally {
+      AndroidTestBase.refreshProjectFiles()
+      ApplicationManager.getApplication().invokeAndWait {
+        try {
+          AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(this, null)
+        }
+        catch (e: Exception) {
+          e.printStackTrace()
+        }
       }
     }
   }
+  finally {
+    Disposer.dispose(disposable)
+  }
+}
+
+// HACK: b/143864616 and ag/14916674 Bazel hack, until missing dependencies are available in "offline-maven-repo"
+fun updatePluginsResolutionManagement(origContent: String): String {
+  if (!TestUtils.runningFromBazel()) {
+    return origContent
+  }
+
+  fun findPluginVersion(pluginId: String): String? = origContent.lines()
+    .firstOrNull { it.contains(pluginId) && it.contains("version") }
+    ?.replace(" apply false", "")?.replace("'", "")
+    ?.substringAfterLast(" ")
+
+  val pluginsResolutionStrategy = findPluginVersion("com.android.application")?.let { agpVersion ->
+    """
+      resolutionStrategy {
+        eachPlugin {
+          if (requested.id.namespace == "com.android") {
+              useModule("com.android.tools.build:gradle:$agpVersion")
+          }
+          if (requested.id.id == "com.google.android.libraries.mapsplatform.secrets-gradle-plugin") {
+              useModule("com.google.android.libraries.mapsplatform.secrets-gradle-plugin:secrets-gradle-plugin:${findPluginVersion("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")}")
+          }
+          if (requested.id.id == "org.jetbrains.kotlin.android") {
+              useModule("org.jetbrains.kotlin:kotlin-gradle-plugin:${findPluginVersion("org.jetbrains.kotlin.android")}")
+          }
+        }
+      }
+      """
+  } ?: ""
+
+  return origContent.replace("pluginManagement {", "pluginManagement { $pluginsResolutionStrategy")
 }

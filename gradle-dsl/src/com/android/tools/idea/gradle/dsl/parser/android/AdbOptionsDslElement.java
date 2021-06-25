@@ -25,19 +25,14 @@ import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
-import com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslNameConverter;
-import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
-import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.SurfaceSyntaxDescription;
-import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
 public class AdbOptionsDslElement extends GradleDslBlockElement {
   public static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{
-    {"installOptions", property, INSTALL_OPTIONS, VAL},
+    {"installOptions", property, INSTALL_OPTIONS, VAR},
     {"installOptions", atLeast(0), INSTALL_OPTIONS, ADD_AS_LIST},
     {"setInstallOptions", exactly(1), INSTALL_OPTIONS, SET},
     {"timeOutInMs", property, TIME_OUT_IN_MS, VAR},
@@ -45,7 +40,7 @@ public class AdbOptionsDslElement extends GradleDslBlockElement {
   }).collect(toModelMap());
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
-    {"installOptions", property, INSTALL_OPTIONS, VAL},
+    {"installOptions", property, INSTALL_OPTIONS, VAR},
     {"installOptions", atLeast(0), INSTALL_OPTIONS, ADD_AS_LIST},
     {"timeOutInMs", property, TIME_OUT_IN_MS, VAR},
     {"timeOutInMs", exactly(1), TIME_OUT_IN_MS, SET}
@@ -55,16 +50,9 @@ public class AdbOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    if (converter instanceof KotlinDslNameConverter) {
-      return ktsToModelNameMap;
-    }
-    else if (converter instanceof GroovyDslNameConverter) {
-      return groovyToModelNameMap;
-    }
-    else {
-      return super.getExternalToModelMap(converter);
-    }
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
+
   public AdbOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, name);
   }

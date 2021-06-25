@@ -21,6 +21,7 @@ import com.android.tools.idea.ddms.DeviceContext;
 import com.android.tools.idea.ddms.actions.ScreenRecorderAction;
 import com.android.tools.idea.ddms.actions.ScreenshotAction;
 import com.android.tools.idea.ddms.actions.TerminateVMAction;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.logcat.AndroidLogcatView.MyConfigureLogcatHeaderAction;
 import com.android.tools.idea.logcat.AndroidLogcatView.MyRestartAction;
 import com.intellij.diagnostic.logging.LogConsoleBase;
@@ -33,11 +34,11 @@ import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.search.GlobalSearchScope;
+import java.awt.Component;
+import java.awt.Container;
 import java.util.List;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-
-import java.awt.*;
 
 public final class AndroidLogConsole extends LogConsoleBase {
   private static final String ACTION_ID_PREFIX = AndroidLogConsole.class.getSimpleName() + ".";
@@ -47,20 +48,28 @@ public final class AndroidLogConsole extends LogConsoleBase {
   private final RegexFilterComponent myRegexFilterComponent = new RegexFilterComponent("LOG_FILTER_HISTORY", 5);
   private final AndroidLogcatPreferences myPreferences;
 
+  @NotNull
+  private final Project myProject;
+
   AndroidLogConsole(@NotNull Project project,
                     @NotNull AndroidLogFilterModel model,
                     @NotNull LogFormatter formatter,
                     @NotNull AndroidLogcatView view) {
     super(project, null, "", false, model, GlobalSearchScope.allScope(project), formatter);
+    myProject = project;
     ConsoleView console = getConsole();
     ActionManager actionManager = ActionManager.getInstance();
     if (console instanceof ConsoleViewImpl) {
       ConsoleViewImpl c = ((ConsoleViewImpl)console);
+      DeviceContext context = view.getDeviceContext();
+
       c.addCustomConsoleAction(new Separator());
       c.addCustomConsoleAction(registerAction(actionManager, new MyRestartAction(view)));
       c.addCustomConsoleAction(registerAction(actionManager, new MyConfigureLogcatHeaderAction(view)));
 
-      DeviceContext context = view.getDeviceContext();
+      if (StudioFlags.LOGCAT_SUPPRESSED_TAGS_ENABLE.get()) {
+        c.addCustomConsoleAction(registerAction(actionManager, new SuppressLogTagsAction(project, context, this)));
+      }
 
       // TODO: Decide if these should be part of the profiler window
       c.addCustomConsoleAction(new Separator());
@@ -84,6 +93,11 @@ public final class AndroidLogConsole extends LogConsoleBase {
       myPreferences.TOOL_WINDOW_REGEXP_FILTER = filter.isRegex();
       model.updateCustomPattern(filter.getPattern());
     });
+  }
+
+  @NotNull
+  public Project getProject() {
+    return myProject;
   }
 
   /**

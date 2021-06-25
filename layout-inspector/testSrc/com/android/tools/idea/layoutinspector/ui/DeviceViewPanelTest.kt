@@ -366,7 +366,6 @@ class DeviceViewPanelTest {
     replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.GRABBING, Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR))
   }
 
-  @Ignore("b/185809224")
   @Test
   fun testZoomOnConnect() {
     val viewSettings = DeviceViewSettings(scalePercent = 100)
@@ -374,7 +373,9 @@ class DeviceViewPanelTest {
     val processes = ProcessesModel(TestProcessNotifier()) { listOf() }
     val launcher = InspectorClientLauncher(adbRule.bridge, processes, listOf(), disposableRule.disposable, MoreExecutors.directExecutor())
     val treeSettings = FakeTreeSettings()
-    val inspector = LayoutInspector(launcher, model, mock(), treeSettings, MoreExecutors.directExecutor())
+    val stats: SessionStatistics = mock()
+    `when`(stats.rotation).thenReturn(mock())
+    val inspector = LayoutInspector(launcher, model, stats, treeSettings, MoreExecutors.directExecutor())
     treeSettings.hideSystemNodes = false
     val panel = DeviceViewPanel(processes, inspector, viewSettings, disposableRule.disposable)
 
@@ -406,6 +407,36 @@ class DeviceViewPanelTest {
 
     // Should still have the manually set zoom
     assertThat(viewSettings.scalePercent).isEqualTo(200)
+  }
+
+  @Test
+  fun testZoomOnConnectWithFiltering() {
+    val viewSettings = DeviceViewSettings(scalePercent = 100)
+    val model = InspectorModel(projectRule.project)
+    val processes = ProcessesModel(TestProcessNotifier()) { listOf() }
+    val launcher = InspectorClientLauncher(adbRule.bridge, processes, listOf(), disposableRule.disposable, MoreExecutors.directExecutor())
+    val treeSettings = FakeTreeSettings()
+    val stats: SessionStatistics = mock()
+    `when`(stats.rotation).thenReturn(mock())
+    val inspector = LayoutInspector(launcher, model, stats, treeSettings, MoreExecutors.directExecutor())
+    treeSettings.hideSystemNodes = true
+    val panel = DeviceViewPanel(processes, inspector, viewSettings, disposableRule.disposable)
+
+    val scrollPane = flatten(panel).filterIsInstance<JBScrollPane>().first()
+    scrollPane.setSize(200, 300)
+
+    assertThat(viewSettings.scalePercent).isEqualTo(100)
+
+    val newWindow = window(ROOT, ROOT, 0, 0, 100, 200) {
+      view(VIEW1, 25, 30, 50, 50) {
+        image()
+      }
+    }
+
+    model.update(newWindow, listOf(ROOT), 0)
+
+    // now we should be zoomed to fit
+    assertThat(viewSettings.scalePercent).isEqualTo(135)
   }
 
   @Test
@@ -571,8 +602,14 @@ class DeviceViewPanelTest {
     // Rotate the model so that dragging would normally rotate
     contentPanel.model.xOff = 0.02
 
+    assertThat(panel.isPanning).isFalse()
     startPan(fakeUi, panel)
-    fakeUi.mouse.drag(20, 20, -10, -10, panButton)
+    fakeUi.mouse.press(20, 20, panButton)
+    assertThat(panel.isPanning).isTrue()
+    fakeUi.mouse.dragTo(10, 10)
+    assertThat(panel.isPanning).isTrue()
+    fakeUi.mouse.release()
+
     // Unchanged--we panned instead
     TestCase.assertEquals(0.02, contentPanel.model.xOff)
     TestCase.assertEquals(0.0, contentPanel.model.yOff)
@@ -581,6 +618,7 @@ class DeviceViewPanelTest {
     endPan(fakeUi, panel)
     // Now we'll actually rotate
     fakeUi.mouse.drag(20, 20, -10, -10)
+    assertThat(panel.isPanning).isFalse()
     TestCase.assertEquals(0.01, contentPanel.model.xOff)
     TestCase.assertEquals(-0.01, contentPanel.model.yOff)
   }

@@ -47,6 +47,22 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
 
   override fun findComponentUsages(): Array<out UsageInfo> {
     val usages = mutableListOf<UsageInfo>()
+    fun addUsagesFor(plugin: PluginModel) {
+      if (plugin.version().valueType == GradlePropertyModel.ValueType.STRING) {
+        val version = GradleVersion.tryParse(plugin.version().toString()) ?: return
+        if (GradleVersion(0, 0) >= version) return
+        WELL_KNOWN_GRADLE_PLUGIN_TABLE[plugin.name().toString()]?.let { info ->
+          val minVersion = info(compatibleGradleVersion)
+          if (minVersion <= version) return
+          val resultModel = plugin.version().resultModel
+          val element = resultModel.rawElement
+          val psiElement = element?.psiElement ?: return
+          val wrappedPsiElement = WrappedPsiElement(psiElement, this, WELL_KNOWN_GRADLE_PLUGIN_USAGE_TYPE)
+          usages.add(WellKnownGradlePluginDslUsageInfo(wrappedPsiElement, plugin, resultModel, minVersion.toString()))
+        }
+      }
+    }
+
     // Check plugins for compatibility with our minimum Gradle version even if we're not upgrading (because the project has a higher
     // version, for example) because some compatibility issues are related to the (AGP,Gradle) version pair rather than just directly
     // the Gradle version.  (Also, this makes it substantially easier to test the action of this processor on a file at a time.)
@@ -74,22 +90,9 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
           }
         }
       }
-      model.plugins().forEach plugin@{ plugin ->
-        if (plugin.version().valueType == GradlePropertyModel.ValueType.STRING) {
-          val version = GradleVersion.tryParse(plugin.version().toString()) ?: return@plugin
-          if (GradleVersion(0, 0) >= version) return@plugin
-          WELL_KNOWN_GRADLE_PLUGIN_TABLE[plugin.name().toString()]?.let { info ->
-            val minVersion = info(compatibleGradleVersion)
-            if (minVersion <= version) return@plugin
-            val resultModel = plugin.version().resultModel
-            val element = resultModel.rawElement
-            val psiElement = element?.psiElement ?: return@plugin
-            val wrappedPsiElement = WrappedPsiElement(psiElement, this, WELL_KNOWN_GRADLE_PLUGIN_USAGE_TYPE)
-            usages.add(WellKnownGradlePluginDslUsageInfo(wrappedPsiElement, plugin, resultModel, minVersion.toString()))
-          }
-        }
-      }
+      model.plugins().forEach(::addUsagesFor)
     }
+    projectBuildModel.projectSettingsModel?.pluginManagement()?.plugins()?.plugins()?.forEach(::addUsagesFor)
     return usages.toTypedArray()
   }
 
@@ -136,6 +139,7 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
         VERSION_6_1_1 -> GradleVersion.parse("1.3.20")
         VERSION_6_5 -> GradleVersion.parse("1.3.20")
         VERSION_6_7_1 -> GradleVersion.parse("1.3.20")
+        VERSION_7_0_2 -> GradleVersion.parse("1.3.40")
         VERSION_FOR_DEV -> GradleVersion.parse("1.3.40")
       }
 
@@ -144,9 +148,12 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
         VERSION_4_4, VERSION_4_6, VERSION_MIN, VERSION_4_10_1, VERSION_5_1_1, VERSION_5_4_1, VERSION_5_6_4, VERSION_6_1_1,
         VERSION_6_5, VERSION_6_7_1 ->
           GradleVersion.parse("2.0.0")
-        // TODO(xof): For Studio 4.3 / AGP 7.0, this might not be correct: a feature deprecated in
-        //  AGP 4 might be removed in AGP 7.0 (see b/159542337) at which point we would need to upgrade the version to whatever the
-        //  version is that doesn't use that deprecated interface (2.3.2?  2.4.0?  3.0.0?  Who knows?)
+        // For Studio Arctic Fox / AGP 7.0, this is correct: BaseVariant.getApplicationIdTextResource is deprecated
+        // but not removed.
+        VERSION_7_0_2 -> GradleVersion.parse("2.0.0")
+        // TODO(xof): At some point, the BaseVariant.getApplicationIdTextResource method will be removed, at which point we would need to
+        //  upgrade safeargs to 2.4.0, which contains the fix (see b/159542337, b/172824579).  At the time of writing this comment (June
+        //  17, 2021) the fix is in the safeargs 2.4.0-alpha02 release.
         VERSION_FOR_DEV -> GradleVersion.parse("2.0.0")
       }
 
@@ -155,14 +162,14 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
       when (compatibleGradleVersion) {
         VERSION_4_4, VERSION_4_6, VERSION_MIN, VERSION_4_10_1, VERSION_5_1_1 -> GradleVersion.parse("1.3.1.0")
         VERSION_5_4_1, VERSION_5_6_4, VERSION_6_1_1 -> GradleVersion.parse("1.4.2.1")
-        VERSION_6_5, VERSION_6_7_1, VERSION_FOR_DEV -> GradleVersion.parse("1.6.1.0")
+        VERSION_6_5, VERSION_6_7_1, VERSION_7_0_2, VERSION_FOR_DEV -> GradleVersion.parse("1.6.1.0")
       }
 
     fun `com-google-firebase-crashlytics-plugin-compatibility-info`(compatibleGradleVersion: CompatibleGradleVersion): GradleVersion =
       when (compatibleGradleVersion) {
         VERSION_4_4, VERSION_4_6, VERSION_MIN, VERSION_4_10_1, VERSION_5_1_1, VERSION_5_4_1, VERSION_5_6_4, VERSION_6_1_1,
         VERSION_6_5, VERSION_6_7_1 -> GradleVersion.parse("2.0.0")
-        VERSION_FOR_DEV -> GradleVersion.parse("2.5.2")
+        VERSION_7_0_2, VERSION_FOR_DEV -> GradleVersion.parse("2.5.2")
       }
 
     fun `com-google-firebase-appdistribution-plugin-compatibility-info`(compatibleGradleVersion: CompatibleGradleVersion): GradleVersion =
@@ -170,14 +177,14 @@ class GradlePluginsRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
         VERSION_4_4, VERSION_4_6, VERSION_MIN -> GradleVersion.parse("1.0.0")
         VERSION_4_10_1, VERSION_5_1_1, VERSION_5_4_1, VERSION_5_6_4 -> GradleVersion.parse("1.1.0")
         VERSION_6_1_1, VERSION_6_5, VERSION_6_7_1 -> GradleVersion.parse("1.4.0")
-        VERSION_FOR_DEV -> GradleVersion.parse("2.1.1")
+        VERSION_7_0_2, VERSION_FOR_DEV -> GradleVersion.parse("2.1.1")
       }
 
     fun `com-google-android-gms-oss-licenses-plugin-compatibility-info`(compatibleGradleVersion: CompatibleGradleVersion): GradleVersion =
       when (compatibleGradleVersion) {
         VERSION_4_4, VERSION_4_6, VERSION_MIN, VERSION_4_10_1 -> GradleVersion.parse("0.9.3")
         VERSION_5_1_1, VERSION_5_4_1, VERSION_5_6_4, VERSION_6_1_1, VERSION_6_5, VERSION_6_7_1 -> GradleVersion.parse("0.10.1")
-        VERSION_FOR_DEV -> GradleVersion.parse("0.10.4")
+        VERSION_7_0_2, VERSION_FOR_DEV -> GradleVersion.parse("0.10.4")
       }
 
     /**

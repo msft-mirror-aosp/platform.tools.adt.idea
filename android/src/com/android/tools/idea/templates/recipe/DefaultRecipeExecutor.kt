@@ -26,6 +26,7 @@ import com.android.resources.ResourceFolderType
 import com.android.support.AndroidxNameUtils
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel
+import com.android.tools.idea.gradle.dsl.api.PluginModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
 import com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigurationNames.ANDROID_TEST_API
@@ -46,7 +47,8 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.java.LanguageLevelPropertyModel
-import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
+import com.android.tools.idea.gradle.dsl.api.settings.PluginsModel
+import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
 import com.android.tools.idea.gradle.repositories.RepositoryUrlManager
 import com.android.tools.idea.gradle.util.GradleUtil
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -101,7 +103,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
 
   private val projectBuildModel: ProjectBuildModel? by lazy {
     ProjectBuildModel.getOrLog(project)
-      ?.also { it.context.agpVersion = GradleVersion.parseAndroidGradlePluginVersion(projectTemplateData.gradlePluginVersion) }
+      ?.also { it.context.agpVersion = AndroidGradlePluginVersion.parse(projectTemplateData.gradlePluginVersion) }
   }
   private val projectSettingsModel: GradleSettingsModel? by lazy { projectBuildModel?.projectSettingsModel }
   private val projectGradleBuildModel: GradleBuildModel? by lazy { projectBuildModel?.projectBuildModel }
@@ -184,17 +186,41 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     context.filesToOpen.add(file)
   }
 
-  override fun applyPlugin(plugin: String) {
-    referencesExecutor.applyPlugin(plugin)
+  override fun applyPlugin(plugin: String, revision: String?, minRev: String?) {
+    referencesExecutor.applyPlugin(plugin, revision)
 
     val buildModel = moduleGradleBuildModel ?: return
     if (buildModel.plugins().none { it.name().forceString() == plugin }) {
       buildModel.applyPlugin(plugin)
     }
+
+    if (revision != null) {
+      // Check if pluginManagement.plugins block is declared
+      val settingsPluginsModel = projectSettingsModel?.pluginManagement()?.plugins()?.also { it.psiElement ?: return } ?: return
+
+      val pluginCoordinate =  "$plugin:$plugin.gradle.plugin:$revision"
+      val resolvedVersion = resolveDependency(repositoryUrlManager, pluginCoordinate, minRev).version?.toString() ?: revision
+      val targetPluginModel = settingsPluginsModel.plugins().firstOrNull { it.name().toString() == plugin }
+
+      if (targetPluginModel == null) {
+        settingsPluginsModel.applyPlugin(plugin, resolvedVersion)
+      }
+      else {
+        val toBeAddedVersion = GradleVersion.parse(resolvedVersion)
+        val existingVersion = GradleVersion.parse(targetPluginModel.version().toString())
+        if (toBeAddedVersion > existingVersion) {
+          targetPluginModel.version().setValue(resolvedVersion)
+        }
+      }
+    }
   }
 
   override fun addClasspathDependency(mavenCoordinate: String, minRev: String?) {
-    val resolvedCoordinate = resolveDependency(repositoryUrlManager, convertToAndroidX(mavenCoordinate), minRev)
+    if (projectSettingsModel?.pluginManagement()?.plugins()?.psiElement != null) {
+      return // If plugins are being declared on Settings, we skip this since all work is handled in [applyPlugin]
+    }
+
+    val resolvedCoordinate = resolveDependency(repositoryUrlManager, convertToAndroidX(mavenCoordinate), minRev).toString()
 
     referencesExecutor.addClasspathDependency(resolvedCoordinate, minRev)
 
@@ -242,7 +268,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     } ?: return
 
     var resolvedConfiguration = GradleUtil.mapConfigurationName(configuration, projectTemplateData.gradlePluginVersion, false)
-    val resolvedMavenCoordinate = resolveDependency(repositoryUrlManager, convertToAndroidX(mavenCoordinate), minRev)
+    val resolvedMavenCoordinate = resolveDependency(repositoryUrlManager, convertToAndroidX(mavenCoordinate), minRev).toString()
 
     // If a Library (e.g. Google Maps) Manifest references its own resources, it needs to be added to the Base, otherwise aapt2 will fail
     // during linking. Since we don't know the libraries Manifest references, we declare this libraries in the base as "api" dependencies.
@@ -439,16 +465,12 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   /**
    * Sets Compose Options field values
    */
-  override fun setComposeOptions(kotlinCompilerExtensionVersion: String?, kotlinCompilerVersion: String?) {
+  override fun setComposeOptions(kotlinCompilerExtensionVersion: String?) {
     val buildModel = moduleGradleBuildModel ?: return
     val composeOptionsModel = buildModel.android().composeOptions()
 
     if (kotlinCompilerExtensionVersion != null) {
       composeOptionsModel.kotlinCompilerExtensionVersion().setValueIfNone(kotlinCompilerExtensionVersion)
-    }
-
-    if (kotlinCompilerVersion != null) {
-      composeOptionsModel.kotlinCompilerVersion().setValueIfNone(kotlinCompilerVersion)
     }
 
     buildModel.android().defaultConfig().vectorDrawables().useSupportLibrary().setValue(true)
@@ -467,11 +489,6 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
         version().setValue(cppVersion)
       }
     }
-  }
-
-  override fun setUseKotlinIrCompiler() {
-    val buildModel = moduleGradleBuildModel ?: return
-    buildModel.android().kotlinOptions().useIR().setValue(true)
   }
 
   /**

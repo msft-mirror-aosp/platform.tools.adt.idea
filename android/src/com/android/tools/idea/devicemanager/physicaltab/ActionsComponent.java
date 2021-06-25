@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.scale.JBUIScale;
-import java.awt.Component;
 import javax.swing.AbstractButton;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Group;
@@ -29,14 +29,21 @@ import org.jetbrains.annotations.NotNull;
 final class ActionsComponent extends JBPanel<ActionsComponent> {
   private final @NotNull AbstractButton myActivateDeviceFileExplorerWindowButton;
   private final @NotNull AbstractButton myEditDeviceNameButton;
-  private final @NotNull Component myMoreButton;
+  private final @NotNull AbstractButton myRemoveButton;
+  private final @NotNull AbstractButton myViewDetailsButton;
 
   ActionsComponent() {
+    this(false);
+  }
+
+  @VisibleForTesting
+  ActionsComponent(boolean addViewDetailsButton) {
     super(null);
 
     myActivateDeviceFileExplorerWindowButton = newJButton(AllIcons.General.OpenDiskHover);
     myEditDeviceNameButton = newJButton(AllIcons.Actions.Edit);
-    myMoreButton = newJButton(AllIcons.Actions.More);
+    myRemoveButton = newJButton(AllIcons.Actions.GC);
+    myViewDetailsButton = newJButton(AllIcons.Actions.Preview);
 
     GroupLayout layout = new GroupLayout(this);
     int size = JBUIScale.scale(22);
@@ -45,14 +52,24 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
       .addGap(0, 0, Short.MAX_VALUE)
       .addComponent(myActivateDeviceFileExplorerWindowButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
       // .addComponent(myEditDeviceNameButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
-      .addComponent(myMoreButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE);
+      .addComponent(myRemoveButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE);
+
+    if (addViewDetailsButton) {
+      horizontalGroup.addComponent(myViewDetailsButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE);
+    }
+
+    Group group = layout.createParallelGroup()
+      .addComponent(myActivateDeviceFileExplorerWindowButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
+      // .addComponent(myEditDeviceNameButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
+      .addComponent(myRemoveButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE);
+
+    if (addViewDetailsButton) {
+      group.addComponent(myViewDetailsButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE);
+    }
 
     Group verticalGroup = layout.createSequentialGroup()
       .addGap(0, 0, Short.MAX_VALUE)
-      .addGroup(layout.createParallelGroup()
-                  .addComponent(myActivateDeviceFileExplorerWindowButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
-                  // .addComponent(myEditDeviceNameButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE)
-                  .addComponent(myMoreButton, GroupLayout.PREFERRED_SIZE, size, GroupLayout.PREFERRED_SIZE))
+      .addGroup(group)
       .addGap(0, 0, Short.MAX_VALUE);
 
     layout.setHorizontalGroup(horizontalGroup);
@@ -76,5 +93,13 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
 
   @NotNull AbstractButton getEditDeviceNameButton() {
     return myEditDeviceNameButton;
+  }
+
+  @NotNull AbstractButton getRemoveButton() {
+    return myRemoveButton;
+  }
+
+  @NotNull AbstractButton getViewDetailsButton() {
+    return myViewDetailsButton;
   }
 }
