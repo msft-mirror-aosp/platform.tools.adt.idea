@@ -39,6 +39,7 @@ import static java.util.stream.Collectors.toList;
 import com.android.builder.model.AndroidProject;
 import com.android.tools.idea.gradle.filters.AndroidReRunBuildFilter;
 import com.android.tools.idea.gradle.project.BuildSettings;
+import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionManager;
 import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionOutputLinkFilter;
 import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionUtil;
 import com.android.tools.idea.gradle.project.build.output.BuildOutputParserManager;
@@ -79,7 +80,6 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotifica
 import com.intellij.openapi.externalSystem.model.task.event.ExternalSystemBuildEvent;
 import com.intellij.openapi.externalSystem.model.task.event.ExternalSystemTaskExecutionEvent;
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemEventDispatcher;
-import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
@@ -255,8 +255,9 @@ public class GradleBuildInvokerImpl implements GradleBuildInvoker {
   @Override
   public ListenableFuture<AssembleInvocationResult> executeAssembleTasks(@NotNull Module[] assembledModules,
                                                                          @NotNull List<Request> request) {
+    GradleRootPathFinder pathFinder = new GradleRootPathFinder();
     Map<String, List<Module>> modulesByRootProject = Arrays.stream(assembledModules)
-      .map(it -> Pair.create(it, ExternalSystemApiUtil.getExternalRootProjectPath(it)))
+      .map(it -> Pair.create(it, toSystemIndependentName(pathFinder.getProjectRootPath(it).toFile().getPath())))
       .filter(it -> it.second != null)
       .collect(groupingBy(it -> it.second, mapping(it -> it.first, toList())));
     ListenableFuture<GradleMultiInvocationResult> resultFuture = executeTasks(
@@ -644,8 +645,11 @@ public class GradleBuildInvokerImpl implements GradleBuildInvoker {
 
     private void addBuildAttributionLinkToTheOutput(@NotNull ExternalSystemTaskId id) {
       if (BuildAttributionUtil.isBuildAttributionEnabledForProject(myProject)) {
-        String buildAttributionTabLinkLine = BuildAttributionUtil.buildOutputLine();
-        onTaskOutput(id, "\n" + buildAttributionTabLinkLine, true);
+        BuildAttributionManager manager = ServiceManager.getService(myProject, BuildAttributionManager.class);
+        if (manager != null && manager.shouldShowBuildOutputLink()) {
+          String buildAttributionTabLinkLine = BuildAttributionUtil.buildOutputLine();
+          onTaskOutput(id, "\n" + buildAttributionTabLinkLine + "\n", true);
+        }
       }
     }
 

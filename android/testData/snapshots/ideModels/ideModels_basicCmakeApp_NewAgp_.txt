@@ -4,17 +4,16 @@ MODULE                        : project.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-30
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : 30.0.2
-    NdkVersion                    : 21.4.7075529
+    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : com.example.basiccmakeapp
-    TestNamespace                 : com.example.basiccmakeapp.test
+    TestNamespace                 : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
-        IsCheckDependencies           : true
+        IsCheckDependencies           : false
         IsAbortOnError                : true
         IsAbsolutePaths               : true
         IsNoLines                     : false
@@ -288,6 +287,7 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -314,14 +314,14 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     SelectedVariantName           : debug
     SelectedAbiName               : x86
     Name                          : app
     NativeBuildSystem             : CMAKE
-    NdkVersion                    : {DEFAULT_NDK_VERSION}
-    DefaultNdkVersion             : {DEFAULT_NDK_VERSION}
+    NdkVersion                    : <DEFAULT_NDK_VERSION>
     ExternalNativeBuildFile       : <ROOT>/app/CMakeLists.txt
     Variants
         NativeVariant

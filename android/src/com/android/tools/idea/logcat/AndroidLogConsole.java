@@ -18,8 +18,8 @@ package com.android.tools.idea.logcat;
 import com.android.ddmlib.IDevice;
 import com.android.tools.idea.actions.BrowserHelpAction;
 import com.android.tools.idea.ddms.DeviceContext;
+import com.android.tools.idea.ddms.actions.DeviceScreenshotAction;
 import com.android.tools.idea.ddms.actions.ScreenRecorderAction;
-import com.android.tools.idea.ddms.actions.ScreenshotAction;
 import com.android.tools.idea.ddms.actions.TerminateVMAction;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.logcat.AndroidLogcatView.MyConfigureLogcatHeaderAction;
@@ -68,12 +68,12 @@ public final class AndroidLogConsole extends LogConsoleBase {
       c.addCustomConsoleAction(registerAction(actionManager, new MyConfigureLogcatHeaderAction(view)));
 
       if (StudioFlags.LOGCAT_SUPPRESSED_TAGS_ENABLE.get()) {
-        c.addCustomConsoleAction(registerAction(actionManager, new SuppressLogTagsAction(project, context, this)));
+        c.addCustomConsoleAction(registerAction(actionManager, new SuppressLogTagsAction(context, this::refresh)));
       }
 
       // TODO: Decide if these should be part of the profiler window
       c.addCustomConsoleAction(new Separator());
-      c.addCustomConsoleAction(registerAction(actionManager, new ScreenshotAction(project, context)));
+      c.addCustomConsoleAction(registerAction(actionManager, new DeviceScreenshotAction(project, context)));
       c.addCustomConsoleAction(registerAction(actionManager, new ScreenRecorderAction(project, context)));
       c.addCustomConsoleAction(new Separator());
       c.addCustomConsoleAction(registerAction(actionManager, new TerminateVMAction(context)));

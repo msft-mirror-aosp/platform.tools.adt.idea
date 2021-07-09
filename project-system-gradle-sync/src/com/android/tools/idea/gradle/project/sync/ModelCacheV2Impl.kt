@@ -128,6 +128,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Lists
+import com.intellij.util.containers.addIfNotNull
 import java.io.File
 import java.util.HashMap
 
@@ -539,13 +540,13 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
       if (runtimeDependencies != null) {
         for (graphItem in compileDependencies) {
           if (!runtimeDependencies.contains(graphItem)) {
-            libraryMap.libraries[graphItem.artifactAddress]?.let { providedDependencies.add(it) }
+            providedDependencies.addIfNotNull(libraryMap.libraries[graphItem.artifactAddress])
           }
         }
       }
       else {
-        compileDependencies.forEach { graphItem ->
-          libraryMap.libraries[graphItem.artifactAddress]?.let { providedDependencies.add(it) }
+        compileDependencies.forEach {
+          providedDependencies.addIfNotNull(libraryMap.libraries[it.artifactAddress])
         }
       }
       return providedDependencies
@@ -830,7 +831,7 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
     )
   }
 
-  fun nativeAndroidProjectFrom(project: NativeAndroidProject): IdeNativeAndroidProjectImpl {
+  fun nativeAndroidProjectFrom(project: NativeAndroidProject, ndkVersion: String?): IdeNativeAndroidProjectImpl {
     return IdeNativeAndroidProjectImpl(
       modelVersion = project.modelVersion,
       apiVersion = project.apiVersion,
@@ -841,7 +842,8 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
       toolChains = copy(project::getToolChains, ::nativeToolchainFrom),
       settings = copy(project::getSettings, ::nativeSettingsFrom),
       fileExtensions = copy(project::getFileExtensions, ::deduplicateString),
-      defaultNdkVersion = copy(project::getDefaultNdkVersion) ?: "",
+      defaultNdkVersion = copy(project::getDefaultNdkVersion),
+      ndkVersion = ndkVersion ?: copy(project::getDefaultNdkVersion),
       buildSystems = copy(project::getBuildSystems, ::deduplicateString)
     )
   }
@@ -1047,7 +1049,6 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
       viewBindingOptions = viewBindingOptionsCopy,
       dependenciesInfo = dependenciesInfoCopy,
       buildToolsVersion = buildToolsVersionCopy,
-      ndkVersion = null,
       resourcePrefix = project.resourcePrefix,
       groupId = groupId,
       namespace = project.namespace,
@@ -1061,7 +1062,8 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
     override fun variantFrom(
       androidProject: IdeAndroidProject,
       variant: com.android.builder.model.Variant,
-      modelVersion: GradleVersion?
+      modelVersion: GradleVersion?,
+      androidModulesIds: List<ModuleId>
     ): IdeVariantImpl = throw UnsupportedOperationException()
 
     override fun variantFrom(
@@ -1089,7 +1091,8 @@ internal fun modelCacheV2Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
     // For native models, if we don't find v2 models, we fall back to V1.
     override fun nativeVariantAbiFrom(variantAbi: NativeVariantAbi): IdeNativeVariantAbiImpl = nativeVariantAbiFrom(variantAbi)
 
-    override fun nativeAndroidProjectFrom(project: NativeAndroidProject): IdeNativeAndroidProjectImpl = nativeAndroidProjectFrom(project)
+    override fun nativeAndroidProjectFrom(project: NativeAndroidProject, ndkVersion: String): IdeNativeAndroidProjectImpl =
+      nativeAndroidProjectFrom(project, ndkVersion)
   }
 }
 

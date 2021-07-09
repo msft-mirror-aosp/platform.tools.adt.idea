@@ -121,6 +121,7 @@ studio_plugin(
             "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api",
             "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl",
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+            "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
             "//tools/adt/idea/android-lang-databinding:intellij.android.lang-databinding",
             "//tools/adt/idea/android-lang:intellij.android.lang",
             "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
@@ -524,9 +525,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Bumblebee | {0}.{1}.{2} Canary {3}",
-    version_micro = 1,
-    version_patch = 3,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 

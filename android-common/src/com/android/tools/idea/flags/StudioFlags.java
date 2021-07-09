@@ -148,7 +148,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILEABLE = Flag.create(
     PROFILER, "profileable", "Support profileable processes on S+",
     "Show profileable processes on S and later",
-    false);
+    true);
 
   public static final Flag<Boolean> PROFILER_MIGRATION_TO_APPINSPECTION = Flag.create(
     PROFILER, "profiler.migration.to.appinspection", "Enable migration support for network and system events profiling.",
@@ -592,6 +592,14 @@ public final class StudioFlags {
     "logcat.suppressed.tags.enable",
     "Enable Suppressed Tags Dialog in Logcat",
     "Enables a dialog that allows the user to maintain a global set of tags to be suppressed in Logcat",
+    false
+  );
+
+  public static final Flag<Boolean> LOGCAT_V2_ENABLE = Flag.create(
+    RUNDEBUG,
+    "logcat.v2.enable",
+    "Enable Logcat V2",
+    "Enables version 2 of the Logcat tool window",
     false
   );
   //endregion

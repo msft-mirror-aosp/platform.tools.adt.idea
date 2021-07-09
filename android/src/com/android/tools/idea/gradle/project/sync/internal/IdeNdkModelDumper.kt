@@ -57,10 +57,8 @@ private fun ProjectDumper.dump(nativeModule: IdeNativeModule) {
   prop("Name") { nativeModule.name }
   prop("NativeBuildSystem") { nativeModule.nativeBuildSystem.toString() }
   prop("NdkVersion") {
-    if (nativeModule.ndkVersion == nativeModule.defaultNdkVersion) "{DEFAULT_NDK_VERSION}" else nativeModule.ndkVersion
+    if (nativeModule.ndkVersion == nativeModule.defaultNdkVersion) "<DEFAULT_NDK_VERSION>" else nativeModule.ndkVersion
   }
-  // This depends on the AGP version used for tests, which means the risk of having different values when ran on IDE or bazel.
-  prop("DefaultNdkVersion") { "{DEFAULT_NDK_VERSION}" }
   prop("ExternalNativeBuildFile") { nativeModule.externalNativeBuildFile.path.toPrintablePath() }
   if (nativeModule.variants.isNotEmpty()) {
     head("Variants")
@@ -76,7 +74,10 @@ private fun ProjectDumper.dump(nativeAndroidProject: IdeNativeAndroidProject) {
   prop("ModelVersion") { nativeAndroidProject.modelVersion }
   prop("ApiVersion") { nativeAndroidProject.apiVersion.toString() }
   prop("Name") { nativeAndroidProject.name }
-  prop("DefaultNdkVersion") { nativeAndroidProject.defaultNdkVersion }
+  prop("DefaultNdkVersion") { nativeAndroidProject.defaultNdkVersion.takeUnless { it.isEmpty() } }
+  prop("NdkVersion") {
+    if (nativeAndroidProject.ndkVersion == nativeAndroidProject.defaultNdkVersion) "<DEFAULT_NDK_VERSION>" else nativeAndroidProject.ndkVersion
+  }
   nativeAndroidProject.buildFiles.forEach { prop("BuildFiles") { it.path.toPrintablePath() } }
   nativeAndroidProject.buildSystems.forEach { prop("BuildSystems") { it } }
   if (nativeAndroidProject.variantInfos.isNotEmpty()) {

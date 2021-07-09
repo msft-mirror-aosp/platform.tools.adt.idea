@@ -4,7 +4,7 @@ MODULE                        : project.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-30
     BuildFolder                   : <ROOT>/app/build [-]
-    buildToolsVersion             : 30.0.2
+    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
     GroupId                       : project
     AaptOptions
@@ -1453,6 +1453,7 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -2025,5 +2026,6 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar

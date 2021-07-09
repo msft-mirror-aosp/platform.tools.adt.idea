@@ -4,7 +4,7 @@ MODULE                        : My_First_App.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-30
     BuildFolder                   : <ROOT>/firstapp/app/build [-]
-    buildToolsVersion             : 30.0.2
+    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
     GroupId                       : My First App
     Namespace                     : com.example.firstapp
@@ -13,7 +13,7 @@ MODULE                        : My_First_App.app
         NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
-        IsCheckDependencies           : true
+        IsCheckDependencies           : false
         IsAbortOnError                : true
         IsAbsolutePaths               : true
         IsNoLines                     : false
@@ -1411,6 +1411,7 @@ MODULE                        : My_First_App.app
                             BuildId                       : <ROOT>/firstapp
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>/firstapp
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -2005,6 +2006,7 @@ MODULE                        : My_First_App.app
                             BuildId                       : <ROOT>/firstapp
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>/firstapp
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
 MODULE                        : My_First_App.app.mysharedlibrary
@@ -2012,7 +2014,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-30
     BuildFolder                   : <ROOT>/shared/mysharedlibrary/build [-]
-    buildToolsVersion             : 30.0.2
+    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
     GroupId                       : My First App.app
     Namespace                     : com.example.mysharedlibrary

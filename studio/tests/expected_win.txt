@@ -890,6 +890,7 @@ android-studio/plugins/Kotlin/kotlinc/lib/kotlin-test-testng.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-test.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlinx-coroutines-core.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlinx-serialization-compiler-plugin.jar
+android-studio/plugins/Kotlin/kotlinc/lib/lombok-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/mutability-annotations-compat.jar
 android-studio/plugins/Kotlin/kotlinc/lib/noarg-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/parcelize-compiler.jar
@@ -917,6 +918,7 @@ android-studio/plugins/Kotlin/kotlinc/license/third_party/jshashtable_license.tx
 android-studio/plugins/Kotlin/kotlinc/license/third_party/karma-teamcity-reporter_LICENSE.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/karma_LICENSE.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/lodash_LICENSE.txt
+android-studio/plugins/Kotlin/kotlinc/license/third_party/lombok_LICENSE.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/maven_LICENSE.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/mocha-teamcity-reporter_LICENSE.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/pcollections_LICENSE.txt
@@ -929,6 +931,7 @@ android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/dagger_licens
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/eclipse_distribution_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/eclipse_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/findbugs_license.txt
+android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/jspecify_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/lombok_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/rxjava_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/testdata/spring_license.txt
@@ -936,6 +939,7 @@ android-studio/plugins/Kotlin/kotlinc/license/third_party/trove_license.txt
 android-studio/plugins/Kotlin/kotlinc/license/third_party/trove_readme_license.txt
 android-studio/plugins/Kotlin/lib/allopen-compiler-plugin-for-ide.jar
 android-studio/plugins/Kotlin/lib/android-extensions-compiler-plugin-for-ide.jar
+android-studio/plugins/Kotlin/lib/base-compiler-plugins-ide-support.jar
 android-studio/plugins/Kotlin/lib/completion-ranking-kotlin-0.2.2.jar
 android-studio/plugins/Kotlin/lib/javaslang-2.0.6.jar
 android-studio/plugins/Kotlin/lib/javaslang-match-2.0.6.jar
@@ -946,6 +950,7 @@ android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-allopen.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-annotation-based-compiler-support.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-kapt.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-kotlinx-serialization.jar
+android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-lombok.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-noarg.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-sam-with-receiver.jar
 android-studio/plugins/Kotlin/lib/kotlin-compiler-plugins-scripting.jar
@@ -997,6 +1002,7 @@ android-studio/plugins/Kotlin/lib/kotlinx-collections-immutable-jvm-0.3.1.jar
 android-studio/plugins/Kotlin/lib/kotlinx-coroutines-core-1.4.2.jar
 android-studio/plugins/Kotlin/lib/kotlinx-coroutines-jdk8-1.4.2.jar
 android-studio/plugins/Kotlin/lib/kotlinx-serialization-compiler-plugin-for-ide.jar
+android-studio/plugins/Kotlin/lib/lombok-compiler-plugin-for-ide.jar
 android-studio/plugins/Kotlin/lib/noarg-compiler-plugin-for-ide.jar
 android-studio/plugins/Kotlin/lib/parcelize-compiler-plugin-for-ide.jar
 android-studio/plugins/Kotlin/lib/sam-with-receiver-compiler-plugin-for-ide.jar
@@ -1558,7 +1564,7 @@ android-studio/plugins/android/lib/baksmali-2.2.4.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
 android-studio/plugins/android/lib/core-3.4.0.jar
-android-studio/plugins/android/lib/core-proto-0.0.8-alpha04.jar
+android-studio/plugins/android/lib/core-proto-0.0.8-alpha05.jar
 android-studio/plugins/android/lib/data-binding.jar
 android-studio/plugins/android/lib/deploy_java_proto.jar
 android-studio/plugins/android/lib/dexlib2-2.2.4.jar
@@ -1831,6 +1837,10 @@ android-studio/plugins/android/resources/device-art-resources/tv_1080p/back.png
 android-studio/plugins/android/resources/device-art-resources/tv_1080p/fore.png
 android-studio/plugins/android/resources/device-art-resources/tv_1080p/layout
 android-studio/plugins/android/resources/device-art-resources/tv_1080p/shadow.png
+android-studio/plugins/android/resources/device-art-resources/tv_4k/back.png
+android-studio/plugins/android/resources/device-art-resources/tv_4k/fore.png
+android-studio/plugins/android/resources/device-art-resources/tv_4k/layout
+android-studio/plugins/android/resources/device-art-resources/tv_4k/shadow.png
 android-studio/plugins/android/resources/device-art-resources/tv_720p/back.png
 android-studio/plugins/android/resources/device-art-resources/tv_720p/fore.png
 android-studio/plugins/android/resources/device-art-resources/tv_720p/layout
@@ -2075,6 +2085,7 @@ android-studio/plugins/android/resources/layoutlib/data/fonts/NotoSerifThai-Regu
 android-studio/plugins/android/resources/layoutlib/data/fonts/NotoSerifTibetan-VF.ttf
 android-studio/plugins/android/resources/layoutlib/data/fonts/NotoSerifYezidi-VF.ttf
 android-studio/plugins/android/resources/layoutlib/data/fonts/Roboto-Regular.ttf
+android-studio/plugins/android/resources/layoutlib/data/fonts/RobotoStatic-Regular.ttf
 android-studio/plugins/android/resources/layoutlib/data/fonts/SourceSansPro-Bold.ttf
 android-studio/plugins/android/resources/layoutlib/data/fonts/SourceSansPro-BoldItalic.ttf
 android-studio/plugins/android/resources/layoutlib/data/fonts/SourceSansPro-Italic.ttf

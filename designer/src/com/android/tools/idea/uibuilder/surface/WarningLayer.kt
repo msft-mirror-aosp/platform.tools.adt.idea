@@ -15,11 +15,15 @@
  */
 package com.android.tools.idea.uibuilder.surface
 
+import com.android.tools.adtui.common.ColoredIconGenerator.generateWhiteIcon
+import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.surface.Layer
+import com.android.tools.idea.uibuilder.model.h
+import com.android.tools.idea.uibuilder.model.w
+import com.android.tools.idea.uibuilder.model.x
+import com.android.tools.idea.uibuilder.model.y
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintHighlightingIssue
-import com.intellij.ui.scale.JBUIScale
 import icons.StudioIcons
-import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -30,17 +34,24 @@ class WarningLayer(private val screenView: ScreenView) : Layer() {
   override fun paint(gc: Graphics2D) {
     val screenShape: Shape? = screenView.screenShape
     gc.color = Color.ORANGE
-    gc.stroke = BasicStroke(JBUIScale.scale(4.0f))
     if (screenShape != null) {
       gc.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
       gc.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
       gc.draw(screenShape)
       return
     }
+    for (component in screenView.selectionModel.selection) {
+      gc.drawRect(
+        Coordinates.getSwingX(screenView, component.x),
+        Coordinates.getSwingY(screenView, component.y),
+        Coordinates.getSwingDimension(screenView, component.w),
+        Coordinates.getSwingDimension(screenView, component.h))
+    }
     val sceneSize = screenView.scaledContentSize
     gc.drawRect(screenView.x, screenView.y, sceneSize.width, sceneSize.height)
-    val icon = StudioIcons.Common.WARNING
-    icon.paintIcon(screenView.surface, gc, screenView.x + sceneSize.width - icon.iconWidth - 1, screenView.y + 1)
+    val icon = generateWhiteIcon(StudioIcons.Common.WARNING)
+    gc.fillRect(screenView.x + sceneSize.width + 1, screenView.y, icon.iconWidth, icon.iconHeight)
+    icon.paintIcon(screenView.surface, gc, screenView.x + sceneSize.width + 1, screenView.y)
   }
 
   override val isVisible: Boolean

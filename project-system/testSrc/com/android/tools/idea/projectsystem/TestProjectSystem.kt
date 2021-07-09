@@ -235,6 +235,10 @@ class TestProjectSystem @JvmOverloads constructor(
       error("not supported for the test implementation")
     }
 
+    override fun compileFilesAndDependencies(files: Collection<VirtualFile>) {
+      error("not supported for the test implementation")
+    }
+
     override fun getLastBuildResult(): ProjectSystemBuildManager.BuildResult {
       error("not supported for the test implementation")
     }
@@ -272,7 +276,7 @@ class TestProjectSystem @JvmOverloads constructor(
 
   override fun getSourceProvidersFactory(): SourceProvidersFactory = sourceProvidersFactoryStub
 
-  override fun getAndroidFacetsWithPackageName(project: Project, packageName: String, scope: GlobalSearchScope): List<AndroidFacet> {
+  override fun getAndroidFacetsWithPackageName(project: Project, packageName: String): List<AndroidFacet> {
     return emptyList()
   }
 }

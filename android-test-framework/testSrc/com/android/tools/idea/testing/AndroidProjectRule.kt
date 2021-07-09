@@ -26,6 +26,7 @@ import com.intellij.facet.Facet
 import com.intellij.facet.FacetConfiguration
 import com.intellij.facet.FacetManager
 import com.intellij.facet.FacetType
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
@@ -112,6 +113,8 @@ class AndroidProjectRule private constructor(
   val module: Module get() = fixture.module
 
   val project: Project get() = fixture.project
+
+  val testRootDisposable: Disposable get() = fixture.testRootDisposable
 
   private lateinit var mocks: IdeComponents
   private val facets = ArrayList<Facet<*>>()
@@ -358,6 +361,7 @@ class AndroidProjectRule private constructor(
 class EdtAndroidProjectRule(val projectRule: AndroidProjectRule) : TestRule by RuleChain.outerRule(projectRule).around(EdtRule())!! {
   val project: Project get() = projectRule.project
   val fixture: CodeInsightTestFixture get() = projectRule.fixture
+  val testRootDisposable: Disposable get() = projectRule.testRootDisposable
   fun setupProjectFrom(vararg moduleBuilders: ModuleModelBuilder) = projectRule.setupProjectFrom(*moduleBuilders)
 }
 

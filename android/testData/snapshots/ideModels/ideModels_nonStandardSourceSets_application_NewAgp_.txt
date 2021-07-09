@@ -4,7 +4,7 @@ MODULE                        : application.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-30
     BuildFolder                   : <ROOT>/application/app/build [-]
-    buildToolsVersion             : 30.0.2
+    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
     GroupId                       : application
     Namespace                     : google.simpleapplication
@@ -13,7 +13,7 @@ MODULE                        : application.app
         NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
-        IsCheckDependencies           : true
+        IsCheckDependencies           : false
         IsAbortOnError                : false
         IsAbsolutePaths               : true
         IsNoLines                     : false
@@ -1473,6 +1473,7 @@ MODULE                        : application.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>/application
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -2045,5 +2046,6 @@ MODULE                        : application.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :app
+                            Variant                       : debug
                             BuildId                       : <ROOT>/application
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar

@@ -2,7 +2,8 @@ android {
   lintOptions {
     isAbortOnError = true
     isAbsolutePaths = false
-    check("check-id-1")
+    baselineFile = file("baseline.xml")
+    checkOnly("check-id-1")
     isCheckAllWarnings = true
     isCheckDependencies = false
     isCheckGeneratedSources = true
@@ -23,7 +24,7 @@ android {
     isNoLines = false
     isQuiet = true
     isShowAll = false
-    textOutput(file("text.output"))
+    textOutput = file("text.output")
     textReport = true
     warning("warning-id-1")
     isWarningsAsErrors = false

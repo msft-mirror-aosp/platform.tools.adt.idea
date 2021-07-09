@@ -19,7 +19,6 @@ COMMON_DATA = [
     "//prebuilts/studio/sdk:build-tools/latest",
     "//prebuilts/studio/sdk:cmake",
     "//prebuilts/studio/sdk:ndk",
-    "//prebuilts/studio/sdk:ndk-bundle",
     "//prebuilts/studio/sdk:platforms/latest",
     "//prebuilts/studio/sdk:platform-tools",
     "//prebuilts/tools/common/aspects-agent:aspects_agent",
@@ -87,6 +86,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto[test]",
         "//tools/adt/idea/.idea/libraries:studio-grpc[test]",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module]",
+        "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin[module, test]",
         "//tools/base/wizard/template-plugin:studio.intellij.android.wizardTemplate.plugin[module, test]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module]",
         "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd[module]",
@@ -95,6 +95,7 @@ iml_module(
         "//tools/adt/idea/studio[module, test]",
         "//tools/adt/idea/app-inspection/api:intellij.android.app-inspection.api[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "//tools/adt/idea/intellij.android.compose-common[module, test]",
     ],
 )
 

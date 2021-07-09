@@ -2,7 +2,8 @@ android {
   lintOptions {
     abortOnError true
     absolutePaths false
-    check 'check-id-1'
+    baseline file('baseline.xml')
+    checkOnly 'check-id-1'
     checkAllWarnings true
     checkDependencies false
     checkGeneratedSources true

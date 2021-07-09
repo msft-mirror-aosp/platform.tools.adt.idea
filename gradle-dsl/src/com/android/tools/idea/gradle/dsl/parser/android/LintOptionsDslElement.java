@@ -27,6 +27,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,18 +48,19 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"isShowAll", property, SHOW_ALL, VAR},
     {"isWarningsAsErrors", property, WARNINGS_AS_ERRORS, VAR},
 
-    // TODO(b/144403889): {"baselineFile", property, BASELINE, VAR},
-    // TODO(b/144403889): {"baseline", exactly(1), BASELINE, SET},
+    {"baselineFile", property, BASELINE, VAR},
+    {"baseline", exactly(1), BASELINE, SET},
     {"lintConfig", property, LINT_CONFIG, VAR},
     {"htmlOutput", property, HTML_OUTPUT, VAR},
     {"htmlReport", property, HTML_REPORT, VAR},
-    {"textOutput", property, TEXT_OUTPUT, VAL},
+    {"textOutput", property, TEXT_OUTPUT, VAR},
     {"textOutput", exactly(1), TEXT_OUTPUT, SET}, // special-case String method as well as File
     {"textReport", property, TEXT_REPORT, VAR},
     {"xmlOutput", property, XML_OUTPUT, VAR},
     {"xmlReport", property, XML_REPORT, VAR},
 
     // There are also exactly(1) variants of these with the same name, but they are redundant for our purposes
+    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST, VersionConstraint.agpFrom("4.1.0")},
     {"check", atLeast(0), CHECK, AUGMENT_LIST},
     {"disable", atLeast(0), DISABLE, AUGMENT_LIST},
     {"enable", atLeast(0), ENABLE, AUGMENT_LIST},
@@ -99,8 +101,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"warningsAsErrors", property, WARNINGS_AS_ERRORS, VAR},
     {"warningsAsErrors", exactly(1), WARNINGS_AS_ERRORS, SET},
 
-    // TODO(b/144403889): {"baselineFile", property, BASELINE, VAR},
-    // TODO(b/144403889): {"baseline", exactly(1), BASELINE, SET},
+    {"baseline", exactly(1), BASELINE, SET},
     {"lintConfig", exactly(1), LINT_CONFIG, SET},
     {"htmlOutput", exactly(1), HTML_OUTPUT, SET},
     {"htmlReport", exactly(1), HTML_REPORT, SET},
@@ -110,6 +111,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"xmlReport", exactly(1), XML_REPORT, SET},
 
     // There are also exactly(1) variants of these with the same name, but they are redundant for our purposes
+    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST, VersionConstraint.agpFrom("4.1.0")},
     {"check", atLeast(0), CHECK, AUGMENT_LIST},
     {"disable", atLeast(0), DISABLE, AUGMENT_LIST},
     {"enable", atLeast(0), ENABLE, AUGMENT_LIST},

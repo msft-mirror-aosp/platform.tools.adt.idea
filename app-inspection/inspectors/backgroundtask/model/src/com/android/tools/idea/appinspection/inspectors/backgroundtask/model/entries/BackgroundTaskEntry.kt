@@ -19,7 +19,10 @@ package com.android.tools.idea.appinspection.inspectors.backgroundtask.model.ent
  * An entry with necessary information for a background task to show in the tree table.
  */
 interface BackgroundTaskEntry {
-  val id: Any
+  /**
+   * A unique id across different background tasks.
+   */
+  val id: String
   val isValid: Boolean
   val className: String
   val status: String

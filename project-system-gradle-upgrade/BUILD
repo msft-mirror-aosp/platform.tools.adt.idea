@@ -10,6 +10,7 @@ iml_module(
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android:test_deps",
         "//tools/adt/idea/android/testData",
+        "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib",
         "//tools/base/build-system:gradle-distrib-6.1.1",
         "//tools/base/build-system:gradle-distrib-6.5",
@@ -37,10 +38,14 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module, test]",
+        "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing[module, test]",
+        "//tools/analytics-library/tracker:analytics-tracker[module, test]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
     ],
 )
 
