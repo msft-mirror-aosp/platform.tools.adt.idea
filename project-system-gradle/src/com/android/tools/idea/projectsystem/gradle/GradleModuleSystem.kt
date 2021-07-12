@@ -21,6 +21,7 @@ import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
 import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
+import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.util.DynamicAppUtils
@@ -216,7 +217,18 @@ class GradleModuleSystem(
       ManifestSystemProperty.MIN_SDK_VERSION to androidModel.minSdkVersion?.apiString,
       ManifestSystemProperty.TARGET_SDK_VERSION to androidModel.targetSdkVersion?.apiString,
       ManifestSystemProperty.VERSION_CODE to androidModel.versionCode?.takeIf { it > 0 }?.toString(),
-      ManifestSystemProperty.PACKAGE to androidModel.applicationId
+      ManifestSystemProperty.PACKAGE to
+        (
+          when (androidModel.androidProject.projectType) {
+            IdeAndroidProjectType.PROJECT_TYPE_APP -> androidModel.applicationId
+            IdeAndroidProjectType.PROJECT_TYPE_ATOM -> androidModel.applicationId
+            IdeAndroidProjectType.PROJECT_TYPE_INSTANTAPP -> androidModel.applicationId
+            IdeAndroidProjectType.PROJECT_TYPE_FEATURE -> androidModel.applicationId
+            IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE -> androidModel.applicationId
+            IdeAndroidProjectType.PROJECT_TYPE_LIBRARY -> null
+            IdeAndroidProjectType.PROJECT_TYPE_TEST -> null
+          }
+        )
     )
     val variant = androidModel.selectedVariant
     val placeholders = getManifestPlaceholders()
@@ -278,8 +290,10 @@ class GradleModuleSystem(
   }
 
   override fun getNotRuntimeConfigurationSpecificApplicationIdProviderForLegacyUse(): ApplicationIdProvider {
+    val androidFacet = AndroidFacet.getInstance(module) ?: error("Cannot find AndroidFacet. Module: ${module.name}")
+    val androidModel = AndroidModuleModel.get(androidFacet) ?: error("Cannot find AndroidModuleModel. Module: ${module.name}")
     return GradleApplicationIdProvider(
-      AndroidFacet.getInstance(module) ?: throw IllegalStateException("Cannot find AndroidFacet. Module: ${module.name}"), { null }
+      androidFacet, false, androidModel, androidModel.selectedVariant, { null }
     )
   }
 

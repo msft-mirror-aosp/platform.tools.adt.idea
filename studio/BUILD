@@ -12,7 +12,6 @@ studio_plugin(
         "//prebuilts/tools/common/m2:okio",
         "//prebuilts/tools/common/m2:moshi",
         "//prebuilts/tools/common/m2:utp-core-proto",
-        "//prebuilts/tools/common/m2:kotlinx-coroutines-guava",
         "//prebuilts/tools/common/m2:eclipse-layout-kernel",
         "//prebuilts/tools/common/m2:antlr4-runtime",
         "//prebuilts/tools/common/m2:juniversalchardet",
@@ -30,6 +29,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:dexlib2",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:javax-inject",
+        "//tools/adt/idea/.idea/libraries:kotlinx-coroutines-guava",
         "//tools/adt/idea/.idea/libraries:kxml2",
         "//tools/adt/idea/.idea/libraries:layoutinspector-proto",
         "//tools/adt/idea/.idea/libraries:libam-instrumentation-data-proto",
@@ -525,9 +525,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Bumblebee | {0}.{1}.{2} Canary {4}",
-    version_micro = 1,
-    version_patch = 4,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 

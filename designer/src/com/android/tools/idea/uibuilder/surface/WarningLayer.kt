@@ -18,6 +18,7 @@ package com.android.tools.idea.uibuilder.surface
 import com.android.tools.adtui.common.ColoredIconGenerator.generateWhiteIcon
 import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.surface.Layer
+import com.android.tools.idea.uibuilder.graphics.NlConstants
 import com.android.tools.idea.uibuilder.model.h
 import com.android.tools.idea.uibuilder.model.w
 import com.android.tools.idea.uibuilder.model.x
@@ -34,24 +35,39 @@ class WarningLayer(private val screenView: ScreenView) : Layer() {
   override fun paint(gc: Graphics2D) {
     val screenShape: Shape? = screenView.screenShape
     gc.color = Color.ORANGE
-    if (screenShape != null) {
-      gc.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-      gc.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-      gc.draw(screenShape)
-      return
-    }
-    for (component in screenView.selectionModel.selection) {
+    gc.stroke = NlConstants.DASHED_STROKE
+    val relevantComponents = screenView.selectionModel.selection.filter { it.model == screenView.sceneManager.model }
+    for (component in relevantComponents) {
       gc.drawRect(
         Coordinates.getSwingX(screenView, component.x),
         Coordinates.getSwingY(screenView, component.y),
         Coordinates.getSwingDimension(screenView, component.w),
         Coordinates.getSwingDimension(screenView, component.h))
     }
-    val sceneSize = screenView.scaledContentSize
-    gc.drawRect(screenView.x, screenView.y, sceneSize.width, sceneSize.height)
-    val icon = generateWhiteIcon(StudioIcons.Common.WARNING)
-    gc.fillRect(screenView.x + sceneSize.width + 1, screenView.y, icon.iconWidth, icon.iconHeight)
-    icon.paintIcon(screenView.surface, gc, screenView.x + sceneSize.width + 1, screenView.y)
+    gc.stroke = NlConstants.SOLID_STROKE
+    val clip = gc.clip
+    if (screenShape != null) {
+      gc.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+      gc.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+      gc.draw(screenShape)
+      gc.clip = screenShape
+    }
+    else {
+      val sceneSize = screenView.scaledContentSize
+      gc.drawRect(screenView.x, screenView.y, sceneSize.width, sceneSize.height)
+      val icon = generateWhiteIcon(StudioIcons.Common.WARNING)
+      gc.fillRect(screenView.x + sceneSize.width + 1, screenView.y, icon.iconWidth, icon.iconHeight)
+      icon.paintIcon(screenView.surface, gc, screenView.x + sceneSize.width + 1, screenView.y)
+      gc.clipRect(screenView.x, screenView.y, sceneSize.width, sceneSize.height)
+    }
+    for (component in relevantComponents) {
+      gc.drawRect(
+        Coordinates.getSwingX(screenView, component.x),
+        Coordinates.getSwingY(screenView, component.y),
+        Coordinates.getSwingDimension(screenView, component.w),
+        Coordinates.getSwingDimension(screenView, component.h))
+    }
+    gc.clip = clip
   }
 
   override val isVisible: Boolean

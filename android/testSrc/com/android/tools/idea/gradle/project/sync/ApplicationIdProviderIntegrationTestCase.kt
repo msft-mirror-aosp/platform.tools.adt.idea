@@ -75,16 +75,14 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
             AGP_40 to "from.gradle.debug",
           ),
           expectTestPackageName = mapOf(
-            CURRENT to "com.example.unittest.test",
-            AGP_35 to "from.gradle.debug.test",
-            AGP_40 to "from.gradle.debug.test",
+            CURRENT to "(null)",
           )
         ),
         TestDefinition(
           name = "RUN_CONFIG_ACTIVITY after build",
           testProject = TestProjectPaths.RUN_CONFIG_ACTIVITY,
           expectPackageName = "from.gradle.debug",
-          expectTestPackageName = "from.gradle.debug.test"
+          expectTestPackageName = "(null)"
         ),
         TestDefinition(
           name = "APPLICATION_ID_SUFFIX before build",
@@ -96,16 +94,14 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
             AGP_40 to "one.name.defaultConfig.debug",
           ),
           expectTestPackageName = mapOf(
-            CURRENT to "one.name.test_app",
-            AGP_35 to "one.name.test_app",
-            AGP_40 to "one.name.test_app",
+            CURRENT to "(null)"
           )
         ),
         TestDefinition(
           name = "APPLICATION_ID_SUFFIX after build",
           testProject = TestProjectPaths.APPLICATION_ID_SUFFIX,
           expectPackageName = "one.name.defaultConfig.debug",
-          expectTestPackageName = "one.name.test_app"
+          expectTestPackageName = "(null)"
         ),
         TestDefinition(
           name = "APPLICATION_ID_SUFFIX run configuration via bundle",
@@ -118,12 +114,54 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
             AGP_40 to "one.name.defaultConfig.debug",
           ),
           expectTestPackageName = mapOf(
-            CURRENT to "one.name.test_app",
-            AGP_35 to "one.name.test_app",
-            AGP_40 to "one.name.test_app",
+            CURRENT to "(null)"
           )
         ),
         TestDefinition(
+          name = "APPLICATION_ID_SUFFIX test run configuration",
+          targetRunConfiguration = TestTargetRunConfiguration("one.name.ExampleInstrumentedTest"),
+          testProject = TestProjectPaths.APPLICATION_ID_SUFFIX,
+          expectPackageName = "one.name.defaultConfig.debug",
+          expectTestPackageName = "one.name.test_app"
+        ),
+        TestDefinition(
+          IGNORE = { if (agpVersion != CURRENT) error("Variant API is not supported by this AGP version.") },
+          name = "APPLICATION_ID_VARIANT_API before build",
+          testProject = TestProjectPaths.APPLICATION_ID_VARIANT_API,
+          executeMakeBeforeRun = false,
+          expectPackageName = "one.name",
+          expectTestPackageName = "(null)"
+        ),
+        TestDefinition(
+          IGNORE = { if (agpVersion != CURRENT) error("Variant API is not supported by this AGP version.") },
+          name = "APPLICATION_ID_VARIANT_API after build",
+          testProject = TestProjectPaths.APPLICATION_ID_VARIANT_API,
+          expectPackageName = "one.dynamic.name.debug",
+          expectTestPackageName = "(null)"
+        ),
+        TestDefinition(
+          IGNORE = { if (agpVersion != CURRENT) error("Variant API is not supported by this AGP version.") },
+          name = "APPLICATION_ID_VARIANT_API run configuration via bundle",
+          viaBundle = true,
+          testProject = TestProjectPaths.APPLICATION_ID_VARIANT_API,
+          // TODO(b/190357145): Fix ApplicationId when fixed in AGP or decided how to handle this.
+          expectPackageName = "one.name",
+          expectTestPackageName = "(null)"
+        ),
+        TestDefinition(
+          IGNORE = { if (agpVersion != CURRENT) error("Variant API is not supported by this AGP version.") },
+          name = "APPLICATION_ID_VARIANT_API test run configuration",
+          targetRunConfiguration = TestTargetRunConfiguration("one.name.ExampleInstrumentedTest"),
+          testProject = TestProjectPaths.APPLICATION_ID_VARIANT_API,
+          expectPackageName = "one.dynamic.name.debug",
+          expectTestPackageName = "one.dynamic.name.debug.test"
+        ),
+        TestDefinition(
+          IGNORE = {
+            if (agpVersion == CURRENT) {
+              error("Skip for the current AGP to save time in favor of 'APPLICATION_ID_SUFFIX test run configuration'")
+            }
+          },
           name = "SIMPLE_APPLICATION test run configuration",
           testProject = TestProjectPaths.SIMPLE_APPLICATION,
           targetRunConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
@@ -152,16 +190,8 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
           testProject = TestProjectPaths.TEST_ONLY_MODULE,
           executeMakeBeforeRun = false,
           targetRunConfiguration = TestTargetRunConfiguration("com.example.android.app.ExampleTest"),
-          expectPackageName = mapOf(
-            CURRENT to "com.example.android.app",
-            AGP_35 to "com.example.android.app",
-            AGP_40 to "com.example.android.app"
-          ),
-          expectTestPackageName = mapOf(
-            CURRENT to "com.example.android.app",
-            AGP_35 to "com.example.android.app.testmodule",
-            AGP_40 to "com.example.android.app.testmodule"
-          )
+          expectPackageName = "com.example.android.app",
+          expectTestPackageName = "com.example.android.app.testmodule"
         ),
         TestDefinition(
           name = "TEST_ONLY_MODULE test run configuration after build",
@@ -171,24 +201,39 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
           expectTestPackageName = "com.example.android.app.testmodule"
         ),
         TestDefinition(
+          name = "TEST_ONLY_MODULE test run configuration 2 before build",
+          testProject = TestProjectPaths.TEST_ONLY_MODULE,
+          executeMakeBeforeRun = false,
+          targetRunConfiguration = TestTargetRunConfiguration("com.example.android.test2.ExampleTest"),
+          expectPackageName = "com.example.android.app",
+          expectTestPackageName = "com.example.android.test2"
+        ),
+        TestDefinition(
+          name = "TEST_ONLY_MODULE test run configuration 2 after build",
+          testProject = TestProjectPaths.TEST_ONLY_MODULE,
+          targetRunConfiguration = TestTargetRunConfiguration("com.example.android.test2.ExampleTest"),
+          expectPackageName = "com.example.android.app",
+          expectTestPackageName = "com.example.android.test2"
+        ),
+        TestDefinition(
           name = "DYNAMIC_APP run configuration before build",
           testProject = TestProjectPaths.DYNAMIC_APP,
           executeMakeBeforeRun = false,
           expectPackageName = "google.simpleapplication",
-          expectTestPackageName = "google.simpleapplication.test"
+          expectTestPackageName = "(null)"
         ),
         TestDefinition(
           name = "DYNAMIC_APP run configuration after build",
           testProject = TestProjectPaths.DYNAMIC_APP,
           expectPackageName = "google.simpleapplication",
-          expectTestPackageName = "google.simpleapplication.test"
+          expectTestPackageName = "(null)"
         ),
         TestDefinition(
           name = "DYNAMIC_APP run configuration pre L device",
           device = 19,
           testProject = TestProjectPaths.DYNAMIC_APP,
           expectPackageName = "google.simpleapplication",
-          expectTestPackageName = "google.simpleapplication.test"
+          expectTestPackageName = "(null)"
         ),
         TestDefinition(
           name = "DYNAMIC_APP test run configuration pre L device",
@@ -211,6 +256,13 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
           targetRunConfiguration = TestTargetRunConfiguration("com.example.instantapp.ExampleInstrumentedTest"),
           expectPackageName = "google.simpleapplication",
           expectTestPackageName = "com.example.feature1.test"
+        ),
+        TestDefinition(
+          IGNORE = { if (agpVersion != AGP_35) error("instant apps are not supported by this version of AGP. ") },
+          name = "INSTANT_APP run configuration",
+          testProject = TestProjectPaths.INSTANT_APP,
+          expectPackageName = "com.example.instantapp",
+          expectTestPackageName = "(null)"
         )
       )
   }
@@ -354,7 +406,8 @@ abstract class ApplicationIdProviderIntegrationTestCase : GradleIntegrationTest 
   }
 
   private fun <T> Result<T>.toTestString() =
-    getOrNull()?.toString()
+    (if (this.isSuccess) getOrThrow() ?: "(null)" else null)
+      ?.toString()
     ?: exceptionOrNull()?.let {
       val message = it.message?.replace(getBaseTestPath(), "<ROOT>")
       "${it::class.java.simpleName}*> $message"

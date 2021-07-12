@@ -26,13 +26,16 @@ import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.Upgra
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.COMPILE_RUNTIME_CONFIGURATION
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.FABRIC_CRASHLYTICS
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.GMAVEN_REPOSITORY
+import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.GRADLE_PLUGINS
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.GRADLE_VERSION
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.JAVA8_DEFAULT
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.MIGRATE_TO_ANDROID_RESOURCES
+import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.MIGRATE_TO_EMULATOR_SNAPSHOTS
+import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.MIGRATE_TO_INSTALLATION
+import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.MIGRATE_TO_TEST_COVERAGE
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.REMOVE_BUILD_TYPE_USE_PROGUARD
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.REMOVE_IMPLEMENTATION_PROPERTIES
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.REMOVE_SOURCE_SET_JNI
-import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind.UNKNOWN_ASSISTANT_COMPONENT_KIND
 import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo
 import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo.UpgradeAssistantEventKind.EXECUTE
 import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo.UpgradeAssistantEventKind.FIND_USAGES
@@ -51,11 +54,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("4.1.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(AGP_CLASSPATH_DEPENDENCY).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("4.1.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(AGP_CLASSPATH_DEPENDENCY).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1).setFiles(2))
         .build(),
     )
   }
@@ -69,11 +72,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("2.3.2").setNewAgpVersion("4.2.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GMAVEN_REPOSITORY).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("2.3.2").setNewAgpVersion("4.2.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GMAVEN_REPOSITORY).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1).setFiles(2))
         .build(),
     )
   }
@@ -86,11 +89,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("3.6.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_VERSION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(0))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(0).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("3.6.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_VERSION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(0))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(0).setFiles(2))
         .build(),
     )
   }
@@ -103,12 +106,12 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
 
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.4.0").setNewAgpVersion("4.1.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_VERSION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_PLUGINS).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.4.0").setNewAgpVersion("4.1.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_VERSION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(GRADLE_PLUGINS).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1).setFiles(2))
         .build(),
     )
   }
@@ -125,7 +128,7 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
                             .setJava8DefaultSettings(Java8DefaultProcessorSettings.newBuilder()
                                                        .setNoLanguageLevelAction(
                                                          Java8DefaultProcessorSettings.NoLanguageLevelAction.INSERT_OLD_DEFAULT)))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2).setFiles(2))
         .build(),
 
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.1.2").setNewAgpVersion("4.2.0")
@@ -133,7 +136,7 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
                             .setJava8DefaultSettings(Java8DefaultProcessorSettings.newBuilder()
                                                        .setNoLanguageLevelAction(
                                                          Java8DefaultProcessorSettings.NoLanguageLevelAction.INSERT_OLD_DEFAULT)))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2).setFiles(2))
         .build()
     )
   }
@@ -151,7 +154,7 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
                             .setJava8DefaultSettings(Java8DefaultProcessorSettings.newBuilder()
                                                        .setNoLanguageLevelAction(
                                                          Java8DefaultProcessorSettings.NoLanguageLevelAction.ACCEPT_NEW_DEFAULT)))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2).setFiles(2))
         .build(),
 
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.1.2").setNewAgpVersion("4.2.0")
@@ -159,7 +162,7 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
                             .setJava8DefaultSettings(Java8DefaultProcessorSettings.newBuilder()
                                                        .setNoLanguageLevelAction(
                                                          Java8DefaultProcessorSettings.NoLanguageLevelAction.ACCEPT_NEW_DEFAULT)))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2).setFiles(2))
         .build()
     )
   }
@@ -173,11 +176,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(COMPILE_RUNTIME_CONFIGURATION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(6))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(6).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("3.5.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(COMPILE_RUNTIME_CONFIGURATION).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(6))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(6).setFiles(2))
         .build(),
     )
   }
@@ -191,11 +194,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.0.0").setNewAgpVersion("4.2.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(FABRIC_CRASHLYTICS).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(5))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(5).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.0.0").setNewAgpVersion("4.2.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(FABRIC_CRASHLYTICS).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(5))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(5).setFiles(2))
         .build(),
     )
   }
@@ -209,11 +212,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_SOURCE_SET_JNI).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(1).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_SOURCE_SET_JNI).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(1).setFiles(2))
         .build(),
     )
   }
@@ -228,11 +231,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_ANDROID_RESOURCES).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(6))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(6).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_ANDROID_RESOURCES).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(6))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(6).setFiles(2))
         .build(),
     )
   }
@@ -247,11 +250,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.2.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_BUILD_TYPE_USE_PROGUARD).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.2.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_BUILD_TYPE_USE_PROGUARD).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2).setFiles(2))
         .build(),
     )
   }
@@ -265,11 +268,11 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.2.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_IMPLEMENTATION_PROPERTIES).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(4))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(4).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("4.2.0").setNewAgpVersion("7.0.0")
         .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(REMOVE_IMPLEMENTATION_PROPERTIES).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(4))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(4).setFiles(2))
         .build(),
     )
   }
@@ -283,12 +286,12 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
 
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(3))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_INSTALLATION).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(3).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(3))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_INSTALLATION).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(3).setFiles(2))
         .build(),
     )
   }
@@ -302,12 +305,12 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
 
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(3))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_EMULATOR_SNAPSHOTS).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(3).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(3))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_EMULATOR_SNAPSHOTS).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(3).setFiles(2))
         .build(),
     )
   }
@@ -321,12 +324,12 @@ class ComponentTrackerTest : UpgradeGradleFileModelTestCase() {
 
     checkComponentEvents(
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_TEST_COVERAGE).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(FIND_USAGES).setUsages(2).setFiles(2))
         .build(),
       UpgradeAssistantComponentEvent.newBuilder().setUpgradeUuid(processor.uuid).setCurrentAgpVersion("7.0.0").setNewAgpVersion("8.0.0")
-        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(UNKNOWN_ASSISTANT_COMPONENT_KIND).setIsEnabled(true))
-        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2))
+        .setComponentInfo(UpgradeAssistantComponentInfo.newBuilder().setKind(MIGRATE_TO_TEST_COVERAGE).setIsEnabled(true))
+        .setEventInfo(UpgradeAssistantEventInfo.newBuilder().setKind(EXECUTE).setUsages(2).setFiles(2))
         .build(),
     )
   }

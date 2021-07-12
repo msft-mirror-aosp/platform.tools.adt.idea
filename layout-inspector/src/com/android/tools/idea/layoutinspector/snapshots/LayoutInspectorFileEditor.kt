@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.layoutinspector.snapshots
 
+import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.editors.layoutInspector.LayoutInspectorFileType
 import com.android.tools.idea.flags.StudioFlags
@@ -32,6 +33,7 @@ import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
 import com.android.tools.idea.layoutinspector.ui.DeviceViewSettings
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
+import com.android.tools.idea.npw.invokeLater
 import com.intellij.ide.DataManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
@@ -42,6 +44,7 @@ import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
@@ -99,6 +102,8 @@ class LayoutInspectorFileEditor(val project: Project, file: VirtualFile) : UserD
 
         override val capabilities: Set<InspectorClient.Capability>
           get() = if (model.pictureType == AndroidWindow.ImageType.SKP) setOf(InspectorClient.Capability.SUPPORTS_SKP) else setOf()
+
+        override val process = snapshotLoader.processDescriptor
       }
       val layoutInspector = LayoutInspector(client, model, stats, treeSettings)
       val deviceViewPanel = DeviceViewPanel(null, layoutInspector, viewSettings, workbench)
@@ -107,6 +112,14 @@ class LayoutInspectorFileEditor(val project: Project, file: VirtualFile) : UserD
         LayoutInspectorTreePanelDefinition(), LayoutInspectorPropertiesPanelDefinition()), false)
 
       model.updateConnection(client)
+      // Since the model was updated before the panel was created, we need to zoom to fit explicitly.
+      // If startup is in progress we have to wait until after so tools windows are opened and the window is its final size.
+      // TODO: save zoom in editor state
+      StartupManager.getInstance(project).runAfterOpened {
+        invokeLater {
+          deviceViewPanel.zoom(ZoomType.FIT)
+        }
+      }
     }
     catch (exception: Exception) {
       // TODO: better error panel

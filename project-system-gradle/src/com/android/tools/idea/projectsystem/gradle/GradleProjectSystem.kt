@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.run.PostBuildModelProvider
 import com.android.tools.idea.gradle.util.OutputType
 import com.android.tools.idea.gradle.util.getOutputFilesFromListingFile
+import com.android.tools.idea.gradle.util.getOutputListingFile
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.model.AndroidManifestIndex
 import com.android.tools.idea.model.logManifestIndexQueryError
@@ -48,7 +49,6 @@ import com.android.tools.idea.run.GradleApkProvider
 import com.android.tools.idea.run.GradleApplicationIdProvider
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.util.androidFacet
-import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.module.Module
@@ -95,7 +95,14 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
       .flatMap { androidModel ->
         @Suppress("DEPRECATION")
         if (androidModel.features.isBuildOutputFileSupported) {
-          androidModel.selectedVariant.mainArtifact.buildInformation.getOutputFilesFromListingFile(OutputType.Apk).asSequence()
+          androidModel
+            .selectedVariant
+            .mainArtifact
+            .buildInformation
+            .getOutputListingFile(OutputType.Apk)
+            ?.let { getOutputFilesFromListingFile(it) }
+            ?.asSequence()
+            .orEmpty()
         }
         else {
           androidModel.selectedVariant.mainArtifact.outputs.asSequence().map { it.outputFile }
@@ -111,25 +118,30 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
   }
 
   override fun getApplicationIdProvider(runConfiguration: RunConfiguration): GradleApplicationIdProvider? {
-    val androidFacet = (runConfiguration as? ModuleBasedConfiguration<*, *>)?.configurationModule?.module?.androidFacet ?: return null
+    if (runConfiguration !is AndroidRunConfigurationBase) return null
+    val androidFacet = runConfiguration.configurationModule?.module?.androidFacet ?: return null
+    val androidModel = AndroidModuleModel.get(androidFacet) ?: return null
+    val isTestConfiguration = runConfiguration.isTestConfiguration
+
     return GradleApplicationIdProvider(
       androidFacet,
+      isTestConfiguration,
+      androidModel,
+      androidModel.selectedVariant,
       PostBuildModelProvider { (runConfiguration as? UserDataHolder)?.getUserData(GradleApkProvider.POST_BUILD_MODEL) }
     )
   }
 
   override fun getApkProvider(runConfiguration: RunConfiguration): ApkProvider? {
-    val module = (runConfiguration as? ModuleBasedConfiguration<*, *>)?.configurationModule?.module ?: return null
     if (runConfiguration !is AndroidRunConfigurationBase) return null
-    val facet = AndroidFacet.getInstance(module)!!
-
+    val androidFacet = runConfiguration.configurationModule?.module?.androidFacet ?: return null
     val isTestConfiguration = runConfiguration.isTestConfiguration
     val alwaysDeployApkFromBundle = (runConfiguration as? AndroidRunConfiguration)?.let(::shouldDeployApkFromBundle) ?: false
 
     return GradleApkProvider(
-      facet,
+      androidFacet,
       getApplicationIdProvider(runConfiguration) ?: return null,
-      { runConfiguration.getUserData(GradleApkProvider.POST_BUILD_MODEL) },
+      PostBuildModelProvider { runConfiguration.getUserData(GradleApkProvider.POST_BUILD_MODEL) },
       isTestConfiguration,
       alwaysDeployApkFromBundle
     )
