@@ -22,9 +22,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.tools.idea.gradle.actions.GoToApkLocationTask.OpenFolderNotificationListener;
+import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
 import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.GradleMultiInvocationResult;
+import com.android.tools.idea.gradle.util.BuildMode;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.testing.IdeComponents;
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Futures;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.module.Module;
 import com.intellij.testFramework.PlatformTestCase;
@@ -68,7 +73,7 @@ public class GoToApkLocationTaskTest extends PlatformTestCase {
     modules.add(getModule());
     IdeComponents ideComponents = new IdeComponents(getProject());
     BuildsToPathsMapper mockGenerator = ideComponents.mockProjectService(BuildsToPathsMapper.class);
-    when(mockGenerator.getBuildsToPaths(any(), any(), any(), anyBoolean(), any())).thenReturn(modulesToPaths);
+    when(mockGenerator.getBuildsToPaths(any(), any(), any(), anyBoolean())).thenReturn(modulesToPaths);
     myTask = new GoToApkLocationTask(getProject(), modules, NOTIFICATION_TITLE) {
       @Override
       boolean isShowFilePathActionSupported() {
@@ -80,19 +85,19 @@ public class GoToApkLocationTaskTest extends PlatformTestCase {
 
   public void testExecuteWithCancelledBuild() {
     String message = "Build cancelled.";
-    GradleInvocationResult result = createBuildResult(new BuildCancelledException(message));
-    myTask.execute(result);
+    AssembleInvocationResult result = createBuildResult(new BuildCancelledException(message));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(result));
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, INFORMATION);
   }
 
   public void testExecuteWithFailedBuild() {
     String message = "Errors while building APK. You can find the errors in the 'Messages' view.";
-    myTask.execute(createBuildResult(new Throwable("Unknown error with gradle build")));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(new Throwable("Unknown error with gradle build"))));
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, NotificationType.ERROR);
   }
 
   public void testExecuteWithSuccessfulBuild() {
-    myTask.execute(createBuildResult(null /* build successful - no errors */));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(null /* build successful - no errors */)));
     String moduleName = getModule().getName();
     String message = getExpectedModuleNotificationMessage(moduleName, null);
     Map<String, File> apkPathsPerModule = Collections.singletonMap(moduleName, myApkPath);
@@ -102,7 +107,7 @@ public class GoToApkLocationTaskTest extends PlatformTestCase {
 
   public void testExecuteWithSuccessfulBuildNoShowFilePathAction() {
     isShowFilePathActionSupported = false;
-    myTask.execute(createBuildResult(null /* build successful - no errors */));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(null /* build successful - no errors */)));
     String message = getExpectedModuleNotificationMessageNoShowFilePathAction();
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, INFORMATION,
                                            new GoToApkLocationTask.OpenEventLogHyperlink());
@@ -115,7 +120,7 @@ public class GoToApkLocationTaskTest extends PlatformTestCase {
     // Simulate the path of the APK for the project's module.
     File featureApkPath = createTempDir("featureApkLocation");
     modulesToPaths.put(featureModule.getName(), featureApkPath);
-    myTask.execute(createBuildResult(null /* build successful - no errors */));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(null /* build successful - no errors */)));
     String moduleName = getModule().getName();
     String featureModuleName = featureModule.getName();
     Map<String, File> apkPathsPerModule = new HashMap<>();
@@ -156,7 +161,12 @@ public class GoToApkLocationTaskTest extends PlatformTestCase {
   }
 
   @NotNull
-  private GradleInvocationResult createBuildResult(@Nullable Throwable buildError) {
-    return new GradleInvocationResult(new File(getProject().getBasePath()), Collections.emptyList(), buildError);
+  private AssembleInvocationResult createBuildResult(@Nullable Throwable buildError) {
+    return new AssembleInvocationResult(
+      new GradleMultiInvocationResult(
+        ImmutableList.of(
+          new GradleInvocationResult(new File(getProject().getBasePath()), Collections.emptyList(), buildError)
+        )),
+      BuildMode.ASSEMBLE);
   }
 }

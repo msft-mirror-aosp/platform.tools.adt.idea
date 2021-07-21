@@ -15,16 +15,19 @@
  */
 package com.android.tools.idea.gradle.actions;
 
+import static com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvokerKt.whenFinished;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static com.intellij.notification.NotificationType.ERROR;
 import static com.intellij.notification.NotificationType.INFORMATION;
 
 import com.android.SdkConstants;
-import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
-import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildResult;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.ide.actions.RevealFileAction;
 import com.intellij.notification.EventLog;
 import com.intellij.notification.Notification;
@@ -54,7 +57,7 @@ import javax.swing.event.HyperlinkEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class GoToBundleLocationTask implements GradleBuildInvoker.AfterGradleInvocationTask {
+public class GoToBundleLocationTask {
   public static final String ANALYZE_URL_PREFIX = "analyze:";
   public static final String LOCATE_URL_PREFIX = "module:";
   public static final String LOCATE_KEY_URL_PREFIX = "key:";
@@ -63,43 +66,40 @@ public class GoToBundleLocationTask implements GradleBuildInvoker.AfterGradleInv
   @NotNull private final Collection<Module> myModules;
   @Nullable private final File myExportedKeyFile;
   @NotNull private final List<String> myBuildVariants;
-  @Nullable private final String mySignedBundlePath;
 
   public GoToBundleLocationTask(@NotNull Project project,
                                 @NotNull Collection<Module> modules,
                                 @NotNull String notificationTitle) {
-    this(project, modules, notificationTitle, Collections.emptyList(), null, null);
+    this(project, modules, notificationTitle, Collections.emptyList(), null);
   }
 
   public GoToBundleLocationTask(@NotNull Project project,
                                 @NotNull Collection<Module> modules,
                                 @NotNull String notificationTitle,
                                 @NotNull List<String> buildVariants,
-                                @Nullable File exportedKeyFile,
-                                @Nullable String signedBundlePath) {
+                                @Nullable File exportedKeyFile) {
     myProject = project;
     myNotificationTitle = notificationTitle;
     myModules = modules;
     myExportedKeyFile = exportedKeyFile;
     myBuildVariants = buildVariants;
-    mySignedBundlePath = signedBundlePath;
   }
 
-  @Override
-  public void execute(@NotNull GradleInvocationResult result) {
-    try {
-      BuildsToPathsMapper buildsToPathsMapper = BuildsToPathsMapper.getInstance(myProject);
-      Map<String, File> bundleBuildsToPath =
-        buildsToPathsMapper.getBuildsToPaths(result.getModel(), myBuildVariants, myModules, true, mySignedBundlePath);
-      showNotification(result, bundleBuildsToPath);
-    }
-    finally {
-      // See https://code.google.com/p/android/issues/detail?id=195369
-      GradleBuildInvoker.getInstance(myProject).remove(this);
-    }
+  public void executeWhenBuildFinished(@NotNull ListenableFuture<AssembleInvocationResult> resultFuture) {
+    whenFinished(
+      resultFuture,
+      directExecutor(),
+      result -> {
+        BuildsToPathsMapper buildsToPathsMapper =
+          BuildsToPathsMapper.getInstance(myProject);
+        Map<String, File> bundleBuildsToPath =
+          buildsToPathsMapper.getBuildsToPaths(result, myBuildVariants, myModules, true);
+        showNotification(result, bundleBuildsToPath);
+        return null;
+      });
   }
 
-  private void showNotification(@NotNull GradleInvocationResult result,
+  private void showNotification(@NotNull GradleBuildResult result,
                                 @NotNull Map<String, File> buildsAndBundlePaths) {
     AndroidNotification notification = AndroidNotification.getInstance(myProject);
     if (result.isBuildSuccessful()) {

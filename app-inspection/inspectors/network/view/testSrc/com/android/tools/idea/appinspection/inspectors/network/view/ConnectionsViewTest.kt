@@ -17,9 +17,11 @@ package com.android.tools.idea.appinspection.inspectors.network.view
 
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.adtui.model.Range
+import com.android.tools.adtui.model.updater.Updater
 import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.appinspection.inspectors.network.model.CodeNavigationProvider
 import com.android.tools.idea.appinspection.inspectors.network.model.FakeNetworkInspectorDataSource
+import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorClient
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorServices
 import com.android.tools.idea.appinspection.inspectors.network.model.analytics.StubNetworkInspectorTracker
@@ -32,9 +34,10 @@ import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.fa
 import com.android.tools.inspectors.common.api.stacktrace.CodeLocation
 import com.android.tools.inspectors.common.api.stacktrace.CodeNavigator
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -79,7 +82,16 @@ class ConnectionsViewTest {
         override fun handleNavigate(location: CodeLocation) = Unit
       }
     }
-    val services = NetworkInspectorServices(codeNavigationProvider, 0, timer, MoreExecutors.directExecutor())
+    val services = object : NetworkInspectorServices {
+      override val navigationProvider = codeNavigationProvider
+      override val updater = Updater(timer)
+      override val client: NetworkInspectorClient
+        get() = throw NotImplementedError()
+      override val scope: CoroutineScope
+        get() = throw NotImplementedError()
+      override val uiDispatcher: CoroutineDispatcher
+        get() = throw NotImplementedError()
+    }
     model = NetworkInspectorModel(services, FakeNetworkInspectorDataSource(), object : HttpDataModel {
       private val dataList = FAKE_DATA
       override fun getData(timeCurrentRangeUs: Range): List<HttpData> {
@@ -125,11 +137,15 @@ class ConnectionsViewTest {
   fun dataRangeControlsVisibleConnections() {
     val view = inspectorView.connectionsView
     val table = getConnectionsTable(view)
-    assertThat(table.rowCount).isEqualTo(0)
+    // With no selection, table should show all connections.
+    model.timeline.reset(0, TimeUnit.SECONDS.toNanos(50))
+    assertThat(table.rowCount).isEqualTo(4)
+    // When a range is selected, table should only show connections within.
     model.timeline.selectionRange.set(TimeUnit.SECONDS.toMicros(3).toDouble(), TimeUnit.SECONDS.toMicros(10).toDouble())
     assertThat(table.rowCount).isEqualTo(2)
-    model.timeline.selectionRange.set(0.0, 0.0)
-    assertThat(table.rowCount).isEqualTo(0)
+    // Once selection is cleared, table goes back to showing everything.
+    model.timeline.selectionRange.set(0.0, -1.0)
+    assertThat(table.rowCount).isEqualTo(4)
   }
 
   @Test

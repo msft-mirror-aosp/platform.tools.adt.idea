@@ -441,41 +441,8 @@ public class AndroidCompileUtil {
     return contentEntry;
   }
 
-  public static boolean doGenerate(AndroidFacet facet, final AndroidAutogeneratorMode mode) {
-    assert !ApplicationManager.getApplication().isDispatchThread();
-    final CompileContext[] contextWrapper = new CompileContext[1];
-    final Module module = facet.getModule();
-    final Project project = module.getProject();
-
-    ApplicationManager.getApplication().runReadAction(new Runnable() {
-      @Override
-      public void run() {
-        if (project.isDisposed()) return;
-        CompilerTask task = new CompilerTask(project, "Android auto-generation", true, false, true, true);
-        CompileScope scope = new ModuleCompileScope(module, false);
-        contextWrapper[0] = new CompileContextImpl(project, task, scope, false, false);
-      }
-    });
-    CompileContext context = contextWrapper[0];
-    if (context == null) {
-      return false;
-    }
-    generate(facet, mode, context, false);
-    return context.getMessages(CompilerMessageCategory.ERROR).length == 0;
-  }
-
   public static boolean isModuleAffected(CompileContext context, Module module) {
     return ArrayUtil.find(context.getCompileScope().getAffectedModules(), module) >= 0;
-  }
-
-  public static void generate(AndroidFacet facet,
-                              AndroidAutogeneratorMode mode,
-                              final CompileContext context,
-                              boolean force) {
-    if (context == null) {
-      return;
-    }
-    AndroidAutogenerator.run(mode, facet, context, force);
   }
 
   // must be invoked in a read action!
@@ -577,30 +544,6 @@ public class AndroidCompileUtil {
   public static boolean isFullBuild(@NotNull CompileScope scope) {
     final RunConfiguration c = CompileStepBeforeRun.getRunConfiguration(scope);
     return c == null || !AndroidBuildCommonUtils.isTestConfiguration(c.getType().getId());
-  }
-
-  public static boolean isReleaseBuild(@NotNull CompileContext context) {
-    final Boolean value = context.getCompileScope().getUserData(RELEASE_BUILD_KEY);
-    if (value != null && value.booleanValue()) {
-      return true;
-    }
-    final Project project = context.getProject();
-    final Set<Artifact> artifacts = ArtifactCompileScope.getArtifactsToBuild(project, context.getCompileScope(), false);
-
-    if (artifacts != null) {
-      for (Artifact artifact : artifacts) {
-        final ArtifactProperties<?> properties = artifact.getProperties(AndroidArtifactPropertiesProvider.getInstance());
-        if (properties instanceof AndroidApplicationArtifactProperties) {
-          final AndroidArtifactSigningMode signingMode = ((AndroidApplicationArtifactProperties)properties).getSigningMode();
-
-          if (signingMode != AndroidArtifactSigningMode.DEBUG &&
-              signingMode != AndroidArtifactSigningMode.DEBUG_WITH_CUSTOM_CERTIFICATE) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
   }
 
   public static void setReleaseBuild(@NotNull CompileScope compileScope) {

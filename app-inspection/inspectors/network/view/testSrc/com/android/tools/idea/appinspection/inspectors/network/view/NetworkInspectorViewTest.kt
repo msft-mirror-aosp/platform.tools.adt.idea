@@ -15,17 +15,17 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.view
 
-import com.android.tools.adtui.RangeSelectionComponent
 import com.android.tools.adtui.RangeTooltipComponent
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.chart.linechart.LineChart
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.adtui.model.Range
+import com.android.tools.adtui.model.updater.Updater
 import com.android.tools.adtui.stdui.TooltipLayeredPane
-import com.android.tools.adtui.swing.FakeKeyboard
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.appinspection.inspectors.network.model.CodeNavigationProvider
 import com.android.tools.idea.appinspection.inspectors.network.model.FakeNetworkInspectorDataSource
+import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorClient
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorServices
 import com.android.tools.idea.appinspection.inspectors.network.model.analytics.StubNetworkInspectorTracker
@@ -33,13 +33,14 @@ import com.android.tools.idea.appinspection.inspectors.network.view.constants.DE
 import com.android.tools.inspectors.common.api.stacktrace.CodeLocation
 import com.android.tools.inspectors.common.api.stacktrace.CodeNavigator
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.ui.ThreeComponentsSplitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -86,7 +87,16 @@ class NetworkInspectorViewTest {
         override fun handleNavigate(location: CodeLocation) = Unit
       }
     }
-    val services = NetworkInspectorServices(codeNavigationProvider, 0, timer, MoreExecutors.directExecutor())
+    val services = object : NetworkInspectorServices {
+      override val navigationProvider = codeNavigationProvider
+      override val updater = Updater(timer)
+      override val client: NetworkInspectorClient
+        get() = throw NotImplementedError()
+      override val scope: CoroutineScope
+        get() = throw NotImplementedError()
+      override val uiDispatcher: CoroutineDispatcher
+        get() = throw NotImplementedError()
+    }
     model = NetworkInspectorModel(services, FakeNetworkInspectorDataSource(
       speedEventList = listOf(
         createSpeedEvent(0, 0, 0),
@@ -125,27 +135,13 @@ class NetworkInspectorViewTest {
   }
 
   @Test
-  fun draggingSelectionOpensConnectionsViewAndPressingEscapeClosesIt() {
+  fun connectionsViewIsVisibleAtStart() {
     if (SystemInfoRt.isWindows) {
       return  // b/163140665
     }
-    val stageWalker = TreeWalker(inspectorView.component)
-    val lineChart = stageWalker.descendants().first { it is LineChart }
-    val rangeSelectionComponent = stageWalker.descendants().first { it is RangeSelectionComponent }
     val connectionsView = inspectorView.connectionsView
     val connectionsViewWalker = TreeWalker(connectionsView.component)
-    assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isFalse()
-    val start = fakeUi.getPosition(lineChart)
-    assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isFalse()
-    fakeUi.mouse.press(start.x, start.y)
-    assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isFalse()
-    fakeUi.mouse.dragDelta(10, 0)
-    assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isFalse()
-    fakeUi.mouse.release()
     assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isTrue()
-    fakeUi.keyboard.setFocus(rangeSelectionComponent)
-    fakeUi.keyboard.press(FakeKeyboard.Key.ESC)
-    assertThat(connectionsViewWalker.ancestors().all { it.isVisible }).isFalse()
   }
 
   @Test

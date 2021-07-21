@@ -50,6 +50,7 @@ import com.android.tools.idea.gradle.dsl.model.android.BuildTypeModelImpl
 import com.android.tools.idea.gradle.dsl.model.notifications.CircularApplication
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
 import com.google.common.collect.ImmutableMap
+import com.intellij.psi.filters.getters.looksLikeBuilder
 import com.intellij.testFramework.UsefulTestCase
 import junit.framework.TestCase
 import org.hamcrest.CoreMatchers.equalTo
@@ -947,6 +948,32 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     assertEquals(true, depModel2.getValue(BOOLEAN_TYPE))
     assertEquals(true, depModel2.getRawValue(BOOLEAN_TYPE))
     assertSize(0, depModel2.dependencies)
+  }
+
+  @Test
+  fun testInvalidInjection() {
+    writeToBuildFile(TestFile.INVALID_INJECTION)
+
+    val propertyModel = when {
+      isGroovy -> gradleBuildModel.ext().findProperty("prop3")
+      else -> gradleBuildModel.declaredProperties.find { it.name == "prop3" }!!
+    }
+    assertEquals(INTERPOLATED, propertyModel.valueType)
+    assertEquals(VARIABLE, propertyModel.propertyType)
+    assertEquals("${'$'}{prop2[\"key2\"]prop2[\"key1\"]}", propertyModel.getRawValue(STRING_TYPE))
+  }
+
+  @Test
+  fun testInvalidBlockName() {
+    writeToBuildFile(TestFile.INVALID_BLOCK_NAME)
+
+    val propertyModel = when {
+      isGroovy -> gradleBuildModel.ext().findProperty("prop")
+      else -> gradleBuildModel.declaredProperties.find { it.name == "prop" }!!
+    }
+
+    assertEquals(LIST, propertyModel.valueType)
+    assertSize(1, propertyModel.getValue(LIST_TYPE))
   }
 
   @Test
@@ -3377,6 +3404,22 @@ verifyPropertyModel(depModel, STRING_TYPE, "goodbye", STRING, DERIVED, 0)*/
     verifyFileContents(mySubModuleBuildFile, TestFile.WRITE_REFERENCE_TO_BUIDLSCRIPT_EXT_APP_EXPECTED)
   }
 
+  @Test
+  fun testReferenceToMapElement() {
+    writeToBuildFile(TestFile.REFERENCE_TO_MAP_ELEMENT)
+
+    val buildModel = gradleBuildModel
+    val versionsModel = buildModel.ext().findProperty("versions")
+    val agpModel = versionsModel.getMapValue("agp")
+
+    val versionModel = buildModel.dependencies().artifacts().get(0).version()
+    val reference = ReferenceTo(agpModel, versionModel)
+    assertEquals("versions.agp", reference.toString())
+    versionModel.setValue(ReferenceTo(agpModel, versionModel))
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, TestFile.REFERENCE_TO_MAP_ELEMENT_EXPECTED)
+  }
+
   private fun verifyDeleteAndResetProperty(buildModel : GradleBuildModel) {
     // Delete and reset the property
     run {
@@ -3848,6 +3891,8 @@ verifyPropertyModel(depModel, STRING_TYPE, "goodbye", STRING, DERIVED, 0)*/
     MULTIPLE_TYPE_DEPENDENCIES_WITH_FULLY_QUALIFIED_NAME("multipleTypeDependenciesWithFullyQualifiedName"),
     NESTED_LIST_PROPERTY_INJECTION("nestedListPropertyInjection"),
     NESTED_MAP_VARIABLE_INJECTION("nestedMapVariableInjection"),
+    INVALID_INJECTION("invalidInjection"),
+    INVALID_BLOCK_NAME("invalidBlockName"),
     LIST_DEPENDENCY("listDependency"),
     MAP_DEPENDENCY("mapDependency"),
     OUT_OF_SCOPE_MAP_AND_LIST_DEPENDENCIES("outOfScopeMapAndListDependencies"),
@@ -3995,6 +4040,8 @@ verifyPropertyModel(depModel, STRING_TYPE, "goodbye", STRING, DERIVED, 0)*/
     WRITE_REFERENCE_TO_BUIDLSCRIPT_EXT_APP_EXPECTED("writeReferenceToBuildscriptExtAppExpected"),
     REFERENCE_TO_MAP_IN_MAP("referenceToMapInMap"),
     REFERENCE_TO_MAP_IN_MAP_EXPECTED("referenceToMapInMapExpected"),
+    REFERENCE_TO_MAP_ELEMENT("referenceToMapElement"),
+    REFERENCE_TO_MAP_ELEMENT_EXPECTED("referenceToMapElementExpected")
     ;
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {

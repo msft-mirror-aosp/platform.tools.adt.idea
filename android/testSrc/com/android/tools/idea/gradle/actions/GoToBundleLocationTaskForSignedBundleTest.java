@@ -18,14 +18,18 @@ package com.android.tools.idea.gradle.actions;
 import static com.intellij.notification.NotificationType.INFORMATION;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.tools.idea.gradle.actions.GoToBundleLocationTask.OpenFolderNotificationListener;
+import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
 import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.GradleMultiInvocationResult;
+import com.android.tools.idea.gradle.util.BuildMode;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.testing.IdeComponents;
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Futures;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.module.Module;
 import com.intellij.testFramework.PlatformTestCase;
@@ -70,8 +74,8 @@ public class GoToBundleLocationTaskForSignedBundleTest extends PlatformTestCase 
     buildsToPaths.put(buildVariant2, myBundleFilePath2);
     IdeComponents ideComponents = new IdeComponents(getProject());
     BuildsToPathsMapper mockGenerator = ideComponents.mockProjectService(BuildsToPathsMapper.class);
-    when(mockGenerator.getBuildsToPaths(any(), any(), any(), anyBoolean(), anyString())).thenReturn(buildsToPaths);
-    myTask = new GoToBundleLocationTask(getProject(), modules, NOTIFICATION_TITLE, buildVariants, null, "") {
+    when(mockGenerator.getBuildsToPaths(any(), any(), any(), anyBoolean())).thenReturn(buildsToPaths);
+    myTask = new GoToBundleLocationTask(getProject(), modules, NOTIFICATION_TITLE, buildVariants, null) {
       @Override
       boolean isShowFilePathActionSupported() {
         return isShowFilePathActionSupported;  // Inject ability to simulate both behaviors.
@@ -82,19 +86,19 @@ public class GoToBundleLocationTaskForSignedBundleTest extends PlatformTestCase 
 
   public void testExecuteWithCancelledBuild() {
     String message = "Build cancelled.";
-    GradleInvocationResult result = createBuildResult(new BuildCancelledException(message));
-    myTask.execute(result);
+    AssembleInvocationResult result = createBuildResult(new BuildCancelledException(message));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(result));
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, INFORMATION);
   }
 
   public void testExecuteWithFailedBuild() {
     String message = "Errors while building Bundle file. You can find the errors in the 'Messages' view.";
-    myTask.execute(createBuildResult(new Throwable("Unknown error with gradle build")));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(new Throwable("Unknown error with gradle build"))));
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, NotificationType.ERROR);
   }
 
   public void testExecuteWithSuccessfulBuild() {
-    myTask.execute(createBuildResult(null /* build successful - no errors */));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(null /* build successful - no errors */)));
     String moduleName = getModule().getName();
     String message = getExpectedModuleNotificationMessage(moduleName, buildVariant1, buildVariant2);
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, INFORMATION,
@@ -103,7 +107,7 @@ public class GoToBundleLocationTaskForSignedBundleTest extends PlatformTestCase 
 
   public void testExecuteWithSuccessfulBuildNoShowFilePathAction() {
     isShowFilePathActionSupported = false;
-    myTask.execute(createBuildResult(null /* build successful - no errors */));
+    myTask.executeWhenBuildFinished(Futures.immediateFuture(createBuildResult(null /* build successful - no errors */)));
     String message = getExpectedModuleNotificationMessageNoShowFilePathAction(getModule().getName());
     verify(myMockNotification).showBalloon(NOTIFICATION_TITLE, message, INFORMATION,
                                            new GoToBundleLocationTask.OpenEventLogHyperlink());
@@ -141,7 +145,12 @@ public class GoToBundleLocationTaskForSignedBundleTest extends PlatformTestCase 
   }
 
   @NotNull
-  private GradleInvocationResult createBuildResult(@Nullable Throwable buildError) {
-    return new GradleInvocationResult(new File(getProject().getBasePath()), Collections.emptyList(), buildError);
+  private AssembleInvocationResult createBuildResult(@Nullable Throwable buildError) {
+    return new AssembleInvocationResult(
+      new GradleMultiInvocationResult(
+        ImmutableList.of(
+          new GradleInvocationResult(new File(getProject().getBasePath()), Collections.emptyList(), buildError)
+        )),
+      BuildMode.BUNDLE);
   }
 }

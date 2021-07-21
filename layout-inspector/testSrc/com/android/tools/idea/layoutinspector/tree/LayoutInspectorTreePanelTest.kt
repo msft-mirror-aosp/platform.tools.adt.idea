@@ -25,6 +25,7 @@ import com.android.resources.ResourceType
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.laf.HeadlessTreeUI
 import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.adtui.workbench.ToolWindowCallback
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
@@ -60,6 +61,7 @@ import com.android.tools.idea.layoutinspector.window
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
+import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -225,6 +227,37 @@ class LayoutInspectorTreePanelTest {
 
     assertThat(descriptor.file.name).isEqualTo("demo.xml")
     assertThat(CheckUtil.findLineAtOffset(descriptor.file, descriptor.offset)).isEqualTo("<TextView")
+  }
+
+  @Test
+  fun testGotoDeclarationByDoubleClick() {
+    val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val inspector = inspectorRule.inspector
+    setToolContext(panel, inspector)
+
+    val fileManager = FileEditorManager.getInstance(inspectorRule.project)
+    val file = ArgumentCaptor.forClass(OpenFileDescriptor::class.java)
+    `when`(fileManager.openEditor(ArgumentMatchers.any(OpenFileDescriptor::class.java), ArgumentMatchers.anyBoolean()))
+      .thenReturn(listOf(Mockito.mock(FileEditor::class.java)))
+
+    val tree = panel.tree!!
+    tree.setUI(HeadlessTreeUI())
+    tree.setBounds(0, 0, 500, 1000)
+    val ui = FakeUi(tree)
+    UIUtil.dispatchAllInvocationEvents()
+    TreeUtil.expandAll(tree)
+    val bounds = tree.getRowBounds(1)
+    ui.mouse.doubleClick(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+
+    verify(fileManager).openEditor(file.capture(), ArgumentMatchers.eq(true))
+    val descriptor = file.value
+
+    assertThat(descriptor.file.name).isEqualTo("demo.xml")
+    assertThat(CheckUtil.findLineAtOffset(descriptor.file, descriptor.offset)).isEqualTo("<TextView")
+
+    val data = DynamicLayoutInspectorSession.newBuilder()
+    inspector.stats.save(data)
+    assertThat(data.gotoDeclaration.doubleClicks).isEqualTo(1)
   }
 
   @Test

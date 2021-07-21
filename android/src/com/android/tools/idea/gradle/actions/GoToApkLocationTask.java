@@ -15,16 +15,19 @@
  */
 package com.android.tools.idea.gradle.actions;
 
+import static com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvokerKt.whenFinished;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static com.intellij.notification.NotificationType.ERROR;
 import static com.intellij.notification.NotificationType.INFORMATION;
 
 import com.android.tools.idea.apk.viewer.ApkFileSystem;
-import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
-import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildResult;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.ide.actions.RevealFileAction;
 import com.intellij.notification.EventLog;
 import com.intellij.notification.Notification;
@@ -50,48 +53,44 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.event.HyperlinkEvent;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-public class GoToApkLocationTask implements GradleBuildInvoker.AfterGradleInvocationTask {
+public class GoToApkLocationTask {
   public static final String ANALYZE = "analyze:";
   public static final String MODULE = "module:";
   @NotNull private final Project myProject;
   @NotNull private final Collection<Module> myModules;
   @NotNull private final String myNotificationTitle;
   @NotNull private final List<String> myBuildVariants;
-  @Nullable private final String mySignedApkPath;
 
   public GoToApkLocationTask(@NotNull Project project, @NotNull Collection<Module> modules, @NotNull String notificationTitle) {
-    this(project, modules, notificationTitle, Collections.emptyList(), null);
+    this(project, modules, notificationTitle, Collections.emptyList());
   }
 
   public GoToApkLocationTask(@NotNull Project project,
-                      @NotNull Collection<Module> modules,
-                      @NotNull String notificationTitle,
-                      @NotNull List<String> buildVariants,
-                      @Nullable String signedApkPath) {
+                             @NotNull Collection<Module> modules,
+                             @NotNull String notificationTitle,
+                             @NotNull List<String> buildVariants) {
     myProject = project;
     myModules = modules;
     myNotificationTitle = notificationTitle;
     myBuildVariants = buildVariants;
-    mySignedApkPath = signedApkPath;
   }
 
-  @Override
-  public void execute(@NotNull GradleInvocationResult result) {
-    try {
-      BuildsToPathsMapper buildsToPathsMapper = BuildsToPathsMapper.getInstance(myProject);
-      Map<String, File> apkBuildsToPaths =
-        buildsToPathsMapper.getBuildsToPaths(result.getModel(), myBuildVariants, myModules, false, mySignedApkPath);
-      showNotification(result, apkBuildsToPaths);
-    }
-    finally {
-      // See https://code.google.com/p/android/issues/detail?id=195369
-      GradleBuildInvoker.getInstance(myProject).remove(this);
-    }
+  public void executeWhenBuildFinished(@NotNull ListenableFuture<AssembleInvocationResult> resultFuture) {
+    whenFinished(
+      resultFuture,
+      directExecutor(),
+      result -> {
+        BuildsToPathsMapper buildsToPathsMapper =
+          BuildsToPathsMapper.getInstance(myProject);
+        Map<String, File> apkBuildsToPaths =
+          buildsToPathsMapper.getBuildsToPaths(result, myBuildVariants, myModules, false);
+        showNotification(result, apkBuildsToPaths);
+        return null;
+      });
   }
 
-  private void showNotification(@NotNull GradleInvocationResult result,
+  private void showNotification(@NotNull GradleBuildResult result,
                                 @NotNull Map<String, File> apkBuildsToPaths) {
     AndroidNotification notification = AndroidNotification.getInstance(myProject);
     boolean isSigned = !myBuildVariants.isEmpty();

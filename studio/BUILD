@@ -126,6 +126,7 @@ studio_plugin(
             "//tools/adt/idea/android-lang:intellij.android.lang",
             "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
             "//tools/adt/idea/layout-ui:intellij.android.layout-ui",
+            "//tools/adt/idea/logcat:intellij.android.logcat",
             "//tools/adt/idea/mlkit:intellij.android.mlkit",
             "//tools/adt/idea/nav/safeargs:intellij.android.nav.safeargs",
             "//tools/adt/idea/android-npw:intellij.android.newProjectWizard",
@@ -525,9 +526,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Bumblebee | {0}.{1}.{2} Canary {3}",
-    version_micro = 1,
-    version_patch = 4,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 

@@ -119,7 +119,7 @@ public class VisualizationForm
   /**
    * custom horizontal gap between different previews for {@link TabletModelsProvider}.
    */
-  @SwingCoordinate private static final int TABLET_HORIZONTAL_SCREEN_DELTA = 40;
+  @SwingCoordinate private static final int TABLET_HORIZONTAL_SCREEN_DELTA = 50;
 
   /**
    * vertical gap between different previews
@@ -653,6 +653,11 @@ public class VisualizationForm
 
             // Remove self. This will not cause ConcurrentModificationException.
             // Callback iteration creates copy of a list. (see {@link ListenerCollection.kt#foreach})
+            layoutlibSceneManager.removeRenderListener(this);
+          }
+
+          @Override
+          public void onRenderFailed(@NotNull Throwable e) {
             layoutlibSceneManager.removeRenderListener(this);
           }
         };
