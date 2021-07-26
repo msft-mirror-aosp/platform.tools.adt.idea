@@ -15,21 +15,30 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
+import com.android.ddmlib.IDevice
 import com.android.sdklib.devices.Abi
 import com.android.testutils.TestUtils
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
+import com.android.tools.idea.gradle.project.build.invoker.TestCompileType
 import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.AgpVersion.AGP_35
 import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.AgpVersion.AGP_40
 import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.AgpVersion.CURRENT
-import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.TargetRunConfiguration.NamedAppTargetRunConfiguration
-import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.TargetRunConfiguration.TestTargetRunConfiguration
+import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.TestConfiguration.ManuallyAssembled
+import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.TestConfiguration.NamedAppTargetRunConfiguration
+import com.android.tools.idea.gradle.project.sync.ApkProviderIntegrationTestCase.TestConfiguration.TestTargetRunConfiguration
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths
 import com.android.tools.idea.projectsystem.getProjectSystem
+import com.android.tools.idea.projectsystem.gradle.getBuiltApksForSelectedVariant
 import com.android.tools.idea.run.AndroidRunConfiguration
+import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.ApkInfo
+import com.android.tools.idea.run.ApkProvider
+import com.android.tools.idea.run.ValidationError
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromClass
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.GradleIntegrationTest
 import com.android.tools.idea.testing.TestProjectPaths
+import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.switchVariant
@@ -38,6 +47,7 @@ import com.intellij.execution.RunManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.getExternalProjectId
 import com.intellij.openapi.util.io.FileUtil
 import org.hamcrest.Matchers.nullValue
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.Contract
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.junit.Assume.assumeThat
@@ -47,6 +57,7 @@ import org.junit.rules.TestName
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
 
@@ -70,7 +81,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         TestDefinition(
           name = "COMPOSITE_BUILD :app run configuration",
           testProject = TestProjectPaths.COMPOSITE_BUILD,
-          targetRunConfiguration = NamedAppTargetRunConfiguration(externalSystemModuleId = ":app"),
+          testConfiguration = NamedAppTargetRunConfiguration(externalSystemModuleId = ":app"),
           expectApks = """
               ApplicationId: com.test.compositeapp
               File: project/app/build/outputs/apk/debug/app-debug.apk
@@ -82,7 +93,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         TestDefinition(
           name = "COMPOSITE_BUILD TestCompositeLib1:app run configuration",
           testProject = TestProjectPaths.COMPOSITE_BUILD,
-          targetRunConfiguration = NamedAppTargetRunConfiguration(externalSystemModuleId = "TestCompositeLib1:app"),
+          testConfiguration = NamedAppTargetRunConfiguration(externalSystemModuleId = "TestCompositeLib1:app"),
           expectApks = """
               ApplicationId: com.test.composite1
               File: project/TestCompositeLib1/app/build/outputs/apk/debug/app-debug.apk
@@ -151,9 +162,39 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
           )
         ),
         TestDefinition(
+          name = "APPLICATION_ID_SUFFIX assemble",
+          testProject = TestProjectPaths.APPLICATION_ID_SUFFIX,
+          testConfiguration = ManuallyAssembled(":app", forTests = false),
+          expectApks = """
+            ApplicationId: one.name.defaultConfig.debug
+            File: project/app/build/outputs/apk/debug/app-debug.apk
+            Files:
+              Application_ID_Suffix_Test_App.app -> project/app/build/outputs/apk/debug/app-debug.apk
+            RequiredInstallationOptions: []
+          """
+        ),
+        TestDefinition(
           name = "SIMPLE_APPLICATION test run configuration",
           testProject = TestProjectPaths.SIMPLE_APPLICATION,
-          targetRunConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
+          testConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
+          expectApks = """
+            ApplicationId: google.simpleapplication
+            File: project/app/build/outputs/apk/debug/app-debug.apk
+            Files:
+              project.app -> project/app/build/outputs/apk/debug/app-debug.apk
+            RequiredInstallationOptions: []
+
+            ApplicationId: google.simpleapplication.test
+            File: project/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            Files:
+               -> project/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            RequiredInstallationOptions: []
+          """
+        ),
+        TestDefinition(
+          name = "SIMPLE_APPLICATION assemble for tests",
+          testProject = TestProjectPaths.SIMPLE_APPLICATION,
+          testConfiguration = ManuallyAssembled(":app", forTests = true),
           expectApks = """
             ApplicationId: google.simpleapplication
             File: project/app/build/outputs/apk/debug/app-debug.apk
@@ -171,7 +212,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         TestDefinition(
           name = "TEST_ONLY_MODULE test run configuration",
           testProject = TestProjectPaths.TEST_ONLY_MODULE,
-          targetRunConfiguration = TestTargetRunConfiguration("com.example.android.app.ExampleTest"),
+          testConfiguration = TestTargetRunConfiguration("com.example.android.app.ExampleTest"),
           expectApks = """
             ApplicationId: com.example.android.app
             File: project/app/build/outputs/apk/debug/app-debug.apk
@@ -215,7 +256,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         TestDefinition(
           name = "DYNAMIC_APP test run configuration",
           testProject = TestProjectPaths.DYNAMIC_APP,
-          targetRunConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
+          testConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
           expectApks = mapOf(
             CURRENT to """
               ApplicationId: google.simpleapplication
@@ -254,7 +295,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
           name = "DYNAMIC_APP test run configuration pre L device",
           device = 19,
           testProject = TestProjectPaths.DYNAMIC_APP,
-          targetRunConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
+          testConfiguration = TestTargetRunConfiguration("google.simpleapplication.ApplicationTest"),
           expectApks = """
             ApplicationId: google.simpleapplication
             File: project/app/build/intermediates/extracted_apks/debug/standalone-mdpi.apk
@@ -274,7 +315,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
           IGNORE = { if (agpVersion == CURRENT) TODO("b/189202602") },
           name = "DYNAMIC_APP feature test run configuration",
           testProject = TestProjectPaths.DYNAMIC_APP,
-          targetRunConfiguration = TestTargetRunConfiguration("com.example.instantapp.ExampleInstrumentedTest"),
+          testConfiguration = TestTargetRunConfiguration("com.example.instantapp.ExampleInstrumentedTest"),
           expectApks = mapOf(
             CURRENT to """
               ApplicationId: google.simpleapplication
@@ -335,7 +376,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         TestDefinition(
           name = "BUDDY_APKS test run configuration",
           testProject = TestProjectPaths.BUDDY_APKS,
-          targetRunConfiguration = TestTargetRunConfiguration("google.testapplication.ApplicationTest"),
+          testConfiguration = TestTargetRunConfiguration("google.testapplication.ApplicationTest"),
           expectApks = """
             ApplicationId: google.testapplication
             File: project/app/build/outputs/apk/debug/app-debug.apk
@@ -387,10 +428,11 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
   @get:Rule
   var testName = TestName()
 
-  sealed class TargetRunConfiguration {
-    open class NamedAppTargetRunConfiguration(val externalSystemModuleId: String?) : TargetRunConfiguration()
+  sealed class TestConfiguration {
+    open class NamedAppTargetRunConfiguration(val externalSystemModuleId: String?) : TestConfiguration()
     object AppTargetRunConfiguration : NamedAppTargetRunConfiguration(externalSystemModuleId = null)
-    class TestTargetRunConfiguration(val testClassFqn: String) : TargetRunConfiguration()
+    class TestTargetRunConfiguration(val testClassFqn: String) : TestConfiguration()
+    class ManuallyAssembled(val gradlePath: String, val forTests: Boolean = false) : TestConfiguration()
   }
 
   enum class AgpVersion(val forGradle: String?) {
@@ -411,7 +453,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
     val gradleVersion: String? = null,
     val kotlinVersion: String? = null,
     val executeMakeBeforeRun: Boolean = true,
-    val targetRunConfiguration: TargetRunConfiguration = TargetRunConfiguration.AppTargetRunConfiguration,
+    val testConfiguration: TestConfiguration = TestConfiguration.AppTargetRunConfiguration,
     val expectApks: Map<AgpVersion, String> = mapOf(),
     val expectValidate: Map<AgpVersion, String> = mapOf(),
   ) {
@@ -426,7 +468,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
       gradleVersion: String? = null,
       kotlinVersion: String? = null,
       executeMakeBeforeRun: Boolean = true,
-      targetRunConfiguration: TargetRunConfiguration = TargetRunConfiguration.AppTargetRunConfiguration,
+      testConfiguration: TestConfiguration = TestConfiguration.AppTargetRunConfiguration,
       expectApks: String,
       expectValidate: String? = null
     ) : this(
@@ -440,7 +482,7 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
       gradleVersion = gradleVersion,
       kotlinVersion = kotlinVersion,
       executeMakeBeforeRun = executeMakeBeforeRun,
-      targetRunConfiguration = targetRunConfiguration,
+      testConfiguration = testConfiguration,
       expectApks = mapOf(CURRENT to expectApks),
       expectValidate = expectValidate?.let { mapOf(CURRENT to expectValidate) } ?: emptyMap()
     )
@@ -471,30 +513,57 @@ abstract class ApkProviderIntegrationTestCase : GradleIntegrationTest {
         if (variant != null) {
           switchVariant(project, variant.first, variant.second)
         }
-        val runConfiguration = runReadAction {
-          when (targetRunConfiguration) {
+        val device = mockDeviceFor(device, listOf(Abi.X86, Abi.X86_64), density = 160)
+
+        fun getApkProviderFromRunConfiguration(runConfiguration: AndroidRunConfigurationBase): ApkProvider {
+          if (executeMakeBeforeRun) {
+            runConfiguration.executeMakeBeforeRunStepInTest(device)
+          }
+          return project.getProjectSystem().getApkProvider(runConfiguration)!!
+        }
+
+        fun getApkProviderByRunningGradleAssembleTask(
+          gradlePath: String,
+          forTests: Boolean
+        ): ApkProvider {
+          val module = project.gradleModule(gradlePath)!!
+          val androidFacet = AndroidFacet.getInstance(module)!!
+          val assembleResult = GradleBuildInvoker.getInstance(project)
+            .assemble(arrayOf(module), if (forTests) TestCompileType.ANDROID_TESTS else TestCompileType.NONE)
+            .get(3, TimeUnit.MINUTES)
+          return object : ApkProvider {
+            override fun validate(): List<ValidationError> = emptyList()
+            override fun getApks(ignored: IDevice): Collection<ApkInfo> =
+              assembleResult.getBuiltApksForSelectedVariant(androidFacet, forTests).orEmpty()
+          }
+        }
+
+        val apkProviderGetter: () -> ApkProvider = runReadAction {
+          when (testConfiguration) {
             is NamedAppTargetRunConfiguration ->
               RunManager
                 .getInstance(project)
                 .allConfigurationsList
                 .filterIsInstance<AndroidRunConfiguration>()
                 .single {
-                  targetRunConfiguration.externalSystemModuleId == null ||
-                  it.modules.any { module -> getExternalProjectId(module) == targetRunConfiguration.externalSystemModuleId }
+                  testConfiguration.externalSystemModuleId == null ||
+                  it.modules.any { module -> getExternalProjectId(module) == testConfiguration.externalSystemModuleId }
                 }
                 .also {
                   it.DEPLOY_APK_FROM_BUNDLE = viaBundle
-                }
+                }.let { { getApkProviderFromRunConfiguration(it) } }
             is TestTargetRunConfiguration ->
-              createAndroidTestConfigurationFromClass(project, targetRunConfiguration.testClassFqn)!!
+              createAndroidTestConfigurationFromClass(project, testConfiguration.testClassFqn)!!
+                .let { { getApkProviderFromRunConfiguration(it) } }
+            is ManuallyAssembled ->
+              if (viaBundle) error("viaBundle mode is not supported with ManuallyAssembled test configurations")
+              else
+                fun(): ApkProvider =
+                  getApkProviderByRunningGradleAssembleTask(testConfiguration.gradlePath, testConfiguration.forTests)
           }
         }
-        val device = mockDeviceFor(device, listOf(Abi.X86, Abi.X86_64), density = 160)
-        if (executeMakeBeforeRun) {
-          runConfiguration.executeMakeBeforeRunStepInTest(device)
-        }
-        val apkProvider = project.getProjectSystem().getApkProvider(runConfiguration)!!
 
+        val apkProvider = apkProviderGetter()
         assertThat(apkProvider.validate().joinToString { it.message }).isEqualTo(expectValidate.forVersion())
 
         val apks = runCatching { apkProvider.getApks(device) }

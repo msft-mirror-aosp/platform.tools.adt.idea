@@ -615,11 +615,9 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : basic-bar-debug
             InstantAppCompatible          : false
-            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
             MaxSdkVersion                 : 26
             TestApplicationId             : com.example.psd.sample.app.default.test
-            DeprecatedPreMergedApplicationId        : com.example.psd.sample.app.defaultSuffix.barSuffix
             ProductFlavors                : basic
             ProductFlavors                : bar
             MainArtifact
@@ -1244,7 +1242,6 @@ MODULE                        : project.app
                             Artifact                      : <DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/1.0/lib4-1.0.jar
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :lib
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -1963,13 +1960,12 @@ MODULE                        : project.app
                             Artifact                      : <M2>/com/android/support/constraint/constraint-layout-solver/<VERSION>/constraint-layout-solver-<VERSION>.jar
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
-                            ProjectPath                   : :lib
-                            Variant                       : debug
-                            BuildId                       : <ROOT>
-                        ModuleDependency
                             ProjectPath                   : :app
                             Variant                       : basicBarDebug
+                            BuildId                       : <ROOT>
+                        ModuleDependency
+                            ProjectPath                   : :lib
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -2574,13 +2570,12 @@ MODULE                        : project.app
                             Artifact                      : <M2>/com/android/support/constraint/constraint-layout-solver/<VERSION>/constraint-layout-solver-<VERSION>.jar
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
-                            ProjectPath                   : :lib
-                            Variant                       : debug
-                            BuildId                       : <ROOT>
-                        ModuleDependency
                             ProjectPath                   : :app
                             Variant                       : basicBarDebug
+                            BuildId                       : <ROOT>
+                        ModuleDependency
+                            ProjectPath                   : :lib
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
 MODULE                        : project.dyn_feature
@@ -2806,7 +2801,6 @@ MODULE                        : project.dyn_feature
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.dyn_feature
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -3101,9 +3095,7 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
-            DeprecatedPreMergedApplicationId        : com.example.projectwithappandlib.lib
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -4166,12 +4158,11 @@ MODULE                        : project.lib
                             Artifact                      : <M2>/com/android/support/support-annotations/<VERSION>/support-annotations-<VERSION>.jar
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
-                            ProjectPath                   : :lib
-                            Variant                       : debug
+                            ProjectPath                   : :jav
                             BuildId                       : <ROOT>
                         ModuleDependency
-                            ProjectPath                   : :jav
+                            ProjectPath                   : :lib
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -4708,12 +4699,11 @@ MODULE                        : project.lib
                             Artifact                      : <M2>/com/android/support/support-annotations/<VERSION>/support-annotations-<VERSION>.jar
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
-                            ProjectPath                   : :lib
-                            Variant                       : debug
+                            ProjectPath                   : :jav
                             BuildId                       : <ROOT>
                         ModuleDependency
-                            ProjectPath                   : :jav
+                            ProjectPath                   : :lib
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
 MODULE                        : project.nested1
@@ -4937,7 +4927,6 @@ MODULE                        : project.nested1
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.nested1
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -4972,7 +4961,6 @@ MODULE                        : project.nested1
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested1/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested1
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -4999,7 +4987,6 @@ MODULE                        : project.nested1
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested1/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested1
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -5228,7 +5215,6 @@ MODULE                        : project.nested1.deep
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.nested1.deep
             ResourceConfigurations        : en
             ResourceConfigurations        : fr
             MainArtifact
@@ -5265,7 +5251,6 @@ MODULE                        : project.nested1.deep
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested1/deep/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested1:deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -5292,7 +5277,6 @@ MODULE                        : project.nested1.deep
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested1/deep/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested1:deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -5624,7 +5608,6 @@ MODULE                        : project.nested2
             BuildType                     : debug
             DisplayName                   : basic-debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.nested2
             ProductFlavors                : basic
             MainArtifact
                 Name                          : MAIN
@@ -5686,7 +5669,6 @@ MODULE                        : project.nested2
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2
                             Variant                       : basicDebug
                             BuildId                       : <ROOT>
@@ -5726,7 +5708,6 @@ MODULE                        : project.nested2
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2
                             Variant                       : basicDebug
                             BuildId                       : <ROOT>
@@ -5952,7 +5933,6 @@ MODULE                        : project.nested2.deep
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.nested2.deep
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -5987,7 +5967,6 @@ MODULE                        : project.nested2.deep
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/deep/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2:deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -6014,7 +5993,6 @@ MODULE                        : project.nested2.deep
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/deep/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2:deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -6241,7 +6219,6 @@ MODULE                        : project.nested2.trans.deep2
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            DeprecatedPreMergedApplicationId        : com.example.nested2.trans.deep2
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -6276,7 +6253,6 @@ MODULE                        : project.nested2.trans.deep2
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/trans/deep2/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2:trans:deep2
                             Variant                       : debug
                             BuildId                       : <ROOT>
@@ -6303,7 +6279,6 @@ MODULE                        : project.nested2.trans.deep2
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
-                            LintJars                      : <ROOT>/nested2/trans/deep2/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :nested2:trans:deep2
                             Variant                       : debug
                             BuildId                       : <ROOT>

@@ -35,6 +35,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -52,6 +53,8 @@ import com.intellij.ui.CheckboxTreeHelper
 import com.intellij.ui.CheckboxTreeListener
 import com.intellij.ui.CheckedTreeNode
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.ScrollPaneFactory.createScrollPane
+import com.intellij.ui.SideBorder
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBLoadingPanel
@@ -61,6 +64,8 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.tree.TreeModelAdapter
 import com.intellij.util.ui.tree.TreeUtil
+import org.jetbrains.kotlin.idea.util.application.runReadAction
+import org.jetbrains.kotlin.idea.util.ifFalse
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -313,7 +318,10 @@ class ToolWindowModel(
     // TODO(xof/mlazeba): should we somehow preserve the existing uuid of the processor?
     val newProcessor = newVersion?.let {
       current?.let { current ->
-        if (newVersion >= current) AgpUpgradeRefactoringProcessor(project, current, it) else null
+        if (newVersion >= current && !project.isDisposed)
+          ServiceManager.getService(project, AssistantInvoker::class.java).createProcessor(project, current, it)
+        else
+          null
       }
     }
 
@@ -614,7 +622,7 @@ class ContentManager(val project: Project) {
       }
       add(topPanel, BorderLayout.NORTH)
       val treePanel = JBPanel<JBPanel<*>>(BorderLayout()).apply {
-        add(tree, BorderLayout.WEST)
+        add(createScrollPane(tree, SideBorder.NONE), BorderLayout.WEST)
         add(JSeparator(SwingConstants.VERTICAL), BorderLayout.CENTER)
       }
       add(treePanel, BorderLayout.WEST)

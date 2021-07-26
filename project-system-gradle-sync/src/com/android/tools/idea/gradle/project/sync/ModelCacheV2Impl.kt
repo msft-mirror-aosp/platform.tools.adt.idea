@@ -235,7 +235,8 @@ internal fun modelCacheV2Impl(): ModelCache {
 
   fun mergeProductFlavorsFrom(
     defaultConfig: IdeProductFlavor,
-    productFlavors: List<IdeProductFlavor>
+    productFlavors: List<IdeProductFlavor>,
+    projectType: IdeAndroidProjectType
   ): IdeProductFlavor {
 
     var applicationId = defaultConfig.applicationId
@@ -292,7 +293,12 @@ internal fun modelCacheV2Impl(): ModelCache {
       resourceConfigurations = ImmutableList.copyOf(resourceConfigurations),
       vectorDrawables = vectorDrawables,
       dimension = "",
-      applicationId = applicationId?.plus(if (applicationIdSuffix != null) ".${applicationIdSuffix}" else ""),
+      applicationId =
+      if (projectType == IdeAndroidProjectType.PROJECT_TYPE_TEST) {
+        testApplicationId
+      } else {
+        applicationId?.plus(if (applicationIdSuffix != null) ".${applicationIdSuffix}" else "")
+      },
       versionCode = versionCode,
       versionName = versionName,
       minSdkVersion = null,
@@ -648,8 +654,6 @@ internal fun modelCacheV2Impl(): ModelCache {
       multiFlavorSourceProvider = copyNewModel(artifact::multiFlavorSourceProvider, ::sourceProviderFrom),
       additionalClassesFolders = additionalClassesFoldersFrom(artifact.classesFolders),
       level2Dependencies = dependenciesFrom(artifactDependencies, libraryMap),
-      outputs = emptyList(),  // this is a deprecated property.
-
       applicationId = "",
       generatedResourceFolders = copy(artifact::generatedResourceFolders, ::deduplicateFile).distinct(),
       signingConfigName = artifact.signingConfigName,
@@ -720,7 +724,8 @@ internal fun modelCacheV2Impl(): ModelCache {
     // To get merged flavors for V2, we merge flavors from default config and all the flavors.
     val mergedFlavor = mergeProductFlavorsFrom(
       androidProject.defaultConfig.productFlavor,
-      androidProject.productFlavors.map { it.productFlavor }.filter { variant.productFlavors.contains(it.name) }.toList()
+      androidProject.productFlavors.map { it.productFlavor }.filter { variant.productFlavors.contains(it.name) }.toList(),
+      androidProject.projectType
     )
 
     val buildType = androidProject.buildTypes.find { it.buildType.name == variant.buildType }?.buildType
@@ -765,7 +770,7 @@ internal fun modelCacheV2Impl(): ModelCache {
       proguardFiles = merge({ proguardFiles }, { proguardFiles }, ::combineSets),
       consumerProguardFiles = merge({ consumerProguardFiles }, { consumerProguardFiles }, ::combineSets),
       manifestPlaceholders = merge({ manifestPlaceholders }, { manifestPlaceholders }, ::combineMaps),
-      deprecatedPreMergedApplicationId = mergedFlavor.applicationId ?: androidProject.namespace
+      deprecatedPreMergedApplicationId = null
     )
   }
 
@@ -1061,7 +1066,7 @@ internal fun modelCacheV2Impl(): ModelCache {
       androidProject: IdeAndroidProject,
       variant: com.android.builder.model.Variant,
       modelVersion: GradleVersion?,
-      androidModulesIds: List<ModuleId>
+      androidModuleId: ModuleId
     ): IdeVariantImpl = throw UnsupportedOperationException()
 
     override fun variantFrom(

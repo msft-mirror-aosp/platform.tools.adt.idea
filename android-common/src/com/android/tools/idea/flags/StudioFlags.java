@@ -193,6 +193,10 @@ public final class StudioFlags {
     NELE, "animated.selector.preview", "Show preview animations toolbar for animated selector",
     "Show an animations bar that allows playback of transitions in animated selector.",
     true);
+  public static final Flag<Boolean> NELE_ANIMATIONS_LIST_PREVIEW = Flag.create(
+    NELE, "animated.list.preview", "Show preview animations toolbar for animation list",
+    "Show an animations bar that allows playback of animation list files.",
+    true);
   public static final Flag<Boolean> NELE_MOTION_LAYOUT_ANIMATIONS = Flag.create(
     NELE, "animated.motion.layout", "Show preview animations toolbar for MotionLayout",
     "Show an animations bar that allows playback of MotionLayout animations.",
@@ -382,6 +386,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_VISUAL_LINT = Flag.create(
     NELE, "visual.lint", "Enable visual linting for layouts",
     "Enable all the various tools related to visual linting of layouts.",
+    false);
+
+  public static final Flag<Boolean> NELE_VISUAL_LINT_TOGGLE_ISSUE_LAYOUTS = Flag.create(
+    NELE, "visual.lint.toggle.issue.layouts", "Checkbox to show the the layouts with issue only.",
+    "Provide a checkbox in Layout Validation Tool to allow user only show the layouts with issue detected by visual lint.",
     false);
 
   public static final Flag<Boolean> NELE_WARN_NEW_THREADS = Flag.create(
@@ -621,12 +630,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> BUILD_ATTRIBUTION_ENABLED = Flag.create(
     GRADLE_IDE, "build.attribution", "Enable build attribution",
     "Enable build attribution.", true);
-  public static final Flag<Boolean> AGP_UPGRADE_ASSISTANT = Flag.create(
-    GRADLE_IDE, "agp.upgrade.assistant", "Enable AGP Upgrade Assistant",
-    "Enable the Upgrade Assistant for helping with AGP upgrades", true);
-  public static final Flag<Boolean> AGP_UPGRADE_ASSISTANT_TOOL_WINDOW = Flag.create(
-    GRADLE_IDE, "agp.upgrade.assistant.tool.window", "Enable the AGP Upgrade Assistant Tool Window",
-    "Enable Tool Window-oriented interaction with the AGP Upgrade Assistant", true);
   public static final Flag<Boolean> DISABLE_FORCED_UPGRADES = Flag.create(
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
     "This option is only respected when running Android Studio internally.", false);
@@ -1085,6 +1088,13 @@ public final class StudioFlags {
     "Enable live literals deploy",
     "If enabled, literals within Composable functions are instantly deployed to device",
     true
+  );
+
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT = Flag.create(
+    COMPOSE, "deploy.live.edit.deploy",
+    "Enable live edits deploy",
+    "If enabled, edits within Kotlin and Composable functions are instantly deployed to device",
+    false
   );
 
   public static final Flag<Integer> COMPOSE_LIVE_LITERALS_UPDATE_RATE = Flag.create(

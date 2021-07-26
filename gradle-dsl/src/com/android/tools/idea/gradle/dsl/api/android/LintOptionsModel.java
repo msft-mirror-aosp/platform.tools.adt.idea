@@ -16,10 +16,10 @@
 package com.android.tools.idea.gradle.dsl.api.android;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
-import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel;
+import com.android.tools.idea.gradle.dsl.api.util.GradleBlockModel;
 import org.jetbrains.annotations.NotNull;
 
-public interface LintOptionsModel extends GradleDslModel {
+public interface LintOptionsModel extends GradleBlockModel {
   @NotNull
   ResolvedPropertyModel abortOnError();
 
@@ -88,6 +88,12 @@ public interface LintOptionsModel extends GradleDslModel {
 
   @NotNull
   ResolvedPropertyModel quiet();
+
+  @NotNull
+  ResolvedPropertyModel sarifOutput();
+
+  @NotNull
+  ResolvedPropertyModel sarifReport();
 
   @NotNull
   ResolvedPropertyModel showAll();

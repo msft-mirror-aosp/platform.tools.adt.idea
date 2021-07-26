@@ -15,27 +15,24 @@
  */
 package com.android.tools.idea.gradle.project.upgrade;
 
-import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
-import static com.android.tools.idea.flags.StudioFlags.AGP_UPGRADE_ASSISTANT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.android.ide.common.repository.GradleVersion;
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo;
-import com.android.tools.idea.gradle.project.upgrade.AndroidPluginVersionUpdater.UpdateResult;
-import com.android.tools.idea.testing.IdeComponents;
+import com.intellij.mock.MockDumbService;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.testFramework.PlatformTestCase;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.testFramework.ServiceContainerUtil;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
 /**
  * Tests for {@link GradlePluginUpgrade#performRecommendedPluginUpgrade(Project)} and
@@ -46,34 +43,27 @@ public class RecommendedPluginVersionUpgradeIntegrationTest extends PlatformTest
   @Mock private RecommendedPluginVersionUpgradeDialog.Factory myUpgradeDialogFactory;
   @Mock private RecommendedPluginVersionUpgradeDialog myUpgradeDialog;
   @Mock private RecommendedUpgradeReminder myUpgradeReminder;
-  private AndroidPluginVersionUpdater myVersionUpdater;
+  private ContentManager myContentManager;
+  @Mock private AssistantInvoker myAssistantInvoker;
+  @Mock private AgpUpgradeRefactoringProcessor myProcessor;
+  @Mock private AgpClasspathDependencyRefactoringProcessor myAgpClasspathDependencyRefactoringProcessor;
 
   @Override
   protected void setUp() throws Exception {
     super.setUp();
-    AGP_UPGRADE_ASSISTANT.override(false);
-
     initMocks(this);
 
     Project project = getProject();
-    myVersionUpdater = spy(AndroidPluginVersionUpdater.getInstance(project));
-    new IdeComponents(project).replaceProjectService(AndroidPluginVersionUpdater.class, myVersionUpdater);
-
+    myContentManager = spy(new ContentManager(project));
+    ServiceContainerUtil.replaceService(project, ContentManager.class, myContentManager, project);
+    ServiceContainerUtil.replaceService(project, AssistantInvoker.class, myAssistantInvoker, project);
+    when(myAssistantInvoker.createProcessor(same(project), any(), any())).thenReturn(myProcessor);
+    // TODO(xof): this is a clear leak of implementation details.  Figure out how to remove it.
+    when(myProcessor.getClasspathRefactoringProcessor()).thenReturn(myAgpClasspathDependencyRefactoringProcessor);
+    ServiceContainerUtil.replaceService(project, DumbService.class, new MockDumbService(project), project);
     when(myUpgradeDialogFactory.create(same(project), any(), any())).thenReturn(myUpgradeDialog);
     when(myPluginInfo.getModule()).thenReturn(getModule());
-  }
-
-  @Override
-  protected void tearDown() throws Exception {
-    try {
-      AGP_UPGRADE_ASSISTANT.clearOverride();
-    }
-    catch (Throwable e) {
-      addSuppressedException(e);
-    }
-    finally {
-      super.tearDown();
-    }
+    when(myPluginInfo.getPluginVersion()).thenReturn(GradleVersion.parse("4.0.0"));
   }
 
   public void testCheckUpgradeWhenUpgradeReminderIsNotDue() {
@@ -111,7 +101,7 @@ public class RecommendedPluginVersionUpgradeIntegrationTest extends PlatformTest
     assertFalse(GradlePluginUpgrade.shouldRecommendPluginUpgrade(getProject(), current, recommended));
   }
 
-  public void testPerformUpgradeWhenUserDeclinesUpgrade() {
+  public void testDoNotInvokeUpgradeAssistantWhenUserDeclinesUpgrade() {
     simulateUpgradeReminderIsDue();
 
     // Simulate project's plugin version is lower than latest.
@@ -122,14 +112,16 @@ public class RecommendedPluginVersionUpgradeIntegrationTest extends PlatformTest
     when(myUpgradeDialog.showAndGet()).thenReturn(false);
     assertFalse(GradlePluginUpgrade.performRecommendedPluginUpgrade(getProject(), current, recommended, myUpgradeDialogFactory));
 
-    verifyPluginVersionWasNotUpdated();
+    verifyUpgradeAssistantWasNotInvoked();
   }
 
-  private void verifyPluginVersionWasNotUpdated() {
-    verify(myVersionUpdater, never()).updatePluginVersion(any(), any());
+  private void verifyUpgradeAssistantWasNotInvoked() {
+    verifyNoInteractions(myContentManager);
+    verifyNoInteractions(myAssistantInvoker);
+    verifyNoInteractions(myProcessor);
   }
 
-  public void testCheckAndPerformUpgradeWhenVersionUpdateFails() {
+  public void testInvokeUpgradeAssistantWhenUserAcceptsUpgrade() {
     simulateUpgradeReminderIsDue();
 
     GradleVersion current = GradleVersion.parse("2.2.0");
@@ -137,36 +129,20 @@ public class RecommendedPluginVersionUpgradeIntegrationTest extends PlatformTest
 
     // Simulate user accepted upgrade.
     when(myUpgradeDialog.showAndGet()).thenReturn(true);
-
-    // Simulate updating plugin version failed.
-    simulatePluginVersionUpdate(recommended, false /* update failed */);
-
-    assertFalse(GradlePluginUpgrade.performRecommendedPluginUpgrade(getProject(), current, recommended, myUpgradeDialogFactory));
+    when(myAssistantInvoker.showAndGetAgpUpgradeDialog(any(), same(false))).thenReturn(true);
+    try (MockedStatic<AndroidPluginInfo> androidPluginInfoMock = mockStatic(AndroidPluginInfo.class)) {
+      androidPluginInfoMock.when(() -> AndroidPluginInfo.find(myProject)).thenReturn(myPluginInfo);
+      assertFalse(GradlePluginUpgrade.performRecommendedPluginUpgrade(getProject(), current, recommended, myUpgradeDialogFactory));
+      verifyUpgradeAssistantWasInvoked();
+    }
   }
 
-  public void testCheckAndPerformUpgradeWhenVersionSucceeds() {
-    simulateUpgradeReminderIsDue();
-
-    GradleVersion current = GradleVersion.parse("2.2.0");
-    GradleVersion recommended = GradleVersion.parse("2.3.0");
-
-    // Simulate user accepted upgrade.
-    when(myUpgradeDialog.showAndGet()).thenReturn(true);
-
-    // Simulate updating plugin version succeeded.
-    simulatePluginVersionUpdate(recommended, true /* update successful */);
-
-    assertTrue(GradlePluginUpgrade.performRecommendedPluginUpgrade(getProject(), current, recommended, myUpgradeDialogFactory));
+  private void verifyUpgradeAssistantWasInvoked() {
+    verify(myContentManager).showContent();
+    verify(myAssistantInvoker).createProcessor(same(myProject), any(), any());
   }
 
   private void simulateUpgradeReminderIsDue() {
     when(myUpgradeReminder.shouldAsk()).thenReturn(true);
-  }
-
-  private void simulatePluginVersionUpdate(@NotNull GradleVersion pluginVersion, boolean success) {
-    UpdateResult result = mock(UpdateResult.class);
-    when(result.versionUpdateSuccess()).thenReturn(success);
-    GradleVersion gradleVersion = GradleVersion.parse(GRADLE_LATEST_VERSION);
-    doReturn(result).when(myVersionUpdater).updatePluginVersion(eq(pluginVersion), eq(gradleVersion), any());
   }
 }

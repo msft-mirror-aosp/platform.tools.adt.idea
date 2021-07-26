@@ -16,26 +16,21 @@
 @file:JvmName("GradlePluginUpgrade")
 package com.android.tools.idea.gradle.project.upgrade
 
-import com.android.SdkConstants.GRADLE_LATEST_VERSION
 import com.android.SdkConstants.GRADLE_PATH_SEPARATOR
 import com.android.annotations.concurrency.Slow
 import com.android.ide.common.repository.GradleVersion
-import com.android.tools.idea.flags.StudioFlags.AGP_UPGRADE_ASSISTANT
 import com.android.tools.idea.flags.StudioFlags.DISABLE_FORCED_UPGRADES
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo.ARTIFACT_ID
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo.GROUP_ID
 import com.android.tools.idea.gradle.plugin.LatestKnownPluginVersionProvider
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
-import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.hyperlink.SearchInBuildFilesHyperlink
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages
 import com.android.tools.idea.gradle.project.sync.setup.post.TimeBasedReminder
 import com.android.tools.idea.project.messages.MessageType.ERROR
 import com.android.tools.idea.project.messages.SyncMessage
 import com.google.common.annotations.VisibleForTesting
-import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_AGP_VERSION_UPDATED
-import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo.UpgradeAssistantEventKind.FAILURE_PREDICTED
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationDisplayType
@@ -46,6 +41,7 @@ import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState.NON_MODAL
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
@@ -55,10 +51,9 @@ import com.intellij.openapi.vcs.FileStatus
 import com.intellij.openapi.vcs.FileStatusManager
 import com.intellij.util.SystemProperties
 import org.jetbrains.android.util.AndroidBundle
-import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import java.util.concurrent.TimeUnit
 
-private val LOG = Logger.getInstance(if (AGP_UPGRADE_ASSISTANT.get()) "Upgrade Assistant" else "AndroidGradlePluginUpdates")
+private val LOG = Logger.getInstance("Upgrade Assistant")
 val AGP_UPGRADE_NOTIFICATION_GROUP = NotificationGroup("Android Gradle Upgrade Notification", NotificationDisplayType.STICKY_BALLOON, true)
 
 // **************************************************************************
@@ -119,16 +114,7 @@ fun recommendPluginUpgrade(project: Project) {
   if (existing.isEmpty()) {
     val listener = NotificationListener { notification, _ ->
       notification.expire()
-      if (AGP_UPGRADE_ASSISTANT.get()) {
-        ApplicationManager.getApplication().executeOnPooledThread { performRecommendedPluginUpgrade(project) }
-      }
-      else {
-        if (performRecommendedPluginUpgrade(project)) {
-          // Trigger a re-sync if the plugin upgrade was performed.
-          val request = GradleSyncInvoker.Request(TRIGGER_AGP_VERSION_UPDATED)
-          GradleSyncInvoker.getInstance().requestProjectSync(project, request)
-        }
-      }
+      ApplicationManager.getApplication().executeOnPooledThread { performRecommendedPluginUpgrade(project) }
     }
 
     val notification = ProjectUpgradeNotification(
@@ -170,20 +156,7 @@ fun performRecommendedPluginUpgrade(
 
   if (userAccepted) {
     // The user accepted the upgrade
-    if (AGP_UPGRADE_ASSISTANT.get()) {
-      showAndInvokeAgpUpgradeRefactoringProcessor(project, currentVersion, recommendedVersion)
-      // AgpUpgradeRefactoringProcessor is responsible for its own syncs
-      return false
-    }
-
-    val updater = AndroidPluginVersionUpdater.getInstance(project)
-
-    val latestGradleVersion = GradleVersion.parse(GRADLE_LATEST_VERSION)
-    val updateResult = updater.updatePluginVersion(recommendedVersion, latestGradleVersion, currentVersion)
-    if (updateResult.versionUpdateSuccess()) {
-      // plugin version updated; request sync.
-      return true
-    }
+    showAndInvokeAgpUpgradeRefactoringProcessor(project, currentVersion, recommendedVersion)
   }
 
   return false
@@ -204,41 +177,6 @@ internal fun isCleanEnoughProject(project: Project): Boolean {
     }
   }
   return true
-}
-
-/**
- * Show an appropriate dialog, and return whether the AGP upgrade should proceed by running the refactoring processor.  The
- * usual case is the return value from a dialog presenting information and options to the user, but we show a different
- * dialog if we detect that the upgrade will fail in some way.  If [preserveProcessorConfigurations] is false (the default), the
- * dialog is permitted to initialize the processors' state (whether they are enabled, and any configuration) appropriately; if it
- * is true, the processor is assumed to be already configured.
- */
-@Slow
-fun showAndGetAgpUpgradeDialog(processor: AgpUpgradeRefactoringProcessor, preserveProcessorConfigurations: Boolean = false): Boolean {
-  val java8Processor = processor.componentRefactoringProcessors.firstIsInstanceOrNull<Java8DefaultRefactoringProcessor>()
-  if (java8Processor == null) {
-    LOG.error("no Java8Default processor found in AGP Upgrade Processor")
-  }
-  // we will need parsed models to decide what to show in the dialog.  Ensure that they are available now, while we are (in theory)
-  // not on the EDT.
-  processor.ensureParsedModels()
-  val hasChangesInBuildFiles = !isCleanEnoughProject(processor.project)
-  if (hasChangesInBuildFiles) {
-    LOG.warn("changes found in project build files")
-  }
-  val runProcessor = invokeAndWaitIfNeeded(NON_MODAL) {
-    if (processor.classpathRefactoringProcessor.isAlwaysNoOpForProject) {
-      processor.trackProcessorUsage(FAILURE_PREDICTED)
-      LOG.warn("cannot upgrade: classpath processor is always a no-op")
-      val dialog = AgpUpgradeRefactoringProcessorCannotUpgradeDialog(processor)
-      dialog.show()
-      return@invokeAndWaitIfNeeded false
-    }
-    val dialog = AgpUpgradeRefactoringProcessorWithJava8SpecialCaseDialog(
-      processor, java8Processor!!, hasChangesInBuildFiles, preserveProcessorConfigurations)
-    dialog.showAndGet()
-  }
-  return runProcessor
 }
 
 @VisibleForTesting
@@ -353,18 +291,13 @@ fun performForcedPluginUpgrade(
 
   if (upgradeAccepted) {
     // The user accepted the upgrade
-    if (AGP_UPGRADE_ASSISTANT.get()) {
-      val processor = AgpUpgradeRefactoringProcessor(project, currentPluginVersion, newPluginVersion)
-      val runProcessor = showAndGetAgpUpgradeDialog(processor)
-      if (runProcessor) {
-        DumbService.getInstance(project).smartInvokeLater { processor.run() }
-      }
-      return false
+    val assistantInvoker = ServiceManager.getService(project, AssistantInvoker::class.java)
+    val processor = assistantInvoker.createProcessor(project, currentPluginVersion, newPluginVersion)
+    val runProcessor = assistantInvoker.showAndGetAgpUpgradeDialog(processor)
+    if (runProcessor) {
+      DumbService.getInstance(project).smartInvokeLater { processor.run() }
     }
-    else {
-      val versionUpdater = AndroidPluginVersionUpdater.getInstance(project)
-      versionUpdater.updatePluginVersion(newPluginVersion, GradleVersion.parse(GRADLE_LATEST_VERSION), currentPluginVersion)
-    }
+    return false
   } else {
     // The user did not accept the upgrade
     val syncMessage = SyncMessage(
@@ -379,7 +312,6 @@ fun performForcedPluginUpgrade(
     GradleSyncMessages.getInstance(project).report(syncMessage)
     return false
   }
-  return true
 }
 
 fun displayForceUpdatesDisabledMessage(project: Project) {

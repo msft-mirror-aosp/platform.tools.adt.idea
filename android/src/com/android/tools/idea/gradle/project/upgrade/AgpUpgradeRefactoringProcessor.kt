@@ -17,8 +17,6 @@ package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.GradleVersion
 import com.android.tools.analytics.UsageTracker
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.flags.StudioFlags.AGP_UPGRADE_ASSISTANT_TOOL_WINDOW
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
@@ -240,6 +238,7 @@ class AgpUpgradeRefactoringProcessor(
     MIGRATE_FAILURE_RETENTION_TO_EMULATOR_SNAPSHOTS.RefactoringProcessor(this),
     MIGRATE_JACOCO_TO_TEST_COVERAGE.RefactoringProcessor(this),
     MigratePackagingOptionsToJniLibsAndResourcesRefactoringProcessor(this),
+    MIGRATE_LINT_OPTIONS_TO_LINT.RefactoringProcessor(this),
   )
 
   val targets = mutableListOf<PsiElement>()
@@ -581,22 +580,9 @@ internal fun notifyCancelledUpgrade(project: Project, processor: AgpUpgradeRefac
  * to the process, and then running the processor under that user input's direction.
  */
 internal fun showAndInvokeAgpUpgradeRefactoringProcessor(project: Project, current: GradleVersion, new: GradleVersion) {
-  if (AGP_UPGRADE_ASSISTANT_TOOL_WINDOW.get()) {
-    DumbService.getInstance(project).smartInvokeLater {
-      val contentManager = ServiceManager.getService(project, ContentManager::class.java)
-      contentManager.showContent()
-    }
-    return
-  }
-  val processor = AgpUpgradeRefactoringProcessor(project, current, new)
-  val runProcessor = showAndGetAgpUpgradeDialog(processor)
-  if (runProcessor) {
-    DumbService.getInstance(project).smartInvokeLater { processor.run() }
-  }
-  else {
-    // TODO(xof): This adds a notification when the user selects Cancel from the dialog box, but not when they select Cancel from the
-    //  refactoring preview.
-    notifyCancelledUpgrade(project, processor)
+  DumbService.getInstance(project).smartInvokeLater {
+    val contentManager = ServiceManager.getService(project, ContentManager::class.java)
+    contentManager.showContent()
   }
 }
 
@@ -930,8 +916,7 @@ data class RemovePropertiesInfo(
  * a high-level description of the effect the refactoring will have on this usage.
  */
 class AgpComponentUsageTypeProvider : UsageTypeProvider {
-  override fun getUsageType(element: PsiElement): UsageType? =
-    if (StudioFlags.AGP_UPGRADE_ASSISTANT.get()) (element as? WrappedPsiElement)?.usageType else null
+  override fun getUsageType(element: PsiElement): UsageType? = (element as? WrappedPsiElement)?.usageType
 }
 
 /**

@@ -21,7 +21,6 @@ import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.getOutput
 import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.getOutputListingFile;
 import static com.android.tools.idea.gradle.util.GradleUtil.findModuleByGradlePath;
 import static com.android.tools.idea.gradle.util.GradleUtil.getGradlePath;
-import static com.intellij.util.containers.ContainerUtil.getFirstItem;
 import static java.util.Collections.emptyList;
 
 import com.android.builder.model.AppBundleProjectBuildOutput;
@@ -54,7 +53,6 @@ import com.android.tools.idea.gradle.run.PostBuildModel;
 import com.android.tools.idea.gradle.run.PostBuildModelProvider;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.gradle.util.GradleBuildOutputUtil;
-import com.android.tools.idea.gradle.util.GradleUtil;
 import com.android.tools.idea.gradle.util.OutputType;
 import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.projectsystem.AndroidProjectSettingsService;
@@ -130,7 +128,7 @@ public class GradleApkProvider implements ApkProvider {
   }
 
   @VisibleForTesting
-  OutputKind getOutputKind(@Nullable AndroidVersion targetDevicesMinVersion) {
+  protected OutputKind getOutputKind(@Nullable AndroidVersion targetDevicesMinVersion) {
     if (DynamicAppUtils.useSelectApksFromBundleBuilder(
       myFacet.getModule(),
       myAlwaysDeployApkFromBundle,
@@ -159,10 +157,10 @@ public class GradleApkProvider implements ApkProvider {
   }
 
   @NotNull
-  private List<ApkInfo> getApks(@NotNull List<String> deviceAbis,
-                                @NotNull AndroidVersion deviceVersion,
-                                @NotNull AndroidModuleModel androidModel,
-                                @NotNull IdeVariant variant) throws ApkProvisionException {
+  public List<ApkInfo> getApks(@NotNull List<String> deviceAbis,
+                               @NotNull AndroidVersion deviceVersion,
+                               @NotNull AndroidModuleModel androidModel,
+                               @NotNull IdeVariant variant) throws ApkProvisionException {
     List<ApkInfo> apkList = new ArrayList<>();
 
     IdeAndroidProjectType projectType = androidModel.getAndroidProject().getProjectType();
@@ -476,12 +474,7 @@ public class GradleApkProvider implements ApkProvider {
 
       File targetApk = getApk(targetVariant.getName(), targetVariant.getMainArtifact(), deviceAbis, deviceVersion, targetFacet);
 
-      // TODO: use the applicationIdProvider to get the applicationId (we might not know it by sync time for Instant Apps)
-      String applicationId = targetVariant.getDeprecatedPreMergedApplicationId();
-      if (applicationId == null) {
-        // If can't find applicationId in model, get it directly from manifest
-        applicationId = targetAndroidModel.getApplicationId();
-      }
+      String applicationId = new GradleApplicationIdProvider(targetFacet, false, targetAndroidModel, targetVariant, myOutputModelProvider).getPackageName();
       targetedApks.add(new ApkInfo(targetApk, applicationId));
     }
 
@@ -627,26 +620,6 @@ public class GradleApkProvider implements ApkProvider {
     }
 
     return fileName.substring(0, separatorIndex);
-  }
-
-  /**
-   * Get the APKs file for the selected variant.
-   * The method uses output listing file if it is supported, in which case, the output file will be empty if the project is never built.
-   * If build output listing file is not supported, then AndroidArtifact::getOutputs will be used.
-   */
-  @NotNull
-  private static List<File> getOutputFiles(@NotNull AndroidModuleModel androidModel) {
-    if (androidModel.getFeatures().isBuildOutputFileSupported()) {
-      String outputListingFile =
-        // Do not call getOutputListingFile to avoid unnecessary warnings in the log.
-        androidModel.getSelectedVariant().getMainArtifact().getBuildInformation().getAssembleTaskOutputListingFile();
-      return outputListingFile != null ? getOutputFilesFromListingFile(outputListingFile) : emptyList();
-    }
-    else {
-      //noinspection deprecation
-      List<IdeAndroidArtifactOutput> outputs = androidModel.getMainArtifact().getOutputs();
-      return outputs.stream().map(IdeAndroidArtifactOutput::getOutputFile).collect(Collectors.toList());
-    }
   }
 
   private boolean isArtifactSigned(AndroidModuleModel androidModuleModel) {
