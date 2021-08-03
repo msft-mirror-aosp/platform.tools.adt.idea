@@ -15,15 +15,16 @@
  */
 package com.android.tools.idea.gradle.project.build.attribution
 
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import org.gradle.tooling.events.ProgressListener
 import java.io.File
 
 interface BuildAttributionManager : ProgressListener {
   fun onBuildStart()
 
-  fun onBuildSuccess(attributionFileDir: File)
+  fun onBuildSuccess(request: GradleBuildInvoker.Request)
 
-  fun onBuildFailure(attributionFileDir: File)
+  fun onBuildFailure(request: GradleBuildInvoker.Request)
 
   fun openResultsTab()
 

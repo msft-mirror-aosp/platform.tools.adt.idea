@@ -135,6 +135,12 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> PROFILER_JANK_DETECTION_UI = Flag.create(
+    PROFILER, "jank.ui", "Enable jank detection UI",
+    "Add a track in the display group showing frame janks.",
+    false
+  );
+
   public static final Flag<Boolean> PROFILER_CUSTOM_EVENT_VISUALIZATION = Flag.create(
     PROFILER, "custom.event.visualization", "Enable Profiler Custom Event Visualization",
     "When enabled, profiler will track and display events defined through developer APIs",
@@ -159,7 +165,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILEABLE_IN_QR = Flag.create(
     PROFILER, "profileable.qr", "Support profileable processes on Q & R",
     "Show profileable processes on Q and R",
-    PROFILEABLE.get() && false);
+    PROFILEABLE.get() && true);
   //endregion
 
   //region ML

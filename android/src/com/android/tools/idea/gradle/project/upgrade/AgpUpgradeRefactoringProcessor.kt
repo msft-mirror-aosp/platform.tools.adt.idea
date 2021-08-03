@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.OBJECT_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.REFERENCE_TO_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.util.DeletablePsiElementHolder
+import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.*
@@ -239,6 +240,7 @@ class AgpUpgradeRefactoringProcessor(
     MIGRATE_JACOCO_TO_TEST_COVERAGE.RefactoringProcessor(this),
     MigratePackagingOptionsToJniLibsAndResourcesRefactoringProcessor(this),
     MIGRATE_LINT_OPTIONS_TO_LINT.RefactoringProcessor(this),
+    REWRITE_DEPRECATED_OPERATORS.RefactoringProcessor(this),
   )
 
   val targets = mutableListOf<PsiElement>()
@@ -499,6 +501,7 @@ class AgpUpgradeRefactoringProcessor(
   }
 
   override fun execute(usages: Array<out UsageInfo>) {
+    projectBuildModel.context.agpVersion = AndroidGradlePluginVersion.tryParse(new.toString())
     trackProcessorUsage(EXECUTE, usages.size, projectBuildModel.context.allRequestedFiles.size)
     executedUsages = usages
     super.execute(usages)
@@ -746,6 +749,7 @@ abstract class AgpUpgradeComponentRefactoringProcessor: GradleBuildModelRefactor
   }
 
   override fun execute(usages: Array<out UsageInfo>) {
+    projectBuildModel.context.agpVersion = AndroidGradlePluginVersion.tryParse(new.toString())
     trackComponentUsage(EXECUTE, usages.size, projectBuildModel.context.allRequestedFiles.size)
     super.execute(usages)
   }
@@ -908,6 +912,43 @@ data class RemovePropertiesInfo(
   }
 }
 
+data class RewriteObsoletePropertiesInfo(
+  val propertyModelListGetter: GradleBuildModel.() -> List<ResolvedPropertyModel>,
+  val tooltipTextSupplier: Supplier<String>,
+  val usageType: UsageType,
+): PropertiesOperationInfo {
+
+  override fun findBuildModelUsages(
+    processor: AgpUpgradeComponentRefactoringProcessor,
+    buildModel: GradleBuildModel
+  ): ArrayList<UsageInfo> {
+    val usages = ArrayList<UsageInfo>()
+    buildModel.(propertyModelListGetter)().forEach property@{ property ->
+      val ok = property.rawElement?.modelEffect?.versionConstraint?.isOkWith(null) ?: return@property
+      if (!ok) {
+        val psiElement = property.psiElement ?: return@property
+        val wrappedPsiElement = WrappedPsiElement(psiElement, processor, usageType)
+        val usageInfo = RewritePropertyUsageInfo(wrappedPsiElement, property)
+        usages.add(usageInfo)
+      }
+    }
+    return usages
+  }
+
+  inner class RewritePropertyUsageInfo(
+    element: WrappedPsiElement,
+    val model: ResolvedPropertyModel,
+  ): GradleBuildModelUsageInfo(element) {
+
+    override fun performBuildModelRefactoring(processor: GradleBuildModelRefactoringProcessor) {
+      model.rewrite()
+    }
+
+    override fun getTooltipText(): String = tooltipTextSupplier.get()
+
+    override fun getDiscriminatingValues(): List<Any> = listOf(this@RewriteObsoletePropertiesInfo)
+  }
+}
 /**
  * Usage Types for usages coming from [AgpUpgradeComponentRefactoringProcessor]s.
  *

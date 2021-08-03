@@ -25,13 +25,18 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.concurrency.EdtExecutorService;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,10 +45,14 @@ final class AsyncPhysicalDeviceBuilder {
   private final @NotNull Key myKey;
   private final @Nullable Instant myLastOnlineTime;
   private final @NotNull AdbShellCommandExecutor myExecutor;
+  private final @NotNull ListeningExecutorService myAppExecutorService;
 
+  private final @NotNull ListenableFuture<@NotNull AndroidVersion> myVersionFuture;
   private final @NotNull ListenableFuture<@NotNull String> myModelFuture;
   private final @NotNull ListenableFuture<@NotNull String> myManufacturerFuture;
   private final @NotNull ListenableFuture<@Nullable Resolution> myResolutionFuture;
+  private final @NotNull ListenableFuture<@NotNull Integer> myDensityFuture;
+  private final @NotNull ListenableFuture<@NotNull Collection<@NotNull String>> myAbisFuture;
 
   AsyncPhysicalDeviceBuilder(@NotNull IDevice device, @NotNull Key key, @Nullable Instant lastOnlineTime) {
     this(device, key, lastOnlineTime, new AdbShellCommandExecutor());
@@ -58,17 +67,19 @@ final class AsyncPhysicalDeviceBuilder {
     myKey = key;
     myLastOnlineTime = lastOnlineTime;
     myExecutor = executor;
+    myAppExecutorService = MoreExecutors.listeningDecorator(AppExecutorUtil.getAppExecutorService());
 
+    myVersionFuture = myAppExecutorService.submit(device::getVersion);
     myModelFuture = device.getSystemProperty(IDevice.PROP_DEVICE_MODEL);
     myManufacturerFuture = device.getSystemProperty(IDevice.PROP_DEVICE_MANUFACTURER);
-    myResolutionFuture = getResolution(device);
+    myResolutionFuture = getResolution();
+    myDensityFuture = myAppExecutorService.submit(device::getDensity);
+    myAbisFuture = myAppExecutorService.submit(device::getAbis);
   }
 
-  private @NotNull ListenableFuture<@Nullable Resolution> getResolution(@NotNull IDevice device) {
-    ExecutorService service = AppExecutorUtil.getAppExecutorService();
-
+  private @NotNull ListenableFuture<@Nullable Resolution> getResolution() {
     // noinspection UnstableApiUsage
-    return FluentFuture.from(MoreExecutors.listeningDecorator(service).submit(() -> myExecutor.execute(device, "wm size")))
+    return FluentFuture.from(myAppExecutorService.submit(() -> myExecutor.execute(myDevice, "wm size")))
       .transform(AsyncPhysicalDeviceBuilder::newResolution, EdtExecutorService.getInstance());
   }
 
@@ -92,12 +103,12 @@ final class AsyncPhysicalDeviceBuilder {
 
   @NotNull ListenableFuture<@NotNull PhysicalDevice> buildAsync() {
     // noinspection UnstableApiUsage
-    return Futures.whenAllComplete(myModelFuture, myManufacturerFuture, myResolutionFuture)
+    return Futures.whenAllComplete(myVersionFuture, myModelFuture, myManufacturerFuture, myResolutionFuture, myDensityFuture, myAbisFuture)
       .call(this::build, EdtExecutorService.getInstance());
   }
 
   private @NotNull PhysicalDevice build() {
-    AndroidVersion version = myDevice.getVersion();
+    AndroidVersion version = getDoneOrElse(myVersionFuture, AndroidVersion.DEFAULT);
 
     PhysicalDevice.Builder builder = new PhysicalDevice.Builder()
       .setKey(myKey)
@@ -112,6 +123,23 @@ final class AsyncPhysicalDeviceBuilder {
 
     return builder
       .setResolution(FutureUtils.getDoneOrNull(myResolutionFuture))
+      .setDensity(getDoneOrElse(myDensityFuture, -1))
+      .addAllAbis(getDoneOrElse(myAbisFuture, Collections.emptyList()))
       .build();
+  }
+
+  private static <V> @NotNull V getDoneOrElse(@NotNull Future<@NotNull V> future, @NotNull V defaultValue) {
+    assert future.isDone();
+
+    try {
+      return future.get();
+    }
+    catch (CancellationException | ExecutionException exception) {
+      return defaultValue;
+    }
+    catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(exception);
+    }
   }
 }

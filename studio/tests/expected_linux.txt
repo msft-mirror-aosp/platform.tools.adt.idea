@@ -2037,7 +2037,7 @@ android-studio/plugins/android/lib/baksmali-2.2.4.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
 android-studio/plugins/android/lib/core-3.4.0.jar
-android-studio/plugins/android/lib/core-proto-0.0.8-alpha05.jar
+android-studio/plugins/android/lib/core-proto-0.0.8-alpha06.jar
 android-studio/plugins/android/lib/data-binding.jar
 android-studio/plugins/android/lib/deploy_java_proto.jar
 android-studio/plugins/android/lib/dexlib2-2.2.4.jar
@@ -2571,6 +2571,7 @@ android-studio/plugins/android/resources/layoutlib/data/framework_res.jar
 android-studio/plugins/android/resources/layoutlib/data/icu/icudt68l.dat
 android-studio/plugins/android/resources/layoutlib/data/layoutlib-extensions.jar
 android-studio/plugins/android/resources/layoutlib/data/linux/lib64/libandroid_runtime.so
+android-studio/plugins/android/resources/layoutlib/data/linux/lib64/libc++.so
 android-studio/plugins/android/resources/native/libimage_converter.so
 android-studio/plugins/android/resources/perfa.jar
 android-studio/plugins/android/resources/perfa_okhttp.dex
