@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.profilers.capture;
 
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -30,10 +31,17 @@ public class HeapProfdMemoryCaptureFileType extends AndroidProfilerCaptureFileTy
     return "HeapProfd";
   }
 
+  @Nls
+  @NotNull
+  @Override
+  public String getDisplayName() {
+    return "Android Profiler Memory capture (.heapprofd)";
+  }
+
   @NotNull
   @Override
   public String getDescription() {
-    return "Android Profiler Memory capture file";
+    return "Android Profiler Memory capture file (.heapprofd)";
   }
 
   @NotNull

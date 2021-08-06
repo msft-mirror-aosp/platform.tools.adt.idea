@@ -23,6 +23,8 @@ import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entr
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.tree.TreeModelAdapter
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import javax.swing.JComponent
 import javax.swing.JTree
 import javax.swing.event.TreeModelEvent
@@ -34,18 +36,20 @@ import javax.swing.tree.TreeSelectionModel
  * A [JBScrollPane] that consists of a tree table with basic information of all background tasks.
  */
 class BackgroundTaskTreeTableView(client: BackgroundTaskInspectorClient,
-                                  selectionModel: EntrySelectionModel) {
+                                  selectionModel: EntrySelectionModel,
+                                  scope: CoroutineScope,
+                                  uiDispatcher: CoroutineDispatcher) {
   val component: JComponent
+  val treeModel = BackgroundTaskTreeModel(client, scope, uiDispatcher)
 
   init {
-    val treeModel = BackgroundTaskTreeModel(client)
     val tree = JTree(treeModel)
     tree.isRootVisible = false
     tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
 
     treeModel.addTreeModelListener(object : TreeModelAdapter() {
-      override fun treeNodesChanged(event: TreeModelEvent) {
-        super.treeNodesChanged(event)
+      override fun treeStructureChanged(event: TreeModelEvent) {
+        super.treeStructureChanged(event)
         tree.expandPath(event.treePath)
       }
     })

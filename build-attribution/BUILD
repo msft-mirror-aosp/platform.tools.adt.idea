@@ -36,6 +36,8 @@ iml_module(
     iml_files = ["intellij.android.build-attribution.tests.iml"],
     split_test_targets = {
         "analyzers": {
+            # TODO (b/137293175) Remove after flake is resolved.
+            "tags": ["no_test_linux"],
             "test_filter": "com.android.build.attribution.analyzers",
         },
         "other": {
@@ -95,6 +97,8 @@ maven_repo(
         "//prebuilts/tools/common/m2:android.arch.lifecycle.livedata-core.1.1.1_aar",
         "//prebuilts/tools/common/m2:android.arch.lifecycle.runtime.1.1.1_aar",
         "//prebuilts/tools/common/m2:android.arch.lifecycle.viewmodel.1.1.1_aar",
+        "//prebuilts/tools/common/m2:androidx.annotation.annotation.1.0.0",
+        "//prebuilts/tools/common/m2:androidx.collection.collection.1.0.0",
         "//prebuilts/tools/common/m2:com.android.support.animated-vector-drawable.28.0.0_aar",
         "//prebuilts/tools/common/m2:com.android.support.appcompat-v7.28.0.0_aar",
         "//prebuilts/tools/common/m2:com.android.support.asynclayoutinflater.28.0.0_aar",

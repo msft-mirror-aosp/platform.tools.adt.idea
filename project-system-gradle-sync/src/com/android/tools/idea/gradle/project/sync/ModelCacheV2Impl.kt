@@ -631,6 +631,7 @@ internal fun modelCacheV2Impl(): ModelCache {
     "_main_" -> IdeArtifactName.MAIN
     "_android_test_" -> IdeArtifactName.ANDROID_TEST
     "_unit_test_" -> IdeArtifactName.UNIT_TEST
+    "_test_fixtures_" -> IdeArtifactName.TEST_FIXTURES
     else -> error("Invalid android artifact name: $name")
   }
 
@@ -745,11 +746,14 @@ internal fun modelCacheV2Impl(): ModelCache {
       displayName = variant.displayName,
       mainArtifact = copyModel(variant.mainArtifact) { androidArtifactFrom("_main_", it, variantDependencies.mainArtifact, libraryMap) },
       // If AndroidArtifact isn't null, then same goes for the ArtifactDependencies.
+      unitTestArtifact = copyModel(variant.unitTestArtifact) {
+        javaArtifactFrom("_unit_test_", it, variantDependencies.unitTestArtifact!!, libraryMap)
+      },
       androidTestArtifact = copyModel(variant.androidTestArtifact) {
         androidArtifactFrom("_android_test_", it, variantDependencies.androidTestArtifact!!, libraryMap)
       },
-      unitTestArtifact = copyModel(variant.unitTestArtifact) {
-        javaArtifactFrom("_unit_test_", it, variantDependencies.unitTestArtifact!!, libraryMap)
+      testFixturesArtifact = copyModel(variant.testFixturesArtifact) {
+        androidArtifactFrom("_test_fixtures_", it, variantDependencies.testFixturesArtifact!!, libraryMap)
       },
       buildType = variant.buildType ?: "",
       productFlavors = ImmutableList.copyOf(variant.productFlavors),

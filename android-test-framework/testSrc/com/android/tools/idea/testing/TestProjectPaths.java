@@ -13,6 +13,7 @@ public final class TestProjectPaths {
   public static final String APPLICATION_ID_VARIANT_API = "projects/applicationIdViaVariantApi";
   public static final String BASIC = "projects/basic";
   public static final String BUDDY_APKS = "projects/buddyApks";
+  public static final String BUILD_ANALYZER_CHECK_JETIFIER = "projects/buildAnalyzer/checkJetifier";
   public static final String CENTRAL_BUILD_DIRECTORY = "projects/centralBuildDirectory";
   public static final String CIRCULAR_MODULE_DEPS = "projects/circularModuleDeps";
   public static final String COMPOSITE_BUILD = "projects/compositeBuild";
@@ -100,6 +101,7 @@ public final class TestProjectPaths {
   public static final String TEST_ARTIFACTS_MULTIPROJECT = "projects/testArtifacts/multiproject";
   public static final String TEST_ARTIFACTS_OLD_TESTS = "projects/testArtifacts/oldTests";
   public static final String TEST_ARTIFACTS_SAME_NAME_CLASSES = "projects/testArtifacts/sameNameClasses";
+  public static final String TEST_FIXTURES = "projects/testFixtures";
   public static final String TEST_ONLY_MODULE = "projects/testOnlyModule";
   public static final String TEST_RESOURCES = "projects/testResources";
   public static final String TRANSITIVE_DEPENDENCIES = "projects/transitiveDependencies";

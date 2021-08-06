@@ -17,9 +17,11 @@ package com.android.tools.idea.layoutinspector.pipeline
 
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.concurrency.addCallback
+import com.android.tools.idea.flags.StudioFlags
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.intellij.openapi.diagnostic.Logger
 
 /**
  * Base class for [InspectorClient] implementations with some boilerplate logic provided.
@@ -78,7 +80,12 @@ abstract class AbstractInspectorClient(final override val process: ProcessDescri
       }
 
       override fun onFailure(t: Throwable) {
-        state = InspectorClient.State.DISCONNECTED
+        disconnect()
+        Logger.getInstance(AbstractInspectorClient::class.java).warn(
+          "Connection failure with " +
+          "'use.dev.jar=${StudioFlags.APP_INSPECTION_USE_DEV_JAR.get()}' " +
+          "'use.snapshot.jar=${StudioFlags.APP_INSPECTION_USE_SNAPSHOT_JAR.get()}' " +
+          "cause:", t)
       }
     })
   }
@@ -86,7 +93,7 @@ abstract class AbstractInspectorClient(final override val process: ProcessDescri
   protected abstract fun doConnect(): ListenableFuture<Nothing>
 
   final override fun disconnect() {
-    assert(state == InspectorClient.State.CONNECTED)
+    assert(state == InspectorClient.State.CONNECTED || state == InspectorClient.State.CONNECTING)
     state = InspectorClient.State.DISCONNECTING
 
     doDisconnect().addListener(

@@ -19,6 +19,7 @@ import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.util.io.ByteSequence;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
@@ -39,10 +40,17 @@ public class MemoryCaptureFileType extends AndroidProfilerCaptureFileType {
     return "AndroidProfilerMemoryCapture";
   }
 
+  @Nls
+  @NotNull
+  @Override
+  public String getDisplayName() {
+    return "Android Profiler Memory capture (.hprof)";
+  }
+
   @NotNull
   @Override
   public String getDescription() {
-    return "Android Profiler Memory capture file";
+    return "Android Profiler Memory capture file (.hprof)";
   }
 
   @NotNull

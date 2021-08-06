@@ -39,6 +39,12 @@ public class BundleFileType implements FileType {
 
   @NotNull
   @Override
+  public String getDisplayName() {
+    return "Android App Bundle";
+  }
+
+  @NotNull
+  @Override
   public String getDescription() {
     return "Android App Bundle";
   }

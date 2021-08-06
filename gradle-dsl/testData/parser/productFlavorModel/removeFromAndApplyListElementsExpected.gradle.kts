@@ -1,8 +1,8 @@
 android {
   defaultConfig {
-    consumerProguardFiles(listOf("proguard-android.txt"))
-    proguardFiles(listOf("proguard-android.txt"))
-    resConfigs("abcd")
+    consumerProguardFiles("proguard-android.txt")
+    proguardFiles("proguard-android.txt")
+    resourceConfigurations += setOf("abcd")
     resValue("abcd", "efgh", "ijkl")
   }
 }

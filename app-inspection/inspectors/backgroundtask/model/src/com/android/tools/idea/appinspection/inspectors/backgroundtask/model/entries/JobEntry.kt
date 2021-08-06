@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries
 
+import backgroundtask.inspection.BackgroundTaskInspectorProtocol
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol.BackgroundTaskEvent
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EventWrapper
-import java.util.concurrent.TimeUnit
 
 /**
  * An entry with all information of a Job Task.
@@ -38,6 +38,8 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
   private var _startTime = -1L
   private var _isValid = true
 
+  var targetWorkId: String? = null
+
   override val isValid get() = _isValid
 
   override val className get() = _className
@@ -46,14 +48,33 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
 
   override val startTimeMs get() = _startTime
 
+  override val tags = listOf<String>()
+
+  var jobInfo: BackgroundTaskInspectorProtocol.JobInfo? = null
+    private set
+
+  var latestEvent: BackgroundTaskInspectorProtocol.Event? = null
+
   override fun consume(eventWrapper: EventWrapper) {
+    latestEvent = eventWrapper.backgroundTaskEvent
     val backgroundTaskEvent = eventWrapper.backgroundTaskEvent.backgroundTaskEvent
     val timestamp = eventWrapper.backgroundTaskEvent.timestamp
     when (backgroundTaskEvent.metadataCase) {
       BackgroundTaskEvent.MetadataCase.JOB_SCHEDULED -> {
         _className = "Job $id"
         _status = State.SCHEDULED
-        _startTime = TimeUnit.NANOSECONDS.toMillis(timestamp)
+        _startTime = timestamp
+        jobInfo = backgroundTaskEvent.jobScheduled.job
+        // Find target work id from extras.
+        jobInfo?.extras?.let { extras ->
+          val workIdSuffix = extras.substringAfter("EXTRA_WORK_SPEC_ID=", "")
+          if (workIdSuffix.isNotEmpty()) {
+            val endIndex = workIdSuffix.indexOfFirst { it != '-' && !it.isDigit() && !it.isLetter() }
+            if (endIndex != -1) {
+              targetWorkId = workIdSuffix.substring(0, endIndex)
+            }
+          }
+        }
       }
       BackgroundTaskEvent.MetadataCase.JOB_STARTED -> {
         _status = State.STARTED

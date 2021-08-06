@@ -3,17 +3,26 @@ android {
     testHandleProfiling false
     testFunctionalTest true
     targetSdk 29
+    resourceConfigurations += ['en', 'fr']
     minSdk 28
     maxSdk 30
+    matchingFallbacks = ['demo', 'trial']
   }
   productFlavors {
     foo {
       testHandleProfiling true
       testFunctionalTest false
       targetSdk 28
+      resourceConfigurations += ['uk']
       minSdk 27
       maxSdk 29
+      matchingFallbacks = ['trial']
       dimension 'paid'
+    }
+  }
+  buildTypes {
+    mumble {
+      matchingFallbacks = ['demo']
     }
   }
   flavorDimensions 'paid', 'country'

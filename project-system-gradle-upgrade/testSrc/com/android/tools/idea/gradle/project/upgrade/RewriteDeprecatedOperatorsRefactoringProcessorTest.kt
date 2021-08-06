@@ -98,6 +98,14 @@ class RewriteDeprecatedOperatorsRefactoringProcessorTest: UpgradeGradleFileModel
   }
 
   @Test
+  fun testSetMatchingFallbacks() {
+    writeToBuildFile(TestFileName("RewriteDeprecatedOperators/SetMatchingFallbacks"))
+    val processor = rewriteDeprecatedOperatorsRefactoringProcessor(project, GradleVersion.parse("4.2.0"), GradleVersion.parse("8.0.0"))
+    processor.run()
+    verifyFileContents(buildFile, TestFileName("RewriteDeprecatedOperators/SetMatchingFallbacksExpected"))
+  }
+
+  @Test
   fun testSetTestFunctionalTest() {
     writeToBuildFile(TestFileName("RewriteDeprecatedOperators/SetTestFunctionalTest"))
     val processor = rewriteDeprecatedOperatorsRefactoringProcessor(project, GradleVersion.parse("4.2.0"), GradleVersion.parse("8.0.0"))
@@ -111,6 +119,14 @@ class RewriteDeprecatedOperatorsRefactoringProcessorTest: UpgradeGradleFileModel
     val processor = rewriteDeprecatedOperatorsRefactoringProcessor(project, GradleVersion.parse("4.2.0"), GradleVersion.parse("8.0.0"))
     processor.run()
     verifyFileContents(buildFile, TestFileName("RewriteDeprecatedOperators/SetTestHandleProfilingExpected"))
+  }
+
+  @Test
+  fun testResConfigs() {
+    writeToBuildFile(TestFileName("RewriteDeprecatedOperators/ResConfigs"))
+    val processor = rewriteDeprecatedOperatorsRefactoringProcessor(project, GradleVersion.parse("4.2.0"), GradleVersion.parse("8.0.0"))
+    processor.run()
+    verifyFileContents(buildFile, TestFileName("RewriteDeprecatedOperators/ResConfigsExpected"))
   }
 
   @Test

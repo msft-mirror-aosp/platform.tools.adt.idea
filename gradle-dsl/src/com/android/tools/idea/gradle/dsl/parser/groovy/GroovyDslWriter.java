@@ -352,6 +352,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     if (addedElement instanceof GrMethodCallExpression) {
       methodCall.setPsiElement(addedElement);
       methodCall.getArgumentsElement().setPsiElement(((GrMethodCallExpression)addedElement).getArgumentList());
+      methodCall.getArgumentsElement().applyChanges();
 
       if (methodCall.getUnsavedClosure() != null) {
         createAndAddClosure(methodCall.getUnsavedClosure(), methodCall);
@@ -379,6 +380,10 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       if (expressionList.getParent() instanceof GradleDslExpressionMap) {
         // This is a list in the map element and we need to create a named argument for it.
         return createNamedArgumentList(expressionList);
+      }
+      if (expressionList.getParent() instanceof GradleDslMethodCall) {
+        // This is an argument list, unnamed (the name is in the method call)
+        return createMethodCallArgumentList(expressionList);
       }
       psiElement = createDslElement(expressionList);
     }

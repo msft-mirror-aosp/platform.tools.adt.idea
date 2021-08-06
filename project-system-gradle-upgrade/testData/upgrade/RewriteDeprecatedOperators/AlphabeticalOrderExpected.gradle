@@ -3,17 +3,26 @@ android {
   compileSdk 30
   flavorDimensions 'paid', 'country'
   defaultConfig {
+    matchingFallbacks = ['demo', 'trial']
     maxSdk 30
     minSdk 28
+    resourceConfigurations += ['en', 'fr']
     targetSdk 29
     testFunctionalTest true
     testHandleProfiling false
   }
+  buildTypes {
+    mumble {
+      matchingFallbacks = ['demo']
+    }
+  }
   productFlavors {
     foo {
       dimension 'paid'
+      matchingFallbacks = ['trial']
       maxSdk 29
       minSdk 27
+      resourceConfigurations += ['uk']
       targetSdk 28
       testFunctionalTest false
       testHandleProfiling true

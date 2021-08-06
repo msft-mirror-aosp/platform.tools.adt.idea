@@ -1,7 +1,7 @@
 android {
   productFlavors {
     create("demo") {
-      setMatchingFallbacks(listOf("trial", "free"))
+      matchingFallbacks += listOf("trial", "free")
     }
   }
 }

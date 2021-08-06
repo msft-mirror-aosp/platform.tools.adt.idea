@@ -16,6 +16,7 @@
 package com.android.tools.idea.appinspection.inspectors.backgroundtask.view
 
 import com.android.tools.adtui.TabularLayout
+import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorClient
@@ -26,9 +27,13 @@ import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBViewport
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import java.awt.BorderLayout
 import java.awt.Point
 import javax.swing.JComponent
@@ -41,11 +46,82 @@ const val WORK_MANAGER_TOOLBAR_PLACE = "WorkManagerInspector"
 /**
  * View containing a table view and graph view, and offers toggle control between the two.
  */
-class BackgroundTaskEntriesView(client: BackgroundTaskInspectorClient,
-                                private val selectionModel: EntrySelectionModel) : JPanel() {
+class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClient,
+                                private val selectionModel: EntrySelectionModel,
+                                scope: CoroutineScope,
+                                uiDispatcher: CoroutineDispatcher) : JPanel() {
   enum class Mode {
     TABLE,
     GRAPH
+  }
+
+  private inner class CancelAction :
+    AnAction(BackgroundTaskInspectorBundle.message("action.cancel.work"), "", AllIcons.Actions.Suspend) {
+
+    override fun update(e: AnActionEvent) {
+      e.presentation.isEnabled = selectionModel.selectedWork?.state?.isFinished() == false
+    }
+
+    override fun actionPerformed(e: AnActionEvent) {
+      val id = selectionModel.selectedWork?.id ?: return
+      client.cancelWorkById(id)
+      if (contentMode == Mode.TABLE) {
+        tableView.component.requestFocusInWindow()
+      }
+      else {
+        graphView.requestFocusInWindow()
+      }
+    }
+  }
+
+  /**
+   * DropDownAction that shows tags from available works.
+   */
+  private inner class TagsDropDownAction :
+    DropDownAction(BackgroundTaskInspectorBundle.message("action.tag.all"),
+                   BackgroundTaskInspectorBundle.message("action.tag.tooltip"),
+                   null) {
+    private var selectedTag: String? = null
+
+    override fun update(event: AnActionEvent) {
+      if (selectedTag != tableView.treeModel.filterTag) {
+        selectedTag = tableView.treeModel.filterTag
+        event.presentation.text = selectedTag ?: BackgroundTaskInspectorBundle.message("action.tag.all")
+      }
+      val isTableActive = (contentMode == Mode.TABLE)
+      if (event.presentation.isVisible != isTableActive) {
+        event.presentation.isVisible = isTableActive
+      }
+    }
+
+    override fun canBePerformed(context: DataContext): Boolean {
+      return tableView.treeModel.allTags.isNotEmpty()
+    }
+
+    public override fun updateActions(context: DataContext): Boolean {
+      removeAll()
+      add(FilterWithTagToggleAction(null))
+      tableView.treeModel.allTags.forEach { tag ->
+        add(FilterWithTagToggleAction(tag))
+      }
+      return true
+    }
+
+    override fun displayTextInToolbar() = true
+  }
+
+  /**
+   * ToggleAction that filters works with a specific [tag].
+   */
+  private inner class FilterWithTagToggleAction(private val tag: String?)
+    : ToggleAction(tag ?: "All tags") {
+    override fun isSelected(event: AnActionEvent): Boolean {
+      return tag == tableView.treeModel.filterTag
+    }
+
+    override fun setSelected(event: AnActionEvent, state: Boolean) {
+      tableView.treeModel.filterTag = tag
+    }
   }
 
   private inner class TableViewAction :
@@ -110,8 +186,8 @@ class BackgroundTaskEntriesView(client: BackgroundTaskInspectorClient,
     // Remove redundant borders from left, right and bottom.
     contentScrollPane.border = AdtUiUtils.DEFAULT_TOP_BORDER
     contentScrollPane.horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
-    tableView = BackgroundTaskTreeTableView(client, selectionModel)
-    graphView = WorkDependencyGraphView(client, selectionModel)
+    tableView = BackgroundTaskTreeTableView(client, selectionModel, scope, uiDispatcher)
+    graphView = WorkDependencyGraphView(client, selectionModel, scope, uiDispatcher)
     contentScrollPane.setViewportView(tableView.component)
     add(contentScrollPane, TabularLayout.Constraint(1, 0))
 
@@ -124,6 +200,14 @@ class BackgroundTaskEntriesView(client: BackgroundTaskInspectorClient,
 
   private fun buildActionBar(): JComponent {
     val toolbarPanel = JPanel(BorderLayout())
+    val leftGroup = DefaultActionGroup().apply {
+      add(CancelAction())
+      addSeparator()
+      add(TagsDropDownAction())
+    }
+    val leftToolbar = ActionManager.getInstance().createActionToolbar(WORK_MANAGER_TOOLBAR_PLACE, leftGroup, true)
+    ActionToolbarUtil.makeToolbarNavigable(leftToolbar)
+    toolbarPanel.add(leftToolbar.component, BorderLayout.WEST)
 
     val rightGroup = DefaultActionGroup().apply {
       add(TableViewAction())

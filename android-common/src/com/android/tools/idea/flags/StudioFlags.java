@@ -159,7 +159,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_MIGRATION_TO_APPINSPECTION = Flag.create(
     PROFILER, "profiler.migration.to.appinspection", "Enable migration support for network and system events profiling.",
     "Show migration messaging to guide users to the App Inspection tool window",
-    false);
+    true);
 
   // PROFILEABLE_IN_QR is an extension of PROFILEABLE. When it's true, it assumes PROFILEABLE is also true.
   public static final Flag<Boolean> PROFILEABLE_IN_QR = Flag.create(
@@ -353,6 +353,12 @@ public final class StudioFlags {
     NELE, "toggle.layout.editor.validator.a11y.common.panel", "Enable common error panel to display scanner results.",
     "If the xml layout contains atf results, it will be shown in the common error panel as well as issue panel.",
     false);
+
+  public static final Flag<Boolean> NELE_SHOW_ISSUE_PANEL_IN_PROBLEMS = Flag.create(
+    NELE, "show.issue.panel.in.problems", "Show the Issue Panel in IJ's Problem Panel",
+    "Move the Issue Panel from Design Tools into the Problems Panel as an additional tab.",
+    false
+  );
 
   public static final Flag<Boolean> NELE_TRANSFORM_PANEL = Flag.create(
     NELE, "toggle.layout.editor.transform.panel", "Toggle transform panel in layout editor and motion editor.",
@@ -555,13 +561,6 @@ public final class StudioFlags {
     "adb.wireless.enabled",
     "Enable pairing devices through ADB wireless",
     "Allow pairing new physical device through QR Code pairing via ADB wireless",
-    true);
-
-  public static final Flag<Boolean> WEAR_DEVICE_PAIRING_ENABLED = Flag.create(
-    RUNDEBUG,
-    "wear.device.pairing.enabled",
-    "Enable Wear emulator pairing assistant",
-    "Show the Wear emulator pairing assistant",
     true);
 
   public static final Flag<Boolean> ADB_SERVER_MANAGEMENT_MODE_SETTINGS_VISIBLE = Flag.create(
@@ -1247,7 +1246,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_NETWORK_MANAGER_INSPECTOR_TAB = Flag.create(
     NETWORK_INSPECTOR, "enable.network.inspector.tab", "Enable Network Inspector Tab",
     "Enables a Network Inspector Tab in the App Inspection tool window",
-    false
+    true
   );
   // endregion
 
@@ -1257,7 +1256,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_BACKGROUND_TASK_INSPECTOR_TAB = Flag.create(
     BACKGROUND_TASK_INSPECTOR, "enable.backgroundtask.inspector.tab", "Enable BackgroundTask Inspector Tab",
     "Enables a BackgroundTask Inspector Tab in the App Inspection tool window",
-    false
+    true
   );
   // endregion
 
@@ -1273,17 +1272,13 @@ public final class StudioFlags {
     "Enables some features that could be unpolished or unready in the new Device Manager",
     false
   );
-  // endregion
 
-  //region Suggested Import(s)
-  private static final FlagGroup SUGGESTED_IMPORT = new FlagGroup(FLAGS, "suggested.import", "Suggested import");
-  public static final Flag<Boolean> ENABLE_SUGGESTED_IMPORT = Flag.create(
-    SUGGESTED_IMPORT, "enable", "Enable suggested import",
-    "Enables the code path where we get indices from dl.google.com/android/studio/gmaven/index/... and generate corresponding " +
-    "lookup table from class names to GMaven coordinates. It will be a replacement for the hardcoded mapping data in " +
-    "MavenClassRegistryFromHardcodedMap.",
-    true
-  );
+  public static final Flag<Boolean> WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED = Flag.create(
+    DEVICE_MANAGER,
+    "wear.os.virtual.device.pairing.assistant.enabled",
+    "Enable the Wear OS virtual device pairing assistant",
+    "Enable the Wear OS virtual device pairing assistant",
+    false);
   // endregion
 
   //region DDMLIB

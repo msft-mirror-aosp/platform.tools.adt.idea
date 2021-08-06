@@ -246,6 +246,7 @@ studio_plugin(
             "//tools/adt/idea/artwork:device-art-resources-bundle",  # duplicated in android.jar
             "//tools/adt/idea/android/annotations:androidAnnotations",
             "//tools/adt/idea/emulator/native:native_lib",
+            "//tools/base/app-inspection/inspectors/backgroundtask:bundle",
             "//tools/base/app-inspection/inspectors/network:bundle",
             "//tools/base/dynamic-layout-inspector/agent/appinspection:bundle",
             "//tools/base/profiler/transform:profilers-transform",
@@ -527,9 +528,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Bumblebee | {0}.{1}.{2} Canary {3}",
-    version_micro = 1,
-    version_patch = 7,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 
@@ -568,7 +569,6 @@ py_test(
 py_binary(
     name = "stamper",
     srcs = ["stamper.py"],
-    python_version = "PY2",
     visibility = ["//visibility:public"],
 )
 
@@ -581,7 +581,6 @@ py_binary(
 py_test(
     name = "tools_test",
     srcs = ["tools_test.py"],
-    python_version = "PY2",
     tags = [
         "no_mac",
         "no_windows",

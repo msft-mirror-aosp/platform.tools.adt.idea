@@ -15,15 +15,13 @@
  */
 package com.android.tools.idea.profilers.stacktrace;
 
-import com.intellij.openapi.components.BaseComponent;
-import com.intellij.openapi.extensions.ExtensionPointName;
+import com.intellij.openapi.extensions.ExtensionsArea;
 import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.UserDataHolderBase;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.ArrayUtil;
 import com.intellij.util.messages.MessageBus;
 import java.util.Map;
 import org.jetbrains.annotations.NonNls;
@@ -92,37 +90,17 @@ final class ProjectStub extends UserDataHolderBase implements Project {
   public void save() {
   }
 
-  @Override
-  public BaseComponent getComponent(@NotNull String name) {
-    return null;
-  }
-
   @Nullable
   @Override
   public <T> T getComponent(@NotNull Class<T> interfaceClass) {
     return null;
   }
 
-  @Override
-  public boolean hasComponent(@NotNull Class interfaceClass) {
-    return false;
-  }
-
-  @Override
-  @NotNull
-  public <T> T[] getComponents(@NotNull Class<T> baseClass) {
-    return (T[])ArrayUtil.EMPTY_OBJECT_ARRAY;
-  }
 
   @Override
   @NotNull
   public PicoContainer getPicoContainer() {
     throw new UnsupportedOperationException("getPicoContainer is not implement in : " + getClass());
-  }
-
-  @Override
-  public <T> T getComponent(@NotNull Class<T> interfaceClass, T defaultImplementation) {
-    return null;
   }
 
   @Override
@@ -134,6 +112,17 @@ final class ProjectStub extends UserDataHolderBase implements Project {
   @NotNull
   public Condition getDisposed() {
     return o -> isDisposed();
+  }
+
+  @Override
+  public <T> T getService(@NotNull Class<T> serviceClass) {
+    return null;
+  }
+
+  @NotNull
+  @Override
+  public ExtensionsArea getExtensionArea() {
+    throw new UnsupportedOperationException("getExtensionArea is not implement in : " + getClass());
   }
 
   @NotNull
@@ -183,11 +172,5 @@ final class ProjectStub extends UserDataHolderBase implements Project {
 
   @Override
   public void dispose() {
-  }
-
-  @NotNull
-  @Override
-  public <T> T[] getExtensions(@NotNull final ExtensionPointName<T> extensionPointName) {
-    throw new UnsupportedOperationException("getExtensions()");
   }
 }
