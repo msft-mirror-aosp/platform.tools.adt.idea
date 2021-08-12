@@ -15,6 +15,7 @@
  */
 package com.android.build.attribution.ui.view.details
 
+import com.android.build.attribution.analyzers.AnalyzerNotRun
 import com.android.build.attribution.analyzers.JetifierCanBeRemoved
 import com.android.build.attribution.analyzers.JetifierNotUsed
 import com.android.build.attribution.analyzers.JetifierRequiredForLibraries
@@ -57,6 +58,7 @@ class JetifierWarningDetailsFactory(
     JetifierCanBeRemoved -> createJetifierNotRequiredPage()
     is JetifierRequiredForLibraries -> createJetifierRequiredForLibrariesPage(data)
     JetifierNotUsed -> JPanel()
+    AnalyzerNotRun -> JPanel()
   }
 
   private fun createCheckRequiredPage() = JPanel().apply {
@@ -96,8 +98,9 @@ class JetifierWarningDetailsFactory(
     val contentHtml = """
       <b>Jetifier flag is needed by some libraries in your project</b>
       The following libraries rely on the ‘enableJetifier’ flag to work with AndroidX.
-      Please consider upgrading to more recent versions of those libraries or contact
-      the library authors to request native AndroidX support, if it’s not available yet.
+      Please consider upgrading to versions of these libraries that directly depend
+      on AndroidX. Please contact the library authors to request native AndroidX support,
+      if it’s not available yet.
       """.trimIndent().insertBRTags()
     val root = createLibsTree(data.checkJetifierResult)
     val tree = Tree(root).apply {

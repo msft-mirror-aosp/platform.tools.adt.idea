@@ -26,12 +26,12 @@ public final class SerialNumber extends Key {
   }
 
   @Override
-  @NotNull ConnectionType getConnectionType() {
+  protected @NotNull ConnectionType getConnectionType() {
     return ConnectionType.USB;
   }
 
   @Override
-  @NotNull SerialNumber getSerialNumber() {
+  protected @NotNull SerialNumber getSerialNumber() {
     return this;
   }
 

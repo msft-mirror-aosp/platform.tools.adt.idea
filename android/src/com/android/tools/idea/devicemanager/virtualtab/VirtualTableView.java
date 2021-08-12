@@ -31,7 +31,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * TableView that adjusts column widths automatically to not cut off table cell content
  */
-final class VirtualTableView extends TableView<AvdInfo> {
+public final class VirtualTableView extends TableView<AvdInfo> {
   VirtualTableView(@NotNull ListTableModel<@NotNull AvdInfo> model, @NotNull AvdInfoProvider avdInfoProvider) {
     super(model);
     getTableHeader().setResizingAllowed(false);
@@ -41,9 +41,11 @@ final class VirtualTableView extends TableView<AvdInfo> {
       .appendLine("No virtual devices added. Create a virtual device to test")
       .appendLine("applications without owning a physical device.")
       .appendLine("Create virtual device", SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES, new CreateAvdAction(avdInfoProvider));
+
+    model.addTableModelListener(event -> setWidths());
   }
 
-  void setWidths() {
+  private void setWidths() {
     IntStream.range(1, columnModel.getColumnCount())
       .forEach(viewColumnIndex -> {
         int preferredWidth = getPreferredColumnWidth(viewColumnIndex);

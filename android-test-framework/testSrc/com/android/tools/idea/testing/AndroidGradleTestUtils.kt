@@ -677,7 +677,7 @@ fun AndroidProjectStubBuilder.buildVariantStubs(): List<IdeVariantImpl> {
         null,
         variant,
         listOf(),
-        minSdkVersion = defaultConfig.productFlavor.minSdkVersion,
+        minSdkVersion = defaultConfig.productFlavor.minSdkVersion ?: IdeApiVersionImpl(1, null, "1"),
         targetSdkVersion = defaultConfig.productFlavor.targetSdkVersion,
         maxSdkVersion = defaultConfig.productFlavor.maxSdkVersion,
         versionCode = defaultConfig.productFlavor.versionCode,

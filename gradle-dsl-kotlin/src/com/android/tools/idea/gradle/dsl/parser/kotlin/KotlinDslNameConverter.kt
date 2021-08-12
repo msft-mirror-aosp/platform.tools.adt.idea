@@ -34,6 +34,7 @@ import kotlin.jvm.JvmDefault
 import com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.*
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_LIST
+import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_MAP
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_SET
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.*
 import com.intellij.openapi.application.runReadAction
@@ -97,10 +98,10 @@ interface KotlinDslNameConverter: GradleDslNameConverter {
         // prefer assignment if possible, or otherwise the first appropriate method we find
         when (e.modelEffectDescription.semantics) {
           VAR, VWO -> return ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT)
-          SET, ADD_AS_LIST, AUGMENT_LIST, CLEAR_AND_AUGMENT_LIST, OTHER ->
+          SET, ADD_AS_LIST, AUGMENT_LIST, CLEAR_AND_AUGMENT_LIST, AUGMENT_MAP, OTHER ->
             if (result == null) result = ExternalNameInfo(e.surfaceSyntaxDescription.name, METHOD)
           VAL -> when (e.modelEffectDescription.property.type) {
-            MUTABLE_SET, MUTABLE_LIST -> return ExternalNameInfo(e.surfaceSyntaxDescription.name, AUGMENTED_ASSIGNMENT)
+            MUTABLE_SET, MUTABLE_LIST, MUTABLE_MAP -> return ExternalNameInfo(e.surfaceSyntaxDescription.name, AUGMENTED_ASSIGNMENT)
             else -> Unit
           }
           else -> Unit

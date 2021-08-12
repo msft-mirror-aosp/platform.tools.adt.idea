@@ -30,13 +30,13 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Map;
 
+import static com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR;
 import static com.android.tools.idea.gradle.dsl.model.android.ProductFlavorModelImpl.*;
-import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.followElement;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ArityHelper.*;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.*;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelMapCollector.toModelMap;
+import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelSemanticsDescription.CREATE_WITH_VALUE;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.*;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 
@@ -87,9 +87,10 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
     {"setTestHandleProfiling", exactly(1), TEST_HANDLE_PROFILING, SET, VersionConstraint.agpBefore("8.0.0")},
     {"testInstrumentationRunner", property, TEST_INSTRUMENTATION_RUNNER, VAR},
     {"testInstrumentationRunner", exactly(1), TEST_INSTRUMENTATION_RUNNER, SET},
-    // TODO(b/148657110): see the comment above manifestPlaceholders in AbstractFlavorTypeDslElement
-    {"testInstrumentationRunnerArguments", property, TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS},
-    {"testInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, OTHER}, // PUTALL
+    {"testInstrumentationRunnerArguments", property, TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS, VersionConstraint.agpBefore("4.1.0")},
+    {"testInstrumentationRunnerArguments", property, TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, VAL, VersionConstraint.agpFrom("4.1.0")},
+    {"testInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, AUGMENT_MAP, VersionConstraint.agpBefore("8.0.0")},
+    {"setTestInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, SET, VersionConstraint.agpBefore("8.0.0")},
     {"versionCode", property, VERSION_CODE, VAR},
     {"setVersionCode", exactly(1), VERSION_CODE, SET},
     {"versionName", property, VERSION_NAME, VAR},
@@ -144,7 +145,8 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
     {"testInstrumentationRunner", property, TEST_INSTRUMENTATION_RUNNER, VAR},
     {"testInstrumentationRunner", exactly(1), TEST_INSTRUMENTATION_RUNNER, SET},
     {"testInstrumentationRunnerArguments", property, TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, VAR},
-    {"testInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, SET},
+    {"testInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, AUGMENT_MAP},
+    {"setTestInstrumentationRunnerArguments", exactly(1), TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, SET, VersionConstraint.agpBefore("8.0.0")},
     {"versionCode", property, VERSION_CODE, VAR},
     {"versionCode", exactly(1), VERSION_CODE, SET},
     {"versionName", property, VERSION_NAME, VAR},
@@ -160,7 +162,12 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
 
   AbstractProductFlavorDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, name);
-    addDefaultProperty(new GradleDslExpressionMap(this, GradleNameElement.fake(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS)));
+    GradleDslExpressionMap testInstrumentationRunnerArguments =
+      new GradleDslExpressionMap(this, GradleNameElement.fake(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS.name));
+    ModelEffectDescription effect = new ModelEffectDescription(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, CREATE_WITH_VALUE);
+    testInstrumentationRunnerArguments.setModelEffect(effect);
+    testInstrumentationRunnerArguments.setElementType(REGULAR);
+    addDefaultProperty(testInstrumentationRunnerArguments);
   }
 
   @Override
@@ -174,33 +181,6 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
       ModelEffectDescription effect = new ModelEffectDescription(new ModelPropertyDescription(MISSING_DIMENSION_STRATEGY), OTHER);
       argumentList.setModelEffect(effect);
       super.addParsedElement(argumentList);
-      return;
-    }
-
-    // testInstrumentationRunnerArguments has the same name in Groovy and Kotlin
-    if (property.equals("testInstrumentationRunnerArguments")) {
-      // This deals with references to maps.
-      GradleDslElement oldElement = element;
-      if (element instanceof GradleDslLiteral && ((GradleDslLiteral)element).isReference()) {
-        element = followElement((GradleDslLiteral) element);
-      }
-      if (!(element instanceof GradleDslExpressionMap)) {
-        return;
-      }
-
-      GradleDslExpressionMap testInstrumentationRunnerArgumentsElement =
-        getPropertyElement(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, GradleDslExpressionMap.class);
-      if (testInstrumentationRunnerArgumentsElement == null) {
-        testInstrumentationRunnerArgumentsElement =
-          new GradleDslExpressionMap(this, element.getPsiElement(), oldElement.getNameElement(), true);
-        setParsedElement(testInstrumentationRunnerArgumentsElement);
-      }
-
-      testInstrumentationRunnerArgumentsElement.setPsiElement(element.getPsiElement());
-      GradleDslExpressionMap elementsToAdd = (GradleDslExpressionMap)element;
-      for (Map.Entry<String, GradleDslElement> entry : elementsToAdd.getPropertyElements().entrySet()) {
-        testInstrumentationRunnerArgumentsElement.setParsedElement(entry.getValue());
-      }
       return;
     }
 
@@ -230,10 +210,17 @@ public abstract class AbstractProductFlavorDslElement extends AbstractFlavorType
         getPropertyElement(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, GradleDslExpressionMap.class);
       if (testInstrumentationRunnerArgumentsElement == null) {
         testInstrumentationRunnerArgumentsElement =
-          new GradleDslExpressionMap(this, GradleNameElement.create(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS));
+          new GradleDslExpressionMap(this, GradleNameElement.create(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS.name));
         setParsedElement(testInstrumentationRunnerArgumentsElement);
       }
       testInstrumentationRunnerArgumentsElement.setParsedElement(value);
+      // This is not theoretically sound, but...
+      ModelEffectDescription effect =
+        new ModelEffectDescription(TEST_INSTRUMENTATION_RUNNER_ARGUMENTS, CREATE_WITH_VALUE, VersionConstraint.agpBefore("8.0.0"));
+      testInstrumentationRunnerArgumentsElement.setModelEffect(effect);
+      if (testInstrumentationRunnerArgumentsElement.getPsiElement() == null) {
+        testInstrumentationRunnerArgumentsElement.setPsiElement(element.getPsiElement());
+      }
       return;
     }
 

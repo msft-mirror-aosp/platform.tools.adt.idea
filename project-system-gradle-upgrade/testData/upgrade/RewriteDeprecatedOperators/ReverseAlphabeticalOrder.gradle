@@ -1,5 +1,6 @@
 android {
   defaultConfig {
+    setTestInstrumentationRunnerArguments three: 'four', five: 'six'
     setTestHandleProfiling(false)
     setTestFunctionalTest(true)
     targetSdkVersion(29)
@@ -7,9 +8,11 @@ android {
     minSdkVersion(28)
     maxSdkVersion(30)
     setMatchingFallbacks(['demo', 'trial'])
+    setManifestPlaceholders a: 'b'
   }
   productFlavors {
     foo {
+      setTestInstrumentationRunnerArguments one: 'two'
       setTestHandleProfiling(true)
       setTestFunctionalTest(false)
       targetSdkVersion(28)
@@ -17,11 +20,13 @@ android {
       minSdkVersion(27)
       maxSdkVersion(29)
       setMatchingFallbacks('trial')
+      setManifestPlaceholders e: 'f', g: 'h'
       setDimension('paid')
     }
   }
   buildTypes {
     mumble {
+      setManifestPlaceholders c: 'd'
       setMatchingFallbacks(['demo'])
     }
   }

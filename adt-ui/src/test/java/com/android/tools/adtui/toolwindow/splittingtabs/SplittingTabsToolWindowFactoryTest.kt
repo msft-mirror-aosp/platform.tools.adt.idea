@@ -17,13 +17,20 @@ package com.android.tools.adtui.toolwindow.splittingtabs
 
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.adtui.toolwindow.splittingtabs.actions.NewTabAction
+import com.android.tools.adtui.toolwindow.splittingtabs.state.PanelState
+import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsState
+import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsStateManager
+import com.android.tools.adtui.toolwindow.splittingtabs.state.TabState
+import com.android.tools.adtui.toolwindow.splittingtabs.state.ToolWindowState
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.impl.ToolWindowHeadlessManagerImpl
-import com.intellij.testFramework.ApplicationRule
+import com.intellij.openapi.wm.impl.ToolWindowHeadlessManagerImpl.MockToolWindow
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.registerServiceInstance
 import com.intellij.ui.content.Content
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import javax.swing.JComponent
@@ -32,13 +39,21 @@ import javax.swing.JPanel
 import kotlin.test.fail
 
 
+/**
+ * Tests for [SplittingTabsToolWindowFactory]
+ */
 class SplittingTabsToolWindowFactoryTest {
-  private val project = mock<Project>()
-  private val toolWindow = FakeToolWindow(project)
 
   @get:Rule
-  val appRule = ApplicationRule()
+  val projectRule = ProjectRule()
 
+  private val toolWindow by lazy { FakeToolWindow(projectRule.project, "toolWindowId") }
+  private val stateManager = SplittingTabsStateManager()
+
+  @Before
+  fun setUp() {
+    projectRule.project.registerServiceInstance(SplittingTabsStateManager::class.java, stateManager)
+  }
 
   @Test
   fun init_setToHideOnEmptyContent() {
@@ -50,24 +65,48 @@ class SplittingTabsToolWindowFactoryTest {
   }
 
   @Test
-  fun createToolWindowContent_createsNewTab() {
+  fun createToolWindowContent_noState_createsNewTab() {
     val component = JLabel("TabContents")
     val splittingTabsToolWindowFactory = TestSplittingTabsToolWindowFactory({ "TabName" }, { component })
 
-    splittingTabsToolWindowFactory.createToolWindowContent(project, toolWindow)
+    splittingTabsToolWindowFactory.createToolWindowContent(projectRule.project, toolWindow)
 
     assertThat(toolWindow.contentManager.contents).asList().hasSize(1)
     val content = toolWindow.contentManager.contents[0]
     assertThat(content.displayName).isEqualTo("TabName")
-    assertThat(content.component).isSameAs(component)
+    assertThat((content.component as SplittingPanel).component).isSameAs(component)
     assertThat(content.isSplittingTab()).isTrue()
+  }
+
+  /**
+   * A basic restore state test. No split content is used. More comprehensive tests are in SplittingPanelTest
+   */
+  @Test
+  fun createToolWindowContent_withState_restoresState() {
+    val toolWindow = FakeToolWindow(projectRule.project, "toolWindowId")
+    stateManager.loadState(SplittingTabsState(listOf(
+      ToolWindowState("toolWindowId", listOf(
+        TabState("Tab1", PanelState("clientState1")),
+        TabState("Tab2", PanelState("clientState2")),
+      )),
+      ToolWindowState("anotherToolWindowId", listOf(
+        TabState("Tab3", PanelState("clientState3")),
+      )),
+    )))
+    val splittingTabsToolWindowFactory = TestSplittingTabsToolWindowFactory({ "TabName" }, ::JLabel)
+
+    splittingTabsToolWindowFactory.createToolWindowContent(projectRule.project, toolWindow)
+
+    assertThat(toolWindow.contentManager.contents).asList().hasSize(2)
+    assertContent(toolWindow.contentManager.contents[0], "Tab1", "clientState1")
+    assertContent(toolWindow.contentManager.contents[1], "Tab2", "clientState2")
   }
 
   @Test
   fun createToolWindowContent_addsNewTabButton() {
     val splittingTabsToolWindowFactory = TestSplittingTabsToolWindowFactory()
 
-    splittingTabsToolWindowFactory.createToolWindowContent(project, toolWindow)
+    splittingTabsToolWindowFactory.createToolWindowContent(projectRule.project, toolWindow)
     assertThat(toolWindow.tabActionList).hasSize(1)
     assertThat(toolWindow.tabActionList[0]).isInstanceOf(NewTabAction::class.java)
     assertThat(toolWindow.tabActionList[0].templatePresentation.text).isEqualTo("New Tab")
@@ -80,13 +119,13 @@ class SplittingTabsToolWindowFactoryTest {
     val splittingTabsToolWindowFactory = TestSplittingTabsToolWindowFactory(
       { "TabName-${tabNameCount++}" },
       { JLabel("TabContents-${tabContentCount++}") })
-    splittingTabsToolWindowFactory.createToolWindowContent(project, toolWindow)
+    splittingTabsToolWindowFactory.createToolWindowContent(projectRule.project, toolWindow)
 
     toolWindow.tabActionList[0].actionPerformed(mock())
 
     assertThat(toolWindow.contentManager.contents).asList().hasSize(2)
-    assertContent(toolWindow.contentManager.contents[0], 1)
-    assertContent(toolWindow.contentManager.contents[1], 2)
+    assertContent(toolWindow.contentManager.contents[0], "TabName-1", "TabContents-1")
+    assertContent(toolWindow.contentManager.contents[1], "TabName-2", "TabContents-2")
     assertThat(toolWindow.contentManager.contents[1].isSplittingTab()).isTrue()
   }
 
@@ -94,30 +133,29 @@ class SplittingTabsToolWindowFactoryTest {
   fun removeContent_disposesTabComponent() {
     val disposableComponent = DisposableComponent()
     val splittingTabsToolWindowFactory = TestSplittingTabsToolWindowFactory(generateChild = { disposableComponent })
-    splittingTabsToolWindowFactory.createToolWindowContent(project, toolWindow)
+    splittingTabsToolWindowFactory.createToolWindowContent(projectRule.project, toolWindow)
 
     toolWindow.contentManager.removeContent(toolWindow.contentManager.contents[0], true)
 
     assertThat(disposableComponent.isDisposed).isTrue()
   }
 
-  private fun assertContent(content: Content, i: Int) {
-    val component1 = content.component as? JLabel ?: fail("Expected a JLabel object")
-    assertThat(content.displayName).isEqualTo("TabName-$i")
-    assertThat(component1.text).isEqualTo("TabContents-$i")
+  private fun assertContent(content: Content, expectedTabName: String, expectedContent: String) {
+    val component1 = (content.component as? SplittingPanel)?.component as? JLabel ?: fail("Expected a JLabel object")
+    assertThat(content.displayName).isEqualTo(expectedTabName)
+    assertThat(component1.text).isEqualTo(expectedContent)
   }
 
   private class TestSplittingTabsToolWindowFactory(
     val generateName: () -> String = { "" },
-    val generateChild: () -> JComponent = ::JPanel
+    val generateChild: (String?) -> JComponent = ::JLabel
   ) : SplittingTabsToolWindowFactory() {
-
     override fun generateTabName(tabNames: Set<String>): String = generateName()
 
-    override fun generateChildComponent(): JComponent = generateChild()
+    override fun generateChildComponent(clientState: String?): JComponent = generateChild(clientState)
   }
 
-  private class FakeToolWindow(project: Project) : ToolWindowHeadlessManagerImpl.MockToolWindow(project) {
+  private class FakeToolWindow(project: Project, val toolWindowId: String) : MockToolWindow(project) {
     var hideOnEmpty: Boolean = false
     var tabActionList: MutableList<AnAction> = mutableListOf()
 
@@ -129,6 +167,8 @@ class SplittingTabsToolWindowFactoryTest {
       tabActionList.clear()
       tabActionList.addAll(actions)
     }
+
+    override fun getId(): String = toolWindowId
   }
 
   private class DisposableComponent : JPanel(), Disposable {

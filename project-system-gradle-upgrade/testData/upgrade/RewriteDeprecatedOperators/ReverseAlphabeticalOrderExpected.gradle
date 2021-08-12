@@ -1,5 +1,6 @@
 android {
   defaultConfig {
+    testInstrumentationRunnerArguments three: 'four', five: 'six'
     testHandleProfiling false
     testFunctionalTest true
     targetSdk 29
@@ -7,9 +8,11 @@ android {
     minSdk 28
     maxSdk 30
     matchingFallbacks = ['demo', 'trial']
+    manifestPlaceholders a: 'b'
   }
   productFlavors {
     foo {
+      testInstrumentationRunnerArguments one: 'two'
       testHandleProfiling true
       testFunctionalTest false
       targetSdk 28
@@ -17,11 +20,13 @@ android {
       minSdk 27
       maxSdk 29
       matchingFallbacks = ['trial']
+      manifestPlaceholders e: 'f', g: 'h'
       dimension 'paid'
     }
   }
   buildTypes {
     mumble {
+      manifestPlaceholders c: 'd'
       matchingFallbacks = ['demo']
     }
   }

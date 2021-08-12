@@ -34,8 +34,10 @@ import static com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement.APP
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ArityHelper.property;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.ADD_AS_LIST;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.AUGMENT_LIST;
+import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.AUGMENT_MAP;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription.CLEAR_AND_AUGMENT_LIST;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_LIST;
+import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_MAP;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTABLE_SET;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VAR;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS;
@@ -136,7 +138,7 @@ public class GradleDslBlockElement extends GradlePropertiesDslElement {
       }
     }
     else if (syntax == AUGMENTED_ASSIGNMENT) {
-      if (effect.property.type != MUTABLE_SET && effect.property.type != MUTABLE_LIST) {
+      if (effect.property.type != MUTABLE_SET && effect.property.type != MUTABLE_LIST && effect.property.type != MUTABLE_MAP) {
         return;
       }
     }
@@ -168,6 +170,10 @@ public class GradleDslBlockElement extends GradlePropertiesDslElement {
           removeProperty(effect.property.name);
         }
         addToParsedExpressionList(effect, element);
+        return;
+      }
+      if (description == AUGMENT_MAP) {
+        addToParsedExpressionMap(effect, element);
         return;
       }
       maybeCanonizeElement(element); // NOTYPO

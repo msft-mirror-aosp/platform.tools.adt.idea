@@ -1748,6 +1748,48 @@ class ProductFlavorModelTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testAddAndApplyMapElements400() {
+    writeToBuildFile(TestFile.ADD_AND_APPLY_MAP_ELEMENTS)
+
+    val buildModel = gradleBuildModel
+    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
+    var android = buildModel.android()
+    assertNotNull(android)
+
+    var defaultConfig = android.defaultConfig()
+    verifyEmptyMapProperty("manifestPlaceholders", defaultConfig.manifestPlaceholders())
+    verifyEmptyMapProperty("testInstrumentationRunnerArguments", defaultConfig.testInstrumentationRunnerArguments())
+
+    defaultConfig.manifestPlaceholders().getMapValue("activityLabel1").setValue("newName1")
+    defaultConfig.manifestPlaceholders().getMapValue("activityLabel2").setValue("newName2")
+    defaultConfig.testInstrumentationRunnerArguments().getMapValue("size").setValue("small")
+    defaultConfig.testInstrumentationRunnerArguments().getMapValue("key").setValue("value")
+
+    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+
+    applyChanges(buildModel)
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED_400)
+
+    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+
+    buildModel.reparse()
+    android = buildModel.android()
+    assertNotNull(android)
+
+    defaultConfig = android.defaultConfig()
+    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+  }
+
+  @Test
   fun testAddAndApplyMapElements() {
     writeToBuildFile(TestFile.ADD_AND_APPLY_MAP_ELEMENTS)
 
@@ -1813,6 +1855,48 @@ class ProductFlavorModelTest : GradleFileModelTestCase() {
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.REMOVE_AND_APPLY_MAP_ELEMENTS_EXPECTED)
+
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+
+    buildModel.reparse()
+    android = buildModel.android()
+    assertNotNull(android)
+
+    defaultConfig = android.defaultConfig()
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+  }
+
+  @Test
+  fun testRemoveAndApplyDiscontiguousMapElements() {
+    writeToBuildFile(TestFile.REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS)
+
+    val buildModel = gradleBuildModel
+    var android = buildModel.android()
+    assertNotNull(android)
+
+    var defaultConfig = android.defaultConfig()
+
+    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+
+    defaultConfig.manifestPlaceholders().getValue(MAP_TYPE)!!["activityLabel1"]!!.delete()
+    defaultConfig.testInstrumentationRunnerArguments().getValue(MAP_TYPE)!!["size"]!!.delete()
+
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
+                 defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
+                 defaultConfig.testInstrumentationRunnerArguments())
+
+    applyChanges(buildModel)
+    verifyFileContents(myBuildFile, TestFile.REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS_EXPECTED)
 
     assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
                  defaultConfig.manifestPlaceholders())
@@ -2640,8 +2724,11 @@ class ProductFlavorModelTest : GradleFileModelTestCase() {
     SET_AND_APPLY_MAP_ELEMENTS_EXPECTED("setAndApplyMapElementsExpected"),
     ADD_AND_APPLY_MAP_ELEMENTS("addAndApplyMapElements"),
     ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED("addAndApplyMapElementsExpected"),
+    ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED_400("addAndApplyMapElementsExpected400"),
     REMOVE_AND_APPLY_MAP_ELEMENTS("removeAndApplyMapElements"),
     REMOVE_AND_APPLY_MAP_ELEMENTS_EXPECTED("removeAndApplyMapElementsExpected"),
+    REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS("removeAndApplyDiscontiguousMapElements"),
+    REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS_EXPECTED("removeAndApplyDiscontiguousMapElementsExpected"),
     ADD_NATIVE_ELEMENTS("addNativeElements"),
     ADD_NATIVE_ELEMENTS_EXPECTED("addNativeElementsExpected"),
     REMOVE_ONLY_NATIVE_ELEMENT_IN_THE_LIST("removeOnlyNativeElementInTheList"),

@@ -15,107 +15,201 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
+import com.android.tools.idea.devicemanager.InfoSection;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
+import com.intellij.util.concurrency.EdtExecutorService;
 import java.awt.Component;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.awt.Dimension;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.OptionalInt;
+import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Group;
-import javax.swing.GroupLayout.SequentialGroup;
+import javax.swing.JLabel;
 import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.SwingConstants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 final class DetailsPanel extends JBPanel<DetailsPanel> {
-  private final @NotNull PhysicalDevice myDevice;
-  private final @NotNull Collection<@NotNull Component> myNameLabels;
+  private final @NotNull Component myHeadingLabel;
+  private final @NotNull SummarySection mySummarySection;
+  private final @NotNull DeviceSection myDeviceSection;
 
-  private final @NotNull GroupLayout myLayout;
-  private final @NotNull Group myHorizontalGroup;
-  private final @NotNull SequentialGroup myVerticalGroup;
+  @VisibleForTesting
+  static final class SummarySection extends InfoSection {
+    @VisibleForTesting final @NotNull JLabel myApiLevelLabel;
+    @VisibleForTesting final @NotNull JLabel myResolutionLabel;
+    @VisibleForTesting final @NotNull JLabel myDpLabel;
+    @VisibleForTesting final @NotNull JLabel myAbiListLabel;
 
-  DetailsPanel(@NotNull PhysicalDevice device) {
-    super(null);
+    private SummarySection() {
+      super("Summary");
 
-    myDevice = device;
-    myNameLabels = new ArrayList<>();
+      myApiLevelLabel = addNameAndValueLabels("API level");
+      myResolutionLabel = addNameAndValueLabels("Resolution");
+      myDpLabel = addNameAndValueLabels("dp");
+      myAbiListLabel = addNameAndValueLabels("ABI list");
 
-    Component headingLabel = new JBLabel(device.getName());
-    myLayout = new GroupLayout(this);
-
-    myHorizontalGroup = myLayout.createParallelGroup()
-      .addComponent(headingLabel);
-
-    myVerticalGroup = myLayout.createSequentialGroup()
-      .addComponent(headingLabel)
-      .addPreferredGap(ComponentPlacement.UNRELATED);
-
-    addSections();
-    myLayout.linkSize(SwingConstants.HORIZONTAL, myNameLabels.toArray(new Component[0]));
-
-    myLayout.setAutoCreateContainerGaps(true);
-    myLayout.setAutoCreateGaps(true);
-    myLayout.setHorizontalGroup(myHorizontalGroup);
-    myLayout.setVerticalGroup(myVerticalGroup);
-
-    setLayout(myLayout);
-  }
-
-  private void addSections() {
-    Iterator<InfoSection> sections = Arrays.asList(newQuickSummarySection(), newDeviceSection()).iterator();
-    addSection(sections.next());
-
-    while (sections.hasNext()) {
-      myVerticalGroup.addPreferredGap(ComponentPlacement.UNRELATED);
-      addSection(sections.next());
+      setLayout();
     }
   }
 
-  private @NotNull InfoSection newQuickSummarySection() {
-    return new InfoSection("Quick summary")
-      .putInfo("API level", myDevice.getApi())
-      .putInfo("Resolution", myDevice.getResolution())
-      .putInfo("dp", myDevice.getDp())
-      .putInfo("ABI list", myDevice.getAbis());
+  @VisibleForTesting
+  static final class SummarySectionCallback extends MyFutureCallback {
+    private final @NotNull SummarySection mySection;
+
+    @VisibleForTesting
+    SummarySectionCallback(@NotNull SummarySection section) {
+      mySection = section;
+    }
+
+    @Override
+    public void onSuccess(@Nullable PhysicalDevice device) {
+      assert device != null;
+
+      setText(mySection.myApiLevelLabel, device.getApi());
+      setText(mySection.myResolutionLabel, device.getResolution());
+      setText(mySection.myDpLabel, device.getDp());
+      setText(mySection.myAbiListLabel, device.getAbis());
+    }
   }
 
-  private @NotNull InfoSection newDeviceSection() {
-    return new InfoSection("Device")
-      .putInfo("Name", myDevice.getName());
+  @VisibleForTesting
+  static final class DeviceSection extends InfoSection {
+    @VisibleForTesting final @NotNull JLabel myNameLabel;
+
+    private DeviceSection() {
+      super("Device");
+
+      myNameLabel = addNameAndValueLabels("Name");
+      setLayout();
+    }
   }
 
-  private void addSection(@NotNull InfoSection section) {
-    Component headingLabel = new JBLabel(section.getHeading());
+  @VisibleForTesting
+  static final class DeviceSectionCallback extends MyFutureCallback {
+    private final @NotNull DeviceSection mySection;
 
-    myHorizontalGroup.addComponent(headingLabel);
-    myVerticalGroup.addComponent(headingLabel);
+    @VisibleForTesting
+    DeviceSectionCallback(@NotNull DeviceSection section) {
+      mySection = section;
+    }
 
-    section.forEachInfo(this::addNameAndValueLabels);
+    @Override
+    public void onSuccess(@Nullable PhysicalDevice device) {
+      assert device != null;
+      setText(mySection.myNameLabel, device.getName());
+    }
   }
 
-  private void addNameAndValueLabels(@NotNull String name, @Nullable Object value) {
-    Component nameLabel = new JBLabel(name);
-    myNameLabels.add(nameLabel);
+  private abstract static class MyFutureCallback implements FutureCallback<PhysicalDevice> {
+    @Override
+    public void onFailure(@NotNull Throwable throwable) {
+      Logger.getInstance(DetailsPanel.class).warn(throwable);
+    }
+  }
 
+  @VisibleForTesting
+  interface NewInfoSectionCallback<S> {
+    @NotNull FutureCallback<@NotNull PhysicalDevice> apply(@NotNull S section);
+  }
+
+  DetailsPanel(@NotNull PhysicalDevice device, @Nullable Project project) {
+    this(device.getName(), new AsyncDetailsBuilder(project, device).buildAsync(), SummarySectionCallback::new, DeviceSectionCallback::new);
+  }
+
+  @VisibleForTesting
+  DetailsPanel(@NotNull String heading,
+               @NotNull ListenableFuture<@NotNull PhysicalDevice> future,
+               @NotNull NewInfoSectionCallback<@NotNull SummarySection> newSummarySectionCallback,
+               @NotNull NewInfoSectionCallback<@NotNull DeviceSection> newDeviceSectionCallback) {
+    super(null);
+    myHeadingLabel = new JBLabel(heading);
+
+    Executor executor = EdtExecutorService.getInstance();
+
+    mySummarySection = new SummarySection();
+    Futures.addCallback(future, newSummarySectionCallback.apply(mySummarySection), executor);
+
+    myDeviceSection = new DeviceSection();
+    Futures.addCallback(future, newDeviceSectionCallback.apply(myDeviceSection), executor);
+
+    setNameLabelPreferredWidthsToMax();
+    setLayout();
+  }
+
+  private void setNameLabelPreferredWidthsToMax() {
+    Collection<Component> labels = Stream.of(mySummarySection, myDeviceSection)
+      .map(InfoSection::getNameLabels)
+      .flatMap(Collection::stream)
+      .collect(Collectors.toList());
+
+    OptionalInt optionalWidth = labels.stream()
+      .map(Component::getPreferredSize)
+      .mapToInt(size -> size.width)
+      .max();
+
+    int width = optionalWidth.orElseThrow(AssertionError::new);
+
+    labels.forEach(component -> {
+      Dimension size = component.getPreferredSize();
+      size.width = width;
+
+      component.setPreferredSize(size);
+      component.setMaximumSize(size);
+    });
+  }
+
+  private void setLayout() {
+    GroupLayout layout = new GroupLayout(this);
+
+    Group horizontalGroup = layout.createParallelGroup()
+      .addComponent(myHeadingLabel)
+      .addComponent(mySummarySection)
+      .addComponent(myDeviceSection);
+
+    Group verticalGroup = layout.createSequentialGroup()
+      .addComponent(myHeadingLabel)
+      .addPreferredGap(ComponentPlacement.UNRELATED)
+      .addComponent(mySummarySection)
+      .addPreferredGap(ComponentPlacement.UNRELATED)
+      .addComponent(myDeviceSection);
+
+    layout.setAutoCreateContainerGaps(true);
+    layout.setHorizontalGroup(horizontalGroup);
+    layout.setVerticalGroup(verticalGroup);
+
+    setLayout(layout);
+  }
+
+  private static void setText(@NotNull JLabel label, @Nullable Object value) {
     if (value == null) {
-      myHorizontalGroup.addComponent(nameLabel);
-      myVerticalGroup.addComponent(nameLabel);
-
       return;
     }
 
-    Component valueLabel = new JBLabel(value.toString());
+    label.setText(value.toString());
+  }
 
-    myHorizontalGroup.addGroup(myLayout.createSequentialGroup()
-                                 .addComponent(nameLabel)
-                                 .addComponent(valueLabel));
+  private static void setText(@NotNull JLabel label, @NotNull Iterable<@NotNull String> values) {
+    label.setText(String.join(", ", values));
+  }
 
-    myVerticalGroup.addGroup(myLayout.createParallelGroup()
-                               .addComponent(nameLabel)
-                               .addComponent(valueLabel));
+  @VisibleForTesting
+  @NotNull SummarySection getSummarySection() {
+    return mySummarySection;
+  }
+
+  @VisibleForTesting
+  @NotNull DeviceSection getDeviceSection() {
+    return myDeviceSection;
   }
 }

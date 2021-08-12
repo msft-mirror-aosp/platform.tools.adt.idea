@@ -635,6 +635,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> BUILD_ATTRIBUTION_ENABLED = Flag.create(
     GRADLE_IDE, "build.attribution", "Enable build attribution",
     "Enable build attribution.", true);
+  public static final Flag<Boolean> BUILD_ANALYZER_JETIFIER_ENABLED = Flag.create(
+    GRADLE_IDE, "build.analyzer.jetifier.warning", "Enable Jetifier usage analyzis",
+    "Enable Jetifier usage analyzis is Build Analyzer.", false);
   public static final Flag<Boolean> DISABLE_FORCED_UPGRADES = Flag.create(
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
     "This option is only respected when running Android Studio internally.", false);
@@ -735,7 +738,7 @@ public final class StudioFlags {
     "If enabled, display semantic information found in the agent.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.snapshots", "Enable snapshots",
-    "Enable saving and loading snapshots in the layout inspector.", false);
+    "Enable saving and loading snapshots in the layout inspector.", true);
 
   //endregion
 
@@ -1176,7 +1179,14 @@ public final class StudioFlags {
     COMPOSE, "preview.switch.animation.interactive",
     "Enable animation inspection switch from interactive preview (and disable from static preview)",
     "If enabled, a user can switch to animation inspection from interactive preview",
-    true
+    false
+  );
+
+  public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = Flag.create(
+    COMPOSE, "preview.interactive.fps.limit",
+    "Interactive Preview FPS limit",
+    "Controls the maximum number of frames per second in Compose Interactive Preview",
+    30
   );
 
   public static final Flag<Boolean> COMPOSE_CLASSLOADERS_PRELOADING = Flag.create(
@@ -1192,6 +1202,14 @@ public final class StudioFlags {
     "If enabled, a given compose 'StateObject' type object will be rendered by the corresponding custom renderer",
     false
   );
+
+  public static final Flag<Boolean> COMPOSE_INTERACTIVE_ANIMATION_CURVES = Flag.create(
+    COMPOSE, "preview.animation.curves",
+    "Enable animation curves in Animation Inspector",
+    "If enabled, animation curves will be rendered in Animation Inspector timeline.",
+    true
+  );
+
   //endregion
 
   //region Manifests
