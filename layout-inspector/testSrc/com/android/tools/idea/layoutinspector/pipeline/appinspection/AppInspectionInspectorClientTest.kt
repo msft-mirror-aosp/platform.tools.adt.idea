@@ -52,7 +52,7 @@ private val TIMEOUT_UNIT = TimeUnit.SECONDS
 
 class AppInspectionInspectorClientTest {
   private val inspectionRule = AppInspectionInspectorRule()
-  private val inspectorRule = LayoutInspectorRule(inspectionRule.createInspectorClientProvider()) { listOf(MODERN_PROCESS.name) }
+  private val inspectorRule = LayoutInspectorRule(inspectionRule.createInspectorClientProvider()) { it.name == MODERN_PROCESS.name }
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule)!!
@@ -123,7 +123,6 @@ class AppInspectionInspectorClientTest {
     composeCommands.take().let { command ->
       assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.GET_ALL_PARAMETERS_COMMAND)
     }
-
   }
 
   @Test
@@ -189,7 +188,7 @@ class AppInspectionInspectorClientTest {
   fun inspectorFiresErrorOnErrorEvent() = runBlocking {
     val startFetchError = "Failed to start fetching or whatever"
 
-    inspectionRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
+    inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) {
       inspectionRule.viewInspector.connection.sendEvent {
         errorEventBuilder.apply {
           message = startFetchError
@@ -430,7 +429,7 @@ class AppInspectionInspectorClientWithFailingClientTest {
   private val inspectionRule = AppInspectionInspectorRule()
   private val inspectorRule = LayoutInspectorRule(
     AppInspectionClientProvider({ mock() }, { inspectionRule.inspectionService.scope })) {
-    listOf(MODERN_PROCESS.name)
+    it.name == MODERN_PROCESS.name
   }
 
   @get:Rule

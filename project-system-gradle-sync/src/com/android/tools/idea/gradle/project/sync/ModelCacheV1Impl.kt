@@ -136,6 +136,8 @@ import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeVariantImpl
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
+import com.intellij.openapi.util.io.FileUtil
+import org.jetbrains.annotations.SystemIndependent
 import java.io.File
 
 internal fun modelCacheV1Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
@@ -461,7 +463,11 @@ internal fun modelCacheV1Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
         deduplicate = { strings.getOrPut(this) { this } }
       )
       val isProvided = copyNewProperty(androidLibrary::isProvided, false)
-      IdeAndroidLibraryImpl(androidLibraryCores.internCore(core), isProvided)
+      IdeAndroidLibraryImpl(
+        core = androidLibraryCores.internCore(core),
+        name = convertToLibraryName(core.artifactAddress, buildFolderPaths.buildRootDirectory!!).deduplicate(),
+        isProvided = isProvided
+      )
     }
   }
 
@@ -481,7 +487,11 @@ internal fun modelCacheV1Impl(buildFolderPaths: BuildFolderPaths): ModelCache {
         artifact = javaLibrary.jarFile
       )
       val isProvided = copyNewProperty(javaLibrary::isProvided, false)
-      IdeJavaLibraryImpl(javaLibraryCores.internCore(core), isProvided)
+      IdeJavaLibraryImpl(
+        core = javaLibraryCores.internCore(core),
+        name = convertToLibraryName(core.artifactAddress, buildFolderPaths.buildRootDirectory!!).deduplicate(),
+        isProvided = isProvided
+      )
     }
   }
 
@@ -1235,3 +1245,6 @@ private inline fun <T : Collection<*>?> copyNewProperty(propertyInvoker: () -> T
 @JvmName("impossibleCopyNewMapProperty")
 @Suppress("unused", "UNUSED_PARAMETER")
 private inline fun <T : Map<*, *>?> copyNewProperty(propertyInvoker: () -> T): Unit = error("Cannot be called. Use copy() method.")
+
+private fun <T> MutableMap<T, T>.internCore(core: T): T = putIfAbsent(core, core) ?: core
+

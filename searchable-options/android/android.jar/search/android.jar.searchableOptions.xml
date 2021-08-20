@@ -721,13 +721,6 @@
     <option name="when" hit="When encountering snapshots incompatible with the current configuration:" />
     <option name="with" hit="When encountering snapshots incompatible with the current configuration:" />
   </configurable>
-  <configurable id="device.file.explorer" configurable_name="Device File Explorer">
-    <option name="device" hit="Device File Explorer" />
-    <option name="explorer" hit="Device File Explorer" />
-    <option name="file" hit="Device File Explorer" />
-    <option name="download" hit="Download location" />
-    <option name="location" hit="Download location" />
-  </configurable>
   <configurable id="instant.run" configurable_name="Deployment">
     <option name="apply" hit="Automatically perform &quot;Run&quot; when Apply Changes fails" />
     <option name="automatically" hit="Automatically perform &quot;Run&quot; when Apply Changes fails" />
@@ -969,6 +962,13 @@
     <option name="package" path="SDK Platforms" hit="Show Package Details" />
     <option name="show" path="SDK Platforms" hit="Show Package Details" />
   </configurable>
+  <configurable id="device.file.explorer" configurable_name="Device File Explorer">
+    <option name="device" hit="Device File Explorer" />
+    <option name="explorer" hit="Device File Explorer" />
+    <option name="file" hit="Device File Explorer" />
+    <option name="download" hit="Download location" />
+    <option name="location" hit="Download location" />
+  </configurable>
   <configurable id="memory.settings" configurable_name="Memory Settings">
     <option name="" hit="  Configure the maximum amount of RAM the OS should allocate for Android Studio processes, such as the core IDE or Gradle daemon. Similar to allocating too little memory, allocating too much memory might degrade performance.  " />
     <option name="allocate" hit="  Configure the maximum amount of RAM the OS should allocate for Android Studio processes, such as the core IDE or Gradle daemon. Similar to allocating too little memory, allocating too much memory might degrade performance.  " />
@@ -1163,13 +1163,23 @@
     <option name="inspector" hit="Enable Live Layout Inspector" />
     <option name="layout" hit="Enable Live Layout Inspector" />
     <option name="live" hit="Enable Live Layout Inspector" />
-    <option name="and" hit="Enable interactive and animation preview tools" />
-    <option name="animation" hit="Enable interactive and animation preview tools" />
-    <option name="enable" hit="Enable interactive and animation preview tools" />
-    <option name="interactive" hit="Enable interactive and animation preview tools" />
-    <option name="preview" hit="Enable interactive and animation preview tools" />
-    <option name="tools" hit="Enable interactive and animation preview tools" />
+    <option name="animation" hit="Enable animation preview" />
+    <option name="enable" hit="Enable animation preview" />
+    <option name="preview" hit="Enable animation preview" />
+    <option name="enable" hit="Enable interactive preview" />
+    <option name="interactive" hit="Enable interactive preview" />
+    <option name="preview" hit="Enable interactive preview" />
     <option name="experimental" hit="Experimental" />
+    <option name="animation" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="animations" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="compose" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="defined" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="frame-by-frame" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="framework" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="inspection" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="of" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="the" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
+    <option name="using" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
     <option name="gradle" hit="Gradle" />
     <option name="compose" hit="Jetpack Compose" />
     <option name="jetpack" hit="Jetpack Compose" />
@@ -1177,14 +1187,11 @@
     <option name="layout" hit="Layout Editor" />
     <option name="inspector" hit="Layout Inspector" />
     <option name="layout" hit="Layout Inspector" />
-    <option name="and" hit="Live preview to test gestures and inspect animations" />
-    <option name="animations" hit="Live preview to test gestures and inspect animations" />
-    <option name="gestures" hit="Live preview to test gestures and inspect animations" />
-    <option name="inspect" hit="Live preview to test gestures and inspect animations" />
-    <option name="live" hit="Live preview to test gestures and inspect animations" />
-    <option name="preview" hit="Live preview to test gestures and inspect animations" />
-    <option name="test" hit="Live preview to test gestures and inspect animations" />
-    <option name="to" hit="Live preview to test gestures and inspect animations" />
+    <option name="gestures" hit="Live preview to test gestures" />
+    <option name="live" hit="Live preview to test gestures" />
+    <option name="preview" hit="Live preview to test gestures" />
+    <option name="test" hit="Live preview to test gestures" />
+    <option name="to" hit="Live preview to test gestures" />
     <option name="annotation" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editing" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editor" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />

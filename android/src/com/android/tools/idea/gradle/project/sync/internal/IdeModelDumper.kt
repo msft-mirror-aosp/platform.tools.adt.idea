@@ -172,7 +172,7 @@ private fun ProjectDumper.dump(ideVariant: IdeVariant) {
           }
       }
       ideVariant.testFixturesArtifact?.let {
-        head("TestFixtureArtifact")
+        head("TestFixturesArtifact")
         nest {
           dump(it)
         }
@@ -285,8 +285,8 @@ private fun ProjectDumper.dump(ideDependencies: IdeDependencies) {
   if (ideDependencies.androidLibraries.isNotEmpty()) {
     head("AndroidLibraries")
     nest {
-      ideDependencies.androidLibraries.forEach {
-        head("AndroidLibrary")
+      ideDependencies.androidLibraries.sortedBy { it.name }.forEach {
+        head("AndroidLibrary") { it.name }
         nest {
           dump(it)
         }
@@ -296,8 +296,8 @@ private fun ProjectDumper.dump(ideDependencies: IdeDependencies) {
   if (ideDependencies.javaLibraries.isNotEmpty()) {
     head("JavaLibraries")
     nest {
-      ideDependencies.javaLibraries.forEach {
-        head("JavaLibrary")
+      ideDependencies.javaLibraries.sortedBy { it.name }.forEach {
+        head("JavaLibrary") { it.name }
         nest {
           dump(it)
         }

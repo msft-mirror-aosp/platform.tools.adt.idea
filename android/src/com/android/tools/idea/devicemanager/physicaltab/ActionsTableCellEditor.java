@@ -18,14 +18,18 @@ package com.android.tools.idea.devicemanager.physicaltab;
 import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.Tables;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDeviceTableModel.Actions;
-import com.android.tools.idea.explorer.DeviceExplorerToolWindowFactory;
+import com.android.tools.idea.explorer.DeviceExplorerViewService;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.JBMenuItem;
+import com.intellij.openapi.ui.JBPopupMenu;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import java.awt.Component;
-import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import javax.swing.AbstractCellEditor;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JTable;
 import javax.swing.table.TableCellEditor;
 import org.jetbrains.annotations.NotNull;
@@ -35,25 +39,25 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
   private @Nullable PhysicalDevice myDevice;
 
   private final @NotNull PhysicalDevicePanel myPanel;
-  private final @NotNull BiConsumer<@NotNull Project, @NotNull String> myOpenAndShowDevice;
+  private final @NotNull Function<@NotNull Project, @NotNull DeviceExplorerViewService> myDeviceExplorerViewServiceGetInstance;
   private final @NotNull NewEditDeviceNameDialog myNewEditDeviceNameDialog;
   private final @NotNull BiPredicate<@NotNull Device, @NotNull Project> myAskWithRemoveDeviceDialog;
   private final @NotNull ActionsComponent myComponent;
 
   ActionsTableCellEditor(@NotNull PhysicalDevicePanel panel) {
     this(panel,
-         DeviceExplorerToolWindowFactory::openAndShowDevice,
+         DeviceExplorerViewService::getInstance,
          EditDeviceNameDialog::new,
          ActionsTableCellEditor::askWithRemoveDeviceDialog);
   }
 
   @VisibleForTesting
   ActionsTableCellEditor(@NotNull PhysicalDevicePanel panel,
-                         @NotNull BiConsumer<@NotNull Project, @NotNull String> openAndShowDevice,
+                         @NotNull Function<@NotNull Project, @NotNull DeviceExplorerViewService> deviceExplorerViewServiceGetInstance,
                          @NotNull NewEditDeviceNameDialog newEditDeviceNameDialog,
                          @NotNull BiPredicate<@NotNull Device, @NotNull Project> askWithRemoveDeviceDialog) {
     myPanel = panel;
-    myOpenAndShowDevice = openAndShowDevice;
+    myDeviceExplorerViewServiceGetInstance = deviceExplorerViewServiceGetInstance;
     myNewEditDeviceNameDialog = newEditDeviceNameDialog;
     myAskWithRemoveDeviceDialog = askWithRemoveDeviceDialog;
 
@@ -62,7 +66,7 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     myComponent.getActivateDeviceFileExplorerWindowButton().addActionListener(event -> activateDeviceFileExplorerWindow());
     myComponent.getEditDeviceNameButton().addActionListener(event -> editDeviceName());
     myComponent.getRemoveButton().addActionListener(event -> remove());
-    myComponent.getViewDetailsButton().addActionListener(event -> myPanel.toggleDetailsPanel(myDevice));
+    myComponent.getMoreButton().addActionListener(event -> showPopupMenu());
   }
 
   @VisibleForTesting
@@ -77,7 +81,7 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     assert project != null;
 
     assert myDevice != null;
-    myOpenAndShowDevice.accept(project, myDevice.getKey().toString());
+    myDeviceExplorerViewServiceGetInstance.apply(project).openAndShowDevice(myDevice.getKey().toString());
   }
 
   private void editDeviceName() {
@@ -104,6 +108,23 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
 
     fireEditingStopped();
     myPanel.getTable().getModel().remove(myDevice.getKey());
+  }
+
+  private void showPopupMenu() {
+    JMenuItem item = new JBMenuItem("Pair device");
+
+    // TODO Call item::setEnabled as appropriate
+    item.addActionListener(event -> pairDevice());
+
+    JPopupMenu menu = new JBPopupMenu();
+    menu.add(item);
+
+    Component button = myComponent.getMoreButton();
+    menu.show(button, 0, button.getHeight());
+  }
+
+  private void pairDevice() {
+    // TODO Pair device
   }
 
   @VisibleForTesting

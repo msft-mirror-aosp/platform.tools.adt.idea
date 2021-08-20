@@ -28,12 +28,14 @@ import com.intellij.util.concurrency.EdtExecutorService
 import icons.StudioIcons
 import java.awt.FlowLayout
 import com.android.tools.adtui.ui.DesignSurfaceToolbarUI
+import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.UIUtil
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import javax.swing.Box
 import javax.swing.Icon
@@ -45,8 +47,6 @@ import javax.swing.event.ChangeListener
 internal const val DEFAULT_PLAY_TOOLTIP = "Play"
 internal const val DEFAULT_PAUSE_TOOLTIP = "Pause"
 internal const val DEFAULT_STOP_TOOLTIP = "Reset"
-internal const val DEFAULT_FRAME_FORWARD_TOOLTIP = "Step forward"
-internal const val DEFAULT_FRAME_BACK_TOOLTIP = "Step backward"
 
 /**
  * Control that provides controls for animations (play, pause, stop and frame-by-frame steps).
@@ -63,13 +63,11 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
                                                   minTimeMs: Long,
                                                   initialMaxTimeMs: Long,
                                                   toolbarType: AnimationToolbarType)
-  : JPanel(), Disposable {
+  : JPanel(), AnimationController, Disposable {
   private val myListener: AnimationListener
   private val myPlayButton: JButton
   private val myPauseButton: JButton
   private val myStopButton: JButton
-  private val myFrameFwdButton: JButton
-  private val myFrameBckButton: JButton
 
   // TODO: Add speed selector button.
   private val myTickStepMs: Long
@@ -134,8 +132,6 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     myPlayButton.isEnabled = play
     myPauseButton.isEnabled = pause
     myStopButton.isEnabled = stop
-    myFrameFwdButton.isEnabled = frame
-    myFrameBckButton.isEnabled = frame
     myFrameControl.isEnabled = frame
   }
 
@@ -146,8 +142,6 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     myPlayButton.isVisible = play
     myPauseButton.isVisible = pause
     myStopButton.isVisible = stop
-    myFrameFwdButton.isVisible = frame
-    myFrameBckButton.isVisible = frame
     myFrameControl.isVisible = frame
   }
 
@@ -156,17 +150,13 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
    */
   protected fun setTooltips(play: String?,
                             pause: String?,
-                            stop: String?,
-                            frameForward: String?,
-                            frameback: String?) {
+                            stop: String?) {
     myPlayButton.toolTipText = play
     myPauseButton.toolTipText = pause
     myStopButton.toolTipText = stop
-    myFrameFwdButton.toolTipText = frameForward
-    myFrameBckButton.toolTipText = frameback
   }
 
-  private fun onPlay() {
+  final override fun play() {
     stopFrameTicker()
     setEnabledState(false, true, true, false)
     setVisibilityState(false, true, true, true)
@@ -176,10 +166,16 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
         val now = System.currentTimeMillis()
         val elapsed = now - myLastTickMs
         myLastTickMs = now
-        onTick(elapsed) }, 0L, TICKER_STEP.toLong(), TimeUnit.MILLISECONDS)
+        onTick(elapsed)
+        if (myMaxTimeMs != -1L && myFramePositionMs >= myMaxTimeMs) {
+          myTicker?.cancel(false)
+          myTicker = null
+          setVisibilityState(play = false, pause = true, stop = true, frame = true)
+          setEnabledState(play = false, pause = false, stop = true, frame = true)
+        }}, 0L, TICKER_STEP.toLong(), TimeUnit.MILLISECONDS)
   }
 
-  private fun onPause() {
+  final override fun pause() {
     setEnabledState(true, false, true, true)
     setVisibilityState(true, false, true, true)
     stopFrameTicker()
@@ -192,7 +188,7 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     }
   }
 
-  private fun onStop() {
+  final override fun stop() {
     stopFrameTicker()
     setEnabledState(true, false, false, false)
     setVisibilityState(true, false, true, true)
@@ -201,14 +197,6 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
 
   private fun doFrame() {
     myListener.animateTo(this, myFramePositionMs)
-  }
-
-  private fun onFrameFwd() {
-    onTick(myTickStepMs)
-  }
-
-  private fun onFrameBck() {
-    onTick(-myTickStepMs)
   }
 
   /**
@@ -221,12 +209,10 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     if (myFramePositionMs >= myMaxTimeMs) {
       if (!setByUser && !myLoopEnabled) {
         // We've reached the end. Stop.
-        onPause()
+        pause()
       }
     }
     myStopButton.isEnabled = myFramePositionMs - myTickStepMs >= myMinTimeMs
-    myFrameFwdButton.isEnabled = myFramePositionMs + myTickStepMs <= myMaxTimeMs
-    myFrameBckButton.isEnabled = myFramePositionMs - myTickStepMs >= myMinTimeMs
 
     val timeSliderModel = myTimeSliderModel
     if (timeSliderModel != null) {
@@ -234,6 +220,10 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
       timeSliderModel.value = ((myFramePositionMs - myMinTimeMs) / (myMaxTimeMs - myMinTimeMs).toFloat() * 100).toInt()
       timeSliderModel.addChangeListener(myTimeSliderChangeModel)
     }
+  }
+
+  final override fun setFrameMs(frameMs: Long) {
+    setFramePosition(frameMs, false)
   }
 
   /**
@@ -271,19 +261,12 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     setFramePosition(myFramePositionMs + elapsed, false)
   }
 
-  fun setMaxtimeMs(maxTimeMs: Long) {
+  final override fun setMaxTimeMs(maxTimeMs: Long) {
     myMaxTimeMs = maxTimeMs
   }
 
-  fun setLoop(enabled: Boolean) {
+  final override fun setLoop(enabled: Boolean) {
     myLoopEnabled = enabled
-  }
-
-  /**
-   * Stop any running animations
-   */
-  fun stop() {
-    onStop()
   }
 
   /**
@@ -343,26 +326,18 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     myPlayButton = newControlButton(
       StudioIcons.LayoutEditor.Motion.PLAY, "Play", DEFAULT_PLAY_TOOLTIP,
       AnimationToolbarAction.PLAY
-    ) { onPlay() }
+    ) { play() }
     myPlayButton.isEnabled = true
     myPauseButton = newControlButton(
       StudioIcons.LayoutEditor.Motion.PAUSE, "Pause", DEFAULT_PAUSE_TOOLTIP,
       AnimationToolbarAction.PAUSE
-    ) { onPause() }
+    ) { pause() }
     myPauseButton.isEnabled = true
     // TODO(b/176806183): Before having a reset icon, use refresh icon instead.
     myStopButton = newControlButton(
       StudioIcons.LayoutEditor.Toolbar.REFRESH, "Stop", DEFAULT_STOP_TOOLTIP,
       AnimationToolbarAction.STOP
-    ) { onStop() }
-    myFrameFwdButton = newControlButton(
-      StudioIcons.LayoutEditor.Motion.GO_TO_END, "Step forward", DEFAULT_FRAME_FORWARD_TOOLTIP,
-      AnimationToolbarAction.FRAME_FORWARD
-    ) { onFrameFwd() }
-    myFrameBckButton = newControlButton(
-      StudioIcons.LayoutEditor.Motion.GO_TO_START, "Step backward", DEFAULT_FRAME_BACK_TOOLTIP,
-      AnimationToolbarAction.FRAME_BACKWARD
-    ) { onFrameBck() }
+    ) { stop() }
     controlBar = object : JPanel(FlowLayout()) {
       override fun updateUI() {
         setUI(DesignSurfaceToolbarUI())
@@ -370,10 +345,8 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
     }
     val buttonsPanel = Box.createHorizontalBox()
     buttonsPanel.add(myStopButton)
-    buttonsPanel.add(myFrameBckButton)
     buttonsPanel.add(myPlayButton)
     buttonsPanel.add(myPauseButton)
-    buttonsPanel.add(myFrameFwdButton)
     controlBar.add(buttonsPanel)
     if (isUnlimitedAnimationToolbar) {
       myTimeSlider = null
@@ -415,6 +388,7 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
         0L, TICKER_STEP.toLong(), TimeUnit.MILLISECONDS
       )
     }
+
     myFrameControl.addMouseListener(object : MouseAdapter() {
       override fun mouseReleased(e: MouseEvent) {
         if (!myFrameControl.isEnabled) {
@@ -424,6 +398,6 @@ open class AnimationToolbar protected constructor(parentDisposable: Disposable,
         myFrameControl.value = 0
       }
     })
-    onStop()
+    stop()
   }
 }

@@ -16,5 +16,5 @@
 package com.android.tools.idea.uibuilder.editor
 
 interface AnimationListener {
-  fun animateTo(toolbar: AnimationToolbar, framePositionMs: Long)
+  fun animateTo(controller: AnimationController, framePositionMs: Long)
 }

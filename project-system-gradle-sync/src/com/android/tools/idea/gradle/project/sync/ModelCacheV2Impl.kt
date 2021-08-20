@@ -65,6 +65,7 @@ import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBuildType
 import com.android.tools.idea.gradle.model.IdeBuildTypeContainer
@@ -123,6 +124,7 @@ import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantInfoImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeAbiImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeVariantImpl
+import com.android.utils.FileUtils
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
@@ -130,11 +132,58 @@ import com.google.common.collect.Lists
 import java.io.File
 import java.util.HashMap
 
-internal fun modelCacheV2Impl(): ModelCache {
+// NOTE: The implementation is structured as a collection of nested functions to ensure no recursive dependencies are possible between
+//       models unless explicitly handled by nesting. The same structure expressed as classes allows recursive data structures and thus we
+//       cannot validate the structure at compile time.
+internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
+
   val strings: MutableMap<String, String> = HashMap()
-  val androidLibraryCores: MutableMap<IdeAndroidLibraryCore, IdeAndroidLibraryCore> = HashMap()
-  val javaLibraryCores: MutableMap<IdeJavaLibraryCore, IdeJavaLibraryCore> = HashMap()
+  // Library names are expected to be unique, and thus we track already allocated library names to be able to uniqualize names when
+  // necessary.
+  val allocatedLibraryNames: MutableSet<String> = HashSet()
+
+  // Different modules (Gradle projects) may (usually do) share the same libraries. We create up to two library instances in this case.
+  // One is when the library is used as a regular dependency and one when it is used as a "provided" dependency. This is going to change
+  // when we add support for dependency graphs and different entities are used to represent libraries and dependencies.
+  // We use mutable [Instances] objects to keep record of already instantiated and named library objects for each of the cases.
+  val androidLibraryCores: MutableMap<IdeAndroidLibraryCore, Instances<IdeAndroidLibraryCore, IdeAndroidLibrary>> = HashMap()
+  val javaLibraryCores: MutableMap<IdeJavaLibraryCore, Instances<IdeJavaLibraryCore, IdeJavaLibrary>> = HashMap()
   val moduleLibraryCores: MutableMap<IdeModuleLibraryCore, IdeModuleLibraryCore> = HashMap()
+
+
+  /**
+   * Finds an existing or creates a new library instances that wraps the library [core]. When creating a new library for a core for which
+   * there is neither regular nor provided library yet generates a unique library name based on its artifact address.
+   *
+   * Note: Naming mechanism is going to change in the future when dependencies and libraries are separated. We will try to assign more
+   * meaningful names to libraries representing different artifact variants under the same Gradle coordinates.
+   */
+  fun <TCore : IdeArtifactLibrary, TLibrary : IdeArtifactLibrary> MutableMap<TCore, Instances<TCore, TLibrary>>.createOrGetNamedLibrary(
+    core: TCore,
+    isProvided: Boolean,
+    factory: (core: TCore, name: String, isProvided: Boolean) -> TLibrary
+  ): TLibrary {
+    val instances = computeIfAbsent(core) { Instances(core, null, null) }
+
+    // If both libraries are present their names are expected to match.
+    if ((instances.regularLibrary?.name ?: instances.providedLibrary?.name) !=
+      (instances.providedLibrary?.name ?: instances.regularLibrary?.name)) {
+      error("Regular and provided library names are expected to match. Core: $core")
+    }
+
+    return instances.getLibrary(isProvided) ?: let {
+      val libraryName =
+        instances.regularLibrary?.name
+        ?: instances.providedLibrary?.name
+        ?: let {
+          allocatedLibraryNames.generateLibraryName(core, projectBasePath = buildRootDirectory!!)
+        }
+
+      val library = factory(core, libraryName, isProvided)
+      instances.setLibrary(isProvided, library)
+      library
+    }
+  }
 
   fun deduplicateString(s: String): String = strings.putIfAbsent(s, s) ?: s
   fun String.deduplicate() = deduplicateString(this)
@@ -191,12 +240,15 @@ internal fun modelCacheV2Impl(): ModelCache {
 
   // TODO(b/188413335): we shouldn't be looking for patterns in the path. Rework classesFolder on IDE side.
   fun classFolderFrom(classesFolders: Set<File>): File {
-    return classesFolders.first { it.absolutePath.contains("/javac/") }
+    return classesFolders.first { FileUtils.toSystemIndependentPath(it.absolutePath).contains("/javac/") }
   }
 
   // TODO(b/188413335): we shouldn't be looking for patterns in the path. Rework classesFolder on IDE side.
   fun additionalClassesFoldersFrom(classesFolders: Set<File>): List<File> {
-    return classesFolders.filter { !it.absolutePath.contains("/javac/") && !it.absolutePath.contains("/java_res/") }.distinct()
+    return classesFolders.filter {
+      val path = FileUtils.toSystemIndependentPath(it.absolutePath)
+      !path.contains("/javac/") && !path.contains("/java_res/")
+    }.distinct()
   }
 
   fun productFlavorFrom(flavor: ProductFlavor): IdeProductFlavorImpl {
@@ -313,9 +365,13 @@ internal fun modelCacheV2Impl(): ModelCache {
 
   fun sourceProviderContainerFrom(container: SourceProvider): IdeSourceProviderContainerImpl {
     return IdeSourceProviderContainerImpl(
-      // As we no longer have ArtifactMetaData, we use hardcoded values for androidTests and unitTests artifacts.
+      // As we no longer have ArtifactMetaData, we use hardcoded values for androidTests, unitTests and testFixtures artifacts.
 
-      artifactName = if (container.name.startsWith("androidTest")) "_android_test_" else "_unit_test_",
+      artifactName = if (container.name.startsWith("androidTest")) {
+        "_android_test_"
+      } else if (container.name.startsWith("testFixtures")) {
+        "_test_fixtures_"
+      } else "_unit_test_",
       sourceProvider = copyModel(container, ::sourceProviderFrom)
     )
   }
@@ -328,7 +384,8 @@ internal fun modelCacheV2Impl(): ModelCache {
       sourceProvider = copyModel(container.sourceProvider, ::sourceProviderFrom),
       extraSourceProviders = listOfNotNull(
         copyModel(container.androidTestSourceProvider, ::sourceProviderContainerFrom),
-        copyModel(container.unitTestSourceProvider, ::sourceProviderContainerFrom)
+        copyModel(container.unitTestSourceProvider, ::sourceProviderContainerFrom),
+        copyModel(container.testFixturesSourceProvider, ::sourceProviderContainerFrom)
       )
     )
   }
@@ -365,7 +422,8 @@ internal fun modelCacheV2Impl(): ModelCache {
       sourceProvider = copyModel(container.sourceProvider, ::sourceProviderFrom),
       extraSourceProviders = listOfNotNull(
         copyModel(container.androidTestSourceProvider, ::sourceProviderContainerFrom),
-        copyModel(container.unitTestSourceProvider, ::sourceProviderContainerFrom)
+        copyModel(container.unitTestSourceProvider, ::sourceProviderContainerFrom),
+        copyModel(container.testFixturesSourceProvider, ::sourceProviderContainerFrom)
       )
     )
   }
@@ -384,7 +442,7 @@ internal fun modelCacheV2Impl(): ModelCache {
    * path to build directory for all modules.
    * @return Instance of [IdeLibrary] based on dependency type.
    */
-  fun androidLibraryFrom(androidLibrary: Library, providedLibraries: List<Library>): IdeLibrary {
+  fun androidLibraryFrom(androidLibrary: Library, providedLibraries: Set<LibraryIdentity>): IdeLibrary {
     val core = IdeAndroidLibraryCore.create(
       artifactAddress = androidLibrary.artifactAddress,
       folder = androidLibrary.resFolder?.parentFile ?: File(""), // TODO: verify this always true
@@ -406,21 +464,21 @@ internal fun modelCacheV2Impl(): ModelCache {
       symbolFile = getV2SymbolFilePath(androidLibrary),
       deduplicate = { strings.getOrPut(this) { this } }
     )
-    val isProvided = providedLibraries.contains(androidLibrary)
-    return IdeAndroidLibraryImpl(androidLibraryCores.internCore(core), isProvided)
+    val isProvided = providedLibraries.contains(androidLibrary.toIdentity())
+    return androidLibraryCores.createOrGetNamedLibrary(core, isProvided, ::IdeAndroidLibraryImpl)
   }
 
   /**
    * @param javaLibrary Instance of type [LibraryType.JAVA_LIBRARY] returned by android plugin.
    * @return Instance of [Library] based on dependency type.
    */
-  fun javaLibraryFrom(javaLibrary: Library, providedLibraries: List<Library>): IdeLibrary {
+  fun javaLibraryFrom(javaLibrary: Library, providedLibraries: Set<LibraryIdentity>): IdeLibrary {
     val core = IdeJavaLibraryCore(
       artifactAddress = javaLibrary.artifactAddress,
       artifact = javaLibrary.artifact!!
     )
-    val isProvided = providedLibraries.contains(javaLibrary)
-    return IdeJavaLibraryImpl(javaLibraryCores.internCore(core), isProvided)
+    val isProvided = providedLibraries.contains(javaLibrary.toIdentity())
+    return javaLibraryCores.createOrGetNamedLibrary(core, isProvided, ::IdeJavaLibraryImpl)
   }
 
   fun libraryFrom(projectPath: String, buildId: String?, variant: String?, lintJar: File?): IdeLibrary {
@@ -463,7 +521,7 @@ internal fun modelCacheV2Impl(): ModelCache {
 
     fun populateJavaLibraries(
       javaLibraries: Collection<Library>,
-      providedLibraries: List<Library>,
+      providedLibraries: Set<LibraryIdentity>,
       visited: MutableSet<String>
     ) {
       for (javaLibrary in javaLibraries) {
@@ -494,36 +552,44 @@ internal fun modelCacheV2Impl(): ModelCache {
       return
     }
 
-    fun getRuntimeLibraries(
-      runtimeDependencies: List<GraphItem>?,
-      compileDependencies: List<GraphItem>?,
-      libraryMap: GlobalLibraryMap
-    ): List<File> {
-      // Get runtimeOnly libraries: this means libraries that are not available in the compile graph.
-      fun getRuntimeLibraries(runtimeDependencies: List<GraphItem>?,
-                              compileDependenciesArtifacts: List<String>?,
-                              runtimeLibraries: MutableList<File>) {
-        if (runtimeDependencies == null) return
-        for (dependency in runtimeDependencies) {
-          // Filter out dependencies included in the compile graph.
-          if (compileDependenciesArtifacts?.contains(dependency.artifactAddress) == true) continue
-          val library = libraryMap.libraries[dependency.artifactAddress] ?: continue
-          // TODO(b/189109819) : We need artifact address for runtime libraries as well.
-          if (library.type != LibraryType.PROJECT && library.artifact != null) runtimeLibraries.add(library.artifact!!)
-          // Get transitive dependencies.
-          getRuntimeLibraries(dependency.dependencies, compileDependenciesArtifacts, runtimeLibraries)
+    fun List<GraphItem>.toFlatLibraryList(): Sequence<Library> = sequence {
+      val seen = HashSet<String>()
+      val queue = ArrayDeque(this@toFlatLibraryList)
+
+      while (queue.isNotEmpty()) {
+        val item = queue.removeFirst()
+        queue.addAll(item.dependencies)
+        if (seen.add(item.artifactAddress)) {
+          val library = libraryMap.libraries[item.artifactAddress]
+          if (library != null) {
+            yield(library)
+          }
         }
       }
+    }
 
-      val runtimeLibraries = mutableListOf<File>()
-      getRuntimeLibraries(runtimeDependencies, compileDependencies?.map { it.artifactAddress }, runtimeLibraries)
+    fun getRuntimeLibraries(
+      runtimeDependencies: List<GraphItem>?,
+      compileDependencies: List<GraphItem>
+    ): List<File> {
+
+      val compileLibraries = compileDependencies.toFlatLibraryList()
+      val runtimeLibraries = runtimeDependencies.orEmpty().toFlatLibraryList()
+
+      val compileLibraryIdentities = compileLibraries.mapNotNull { it.toIdentity() }.toSet()
 
       return runtimeLibraries
+        .filter {
+          val id = it.toIdentity() ?: return@filter false
+          id !in compileLibraryIdentities
+        }
+        .flatMap { it.getJarFilesForRuntimeClasspath() }
+        .toList()
     }
 
     fun populateAndroidLibraries(
       androidLibraries: Collection<Library>,
-      providedLibraries: List<Library>,
+      providedLibraries: Set<LibraryIdentity>,
       visited: MutableSet<String>
     ) {
       for (androidLibrary in androidLibraries) {
@@ -537,24 +603,10 @@ internal fun modelCacheV2Impl(): ModelCache {
 
     fun getProvidedLibraries(
       compileDependencies: List<GraphItem>,
-      runtimeDependencies: List<GraphItem>?,
-      libraryMap: GlobalLibraryMap
-    ): List<Library> {
-      val providedDependencies = mutableListOf<Library>()
-      if (runtimeDependencies != null) {
-        for (graphItem in compileDependencies) {
-          if (!runtimeDependencies.contains(graphItem)) {
-            libraryMap.libraries[graphItem.artifactAddress]?.let { providedDependencies.add(it) }
-          }
-        }
-      }
-      else {
-        compileDependencies.forEach { graphItem ->
-          libraryMap.libraries[graphItem.artifactAddress]?.let { providedDependencies.add(it) }
-        }
-      }
-      return providedDependencies
-    }
+      runtimeDependencies: List<GraphItem>?
+    ): Set<LibraryIdentity> =
+      compileDependencies.toFlatLibraryList().mapNotNull { it.toIdentity() }.toSet() -
+      runtimeDependencies.orEmpty().toFlatLibraryList().mapNotNull { it.toIdentity() }.toSet()
 
     fun createIdeDependencies(
       artifactAddresses: Collection<String>,
@@ -584,11 +636,11 @@ internal fun modelCacheV2Impl(): ModelCache {
       val javaLibraries = mutableListOf<Library>()
       val projectLibraries = mutableListOf<Library>()
       getTypedLibraries(dependencies.compileDependencies, libraryMap, androidLibraries, javaLibraries, projectLibraries)
-      val providedLibraries = getProvidedLibraries(dependencies.compileDependencies, dependencies.runtimeDependencies, libraryMap)
+      val providedLibraries = getProvidedLibraries(dependencies.compileDependencies, dependencies.runtimeDependencies)
       populateAndroidLibraries(androidLibraries, providedLibraries, visited)
       populateJavaLibraries(javaLibraries, providedLibraries, visited)
       populateProjectDependencies(projectLibraries, visited)
-      val runtimeLibraries = getRuntimeLibraries(dependencies.runtimeDependencies, dependencies.compileDependencies, libraryMap)
+      val runtimeLibraries = getRuntimeLibraries(dependencies.runtimeDependencies, dependencies.compileDependencies)
       return createIdeDependencies(visited, runtimeLibraries)
     }
     return createIdeDependenciesInstance()
@@ -1123,3 +1175,47 @@ private inline fun <K, R, V> copy(o1: () -> Collection<K>, o2: () -> Collection<
   val original2 = ModelCache.safeGet(o2, listOf())
   return original1.zip(original2).toMap().map { (k, v) -> mapper(k, v) }
 }
+
+private class Instances<TCore, TLibrary>(
+  val core: TCore,
+  var regularLibrary: TLibrary? = null,
+  var providedLibrary: TLibrary? = null,
+) {
+    fun getLibrary(isProvided: Boolean): TLibrary? = if (isProvided) providedLibrary else regularLibrary
+    fun setLibrary(isProvided: Boolean, library: TLibrary) {
+      if (isProvided) providedLibrary = library else regularLibrary = library
+    }
+}
+
+private fun <T> MutableMap<T, T>.internCore(core: T): T = putIfAbsent(core, core) ?: core
+
+private fun MutableSet<String>.generateLibraryName(core: IdeArtifactLibrary, projectBasePath: File): String {
+  val baseLibraryName = convertToLibraryName(core.artifactAddress, projectBasePath)
+  var candidateLibraryName = baseLibraryName
+  var suffix = 0
+  while (!this.add(candidateLibraryName)) {
+    suffix++
+    candidateLibraryName = "$baseLibraryName ($suffix)"
+  }
+  return candidateLibraryName
+}
+
+
+private data class LibraryIdentity(
+  // NOTE: This is going to change and include more details when v2 models support them.
+  val artifactAddress: String
+)
+
+private fun Library.toIdentity() =
+  when (type) {
+    LibraryType.ANDROID_LIBRARY,
+    LibraryType.JAVA_LIBRARY -> LibraryIdentity(artifactAddress)
+    else -> null
+  }
+
+private fun Library.getJarFilesForRuntimeClasspath(): List<File> =
+  when (type) {
+    LibraryType.ANDROID_LIBRARY -> runtimeJarFiles.orEmpty()
+    LibraryType.JAVA_LIBRARY -> listOfNotNull(artifact)
+    else -> emptyList()
+  }

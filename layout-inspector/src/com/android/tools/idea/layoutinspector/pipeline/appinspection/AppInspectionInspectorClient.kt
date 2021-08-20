@@ -22,13 +22,11 @@ import com.android.tools.idea.appinspection.ide.AppInspectionDiscoveryService
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.concurrency.createChildScope
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.REBOOT_FOR_LIVE_INSPECTOR_MESSAGE_KEY
-import com.android.tools.idea.layoutinspector.model.StatusNotificationImpl
 import com.android.tools.idea.layoutinspector.pipeline.AbstractInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
@@ -128,10 +126,7 @@ class AppInspectionInspectorClient(
     scope.launch(exceptionHandler) {
       metrics.logEvent(DynamicLayoutInspectorEventType.ATTACH_REQUEST)
 
-      if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_COMPOSE_SUPPORT.get()) {
-        composeInspector = ComposeLayoutInspectorClient.launch(apiServices, process, model)
-      }
-
+      composeInspector = ComposeLayoutInspectorClient.launch(apiServices, process, model)
       viewInspector = ViewLayoutInspectorClient.launch(apiServices, process, model, scope, composeInspector, ::fireError, ::fireTreeEvent)
       propertiesProvider = AppInspectionPropertiesProvider(viewInspector.propertiesCache, composeInspector?.parametersCache, model)
 
@@ -139,13 +134,18 @@ class AppInspectionInspectorClient(
 
       debugViewAttributes.set()
 
+      lateinit var updateListener: (AndroidWindow?, AndroidWindow?, Boolean) -> Unit
+      updateListener = { _, _, _ ->
+        future.set(null)
+        model.modificationListeners.remove(updateListener)
+      }
+      model.modificationListeners.add(updateListener)
       if (isCapturing) {
         startFetchingInternal()
       }
       else {
         refreshInternal()
       }
-      future.set(null)
     }
     return future
   }
