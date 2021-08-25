@@ -16,6 +16,7 @@
 package com.android.tools.idea.wearpairing
 
 import com.android.annotations.concurrency.Slow
+import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.CollectingOutputReceiver
 import com.android.ddmlib.EmulatorConsole
@@ -32,6 +33,7 @@ import com.android.tools.idea.ddms.DevicePropertyUtil.getModel
 import com.android.tools.idea.observable.core.OptionalProperty
 import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink
+import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.wearpairing.GmscoreHelper.refreshEmulatorConnection
 import com.google.common.util.concurrent.Futures
 import com.google.wireless.android.sdk.stats.WearPairingEvent
@@ -67,6 +69,31 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
 
   private val pairedDevicesTable = hashMapOf<String, PhoneWearPair>()
 
+  init {
+    loadSettings()
+  }
+
+  private fun isTestMode(): Boolean =
+    ApplicationManager.getApplication()?.isUnitTestMode != false || GuiTestingService.getInstance().isGuiTestingMode
+
+  @WorkerThread
+  private fun loadSettings() {
+    if (isTestMode()) return
+    ApplicationManager.getApplication().assertIsNonDispatchThread()
+
+    WearPairingSettings.getInstance().apply {
+      loadSettings(pairedDevicesState, pairedDeviceConnectionsState)
+    }
+
+    val wizardAction = object : WizardAction {
+      override fun restart(project: Project) {
+        WearDevicePairingWizard().show(project, null)
+      }
+    }
+    // Launch WearPairingManager
+    setDeviceListListener(WearDevicePairingModel(), wizardAction)
+  }
+
   internal fun loadSettings(pairedDevices: List<PairingDeviceState>, pairedDeviceConnections: List<PairingConnectionsState>) {
     pairedDevicesTable.clear()
     val deviceMap = pairedDevices.associateBy { it.deviceID }
@@ -88,6 +115,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   }
 
   private fun saveSettings() {
+    if (isTestMode()) return
     val pairedDevicesState = mutableListOf<PairingDeviceState>()
     val pairedDeviceConnectionsState = ArrayList<PairingConnectionsState>()
 
