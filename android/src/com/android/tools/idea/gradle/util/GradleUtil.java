@@ -37,6 +37,7 @@ import static com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.get
 import static com.intellij.openapi.util.io.FileUtil.filesEqual;
 import static com.intellij.openapi.util.io.FileUtil.join;
 import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
+import static com.intellij.openapi.util.text.StringUtil.trimLeading;
 import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
 import static com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile;
 import static com.intellij.util.ArrayUtil.toStringArray;
@@ -50,8 +51,6 @@ import static org.gradle.wrapper.WrapperExecutor.DISTRIBUTION_URL_PROPERTY;
 import static org.jetbrains.plugins.gradle.settings.DistributionType.BUNDLED;
 import static org.jetbrains.plugins.gradle.settings.DistributionType.LOCAL;
 
-import com.android.SdkConstants;
-import com.android.annotations.NonNull;
 import com.android.ide.common.repository.GradleCoordinate;
 import com.android.ide.common.repository.GradleVersion;
 import com.android.tools.idea.IdeInfo;
@@ -60,10 +59,8 @@ import com.android.tools.idea.gradle.model.IdeAndroidArtifact;
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary;
 import com.android.tools.idea.gradle.model.IdeAndroidProject;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
-import com.android.tools.idea.gradle.model.IdeArtifactLibrary;
 import com.android.tools.idea.gradle.model.IdeBaseArtifact;
 import com.android.tools.idea.gradle.model.IdeDependencies;
-import com.android.tools.idea.gradle.model.IdeLibrary;
 import com.android.tools.idea.gradle.model.IdeVariant;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacetConfiguration;
@@ -563,58 +560,6 @@ public final class GradleUtil {
     return gradleVersion.equals(GRADLE_LATEST_VERSION);
   }
 
-  /**
-   * Returns {@code true} if the main artifact of the given Android model depends on the given artifact, which consists of a group id and an
-   * artifact id, such as {@link SdkConstants#APPCOMPAT_LIB_ARTIFACT}.
-   *
-   * @param androidModel the Android model to check
-   * @param artifact     the artifact
-   * @return {@code true} if the project depends on the given artifact (including transitively)
-   */
-  public static boolean dependsOn(@NonNull AndroidModuleModel androidModel, @NonNull String artifact) {
-    IdeDependencies dependencies = androidModel.getSelectedMainCompileLevel2Dependencies();
-    return dependsOnAndroidLibrary(dependencies, artifact);
-  }
-
-  /**
-   * Returns {@code true} if the given dependencies include the given artifact, which consists of a group id and an artifact id, such as
-   * {@link SdkConstants#APPCOMPAT_LIB_ARTIFACT}.
-   *
-   * @param dependencies the Gradle dependencies object to check
-   * @param artifact     the artifact
-   * @return {@code true} if the dependencies include the given artifact (including transitively)
-   */
-  private static boolean dependsOnAndroidLibrary(@NonNull IdeDependencies dependencies, @NonNull String artifact) {
-    for (IdeAndroidLibrary library : dependencies.getAndroidLibraries()) {
-      if (dependsOn(library, artifact)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Returns {@code true} if the given library depends on the given artifact, which consists a group id and an artifact id, such as
-   * {@link SdkConstants#APPCOMPAT_LIB_ARTIFACT}.
-   *
-   * @param library  the Gradle library to check
-   * @param artifact the artifact
-   * @return {@code true} if the project depends on the given artifact
-   */
-  public static boolean dependsOn(@NonNull IdeArtifactLibrary library, @NonNull String artifact) {
-    return getDependencyVersion(library, artifact) != null;
-  }
-
-  private static String getDependencyVersion(@NonNull IdeArtifactLibrary library, @NonNull String artifact) {
-    GradleCoordinate resolvedCoordinates = GradleCoordinate.parseCoordinateString(library.getArtifactAddress());
-    if (resolvedCoordinates != null) {
-      if (artifact.equals(resolvedCoordinates.getGroupId() + ':' + resolvedCoordinates.getArtifactId())) {
-        return resolvedCoordinates.getRevision();
-      }
-    }
-    return null;
-  }
-
   public static boolean hasCause(@NotNull Throwable e, @NotNull Class<?> causeClass) {
     // We want to ignore class loader difference, that's why we just compare fully-qualified class names here.
     String causeClassName = causeClass.getName();
@@ -899,5 +844,41 @@ public final class GradleUtil {
       return gradleProjectPath + taskName;
     }
     return gradleProjectPath + GRADLE_PATH_SEPARATOR + taskName;
+  }
+
+  /**
+   * Computes a library name intended for display purposes; names may not be unique
+   * (and separator is always ":"). It will only show the artifact id, if that id contains slashes, otherwise
+   * it will include the last component of the group id (unless identical to the artifact id).
+   * <p>
+   * E.g.
+   * com.android.support.test.espresso:espresso-core:3.0.1@aar -> espresso-core:3.0.1
+   * android.arch.lifecycle:extensions:1.0.0-beta1@aar -> lifecycle:extensions:1.0.0-beta1
+   * com.google.guava:guava:11.0.2@jar -> guava:11.0.2
+   */
+  @NotNull
+  public static String getDependencyDisplayName(@NotNull String artifactAddress) {
+    GradleCoordinate coordinates = GradleCoordinate.parseCoordinateString(artifactAddress);
+    if (coordinates != null) {
+      String name = coordinates.getArtifactId();
+
+      // For something like android.arch.lifecycle:runtime, instead of just showing "runtime",
+      // we show "lifecycle:runtime"
+      if (!name.contains("-")) {
+        String groupId = coordinates.getGroupId();
+        int index = groupId.lastIndexOf('.'); // okay if it doesn't exist
+        String groupSuffix = groupId.substring(index + 1);
+        if (!groupSuffix.equals(name)) { // e.g. for com.google.guava:guava we'd end up with "guava:guava"
+          name = groupSuffix + ":" + name;
+        }
+      }
+
+      GradleVersion version = coordinates.getVersion();
+      if (version != null && !"unspecified".equals(version.toString())) {
+        name += ":" + version;
+      }
+      return name;
+    }
+    return trimLeading(artifactAddress, ':');
   }
 }

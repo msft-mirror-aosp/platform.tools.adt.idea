@@ -20,6 +20,7 @@
     <fileEditorProvider implementation="com.android.tools.idea.editors.layeredimage.LayeredImageEditorProvider" />
     <projectService serviceImplementation="com.android.tools.idea.editors.layeredimage.LayersManager" />
     <externalAnnotator language="XML" implementationClass="com.android.tools.idea.uibuilder.lint.AtfIssueExternalAnnotator"/>
+    <externalAnnotator language="XML" implementationClass="com.android.tools.idea.uibuilder.lint.VisualLintIssueExternalAnnotator"/>
   </extensions>
 
   <!-- Extension points -->
@@ -42,7 +43,6 @@
     <projectService serviceImplementation="com.android.tools.idea.uibuilder.handlers.ViewHandlerManager" headlessImplementation="" />
     <projectService serviceImplementation="com.android.tools.idea.uibuilder.editor.LayoutNavigationManager" />
 
-    <postStartupActivity implementation="com.android.tools.idea.common.error.CreateIssueTabsInProblemsActivity"/>
     <projectService serviceImplementation="com.android.tools.idea.common.error.IssuePanelService" />
   </extensions>
 

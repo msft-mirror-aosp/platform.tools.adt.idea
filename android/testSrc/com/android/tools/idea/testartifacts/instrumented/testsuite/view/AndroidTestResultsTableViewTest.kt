@@ -879,6 +879,12 @@ class AndroidTestResultsTableViewTest {
 
     assertThat(table.getTableViewForTesting().getItem(0).getTestResultSummary()).isEqualTo(AndroidTestCaseResult.CANCELLED)
     assertThat(table.getTableViewForTesting().getItem(0).getTestCaseResult(device1)).isEqualTo(AndroidTestCaseResult.CANCELLED)
+
+    // Clear the test suite result. This is used when a re-run is scheduled after an APK installation failure.
+    table.setTestSuiteResultForDevice(device1, null)
+
+    assertThat(table.getTableViewForTesting().getItem(0).getTestResultSummary()).isEqualTo(AndroidTestCaseResult.SCHEDULED)
+    assertThat(table.getTableViewForTesting().getItem(0).getTestCaseResult(device1)).isEqualTo(AndroidTestCaseResult.SCHEDULED)
   }
 
   @Test
@@ -905,5 +911,36 @@ class AndroidTestResultsTableViewTest {
     assertThat(table.getTableViewForTesting().getItem(0).getResultStats(listOf(device1)).passed).isEqualTo(1)
     assertThat(table.getTableViewForTesting().getItem(0).getResultStats(listOf(device2)).passed).isEqualTo(1)
     assertThat(table.getTableViewForTesting().getItem(0).getResultStats(listOf(device1, device2)).passed).isEqualTo(2)
+  }
+
+  @Test
+  fun selectAndroidTestCase() {
+    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger)
+    val device1 = device("deviceId1", "deviceName1")
+    table.addDevice(device1)
+
+    val testCases = arrayOf(
+      AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.FAILED),
+      AndroidTestCase("testid2", "method2", "class1", "package1", AndroidTestCaseResult.PASSED),
+      AndroidTestCase("testid3", "method1", "class2", "package1", AndroidTestCaseResult.FAILED)
+    )
+
+    testCases.forEach {
+      table.addTestCase(device1, it)
+    }
+
+    val tableView = table.getTableViewForTesting()
+
+    assertThat(tableView.selectedObject).isNull()
+    table.selectAndroidTestCase(testCases[0])
+    assertThat(tableView.selectedObject?.getFullTestCaseName()).isEqualTo("package1.class1.method1")
+    table.selectAndroidTestCase(testCases[1])
+    assertThat(tableView.selectedObject?.getFullTestCaseName()).isEqualTo("package1.class1.method2")
+    table.selectAndroidTestCase(testCases[2])
+    assertThat(tableView.selectedObject?.getFullTestCaseName()).isEqualTo("package1.class2.method1")
+
+    // Nothing happens if you select a test case that doesn't exist.
+    table.selectAndroidTestCase(AndroidTestCase("does not exist", "", "", ""))
+    assertThat(tableView.selectedObject?.getFullTestCaseName()).isEqualTo("package1.class2.method1")
   }
 }

@@ -16,6 +16,7 @@
 package com.android.tools.idea.diagnostics;
 
 import com.android.tools.analytics.AnalyticsSettings;
+import com.android.tools.analytics.CommonMetricsData;
 import com.android.tools.analytics.HistogramUtil;
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.idea.diagnostics.crash.ExceptionDataCollection;
@@ -25,6 +26,7 @@ import com.android.tools.idea.diagnostics.hprof.action.AnalysisRunnable;
 import com.android.tools.idea.diagnostics.hprof.action.HeapDumpSnapshotRunnable;
 import com.android.tools.idea.diagnostics.kotlin.KotlinPerfCounters;
 import com.android.tools.idea.diagnostics.report.DiagnosticReport;
+import com.android.tools.idea.diagnostics.report.FreezeReport;
 import com.android.tools.idea.diagnostics.report.HistogramReport;
 import com.android.tools.idea.diagnostics.report.MemoryReportReason;
 import com.android.tools.idea.diagnostics.report.PerformanceThreadDumpReport;
@@ -39,6 +41,7 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventCategory;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind;
 import com.google.wireless.android.sdk.stats.GcPauseInfo;
+import com.google.wireless.android.sdk.stats.ProductDetails;
 import com.google.wireless.android.sdk.stats.StudioCrash;
 import com.google.wireless.android.sdk.stats.StudioExceptionDetails;
 import com.google.wireless.android.sdk.stats.StudioPerformanceStats;
@@ -85,14 +88,12 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
-import com.intellij.openapi.application.PreloadingActivity;
 import com.intellij.openapi.diagnostic.Attachment;
 import com.intellij.openapi.diagnostic.ErrorReportSubmitter;
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.actionSystem.EditorAction;
 import com.intellij.openapi.extensions.PluginId;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectManagerListener;
@@ -171,7 +172,7 @@ public class AndroidStudioSystemHealthMonitor {
     Integer.getInteger("studio.diagnostic.histogram.maxReports", 10);
   private static final int MAX_FREEZE_REPORTS_COUNT =
     Integer.getInteger("studio.diagnostic.freeze.maxReports",
-                       ApplicationManager.getApplication().isEAP() ? 10 : 1);
+                       ApplicationManager.getApplication().isEAP() ? 20 : 1);
 
   private static final ConcurrentMap<GcPauseInfo.GcType, SingleWriterRecorder> myGcPauseInfo = new ConcurrentHashMap<>();
   /** Maximum GC pause duration to record. Longer pause durations are truncated to keep the size of the histogram bounded. */
@@ -179,7 +180,7 @@ public class AndroidStudioSystemHealthMonitor {
 
   private static final long TOO_MANY_EXCEPTIONS_THRESHOLD = 10000;
 
-  private final StudioReportDatabase myReportsDatabase = new StudioReportDatabase(new File(PathManager.getTempPath(), "reports.dmp"));
+  private final StudioReportDatabase myReportsDatabase;
   public static final HProfDatabase ourHProfDatabase = new HProfDatabase(Paths.get(PathManager.getTempPath()));
 
   private static final Object ACTION_INVOCATIONS_LOCK = new Object();
@@ -202,12 +203,17 @@ public class AndroidStudioSystemHealthMonitor {
   private final ExceptionDataCollection myExceptionDataCollection = ExceptionDataCollection.getInstance();
 
   public AndroidStudioSystemHealthMonitor() {
+    this(new StudioReportDatabase(new File(PathManager.getTempPath(), "reports.dmp")));
+  }
+
+  public AndroidStudioSystemHealthMonitor(StudioReportDatabase studioReportDatabase) {
     myProperties = PropertiesComponent.getInstance();
     if (ourInstance != null) {
       LOG.warn("Multiple instances of AndroidStudioSystemHealthMonitor!");
     } else {
       ourInstance = this;
     }
+    myReportsDatabase = studioReportDatabase;
   }
 
   public void addHeapReportToDatabase(@NotNull UnanalyzedHeapReport report) {
@@ -224,6 +230,18 @@ public class AndroidStudioSystemHealthMonitor {
 
   public static @Nullable AndroidStudioSystemHealthMonitor getInstance() {
     return ourInstance;
+  }
+
+  public static Integer getMaxHistogramReportsCount() {
+    return MAX_HISTOGRAM_REPORTS_COUNT;
+  }
+
+  public static Integer getMaxPerformanceReportsCount() {
+    return MAX_PERFORMANCE_REPORTS_COUNT;
+  }
+
+  public static Integer getMaxFreezeReportsCount() {
+    return MAX_FREEZE_REPORTS_COUNT;
   }
 
   private static long freeUpMemory() {
@@ -535,7 +553,7 @@ public class AndroidStudioSystemHealthMonitor {
     }
   }
 
-  private void registerPlatformEventsListener() {
+  protected void registerPlatformEventsListener() {
     myListener = new AndroidStudioSystemHealthMonitorAdapter.EventsListener() {
 
       @Override
@@ -672,8 +690,18 @@ public class AndroidStudioSystemHealthMonitor {
    * Android Studio-specific checks of Java runtime.
    */
   private void checkRuntime() {
+    warnIfIntelOnArm();
     warnIfOpenJDK();
     warnIfMacDragNDropJDKBug();
+  }
+
+  private void warnIfIntelOnArm() {
+    if (SystemInfo.isMac && CommonMetricsData.getOsArchitecture() == ProductDetails.CpuArchitecture.X86_ON_ARM) {
+      showNotification(
+        "unsupported.mac.intelonarm.message",
+        new BrowseNotificationAction("Download", "https://developer.android.com/studio")
+      );
+    }
   }
 
   private void warnIfOpenJDK() {
@@ -744,9 +772,9 @@ public class AndroidStudioSystemHealthMonitor {
   private static void processDiagnosticReports(@NotNull List<DiagnosticReport> reports) {
     if (AnalyticsSettings.getOptedIn()) {
       ApplicationManager.getApplication().executeOnPooledThread(() -> {
-        sendDiagnosticReportsOfTypeWithLimit("PerformanceThreadDump", reports, MAX_PERFORMANCE_REPORTS_COUNT);
-        sendDiagnosticReportsOfTypeWithLimit("Histogram", reports, MAX_HISTOGRAM_REPORTS_COUNT);
-        sendDiagnosticReportsOfTypeWithLimit("Freeze", reports, MAX_FREEZE_REPORTS_COUNT);
+        sendDiagnosticReportsOfTypeWithLimit(PerformanceThreadDumpReport.REPORT_TYPE, reports, MAX_PERFORMANCE_REPORTS_COUNT);
+        sendDiagnosticReportsOfTypeWithLimit(HistogramReport.REPORT_TYPE, reports, MAX_HISTOGRAM_REPORTS_COUNT);
+        sendDiagnosticReportsOfTypeWithLimit(FreezeReport.REPORT_TYPE, reports, MAX_FREEZE_REPORTS_COUNT);
       });
     }
 
@@ -768,11 +796,14 @@ public class AndroidStudioSystemHealthMonitor {
                                                            int maxCount) {
     List<DiagnosticReport> reportsOfType = reports.stream().filter(r -> r.getType().equals(type)).collect(
       Collectors.toList());
-    if (reportsOfType.size() > maxCount) {
+
+    if (!type.equals(FreezeReport.REPORT_TYPE)) {
       Collections.shuffle(reportsOfType);
-      reportsOfType = reportsOfType.subList(0, maxCount);
     }
-    reportsOfType.forEach(r -> sendDiagnosticReport(r));
+
+    int numReportsToSkip = reportsOfType.size() > maxCount ? reportsOfType.size() - maxCount : 0;
+
+    reportsOfType.stream().skip(numReportsToSkip).forEach(AndroidStudioSystemHealthMonitor::sendDiagnosticReport);
   }
 
   public static void trackCrashes(@NotNull List<StudioCrashDetails> descriptions) {

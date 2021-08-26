@@ -306,6 +306,11 @@ public final class StudioFlags {
     "Support Actionbar in property panel",
     false);
 
+  public static final Flag<Boolean> NELE_VISUALIZATION_WINDOW_SIZE_MODE = Flag.create(
+    NELE, "visualization.window.sizes", "Use Window Sizes Category in Layout Validation Tool",
+    "Use Window Sizes as default group and replace the pixel devices category with it in Layout Validation Tool",
+    true);
+
   public static final Flag<Boolean> NELE_VISUALIZATION_LOCALE_MODE = Flag.create(
     NELE, "visualization.locale", "Locale Mode in Layout Validation Tool",
     "Enable locale mode in Layout Validation Tool to preview layout in project's locales",
@@ -352,6 +357,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_LAYOUT_SCANNER_COMMON_ERROR_PANEL = Flag.create(
     NELE, "toggle.layout.editor.validator.a11y.common.panel", "Enable common error panel to display scanner results.",
     "If the xml layout contains atf results, it will be shown in the common error panel as well as issue panel.",
+    false);
+
+  public static final Flag<Boolean> NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL = Flag.create(
+    NELE, "show.issue.in.common.panel", "Enable showing issues in common problems panel.",
+    "For all non-.",
     false);
 
   public static final Flag<Boolean> NELE_SHOW_ISSUE_PANEL_IN_PROBLEMS = Flag.create(
@@ -1137,13 +1147,6 @@ public final class StudioFlags {
     COMPOSE, "preview.animated.quick",
     "Speed up transition between static and animated compose previews",
     "If enabled, a transition between static and animated compose preview is almost instant",
-    true
-  );
-
-  public static final Flag<Boolean> NL_COLORBLIND_MODE = Flag.create(
-    COMPOSE, "nl.colorblind",
-    "Enable the colorblind mode for Design Surface",
-    "If enabled, the user can change the mode of layout previews, between different types of colorblind modes",
     true
   );
 

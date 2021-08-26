@@ -18,10 +18,12 @@ package com.android.tools.idea.devicemanager;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.JBUI.CurrentTheme.Table;
 import icons.StudioIcons;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -41,17 +43,27 @@ public class DetailsPanel extends JBPanel<DetailsPanel> {
   private final @NotNull Component myHeadingLabel;
   private final @NotNull AbstractButton myCloseButton;
   protected final @NotNull Collection<@NotNull InfoSection> myInfoSections;
-  private final @NotNull Container myInfoSectionPanel;
+  protected final @NotNull Container myInfoSectionPanel;
   private final @NotNull Component myScrollPane;
 
   protected DetailsPanel(@NotNull String heading) {
     super(null);
 
-    myHeadingLabel = new JBLabel(heading);
-    myCloseButton = Buttons.newIconButton(StudioIcons.Common.CLOSE);
+    myHeadingLabel = newHeadingLabel(heading);
+    myCloseButton = new IconButton(StudioIcons.Common.CLOSE);
     myInfoSections = new ArrayList<>();
+
     myInfoSectionPanel = new JBPanel<>(null);
+    myInfoSectionPanel.setBackground(Table.BACKGROUND);
+
     myScrollPane = new JBScrollPane(myInfoSectionPanel);
+  }
+
+  static @NotNull Component newHeadingLabel(@NotNull String heading) {
+    Component label = new JBLabel(heading);
+    label.setFont(label.getFont().deriveFont(Font.BOLD));
+
+    return label;
   }
 
   protected static void setText(@NotNull JLabel label, @Nullable Object value) {
@@ -84,18 +96,20 @@ public class DetailsPanel extends JBPanel<DetailsPanel> {
       .mapToInt(size -> size.width)
       .max();
 
-    int width = optionalWidth.orElseThrow(AssertionError::new);
+    optionalWidth.ifPresent(width -> setPreferredWidths(labels, width));
+  }
 
-    labels.forEach(label -> {
-      Dimension size = label.getPreferredSize();
+  private static void setPreferredWidths(@NotNull Iterable<@NotNull Component> components, int width) {
+    components.forEach(component -> {
+      Dimension size = component.getPreferredSize();
       size.width = width;
 
-      label.setPreferredSize(size);
-      label.setMaximumSize(size);
+      component.setPreferredSize(size);
+      component.setMaximumSize(size);
     });
   }
 
-  private void setInfoSectionPanelLayout() {
+  protected void setInfoSectionPanelLayout() {
     GroupLayout layout = new GroupLayout(myInfoSectionPanel);
 
     Group horizontalGroup = layout.createParallelGroup();
@@ -128,19 +142,21 @@ public class DetailsPanel extends JBPanel<DetailsPanel> {
 
     Group horizontalGroup = layout.createParallelGroup()
       .addGroup(layout.createSequentialGroup()
+                  .addContainerGap()
                   .addComponent(myHeadingLabel)
                   .addPreferredGap(ComponentPlacement.UNRELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                  .addComponent(myCloseButton))
+                  .addComponent(myCloseButton)
+                  .addContainerGap())
       .addComponent(myScrollPane);
 
     Group verticalGroup = layout.createSequentialGroup()
+      .addContainerGap()
       .addGroup(layout.createParallelGroup(Alignment.CENTER)
                   .addComponent(myHeadingLabel)
                   .addComponent(myCloseButton))
-      .addPreferredGap(ComponentPlacement.UNRELATED)
+      .addPreferredGap(ComponentPlacement.RELATED)
       .addComponent(myScrollPane, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, 242);
 
-    layout.setAutoCreateContainerGaps(true);
     layout.setHorizontalGroup(horizontalGroup);
     layout.setVerticalGroup(verticalGroup);
 

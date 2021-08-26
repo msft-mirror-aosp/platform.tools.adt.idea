@@ -46,8 +46,9 @@ iml_module(
         "//tools/base/wizard/template-impl:studio.intellij.android.wizardTemplate.impl[module, test]",
         "//tools/adt/idea/android-plugin:intellij.android.plugin[module, test]",
         "//tools/adt/idea/emulator:intellij.android.emulator[module, test]",
-        "//tools/adt/idea/app-inspection/ide:intellij.android.app-inspection.ide[module, test]",
+        "//tools/adt/idea/app-inspection/ide:app-inspection.ide[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
+        "//tools/adt/idea/android-npw:intellij.android.newProjectWizard[module, test]",
     ],
 )

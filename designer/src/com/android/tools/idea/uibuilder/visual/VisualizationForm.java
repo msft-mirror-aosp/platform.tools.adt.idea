@@ -36,6 +36,7 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration;
 import com.android.tools.idea.common.surface.LayoutScannerEnabled;
 import com.android.tools.idea.rendering.RenderResult;
+import com.android.tools.idea.uibuilder.lint.CommonLintUserDataHandler;
 import com.android.tools.idea.uibuilder.scene.RenderListener;
 import com.android.tools.idea.uibuilder.surface.NlSupportedActions;
 import com.android.tools.idea.flags.StudioFlags;
@@ -55,6 +56,7 @@ import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintAnalysisKt;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintBaseConfigIssues;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider;
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssues;
 import com.android.tools.idea.util.SyncUtil;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -86,6 +88,8 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.DefaultFocusTraversalPolicy;
 import java.awt.event.AdjustmentEvent;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +98,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -176,7 +183,7 @@ public class VisualizationForm
   private AtomicBoolean myCancelPendingModelLoad = new AtomicBoolean(false);
 
   @NotNull private final EmptyProgressIndicator myProgressIndicator = new EmptyProgressIndicator();
-  private final Map<VisualLintErrorType, Map<String, List<Issue>>> myIssues = new HashMap<>();
+  private final VisualLintIssues myIssues = new VisualLintIssues();
   private final VisualLintBaseConfigIssues myBaseConfigIssues = new VisualLintBaseConfigIssues();
   private final ReentrantLock myLintIssueProviderLock = new ReentrantLock();
   @GuardedBy("myLintIssueProviderLock")
@@ -653,6 +660,10 @@ public class VisualizationForm
             if (result != null) {
               VisualLintAnalysisKt.analyzeAfterRenderComplete(result, model, myIssues);
               VisualLintAnalysisKt.analyzeAfterModelUpdate(result, layoutlibSceneManager, myIssues, myBaseConfigIssues);
+
+              if (StudioFlags.NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL.get()) {
+                CommonLintUserDataHandler.INSTANCE.updateVisualLintIssues(model.getFile(), myIssues);
+              }
             }
 
             // Remove self. This will not cause ConcurrentModificationException.

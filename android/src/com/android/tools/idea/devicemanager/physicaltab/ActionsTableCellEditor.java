@@ -16,10 +16,12 @@
 package com.android.tools.idea.devicemanager.physicaltab;
 
 import com.android.tools.idea.devicemanager.Device;
-import com.android.tools.idea.devicemanager.Tables;
+import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDeviceTableModel.Actions;
 import com.android.tools.idea.explorer.DeviceExplorerViewService;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
+import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.JBMenuItem;
 import com.intellij.openapi.ui.JBPopupMenu;
@@ -77,6 +79,12 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
   }
 
   private void activateDeviceFileExplorerWindow() {
+    DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
+      .setKind(EventKind.PHYSICAL_DEVICE_FILE_EXPLORER_ACTION)
+      .build();
+
+    DeviceManagerUsageTracker.log(event);
+
     Project project = myPanel.getProject();
     assert project != null;
 
@@ -96,6 +104,11 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
   }
 
   private void remove() {
+    DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
+      .setKind(EventKind.PHYSICAL_DELETE_ACTION)
+      .build();
+
+    DeviceManagerUsageTracker.log(event);
     assert myDevice != null;
 
     Project project = myPanel.getProject();
@@ -113,7 +126,9 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
   private void showPopupMenu() {
     JMenuItem item = new JBMenuItem("Pair device");
 
-    // TODO Call item::setEnabled as appropriate
+    assert myDevice != null;
+    item.setEnabled(myDevice.isOnline() && myDevice.isPhoneOrTablet());
+
     item.addActionListener(event -> pairDevice());
 
     JPopupMenu menu = new JBPopupMenu();
@@ -124,6 +139,11 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
   }
 
   private void pairDevice() {
+    DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
+      .setKind(EventKind.PHYSICAL_PAIR_DEVICE_ACTION)
+      .build();
+
+    DeviceManagerUsageTracker.log(event);
     // TODO Pair device
   }
 
@@ -138,18 +158,8 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
                                                         boolean selected,
                                                         int viewRowIndex,
                                                         int viewColumnIndex) {
-    viewColumnIndex = table.convertColumnIndexToView(PhysicalDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX);
-    myDevice = (PhysicalDevice)table.getValueAt(viewRowIndex, viewColumnIndex);
-
-    boolean online = myDevice.isOnline();
-
-    myComponent.getActivateDeviceFileExplorerWindowButton().setEnabled(online);
-    myComponent.getRemoveButton().setEnabled(!online);
-
-    myComponent.setBackground(Tables.getBackground(table, selected));
-    myComponent.setBorder(Tables.getBorder(selected, true));
-
-    return myComponent;
+    myDevice = ((PhysicalDeviceTable)table).getDeviceAt(viewRowIndex);
+    return myComponent.getTableCellComponent(table, selected, true, viewRowIndex);
   }
 
   @Override

@@ -18,22 +18,22 @@ package com.android.tools.adtui.chart.statechart
 import com.android.tools.adtui.AnimatedComponent
 import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.adtui.common.AdtUiUtils.shrinkToFit
-import com.android.tools.adtui.model.SeriesData
 import com.android.tools.adtui.model.StateChartModel
 import com.android.tools.adtui.model.Stopwatch
 import com.google.common.annotations.VisibleForTesting
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.ui.ColorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MouseEventHandler
 import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.FontMetrics
 import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.RenderingHints
 import java.awt.event.MouseEvent
 import java.awt.geom.Rectangle2D
+import java.util.function.Consumer
 import javax.swing.JList
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -41,13 +41,22 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * A renderer is a function performing arbitrary drawing on the graphics.
+ * Other parameters such as boundary and defaultFontMetrics meant to be
+ * read-only.
+ */
+typealias Renderer<T> = (g: Graphics2D,
+                         boundary: Rectangle2D.Float,
+                         defaultFontMetrics: FontMetrics,
+                         hoverred: Boolean,
+                         value: T) -> Unit
+
+/**
  * A chart component that renders series of state change events as rectangles.
  */
-class StateChart<T: Any>
-  @JvmOverloads constructor (private var model: StateChartModel<T>,
-                             private val colorProvider: StateChartColorProvider<T>,
-                             private val textConverter: StateChartTextConverter<T> = defaultTextConverter(),
-                             private val config: StateChartConfig<T> = defaultConfig())
+class StateChart<T>(private val model: StateChartModel<T>,
+                    private val render: Renderer<T>,
+                    private val config: StateChartConfig<T> = defaultConfig())
   : AnimatedComponent() {
   /**
    * The gap value as a percentage {0...1} of the height given to each data series
@@ -57,7 +66,6 @@ class StateChart<T: Any>
       field = max(min(gap, 1f), 0f)
     }
 
-  var renderMode = RenderMode.BAR
   private var needsTransformToViewSpace = true
 
   /**
@@ -69,6 +77,7 @@ class StateChart<T: Any>
    */
   private var rectangleCache = listOf<Pair<List<Rectangle2D.Float>, List<T>>>()
   private var rowPoint: Point? = null
+  private val itemClickedListeners = mutableListOf<Consumer<T>>()
 
   init {
     font = AdtUiUtils.DEFAULT_FONT
@@ -82,6 +91,19 @@ class StateChart<T: Any>
     registerMouseEvents()
     preferredSize = Dimension(preferredSize.width, JBUI.scale(PREFERRED_ROW_HEIGHT) * model.series.size)
   }
+
+  @JvmOverloads
+  constructor(model: StateChartModel<T>,
+              colorProvider: StateChartColorProvider<T>,
+              config: StateChartConfig<T> = defaultConfig())
+    : this(model, fillRectRenderer(colorProvider), config)
+
+  @JvmOverloads
+  constructor(model: StateChartModel<T>,
+              colorProvider: StateChartColorProvider<T>,
+              textConverter: StateChartTextConverter<T>,
+              config: StateChartConfig<T> = defaultConfig())
+    : this(model, fillRectAndTextRenderer(colorProvider, textConverter), config)
 
   /**
    * @param colors map of a state to corresponding color
@@ -111,38 +133,38 @@ class StateChart<T: Any>
     val barHeight = rectHeight - gap
 
     rectangleCache = series.mapIndexed { seriesIndex, data ->
-      val min = data.xRange.min.toFloat()
-      val max = data.xRange.max.toFloat()
-      val invRange = 1.0f / (max - min)
-      val startHeight = 1.0f - rectHeight * (seriesIndex + 1)
+      val min = data.xRange.min
+      val max = data.xRange.max
+      val invRange = 1.0 / (max - min)
+      val startHeight = 1.0 - rectHeight * (seriesIndex + 1)
       val barY = startHeight + gap * 0.5f
       val seriesDataList = data.series
       val rectangles = mutableListOf<Rectangle2D.Float>()
       val rectangleValues = mutableListOf<T>()
 
-      fun addRectangleDelta(value: T, previousX: Float, currentX: Float) {
+      fun addRectangleDelta(value: T, previousX: Double, currentX: Double) {
         // Because we start our activity line from the bottom and grow up we offset the height from the bottom of the component
         // instead of the top by subtracting our height from 1.
-        rectangles.add(Rectangle2D.Float((previousX - min) * invRange, barY,
-                                         (currentX - previousX) * invRange, barHeight))
+        rectangles.add(Rectangle2D.Float(((previousX - min) * invRange).toFloat(), barY.toFloat(),
+                                         ((currentX - previousX) * invRange).toFloat(), barHeight))
         rectangleValues.add(value)
       }
 
       if (seriesDataList.isNotEmpty()) {
         // Construct rectangles.
-        var previousX = seriesDataList[0].x.toFloat()
+        var previousX = seriesDataList[0].x.toDouble()
         var previousValue = seriesDataList[0].value
         for ((x, value) in seriesDataList.subList(1, seriesDataList.size)) {
-          if (value != previousValue!!) { // Ignore repeated values.
+          if (value != previousValue) { // Ignore repeated values.
             // Don't draw if this block doesn't intersect with [min..max]
             if (x >= min) {
               // Draw the previous block.
-              addRectangleDelta(previousValue, max(min, previousX), min(max, x.toFloat()))
+              addRectangleDelta(previousValue, max(min, previousX), min(max, x.toDouble()))
             }
 
             // Start a new block.
             previousValue = value
-            previousX = x.toFloat()
+            previousX = x.toDouble()
             if (previousX >= max) break // Drawn past max range, stop.
           }
         }
@@ -210,20 +232,11 @@ class StateChart<T: Any>
         seriesIndex != hoveredSeriesIndex || rowPoint == null -> INVALID_INDEX
         else -> rowPoint!!.x.toFloat().let { transformedShapes.searchByX(it, 1f) }
       }
-      for (i in transformedShapes.indices) {
-        val value = transformedValues[i]
-        val rect = transformedShapes[i]
-        val isMouseOver = i == hoverIndex
-        g2d.color = colorProvider.getColor(isMouseOver, value)
-        g2d.fill(rect)
-        if (renderMode == RenderMode.TEXT) {
-          val text = shrinkToFit(textConverter.convertToString(value), mDefaultFontMetrics, rect.width - TEXT_PADDING * 2)
-          if (text.isNotEmpty()) {
-            g2d.color = colorProvider.getFontColor(isMouseOver, value)
-            val textOffset = rect.y + (rect.height - mDefaultFontMetrics.height) * 0.5f + mDefaultFontMetrics.ascent.toFloat()
-            g2d.drawString(text, rect.x + TEXT_PADDING, textOffset)
-          }
-        }
+
+      transformedShapes.indices.forEach {
+        val rect = transformedShapes[it]
+        g2d.clip = rect
+        render(g2d, rect, mDefaultFontMetrics, it == hoverIndex, transformedValues[it])
       }
     }
 
@@ -234,6 +247,10 @@ class StateChart<T: Any>
       (scalingTime + reducerTime + drawTime) / 1000000f
     )
     addDebugInfo("# of drawn rects: %d", transformedShapesCount)
+  }
+
+  fun addItemClickedListener(onClicked: Consumer<T>) {
+    itemClickedListeners.add(onClicked)
   }
 
   private fun registerMouseEvents() {
@@ -252,6 +269,11 @@ class StateChart<T: Any>
 
     val handler = object : MouseEventHandler() {
       override fun handle(event: MouseEvent) {
+        if (event.id == MouseEvent.MOUSE_CLICKED) {
+          itemAtMouse(event.point)?.let { itemClickedListeners.forEach { handler -> handler.accept(it) } }
+          return
+        }
+
         if (event.point == mousePoint) return
         val src = event.source
         if (rowIndex != INVALID_INDEX) {
@@ -301,6 +323,49 @@ class StateChart<T: Any>
     addMouseMotionListener(handler)
   }
 
+  @VisibleForTesting
+  fun itemAtMouse(point: Point): T? = seriesIndexAtMouse(point)?.let { (seriesIndex, i) ->
+    val seriesData = model.series[seriesIndex].series
+    when (i) {
+      in seriesData.indices -> seriesData[i].value
+      else -> {
+        val j = -i - 1 - 1 // take the one to the left of the insertion index
+        if (j in seriesData.indices) seriesData[j].value else null
+      }
+    }
+  }
+
+  /**
+   * Find the item index in the model that corresponds to the mouse position.
+   * @return - null if the mouse isn't on any series, or
+   *         - a pair of the series index, and the item index within the series.
+   *           The item index is negative if it's an "insertion" index when the item
+   *           with the exact `x` isn't found
+   */
+  private fun seriesIndexAtMouse(point: Point): Pair<Int, Int>? {
+    val series = model.series
+    if (series.isEmpty()) return null
+
+    val scaleX = width.toFloat()
+    val scaleY = height.toFloat()
+    val seriesIndex = (1f - point.y / scaleY).let { normalizedY ->
+      // Clamp just in case of Swing off-by-one-pixel-mouse-handling issues
+      min(series.size - 1, (normalizedY * series.size).toInt())
+    }
+    val seriesAtMouse = series[seriesIndex]
+    val seriesData = seriesAtMouse.series
+    val min = seriesAtMouse.xRange.min.toFloat()
+    val max = seriesAtMouse.xRange.max.toFloat()
+    val range = max - min
+
+    // Convert mouseX into data/series coordinate space
+    val modelMouseX = point.x / scaleX * range + min
+    return when {
+      seriesData.isEmpty() -> null
+      else -> seriesIndex to seriesData.binarySearch { it.x.compareTo(modelMouseX) }
+    }
+  }
+
   private fun renderUnion(container: Any?, containerOffset: Point) {
     if (rowPoint != null && container is Component) {
       getMouseRectanglesUnion(rowPoint!!)?.let { union ->
@@ -314,47 +379,21 @@ class StateChart<T: Any>
     }
   }
 
-  private fun getMouseRectanglesUnion(mousePoint: Point): Rectangle2D.Float? {
-    val series = model.series
-    if (series.isEmpty()) return null
-
+  private fun getMouseRectanglesUnion(mousePoint: Point) = seriesIndexAtMouse(mousePoint)?.let { (seriesIndex, i) ->
+    val series = model.series[seriesIndex]
+    val seriesDataList = series.series
+    val min = series.xRange.min.toFloat()
+    val max = series.xRange.max.toFloat()
+    val range = max - min
+    val seriesSize = model.series.size
     val scaleX = width.toFloat()
     val scaleY = height.toFloat()
-    val seriesSize = series.size
-    val seriesIndex = (1.0f - mousePoint.y / scaleY).let { normalizedMouseY ->
-      // Clamp just in case of Swing off-by-one-pixel-mouse-handling issues
-      min(seriesSize - 1, (normalizedMouseY * seriesSize).toInt())
+    val (leftIndex, rightIndex) = when (i) {
+      in seriesDataList.indices -> max(0, i - 2) to min(i + 2, seriesDataList.size - 1)
+      else -> (-i - 1).let { max(0, it - 2) to min(it + 2, seriesDataList.size - 1) }
     }
 
-    if (seriesIndex !in 0 until seriesSize) {
-      Logger.getInstance(StateChart::class.java).warn(
-        "Series index in getMouseRectanglesUnion is out of bounds: mouseY = ${mousePoint.y}, scaleY = $scaleY"
-      )
-      return Rectangle2D.Float(0f, 0f, scaleX, scaleY)
-    }
-    val data = series[seriesIndex]
-    val min = data.xRange.min.toFloat()
-    val max = data.xRange.max.toFloat()
-    val range = max - min
-
-    // Convert mouseX into data/series coordinate space. However, note that the mouse covers a whole pixel, which has width.
-    // Therefore, we need to find all the rectangles potentially intersecting the pixel.
-    val modelMouseXLeft = floor((mousePoint.x - 1f) / scaleX * range + min)
-    val modelMouseXRight = ceil((mousePoint.x + 1.0f) / scaleX * range + min)
-    fun compareWithMouseRange(data: SeriesData<T>) = when {
-      data.x < modelMouseXLeft -> -1
-      data.x > modelMouseXRight -> 1
-      else -> 0
-    }
-    val seriesDataList = data.series
-    if (seriesDataList.isEmpty()) return null
-
-    val (leftIndex, rightIndex) = seriesDataList.binarySearch(comparison = ::compareWithMouseRange).let { when (it) {
-      in seriesDataList.indices -> max(0, it - 2) to min(it + 2, seriesDataList.size - 1)
-      else -> (-it - 1).let { max(0, it - 2) to min(it + 2, seriesDataList.size - 1) }
-    } }
-
-    // Now transform the union of the left and right (or range max) index x values back into view space.
+    // Transform the union of the left and right (or range max) index x values back into view space.
     val modelXLeft = max(min, seriesDataList[leftIndex].x.toFloat())
     val modelXRight = min(max, seriesDataList[rightIndex].x.toFloat())
     val screenXLeft = floor((modelXLeft - min) * scaleX / range)
@@ -363,19 +402,31 @@ class StateChart<T: Any>
     val screenYBottom = ceil(scaleY - seriesIndex * scaleY / seriesSize)
     val screenWidth = screenXRight - screenXLeft
     val screenHeight = screenYBottom - screenYTop
-    return Rectangle2D.Float(screenXLeft, screenYTop, screenWidth, screenHeight)
+    Rectangle2D.Float(screenXLeft, screenYTop, screenWidth, screenHeight)
   }
 
-  private companion object {
-    const val INVALID_INDEX = -1
-    const val TEXT_PADDING = 3
-    const val PREFERRED_ROW_HEIGHT = 27
-    fun<T> defaultConfig() = StateChartConfig<T>(DefaultStateChartReducer<T>())
-    fun<T: Any> defaultTextConverter() = StateChartTextConverter<T> { it.toString() }
-  }
+  companion object {
+    private const val INVALID_INDEX = -1
+    private const val TEXT_PADDING = 3
+    private const val PREFERRED_ROW_HEIGHT = 27
+    private fun<T> defaultConfig() = StateChartConfig<T>(DefaultStateChartReducer<T>())
+    @JvmStatic fun<T> defaultTextConverter() = StateChartTextConverter<T>(Any?::toString)
 
-  enum class RenderMode {
-    BAR,  // Each state is rendered as a filled rectangle until the next state changed.
-    TEXT // Each state is marked with a vertical line and and corresponding state text/label at the beginning.
+    private fun<T> fillRectRenderer(colorProvider: StateChartColorProvider<T>): Renderer<T> = { g, rect, _, hovered, value ->
+      g.color = colorProvider.getColor(hovered, value)
+      g.fill(rect)
+    }
+
+    private fun<T> fillRectAndTextRenderer(colorProvider: StateChartColorProvider<T>,
+                                           textConverter: StateChartTextConverter<T>): Renderer<T> =
+      fillRectRenderer(colorProvider).let { fillRect -> { g, rect, fontMetrics, hovered, value ->
+        fillRect(g, rect, fontMetrics, hovered, value)
+        val text = shrinkToFit(textConverter.convertToString(value), fontMetrics, rect.width - TEXT_PADDING * 2)
+        if (text.isNotEmpty()) {
+          g.color = colorProvider.getFontColor(hovered, value)
+          val textOffset = rect.y + (rect.height - fontMetrics.height) * 0.5f + fontMetrics.ascent.toFloat()
+          g.drawString(text, rect.x + TEXT_PADDING, textOffset)
+        }
+      }}
   }
 }

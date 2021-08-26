@@ -134,6 +134,8 @@ class GradleTestResultAdapterTest {
       testStatus = TestStatusProto.TestStatus.PASSED
     }.build())
 
+    adapter.onGradleTaskFinished()
+
     verify(mockListener).onTestSuiteFinished(eq(adapter.device), argThat {
       it.id.isNotBlank() && it.name == "testName" && it.testCaseCount == 1 && it.result == AndroidTestSuiteResult.PASSED
     })
@@ -185,6 +187,8 @@ class GradleTestResultAdapterTest {
     adapter.onTestSuiteFinished(TestSuiteResultProto.TestSuiteResult.newBuilder().apply {
       testStatus = TestStatusProto.TestStatus.FAILED
     }.build())
+
+    adapter.onGradleTaskFinished()
 
     verify(mockListener).onTestSuiteFinished(eq(adapter.device), argThat {
       it.id.isNotBlank() && it.name == "testName" && it.testCaseCount == 1 && it.result == AndroidTestSuiteResult.FAILED
@@ -258,6 +262,8 @@ class GradleTestResultAdapterTest {
     adapter.onTestSuiteFinished(TestSuiteResultProto.TestSuiteResult.newBuilder().apply {
       testStatus = TestStatusProto.TestStatus.FAILED
     }.build())
+
+    adapter.onGradleTaskFinished()
 
     verify(mockListener).onTestSuiteFinished(eq(adapter.device), argThat {
       it.id.isNotBlank() && it.name == "testName" && it.testCaseCount == 1 && it.result == AndroidTestSuiteResult.FAILED
@@ -447,8 +453,9 @@ class GradleTestResultAdapterTest {
 
   @Test
   fun onTestSuiteFinishedIsCalledBeforeTestSuiteEvenStarts() {
-    createAdapter().apply {
+    val adapter = createAdapter().apply {
       onTestSuiteFinished(TestSuiteResultProto.TestSuiteResult.getDefaultInstance())
+      onGradleTaskFinished()
     }
 
     inOrder(mockListener).apply {
@@ -456,6 +463,60 @@ class GradleTestResultAdapterTest {
       verify(mockListener).onTestSuiteStarted(any(), any())
       verify(mockListener).onTestSuiteFinished(any(), any())
     }
+
+    assertThat(adapter.needRerunWithUninstallIncompatibleApkOption()).isFalse()
+  }
+
+  private fun runAndUtpFailsWithApkInstallationError(): GradleTestResultAdapter {
+    return createAdapter().apply {
+      onTestSuiteFinished(TestSuiteResultProto.TestSuiteResult.newBuilder().apply {
+        platformErrorBuilder.apply {
+          errorDetailBuilder.apply {
+            causeBuilder.apply {
+              summaryBuilder.apply {
+                namespaceBuilder.apply {
+                  namespace = "DdmlibAndroidDeviceController"
+                }
+                errorCode = 1
+                errorName = "INSTALL_FAILED_UPDATE_INCOMPATIBLE"
+              }
+            }
+          }
+        }
+      }.build())
+    }
+  }
+
+  @Test
+  fun onTestSuiteFinishedIsCalledBeforeTestSuiteEvenStartsDueToApkInstallationError() {
+    val adapter = runAndUtpFailsWithApkInstallationError()
+
+    assertThat(adapter.needRerunWithUninstallIncompatibleApkOption()).isTrue()
+  }
+
+  @Test
+  fun showRerunWithUninstallIncompatibleApkOptionDialogAndAccept() {
+    lateinit var capturedMessage: String
+    val adapter = runAndUtpFailsWithApkInstallationError()
+
+    val result = adapter.showRerunWithUninstallIncompatibleApkOptionDialog(projectRule.project) { message ->
+      capturedMessage = message
+      true
+    }
+
+    assertThat(result).isTrue()
+    assertThat(capturedMessage).contains("The device already has an application with the same package but a different signature.")
+    assertThat(capturedMessage).contains("WARNING: Uninstalling will remove the application data!")
+    assertThat(capturedMessage).contains("Do you want to uninstall the existing application?")
+  }
+
+  @Test
+  fun showRerunWithUninstallIncompatibleApkOptionDialogAndDecline() {
+    val adapter = runAndUtpFailsWithApkInstallationError()
+
+    val result = adapter.showRerunWithUninstallIncompatibleApkOptionDialog(projectRule.project) { false }
+
+    assertThat(result).isFalse()
   }
 
   @Test

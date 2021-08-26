@@ -197,9 +197,6 @@ iml_module(
             "shard_count": 5,
             "test_filter": "com.android.tools.idea.run",
         },
-        "npw.assetstudio": {
-            "test_filter": "com.android.tools.idea.npw.assetstudio.ui",
-        },
         "testartifacts": {
             "shard_count": 3,
             "test_filter": "com.android.tools.idea.testartifacts",
@@ -313,7 +310,7 @@ iml_module(
         "//tools/adt/idea/deploy:intellij.android.deploy[module, test]",
         "//tools/base/perf-logger:studio.perf-logger[module, test]",
         "//tools/adt/idea/.idea/libraries:studio-proto",
-        "//tools/adt/idea/app-inspection/inspectors/database:intellij.android.app-inspection.inspectors.database[module]",
+        "//tools/adt/idea/app-inspection/inspectors/database:app-inspection.inspectors.database[module]",
         "//tools/base/wizard/template-plugin:studio.intellij.android.wizardTemplate.plugin[module, test]",
         "//tools/base/wizard/template-impl:studio.intellij.android.wizardTemplate.impl[module, test]",
         "//tools/adt/idea/lint:intellij.lint[module, test]",
@@ -451,7 +448,7 @@ maven_repository(
         "@maven_tests//:androidx.appcompat.appcompat_1.0.2",
         "@maven_tests//:androidx.appcompat.appcompat_1.3.0",
         "@maven_tests//:androidx.benchmark.benchmark-gradle-plugin_1.0.0",
-        "@maven_tests//:androidx.compose.ui.ui-tooling_1.0.0",
+        "@maven_tests//:androidx.compose.ui.ui-tooling_1.0.1",
         "@maven_tests//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven_tests//:androidx.constraintlayout.constraintlayout_2.0.4",
         "@maven_tests//:androidx.core.core-ktx_1.0.1",
@@ -494,18 +491,15 @@ maven_repository(
         "@maven_tests//:commons-logging.commons-logging_1.1.1",
         "@maven_tests//:junit.junit_4.13.2",
         "@maven_tests//:org.jdeferred.jdeferred-android-aar_1.2.3",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.10",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.20",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.10",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.21",
         "@maven_tests//:org.mockito.mockito-core_3.0.0",
@@ -588,16 +582,6 @@ iml_module(
         "MigrateToAndroidxGradleKtsTest": {
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
             "test_filter": "org.jetbrains.android.refactoring.MigrateToAndroidxGradleKtsTest",
-        },
-        "AddNewModulesToAppTest": {
-            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
-            # b/192102820 flaky windows, taking longer than 15 minutes
-            "tags": ["no_windows"],
-            "test_filter": "com.android.tools.idea.npw.module.AddNewModulesToAppTest",
-        },
-        "BenchmarkModuleTest": {
-            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
-            "test_filter": "com.android.tools.idea.npw.module.BenchmarkModuleTest",
         },
         "IllegalIdentifierInspectionTest": {
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well

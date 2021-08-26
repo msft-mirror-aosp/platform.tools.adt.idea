@@ -137,7 +137,7 @@ class AndroidTestResultsTableView(listener: AndroidTestResultsTableListener,
   }
 
   @UiThread
-  fun setTestSuiteResultForDevice(device: AndroidDevice, result: AndroidTestSuiteResult) {
+  fun setTestSuiteResultForDevice(device: AndroidDevice, result: AndroidTestSuiteResult?) {
     myModel.myRootAggregationRow.setTestSuiteResultForDevice(device, result)
     refreshTable()
   }
@@ -213,6 +213,13 @@ class AndroidTestResultsTableView(listener: AndroidTestResultsTableListener,
   fun clearSelection() {
     myTableView.clearSelection()
     myTableView.resetLastReportedValues()
+  }
+
+  @UiThread
+  fun selectAndroidTestCase(testCase: AndroidTestCase) {
+    myModel.getTestResultsRow(testCase)?.let { row ->
+      myTableView.addSelection(row)
+    }
   }
 
   /**
@@ -739,6 +746,13 @@ private class AndroidTestResultsTableModel : ListTreeTableModelOnColumns(Aggrega
   }
 
   /**
+   * Returns [AndroidTestResultsRow] for a given test case if exists, otherwise null.
+   */
+  fun getTestResultsRow(testCase: AndroidTestCase): AndroidTestResultsRow? {
+    return myTestResultsRows[testCase.id]
+  }
+
+  /**
    * Sets a visible condition.
    *
    * @param columnFilter a predicate which returns true for an column to be displayed
@@ -1197,8 +1211,12 @@ private class AggregationRow(override val packageName: String = "",
   /**
    * Sets the test suite result of the given device.
    */
-  fun setTestSuiteResultForDevice(device: AndroidDevice, result: AndroidTestSuiteResult) {
-    myTestSuiteResult[device.id] = result
+  fun setTestSuiteResultForDevice(device: AndroidDevice, result: AndroidTestSuiteResult?) {
+    if (result != null) {
+      myTestSuiteResult[device.id] = result
+    } else {
+      myTestSuiteResult.remove(device.id)
+    }
   }
 
   override val methodName: String = ""

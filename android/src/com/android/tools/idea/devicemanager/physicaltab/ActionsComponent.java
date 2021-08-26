@@ -15,36 +15,32 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
-import com.android.tools.idea.devicemanager.Buttons;
+import com.android.tools.idea.devicemanager.IconButton;
+import com.android.tools.idea.devicemanager.Tables;
 import com.android.tools.idea.flags.StudioFlags;
-import com.google.common.annotations.VisibleForTesting;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.components.JBPanel;
+import java.awt.Color;
+import java.awt.Component;
 import javax.swing.AbstractButton;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Group;
+import javax.swing.JTable;
 import org.jetbrains.annotations.NotNull;
 
 final class ActionsComponent extends JBPanel<ActionsComponent> {
-  private final @NotNull AbstractButton myActivateDeviceFileExplorerWindowButton;
+  private final @NotNull IconButton myActivateDeviceFileExplorerWindowButton;
   private final @NotNull AbstractButton myEditDeviceNameButton;
-  private final @NotNull AbstractButton myRemoveButton;
-  private final @NotNull AbstractButton myViewDetailsButton;
-  private final @NotNull AbstractButton myMoreButton;
+  private final @NotNull IconButton myRemoveButton;
+  private final @NotNull IconButton myMoreButton;
 
   ActionsComponent() {
-    this(false);
-  }
-
-  @VisibleForTesting
-  ActionsComponent(boolean addViewDetailsButton) {
     super(null);
 
-    myActivateDeviceFileExplorerWindowButton = Buttons.newIconButton(AllIcons.General.OpenDiskHover);
-    myEditDeviceNameButton = Buttons.newIconButton(AllIcons.Actions.Edit);
-    myRemoveButton = Buttons.newIconButton(AllIcons.Actions.GC);
-    myViewDetailsButton = Buttons.newIconButton(AllIcons.Actions.Preview);
-    myMoreButton = Buttons.newIconButton(AllIcons.Actions.More);
+    myActivateDeviceFileExplorerWindowButton = new IconButton(AllIcons.Actions.MenuOpen);
+    myEditDeviceNameButton = new IconButton(AllIcons.Actions.Edit);
+    myRemoveButton = new IconButton(AllIcons.Actions.GC);
+    myMoreButton = new IconButton(AllIcons.Actions.More);
 
     GroupLayout layout = new GroupLayout(this);
 
@@ -53,10 +49,6 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
       .addComponent(myActivateDeviceFileExplorerWindowButton)
       // .addComponent(myEditDeviceNameButton)
       .addComponent(myRemoveButton);
-
-    if (addViewDetailsButton) {
-      horizontalGroup.addComponent(myViewDetailsButton);
-    }
 
     boolean pairingAssistantEnabled = StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.get();
 
@@ -68,10 +60,6 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
       .addComponent(myActivateDeviceFileExplorerWindowButton)
       // .addComponent(myEditDeviceNameButton)
       .addComponent(myRemoveButton);
-
-    if (addViewDetailsButton) {
-      group.addComponent(myViewDetailsButton);
-    }
 
     if (pairingAssistantEnabled) {
       group.addComponent(myMoreButton);
@@ -100,11 +88,28 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
     return myRemoveButton;
   }
 
-  @NotNull AbstractButton getViewDetailsButton() {
-    return myViewDetailsButton;
-  }
-
   @NotNull AbstractButton getMoreButton() {
     return myMoreButton;
+  }
+
+  @NotNull Component getTableCellComponent(@NotNull JTable table, boolean selected, boolean focused, int viewRowIndex) {
+    boolean online = ((PhysicalDeviceTable)table).getDeviceAt(viewRowIndex).isOnline();
+    Color foreground = Tables.getForeground(table, selected);
+
+    myActivateDeviceFileExplorerWindowButton.setEnabled(online);
+    myActivateDeviceFileExplorerWindowButton.setForeground(foreground);
+    myActivateDeviceFileExplorerWindowButton.setSelectedInTableCell(selected);
+
+    myRemoveButton.setEnabled(!online);
+    myRemoveButton.setForeground(foreground);
+    myRemoveButton.setSelectedInTableCell(selected);
+
+    myMoreButton.setForeground(foreground);
+    myMoreButton.setSelectedInTableCell(selected);
+
+    setBackground(Tables.getBackground(table, selected));
+    setBorder(Tables.getBorder(selected, focused));
+
+    return this;
   }
 }

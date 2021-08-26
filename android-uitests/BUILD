@@ -94,10 +94,11 @@ iml_module(
         "//tools/base/wizard/template-impl:studio.intellij.android.wizardTemplate.impl[module, test]",
         "//tools/adt/idea/android-plugin:intellij.android.plugin[module, test]",
         "//tools/adt/idea/studio[module, test]",
-        "//tools/adt/idea/app-inspection/api:intellij.android.app-inspection.api[module, test]",
+        "//tools/adt/idea/app-inspection/api:app-inspection.api[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/intellij.android.compose-common[module, test]",
         "//tools/adt/idea/device-explorer:intellij.android.device-explorer[module, test]",
+        "//tools/adt/idea/android-npw:intellij.android.newProjectWizard[module, test]",
     ],
 )
 
@@ -118,9 +119,9 @@ maven_repository(
         "@maven_tests//:androidx.appcompat.appcompat_1.0.2",
         "@maven_tests//:androidx.appcompat.appcompat_1.3.0",
         "@maven_tests//:androidx.benchmark.benchmark-gradle-plugin_1.0.0",
-        "@maven_tests//:androidx.compose.compiler.compiler_1.0.0",
-        "@maven_tests//:androidx.compose.ui.ui-test-junit4_1.0.0",
-        "@maven_tests//:androidx.compose.ui.ui-tooling_1.0.0",
+        "@maven_tests//:androidx.compose.compiler.compiler_1.0.1",
+        "@maven_tests//:androidx.compose.ui.ui-test-junit4_1.0.1",
+        "@maven_tests//:androidx.compose.ui.ui-tooling_1.0.1",
         "@maven_tests//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven_tests//:androidx.constraintlayout.constraintlayout_2.0.4",
         "@maven_tests//:androidx.core.core-ktx_1.0.1",
@@ -186,20 +187,20 @@ maven_repository(
         "@maven_tests//:junit.junit_4.13.2",
         "@maven_tests//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.20",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.10",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.21",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.10",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.21",
         "@maven_tests//:org.mockito.mockito-core_3.0.0",
     ],
 )
@@ -417,8 +418,8 @@ java_test(
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/tools/common/m2:com.android.support.support-annotations.28.0.0",
-        "//prebuilts/tools/common/m2:com.android.support.appcompat-v7.26.1.0_aar",
+        "@maven_tests//:com.android.support.support-annotations_28.0.0",
+        "@maven_tests//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
         "testData/SimpleApplication/**",
     ]) + glob(["testData/LayoutTest/**"]),
@@ -1448,7 +1449,7 @@ java_test(
     name = "JavaDepTest",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/tools/common/m2:com.google.code.gson.gson.2.6.2",
+        "@maven_tests//:com.google.code.gson.gson_2.6.2",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.JavaDepTest"],
     tags = COMMON_TAGS + [
@@ -1464,7 +1465,7 @@ java_test(
     name = "AndroidDepTest",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/tools/common/m2:com.google.code.gson.gson.2.6.2",
+        "@maven_tests//:com.google.code.gson.gson_2.6.2",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AndroidDepTest"],
     tags = COMMON_TAGS + [
