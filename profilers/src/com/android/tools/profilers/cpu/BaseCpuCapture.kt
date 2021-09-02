@@ -23,9 +23,8 @@ import com.android.tools.profiler.proto.Cpu.CpuTraceType
 import com.android.tools.profilers.cpu.nodemodel.CaptureNodeModel
 import com.android.tools.profilers.cpu.nodemodel.JavaMethodModel
 import com.android.tools.profilers.cpu.nodemodel.NativeNodeModel
-import com.android.tools.profilers.cpu.nodemodel.SingleNameModel
 import com.android.tools.profilers.cpu.nodemodel.SyscallModel
-import java.util.regex.Pattern
+import com.google.common.annotations.VisibleForTesting
 
 open class BaseCpuCapture @JvmOverloads constructor(/**
                                                      * ID of the trace used to generate the capture.
@@ -35,14 +34,30 @@ open class BaseCpuCapture @JvmOverloads constructor(/**
                                                      * Technology used to generate the capture.
                                                      */
                                                     private val type: CpuTraceType,
+                                                    /**
+                                                     * Whether this trace supports dual clock timing info.
+                                                     */
+                                                    private val dualClock: Boolean,
+                                                    /**
+                                                     * User-facing string when this trace doesn't supports dual clock
+                                                     */
+                                                    private val dualClockMessage: String?,
                                                     range: Range,
                                                     captureTrees: Map<CpuThreadInfo, CaptureNode>,
-                                                    private val hidablePaths: Set<PathFilter> = setOf()) : CpuCapture {
+                                                    private val tags: Set<String> = setOf()) : CpuCapture {
+  @VisibleForTesting
+  constructor(traceId: Long,
+              type: CpuTraceType,
+              range: Range,
+              captureTrees: Map<CpuThreadInfo, CaptureNode>) :
+    this(traceId, type, true, null, range, captureTrees) {
+  }
+
   private val availableThreads: Set<CpuThreadInfo>
   private val threadIdToNode: Map<Int, CaptureNode>
   private val mainThreadId: Int
   private var clockType: ClockType
-  var pathsHidden = setOf<PathFilter>()
+  var tagsCollapsed = setOf<String>()
     private set
   private val unabbreviatedTrees: Map<CaptureNode, List<CaptureNode>>
 
@@ -88,17 +103,14 @@ open class BaseCpuCapture @JvmOverloads constructor(/**
     }
   }
 
-  // It would be better if we have this type of information embedded in the enum
-  // but the enum comes from a proto definition for now.
-  // Right now, the only trace technology that supports dual clock is ART.
-  override fun isDualClock() = type == CpuTraceType.ART
+  override fun isDualClock() = dualClock
+  override fun getDualClockDisabledMessage() = dualClockMessage
   override fun getType() = type
 
-  override fun setHideNodesFromPaths(pathsToHide: Set<PathFilter>) {
-    if (pathsToHide != pathsHidden) {
-      val matcher = Pattern.compile(pathsToHide.joinToString("|") { it.regex }).asMatchPredicate()
-      fun collapse(node: CaptureNode) = when {
-        !matcher.test(node.data.fileName) -> null
+  override fun collapseNodesWithTags(tagsToCollapse: Set<String>) {
+    if (tagsToCollapse != tagsCollapsed) {
+      fun collapse(node: CaptureNode) = when (node.data.tag) {
+        !in tagsToCollapse -> null
         else -> when (node.data) {
           is JavaMethodModel -> OpaqueJavaMethodModel
           is SyscallModel -> OpaqueSyscallModel
@@ -111,28 +123,18 @@ open class BaseCpuCapture @JvmOverloads constructor(/**
 
       unabbreviatedTrees.forEach { (root, unabbreviartedChildren) ->
         root.clearChildren()
-        root.addChildren(if (pathsToHide.isEmpty()) unabbreviartedChildren else hideFromPaths(unabbreviartedChildren))
+        root.addChildren(if (tagsToCollapse.isEmpty()) unabbreviartedChildren else hideFromPaths(unabbreviartedChildren))
       }
-      pathsHidden = pathsToHide
+      tagsCollapsed = tagsToCollapse
     }
   }
 
-  override fun getHidablePaths() = hidablePaths
-  override fun getHiddenFilePaths() = pathsHidden
+  override fun getTags() = tags
+  override fun getCollapsedTags() = tagsCollapsed
 
-  private object OpaqueJavaMethodModel : JavaMethodModel("<<java code>>", "", "", "")
+  private object OpaqueJavaMethodModel : JavaMethodModel("<<java code>>", "", "")
   private object OpaqueSyscallModel: SyscallModel("<<syscall>>")
   private object OpaqueNativeNodeModel : NativeNodeModel() {
     init { myName = "<<native code>>" }
-    override fun getFileName() = ""
-  }
-}
-
-sealed class PathFilter(val regex: String) {
-  data class Literal(val lit: String): PathFilter(Pattern.quote(lit)) {
-    override fun toString() = lit
-  }
-  data class Prefix(val prefix: String): PathFilter("${Pattern.quote(prefix)}.*") {
-    override fun toString() = "$prefix*"
   }
 }

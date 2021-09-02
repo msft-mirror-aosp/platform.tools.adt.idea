@@ -39,6 +39,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module]",
         "//tools/base/annotations:studio.android.sdktools.android-annotations[module]",
         "//tools/adt/idea/codenavigation[module]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
     ],
 )
 
@@ -68,5 +69,8 @@ iml_module(
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:background-inspector-proto[test]",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:workmanager-inspector-proto[test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
+        "//tools/adt/idea/app-inspection/inspectors/backgroundtask/ide:app-inspection.inspectors.backgroundtask.ide[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito[test]",
+        "//tools/adt/idea/codenavigation[module, test]",
     ],
 )

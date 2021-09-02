@@ -18,6 +18,7 @@ package com.android.tools.idea.appinspection.inspectors.backgroundtask.model.ent
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol.BackgroundTaskEvent
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EventWrapper
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.getTopExternalClassSimpleName
 
 /**
  * An entry with all information of a WakeLock Task.
@@ -45,7 +46,8 @@ class WakeLockEntry(override val id: String) : BackgroundTaskEntry {
   override val startTimeMs get() = _startTime
 
   override val tags = mutableListOf<String>()
-  override val callstacks = mutableListOf<String>()
+  override val callstacks = mutableListOf<BackgroundTaskCallStack>()
+  override val retries = 0
 
   var acquired: BackgroundTaskInspectorProtocol.Event? = null
   var released: BackgroundTaskInspectorProtocol.Event? = null
@@ -57,17 +59,18 @@ class WakeLockEntry(override val id: String) : BackgroundTaskEntry {
       BackgroundTaskEvent.MetadataCase.WAKE_LOCK_ACQUIRED -> {
         _isValid = true
         acquired = backgroundTaskEvent
-        _className = "WakeLock $id"
+        _className = getTopExternalClassSimpleName(backgroundTaskEvent.backgroundTaskEvent.stacktrace,
+                                                   "android.os.PowerManager\$WakeLock") ?: "WakeLock $id"
         _status = State.ACQUIRED
         _startTime = timestamp
         tags.add(acquired!!.backgroundTaskEvent.wakeLockAcquired.tag)
         callstacks.clear()
-        callstacks.add(backgroundTaskEvent.backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.backgroundTaskEvent.stacktrace))
       }
       BackgroundTaskEvent.MetadataCase.WAKE_LOCK_RELEASED -> {
         released = backgroundTaskEvent
         _status = State.RELEASED
-        callstacks.add(backgroundTaskEvent.backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.backgroundTaskEvent.stacktrace))
       }
     }
   }

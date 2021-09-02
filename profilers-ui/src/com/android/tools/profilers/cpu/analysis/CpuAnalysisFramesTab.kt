@@ -17,26 +17,61 @@ package com.android.tools.profilers.cpu.analysis
 
 import com.android.tools.adtui.PaginatedTableView
 import com.android.tools.profilers.StudioProfilersView
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import javax.swing.JPanel
+import javax.swing.ListSelectionModel
 
 class CpuAnalysisFramesTab(profilersView: StudioProfilersView,
                            model: CpuAnalysisFramesTabModel
 ) : CpuAnalysisTab<CpuAnalysisFramesTabModel>(profilersView, model) {
   init {
     layout = BorderLayout()
-    // TODO(b/186899372): support multi-layer apps.
-    val tableView = PaginatedTableView(model.layerToTableModel.values.first(), PAGE_SIZE_VALUES)
-    tableView.table.apply {
-      showVerticalLines = true
-      showHorizontalLines = true
-      emptyText.text = "No frames in the selected range"
-      columnModel.getColumn(FrameEventTableColumn.FRAME_NUMBER.ordinal).cellRenderer = CustomBorderTableCellRenderer()
-      columnModel.getColumn(FrameEventTableColumn.TOTAL_TIME.ordinal).cellRenderer = DurationRenderer()
-      columnModel.getColumn(FrameEventTableColumn.APP.ordinal).cellRenderer = DurationRenderer()
-      columnModel.getColumn(FrameEventTableColumn.GPU.ordinal).cellRenderer = DurationRenderer()
-      columnModel.getColumn(FrameEventTableColumn.COMPOSITION.ordinal).cellRenderer = DurationRenderer()
+    val tableContainer = JPanel(BorderLayout())
+    fun initializeTable(model: FrameEventTableModel) {
+      val table = PaginatedTableView(model, PAGE_SIZE_VALUES).apply {
+        table.apply {
+          showVerticalLines = true
+          showHorizontalLines = true
+          emptyText.text = "No frames in the selected range"
+          columnModel.getColumn(FrameEventTableColumn.FRAME_NUMBER.ordinal).cellRenderer = CustomBorderTableCellRenderer()
+          columnModel.getColumn(FrameEventTableColumn.TOTAL_TIME.ordinal).cellRenderer = DurationRenderer()
+          columnModel.getColumn(FrameEventTableColumn.APP.ordinal).cellRenderer = DurationRenderer()
+          columnModel.getColumn(FrameEventTableColumn.GPU.ordinal).cellRenderer = DurationRenderer()
+          columnModel.getColumn(FrameEventTableColumn.COMPOSITION.ordinal).cellRenderer = DurationRenderer()
+
+          setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+          selectionModel.addListSelectionListener {
+            if (selectedRow >= 0) {
+              val selectedEventIndex = convertRowIndexToModel(selectedRow) + model.pageIndex * model.pageSize
+              model.frameEvents[selectedEventIndex].let {
+                profilersView.studioProfilers.stage.timeline.viewRange.set(it.startTimeUs.toDouble(), it.endTimeUs.toDouble())
+              }
+            }
+          }
+        }
+      }
+      tableContainer.removeAll()
+      tableContainer.add(table.component)
     }
-    add(tableView.component)
+
+    if (model.tableModels.size > 1) {
+      // Add a dropdown list when there are multiple layers.
+      val layerDropdownList = ComboBox(model.tableModels.toTypedArray()).apply {
+        addActionListener {
+          initializeTable(this.selectedItem as FrameEventTableModel)
+        }
+      }
+      add(JPanel(BorderLayout()).apply {
+        border = JBUI.Borders.emptyLeft(8)
+        add(JBLabel("Select layer: "), BorderLayout.WEST)
+        add(layerDropdownList, BorderLayout.CENTER)
+      }, BorderLayout.NORTH)
+    }
+    initializeTable(model.tableModels[0])
+    add(tableContainer, BorderLayout.CENTER)
   }
 
   companion object {

@@ -218,8 +218,8 @@ public class CpuProfilerStageView extends StageView<CpuProfilerStage> {
     return getStage().getStudioProfilers().getSelectedSessionSupportLevel() == SupportLevel.PROFILEABLE
            ? DismissibleMessage.of(getStage().getStudioProfilers(),
                                    SHOW_PROFILEABLE_MESSAGE,
-                                   "API initiated profiling is disabled for profileable processes",
-                                   () -> Unit.INSTANCE)
+                                   "Some features are disabled for profileable processes.",
+                                   SupportLevel.DOC_LINK)
            : new JPanel();
   }
 

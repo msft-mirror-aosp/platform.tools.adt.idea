@@ -126,8 +126,6 @@ public class ProfilerColors {
            new JBColor(0xC1D6F6, 0x5A6E7D),
            new JBColor(0xC1D6F6, 0x5A6E7D));
 
-  public static final Color TRANSPARENT_COLOR = new JBColor(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0));
-
   public static final Color CPU_AXIS_GUIDE_COLOR = StandardColors.AXIS_MARKER_COLOR;
 
   public static final Color CPU_CAPTURE_STATUS = new JBColor(0x545454, 0xCACACA);
@@ -283,6 +281,8 @@ public class ProfilerColors {
   public static final Color USER_COUNTER_EVENT_DARK = new JBColor(0x7699ac, 0x7699ac);
 
   public static final Color USER_COUNTER_EVENT_USAGE = new JBColor(0xa6bcc9, 0xa6bcc9);
+
+  public static final Color VSYNC_BACKGROUND = new JBColor(0xEEEEEE, 0x111111);
 
   public static final Color WARNING_BAR_COLOR = new JBColor(new Color(254, 248, 213), new Color(35, 56, 85));
 }

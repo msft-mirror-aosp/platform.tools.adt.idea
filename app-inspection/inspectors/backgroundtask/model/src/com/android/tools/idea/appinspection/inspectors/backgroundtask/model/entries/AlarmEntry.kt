@@ -18,6 +18,7 @@ package com.android.tools.idea.appinspection.inspectors.backgroundtask.model.ent
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol.BackgroundTaskEvent
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EventWrapper
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.getTopExternalClassSimpleName
 
 /**
  * An entry with all information of an Alarm Task.
@@ -47,30 +48,32 @@ class AlarmEntry(override val id: String) : BackgroundTaskEntry {
   override val startTimeMs get() = _startTime
 
   override val tags get() = _tags
-  override val callstacks = mutableListOf<String>()
+  override val callstacks = mutableListOf<BackgroundTaskCallStack>()
+  override val retries = 0
 
   var alarmSet: BackgroundTaskInspectorProtocol.AlarmSet? = null
   var latestEvent: BackgroundTaskInspectorProtocol.Event? = null
 
   override fun consume(eventWrapper: EventWrapper) {
     latestEvent = eventWrapper.backgroundTaskEvent
+    val timestamp = eventWrapper.backgroundTaskEvent.timestamp
     val backgroundTaskEvent = latestEvent!!.backgroundTaskEvent
     when (backgroundTaskEvent.metadataCase) {
       BackgroundTaskEvent.MetadataCase.ALARM_SET -> {
         _isValid = true
         alarmSet = backgroundTaskEvent.alarmSet
-        _className = "Alarm $id"
+        _className = getTopExternalClassSimpleName(backgroundTaskEvent.stacktrace, "android.app.AlarmManager") ?: "Alarm $id"
         _status = State.SET
-        _startTime = alarmSet!!.triggerMs
+        _startTime = latestEvent!!.timestamp
         if (alarmSet!!.hasListener()) {
           _tags.add(alarmSet!!.listener.tag)
         }
         callstacks.clear()
-        callstacks.add(backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.stacktrace))
       }
       BackgroundTaskEvent.MetadataCase.ALARM_CANCELLED -> {
         _status = State.CANCELLED
-        callstacks.add(backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.stacktrace))
       }
       BackgroundTaskEvent.MetadataCase.ALARM_FIRED -> {
         _status = State.FIRED

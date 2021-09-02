@@ -17,13 +17,13 @@ package com.android.tools.profilers.cpu.systemtrace
 
 import com.android.tools.adtui.model.AspectModel
 import com.android.tools.adtui.model.Range
-import com.android.tools.adtui.model.RangedSeries
+import com.android.tools.adtui.model.StateChartModel
 import com.android.tools.adtui.model.Timeline
 import com.android.tools.adtui.model.TooltipModel
 
 class AndroidFrameEventTooltip(
   val timeline: Timeline,
-  private val frameEvents: RangedSeries<AndroidFrameEvent>
+  private val model: AndroidFrameEventTrackModel
 ) : TooltipModel, AspectModel<AndroidFrameEventTooltip.Aspect>() {
   enum class Aspect {
     /**
@@ -32,16 +32,19 @@ class AndroidFrameEventTooltip(
     VALUE_CHANGED,
   }
 
+  val androidFramePhase: AndroidFramePhase = model.androidFramePhase
   var activeFrameEvent: AndroidFrameEvent = AndroidFrameEvent.Padding
     private set
 
   override fun dispose() {
     timeline.tooltipRange.removeDependencies(this)
+    model.removeDependencies(this)
   }
 
   private fun updateValue() {
-    val series = frameEvents.getSeriesForRange(timeline.tooltipRange)
-    val newFrameEvent = if (series.isEmpty()) AndroidFrameEvent.Padding else series[0].value
+    val newFrameEvent = model.activeSeriesIndex.takeIf(model.series.indices::contains)?.let {
+      model.series[it].getSeriesForRange(timeline.tooltipRange).firstOrNull()?.value
+    } ?: AndroidFrameEvent.Padding
     if (newFrameEvent != activeFrameEvent) {
       activeFrameEvent = newFrameEvent
       changed(Aspect.VALUE_CHANGED)
@@ -50,5 +53,6 @@ class AndroidFrameEventTooltip(
 
   init {
     timeline.tooltipRange.addDependency(this).onChange(Range.Aspect.RANGE) { updateValue() }
+    model.addDependency(this).onChange(StateChartModel.Aspect.MODEL_CHANGED) { updateValue() }
   }
 }

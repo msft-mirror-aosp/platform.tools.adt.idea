@@ -50,6 +50,7 @@ import com.android.tools.profilers.network.NetworkMonitor;
 import com.android.tools.profilers.network.NetworkMonitorTooltip;
 import com.android.tools.profilers.network.NetworkMonitorTooltipView;
 import com.android.tools.profilers.network.NetworkMonitorView;
+import com.intellij.ide.BrowserUtil;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -259,14 +260,15 @@ public class StudioMonitorStageView extends StageView<StudioMonitorStage> {
       case DEBUGGABLE:
         return DismissibleMessage.of(getStage().getStudioProfilers(),
                                      SHOW_DEBUGGABLE_MESSAGE,
-                                     "Timing data from debuggable processes may deviate from real world performance",
+                                     "Timing data from debuggable processes may deviate from real world performance." +
+                                     " A profileable process may be more suitable.",
                                      () -> Unit.INSTANCE,
                                      ProfilerColors.NOTIFICATION_BACKGROUND);
       case PROFILEABLE:
         return DismissibleMessage.of(getStage().getStudioProfilers(),
                                      SHOW_PROFILEABLE_MESSAGE,
-                                     "Only CPU and Memory profilers are enabled for profileable processes",
-                                     () -> Unit.INSTANCE);
+                                     "Only CPU and Memory profilers are enabled for profileable processes.",
+                                     SupportLevel.DOC_LINK);
     }
     return new JPanel();
   }

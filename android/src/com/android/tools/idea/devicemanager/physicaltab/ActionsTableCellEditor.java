@@ -17,8 +17,10 @@ package com.android.tools.idea.devicemanager.physicaltab;
 
 import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
+import com.android.tools.idea.devicemanager.DeviceType;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDeviceTableModel.Actions;
 import com.android.tools.idea.explorer.DeviceExplorerViewService;
+import com.android.tools.idea.wearpairing.WearDevicePairingWizard;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
@@ -127,7 +129,7 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     JMenuItem item = new JBMenuItem("Pair device");
 
     assert myDevice != null;
-    item.setEnabled(myDevice.isOnline() && myDevice.isPhoneOrTablet());
+    item.setEnabled(myDevice.getType().equals(DeviceType.PHONE) && myDevice.isOnline());
 
     item.addActionListener(event -> pairDevice());
 
@@ -144,7 +146,12 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
       .build();
 
     DeviceManagerUsageTracker.log(event);
-    // TODO Pair device
+
+    Project project = myPanel.getProject();
+    assert project != null;
+
+    assert myDevice != null;
+    new WearDevicePairingWizard().show(project, myDevice.getKey().toString());
   }
 
   @VisibleForTesting

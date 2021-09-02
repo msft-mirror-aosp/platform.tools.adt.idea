@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.devicemanager;
 
+import com.android.tools.idea.wearpairing.PairingDevice;
+import com.android.tools.idea.wearpairing.WearPairingManager;
+import com.android.tools.idea.wearpairing.WearPairingManager.PhoneWearPair;
 import com.google.common.collect.Streams;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
@@ -22,10 +25,12 @@ import com.intellij.util.ui.JBUI.CurrentTheme.Label;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Optional;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Group;
 import javax.swing.JLabel;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class InfoSection extends JBPanel<InfoSection> {
   private final @NotNull Component myHeadingLabel;
@@ -76,6 +81,51 @@ public class InfoSection extends JBPanel<InfoSection> {
     layout.setVerticalGroup(verticalGroup);
 
     setLayout(layout);
+  }
+
+  public static @NotNull Optional<@NotNull InfoSection> newPairedDeviceSection(@NotNull Device device) {
+    PhoneWearPair pair = WearPairingManager.INSTANCE.getPairedDevices(device.getKey().toString());
+
+    if (pair == null) {
+      return Optional.empty();
+    }
+
+    PairingDevice otherDevice;
+
+    switch (device.getType()) {
+      case PHONE:
+        otherDevice = pair.getWear();
+        break;
+      case WEAR_OS:
+        otherDevice = pair.getPhone();
+        break;
+      default:
+        otherDevice = null;
+        break;
+    }
+
+    if (otherDevice == null) {
+      return Optional.empty();
+    }
+
+    InfoSection section = new InfoSection("Paired device");
+
+    setText(section.addNameAndValueLabels("Paired with"), otherDevice.getDisplayName());
+    section.setLayout();
+
+    return Optional.of(section);
+  }
+
+  public static void setText(@NotNull JLabel label, @Nullable Object value) {
+    if (value == null) {
+      return;
+    }
+
+    label.setText(value.toString());
+  }
+
+  public static void setText(@NotNull JLabel label, @NotNull Iterable<@NotNull String> values) {
+    label.setText(String.join(", ", values));
   }
 
   public final @NotNull Collection<@NotNull Component> getNameLabels() {

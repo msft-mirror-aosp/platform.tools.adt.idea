@@ -23,9 +23,15 @@ class WakeLockEntryTest {
 
   @Test
   fun wakeLock() {
+    val acquiredStacktrace =
+      """
+        android.os.PowerManager${'$'}WakeLock.acquire(PowerManager.java:2386)
+        android.com.java.profilertester.taskcategory.WakeLockTask.execute(BackgroundTaskCategory.java:83)
+      """.trimIndent()
+
     val wakeLockAcquiredEvent = BackgroundTaskInspectorProtocol.BackgroundTaskEvent.newBuilder().apply {
       taskId = 1
-      stacktrace = "ACQUIRED"
+      this.stacktrace = acquiredStacktrace
       wakeLockAcquired = BackgroundTaskInspectorProtocol.WakeLockAcquired.newBuilder().apply {
         level = BackgroundTaskInspectorProtocol.WakeLockAcquired.Level.PARTIAL_WAKE_LOCK
         tag = "TAG1"
@@ -44,16 +50,20 @@ class WakeLockEntryTest {
 
     val entry = WakeLockEntry("1")
 
-    entry.consumeAndAssert(wakeLockAcquiredEvent) {
+    entry.consumeAndAssert(wakeLockAcquiredEvent, 1) {
+      assertThat(startTimeMs).isEqualTo(1)
+      assertThat(className).isEqualTo("WakeLockTask")
       assertThat(isValid).isTrue()
       assertThat(status).isEqualTo("ACQUIRED")
-      assertThat(callstacks).containsExactly("ACQUIRED")
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, acquiredStacktrace))
+      assertThat(retries).isEqualTo(0)
     }
 
-    entry.consumeAndAssert(wakeLockReleasedEvent) {
+    entry.consumeAndAssert(wakeLockReleasedEvent, 2) {
       assertThat(isValid).isTrue()
       assertThat(status).isEqualTo("RELEASED")
-      assertThat(callstacks).containsExactly("ACQUIRED", "RELEASED")
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, acquiredStacktrace), BackgroundTaskCallStack(2, "RELEASED"))
+      assertThat(retries).isEqualTo(0)
     }
   }
 
@@ -70,10 +80,11 @@ class WakeLockEntryTest {
 
     val entry = WakeLockEntry("1")
 
-    entry.consumeAndAssert(wakeLockReleasedEvent) {
+    entry.consumeAndAssert(wakeLockReleasedEvent, 1) {
       assertThat(status).isEqualTo("RELEASED")
-      assertThat(callstacks).containsExactly("RELEASED")
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, "RELEASED"))
       assertThat(isValid).isFalse()
+      assertThat(retries).isEqualTo(0)
     }
   }
 }

@@ -187,20 +187,20 @@ maven_repository(
         "@maven_tests//:junit.junit_4.13.2",
         "@maven_tests//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.30",
         "@maven_tests//:org.mockito.mockito-core_3.0.0",
     ],
 )
@@ -582,6 +582,15 @@ java_test(
     data = COMMON_DATA + glob(["testData/simple/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.adb.TerminateAdbIfNotUsedTest"],
     tags = COMMON_TAGS + ["manual"],  # b/154963251
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "ConsentDialogTest",
+    data = COMMON_DATA,
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.analytics.ConsentDialogTest -Ddisable.android.analytics.consent.dialog.for.test=false"],
+    tags = COMMON_TAGS + ["manual"],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )

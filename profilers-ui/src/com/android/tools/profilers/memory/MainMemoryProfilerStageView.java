@@ -179,8 +179,8 @@ public class MainMemoryProfilerStageView extends BaseStreamingMemoryProfilerStag
       panel.add(DismissibleMessage.of(
         getStage().getStudioProfilers(),
         SHOW_PROFILEABLE_MESSAGE,
-        "Some features are disabled for profileable processes",
-        () -> Unit.INSTANCE));
+        "Some features are disabled for profileable processes.",
+        SupportLevel.DOC_LINK));
     }
     return panel;
   }

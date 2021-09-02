@@ -6,6 +6,7 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.logcat.iml"],
     resources = ["resources"],
+    test_class = "com.android.tools.idea.logcat.LogcatTestSuite",
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -15,7 +16,9 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
+        "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
     ],
 )

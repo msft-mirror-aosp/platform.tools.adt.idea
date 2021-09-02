@@ -18,6 +18,7 @@ package com.android.tools.idea.devicemanager;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.ui.JBUI.CurrentTheme.Table;
 import icons.StudioIcons;
 import java.awt.Component;
@@ -34,10 +35,8 @@ import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.GroupLayout.Group;
 import javax.swing.GroupLayout.SequentialGroup;
-import javax.swing.JLabel;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class DetailsPanel extends JBPanel<DetailsPanel> {
   private final @NotNull Component myHeadingLabel;
@@ -64,18 +63,6 @@ public class DetailsPanel extends JBPanel<DetailsPanel> {
     label.setFont(label.getFont().deriveFont(Font.BOLD));
 
     return label;
-  }
-
-  protected static void setText(@NotNull JLabel label, @Nullable Object value) {
-    if (value == null) {
-      return;
-    }
-
-    label.setText(value.toString());
-  }
-
-  protected static void setText(@NotNull JLabel label, @NotNull Iterable<@NotNull String> values) {
-    label.setText(String.join(", ", values));
   }
 
   protected final void init() {
@@ -155,7 +142,7 @@ public class DetailsPanel extends JBPanel<DetailsPanel> {
                   .addComponent(myHeadingLabel)
                   .addComponent(myCloseButton))
       .addPreferredGap(ComponentPlacement.RELATED)
-      .addComponent(myScrollPane, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, 242);
+      .addComponent(myScrollPane, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, JBUIScale.scale(242));
 
     layout.setHorizontalGroup(horizontalGroup);
     layout.setVerticalGroup(verticalGroup);

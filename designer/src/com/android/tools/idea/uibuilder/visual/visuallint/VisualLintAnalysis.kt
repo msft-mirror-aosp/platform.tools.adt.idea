@@ -17,6 +17,7 @@ package com.android.tools.idea.uibuilder.visual.visuallint
 
 import android.view.View
 import android.widget.TextView
+import com.android.SdkConstants
 import com.android.ide.common.rendering.api.ViewInfo
 import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.model.NlComponent
@@ -24,9 +25,13 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.rendering.RenderResult
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel
 import com.android.tools.idea.rendering.parsers.TagSnapshot
+import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintComponentUtilities
+import com.android.tools.idea.uibuilder.lint.createDefaultHyperLinkListener
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.utils.HtmlBuilder
 import com.intellij.lang.annotation.HighlightSeverity
+import org.jetbrains.annotations.VisibleForTesting
+import javax.swing.event.HyperlinkListener
 
 private const val BOTTOM_NAVIGATION_CLASS_NAME = "com.google.android.material.bottomnavigation.BottomNavigationView"
 private const val BOTTOM_NAVIGATION_ISSUE_MESSAGE = "BottomNavigationView should not be used in layouts larger than 600dp"
@@ -34,10 +39,6 @@ private val BOTTOM_NAVIGATION_ISSUE_CONTENT = HtmlBuilder()
   .add("Material Design recommends that bottom navigation should only be used for displays less than 600dp in width.")
   .newline()
   .add("Consider using a navigation rail or navigation drawer instead for larger screens.")
-private val LONG_TEXT_ISSUE_CONTENT = HtmlBuilder()
-  .add("Material Design recommends that lines of text should not be longer than 120 characters.")
-  .newline()
-  .add("Consider reducing the width of this component or using a multi-columns layout.")
 
 enum class VisualLintErrorType {
   BOUNDS, BOTTOM_NAV, OVERLAP, LONG_TEXT, ATF, LOCALE_TEXT
@@ -86,13 +87,22 @@ private fun findBoundIssues(root: ViewInfo, model: NlModel, issues: VisualLintIs
   for (child in root.children) {
     // Bounds of children are defined relative to their parent
     if (child.top < 0 || child.bottom > rootHeight || child.left < 0 || child.right > rootWidth) {
-      val content = HtmlBuilder().add("${simpleName(child)} is not entirely contained within the bounds of its parent.")
-        .newline()
-        .add("This may result in this component being partially hidden from view.")
-      createIssue(child, model, "${simpleName(child)} is not fully visible in layout", content, VisualLintErrorType.BOUNDS, issues)
+      val viewName = simpleName(child)
+      val summary = "$viewName is partially hidden in layout"
+      val provider = { count: Int ->
+        HtmlBuilder()
+          .add("$viewName is partially hidden in layout because it is not contained within the bounds of its parent in ${previewConfigurations(count)}.")
+          .newline()
+          .add("Fix this issue by adjusting the size or position of $viewName.")
+      }
+      createIssue(child, model, summary, VisualLintErrorType.BOUNDS, issues, provider)
     }
     findBoundIssues(child, model, issues)
   }
+}
+
+private fun previewConfigurations(count: Int): String {
+  return if (count == 1) "a preview configuration" else "$count preview configurations"
 }
 
 /**
@@ -140,26 +150,63 @@ private fun findOverlapIssues(root: ViewInfo, model: NlModel, issues: VisualLint
   val children = root.children.filter { it.cookie != null && (it.viewObject as? View)?.visibility == View.VISIBLE }
   for (i in children.indices) {
     val firstView = children[i]
+    // TODO: Can't create unit test due to this check. Figure out a way around later.
     if (firstView.viewObject !is TextView) {
       continue
     }
-    for (j in (i + 1) until children.size) {
+    for (j in children.indices) {
       val secondView = children[j]
+      if (firstView == secondView) {
+        continue
+      }
       if (firstView.right <= secondView.left || firstView.left >= secondView.right) {
         continue
       }
       if (firstView.bottom > secondView.top && firstView.top < secondView.bottom) {
-        val content = HtmlBuilder().add("The content of ${simpleName(firstView)} is partially hidden.")
-          .newline()
-          .add("This may pose a problem for the readability of the text it contains.")
-        createIssue(firstView, model, "${simpleName(firstView)} is covered by ${simpleName(secondView)}", content,
-                    VisualLintErrorType.OVERLAP, issues)
+        if (isPartiallyHidden(firstView, i, secondView, j, model)) {
+          val content = HtmlBuilder().add("The content of ${simpleName(firstView)} is partially hidden.")
+            .newline()
+            .add("This may pose a problem for the readability of the text it contains.")
+          // TODO: Highlight both first and second view in design surface
+          createIssue(firstView, model, "${simpleName(firstView)} is covered by ${simpleName(secondView)}",
+                      content,
+                      VisualLintErrorType.OVERLAP, issues)
+        }
       }
     }
   }
   for (child in children) {
     findOverlapIssues(child, model, issues)
   }
+}
+
+/**
+ * Given two view info that overlaps in bounds, and their respective indices in layout,
+ * figure out of [firstViewInfo] is being overlapped and partially hidden by [secondViewInfo]
+ */
+@VisibleForTesting
+fun isPartiallyHidden(firstViewInfo: ViewInfo, i: Int, secondViewInfo: ViewInfo, j: Int, model: NlModel): Boolean {
+
+  val comp1 = componentFromViewInfo(firstViewInfo, model)
+  val comp2 = componentFromViewInfo(secondViewInfo, model)
+
+  // Try to see if we can compare elevation attribute if it exists.
+  if (comp1 != null && comp2 != null) {
+    val elev1 = ConstraintComponentUtilities.getDpValue(
+      comp1, comp1.getAttribute(SdkConstants.ANDROID_URI, SdkConstants.ATTR_ELEVATION))
+    val elev2 = ConstraintComponentUtilities.getDpValue(
+      comp2, comp2.getAttribute(SdkConstants.ANDROID_URI, SdkConstants.ATTR_ELEVATION))
+
+    if (elev1 < elev2) {
+      return true
+    } else if (elev1 > elev2) {
+      return false
+    }
+    // If they're the same, leave it to the index to resolve overlapping logic.
+  }
+
+  // else rely on index.
+  return i < j
 }
 
 /**
@@ -180,8 +227,18 @@ private fun findLongText(root: ViewInfo, model: NlModel, issues: VisualLintIssue
     for (i in 0 until layout.lineCount) {
       val numChars = layout.getLineVisibleEnd(i) - layout.getLineStart(i) + 1
       if (numChars > 120) {
-        createIssue(root, model, "${simpleName(root)} has lines containing more than 120 characters", LONG_TEXT_ISSUE_CONTENT,
-                    VisualLintErrorType.LONG_TEXT, issues)
+        val viewName = simpleName(root)
+        val summary = "$viewName has lines containing more than 120 characters"
+        val url = "https://material.io/design/layout/responsive-layout-grid.html#breakpoints"
+        val provider = { count: Int ->
+          HtmlBuilder()
+            .add("$viewName has lines containing more than 120 characters in ${previewConfigurations(count)}.")
+            .newline()
+            .add("Material Design recommends reducing the width of TextView or switching to a [multi-column layout] ")
+            .addLink("($url)", url)
+            .add(" for breakpoints over 600dp.")
+        }
+        createIssue(root, model, summary, VisualLintErrorType.LONG_TEXT, issues, provider, createDefaultHyperLinkListener(url))
         break
       }
     }
@@ -191,22 +248,38 @@ private fun findLongText(root: ViewInfo, model: NlModel, issues: VisualLintIssue
   }
 }
 
+/** Create [VisualLintRenderIssue] and add to [issues]. */
 fun createIssue(view: ViewInfo,
                 model: NlModel,
                 message: String,
-                htmlContent: HtmlBuilder,
+                contentDescription: HtmlBuilder,
                 type: VisualLintErrorType,
                 issues: VisualLintIssues) {
-  val component = componentFromViewInfo(view, model)
-  val issue = VisualLintRenderIssue(RenderErrorModel.Issue.builder()
-                                      .setSummary(message)
-                                      .setHtmlContent(htmlContent)
-                                      .setSeverity(HighlightSeverity.WARNING)
-                                      .build(),
-                                    model,
-                                    if (component == null) mutableListOf() else mutableListOf(component))
-  issues.add(type, issue)
+  return createIssue(view, model, message, type, issues, { contentDescription })
 }
+
+/** Create [VisualLintRenderIssue] and add to [issues]. */
+fun createIssue(view: ViewInfo,
+                model: NlModel,
+                message: String,
+                type: VisualLintErrorType,
+                issues: VisualLintIssues,
+                contentDescriptionProvider: (Int) -> HtmlBuilder,
+                hyperlinkListener: HyperlinkListener? = null) {
+  val component = componentFromViewInfo(view, model)
+  issues.add(
+    type,
+    VisualLintRenderIssue.builder()
+      .summary(message)
+      .severity(HighlightSeverity.WARNING)
+      .model(model)
+      .components(if (component == null) mutableListOf() else mutableListOf(component))
+      .contentDescriptionProvider(contentDescriptionProvider)
+      .hyperlinkListener(hyperlinkListener)
+      .build()
+  )
+}
+
 
 private fun simpleName(view: ViewInfo): String {
   val tagName = (view.cookie as? TagSnapshot)?.tagName ?: view.className

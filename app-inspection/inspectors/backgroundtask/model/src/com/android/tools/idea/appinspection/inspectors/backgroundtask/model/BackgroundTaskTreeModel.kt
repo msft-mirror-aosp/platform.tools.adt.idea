@@ -26,9 +26,11 @@ import kotlinx.coroutines.launch
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 
-class BackgroundTaskTreeModel(private val client: BackgroundTaskInspectorClient,
-                              scope: CoroutineScope,
-                              uiDispatcher: CoroutineDispatcher) : DefaultTreeModel(DefaultMutableTreeNode()) {
+class BackgroundTaskTreeModel(
+  private val client: BackgroundTaskInspectorClient,
+  scope: CoroutineScope,
+  uiDispatcher: CoroutineDispatcher
+) : DefaultTreeModel(DefaultMutableTreeNode()) {
   private val nodeMap = mutableMapOf<BackgroundTaskEntry, DefaultMutableTreeNode>()
   private val parentFinder: (BackgroundTaskEntry) -> DefaultMutableTreeNode
 
@@ -37,41 +39,35 @@ class BackgroundTaskTreeModel(private val client: BackgroundTaskInspectorClient,
    */
   private val workIdJobMap = mutableMapOf<String, JobEntry>()
 
+  private var currentSortComparator: Comparator<*>? = null
+
+  /**
+   * The category parent nodes.
+   */
+  private val categoryRoots: List<DefaultMutableTreeNode>
+
   var filterTag: String? = null
     set(value) {
       if (field != value) {
         field = value
-        root.children().toList().forEach {
-          (it as DefaultMutableTreeNode).removeAllChildren()
-        }
-        nodeMap.entries
-          .filter { entry -> entry.key.acceptedByFilter() }
-          .forEach { entry ->
-            parentFinder(entry.key).add(entry.value)
-          }
-        root.children().toList().forEach {
-          nodeStructureChanged(it)
-        }
+        refreshTree()
       }
     }
 
   init {
     val mutableRoot = root as DefaultMutableTreeNode
-    val worksNode = DefaultMutableTreeNode("Works")
-    val jobsNode = DefaultMutableTreeNode("Jobs")
-    val alarmsNode = DefaultMutableTreeNode("Alarms")
-    val wakesNode = DefaultMutableTreeNode("WakeLocks")
-    mutableRoot.add(worksNode)
-    mutableRoot.add(jobsNode)
-    mutableRoot.add(alarmsNode)
-    mutableRoot.add(wakesNode)
+    val worksNode = BackgroundTaskCategoryNode("Workers", "No workers have been detected.")
+    val jobsNode = BackgroundTaskCategoryNode("Jobs", "No jobs have been detected.")
+    val alarmsNode = BackgroundTaskCategoryNode("Alarms", "No alarms have been detected.")
+    val wakesNode = BackgroundTaskCategoryNode("WakeLocks", "No wake locks have been detected.")
+    categoryRoots = listOf(worksNode, jobsNode, alarmsNode, wakesNode)
+    categoryRoots.forEach { mutableRoot.add(it) }
     parentFinder = { entry ->
       when (entry) {
         is WorkEntry -> worksNode
         is JobEntry -> {
           // Link the job under its target work entry.
           entry.targetWorkId?.let {
-            workIdJobMap[it] = entry
             client.getEntry(it)
           }?.let {
             nodeMap[it]
@@ -92,17 +88,21 @@ class BackgroundTaskTreeModel(private val client: BackgroundTaskInspectorClient,
               if (entry.acceptedByFilter()) {
                 val parent = parentFinder(entry)
                 parent.add(newNode)
-                nodeStructureChanged(parent)
 
-                // Find affiliated jobs for the work.
-                if (entry is WorkEntry) {
-                  workIdJobMap[entry.id]?.let { id -> nodeMap[id] }?.let { jobNode ->
+                if (entry is JobEntry) {
+                  entry.targetWorkId?.let {
+                    workIdJobMap[it] = entry
+                  }
+                }
+                else if (entry is WorkEntry) {
+                  // Find affiliated jobs for the work.
+                  workIdJobMap[entry.id]?.let { jobEntry -> nodeMap[jobEntry] }?.let { jobNode ->
                     jobsNode.remove(jobNode)
                     nodeStructureChanged(jobsNode)
                     newNode.add(jobNode)
-                    nodeStructureChanged(newNode)
                   }
                 }
+                nodeStructureChanged(parent)
               }
             }
           }
@@ -113,6 +113,9 @@ class BackgroundTaskTreeModel(private val client: BackgroundTaskInspectorClient,
           }
           EntryUpdateEventType.REMOVE -> {
             val node = nodeMap.remove(entry)!!
+            workIdJobMap.remove(entry.id)?.let { jobEntry ->
+              nodeMap.remove(jobEntry)
+            }
             if (entry.acceptedByFilter()) {
               val parent = node.parent
               node.removeFromParent()
@@ -129,4 +132,35 @@ class BackgroundTaskTreeModel(private val client: BackgroundTaskInspectorClient,
   val allTags get() = nodeMap.keys.flatMap { entry -> entry.tags }.toSortedSet().toList()
 
   private fun BackgroundTaskEntry.acceptedByFilter() = filterTag == null || tags.contains(filterTag)
+
+  fun sort(comparator: Comparator<*>) {
+    currentSortComparator = comparator
+    refreshTree()
+  }
+
+  /**
+   * Reconstructs the entire tree while respecting the current filter and sort ordering.
+   */
+  private fun refreshTree() {
+    categoryRoots.forEach { it.removeAllChildren() }
+    val groupedByParentNode = nodeMap.entries
+      .filter { entry -> entry.key.acceptedByFilter() }
+      .groupBy { entry -> parentFinder(entry.key) }
+
+    (currentSortComparator?.let { comparator ->
+      groupedByParentNode
+        .mapValues { entry ->
+          val result = entry.value.sortedWith { o1, o2 ->
+            val value = (comparator as Comparator<DefaultMutableTreeNode>).compare(o1.value, o2.value)
+            value
+          }
+          result
+        }
+    } ?: groupedByParentNode)
+      .forEach { (parent, children) ->
+        children.forEach { parent.add(it.value) }
+      }
+
+    nodeStructureChanged(root)
+  }
 }

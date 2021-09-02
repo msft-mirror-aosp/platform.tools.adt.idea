@@ -28,6 +28,7 @@ import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.SearchTextField;
 import com.intellij.ui.components.JBPanel;
+import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.ui.JBDimension;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
@@ -38,6 +39,7 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.GroupLayout.Group;
 import javax.swing.JButton;
 import javax.swing.JSeparator;
+import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -85,7 +87,7 @@ public final class VirtualDevicePanel extends JBPanel<VirtualDevicePanel> implem
     }
 
     myHelpButton = new CommonButton(AllIcons.Actions.Help);
-    myHelpButton.addActionListener(event -> BrowserUtil.browse("http://developer.android.com/r/studio-ui/virtualdeviceconfig.html"));
+    myHelpButton.addActionListener(event -> BrowserUtil.browse("https://d.android.com/r/studio-ui/device-manager/virtual"));
 
     if (enableHalfBakedFeatures()) {
       mySearchTextField = new SearchTextField(true);
@@ -98,7 +100,11 @@ public final class VirtualDevicePanel extends JBPanel<VirtualDevicePanel> implem
 
   private void initVirtualDisplayList(@Nullable Project project) {
     myAvdDisplayList = new VirtualDisplayList(project);
-    myAvdDisplayList.getTable().getSelectionModel().addListSelectionListener(new DetailsPanelPanelListSelectionListener<>(this));
+    JTable table = myAvdDisplayList.getTable();
+
+    table.setShowGrid(false);
+    table.getTableHeader().setReorderingAllowed(false);
+    table.getSelectionModel().addListSelectionListener(new DetailsPanelPanelListSelectionListener<>(this));
   }
 
   private @NotNull GroupLayout createGroupLayout() {
@@ -129,8 +135,10 @@ public final class VirtualDevicePanel extends JBPanel<VirtualDevicePanel> implem
   }
 
   private @NotNull Group createToolbarHorizontalGroup(@NotNull GroupLayout groupLayout) {
-    Group toolbarHorizontalGroup = groupLayout.createSequentialGroup();
-    toolbarHorizontalGroup.addComponent(myCreateButton, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+    Group toolbarHorizontalGroup = groupLayout.createSequentialGroup()
+      .addGap(JBUIScale.scale(5))
+      .addComponent(myCreateButton, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+      .addGap(JBUIScale.scale(4))
       .addComponent(mySeparator, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 
     if (myRefreshButton != null) {
@@ -233,6 +241,9 @@ public final class VirtualDevicePanel extends JBPanel<VirtualDevicePanel> implem
     myDetailsPanel = new VirtualDeviceDetailsPanel(device);
 
     myDetailsPanel.getCloseButton().addActionListener(event -> {
+      assert myAvdDisplayList != null;
+      myAvdDisplayList.getTable().clearSelection();
+
       removeDetailsPanel();
       layOut();
     });

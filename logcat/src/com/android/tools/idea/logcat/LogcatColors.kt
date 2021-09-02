@@ -18,10 +18,19 @@ package com.android.tools.idea.logcat
 import com.android.annotations.concurrency.UiThread
 import com.android.ddmlib.Log
 import com.android.ddmlib.Log.LogLevel
-import com.google.common.collect.Iterables
+import com.android.tools.adtui.common.ColorPaletteManager
+import com.google.gson.Gson
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.ui.JBColor
-import org.jetbrains.annotations.VisibleForTesting
+import java.awt.Color
+import java.io.InputStreamReader
+
+/**
+ * The logcat-tags-palette.json file is
+ * [auto generated](https://source.cloud.google.com/google.com:adux-source/studio-palettes/+/master:client/app/index.js;l=176)
+ * and should be updated when the design team creates new colors.
+ */
+private const val PALETTE_JSON_FILENAME = "/palette/logcat-tags-palette.json"
 
 /**
  * Manages the various colors used in a log view.
@@ -33,11 +42,17 @@ import org.jetbrains.annotations.VisibleForTesting
  *
  * Tag colors colors are assigned dynamically from a small pool and stored in a map.
  *
- * TODO(aalbert): Get proper colors from UX.
+ * TODO(b/197762564): Get proper colors from UX
  */
 internal class LogcatColors {
-  private val tagColors = mutableMapOf<String, TextAttributes>()
-  private val nextTagColor = Iterables.cycle(AVAILABLE_TAG_COLORS).iterator()
+
+  private val colorPaletteManager by lazy {
+    javaClass.getResourceAsStream(PALETTE_JSON_FILENAME)?.let {
+      ColorPaletteManager(Gson().fromJson(InputStreamReader(it), Array<ColorPaletteManager.ColorPalette>::class.java))
+    } ?: throw IllegalStateException("Resource not found")
+
+  }
+  private val tagColors = mutableMapOf<Int, TextAttributes>()
 
   /**
    * Map a [Log.LogLevel] to a [TextAttributes] object.
@@ -47,22 +62,28 @@ internal class LogcatColors {
   /**
    * Map a Logcat tag to a [TextAttributes] object.
    *
-   * Colors are assigned dynamically from a cyclic pool of available colors. Some common tags are seeded into the initial store.
+   * Leverage [ColorPaletteManager] for color selection but since we use [TextAttributes], we maintain our own cache.
    *
-   * TODO(aalbert): Maybe persist the color table in a global store so it persists between sessions?
    */
   @UiThread
-  internal fun getTagColor(tag: String): TextAttributes = tagColors.computeIfAbsent(tag) { nextTagColor.next() }
-
-  @VisibleForTesting
-  internal val availableTagColors = AVAILABLE_TAG_COLORS
+  internal fun getTagColor(tag: String): TextAttributes {
+    val index = tag.hashCode()
+    return tagColors.computeIfAbsent(index) {
+      // We only use the foreground colors. Background colors from the palette are ignored
+      TextAttributes().apply { foregroundColor = colorPaletteManager.getForegroundColor(index) }
+    }
+  }
 }
 
-private val LEVEL_VERBOSE = TextAttributes().apply { foregroundColor = JBColor.WHITE; backgroundColor = JBColor.BLACK }
-private val LEVEL_DEBUG = TextAttributes().apply { foregroundColor = JBColor.WHITE; backgroundColor = JBColor.BLUE }
-private val LEVEL_INFO = TextAttributes().apply { foregroundColor = JBColor.BLACK; backgroundColor = JBColor.GREEN }
-private val LEVEL_WARNING = TextAttributes().apply { foregroundColor = JBColor.BLACK; backgroundColor = JBColor.YELLOW }
-private val LEVEL_ERROR = TextAttributes().apply { foregroundColor = JBColor.WHITE; backgroundColor = JBColor.RED }
+// TODO(aalbert): Remove when https://youtrack.jetbrains.com/issue/IDEA-277131 is fixed.
+val white = JBColor(Color(254, 254, 254), JBColor.background())
+val black = JBColor(Color(1, 1, 1), JBColor.foreground())
+
+private val LEVEL_VERBOSE = TextAttributes().apply { foregroundColor = white; backgroundColor = black }
+private val LEVEL_DEBUG = TextAttributes().apply { foregroundColor = white; backgroundColor = JBColor.BLUE }
+private val LEVEL_INFO = TextAttributes().apply { foregroundColor = black; backgroundColor = JBColor.GREEN }
+private val LEVEL_WARNING = TextAttributes().apply { foregroundColor = black; backgroundColor = JBColor.YELLOW }
+private val LEVEL_ERROR = TextAttributes().apply { foregroundColor = white; backgroundColor = JBColor.RED }
 private val LEVEL_ASSERT = LEVEL_ERROR
 
 private val LEVEL_COLORS = mapOf(
@@ -73,12 +94,3 @@ private val LEVEL_COLORS = mapOf(
   LogLevel.ERROR to LEVEL_ERROR,
   LogLevel.ASSERT to LEVEL_ASSERT,
 )
-
-private val TAG_RED = TextAttributes().apply { foregroundColor = JBColor.RED }
-private val TAG_GREEN = TextAttributes().apply { foregroundColor = JBColor.GREEN }
-private val TAG_YELLOW = TextAttributes().apply { foregroundColor = JBColor.YELLOW }
-private val TAG_BLUE = TextAttributes().apply { foregroundColor = JBColor.BLUE }
-private val TAG_MAGENTA = TextAttributes().apply { foregroundColor = JBColor.MAGENTA }
-private val TAG_CYAN = TextAttributes().apply { foregroundColor = JBColor.CYAN }
-
-private val AVAILABLE_TAG_COLORS = listOf(TAG_RED, TAG_GREEN, TAG_YELLOW, TAG_BLUE, TAG_MAGENTA, TAG_CYAN)

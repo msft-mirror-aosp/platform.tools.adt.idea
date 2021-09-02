@@ -23,6 +23,7 @@ import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entr
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.BackgroundTaskInspectorColors.DEFAULT_WORK_BORDER_COLOR
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.BackgroundTaskInspectorColors.GRAPH_LABEL_BACKGROUND_COLOR
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.BackgroundTaskInspectorColors.SELECTED_WORK_BORDER_COLOR
+import com.google.wireless.android.sdk.stats.AppInspectionEvent
 import com.intellij.ide.plugins.newui.VerticalLayout
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
@@ -62,7 +63,7 @@ class WorkDependencyGraphView(private val client: BackgroundTaskInspectorClient,
     border = EmptyBorder(JBUI.scale(50), JBUI.scale(100), JBUI.scale(50), 0)
 
     client.addEntryUpdateEventListener { _, _ -> scope.launch(uiDispatcher) { updateWorks() } }
-    selectionModel.registerWorkSelectionListener { updateWorks() }
+    selectionModel.registerEntrySelectionListener { updateWorks() }
 
     registerDirectionKeyStroke(KeyEvent.VK_UP, "Up", -1, 0)
     registerDirectionKeyStroke(KeyEvent.VK_DOWN, "Down", 1, 0)
@@ -181,6 +182,7 @@ class WorkDependencyGraphView(private val client: BackgroundTaskInspectorClient,
     label.addMouseListener(object : MouseAdapter() {
       override fun mousePressed(e: MouseEvent?) {
         client.getEntry(work.id)?.let { nonNullEntry ->
+          client.tracker.trackWorkSelected(AppInspectionEvent.BackgroundTaskInspectorEvent.Context.GRAPH_CONTEXT)
           selectionModel.selectedEntry = nonNullEntry
         }
       }

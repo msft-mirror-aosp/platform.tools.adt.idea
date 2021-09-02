@@ -1,6 +1,6 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
-load("//tools/base/bazel:maven.bzl", "maven_repository", "maven_java_library")
+load("//tools/base/bazel:maven.bzl", "maven_repository")
 load("@exec_properties//:constants.bzl", "LARGE_MACHINE")
 load("//tools/adt/idea/android-test-framework:check_tests.bzl", "check_tests")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
@@ -148,7 +148,7 @@ iml_module(
             "test_filter": "com.android.tools.idea.gradle.structure.configurables.dependencies.treeview",
         },
         "gradle.structure.model.android": {
-            "shard_count": 3,
+            "shard_count": 4,
             # Timeout waiting to lock Artifact transforms cache (b/152652501)
             "tags": ["no_windows"],
             "test_filter": "com.android.tools.idea.gradle.structure.model.android",
@@ -341,6 +341,7 @@ iml_module(
         "//tools/base/lint:studio.android.sdktools.lint-checks[module, test]",
         "//tools/adt/idea/intellij.android.compose-common[module, test]",
         "//tools/base/manifest-parser:studio.android.sdktools.manifest-parser[module]",
+        "//tools/base/common:studio.android.sdktools.common.testfixtures[module, test]",
     ],
 )
 
@@ -492,16 +493,17 @@ maven_repository(
         "@maven_tests//:junit.junit_4.13.2",
         "@maven_tests//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.21",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.20",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.4.32",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-reflect_1.5.30",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
-        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.20",
         "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.21",
+        "@maven_tests//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.30",
         "@maven_tests//:org.mockito.mockito-core_3.0.0",
         "@maven_tests//:xmlpull.xmlpull_1.1.3.1",
     ],

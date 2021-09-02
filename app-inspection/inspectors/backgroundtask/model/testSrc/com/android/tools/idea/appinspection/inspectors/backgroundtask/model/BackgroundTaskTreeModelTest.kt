@@ -18,6 +18,7 @@ package com.android.tools.idea.appinspection.inspectors.backgroundtask.model
 import androidx.work.inspection.WorkManagerInspectorProtocol
 import backgroundtask.inspection.BackgroundTaskInspectorProtocol
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils.getWorksCategoryNode
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +54,7 @@ class BackgroundTaskTreeModelTest {
     workManagerInspectorMessenger = FakeAppInspectorMessenger(scope)
     client = BackgroundTaskInspectorClient(backgroundTaskInspectorMessenger,
                                            WmiMessengerTarget.Resolved(workManagerInspectorMessenger),
-                                           scope)
+                                           scope, StubBackgroundTaskInspectorTracker())
     model = BackgroundTaskTreeModel(client, scope, dispatcher)
   }
 
@@ -107,7 +108,7 @@ class BackgroundTaskTreeModelTest {
     assertThat(root.childCount).isEqualTo(4)
     val workChild = root.firstChild as DefaultMutableTreeNode
     assertThat(workChild.childCount).isEqualTo(1)
-    assertThat(workChild.userObject).isEqualTo("Works")
+    assertThat(workChild.userObject).isEqualTo("Workers")
     assertThat(workChild.firstChild as DefaultMutableTreeNode).isEqualTo(model.getTreeNode("test"))
     val jobChild = root.getChildAfter(workChild) as DefaultMutableTreeNode
     assertThat(jobChild.childCount).isEqualTo(1)
@@ -132,15 +133,25 @@ class BackgroundTaskTreeModelTest {
       }
     }.build()
 
-    client.handleEvent(EventWrapper(EventWrapper.Case.WORK, newWorkEvent.toByteArray()))
+    val newJobEvent = BackgroundTaskInspectorProtocol.Event.newBuilder().apply {
+      backgroundTaskEventBuilder.apply {
+        taskId = 0L
+        jobScheduledBuilder.apply {
+          jobBuilder.backoffPolicy = BackgroundTaskInspectorProtocol.JobInfo.BackoffPolicy.UNDEFINED_BACKOFF_POLICY
+          jobBuilder.extras = BackgroundTaskInspectorTestUtils.createJobInfoExtraWithWorkerId("test")
+        }
+      }
+    }.build()
 
-    var entryNode: DefaultMutableTreeNode? = null
+    client.handleEvent(EventWrapper(EventWrapper.Case.WORK, newWorkEvent.toByteArray()))
+    client.handleEvent(EventWrapper(EventWrapper.Case.BACKGROUND_TASK, newJobEvent.toByteArray()))
+
     val root = model.root as DefaultMutableTreeNode
     assertThat(root.childCount).isEqualTo(4)
-    val workChild = root.firstChild as DefaultMutableTreeNode
+    val workChild = root.getWorksCategoryNode()
     assertThat(workChild.childCount).isEqualTo(1)
-    assertThat(workChild.userObject).isEqualTo("Works")
-    entryNode = workChild.firstChild as DefaultMutableTreeNode
+    assertThat(workChild.userObject).isEqualTo("Workers")
+    val entryNode = workChild.firstChild as DefaultMutableTreeNode
     assertThat(entryNode).isEqualTo(model.getTreeNode("test"))
 
     val removeWorkEvent = WorkManagerInspectorProtocol.Event.newBuilder().apply {
@@ -150,7 +161,65 @@ class BackgroundTaskTreeModelTest {
     }.build()
     client.handleEvent(EventWrapper(EventWrapper.Case.WORK, removeWorkEvent.toByteArray()))
 
-    assertThat(entryNode?.parent).isNull()
+    assertThat(entryNode.parent).isNull()
     assertThat(model.getTreeNode("test")).isNull()
+    assertThat(model.getTreeNode("0")).isNull()
+  }
+
+  @Test
+  fun emptyMessageAddedAndRemoved() {
+    val root = model.root as DefaultMutableTreeNode
+    assertThat(root.childCount).isEqualTo(4)
+    val categoryNodes = root.children().toList().filterIsInstance<BackgroundTaskCategoryNode>().toList()
+    assertThat(categoryNodes).hasSize(4)
+
+    assertThat(categoryNodes.map { (it.firstChild as DefaultMutableTreeNode).userObject as String })
+      .containsExactly(
+        "No workers have been detected.",
+        "No jobs have been detected.",
+        "No alarms have been detected.",
+        "No wake locks have been detected.",
+      )
+
+    val newWorkEvent = WorkManagerInspectorProtocol.Event.newBuilder().apply {
+      workAddedBuilder.workBuilder.apply {
+        id = "test"
+        state = WorkManagerInspectorProtocol.WorkInfo.State.ENQUEUED
+      }
+    }.build()
+
+    val newJobEvent = BackgroundTaskInspectorProtocol.Event.newBuilder().apply {
+      backgroundTaskEventBuilder.apply {
+        taskId = 0L
+        jobScheduledBuilder.apply {
+          jobBuilder.backoffPolicy = BackgroundTaskInspectorProtocol.JobInfo.BackoffPolicy.UNDEFINED_BACKOFF_POLICY
+        }
+      }
+    }.build()
+
+    val newAlarmEvent = BackgroundTaskInspectorProtocol.Event.newBuilder().apply {
+      backgroundTaskEventBuilder.apply {
+        taskId = 1L
+        alarmSetBuilder.apply {
+          type = BackgroundTaskInspectorProtocol.AlarmSet.Type.UNDEFINED_ALARM_TYPE
+        }
+      }
+    }.build()
+
+    val newWakeLockEvent = BackgroundTaskInspectorProtocol.Event.newBuilder().apply {
+      backgroundTaskEventBuilder.apply {
+        taskId = 2L
+        wakeLockAcquiredBuilder.apply {
+          level = BackgroundTaskInspectorProtocol.WakeLockAcquired.Level.UNDEFINED_WAKE_LOCK_LEVEL
+        }
+      }
+    }.build()
+
+    listOf(newWakeLockEvent, newAlarmEvent, newJobEvent).forEach { event ->
+      client.handleEvent(EventWrapper(EventWrapper.Case.BACKGROUND_TASK, event.toByteArray()))
+    }
+    client.handleEvent(EventWrapper(EventWrapper.Case.WORK, newWorkEvent.toByteArray()))
+
+    assertThat(categoryNodes.map { (it.firstChild as DefaultMutableTreeNode).userObject }).isNotInstanceOf(String::class.java)
   }
 }

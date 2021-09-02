@@ -66,6 +66,13 @@ public interface CpuCapture extends ConfigurableDurationData {
   boolean isDualClock();
 
   /**
+   * @return a message of why dual clock isn't supported. Can be null if there's nothing to say.
+   * The message may be surfaced to the user by the front end.
+   */
+  @Nullable
+  String getDualClockDisabledMessage();
+
+  /**
    * Update all CaptureNodes in this capture to reference the new {@code clockType}.
    */
   void updateClockType(@NotNull ClockType clockType);
@@ -128,9 +135,9 @@ public interface CpuCapture extends ConfigurableDurationData {
   }
 
   /**
-   * Updates the set of paths whose frames should be hidden
+   * Updates the set of tags whose corresponding nodes should be hidden
    */
-  void setHideNodesFromPaths(@NotNull Set<PathFilter> pathsToHide);
-  @NotNull Set<PathFilter> getHiddenFilePaths();
-  @NotNull Set<PathFilter> getHidablePaths();
+  void collapseNodesWithTags(@NotNull Set<String> tagsToCollapse);
+  @NotNull Set<String> getCollapsedTags();
+  @NotNull Set<String> getTags();
 }

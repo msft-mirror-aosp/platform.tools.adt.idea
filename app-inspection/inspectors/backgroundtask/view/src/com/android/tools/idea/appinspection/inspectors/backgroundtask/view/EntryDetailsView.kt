@@ -16,15 +16,20 @@
 package com.android.tools.idea.appinspection.inspectors.backgroundtask.view
 
 import com.android.tools.adtui.TabularLayout
+import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.common.AdtUiUtils
+import com.android.tools.adtui.common.primaryContentBackground
+import com.android.tools.adtui.ui.HideablePanel
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionIdeServices
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorClient
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EntrySelectionModel
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EntryUpdateEventType
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.AlarmEntry
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.BackgroundTaskCallStack
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.JobEntry
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.WakeLockEntry
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.WorkEntry
+import com.google.wireless.android.sdk.stats.AppInspectionEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.roots.ui.componentsList.components.ScrollablePanel
 import com.intellij.openapi.ui.popup.IconButton
@@ -34,14 +39,18 @@ import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.panels.VerticalLayout
+import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.jetbrains.annotations.VisibleForTesting
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.event.ActionListener
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.swing.BorderFactory
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -54,7 +63,7 @@ class EntryDetailsView(
   private val tab: BackgroundTaskInspectorTab,
   private val client: BackgroundTaskInspectorClient,
   private val ideServices: AppInspectionIdeServices,
-  private val selectionModel: EntrySelectionModel,
+  @VisibleForTesting val selectionModel: EntrySelectionModel,
   uiComponentsProvider: UiComponentsProvider,
   private val scope: CoroutineScope,
   private val uiDispatcher: CoroutineDispatcher
@@ -64,8 +73,11 @@ class EntryDetailsView(
   private val extraBottomPaddingMap = mutableMapOf<Component, Int>()
   private val scrollPane = JBScrollPane()
 
-  private val stackTraceView1 = EntryDetailsStackTraceView(uiComponentsProvider)
-  private val stackTraceView2 = EntryDetailsStackTraceView(uiComponentsProvider)
+  @VisibleForTesting
+  val stackTraceViews = listOf(
+    EntryDetailsStackTraceView(uiComponentsProvider),
+    EntryDetailsStackTraceView(uiComponentsProvider)
+  )
 
   init {
     layout = TabularLayout("*", "28px,*")
@@ -80,7 +92,7 @@ class EntryDetailsView(
     scrollPane.border = AdtUiUtils.DEFAULT_TOP_BORDER
     add(scrollPane, TabularLayout.Constraint(1, 0))
 
-    selectionModel.registerWorkSelectionListener { entry ->
+    selectionModel.registerEntrySelectionListener { entry ->
       if (entry != null) {
         tab.isDetailsViewVisible = true
         updateSelectedTask()
@@ -108,6 +120,8 @@ class EntryDetailsView(
       is WakeLockEntry -> updateSelectedWakeLock(detailsPanel, entry)
     }
 
+    TreeWalker(detailsPanel).descendantStream().forEach { it.background = null }
+    detailsPanel.background = primaryContentBackground
     scrollPane.setViewportView(detailsPanel)
     revalidate()
     repaint()
@@ -118,13 +132,13 @@ class EntryDetailsView(
 
     val descriptions = mutableListOf(buildKeyValuePair("Type", alarmSet.type))
     if (alarmSet.intervalMs > 0) {
-      descriptions.add(buildKeyValuePair("Interval Time", StringUtil.formatDuration(alarmSet.intervalMs)))
+      descriptions.add(buildKeyValuePair("Interval time", StringUtil.formatDuration(alarmSet.intervalMs)))
     }
     if (alarmSet.windowMs > 0) {
-      descriptions.add(buildKeyValuePair("Window Time", StringUtil.formatDuration(alarmSet.windowMs)))
+      descriptions.add(buildKeyValuePair("Window time", StringUtil.formatDuration(alarmSet.windowMs)))
     }
     if (alarmSet.hasListener()) {
-      descriptions.add(buildKeyValuePair("Listener Tag", alarmSet.listener.tag))
+      descriptions.add(buildKeyValuePair("Listener tag", alarmSet.listener.tag))
     }
     if (alarmSet.hasOperation()) {
       val operation = alarmSet.operation
@@ -144,7 +158,7 @@ class EntryDetailsView(
     }
     detailsPanel.add(buildCategoryPanel("Results", results))
 
-    detailsPanel.addStackTraceViews(alarm.callstacks, listOf("Alarm set", "Alarm cancelled"))
+    detailsPanel.addStackTraceViews(alarm.callstacks, listOf("Set", "Cancelled"))
   }
 
   private fun updateSelectedWakeLock(detailsPanel: ScrollablePanel, wakeLock: WakeLockEntry) {
@@ -161,24 +175,23 @@ class EntryDetailsView(
       results.add(buildKeyValuePair("Time completed", completeTimeMs, TimeProvider))
       results.add(buildKeyValuePair("Elapsed time", StringUtil.formatDuration(completeTimeMs - wakeLock.startTimeMs)))
     }
-    detailsPanel.add(buildCategoryPanel("Execution", results))
+    detailsPanel.add(buildCategoryPanel("Results", results))
 
-    detailsPanel.addStackTraceViews(wakeLock.callstacks, listOf("Wake lock acquired", "Wake lock released"))
+    detailsPanel.addStackTraceViews(wakeLock.callstacks, listOf("Acquired", "Released"))
   }
 
   private fun updateSelectedJob(detailsPanel: ScrollablePanel, jobEntry: JobEntry) {
     val job = jobEntry.jobInfo ?: return
 
     val descriptions = mutableListOf(
-      buildKeyValuePair("Service", job.serviceName, ClassNameProvider(ideServices, client.scope)),
-      buildKeyValuePair("Tags", jobEntry.tags, StringListProvider)
+      buildKeyValuePair("Service", job.serviceName, ClassNameProvider(ideServices, client.scope, client.tracker))
     )
-    jobEntry.targetWorkId?.let { uuid -> buildKeyValuePair("UUID", uuid) }
+    jobEntry.targetWorkId?.let { uuid -> descriptions.add(buildKeyValuePair("UUID", uuid)) }
     detailsPanel.add(buildCategoryPanel("Description", descriptions))
 
     detailsPanel.add(buildCategoryPanel("Execution", listOf(
       buildKeyValuePair("Constraints", job, JobConstraintProvider),
-      buildKeyValuePair("Frequency", if (job.isPeriodic) "Periodic" else "One Time"),
+      buildKeyValuePair("Frequency", if (job.isPeriodic) "Periodic" else "OneTime"),
       buildKeyValuePair("State", jobEntry.status)
     )))
 
@@ -189,7 +202,7 @@ class EntryDetailsView(
         results.add(buildKeyValuePair("Time completed", completeTimeMs, TimeProvider))
         results.add(buildKeyValuePair("Elapsed time", StringUtil.formatDuration(completeTimeMs - jobEntry.startTimeMs)))
         if (latestEvent.backgroundTaskEvent.hasJobFinished()) {
-          results.add(buildKeyValuePair("Needs Reschedule", latestEvent.backgroundTaskEvent.jobFinished.needsReschedule))
+          results.add(buildKeyValuePair("Needs reschedule", latestEvent.backgroundTaskEvent.jobFinished.needsReschedule))
         }
         if (latestEvent.backgroundTaskEvent.hasJobStopped()) {
           results.add(buildKeyValuePair("Reschedule", latestEvent.backgroundTaskEvent.jobStopped.reschedule))
@@ -199,7 +212,7 @@ class EntryDetailsView(
 
     detailsPanel.add(buildCategoryPanel("Results", results))
 
-    detailsPanel.addStackTraceViews(jobEntry.callstacks, listOf("Job scheduled", "Job finished"))
+    detailsPanel.addStackTraceViews(jobEntry.callstacks, listOf("Scheduled", "Finished"))
   }
 
   private fun updateSelectedWork(detailsPanel: ScrollablePanel, workEntry: WorkEntry) {
@@ -207,18 +220,19 @@ class EntryDetailsView(
 
     val idListProvider = IdListProvider(client, work) {
       selectionModel.selectedEntry = it
+      client.tracker.trackWorkSelected(AppInspectionEvent.BackgroundTaskInspectorEvent.Context.DETAILS_CONTEXT)
     }
 
     detailsPanel.add(buildCategoryPanel("Description", listOf(
-      buildKeyValuePair("Class", work.workerClassName, ClassNameProvider(ideServices, client.scope)),
+      buildKeyValuePair("Class", work.workerClassName, ClassNameProvider(ideServices, client.scope, client.tracker)),
       buildKeyValuePair("Tags", work.tagsList.toList(), StringListProvider),
       buildKeyValuePair("UUID", work.id)
     )))
 
     detailsPanel.add(buildCategoryPanel("Execution", listOf(
-      buildKeyValuePair("Enqueued by", work.callStack, EnqueuedAtProvider(ideServices, client.scope)),
+      buildKeyValuePair("Enqueued by", work.callStack, EnqueuedAtProvider(ideServices, client.scope, client.tracker)),
       buildKeyValuePair("Constraints", work.constraints, WorkConstraintProvider),
-      buildKeyValuePair("Frequency", if (work.isPeriodic) "Periodic" else "One Time"),
+      buildKeyValuePair("Frequency", if (work.isPeriodic) "Periodic" else "OneTime"),
       buildKeyValuePair("State", work.state, StateProvider)
     )))
 
@@ -257,9 +271,7 @@ class EntryDetailsView(
                                     value: T,
                                     componentProvider: ComponentProvider<T> = ToStringProvider()): JPanel {
     val panel = JPanel(TabularLayout("155px,*")).apply {
-      // Add a 2px text offset to align this panel with a [HyperlinkLabel] properly.
-      // See HyperlinkLabel.getTextOffset() for more details.
-      border = BorderFactory.createEmptyBorder(0, 2, 0, 0)
+      border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
     }
     val keyPanel = JPanel(BorderLayout())
     keyPanel.add(JBLabel(key), BorderLayout.NORTH) // If value is multi-line, key should stick to the top of its cell
@@ -268,18 +280,30 @@ class EntryDetailsView(
     return panel
   }
 
-  private fun ScrollablePanel.addStackTraceViews(traces: List<String>, labels: List<String>) {
-    (labels zip traces).forEachIndexed { i, pair ->
-      when (i) {
-        0 -> {
-          stackTraceView1.updateTrace(pair.second)
-          add(buildCategoryPanel(pair.first, listOf(stackTraceView1.component)))
-        }
-        1 -> {
-          stackTraceView2.updateTrace(pair.second)
-          add(buildCategoryPanel(pair.first, listOf(stackTraceView2.component)))
+  private fun ScrollablePanel.addStackTraceViews(callStacks: List<BackgroundTaskCallStack>, labels: List<String>) {
+    val labelsToStackTraces = (labels zip callStacks)
+      .filter { it.second.stack.isNotEmpty() }
+      .map { "${SimpleDateFormat("H:mm:ss.SSS", Locale.getDefault()).format(it.second.triggerTime)} ${it.first}" to it.second.stack }
+
+    if (labelsToStackTraces.isNotEmpty()) {
+      val stackTraceComponents = labelsToStackTraces.mapIndexedNotNull { i, pair ->
+        when (i) {
+          0, 1 -> {
+            stackTraceViews[i].updateTrace(pair.second)
+            val hideablePanel = HideablePanel.Builder(pair.first, stackTraceViews[i].component)
+              .setContentBorder(JBEmptyBorder(5, 0, 0, 0))
+              .setPanelBorder(JBEmptyBorder(0, 0, 0, 0))
+              .setTitleRightPadding(0)
+              .build()
+            hideablePanel
+          }
+          else -> null
         }
       }
+      // Layout the stack trace views in a vertical layout so they can have the same width.
+      val containerPanel = JPanel(VerticalLayout(6))
+      stackTraceComponents.forEach { containerPanel.add(it) }
+      add(buildCategoryPanel("Callstacks", listOf(containerPanel)))
     }
   }
 }

@@ -37,6 +37,9 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
   private var _status = State.UNSPECIFIED
   private var _startTime = -1L
   private var _isValid = false
+  private var _retries = 0
+
+  private var isRescheduled = false
 
   var targetWorkId: String? = null
 
@@ -50,7 +53,9 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
   override val startTimeMs get() = _startTime
 
   override val tags = listOf<String>()
-  override val callstacks = mutableListOf<String>()
+  override val callstacks = mutableListOf<BackgroundTaskCallStack>()
+  override val retries: Int
+    get() = _retries
 
   var jobInfo: BackgroundTaskInspectorProtocol.JobInfo? = null
     private set
@@ -64,10 +69,17 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
     when (backgroundTaskEvent.metadataCase) {
       BackgroundTaskEvent.MetadataCase.JOB_SCHEDULED -> {
         _isValid = true
-        _className = "Job $id"
         _status = State.SCHEDULED
         _startTime = timestamp
         jobInfo = backgroundTaskEvent.jobScheduled.job
+
+        if (isRescheduled) {
+          _retries++
+          isRescheduled = false
+        }
+
+        val serviceName = jobInfo!!.serviceName.substringAfterLast('.')
+        _className = serviceName.ifEmpty { "Job $id" }
         // Find target work id from extras.
         jobInfo?.extras?.let { extras ->
           val workIdSuffix = extras.substringAfter("EXTRA_WORK_SPEC_ID=", "")
@@ -79,17 +91,19 @@ class JobEntry(override val id: String) : BackgroundTaskEntry {
           }
         }
         callstacks.clear()
-        callstacks.add(backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.stacktrace))
       }
       BackgroundTaskEvent.MetadataCase.JOB_STARTED -> {
         _status = State.STARTED
       }
       BackgroundTaskEvent.MetadataCase.JOB_STOPPED -> {
         _status = State.STOPPED
+        isRescheduled = backgroundTaskEvent.jobStopped.reschedule
       }
       BackgroundTaskEvent.MetadataCase.JOB_FINISHED -> {
         _status = State.FINISHED
-        callstacks.add(backgroundTaskEvent.stacktrace)
+        callstacks.add(BackgroundTaskCallStack(timestamp, backgroundTaskEvent.stacktrace))
+        isRescheduled = backgroundTaskEvent.jobFinished.needsReschedule
       }
     }
   }

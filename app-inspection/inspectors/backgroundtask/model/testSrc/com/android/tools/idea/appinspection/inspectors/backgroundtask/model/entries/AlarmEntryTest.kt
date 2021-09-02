@@ -42,27 +42,36 @@ class AlarmEntryTest {
       alarmCancelled = BackgroundTaskInspectorProtocol.AlarmCancelled.getDefaultInstance()
     }.build()
 
-    alarmEntry.consumeAndAssert(setEvent) {
+    alarmEntry.consumeAndAssert(setEvent, 1) {
       this as AlarmEntry
       assertThat(status).isEqualTo("SET")
       assertThat(alarmSet).isEqualTo(setEvent.alarmSet)
-      assertThat(startTimeMs).isEqualTo(2)
-      assertThat(callstacks).containsExactly("SET")
+      assertThat(startTimeMs).isEqualTo(1)
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, "SET"))
       assertThat(tags).containsExactly("TAG1")
+      assertThat(retries).isEqualTo(0)
     }
 
-    alarmEntry.consumeAndAssert(cancelledEvent) {
+    alarmEntry.consumeAndAssert(cancelledEvent, 2) {
       assertThat(status).isEqualTo("CANCELLED")
-      assertThat(callstacks).containsExactly("SET", "CANCELLED")
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, "SET"), BackgroundTaskCallStack(2, "CANCELLED"))
+      assertThat(retries).isEqualTo(0)
     }
   }
 
   @Test
   fun alarmFired() {
     val alarmEntry = AlarmEntry("1")
+    val stacktrace =
+      """
+        android.app.AlarmManager.setImpl(AlarmManager.java:662)
+        android.app.AlarmManager.setRepeating(AlarmManager.java:438)
+        android.com.java.profilertester.taskcategory.AlarmTask.execute(BackgroundTaskCategory.java:159)
+      """.trimIndent()
+
     val setEvent = BackgroundTaskInspectorProtocol.BackgroundTaskEvent.newBuilder().apply {
       taskId = 1
-      stacktrace = "SET"
+      this.stacktrace = stacktrace
       alarmSet = BackgroundTaskInspectorProtocol.AlarmSet.newBuilder().apply {
         type = BackgroundTaskInspectorProtocol.AlarmSet.Type.RTC
         triggerMs = 2L
@@ -77,20 +86,23 @@ class AlarmEntryTest {
       alarmFired = BackgroundTaskInspectorProtocol.AlarmFired.getDefaultInstance()
     }.build()
 
-    alarmEntry.consumeAndAssert(setEvent) {
+    alarmEntry.consumeAndAssert(setEvent, 1) {
       this as AlarmEntry
+      assertThat(className).isEqualTo("AlarmTask")
       assertThat(status).isEqualTo("SET")
       assertThat(alarmSet).isEqualTo(setEvent.alarmSet)
-      assertThat(startTimeMs).isEqualTo(2)
-      assertThat(callstacks).containsExactly("SET")
+      assertThat(startTimeMs).isEqualTo(1)
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, stacktrace))
       assertThat(tags).containsExactly("TAG1")
       assertThat(isValid).isTrue()
+      assertThat(retries).isEqualTo(0)
     }
 
-    alarmEntry.consumeAndAssert(firedEvent) {
+    alarmEntry.consumeAndAssert(firedEvent, 2) {
       assertThat(status).isEqualTo("FIRED")
-      assertThat(callstacks).containsExactly("SET")
+      assertThat(callstacks).containsExactly(BackgroundTaskCallStack(1, stacktrace))
       assertThat(isValid).isTrue()
+      assertThat(retries).isEqualTo(0)
     }
   }
 
@@ -106,6 +118,7 @@ class AlarmEntryTest {
     alarmEntry.consumeAndAssert(firedEvent) {
       assertThat(status).isEqualTo("FIRED")
       assertThat(isValid).isFalse()
+      assertThat(retries).isEqualTo(0)
     }
   }
 }

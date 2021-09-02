@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.devicemanager.virtualtab.columns;
+package com.android.tools.idea.devicemanager.virtualtab;
 
 import com.android.sdklib.internal.avd.AvdInfo;
-import com.android.tools.idea.avdmanager.AvdManagerConnection;
 import com.android.tools.idea.devicemanager.DeviceTableCellRenderer;
-import com.android.tools.idea.util.Targets;
 import java.awt.Component;
 import javax.swing.JTable;
 import org.jetbrains.annotations.NotNull;
 
-public final class VirtualDeviceTableCellRenderer extends DeviceTableCellRenderer<VirtualDevice> {
-
-  public VirtualDeviceTableCellRenderer() {
+final class VirtualDeviceTableCellRenderer extends DeviceTableCellRenderer<VirtualDevice> {
+  VirtualDeviceTableCellRenderer() {
     super(VirtualDevice.class);
   }
 
@@ -36,17 +33,8 @@ public final class VirtualDeviceTableCellRenderer extends DeviceTableCellRendere
                                                           boolean focused,
                                                           int viewRowIndex,
                                                           int viewColumnIndex) {
-    AvdInfo avdInfo = (AvdInfo)value;
-
-    Object virtualDevice = new VirtualDevice.Builder()
-      .setKey(new VirtualDeviceName(avdInfo.getName()))
-      .setCpuArchitecture(avdInfo.getCpuArch())
-      .setName(avdInfo.getDisplayName())
-      .setOnline(AvdManagerConnection.getDefaultAvdManagerConnection().isAvdRunning(avdInfo))
-      .setTarget(Targets.toString(avdInfo.getAndroidVersion(), avdInfo.getTag()))
-      .build();
-
-    return super.getTableCellRendererComponent(table, virtualDevice, selected, focused, viewRowIndex, viewColumnIndex);
+    value = VirtualDevices.build((AvdInfo)value);
+    return super.getTableCellRendererComponent(table, value, selected, focused, viewRowIndex, viewColumnIndex);
   }
 
   @Override

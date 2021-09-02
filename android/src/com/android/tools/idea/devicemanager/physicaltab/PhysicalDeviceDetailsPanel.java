@@ -75,12 +75,12 @@ final class PhysicalDeviceDetailsPanel extends DetailsPanel {
     public void onSuccess(@Nullable PhysicalDevice device) {
       assert device != null;
 
-      setText(mySection.myApiLevelLabel, device.getApi());
-      setText(mySection.myPowerLabel, device.getPower());
-      setText(mySection.myResolutionLabel, device.getResolution());
-      setText(mySection.myDpLabel, device.getDp());
-      setText(mySection.myAbiListLabel, device.getAbis());
-      setText(mySection.myAvailableStorageLabel, device.getStorageDevice());
+      InfoSection.setText(mySection.myApiLevelLabel, device.getApi());
+      InfoSection.setText(mySection.myPowerLabel, device.getPower());
+      InfoSection.setText(mySection.myResolutionLabel, device.getResolution());
+      InfoSection.setText(mySection.myDpLabel, device.getDp());
+      InfoSection.setText(mySection.myAbiListLabel, device.getAbis());
+      InfoSection.setText(mySection.myAvailableStorageLabel, device.getStorageDevice());
     }
   }
 
@@ -108,7 +108,7 @@ final class PhysicalDeviceDetailsPanel extends DetailsPanel {
     @Override
     public void onSuccess(@Nullable PhysicalDevice device) {
       assert device != null;
-      setText(mySection.myNameLabel, device.getName());
+      InfoSection.setText(mySection.myNameLabel, device.getName());
     }
   }
 
@@ -142,11 +142,13 @@ final class PhysicalDeviceDetailsPanel extends DetailsPanel {
       mySummarySection = new SummarySection();
       Futures.addCallback(future, newSummarySectionCallback.apply(mySummarySection), executor);
 
-      myDeviceSection = new DeviceSection();
-      Futures.addCallback(future, newDeviceSectionCallback.apply(myDeviceSection), executor);
+      // myDeviceSection = new DeviceSection();
+      // Futures.addCallback(future, newDeviceSectionCallback.apply(myDeviceSection), executor);
+      myDeviceSection = null;
 
       myInfoSections.add(mySummarySection);
-      myInfoSections.add(myDeviceSection);
+      InfoSection.newPairedDeviceSection(device).ifPresent(myInfoSections::add);
+      // myInfoSections.add(myDeviceSection);
     }
     else {
       mySummarySection = null;

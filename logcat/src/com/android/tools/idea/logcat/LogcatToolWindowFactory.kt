@@ -21,6 +21,7 @@ import com.android.ddmlib.logcat.LogCatMessage
 import com.android.tools.adtui.toolwindow.splittingtabs.SplittingTabsToolWindowFactory
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.codeInsight.template.emmet.generators.LoremGenerator
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.util.text.UniqueNameGenerator
@@ -38,20 +39,21 @@ internal class LogcatToolWindowFactory : SplittingTabsToolWindowFactory(), DumbA
   override fun generateTabName(tabNames: Set<String>) =
     UniqueNameGenerator.generateUniqueName("Logcat", "", "", " (", ")") { !tabNames.contains(it) }
 
-  override fun generateChildComponent(project: Project, clientState: String?): JComponent =
-    LogcatMainPanel(project, logcatColors, LogcatPanelConfig.fromJson(clientState)).also(::printFakeLogs)
+  override fun createChildComponent(project: Project, popupActionGroup: ActionGroup, clientState: String?): JComponent =
+    LogcatMainPanel(project, popupActionGroup, logcatColors, LogcatPanelConfig.fromJson(clientState)).also(::printFakeLogs)
 }
 
 // Use a LoremGenerator to generate random tags, app names and messages to be used in fake LogCatMessage's to demonstrate the behavior.
 // TODO(aalbert): Remove when we start reading real logs from ADB.
 private fun printFakeLogs(it: LogcatMainPanel) {
+  val random = Random(0)
   val loremGenerator = LoremGenerator()
   for (logLevel in Log.LogLevel.values()) {
     for (t in 1..10) {
-      val tag = loremGenerator.generateTag(Random.nextInt(1, 3))
-      val appName = loremGenerator.generateAppName(Random.nextInt(2, 3))
-      for (line in 1..Random.nextInt(5)) {
-        val message = loremGenerator.generate(Random.nextInt(5, 12), false)
+      val tag = loremGenerator.generateTag(random.nextInt(1, 3))
+      val appName = loremGenerator.generateAppName(random.nextInt(2, 3))
+      for (line in 1..random.nextInt(5)) {
+        val message = loremGenerator.generate(random.nextInt(5, 12), false)
         it.print(LogCatMessage(LogCatHeader(logLevel, 1324, 5454, appName.take(appName.length - 1), tag, Instant.now()), message))
       }
     }

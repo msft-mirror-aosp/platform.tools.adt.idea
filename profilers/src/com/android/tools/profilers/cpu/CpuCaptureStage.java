@@ -77,6 +77,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -395,9 +396,13 @@ public class CpuCaptureStage extends Stage<Timeline> {
       myTrackGroupModels.add(createDisplayTrackGroup(capture.getMainThreadId(), capture.getSystemTraceData(), getTimeline()));
       // Android frame lifecycle. Systrace only.
       if (!capture.getSystemTraceData().getAndroidFrameLayers().isEmpty()) {
-        capture.getSystemTraceData().getAndroidFrameLayers().forEach(
-          layer -> myTrackGroupModels.add(createFrameLifecycleTrackGroup(layer, getTimeline()))
-        );
+        for (int layerIndex = 0; layerIndex < capture.getSystemTraceData().getAndroidFrameLayers().size(); ++layerIndex) {
+          myTrackGroupModels.add(
+            createFrameLifecycleTrackGroup(capture.getSystemTraceData().getAndroidFrameLayers().get(layerIndex), getTimeline(),
+                                           // Collapse all but the first layer.
+                                           layerIndex > 0,
+                                           capture.getSystemTraceData()));
+        }
       }
       // CPU per-core usage and event etc. Systrace only.
       myTrackGroupModels.add(createCpuCoresTrackGroup(capture.getMainThreadId(), capture.getSystemTraceData(), getTimeline()));
@@ -463,13 +468,16 @@ public class CpuCaptureStage extends Stage<Timeline> {
       .build();
 
     // Frame
-    CpuFramesModel.FrameState mainFrames = new CpuFramesModel.FrameState(
-      "Main", mainThreadId, SystemTraceFrame.FrameThread.MAIN,
-      systemTraceData, timeline.getViewRange());
-    CpuFrameTooltip mainFrameTooltip = new CpuFrameTooltip(timeline);
-    mainFrameTooltip.setFrameSeries(mainFrames.getSeries());
-    display.addTrackModel(
-      TrackModel.newBuilder(mainFrames, ProfilerTrackRendererType.FRAMES, "Frames").setDefaultTooltipModel(mainFrameTooltip));
+    if (systemTraceData.getAndroidFrameLayers().isEmpty()) {
+      // Hide frames if we have Frame Lifecycle data.
+      CpuFramesModel.FrameState mainFrames = new CpuFramesModel.FrameState(
+        "Main", mainThreadId, SystemTraceFrame.FrameThread.MAIN,
+        systemTraceData, timeline.getViewRange());
+      CpuFrameTooltip mainFrameTooltip = new CpuFrameTooltip(timeline);
+      mainFrameTooltip.setFrameSeries(mainFrames.getSeries());
+      display.addTrackModel(
+        TrackModel.newBuilder(mainFrames, ProfilerTrackRendererType.FRAMES, "Frames").setDefaultTooltipModel(mainFrameTooltip));
+    }
 
     // Surfaceflinger
     SurfaceflingerTrackModel sfModel = new SurfaceflingerTrackModel(systemTraceData, timeline.getViewRange());
@@ -491,23 +499,29 @@ public class CpuCaptureStage extends Stage<Timeline> {
   }
 
   private static TrackGroupModel createFrameLifecycleTrackGroup(@NotNull TraceProcessor.AndroidFrameEventsResult.Layer layer,
-                                                                @NotNull Timeline timeline) {
+                                                                @NotNull Timeline timeline,
+                                                                boolean collapseInitially,
+                                                                @NotNull CpuSystemTraceData data) {
     // Layer name takes the form of "app_name/surface_name", shorten it by omitting the app_name.
     String title = "Frame Lifecycle (" + layer.getLayerName().substring(layer.getLayerName().lastIndexOf('/') + 1) + ")";
     TrackGroupModel frameLayer = TrackGroupModel.newBuilder()
       .setTitle(title)
-      .setTitleHelpText(AndroidFrameEventTrackModel.getTitleHelpText())
+      .setTitleHelpText("This section shows the lifecycle of every frame.")
+      .setTitleHelpLink("Learn more", "https://d.android.com/r/studio-ui/profiler/frame-lifecycle")
+      .setCollapsedInitially(collapseInitially)
       .build();
 
-    layer.getPhaseList().stream().sorted(AndroidFrameEventTrackModel.getTrackComparator()).forEach(
-      phase -> {
-        AndroidFrameEventTrackModel phaseTrack = new AndroidFrameEventTrackModel(phase.getFrameEventList(), timeline.getViewRange());
-        AndroidFrameEventTooltip tooltip = new AndroidFrameEventTooltip(timeline, phaseTrack.getSeries().get(0));
-        String trackTitle = AndroidFrameEventTrackModel.getDisplayName(phase.getPhaseName());
-        frameLayer.addTrackModel(TrackModel.newBuilder(phaseTrack, ProfilerTrackRendererType.ANDROID_FRAME_EVENT, trackTitle)
-                                   .setDefaultTooltipModel(tooltip));
-      }
-    );
+    layer.getPhaseList().stream()
+      .map(phase -> new AndroidFrameEventTrackModel(phase, timeline.getViewRange(), data.getVsyncCounterValues()))
+      .sorted(Comparator.comparingInt(trackModel -> trackModel.getAndroidFramePhase().ordinal()))
+      .forEach(
+        trackModel -> {
+          AndroidFrameEventTooltip tooltip = new AndroidFrameEventTooltip(timeline, trackModel);
+          frameLayer.addTrackModel(TrackModel.newBuilder(trackModel, ProfilerTrackRendererType.ANDROID_FRAME_EVENT,
+                                                         trackModel.getAndroidFramePhase().getDisplayName())
+                                     .setDefaultTooltipModel(tooltip));
+        }
+      );
     return frameLayer;
   }
 

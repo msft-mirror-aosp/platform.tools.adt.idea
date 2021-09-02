@@ -17,13 +17,17 @@ package com.android.tools.idea.wearpairing
 
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.IShellOutputReceiver
+import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.analytics.TestUsageTracker
+import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.observable.BatchInvoker
 import com.android.tools.idea.observable.TestInvokeStrategy
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
+import com.google.wireless.android.sdk.stats.WearPairingEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatform4TestCase
@@ -37,8 +41,9 @@ import javax.swing.JLabel
 
 
 class DeviceConnectionStepTest : LightPlatform4TestCase() {
-
   private val invokeStrategy = TestInvokeStrategy()
+  /** A UsageTracker implementation that allows introspection of logged metrics in tests. */
+  private val usageTracker = TestUsageTracker(VirtualTimeScheduler())
   private val model = WearDevicePairingModel()
   private val phoneDevice = PairingDevice(
     deviceID = "id1", displayName = "My Phone", apiLevel = 30, isWearDevice = false, isEmulator = true, hasPlayStore = true,
@@ -56,11 +61,14 @@ class DeviceConnectionStepTest : LightPlatform4TestCase() {
     model.selectedWearDevice.value = wearDevice
 
     BatchInvoker.setOverrideStrategy(invokeStrategy)
+    UsageTracker.setWriterForTest(usageTracker)
   }
 
   override fun tearDown() {
     try {
       BatchInvoker.clearOverrideStrategy()
+      usageTracker.close()
+      UsageTracker.cleanAfterTesting()
     }
     finally {
       super.tearDown()
@@ -102,6 +110,21 @@ class DeviceConnectionStepTest : LightPlatform4TestCase() {
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
     fakeUi.waitForHeader("Install Wear OS Companion Application")
+    waitForCondition(5, TimeUnit.SECONDS) { usageTracker.usages.isNotEmpty() }
+    assertThat(usageTracker.usages.last()!!.studioEvent.wearPairingEvent.kind).isEqualTo(WearPairingEvent.EventKind.SHOW_INSTALL_WEAR_OS_COMPANION)
+  }
+
+  @Test
+  fun shouldWarnAboutWear3CompanionApp_ifNotInstalled() {
+    val iDevice = createTestDevice(companionAppVersion = "", Int.MAX_VALUE, "some.unknown.companion.app")
+    phoneDevice.launch = { Futures.immediateFuture(iDevice) }
+    wearDevice.launch = phoneDevice.launch
+
+    val (fakeUi, _) = createDeviceConnectionStepUi()
+
+    waitForCondition(15, TimeUnit.SECONDS) {
+      fakeUi.findComponent<LinkLabel<Any>> { it.text == "Retry" } != null
+    }
   }
 
   @Test
@@ -176,7 +199,7 @@ class DeviceConnectionStepTest : LightPlatform4TestCase() {
     findComponent<JBLabel> { it.name == "header" && it.text == text } != null
   }
 
-  private fun createTestDevice(companionAppVersion: String, gmscoreVersion: Int = Int.MAX_VALUE): IDevice {
+  private fun createTestDevice(companionAppVersion: String, gmscoreVersion: Int = Int.MAX_VALUE, companionAppId: String? = null): IDevice {
     val iDevice = Mockito.mock(IDevice::class.java)
     Mockito.`when`(
       iDevice.executeShellCommand(
@@ -192,6 +215,7 @@ class DeviceConnectionStepTest : LightPlatform4TestCase() {
         request.contains("grep 'local: '") -> "local: TestNodeId"
         request.contains("grep versionName") -> companionAppVersion
         request.contains("grep versionCode") -> "versionCode=$gmscoreVersion"
+        request.contains("settings get secure") -> companionAppId.toString()
         else -> "Unknown executeShellCommand request $request"
       }
 
@@ -201,6 +225,7 @@ class DeviceConnectionStepTest : LightPlatform4TestCase() {
 
     Mockito.`when`(iDevice.arePropertiesSet()).thenReturn(true)
     Mockito.`when`(iDevice.getProperty("dev.bootcomplete")).thenReturn("1")
+    Mockito.`when`(iDevice.getSystemProperty("ro.oem.companion_package")).thenReturn(Futures.immediateFuture(""))
 
     return iDevice
   }

@@ -23,10 +23,11 @@ import backgroundtask.inspection.BackgroundTaskInspectorProtocol.JobInfo
 import com.android.tools.adtui.ui.HideablePanel
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionIdeServices
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorClient
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.entries.WorkEntry
 import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.ui.VerticalFlowLayout
-import com.intellij.ui.HyperlinkLabel
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.HorizontalLayout
 import com.intellij.util.ui.JBUI
@@ -57,14 +58,16 @@ class ToStringProvider<T> : ComponentProvider<T> {
 /**
  * Provides a component that represents a class name which can be navigated to.
  */
-class ClassNameProvider(private val ideServices: AppInspectionIdeServices,
-                        private val scope: CoroutineScope) : ComponentProvider<String> {
+class ClassNameProvider(
+  private val ideServices: AppInspectionIdeServices,
+  private val scope: CoroutineScope,
+  private val tracker: BackgroundTaskInspectorTracker
+) : ComponentProvider<String> {
   override fun convert(fqcn: String): JComponent {
-    return HyperlinkLabel(fqcn).apply {
-      addHyperlinkListener {
-        scope.launch {
-          ideServices.navigateTo(AppInspectionIdeServices.CodeLocation.forClass(fqcn))
-        }
+    return ActionLink(fqcn) {
+      scope.launch {
+        ideServices.navigateTo(AppInspectionIdeServices.CodeLocation.forClass(fqcn))
+        tracker.trackJumpedToSource()
       }
     }
   }
@@ -92,8 +95,11 @@ object StateProvider : ComponentProvider<State> {
  * Provides a component that displays the location a worker was enqueued at, with the ability to
  * click on that location to navigate into the code.
  */
-class EnqueuedAtProvider(private val ideServices: AppInspectionIdeServices,
-                         private val scope: CoroutineScope) : ComponentProvider<CallStack> {
+class EnqueuedAtProvider(
+  private val ideServices: AppInspectionIdeServices,
+  private val scope: CoroutineScope,
+  private val tracker: BackgroundTaskInspectorTracker
+) : ComponentProvider<CallStack> {
   override fun convert(stack: CallStack): JComponent {
     return if (stack.framesCount == 0) {
       JPanel(FlowLayout(FlowLayout.LEADING, 0, 0)).apply {
@@ -108,11 +114,10 @@ class EnqueuedAtProvider(private val ideServices: AppInspectionIdeServices,
     }
     else {
       val frame0 = stack.getFrames(0)
-      HyperlinkLabel("${frame0.fileName} (${frame0.lineNumber})").apply {
-        addHyperlinkListener {
-          scope.launch {
-            ideServices.navigateTo(AppInspectionIdeServices.CodeLocation.forFile(frame0.fileName, frame0.lineNumber))
-          }
+      ActionLink("${frame0.fileName} (${frame0.lineNumber})") {
+        scope.launch {
+          ideServices.navigateTo(AppInspectionIdeServices.CodeLocation.forFile(frame0.fileName, frame0.lineNumber))
+          tracker.trackJumpedToSource()
         }
       }
     }
@@ -154,18 +159,20 @@ class IdListProvider(private val client: BackgroundTaskInspectorClient,
           val entry = client.getEntry(id)
           if (entry != null) {
             val work = (entry as WorkEntry).getWorkInfo()
-
-            add(HyperlinkLabel().apply {
-              val suffix = if (id == currId) "  (Current)" else ""
-              setHyperlinkText("", id, suffix)
-              addHyperlinkListener {
-                selectWork(entry)
-              }
-              setIcon(work.state.icon())
+            val mixedLabel = JPanel(HorizontalLayout(2))
+            val actionLink = ActionLink(id) {
+              selectWork(entry)
+            }.apply {
+              icon = work.state.icon()
               if (work.tagsCount > 0) {
                 toolTipText = "<html><b>Tags</b><br>${work.tagsList.joinToString("<br>") { "\"$it\"" }}</html>"
               }
-            })
+            }
+            mixedLabel.add(actionLink)
+            if (id == currId) {
+              mixedLabel.add(JLabel("(Current)"))
+            }
+            add(mixedLabel)
           }
           else {
             add(JBLabel(id))

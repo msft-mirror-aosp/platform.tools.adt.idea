@@ -64,8 +64,6 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.tree.TreeModelAdapter
 import com.intellij.util.ui.tree.TreeUtil
-import org.jetbrains.kotlin.idea.util.application.runReadAction
-import org.jetbrains.kotlin.idea.util.ifFalse
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -85,6 +83,7 @@ private val LOG = Logger.getInstance("Upgrade Assistant")
 class ToolWindowModel(
   val project: Project,
   val currentVersionProvider: () -> GradleVersion?,
+  val recommended: GradleVersion? = null,
   val knownVersionsRequester: () -> Set<GradleVersion> = { IdeGoogleMavenRepository.getVersions("com.android.tools.build", "gradle") }
 ) : GradleSyncListener, Disposable {
 
@@ -92,7 +91,7 @@ class ToolWindowModel(
 
   var current: GradleVersion? = currentVersionProvider()
     private set
-  private var _selectedVersion: GradleVersion? = latestKnownVersion
+  private var _selectedVersion: GradleVersion? = recommended ?: latestKnownVersion
   val selectedVersion: GradleVersion?
     get() = _selectedVersion
   var processor: AgpUpgradeRefactoringProcessor? = null
@@ -289,8 +288,8 @@ class ToolWindowModel(
   }
 
   fun suggestedVersionsList(gMavenVersions: Set<GradleVersion>): List<GradleVersion> = gMavenVersions
-    // Make sure the current (if known) and latest known versions are present, whether published or not
-    .union(listOfNotNull(current, latestKnownVersion))
+    // Make sure the current (if known), recommended, and latest known versions are present, whether published or not
+    .union(listOfNotNull(current, recommended, latestKnownVersion))
     // Keep only versions that are later than or equal to current
     .filter { current?.let { current -> it >= current } ?: false }
     // Keep only versions that are no later than the latest version we support
@@ -467,10 +466,11 @@ class ContentManager(val project: Project) {
       RegisterToolWindowTask.closable("Upgrade Assistant", icons.GradleIcons.ToolWindowGradle))
   }
 
-  fun showContent() {
+  fun showContent(recommended: GradleVersion? = null) {
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Upgrade Assistant")!!
     toolWindow.contentManager.removeAllContents(true)
-    val model = ToolWindowModel(project, currentVersionProvider = { AndroidPluginInfo.find(project)?.pluginVersion })
+    val model = ToolWindowModel(
+      project, currentVersionProvider = { AndroidPluginInfo.find(project)?.pluginVersion }, recommended = recommended)
     val view = View(model, toolWindow.contentManager)
     val content = ContentFactory.SERVICE.getInstance().createContent(view.content, model.current.contentDisplayName(), true)
     content.setDisposer(model)
@@ -516,9 +516,19 @@ class ContentManager(val project: Project) {
         init {
           selectedItem = model.selectedVersion
           myListeners.listen(model.suggestedVersions) { suggestedVersions ->
-            removeAllElements()
-            selectedItem = model.selectedVersion
-            suggestedVersions.orElse(emptyList()).forEach { addElement(it) }
+            val selectedVersion = model.selectedVersion
+            for (i in size - 1 downTo 0) {
+              if (getElementAt(i) != selectedVersion) removeElementAt(i)
+            }
+            suggestedVersions.orElse(emptyList()).forEachIndexed { i, it ->
+              when {
+                selectedVersion == null -> addElement(it)
+                it > selectedVersion -> insertElementAt(it, i)
+                it == selectedVersion -> Unit
+                else -> addElement(it)
+              }
+            }
+            selectedItem = selectedVersion
           }
           placeHolderValue = "Select new version"
         }
@@ -652,8 +662,10 @@ class ContentManager(val project: Project) {
           // making this diversion not immediately visible but on page hide and restore it uses all-folded state form the model.
           invokeLater(ModalityState.NON_MODAL) {
             tree.setHoldSize(false)
-            TreeUtil.expandAll(tree)
-            tree.setHoldSize(true)
+            TreeUtil.expandAll(tree) {
+              tree.setHoldSize(true)
+              content.revalidate()
+            }
           }
         }
       })

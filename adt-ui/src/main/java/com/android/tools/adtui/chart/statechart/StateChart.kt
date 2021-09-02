@@ -34,6 +34,7 @@ import java.awt.RenderingHints
 import java.awt.event.MouseEvent
 import java.awt.geom.Rectangle2D
 import java.util.function.Consumer
+import java.util.function.IntConsumer
 import javax.swing.JList
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -77,7 +78,19 @@ class StateChart<T>(private val model: StateChartModel<T>,
    */
   private var rectangleCache = listOf<Pair<List<Rectangle2D.Float>, List<T>>>()
   private var rowPoint: Point? = null
+    set(point) {
+      field = point
+      hoveredSeriesIndex = point?.let(::seriesIndexAtPoint) ?: INVALID_INDEX
+    }
+  private var hoveredSeriesIndex = INVALID_INDEX
+    set(index) {
+      if (field != index) {
+        field = index
+        rowIndexChangeListeners.forEach { it.accept(index) }
+      }
+    }
   private val itemClickedListeners = mutableListOf<Consumer<T>>()
+  private val rowIndexChangeListeners = mutableListOf<IntConsumer>()
 
   init {
     font = AdtUiUtils.DEFAULT_FONT
@@ -191,9 +204,6 @@ class StateChart<T>(private val model: StateChartModel<T>,
     val scaleX = width.toFloat()
     val scaleY = height.toFloat()
     val clipRect = g2d.clipBounds
-    val hoveredSeriesIndex =
-      rowPoint?.y?.let { ((1.0f - it / scaleY) * rectangleCache.size).toInt().takeIf { it in rectangleCache.indices } }
-      ?: INVALID_INDEX
 
     rectangleCache.forEachIndexed { seriesIndex, (rectangles, rectangleValues) ->
       fun List<Rectangle2D.Float>.searchByX(x: Float, w: Float) = binarySearch { when {
@@ -251,6 +261,10 @@ class StateChart<T>(private val model: StateChartModel<T>,
 
   fun addItemClickedListener(onClicked: Consumer<T>) {
     itemClickedListeners.add(onClicked)
+  }
+
+  fun addRowIndexChangeListener(onNewRowIndex: IntConsumer) {
+    rowIndexChangeListeners.add(onNewRowIndex)
   }
 
   private fun registerMouseEvents() {
@@ -346,16 +360,12 @@ class StateChart<T>(private val model: StateChartModel<T>,
     val series = model.series
     if (series.isEmpty()) return null
 
-    val scaleX = width.toFloat()
-    val scaleY = height.toFloat()
-    val seriesIndex = (1f - point.y / scaleY).let { normalizedY ->
-      // Clamp just in case of Swing off-by-one-pixel-mouse-handling issues
-      min(series.size - 1, (normalizedY * series.size).toInt())
-    }
+    val scaleX = width.toDouble()
+    val seriesIndex = seriesIndexAtPoint(point)
     val seriesAtMouse = series[seriesIndex]
     val seriesData = seriesAtMouse.series
-    val min = seriesAtMouse.xRange.min.toFloat()
-    val max = seriesAtMouse.xRange.max.toFloat()
+    val min = seriesAtMouse.xRange.min
+    val max = seriesAtMouse.xRange.max
     val range = max - min
 
     // Convert mouseX into data/series coordinate space
@@ -364,6 +374,12 @@ class StateChart<T>(private val model: StateChartModel<T>,
       seriesData.isEmpty() -> null
       else -> seriesIndex to seriesData.binarySearch { it.x.compareTo(modelMouseX) }
     }
+  }
+
+  private fun seriesIndexAtPoint(point: Point) = (1f - point.y / height.toFloat()).let { normalizedY ->
+    val n = model.series.size
+    // Clamp just in case of Swing off-by-one-pixel-mouse-handling issues
+    min(n - 1, (normalizedY * n).toInt())
   }
 
   private fun renderUnion(container: Any?, containerOffset: Point) {
@@ -382,27 +398,27 @@ class StateChart<T>(private val model: StateChartModel<T>,
   private fun getMouseRectanglesUnion(mousePoint: Point) = seriesIndexAtMouse(mousePoint)?.let { (seriesIndex, i) ->
     val series = model.series[seriesIndex]
     val seriesDataList = series.series
-    val min = series.xRange.min.toFloat()
-    val max = series.xRange.max.toFloat()
+    val min = series.xRange.min
+    val max = series.xRange.max
     val range = max - min
     val seriesSize = model.series.size
-    val scaleX = width.toFloat()
-    val scaleY = height.toFloat()
+    val scaleX = width.toDouble()
+    val scaleY = height.toDouble()
     val (leftIndex, rightIndex) = when (i) {
       in seriesDataList.indices -> max(0, i - 2) to min(i + 2, seriesDataList.size - 1)
       else -> (-i - 1).let { max(0, it - 2) to min(it + 2, seriesDataList.size - 1) }
     }
 
     // Transform the union of the left and right (or range max) index x values back into view space.
-    val modelXLeft = max(min, seriesDataList[leftIndex].x.toFloat())
-    val modelXRight = min(max, seriesDataList[rightIndex].x.toFloat())
+    val modelXLeft = max(min, seriesDataList[leftIndex].x.toDouble())
+    val modelXRight = min(max, seriesDataList[rightIndex].x.toDouble())
     val screenXLeft = floor((modelXLeft - min) * scaleX / range)
     val screenYTop = floor(scaleY - (seriesIndex + 1) * scaleY / seriesSize)
     val screenXRight = ceil((modelXRight - min) * scaleX / range)
     val screenYBottom = ceil(scaleY - seriesIndex * scaleY / seriesSize)
     val screenWidth = screenXRight - screenXLeft
     val screenHeight = screenYBottom - screenYTop
-    Rectangle2D.Float(screenXLeft, screenYTop, screenWidth, screenHeight)
+    Rectangle2D.Float(screenXLeft.toFloat(), screenYTop.toFloat(), screenWidth.toFloat(), screenHeight.toFloat())
   }
 
   companion object {
