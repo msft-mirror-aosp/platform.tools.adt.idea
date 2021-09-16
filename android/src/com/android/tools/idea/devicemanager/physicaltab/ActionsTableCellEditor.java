@@ -156,7 +156,8 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     JPopupMenu menu = new JBPopupMenu();
 
     menu.add(newPairDeviceItem());
-    newUnpairDeviceItem().ifPresent(menu::add);
+    // TODO(http://b/193748564) Removed until the Virtual tab menu updates its items
+    // newUnpairDeviceItem().ifPresent(menu::add);
 
     Component button = myComponent.getMoreButton();
     menu.show(button, 0, button.getHeight());
@@ -186,6 +187,7 @@ final class ActionsTableCellEditor extends AbstractCellEditor implements TableCe
     return item;
   }
 
+  @SuppressWarnings("unused")
   private @NotNull Optional<@NotNull JMenuItem> newUnpairDeviceItem() {
     assert myDevice != null;
     String key = myDevice.getKey().toString();
