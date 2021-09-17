@@ -165,6 +165,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   fun getPairedDevices(deviceID: String): PhoneWearPair? = pairedDevicesTable[deviceID]
 
   suspend fun createPairedDeviceBridge(phone: PairingDevice, phoneDevice: IDevice, wear: PairingDevice, wearDevice: IDevice, connect: Boolean = true) {
+    LOG.warn("Starting device bridge {connect = $connect}")
     removePairedDevices(wear.deviceID, restartWearGmsCore = false)
 
     val hostPort = NetUtils.tryToFindAvailableSocketPort(5602)
@@ -180,6 +181,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
     saveSettings()
 
     if (connect) {
+      LOG.warn("Creating adb bridge")
       phoneDevice.runCatching { createForward(hostPort, 5601) }
       wearDevice.runCatching { createReverse(5601, hostPort) }
 
@@ -202,7 +204,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
       connectedDevices[phoneDeviceID]?.apply {
         LOG.warn("[$name] Remove AUTO-forward")
         runCatching { removeForward(5601) } // Make sure there is no manual connection hanging around
-        runCatching { removeForward(phoneWearPair.hostPort) }
+        runCatching { if (phoneWearPair.hostPort > 0) removeForward(phoneWearPair.hostPort) }
       }
 
       connectedDevices[wearDeviceID]?.apply {
