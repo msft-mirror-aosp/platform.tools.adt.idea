@@ -16,15 +16,13 @@
 package com.android.tools.idea.layoutinspector.pipeline
 
 import com.android.ddmlib.testing.FakeAdbRule
-import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
-import com.android.tools.idea.appinspection.test.TestProcessNotifier
+import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.layoutinspector.LEGACY_DEVICE
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.properties.PropertiesProvider
-import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -34,7 +32,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
 import org.junit.Assert.fail
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.nio.file.Path
@@ -70,7 +67,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun initialInspectorLauncherStartsWithDisconnectedClient() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(adbRule.bridge, processes, listOf(), projectRule.project, disposableRule.disposable,
                                            MoreExecutors.directExecutor())
 
@@ -79,7 +76,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun emptyInspectorLauncherIgnoresProcessChanges() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(adbRule.bridge, processes, listOf(), projectRule.project, disposableRule.disposable,
                                            MoreExecutors.directExecutor())
 
@@ -94,7 +91,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun inspectorLauncherWithNoMatchReturnsDisconnectedClient() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(
       adbRule.bridge,
       processes,
@@ -120,7 +117,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun disposingLauncherDisconnectsAndDisposesActiveClient() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
 
     val launcherDisposable = Disposer.newDisposable()
     var clientWasDisconnected = false
@@ -147,7 +144,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun inspectorLauncherUsesFirstMatchingClient() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
 
     var creatorCount1 = 0
     var creatorCount2 = 0
@@ -205,7 +202,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun inspectorLauncherSkipsOverClientsThatFailToConnect() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
 
     val launcher = InspectorClientLauncher(
       adbRule.bridge,
@@ -244,7 +241,7 @@ class InspectorClientLauncherTest {
 
   @Test
   fun inspectorLauncherWithNoSuccessfulConnectionsReturnsDisconnectedClient() {
-    val processes = ProcessesModel(TestProcessNotifier())
+    val processes = ProcessesModel(TestProcessDiscovery())
 
     val launcher = InspectorClientLauncher(
       adbRule.bridge,
@@ -297,7 +294,7 @@ class InspectorClientLauncherTest {
     val process2 = MODERN_DEVICE.createProcess(pid = 2)
     val deadProcess3 = MODERN_DEVICE.createProcess(pid = 3, isRunning = false)
 
-    val notifier = TestProcessNotifier()
+    val notifier = TestProcessDiscovery()
     val processes = ProcessesModel(notifier) { it.name == process1.name } // Note: This covers all processes as they have the same name
     val launcher = InspectorClientLauncher(
       adbRule.bridge,

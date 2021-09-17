@@ -16,7 +16,7 @@
 package com.android.tools.idea.layoutinspector
 
 import com.android.tools.adtui.workbench.WorkBench
-import com.android.tools.idea.appinspection.api.process.ProcessNotifier
+import com.android.tools.idea.appinspection.api.process.ProcessDiscovery
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.ide.AppInspectionDiscoveryService
 import com.android.tools.idea.appinspection.ide.ui.RecentProcess
@@ -89,7 +89,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
       edtExecutor.execute {
         workbench.hideLoading()
 
-        val processes = createProcessesModel(project, AppInspectionDiscoveryService.instance.apiServices.processNotifier, edtExecutor)
+        val processes = createProcessesModel(project, AppInspectionDiscoveryService.instance.apiServices.processDiscovery, edtExecutor)
         Disposer.register(workbench, processes)
         val model = InspectorModel(project)
         model.setProcessModel(processes)
@@ -118,9 +118,9 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
   }
 
   @VisibleForTesting
-  fun createProcessesModel(project: Project, processNotifier: ProcessNotifier, executor: Executor) = ProcessesModel(
+  fun createProcessesModel(project: Project, processDiscovery: ProcessDiscovery, executor: Executor) = ProcessesModel(
     executor = executor,
-    processNotifier = processNotifier,
+    processDiscovery = processDiscovery,
     isPreferred = { RecentProcess.isRecentProcess(it, project) }
   )
 }
