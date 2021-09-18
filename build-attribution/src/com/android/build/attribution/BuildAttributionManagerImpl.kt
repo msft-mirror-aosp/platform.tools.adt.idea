@@ -34,6 +34,7 @@ import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.utils.FileUtils
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.components.ServiceManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.gradle.tooling.events.ProgressEvent
 import java.util.UUID
@@ -63,6 +64,7 @@ class BuildAttributionManagerImpl(
       analyticsManager.logBuildAttributionPerformanceStats(buildFinishedTimestamp - analyzersProxy.getBuildFinishedTimestamp()) {
         try {
           val attributionData = AndroidGradlePluginAttributionData.load(attributionFileDir)
+          LOG.info("Build succeeded. AGP: ${attributionData?.buildInfo?.agpVersion} ConfigurationCaching: ${attributionData?.buildInfo?.configurationCacheIsOn}")
           val pluginsData = ServiceManager.getService(KnownGradlePluginsService::class.java).gradlePluginsData
           val studioProvidedInfo = StudioProvidedInfo.fromProject(project, buildRequestHolder)
           analyzersWrapper.onBuildSuccess(attributionData, pluginsData, analyzersProxy, studioProvidedInfo)
@@ -100,3 +102,5 @@ class BuildAttributionManagerImpl(
   override fun shouldShowBuildOutputLink(): Boolean = !ConfigurationCacheTestBuildFlowRunner.getInstance(project)
     .runningFirstConfigurationCacheBuild
 }
+
+private val LOG: Logger = Logger.getInstance(BuildAttributionManagerImpl::class.java)
