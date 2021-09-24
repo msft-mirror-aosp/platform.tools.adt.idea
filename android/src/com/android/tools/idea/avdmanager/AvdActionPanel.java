@@ -122,7 +122,12 @@ public class AvdActionPanel extends JPanel implements AvdUiAction.AvdInfoProvide
       // Add extra items to the overflow menu
       if (errorState || numVisibleActions != -1 && visibleActionCount >= numVisibleActions) {
         JBMenuItem menuItem = new JBMenuItem(action);
-        myOverflowMenu.add(menuItem);
+        if (action instanceof Separator) {
+          myOverflowMenu.addSeparator();
+        }
+        else {
+          myOverflowMenu.add(menuItem);
+        }
         actionLabel = menuItem;
       }
       else {
@@ -143,7 +148,7 @@ public class AvdActionPanel extends JPanel implements AvdUiAction.AvdInfoProvide
       .show(myOverflowMenuButton, myOverflowMenuButton.getX() - myOverflowMenu.getPreferredSize().width, myOverflowMenuButton.getY()));
     addKeyListener(new KeyAdapter() {
       @Override
-      public void keyTyped(KeyEvent e) {
+      public void keyPressed(KeyEvent e) {
         if (e.getKeyChar() == KeyEvent.VK_ENTER || e.getKeyChar() == KeyEvent.VK_SPACE) {
           runFocusedAction();
         }
@@ -163,6 +168,9 @@ public class AvdActionPanel extends JPanel implements AvdUiAction.AvdInfoProvide
 
     if (StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.get() && isWearOrPhone(myAvdInfo)) {
       actionList.add(new PairDeviceAction(this, logDeviceManagerEvents));
+      // TODO(http://b/193748564) Removed until the Virtual tab menu updates its items
+      // actionList.add(new UnpairDeviceAction(this, logDeviceManagerEvents));
+      actionList.add(new Separator(this));
     }
 
     actionList.add(new DuplicateAvdAction(this, logDeviceManagerEvents));
@@ -180,6 +188,7 @@ public class AvdActionPanel extends JPanel implements AvdUiAction.AvdInfoProvide
       actionList.add(new AvdSummaryAction(this));
     }
 
+    actionList.add(new Separator(this));
     actionList.add(new DeleteAvdAction(this, logDeviceManagerEvents));
     actionList.add(new StopAvdAction(this, logDeviceManagerEvents));
 
@@ -218,8 +227,23 @@ public class AvdActionPanel extends JPanel implements AvdUiAction.AvdInfoProvide
     myOverflowMenu.show(c, e.getX(), e.getY());
   }
 
-  public void runFocusedAction() {
+  private void runFocusedAction() {
     myVisibleComponents.get(myFocusedComponent).doClick();
+  }
+
+  public int getFocusedComponent() {
+    return myFocusedComponent;
+  }
+
+  public void setFocusedComponent(int focusedComponent) {
+    assert 0 <= focusedComponent && focusedComponent < myVisibleComponents.size();
+
+    myFocusedComponent = focusedComponent;
+    myFocused = true;
+  }
+
+  public int getVisibleComponentCount() {
+    return myVisibleComponents.size();
   }
 
   public boolean cycleFocus(boolean backward) {

@@ -24,8 +24,10 @@ import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatisti
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyClient
+import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import org.jetbrains.annotations.TestOnly
 import java.util.concurrent.CountDownLatch
@@ -45,6 +47,7 @@ import java.util.concurrent.TimeUnit
 class InspectorClientLauncher(private val adb: AndroidDebugBridge,
                               private val processes: ProcessesModel,
                               private val clientCreators: List<(Params) -> InspectorClient?>,
+                              private val project: Project,
                               private val parentDisposable: Disposable,
                               @VisibleForTesting val executor: Executor = AndroidExecutors.getInstance().workerThreadExecutor) {
   companion object {
@@ -65,14 +68,15 @@ class InspectorClientLauncher(private val adb: AndroidDebugBridge,
         listOf(
           { params ->
             if (params.process.device.apiLevel >= AndroidVersion.VersionCodes.Q) {
-              AppInspectionInspectorClient(params.adb, params.process, model, stats, parentDisposable)
+              AppInspectionInspectorClient(params.adb, params.process, params.isInstantlyAutoConnected, model, stats, parentDisposable)
             }
             else {
               null
             }
           },
-          { params -> LegacyClient(params.adb, params.process, model, stats, parentDisposable) }
+          { params -> LegacyClient(params.adb, params.process, params.isInstantlyAutoConnected, model, stats, parentDisposable) }
         ),
+        model.project,
         parentDisposable)
     }
   }
@@ -80,12 +84,13 @@ class InspectorClientLauncher(private val adb: AndroidDebugBridge,
   interface Params {
     val adb: AndroidDebugBridge
     val process: ProcessDescriptor
+    val isInstantlyAutoConnected: Boolean
     val disposable: Disposable
   }
 
   init {
     processes.addSelectedProcessListeners(executor) {
-      handleProcess(processes.selectedProcess)
+      handleProcess(processes.selectedProcess, processes.isAutoConnected)
     }
 
     Disposer.register(parentDisposable) {
@@ -93,12 +98,13 @@ class InspectorClientLauncher(private val adb: AndroidDebugBridge,
     }
   }
 
-  private fun handleProcess(process: ProcessDescriptor?) {
+  private fun handleProcess(process: ProcessDescriptor?, isInstantlyAutoConnected: Boolean) {
     var validClientConnected = false
     if (process != null && process.isRunning && enabled) {
       val params = object : Params {
         override val adb: AndroidDebugBridge = this@InspectorClientLauncher.adb
         override val process: ProcessDescriptor = process
+        override val isInstantlyAutoConnected: Boolean = isInstantlyAutoConnected
         override val disposable: Disposable = parentDisposable
       }
 
@@ -128,7 +134,16 @@ class InspectorClientLauncher(private val adb: AndroidDebugBridge,
     }
 
     if (!validClientConnected) {
+      val bannerService = InspectorBannerService.getInstance(project)
+      // Save the banner so we can put it back after it's cleared by the client change, to show the error that made us disconnect.
+      val currentBanner = bannerService.notification
       activeClient = DisconnectedClient
+      if (enabled) {
+        // If we're enabled, don't show the process as selected anymore. If we're not (the window is minimized), we'll try to reconnect
+        // when we're reenabled, so leave the process selected.
+        processes.selectedProcess = null
+      }
+      bannerService.notification = currentBanner
     }
   }
 
@@ -167,7 +182,7 @@ class InspectorClientLauncher(private val adb: AndroidDebugBridge,
 
             if (runningProcess != null) {
               processes.selectedProcess = runningProcess // As a side effect, will ensure the pulldown is updated
-              executor.execute { handleProcess(processes.selectedProcess) }
+              executor.execute { handleProcess(processes.selectedProcess, isInstantlyAutoConnected = false) }
             }
           }
         }

@@ -23,10 +23,15 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.scale.JBUIScale;
 import java.awt.Color;
 import java.awt.Component;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 import javax.swing.AbstractButton;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Group;
 import javax.swing.JTable;
+import javax.swing.border.Border;
 import org.jetbrains.annotations.NotNull;
 
 final class ActionsComponent extends JBPanel<ActionsComponent> {
@@ -97,7 +102,11 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
     return myMoreButton;
   }
 
-  @NotNull Component getTableCellComponent(@NotNull JTable table, boolean selected, boolean focused, int viewRowIndex) {
+  @NotNull Component getTableCellComponent(@NotNull JTable table,
+                                           boolean selected,
+                                           boolean focused,
+                                           int viewRowIndex,
+                                           @NotNull BiFunction<@NotNull Boolean, @NotNull Boolean, @NotNull Border> getBorder) {
     boolean online = ((PhysicalDeviceTable)table).getDeviceAt(viewRowIndex).isOnline();
     Color foreground = Tables.getForeground(table, selected);
 
@@ -113,8 +122,58 @@ final class ActionsComponent extends JBPanel<ActionsComponent> {
     myMoreButton.setSelectedInTableCell(selected);
 
     setBackground(Tables.getBackground(table, selected));
-    setBorder(Tables.getBorder(selected, focused));
+    setBorder(getBorder.apply(selected, focused));
 
     return this;
+  }
+
+  @NotNull Optional<@NotNull Component> getFirstEnabledComponent(int startIndex) {
+    return IntStream.range(startIndex, getComponentCount())
+      .mapToObj(this::getComponent)
+      .filter(Component::isEnabled)
+      .findFirst();
+  }
+
+  @NotNull Optional<@NotNull Component> getLastEnabledComponent(int startIndex) {
+    for (int j = startIndex; j >= 0; j--) {
+      Component component = getComponent(j);
+
+      if (!component.isEnabled()) {
+        continue;
+      }
+
+      return Optional.of(component);
+    }
+
+    return Optional.empty();
+  }
+
+  @NotNull Optional<@NotNull Component> getFirstEnabledComponentAfterFocusOwner() {
+    OptionalInt index = indexOfFocusOwner();
+
+    if (!index.isPresent()) {
+      return Optional.empty();
+    }
+
+    return getFirstEnabledComponent(index.getAsInt() + 1);
+  }
+
+  @NotNull Optional<@NotNull Component> getFirstEnabledComponentBeforeFocusOwner() {
+    int i = getComponentCount() - 1;
+
+    for (; i >= 0; i--) {
+      if (getComponent(i).isFocusOwner()) {
+        break;
+      }
+    }
+
+    assert i >= 0;
+    return getLastEnabledComponent(i - 1);
+  }
+
+  @NotNull OptionalInt indexOfFocusOwner() {
+    return IntStream.range(0, getComponentCount())
+      .filter(index -> getComponent(index).isFocusOwner())
+      .findFirst();
   }
 }

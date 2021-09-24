@@ -53,9 +53,15 @@ internal class PairDeviceAction(
     WearDevicePairingWizard().show(project, avdInfo.toPairingDevice(avdInfo.name, false))
   }
 
-  override fun isEnabled(): Boolean {
-    val avdInfo = avdInfo ?: return false
-    return avdInfo.tag == SystemImage.WEAR_TAG || (avdInfo.androidVersion.apiLevel >= 30 && avdInfo.hasPlayStore())
+  override fun isEnabled(): Boolean = isEnabled(avdInfo)
+
+  companion object {
+    // TODO: Move PairDeviceAction.Companion::isEnabled to a third class in this package and make PairDeviceAction and UnpairDeviceAction
+    //  call it
+    fun isEnabled(avdInfo: AvdInfo?): Boolean {
+      avdInfo ?: return false
+      return avdInfo.tag == SystemImage.WEAR_TAG || (avdInfo.androidVersion.apiLevel >= 30 && avdInfo.hasPlayStore())
+    }
   }
 }
 

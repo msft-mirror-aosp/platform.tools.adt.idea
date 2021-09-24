@@ -74,8 +74,8 @@ class DeviceMenuAction2Test {
       prettyPrintActions(menuAction, { action: AnAction -> !isAvdAction(action) }, presentationFactory)
     }
     val expected = """
-    Window Size
-    Phone (360 × 640 dp, xxhdpi)
+    Reference Devices
+    Phone (411 × 891 dp, xxhdpi)
     Foldable (674 × 841 dp, xxhdpi)
     Tablet (1280 × 800 dp, xxhdpi)
     Desktop (1920 × 1080 dp, xxhdpi)
@@ -92,6 +92,11 @@ class DeviceMenuAction2Test {
         Pixel 2 XL (411 × 823 dp, 560dpi)
         Pixel (411 × 731 dp, 420dpi)
         Pixel XL (411 × 731 dp, 560dpi)
+        Pixel C (1280 × 900 dp, xhdpi)
+        Nexus 10 (1280 × 800 dp, xhdpi)
+        Nexus 9 (1024 × 768 dp, xhdpi)
+        Nexus 7 (600 × 960 dp, xhdpi)
+        Nexus 7 (2012) (601 × 962 dp, hdpi)
         Nexus 6 (411 × 731 dp, 560dpi)
         Nexus 6P (411 × 731 dp, 560dpi)
         Nexus 5X (411 × 731 dp, 420dpi)
@@ -119,11 +124,11 @@ class DeviceMenuAction2Test {
         3.7" WVGA (Nexus One) (320 × 533 dp, hdpi)
         3.7" FWVGA slider (320 × 569 dp, hdpi)
         4" WVGA (Nexus S) (320 × 533 dp, hdpi)
-        Phone (360 × 640 dp, xxhdpi)
         4.65" 720p (Galaxy Nexus) (360 × 640 dp, xhdpi)
         4.7" WXGA (640 × 360 dp, xhdpi)
         5.1" WVGA (480 × 800 dp, mdpi)
         5.4" FWVGA (480 × 854 dp, mdpi)
+        Phone (411 × 891 dp, xxhdpi)
         6.7" Horizontal Fold-in (360 × 879 dp, xxhdpi)
         Foldable (674 × 841 dp, xxhdpi)
         7" WSVGA (Tablet) (1024 × 600 dp, mdpi)

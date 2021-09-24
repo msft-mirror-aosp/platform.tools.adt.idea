@@ -34,6 +34,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.plugins.gradle.util.GradleUtil
 
 /**
  * LaunchTasksProvider that provides GradleAndroidTestApplicationLaunchTasks for instrumentation tests
@@ -52,7 +53,14 @@ class GradleAndroidTestApplicationLaunchTasksProvider(private val myRunConfig: A
   private val myApplicationIdProvider: ApplicationIdProvider = applicationIdProvider
   private val myLaunchOptions: LaunchOptions = launchOptions
   private val myProject: Project = facet.module.project
-  private val myGradleConnectedAndroidTestInvoker: GradleConnectedAndroidTestInvoker = GradleConnectedAndroidTestInvoker(myRunConfig.getNumberOfSelectedDevices(facet))
+  private val myGradleConnectedAndroidTestInvoker: GradleConnectedAndroidTestInvoker =
+    GradleConnectedAndroidTestInvoker(
+      myRunConfig.getNumberOfSelectedDevices(facet),
+      myEnv,
+      requireNotNull(myRunConfig.configurationModule.module?.let {
+        GradleUtil.findGradleModuleData(it)?.data
+      })
+    )
   private val myTestingType: Int = testingType
   private val myPackageName: String = packageName
   private val myClassName: String = className

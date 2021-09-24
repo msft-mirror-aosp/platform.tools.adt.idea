@@ -36,11 +36,13 @@ import com.android.sdklib.repository.targets.SystemImage.PLAY_STORE_TAG
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.file.someRoot
+import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.app.inspection.AppInspection
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.avdmanager.AvdManagerConnection
+import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.layoutinspector.InspectorClientProvider
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
@@ -49,6 +51,7 @@ import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.ViewNode
+import com.android.tools.idea.layoutinspector.pipeline.ConnectionFailedException
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMonitor
@@ -60,16 +63,25 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PRO
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors.sendEvent
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewLayoutInspectorClient
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
+import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
+import com.android.tools.idea.project.AndroidRunConfigurations
 import com.android.tools.idea.protobuf.ByteString
+import com.android.tools.idea.run.AndroidRunConfiguration
+import com.android.tools.idea.testing.addManifest
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo
+import com.intellij.execution.RunManager
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
+import com.intellij.ui.HyperlinkLabel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol.ProgressEvent.ProgressCheckpoint.START_RECEIVED
+import org.jetbrains.android.facet.AndroidFacet
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -79,32 +91,40 @@ import java.nio.file.Path
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertFailsWith
+import javax.swing.JPanel
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol as ComposeProtocol
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol as ViewProtocol
 
 private val MODERN_PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
+private val OTHER_MODERN_PROCESS = MODERN_DEVICE.createProcess(name = "com.other", streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 /** Timeout used in this test. While debugging, you may want to extend the timeout */
 private const val TIMEOUT = 1L
 private val TIMEOUT_UNIT = TimeUnit.SECONDS
 
 class AppInspectionInspectorClientTest {
-  val monitor = mock<InspectorClientLaunchMonitor>()
+  private val monitor = mock<InspectorClientLaunchMonitor>()
+  private var preferredProcess: ProcessDescriptor? = MODERN_PROCESS
 
   private val disposableRule = DisposableRule()
   private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
   private val inspectorRule = LayoutInspectorRule(object : InspectorClientProvider {
     override fun create(params: InspectorClientLauncher.Params, inspector: LayoutInspector): InspectorClient {
-      return AppInspectionInspectorClient(params.adb, params.process, inspector.layoutInspectorModel, inspector.stats,
-                                          disposableRule.disposable, inspectionRule.inspectionService.apiServices,
+      return AppInspectionInspectorClient(params.adb, params.process, params.isInstantlyAutoConnected, inspector.layoutInspectorModel,
+                                          inspector.stats, disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                           inspectionRule.inspectionService.scope).apply {
         launchMonitor = monitor
       }
     }
-  }) { it.name == MODERN_PROCESS.name }
+  }) { it == preferredProcess}
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(disposableRule)!!
+
+  @Before
+  fun before() {
+    inspectorRule.projectRule.replaceService(PropertiesComponent::class.java, PropertiesComponentMock())
+  }
 
   @Test
   fun clientCanConnectDisconnectAndReconnect() {
@@ -205,6 +225,22 @@ class AppInspectionInspectorClientTest {
     assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
     // No other attributes were modified
     assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(2)
+  }
+
+  @Test
+  fun testViewDebugAttributesApplicationUntouchedIfAlreadySet() {
+    inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
+
+    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
+    assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isEqualTo(MODERN_PROCESS.name)
+
+    // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy way to wait for the disconnect to
+    // happen on a background thread
+    inspectorRule.launcher.disconnectActiveClient()
+    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
+    assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isEqualTo(MODERN_PROCESS.name)
   }
 
   @Test
@@ -490,6 +526,116 @@ class AppInspectionInspectorClientTest {
     assertThat(banner.text.text).isEqualTo("here's my error")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
   }
+
+  @Test
+  fun testActivityRestartBannerShown() {
+    setUpRunConfiguration()
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    verifyActivityRestartBanner(banner, runConfigActionExpected = true)
+  }
+
+  @Test
+  fun testNoActivityRestartBannerShownIfOptedOut() {
+    setUpRunConfiguration()
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    PropertiesComponent.getInstance().setValue(KEY_HIDE_ACTIVITY_RESTART_BANNER, true)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    assertThat(banner.isVisible).isFalse()
+  }
+
+  @Test
+  fun testOptOutOfActivityRestartBanner() {
+    setUpRunConfiguration()
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    val actionPanel = banner.components[1] as JPanel
+    val doNotShowAction = actionPanel.components[1] as HyperlinkLabel
+    doNotShowAction.doClick()
+    assertThat(PropertiesComponent.getInstance().getBoolean(KEY_HIDE_ACTIVITY_RESTART_BANNER)).isTrue()
+  }
+
+  @Test
+  fun testNoActivityRestartBannerShownDuringAutoConnect() {
+    setUpRunConfiguration()
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    assertThat(banner.isVisible).isFalse()
+  }
+
+  @Test
+  fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() {
+    inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
+    setUpRunConfiguration()
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    assertThat(banner.isVisible).isFalse()
+  }
+
+  @Test
+  fun testActivityRestartBannerShownIfRunConfigAreAlreadySetButAttributeIsMissing() {
+    setUpRunConfiguration(enableInspectionWithoutRestart = true)
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    verifyActivityRestartBanner(banner, runConfigActionExpected = false)
+  }
+
+  @Test
+  fun testActivityRestartBannerShownFromOtherAppProcess() {
+    setUpRunConfiguration()
+    preferredProcess = null
+    inspectorRule.attachDevice(OTHER_MODERN_PROCESS.device)
+    val banner = InspectorBanner(inspectorRule.project)
+    inspectorRule.processNotifier.fireConnected(OTHER_MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = OTHER_MODERN_PROCESS
+    verifyActivityRestartBanner(banner, runConfigActionExpected = false)
+  }
+
+  private fun setUpRunConfiguration(enableInspectionWithoutRestart: Boolean = false) {
+    addManifest(inspectorRule.projectRule.fixture)
+    AndroidRunConfigurations.getInstance().createRunConfiguration(AndroidFacet.getInstance(inspectorRule.projectRule.module)!!)
+    if (enableInspectionWithoutRestart) {
+      val runManager = RunManager.getInstance(inspectorRule.project)
+      val config = runManager.allConfigurationsList.filterIsInstance<AndroidRunConfiguration>().firstOrNull { it.name == "app" }
+      config!!.INSPECTION_WITHOUT_ACTIVITY_RESTART = true
+    }
+  }
+
+  private fun verifyActivityRestartBanner(banner: InspectorBanner, runConfigActionExpected: Boolean) {
+    assertThat(banner.isVisible).isTrue()
+    assertThat(banner.text.text).isEqualTo("The activity was restarted. This can be avoided by enabling " +
+                                           "\"Connect without restarting activity\" in the run configuration options.")
+    val service = InspectorBannerService.getInstance(inspectorRule.project)
+    service.DISMISS_ACTION.actionPerformed(mock())
+    val actionPanel = banner.getComponent(1) as JPanel
+    if (runConfigActionExpected) {
+      assertThat(actionPanel.componentCount).isEqualTo(3)
+      assertThat((actionPanel.components[0] as HyperlinkLabel).text).isEqualTo("Open Run Configuration")
+      assertThat((actionPanel.components[1] as HyperlinkLabel).text).isEqualTo("Don't Show Again")
+      assertThat((actionPanel.components[2] as HyperlinkLabel).text).isEqualTo("Dismiss")
+    }
+    else {
+      assertThat(actionPanel.componentCount).isEqualTo(2)
+      assertThat((actionPanel.components[0] as HyperlinkLabel).text).isEqualTo("Don't Show Again")
+      assertThat((actionPanel.components[1] as HyperlinkLabel).text).isEqualTo("Dismiss")
+    }
+  }
 }
 
 class AppInspectionInspectorClientWithUnsupportedApi29 {
@@ -522,8 +668,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor2, model(projectRule.project) {}, mock(),
-                                                disposableRule.disposable, mock(), sdkHandler = sdkHandler)
+      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor2, isInstantlyAutoConnected = false, model(projectRule.project) {},
+                                                mock(), disposableRule.disposable, mock(), sdkHandler = sdkHandler)
       // shouldn't get an exception
       client.connect()
     })
@@ -546,9 +692,10 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor, model(projectRule.project) {}, mock(),
-                                                disposableRule.disposable, mock(), sdkHandler = sdkHandler)
-      assertFailsWith<ConnectionFailedException> { client.connect() }
+      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor, isInstantlyAutoConnected = false, model(projectRule.project) {},
+                                                mock(), disposableRule.disposable, mock(), sdkHandler = sdkHandler)
+      client.connect()
+      waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }
       assertThat(banner.isVisible).isTrue()
       assertThat(banner.text.text).isEqualTo(API_29_BUG_MESSAGE)
     })
@@ -562,9 +709,10 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     val remotePackage = setUpSdkPackage(sdkRoot, minRevision, 29, tag, true) as RemotePackage
     packages.setRemotePkgInfos(listOf(remotePackage))
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor, model(projectRule.project) {}, mock(),
-                                                disposableRule.disposable, mock(), sdkHandler = sdkHandler)
-      assertFailsWith<ConnectionFailedException> { client.connect() }
+      val client = AppInspectionInspectorClient(adbRule.bridge, processDescriptor, isInstantlyAutoConnected = false, model(projectRule.project) {},
+                                                mock(), disposableRule.disposable, mock(), sdkHandler = sdkHandler)
+      client.connect()
+      waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }
       assertThat(banner.isVisible).isTrue()
       assertThat(banner.text.text).isEqualTo("$API_29_BUG_MESSAGE $API_29_BUG_UPGRADE")
     })

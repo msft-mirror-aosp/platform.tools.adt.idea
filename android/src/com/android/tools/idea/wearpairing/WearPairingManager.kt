@@ -16,6 +16,8 @@
 package com.android.tools.idea.wearpairing
 
 import com.android.annotations.concurrency.Slow
+import com.android.annotations.concurrency.UiThread
+import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.CollectingOutputReceiver
 import com.android.ddmlib.EmulatorConsole
@@ -24,6 +26,7 @@ import com.android.ddmlib.IDevice.HardwareFeature
 import com.android.ddmlib.NullOutputReceiver
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.repository.targets.SystemImage
+import com.android.tools.idea.AndroidStartupActivity
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -32,15 +35,18 @@ import com.android.tools.idea.ddms.DevicePropertyUtil.getModel
 import com.android.tools.idea.observable.core.OptionalProperty
 import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink
+import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.wearpairing.GmscoreHelper.refreshEmulatorConnection
 import com.google.common.util.concurrent.Futures
 import com.google.wireless.android.sdk.stats.WearPairingEvent
 import com.intellij.notification.NotificationType.INFORMATION
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.util.concurrency.NonUrgentExecutor
 import com.intellij.util.net.NetUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -51,7 +57,7 @@ import org.jetbrains.android.util.AndroidBundle.message
 
 private val LOG get() = logger<WearPairingManager>()
 
-object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
+object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener, AndroidStartupActivity {
   private val updateDevicesChannel = Channel<Unit>(Channel.CONFLATED)
 
   private var runningJob: Job? = null
@@ -66,6 +72,39 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   )
 
   private val pairedDevicesTable = hashMapOf<String, PhoneWearPair>()
+
+  private fun isTestMode(): Boolean =
+    ApplicationManager.getApplication()?.isUnitTestMode != false || GuiTestingService.getInstance().isGuiTestingMode
+
+  @UiThread
+  override fun runActivity(project: Project, disposable: Disposable) {
+    // TODO: Disabled on BumbleBee for being deemed risky
+    // NonUrgentExecutor.getInstance().execute {
+    //   synchronized(this) {
+    //     if (runningJob == null) {
+    //       loadSettings()
+    //     }
+    //   }
+    // }
+  }
+
+  @WorkerThread
+  private fun loadSettings() {
+    if (isTestMode()) return
+    ApplicationManager.getApplication().assertIsNonDispatchThread()
+
+    WearPairingSettings.getInstance().apply {
+      loadSettings(pairedDevicesState, pairedDeviceConnectionsState)
+    }
+
+    val wizardAction = object : WizardAction {
+      override fun restart(project: Project) {
+        WearDevicePairingWizard().show(project, null)
+      }
+    }
+    // Launch WearPairingManager
+    setDeviceListListener(WearDevicePairingModel(), wizardAction)
+  }
 
   internal fun loadSettings(pairedDevices: List<PairingDeviceState>, pairedDeviceConnections: List<PairingConnectionsState>) {
     pairedDevicesTable.clear()
@@ -88,6 +127,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   }
 
   private fun saveSettings() {
+    if (isTestMode()) return
     val pairedDevicesState = mutableListOf<PairingDeviceState>()
     val pairedDeviceConnectionsState = ArrayList<PairingConnectionsState>()
 
@@ -137,6 +177,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   fun getPairedDevices(deviceID: String): PhoneWearPair? = pairedDevicesTable[deviceID]
 
   suspend fun createPairedDeviceBridge(phone: PairingDevice, phoneDevice: IDevice, wear: PairingDevice, wearDevice: IDevice, connect: Boolean = true) {
+    LOG.warn("Starting device bridge {connect = $connect}")
     removePairedDevices(wear.deviceID, restartWearGmsCore = false)
 
     val hostPort = NetUtils.tryToFindAvailableSocketPort(5602)
@@ -152,6 +193,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
     saveSettings()
 
     if (connect) {
+      LOG.warn("Creating adb bridge")
       phoneDevice.runCatching { createForward(hostPort, 5601) }
       wearDevice.runCatching { createReverse(5601, hostPort) }
 
@@ -174,7 +216,7 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
       connectedDevices[phoneDeviceID]?.apply {
         LOG.warn("[$name] Remove AUTO-forward")
         runCatching { removeForward(5601) } // Make sure there is no manual connection hanging around
-        runCatching { removeForward(phoneWearPair.hostPort) }
+        runCatching { if (phoneWearPair.hostPort > 0) removeForward(phoneWearPair.hostPort) }
       }
 
       connectedDevices[wearDeviceID]?.apply {

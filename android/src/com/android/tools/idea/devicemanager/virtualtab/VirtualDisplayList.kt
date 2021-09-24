@@ -18,15 +18,12 @@ package com.android.tools.idea.devicemanager.virtualtab
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.AccelerationErrorNotificationPanel
-import com.android.tools.idea.avdmanager.ApiLevelComparator
-import com.android.tools.idea.avdmanager.AvdActionPanel
 import com.android.tools.idea.avdmanager.AvdActionPanel.AvdRefreshProvider
 import com.android.tools.idea.avdmanager.AvdDisplayList
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.AvdUiAction.AvdInfoProvider
 import com.android.tools.idea.avdmanager.DeleteAvdAction
-import com.android.tools.idea.avdmanager.EditAvdAction
-import com.android.tools.idea.avdmanager.RunAvdAction
+import com.android.tools.idea.devicemanager.ActionsTableCellEditorMouseMotionListener
 import com.android.tools.idea.devicemanager.virtualtab.columns.AvdActionsColumnInfo
 import com.android.tools.idea.devicemanager.virtualtab.columns.AvdDeviceColumnInfo
 import com.android.tools.idea.devicemanager.virtualtab.columns.SizeOnDiskColumn
@@ -43,13 +40,9 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import org.jetbrains.annotations.TestOnly
 import java.awt.BorderLayout
-import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.swing.AbstractAction
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -97,31 +90,25 @@ class VirtualDisplayList @TestOnly constructor(
       selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
       selectionModel.addListSelectionListener(this)
 
-      val adapter = avdActionPanelMouseAdapter()
+      addMouseMotionListener(ActionsTableCellEditorMouseMotionListener(table))
 
-      addMouseListener(adapter)
-      addMouseMotionListener(adapter)
+      val map = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+      map.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteAvd")
+      map.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "deleteAvd")
+    }
 
-      addMouseListener(LaunchListener())
-      getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).apply {
-        put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter")
-        put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "enter")
-        put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteAvd")
-        put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "deleteAvd")
-      }
-    }
-    table.actionMap.apply {
-      // put("selectPreviousColumnCell", CycleAction(true))
-      // put("selectNextColumnCell", CycleAction(false))
-      put("deleteAvd", DeleteAvdAction(this@VirtualDisplayList, false))
-      put("enter", object : AbstractAction() {
-        override fun actionPerformed(e: ActionEvent) {
-          doAction()
-        }
-      })
-    }
+    val map = table.actionMap
+
+    map.put("deleteAvd", DeleteAvdAction(this, false))
+    map.put("selectNextColumn", SelectNextColumnAction())
+    map.put("selectNextColumnCell", SelectNextColumnCellAction())
+    map.put("selectNextRow", SelectNextRowAction())
+    map.put("selectPreviousColumn", SelectPreviousColumnAction())
+    map.put("selectPreviousColumnCell", SelectPreviousColumnCellAction())
+    map.put("selectPreviousRow", SelectPreviousRowAction())
 
     tableModel.columnInfos = newColumns().toArray(ColumnInfo.EMPTY_ARRAY)
+    table.setRowSorter()
     refreshAvds()
   }
 
@@ -178,73 +165,12 @@ class VirtualDisplayList @TestOnly constructor(
     return tableModel.items
   }
 
-  private fun avdActionPanelMouseAdapter(): MouseAdapter = object : MouseAdapter() {
-    override fun mouseMoved(e: MouseEvent) {
-      possiblySwitchEditors(e)
-    }
-
-    override fun mouseEntered(e: MouseEvent) {
-      possiblySwitchEditors(e)
-    }
-
-    override fun mouseExited(e: MouseEvent) {
-      possiblySwitchEditors(e)
-    }
-
-    override fun mouseClicked(e: MouseEvent) {
-      possiblySwitchEditors(e)
-    }
-
-    override fun mousePressed(e: MouseEvent) {
-      possiblyShowPopup(e)
-    }
-
-    override fun mouseReleased(e: MouseEvent) {
-      possiblyShowPopup(e)
-    }
-  }
-
-  private fun possiblySwitchEditors(e: MouseEvent) {
-    val p = e.point
-    val row = table.rowAtPoint(p)
-    val col = table.columnAtPoint(p)
-    if (row != table.editingRow || col != table.editingColumn) {
-      if ((row != -1) && (col != -1) && table.isCellEditable(row, col)) {
-        table.editCellAt(row, col)
-      }
-    }
-  }
-
-  private fun possiblyShowPopup(e: MouseEvent) {
-    if (!e.isPopupTrigger) {
-      return
-    }
-    val p = e.point
-    val row = table.rowAtPoint(p)
-    val col = table.columnAtPoint(p)
-    if (row != -1 && col != -1) {
-      val lastColumn = table.columnCount - 1
-      val maybeActionPanel = table.getCellRenderer(row, lastColumn).getTableCellRendererComponent(
-        table, table.getValueAt(row, lastColumn), false, true, row, lastColumn
-      )
-      if (maybeActionPanel is AvdActionPanel) {
-        maybeActionPanel.showPopup(table, e)
-      }
-    }
-  }
-
   // needs an initialized table
   fun newColumns(): Collection<ColumnInfo<AvdInfo, *>> {
     return listOf(
       AvdDeviceColumnInfo("Device", deviceTableCellRenderer),
       object : AvdDisplayList.AvdColumnInfo("API") {
         override fun valueOf(avdInfo: AvdInfo): String = avdInfo.androidVersion.apiString
-
-        /**
-         * We override the comparator here to sort the API levels numerically (when possible;
-         * with preview platforms codenames are compared alphabetically)
-         */
-        override fun getComparator(): Comparator<AvdInfo> = Comparator.comparing(this::valueOf, ApiLevelComparator()).reversed()
       },
       SizeOnDiskColumn(table),
       AvdActionsColumnInfo("Actions", project != null, this)
@@ -275,25 +201,6 @@ class VirtualDisplayList @TestOnly constructor(
           logger.warn("Check for emulation acceleration failed", t)
         }
       }, EdtExecutorService.getInstance())
-  }
-
-  private inner class LaunchListener : MouseAdapter() {
-    override fun mouseClicked(e: MouseEvent) {
-      if (e.clickCount == 2) {
-        doAction()
-      }
-    }
-  }
-
-  private fun doAction() {
-    val info = avdInfo ?: return
-
-    if (info.status == AvdInfo.AvdStatus.OK) {
-      RunAvdAction(this, false).actionPerformed(null)
-    }
-    else {
-      EditAvdAction(this, false).actionPerformed(null)
-    }
   }
 
   inner class ModelListener(private val latch: CountDownLatch?) : VirtualDeviceModel.VirtualDeviceModelListener {

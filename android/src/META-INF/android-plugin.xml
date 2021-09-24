@@ -928,9 +928,9 @@
   <extensions defaultExtensionNs="com.android">
     <androidStartupActivity implementation="org.jetbrains.android.CompilerManagerAndroidStartupActivity" />
     <androidStartupActivity implementation="org.jetbrains.android.AndroidResourceFileListenerAndroidStartupActivity" />
-    <androidStartupActivity implementation="com.android.tools.idea.wearpairing.WearPairingAndroidStartupActivity" />
     <androidStartupActivity implementation="org.jetbrains.android.CreateAlarmForAutoGenerationAndroidStartupActivity" />
     <androidStartupActivity implementation="com.android.tools.idea.gradle.util.LastBuildOrSyncStartupActivity" />
+    <androidStartupActivity implementation="com.android.tools.idea.wearpairing.WearPairingManager" />
   </extensions>
   <extensions defaultExtensionNs="com.android.gradle.sync">
     <postSyncProjectSetupStep implementation="com.android.tools.idea.gradle.project.sync.setup.post.project.MissingPlatformsSetupStep"/>

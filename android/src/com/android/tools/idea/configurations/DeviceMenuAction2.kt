@@ -19,6 +19,7 @@ import com.android.ide.common.rendering.HardwareConfigHelper
 import com.android.sdklib.devices.Device
 import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.idea.avdmanager.AvdScreenData
+import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
@@ -28,6 +29,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.actionSystem.impl.ActionMenuItem
 import com.intellij.openapi.ui.JBPopupMenu
 import icons.StudioIcons
 import org.jetbrains.android.actions.RunAndroidAvdManagerAction
@@ -36,6 +38,18 @@ import javax.swing.Icon
 import kotlin.math.roundToInt
 
 private val PIXEL_DEVICE_COMPARATOR = PixelDeviceComparator(VarianceComparator.reversed()).reversed()
+
+internal val DEVICE_ID_TO_TOOLTIPS = mapOf(
+  "_device_class_phone" to "This reference device uses the COMPACT width size class, " +
+    "which represents 99% of Android phones in portrait orientation.",
+  "_device_class_foldable" to "This reference device uses the MEDIUM width size class," +
+    " which represents foldables in unfolded portrait orientation," +
+    " or 94% of all tablets in portrait orientation.",
+  "_device_class_tablet" to "This reference device uses the EXPANDED width size class," +
+    " which represents 97% of Android tablets in landscape orientation.",
+  "_device_class_desktop" to "This reference device uses the EXPANDED width size class," +
+    " which represents 97% of Android tablets in landscape orientation."
+)
 
 /**
  * New device menu for layout editor.
@@ -50,6 +64,14 @@ class DeviceMenuAction2(private val renderContext: ConfigurationHolder)
 
     val toolbar = ActionManager.getInstance().createActionPopupMenu(ActionPlaces.POPUP, this)
     JBPopupMenu.showBelow(button, toolbar.component)
+    // The items in toolbar.component are filled after JBPopupMenu.showBelow() is called.
+    // So we install the tooltips after showing.
+    getChildren(null).forEachIndexed { index, action ->
+      val deviceId = (action as? DeviceMenuAction.SetDeviceAction)?.device?.id ?: return@forEachIndexed
+      DEVICE_ID_TO_TOOLTIPS[deviceId]?.let {
+        (toolbar.component.components[index] as? ActionMenuItem)?.let { menuItem -> HelpTooltip().setDescription(it).installOn(menuItem) }
+      }
+    }
   }
 
   override fun displayTextInToolbar(): Boolean = true
@@ -82,7 +104,7 @@ class DeviceMenuAction2(private val renderContext: ConfigurationHolder)
   private fun createDeviceMenuList() {
     val groupedDevices = getSuitableDevices(renderContext.configuration!!)
 
-    addWindowSizeAndNexusSection(groupedDevices[DeviceGroup.NEXUS_XL])
+    addWindowSizeAndNexusSection(groupedDevices[DeviceGroup.NEXUS_XL]?.plus(groupedDevices[DeviceGroup.NEXUS_TABLET] ?: emptyList()))
     groupedDevices[DeviceGroup.WEAR]?.let { addWearDeviceSection(it) }
     groupedDevices[DeviceGroup.TV]?.let { addTvDeviceSection(it) }
     groupedDevices[DeviceGroup.AUTOMOTIVE]?.let { addAutomotiveDeviceSection(it) }
@@ -93,7 +115,7 @@ class DeviceMenuAction2(private val renderContext: ConfigurationHolder)
 
   private fun addWindowSizeAndNexusSection(nexusDevices:  List<Device>?) {
     val windowDevices = AdditionalDeviceService.getInstance()?.getWindowSizeDevices() ?: return
-    add(DeviceCategory("Window Size", "Window size devices", StudioIcons.LayoutEditor.Toolbar.DEVICE_PHONE))
+    add(DeviceCategory("Reference Devices", "Reference Devices", StudioIcons.Avd.DEVICE_MOBILE))
     for (device in windowDevices) {
       val selected = device == renderContext.configuration?.device
       add(DeviceMenuAction.SetDeviceAction(renderContext, getDeviceLabel(device), { updatePresentation(it) }, device, null, selected))
