@@ -23,6 +23,7 @@ import com.android.tools.idea.devicemanager.physicaltab.ConnectionType;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDevice;
 import com.android.tools.idea.devicemanager.physicaltab.SerialNumber;
 import com.android.tools.idea.devicemanager.physicaltab.TestPhysicalDevices;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.wearpairing.ConnectionState;
 import com.android.tools.idea.wearpairing.PairingDevice;
 import com.android.tools.idea.wearpairing.WearPairingManager;
@@ -33,6 +34,8 @@ import javax.swing.border.Border;
 import javax.swing.plaf.BorderUIResource.EmptyBorderUIResource;
 import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.GlobalScope;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -42,6 +45,16 @@ import org.mockito.Mockito;
 public final class DeviceTableCellRendererTest {
   private static final Border BORDER = new EmptyBorderUIResource(2, 3, 2, 3);
   private final JTable myTable = new JBTable();
+  
+  @Before
+  public void setup() {
+    StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.override(true);
+  }
+
+  @After
+  public void tearDown() {
+    StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.clearOverride();
+  }
 
   @Test
   public void getTableCellRendererComponentDeviceIsOnline() {
