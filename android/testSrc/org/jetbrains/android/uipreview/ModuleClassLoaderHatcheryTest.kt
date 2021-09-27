@@ -19,6 +19,9 @@ import com.android.tools.idea.flags.StudioFlags.COMPOSE_CLASSLOADERS_PRELOADING
 import com.android.tools.idea.rendering.classloading.FirewalledResourcesClassLoader
 import com.android.tools.idea.rendering.classloading.toClassTransform
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.psi.PsiManager
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
