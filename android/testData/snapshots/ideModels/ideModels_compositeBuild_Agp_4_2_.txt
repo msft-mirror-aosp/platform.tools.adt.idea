@@ -8565,10 +8565,13 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :
-                            BuildId                       : <ROOT>/TestCompositeLib4
+                            BuildId                       : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1
                         ModuleDependency
                             ProjectPath                   : :
                             BuildId                       : <ROOT>/TestCompositeLib2
+                        ModuleDependency
+                            ProjectPath                   : :
+                            BuildId                       : <ROOT>/TestCompositeLib4
                         ModuleDependency
                             LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
                             ProjectPath                   : :lib
@@ -9168,10 +9171,13 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :
-                            BuildId                       : <ROOT>/TestCompositeLib4
+                            BuildId                       : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1
                         ModuleDependency
                             ProjectPath                   : :
                             BuildId                       : <ROOT>/TestCompositeLib2
+                        ModuleDependency
+                            ProjectPath                   : :
+                            BuildId                       : <ROOT>/TestCompositeLib4
                         ModuleDependency
                             ProjectPath                   : :app
                             Variant                       : debug
@@ -9771,10 +9777,13 @@ MODULE                        : project.app
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :
-                            BuildId                       : <ROOT>/TestCompositeLib4
+                            BuildId                       : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1
                         ModuleDependency
                             ProjectPath                   : :
                             BuildId                       : <ROOT>/TestCompositeLib2
+                        ModuleDependency
+                            ProjectPath                   : :
+                            BuildId                       : <ROOT>/TestCompositeLib4
                         ModuleDependency
                             ProjectPath                   : :app
                             Variant                       : debug
