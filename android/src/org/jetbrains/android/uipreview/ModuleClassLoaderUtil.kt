@@ -28,6 +28,7 @@ import com.android.tools.idea.rendering.classloading.loaders.ListeningLoader
 import com.android.tools.idea.rendering.classloading.loaders.MultiLoader
 import com.android.tools.idea.rendering.classloading.loaders.NameRemapperLoader
 import com.android.tools.idea.rendering.classloading.loaders.ProjectSystemClassLoader
+import com.android.tools.idea.rendering.classloading.loaders.RecyclerViewAdapterLoader
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
@@ -192,7 +193,7 @@ internal class ModuleClassLoaderImpl(module: Module,
           }),
         nonProjectTransformationId,
         binaryCache)
-    loader = MultiLoader(projectLoader, nonProjectLoader)
+    loader = MultiLoader(projectLoader, nonProjectLoader, RecyclerViewAdapterLoader())
   }
 
   override fun loadClass(fqcn: String): ByteArray? {
