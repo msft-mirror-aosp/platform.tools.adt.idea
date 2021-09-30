@@ -161,6 +161,7 @@ import org.jetbrains.android.util.AndroidUtils
 import org.jetbrains.annotations.Contract
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.util.collectionUtils.filterIsInstanceAnd
 import java.awt.Color
 import java.io.File
 import java.io.IOException
@@ -1583,7 +1584,8 @@ fun addValueResource(
         item.type.stringValue = ResourceType.DIMEN.getName()
         return item
       }
-      if (value != null && value.indexOf('.') > 0) { // Deals with dimension values in the form of floating-point numbers, e.g. "0.24"
+      if (value != null && value.matches(Regex("[-+]?([0-9]+\\.[0-9]*|[0-9]*\\.[0-9]+)"))) {
+        // Dimension value is in the form of floating-point number, e.g. "0.24".
         val item = resources.addItem()
         item.type.stringValue = ResourceType.DIMEN.getName()
         item.format.stringValue = "float"
@@ -2283,33 +2285,28 @@ fun getItemPsiFile(project: Project, item: ResourceItem): PsiFile? {
  */
 fun getIdDeclarationAttribute(project: Project, idResource: ResourceItem): XmlAttribute? {
   assert(idResource.type == ResourceType.ID)
-  val psiFile = getItemPsiFile(project, idResource) as? XmlFile ?: return null
   val resourceName = idResource.name
-  // TODO(b/113646219): find the right one, if there are multiple, not the first one.
-  val predicate = { element: PsiElement ->
-    if (element !is XmlAttribute) {
-      false
-    }
-    else {
-      val attrValue = element.value
-      if (isIdDeclaration(attrValue)) {
-        val resourceUrl = ResourceUrl.parse(attrValue!!)
-        resourceUrl != null && resourceUrl.name == resourceName
-      }
-      else {
-        false
-      }
-    }
+  val predicate = { attribute: XmlAttribute ->
+    val attrValue = attribute.value
+    isIdDeclaration(attrValue) && ResourceUrl.parse(attrValue!!)?.name == resourceName
   }
-  return SyntaxTraverser.psiTraverser(psiFile).traverse().filter(predicate).firstOrNull() as XmlAttribute?
+  // TODO: Consider storing XmlAttribute instead of XmlTag in PsiResourceItem.
+  val scope = (idResource as? PsiResourceItem)?.tag ?: getItemPsiFile(project, idResource)
+  val attributes: Collection<XmlAttribute> = SyntaxTraverser.psiTraverser(scope).traverse().filterIsInstanceAnd(predicate)
+  return attributes.firstOrNull { it.name == "android:id"} ?: attributes.firstOrNull()
+}
+
+/**
+ * Checks if the ID resource is a definition of that ID.
+ */
+fun ResourceItem.isIdDefinition(project: Project): Boolean {
+  assert(type == ResourceType.ID)
+  return !isInlineIdDeclaration() || getIdDeclarationAttribute(project, this)?.name == "android:id";
 }
 
 /**
  * Returns the [XmlAttributeValue] defining the given resource item. This is only defined for resource items which are not file
  * based.
- *
- * TODO(b/113646219): store enough information in [ResourceItem] to find the attribute and get the tag from there, not the other
- * way around.
  *
  * @see ResourceItem.isFileBased
  */
@@ -2317,8 +2314,7 @@ fun getDeclaringAttributeValue(project: Project, item: ResourceItem): XmlAttribu
   if (item.isFileBased) {
     return null
   }
-  val attribute: XmlAttribute?
-  attribute = if (item.isInlineIdDeclaration()) {
+  val attribute: XmlAttribute? = if (item.isInlineIdDeclaration()) {
     getIdDeclarationAttribute(project, item)
   }
   else {

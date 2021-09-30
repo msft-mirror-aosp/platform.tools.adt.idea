@@ -44,17 +44,20 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 import java.awt.BorderLayout
 import java.awt.CardLayout
+import java.awt.Dimension
 import java.awt.Point
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 const val WORK_MANAGER_TOOLBAR_PLACE = "WorkManagerInspector"
+private const val MINIMUM_ENTRIES_VIEW_WIDTH = 400
 
 /**
  * View containing a table view and graph view, and offers toggle control between the two.
  */
-class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClient,
+class BackgroundTaskEntriesView(tab: BackgroundTaskInspectorTab,
+                                private val client: BackgroundTaskInspectorClient,
                                 private val selectionModel: EntrySelectionModel,
                                 scope: CoroutineScope,
                                 uiDispatcher: CoroutineDispatcher) : JPanel() {
@@ -170,21 +173,11 @@ class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClien
     set(value) {
       if (field != value) {
         field = value
-        ActivityTracker.getInstance().inc()
-        cardLayout.show(contentPanel, value.name)
-        when (value) {
-          Mode.TABLE -> {
-            client.tracker.trackTableModeSelected()
-          }
-          Mode.GRAPH -> {
-            client.tracker.trackGraphModeSelected(AppInspectionEvent.BackgroundTaskInspectorEvent.Context.TOOL_BUTTON_CONTEXT,
-                                                  client.getOrderedWorkChain(selectionModel.selectedWork!!.id).toChainInfo())
-          }
-        }
-        contentPanel.revalidate()
+        listeners.forEach { listener -> listener(value) }
       }
     }
 
+  private var listeners = mutableListOf<(Mode) -> Unit>()
   private val cardLayout: CardLayout
   private val contentPanel: JPanel
 
@@ -195,10 +188,11 @@ class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClien
   val graphView: WorkDependencyGraphView
 
   init {
-    tableView = BackgroundTaskTreeTableView(client, selectionModel, scope, uiDispatcher)
-    graphView = WorkDependencyGraphView(client, selectionModel, scope, uiDispatcher)
+    tableView = BackgroundTaskTreeTableView(tab, client, selectionModel, scope, uiDispatcher)
+    graphView = WorkDependencyGraphView(tab, client, selectionModel, scope, uiDispatcher)
 
     layout = TabularLayout("*", "Fit,*")
+    minimumSize = Dimension(MINIMUM_ENTRIES_VIEW_WIDTH, minimumSize.height)
     add(buildActionBar(), TabularLayout.Constraint(0, 0))
 
     cardLayout = CardLayout()
@@ -208,7 +202,6 @@ class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClien
     contentPanel.add(tableView.component, Mode.TABLE.name)
     contentPanel.add(JBScrollPane(graphView).apply { horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER },
                      Mode.GRAPH.name)
-    cardLayout.show(contentPanel, Mode.TABLE.name)
     add(contentPanel, TabularLayout.Constraint(1, 0))
 
     selectionModel.registerEntrySelectionListener { entry ->
@@ -216,6 +209,27 @@ class BackgroundTaskEntriesView(private val client: BackgroundTaskInspectorClien
         contentMode = Mode.TABLE
       }
     }
+
+    addContentModeChangedListener {
+      ActivityTracker.getInstance().inc()
+      cardLayout.show(contentPanel, contentMode.name)
+      when (contentMode) {
+        Mode.TABLE -> {
+          client.tracker.trackTableModeSelected()
+        }
+        Mode.GRAPH -> {
+          client.tracker.trackGraphModeSelected(AppInspectionEvent.BackgroundTaskInspectorEvent.Context.TOOL_BUTTON_CONTEXT,
+                                                client.getOrderedWorkChain(selectionModel.selectedWork!!.id).toChainInfo())
+        }
+      }
+      contentPanel.revalidate()
+    }
+
+  }
+
+  fun addContentModeChangedListener(listener: (Mode) -> Unit) {
+    listener(contentMode)
+    listeners.add(listener)
   }
 
   private fun buildActionBar(): JComponent {

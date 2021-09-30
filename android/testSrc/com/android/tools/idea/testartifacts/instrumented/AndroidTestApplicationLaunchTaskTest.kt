@@ -24,6 +24,7 @@ import com.android.tools.idea.run.AndroidProcessHandler
 import com.android.tools.idea.run.ConsolePrinter
 import com.android.tools.idea.run.tasks.LaunchContext
 import com.android.tools.idea.run.util.LaunchStatus
+import com.android.tools.idea.testartifacts.instrumented.configuration.AndroidTestConfiguration
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import org.junit.Rule
@@ -69,7 +70,9 @@ class AndroidTestApplicationLaunchTaskTest {
       /*waitForDebugger=*/ false,
       "instrumentationOptions",
       listOf(mockITestRunListener),
-      myBackgroundTaskExecutor = directExecutor::submit) {}
+      myBackgroundTaskExecutor = directExecutor::submit,
+      myAndroidTestConfigurationProvider = { AndroidTestConfiguration() },
+    ) {}
   }
 
   @Test
@@ -102,14 +105,7 @@ class AndroidTestApplicationLaunchTaskTest {
     `when`(mockLaunchContext.launchStatus).thenReturn(mockLaunchStatus)
     `when`(mockLaunchStatus.processHandler).thenReturn(mockProcessHandler)
 
-    val launchTask = AndroidTestApplicationLaunchTask(
-      "instrumentationTestRunner",
-      "testApplicationId",
-      mockAndroidArtifact,
-      /*waitForDebugger=*/ false,
-      "instrumentationOptions",
-      listOf(mockITestRunListener),
-      myBackgroundTaskExecutor = directExecutor::submit) {}
+    val launchTask = createLaunchTask()
 
     val result = launchTask.run(mockLaunchContext)
 

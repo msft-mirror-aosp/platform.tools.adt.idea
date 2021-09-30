@@ -16,15 +16,34 @@
 package com.android.tools.idea.appinspection.inspectors.backgroundtask.view
 
 import com.android.tools.adtui.TreeWalker
+import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskCategoryNode
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils.getAlarmsCategoryNode
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils.getJobsCategoryNode
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils.getWakeLocksCategoryNode
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils.getWorksCategoryNode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.emptyFlow
+import java.awt.Component
+import java.awt.Container
+import javax.swing.JComponent
+import javax.swing.JLabel
 import javax.swing.JTree
 import javax.swing.tree.DefaultMutableTreeNode
 
 object BackgroundTaskViewTestUtils {
+  class FakeAppInspectorMessenger(
+    override val scope: CoroutineScope
+  ) : AppInspectorMessenger {
+    var rawDataSent: ByteArray = ByteArray(0)
+    override suspend fun sendRawCommand(rawData: ByteArray): ByteArray {
+      rawDataSent = rawData
+      return rawDataSent
+    }
+
+    override val eventFlow = emptyFlow<ByteArray>()
+  }
+
   private fun BackgroundTaskEntriesView.getTreeRoot(): DefaultMutableTreeNode {
     val tree = TreeWalker(this).descendantStream().filter { it is JTree }.findFirst().get() as JTree
     return tree.model.root as DefaultMutableTreeNode
@@ -45,4 +64,10 @@ object BackgroundTaskViewTestUtils {
   fun BackgroundTaskEntriesView.getWakeLocksCategoryNode(): BackgroundTaskCategoryNode {
     return getTreeRoot().getWakeLocksCategoryNode()
   }
+
+  fun JComponent.getValueComponent(key: String): Component? =
+    TreeWalker(this).descendantStream().filter { (it as? JLabel)?.text == key }.findFirst().get().parent.parent.getComponent(1)
+
+  fun JComponent.getCategoryPanel(key: String): Container =
+    TreeWalker(this).descendantStream().filter { (it as? JLabel)?.text == key }.findFirst().get().parent.parent
 }

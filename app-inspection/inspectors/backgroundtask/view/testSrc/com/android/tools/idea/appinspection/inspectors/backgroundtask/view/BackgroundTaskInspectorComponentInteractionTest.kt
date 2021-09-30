@@ -19,7 +19,6 @@ import androidx.work.inspection.WorkManagerInspectorProtocol.Command
 import androidx.work.inspection.WorkManagerInspectorProtocol.WorkInfo
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionIdeServicesAdapter
-import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.ide.IntellijUiComponentsProvider
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorClient
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.BackgroundTaskInspectorTestUtils
@@ -29,6 +28,7 @@ import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.Back
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.EntrySelectionModel
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.StubBackgroundTaskInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.model.WmiMessengerTarget
+import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.BackgroundTaskViewTestUtils.getCategoryPanel
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.BackgroundTaskViewTestUtils.getWorksCategoryNode
 import com.android.tools.idea.appinspection.inspectors.backgroundtask.view.table.BackgroundTaskTreeTableView
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -39,13 +39,14 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.testFramework.TestActionEvent
+import com.intellij.ui.components.ActionLink
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.concurrency.EdtExecutorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.After
@@ -55,28 +56,19 @@ import org.junit.Test
 import org.mockito.Mockito
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.JPanel
 import javax.swing.JTree
 import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.TreePath
 import kotlin.streams.toList
 
 class BackgroundTaskInspectorComponentInteractionTest {
-  private class FakeAppInspectorMessenger(
-    override val scope: CoroutineScope
-  ) : AppInspectorMessenger {
-    var rawDataSent: ByteArray = ByteArray(0)
-    override suspend fun sendRawCommand(rawData: ByteArray): ByteArray {
-      rawDataSent = rawData
-      return rawDataSent
-    }
-
-    override val eventFlow = emptyFlow<ByteArray>()
-  }
 
   @get:Rule
   val projectRule = AndroidProjectRule.inMemory()
 
   private lateinit var scope: CoroutineScope
-  private lateinit var workMessenger: FakeAppInspectorMessenger
+  private lateinit var workMessenger: BackgroundTaskViewTestUtils.FakeAppInspectorMessenger
   private lateinit var client: BackgroundTaskInspectorClient
   private lateinit var tab: BackgroundTaskInspectorTab
   private lateinit var uiDispatcher: ExecutorCoroutineDispatcher
@@ -91,8 +83,8 @@ class BackgroundTaskInspectorComponentInteractionTest {
     scope = CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher() + SupervisorJob())
     uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
     withContext(uiDispatcher) {
-      val backgroundTaskInspectorMessenger = FakeAppInspectorMessenger(scope)
-      workMessenger = FakeAppInspectorMessenger(scope)
+      val backgroundTaskInspectorMessenger = BackgroundTaskViewTestUtils.FakeAppInspectorMessenger(scope)
+      workMessenger = BackgroundTaskViewTestUtils.FakeAppInspectorMessenger(scope)
       client = BackgroundTaskInspectorClient(backgroundTaskInspectorMessenger,
                                              WmiMessengerTarget.Resolved(workMessenger),
                                              scope, StubBackgroundTaskInspectorTracker())
@@ -143,13 +135,18 @@ class BackgroundTaskInspectorComponentInteractionTest {
       val tree = TreeWalker(entriesView).descendantStream().filter { it is JTree }.findFirst().get() as JTree
       val root = tree.model.root
       val works = (root as DefaultMutableTreeNode).children().asSequence().first { (it as DefaultMutableTreeNode).userObject == "Workers" }
+      assertThat(tree.getExpandedDescendants(TreePath(root)).toList().map { it.toString() }).contains("[, Workers]")
       tag1Filter.setSelected(event, true)
       assertThat(works.childCount).isEqualTo(2)
+      // Workers node should keep being expanded.
+      assertThat(tree.getExpandedDescendants(TreePath(root)).toList().map { it.toString() }).contains("[, Workers]")
       tag2Filter.setSelected(event, true)
       assertThat(works.childCount).isEqualTo(1)
+      assertThat(tree.getExpandedDescendants(TreePath(root)).toList().map { it.toString() }).contains("[, Workers]")
       val allTagsFilter = filterActionList[0]
       allTagsFilter.setSelected(event, true)
       assertThat(works.childCount).isEqualTo(3)
+      assertThat(tree.getExpandedDescendants(TreePath(root)).toList().map { it.toString() }).contains("[, Workers]")
     }
   }
 
@@ -251,6 +248,48 @@ class BackgroundTaskInspectorComponentInteractionTest {
     withContext(uiDispatcher) {
       val works = entriesView.getWorksCategoryNode()
       works.assertEmptyWithMessage("No workers have been detected.")
+    }
+  }
+
+  @Test
+  fun openDependencyGraphViewFromDetailsView() = runBlocking {
+    val workInfo = BackgroundTaskInspectorTestUtils.FAKE_WORK_INFO
+    client.sendWorkAddedEvent(workInfo)
+
+    withContext(uiDispatcher) {
+      selectionModel.selectedEntry = client.getEntry(workInfo.id)
+      val workContinuationPanel = detailsView.getCategoryPanel("WorkContinuation") as JPanel
+      val showInGraphLabel = TreeWalker(workContinuationPanel)
+        .descendantStream()
+        .filter { (it as? ActionLink)?.text == "Show in graph" }
+        .findFirst()
+        .get() as ActionLink
+      assertThat(entriesView.contentMode).isEqualTo(BackgroundTaskEntriesView.Mode.TABLE)
+      val scrollPosition = 10
+      detailsView.getFirstChildIsInstance<JBScrollPane>().verticalScrollBar.value = scrollPosition
+      showInGraphLabel.doClick()
+      assertThat(entriesView.contentMode).isEqualTo(BackgroundTaskEntriesView.Mode.GRAPH)
+      assertThat(detailsView.getFirstChildIsInstance<JBScrollPane>().verticalScrollBar.value).isEqualTo(scrollPosition)
+    }
+  }
+
+  @Test
+  fun openTableViewFromDetailsView() = runBlocking {
+    val workInfo = BackgroundTaskInspectorTestUtils.FAKE_WORK_INFO
+    client.sendWorkAddedEvent(workInfo)
+
+    withContext(uiDispatcher) {
+      selectionModel.selectedEntry = client.getEntry(workInfo.id)
+      entriesView.contentMode = BackgroundTaskEntriesView.Mode.GRAPH
+      val workContinuationPanel = detailsView.getCategoryPanel("WorkContinuation") as JPanel
+      val showInGraphLabel = TreeWalker(workContinuationPanel)
+        .descendantStream()
+        .filter { (it as? ActionLink)?.text == "Show in table" }
+        .findFirst()
+        .get() as ActionLink
+      assertThat(entriesView.contentMode).isEqualTo(BackgroundTaskEntriesView.Mode.GRAPH)
+      showInGraphLabel.doClick()
+      assertThat(entriesView.contentMode).isEqualTo(BackgroundTaskEntriesView.Mode.TABLE)
     }
   }
 

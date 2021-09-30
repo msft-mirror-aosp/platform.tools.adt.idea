@@ -36,6 +36,7 @@ import com.intellij.openapi.ui.popup.IconButton
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.InplaceButton
 import com.intellij.ui.TitledSeparator
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.panels.VerticalLayout
@@ -58,6 +59,7 @@ import javax.swing.JPanel
 import javax.swing.JViewport
 import javax.swing.SwingUtilities
 
+private const val MINIMUM_DETAILS_VIEW_WIDTH = 400
 private const val BUTTON_SIZE = 24 // Icon is 16x16. This gives it some padding, so it doesn't touch the border.
 private val BUTTON_DIMENS = Dimension(JBUI.scale(BUTTON_SIZE), JBUI.scale(BUTTON_SIZE))
 
@@ -66,7 +68,8 @@ class EntryDetailsView(
   private val tab: BackgroundTaskInspectorTab,
   private val client: BackgroundTaskInspectorClient,
   private val ideServices: AppInspectionIdeServices,
-  @VisibleForTesting val selectionModel: EntrySelectionModel,
+  val selectionModel: EntrySelectionModel,
+  private val entriesView: BackgroundTaskEntriesView,
   uiComponentsProvider: UiComponentsProvider,
   private val scope: CoroutineScope,
   private val uiDispatcher: CoroutineDispatcher
@@ -85,6 +88,7 @@ class EntryDetailsView(
   init {
     layout = TabularLayout("*", "28px,*")
     border = BorderFactory.createEmptyBorder()
+    minimumSize = Dimension(MINIMUM_DETAILS_VIEW_WIDTH, minimumSize.height)
     val headingPanel = JPanel(BorderLayout())
     val instanceViewLabel = JLabel("Task Details")
     instanceViewLabel.border = BorderFactory.createEmptyBorder(0, 6, 0, 0)
@@ -96,21 +100,28 @@ class EntryDetailsView(
     add(scrollPane, TabularLayout.Constraint(1, 0))
 
     selectionModel.registerEntrySelectionListener { entry ->
-      if (entry != null) {
-        tab.isDetailsViewVisible = true
-        updateSelectedTask()
+      if (entry == null) {
+        tab.isDetailsViewVisible = false
+      }
+      else {
+        updateSelectedTask(true)
       }
     }
     client.addEntryUpdateEventListener { type, _ ->
       scope.launch(uiDispatcher) {
-        if (tab.isDetailsViewVisible && type == EntryUpdateEventType.UPDATE) {
-          updateSelectedTask()
+        if (type == EntryUpdateEventType.UPDATE) {
+          updateSelectedTask(false)
         }
+      }
+    }
+    entriesView.addContentModeChangedListener {
+      if (selectionModel.selectedEntry is WorkEntry) {
+        updateSelectedTask(false)
       }
     }
   }
 
-  private fun updateSelectedTask() {
+  private fun updateSelectedTask(isSelectionChanged: Boolean) {
     val detailsPanel = object : ScrollablePanel(VerticalLayout(18)) {
       override fun getScrollableTracksViewportWidth(): Boolean {
         val parent = SwingUtilities.getUnwrappedParent(this)
@@ -129,7 +140,11 @@ class EntryDetailsView(
 
     TreeWalker(detailsPanel).descendantStream().forEach { it.background = null }
     detailsPanel.background = primaryContentBackground
+    val scrollBarPosition = scrollPane.verticalScrollBar.value
     scrollPane.setViewportView(detailsPanel)
+    if (!isSelectionChanged) {
+      scrollPane.verticalScrollBar.value = scrollBarPosition
+    }
     revalidate()
     repaint()
   }
@@ -243,7 +258,20 @@ class EntryDetailsView(
       buildKeyValuePair("State", workEntry, StateProvider)
     )))
 
+    val switchContentModeLabel = if (entriesView.contentMode == BackgroundTaskEntriesView.Mode.TABLE) {
+      ActionLink("Show in graph") {
+        entriesView.contentMode = BackgroundTaskEntriesView.Mode.GRAPH
+      }
+    }
+    else {
+      ActionLink("Show in table") {
+        entriesView.contentMode = BackgroundTaskEntriesView.Mode.TABLE
+      }
+    }
+
     detailsPanel.add(buildCategoryPanel("WorkContinuation", listOf(
+      // Visually separate switchContentModeLabel and work chain labels.
+      switchContentModeLabel.apply { extraBottomPaddingMap[this] = 10 },
       buildKeyValuePair("Previous", work.prerequisitesList.toList(), idListProvider),
       // Visually separate work chain or else UUIDs run together.
       buildKeyValuePair("Next", work.dependentsList.toList(), idListProvider).apply { extraBottomPaddingMap[this] = 14 },
