@@ -171,7 +171,6 @@ public class RenderTask {
   private boolean myShadowEnabled = true;
   private boolean myHighQualityShadow = true;
   private boolean myEnableLayoutScanner = false;
-  private boolean myEnableLayoutScannerOptimization = false;
   private boolean myShowWithToolsVisibilityAndPosition = true;
   private AssetRepositoryImpl myAssetRepository;
   private long myTimeout;
@@ -553,11 +552,6 @@ public class RenderTask {
     return this;
   }
 
-  public RenderTask setEnableLayoutScannerOptimization(boolean enableLayoutScannerOptimization) {
-    myEnableLayoutScannerOptimization = enableLayoutScannerOptimization;
-    return this;
-  }
-
   /**
    * Sets whether the rendering should use 'tools' namespaced 'visibility' and 'layout_editor_absoluteX/Y' attributes.
    * <p>
@@ -644,7 +638,8 @@ public class RenderTask {
     params.setFlag(RenderParamsFlags.FLAG_KEY_RENDER_HIGH_QUALITY_SHADOW, myHighQualityShadow);
     params.setFlag(RenderParamsFlags.FLAG_KEY_ENABLE_LAYOUT_SCANNER, myEnableLayoutScanner);
     params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_IMAGE_CHECK, myEnableLayoutScanner);
-    params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_OPTIMIZATION, myEnableLayoutScannerOptimization);
+    // TODO: Remove after ag/15997527
+    params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_OPTIMIZATION, myEnableLayoutScanner);
 
     // Request margin and baseline information.
     // TODO: Be smarter about setting this; start without it, and on the first request
