@@ -90,7 +90,7 @@ maven_repository(
         "@maven_tests//:com.google.android.gms.play-services-maps_17.0.1",
         "@maven_tests//:com.google.android.gms.play-services-wallet_18.1.3",
         "@maven_tests//:com.google.android.gms.play-services-wearable_17.1.0",
-        "@maven_tests//:com.google.android.libraries.mapsplatform.secrets-gradle-plugin.secrets-gradle-plugin_1.3.0",
+        "@maven_tests//:com.google.android.libraries.mapsplatform.secrets-gradle-plugin.secrets-gradle-plugin_2.0.0",
         "@maven_tests//:com.google.android.material.material_1.4.0",
         "@maven_tests//:com.google.android.support.wearable_2.8.1",
         "@maven_tests//:com.google.android.wearable.wearable_2.8.1",
