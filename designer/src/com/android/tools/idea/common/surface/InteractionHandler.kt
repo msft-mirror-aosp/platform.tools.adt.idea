@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.common.surface
 
+import com.android.tools.adtui.PANNABLE_KEY
+import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.api.DragType
 import com.android.tools.idea.common.editor.DesignToolsSplitEditor
@@ -270,7 +272,7 @@ abstract class InteractionHandlerBase(private val surface: DesignSurface) : Inte
   override fun keyPressedWithoutInteraction(keyEvent: KeyEvent): Interaction? {
     val keyCode = keyEvent.keyCode
     if (keyCode == DesignSurfaceShortcut.PAN.keyCode) {
-      return PanInteraction(surface)
+      return PanInteraction(surface.getData(PANNABLE_KEY.name) as? Pannable ?: surface)
     }
 
     // The deletion only applies without modifier keys.

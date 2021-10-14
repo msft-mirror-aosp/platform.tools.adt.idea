@@ -92,9 +92,10 @@ class NlLayoutScanner(private val surface: NlDesignSurface, parent: Disposable):
     Disposer.register(parent, this)
     surface.issuePanel.addEventListener(issuePanelListener)
 
-    // Enable retrieving text character locations from TextView to improve the
-    // accuracy of TextContrastCheck in ATF
-    LayoutValidator.setObtainCharacterLocations(true)
+    // Enabling this will retrieve text character locations from TextView to improve the
+    // accuracy of TextContrastCheck in ATF. However, it can burden the render time quite alot
+    // specially if the view contains a long text.
+    LayoutValidator.setObtainCharacterLocations(false)
   }
 
   override fun pause() {
@@ -117,10 +118,7 @@ class NlLayoutScanner(private val surface: NlDesignSurface, parent: Disposable):
           listeners.forEach { it.lintUpdated(null) }
           return
         }
-        validateAndUpdateLint(renderResult, LayoutValidator.validate(validatorResult), model, surface)
-      }
-      is ValidatorResult -> {
-        validateAndUpdateLint(renderResult, validatorResult, model, surface)
+        updateLint(renderResult, LayoutValidator.validate(validatorResult), model, surface)
       }
       else -> {
         // Result not available.
@@ -129,7 +127,8 @@ class NlLayoutScanner(private val surface: NlDesignSurface, parent: Disposable):
     }
   }
 
-  private fun validateAndUpdateLint(
+  @VisibleForTesting
+  fun updateLint(
     renderResult: RenderResult,
     validatorResult: ValidatorResult,
     model: NlModel,
@@ -173,7 +172,7 @@ class NlLayoutScanner(private val surface: NlDesignSurface, parent: Disposable):
       result = validatorResult
     } finally {
       renderMetric.renderMs = renderResult.stats.renderDurationMs
-      renderMetric.scanMs = validatorResult.metric.mElapsedMs
+      renderMetric.scanMs = validatorResult.metric.mHierarchyCreationMs
       renderMetric.componentCount = layoutParser.componentCount
       renderMetric.isRenderResultSuccess = renderResult.renderResult.isSuccess
 

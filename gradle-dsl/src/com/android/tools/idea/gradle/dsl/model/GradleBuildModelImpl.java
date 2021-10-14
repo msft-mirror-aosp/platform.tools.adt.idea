@@ -227,7 +227,7 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
   @NotNull
   @Override
   public BuildScriptModel buildscript() {
-    BuildScriptDslElement buildScriptDslElement = myGradleDslFile.ensurePropertyElement(BUILDSCRIPT);
+    BuildScriptDslElement buildScriptDslElement = myGradleDslFile.ensurePropertyElementAt(BUILDSCRIPT, 0);
     return new BuildScriptModelImpl(buildScriptDslElement);
   }
 
@@ -258,11 +258,11 @@ public class GradleBuildModelImpl extends GradleFileModelImpl implements GradleB
   public ExtModel ext() {
     int at = 0;
     List<GradleDslElement> elements = myGradleDslFile.getCurrentElements();
-    if (!elements.isEmpty()) {
-      GradleDslElement firstElement = elements.get(0);
-      if (firstElement instanceof ApplyDslElement || firstElement instanceof PluginsDslElement) {
-        at += 1;
+    for (GradleDslElement element : elements) {
+      if (!(element instanceof ApplyDslElement || element instanceof PluginsDslElement || element instanceof BuildScriptDslElement)) {
+        break;
       }
+      at += 1;
     }
     ExtDslElement extDslElement = myGradleDslFile.ensurePropertyElementAt(EXT, at);
     return new ExtModelImpl(extDslElement);
