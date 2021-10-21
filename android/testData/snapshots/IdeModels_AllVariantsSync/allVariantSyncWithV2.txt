@@ -62,6 +62,13 @@ DependenciesInfo
     IncludeInBundle               : true
 DefaultConfig
     ProductFlavor
+        Name                          : main
+        ApplicationIdSuffix           : defaultSuffix
+        VersionNameSuffix             : vns
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         ApplicationId                 : com.example.psd.sample.app.default
         VersionCode                   : 1
         VersionName                   : 1.0
@@ -122,6 +129,7 @@ DefaultConfig
                 ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
 BuildTypes
     BuildType
+        Name                          : debug
         IsDebuggable                  : true
         IsJniDebuggable               : false
         IsRenderscriptDebuggable      : false
@@ -174,6 +182,12 @@ BuildTypes
                 JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                 ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
     BuildType
+        Name                          : release
+        ApplicationIdSuffix           : suffix
+        VersionNameSuffix             : vsuffix
+        ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+        ProguardFiles                 : <ROOT>/app/proguard-rules.txt
+        ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
         IsDebuggable                  : false
         IsJniDebuggable               : false
         IsRenderscriptDebuggable      : false
@@ -226,6 +240,8 @@ BuildTypes
                 JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                 ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
     BuildType
+        Name                          : specialRelease
+        VersionNameSuffix             : vnsSpecial
         IsDebuggable                  : false
         IsJniDebuggable               : false
         IsRenderscriptDebuggable      : false
@@ -279,6 +295,7 @@ BuildTypes
                 ShadersDirectories            : <ROOT>/app/src/testSpecialRelease/shaders [-]
 ProductFlavors
     ProductFlavor
+        Name                          : basic
         Dimension                     : foo
         ApplicationId                 : com.example.psd.sample.app
         VectorDrawables
@@ -327,6 +344,8 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testBasic/jniLibs [-]
                 ShadersDirectories            : <ROOT>/app/src/testBasic/shaders [-]
     ProductFlavor
+        Name                          : paid
+        VersionNameSuffix             : vnsFoo
         Dimension                     : foo
         ApplicationId                 : com.example.psd.sample.app.paid
         VersionCode                   : 2
@@ -391,6 +410,8 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testPaid/jniLibs [-]
                 ShadersDirectories            : <ROOT>/app/src/testPaid/shaders [-]
     ProductFlavor
+        Name                          : bar
+        ApplicationIdSuffix           : barSuffix
         Dimension                     : bar
         VectorDrawables
     SourceProvider
@@ -438,6 +459,7 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testBar/jniLibs [-]
                 ShadersDirectories            : <ROOT>/app/src/testBar/shaders [-]
     ProductFlavor
+        Name                          : otherBar
         Dimension                     : bar
         resourceConfigurations        : en
         resourceConfigurations        : hdpi
@@ -613,11 +635,19 @@ IdeVariants
         BuildType                     : debug
         DisplayName                   : basic-bar-debug
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vns
+        VersionNameWithSuffix         : 1.0vns
         TestApplicationId             : com.example.psd.sample.app.default.test
         ProductFlavors                : basic
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicBarDebugSources
@@ -2607,14 +2637,22 @@ IdeVariants
         BuildType                     : debug
         DisplayName                   : paid-otherBar-debug
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoo
+        VersionNameWithSuffix         : 2.0vnsvnsFoo
         TestApplicationId             : com.example.psd.sample.app.paid.test
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : paid
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB
@@ -4608,11 +4646,19 @@ IdeVariants
         BuildType                     : debug
         DisplayName                   : paid-bar-debug
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoo
+        VersionNameWithSuffix         : 2.0vnsvnsFoo
         TestApplicationId             : com.example.psd.sample.app.paid.test
         ProductFlavors                : paid
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB
@@ -6606,11 +6652,19 @@ IdeVariants
         BuildType                     : specialRelease
         DisplayName                   : basic-bar-specialRelease
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vnsvnsSpecial
+        VersionNameWithSuffix         : 1.0vnsvnsSpecial
         TestApplicationId             : com.example.psd.sample.app.default.test
         ProductFlavors                : basic
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicBarSpecialReleaseSources
@@ -7932,14 +7986,22 @@ IdeVariants
         BuildType                     : specialRelease
         DisplayName                   : paid-otherBar-specialRelease
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoovnsSpecial
+        VersionNameWithSuffix         : 2.0vnsvnsFoovnsSpecial
         TestApplicationId             : com.example.psd.sample.app.paid.test
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : paid
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB
@@ -9265,14 +9327,25 @@ IdeVariants
         BuildType                     : release
         DisplayName                   : paid-otherBar-release
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoovsuffix
+        VersionNameWithSuffix         : 2.0vnsvnsFoovsuffix
         TestApplicationId             : com.example.psd.sample.app.paid.test
+        ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+        ProguardFiles                 : <ROOT>/app/proguard-rules.txt
+        ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : paid
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB
@@ -10599,14 +10672,22 @@ IdeVariants
         BuildType                     : specialRelease
         DisplayName                   : basic-otherBar-specialRelease
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vnsvnsSpecial
+        VersionNameWithSuffix         : 1.0vnsvnsSpecial
         TestApplicationId             : com.example.psd.sample.app.default.test
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : basic
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicOtherBarSpecialReleaseSources
@@ -11928,14 +12009,22 @@ IdeVariants
         BuildType                     : debug
         DisplayName                   : basic-otherBar-debug
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vns
+        VersionNameWithSuffix         : 1.0vns
         TestApplicationId             : com.example.psd.sample.app.default.test
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : basic
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicOtherBarDebugSources
@@ -13925,11 +14014,22 @@ IdeVariants
         BuildType                     : release
         DisplayName                   : basic-bar-release
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vnsvsuffix
+        VersionNameWithSuffix         : 1.0vnsvsuffix
         TestApplicationId             : com.example.psd.sample.app.default.test
+        ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+        ProguardFiles                 : <ROOT>/app/proguard-rules.txt
+        ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
         ProductFlavors                : basic
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicBarReleaseSources
@@ -15252,14 +15352,25 @@ IdeVariants
         BuildType                     : release
         DisplayName                   : basic-otherBar-release
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
         MaxSdkVersion                 : 26
+        VersionCode                   : 1
+        VersionNameSuffix             : vnsvsuffix
+        VersionNameWithSuffix         : 1.0vnsvsuffix
         TestApplicationId             : com.example.psd.sample.app.default.test
+        ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+        ProguardFiles                 : <ROOT>/app/proguard-rules.txt
+        ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
         ResourceConfigurations        : en
         ResourceConfigurations        : hdpi
         ResourceConfigurations        : xhdpi
         ProductFlavors                : basic
         ProductFlavors                : otherBar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         MainArtifact
             Name                          : MAIN
             CompileTaskName               : compileBasicOtherBarReleaseSources
@@ -16582,11 +16693,22 @@ IdeVariants
         BuildType                     : release
         DisplayName                   : paid-bar-release
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoovsuffix
+        VersionNameWithSuffix         : 2.0vnsvnsFoovsuffix
         TestApplicationId             : com.example.psd.sample.app.paid.test
+        ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+        ProguardFiles                 : <ROOT>/app/proguard-rules.txt
+        ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
         ProductFlavors                : paid
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB
@@ -17913,11 +18035,19 @@ IdeVariants
         BuildType                     : specialRelease
         DisplayName                   : paid-bar-specialRelease
         InstantAppCompatible          : false
+        MinSdkVersion                 : IdeApiVersionImpl(apiLevel=10, codename=null, apiString=10)
         TargetSdkVersion              : IdeApiVersionImpl(apiLevel=20, codename=null, apiString=20)
         MaxSdkVersion                 : 25
+        VersionCode                   : 2
+        VersionNameSuffix             : vnsvnsFoovnsSpecial
+        VersionNameWithSuffix         : 2.0vnsvnsFoovnsSpecial
         TestApplicationId             : com.example.psd.sample.app.paid.test
         ProductFlavors                : paid
         ProductFlavors                : bar
+        ManifestPlaceholders
+            aa                            : aaa
+            bb                            : bbb
+            cc                            : true
         TestInstrumentationRunnerArguments
             a                             : AAA
             b                             : BBB

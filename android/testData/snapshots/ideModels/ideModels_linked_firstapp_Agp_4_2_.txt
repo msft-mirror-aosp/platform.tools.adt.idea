@@ -49,6 +49,7 @@ MODULE                        : My_First_App.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.example.firstapp
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -101,6 +102,7 @@ MODULE                        : My_First_App.app
                     ShadersDirectories            : <ROOT>/firstapp/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -147,6 +149,7 @@ MODULE                        : My_First_App.app
                     JniLibsDirectories            : <ROOT>/firstapp/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/firstapp/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -223,7 +226,10 @@ MODULE                        : My_First_App.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             DeprecatedPreMergedApplicationId        : com.example.firstapp
             TestInstrumentationRunner     : androidx.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -2264,6 +2270,8 @@ MODULE                        : My_First_App.app
             defaultArguments              : -P
             defaultArguments              : -jvm-target
             defaultArguments              : 1.8
+MODULE                        : My_First_App.app.androidTest
+MODULE                        : My_First_App.app.main
 MODULE                        : My_First_App.app.mysharedlibrary
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -2311,6 +2319,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             VersionName                   : 1.0
             TestInstrumentationRunner     : androidx.test.runner.AndroidJUnitRunner
@@ -2362,6 +2371,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     ShadersDirectories            : <ROOT>/shared/mysharedlibrary/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2408,6 +2418,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/shared/mysharedlibrary/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2474,7 +2485,10 @@ MODULE                        : My_First_App.app.mysharedlibrary
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             DeprecatedPreMergedApplicationId        : com.example.mysharedlibrary
             TestInstrumentationRunner     : androidx.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -4421,3 +4435,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
             defaultArguments              : -P
             defaultArguments              : -jvm-target
             defaultArguments              : 1.8
+MODULE                        : My_First_App.app.mysharedlibrary.androidTest
+MODULE                        : My_First_App.app.mysharedlibrary.main
+MODULE                        : My_First_App.app.mysharedlibrary.unitTest
+MODULE                        : My_First_App.app.unitTest

@@ -51,6 +51,7 @@ MODULE                        : kotlinMultiPlatform.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.example.android.kotlin
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -109,6 +110,7 @@ MODULE                        : kotlinMultiPlatform.app
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -161,6 +163,7 @@ MODULE                        : kotlinMultiPlatform.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -243,7 +246,10 @@ MODULE                        : kotlinMultiPlatform.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -2353,6 +2359,9 @@ MODULE                        : kotlinMultiPlatform.app
             defaultArguments              : -P
             defaultArguments              : -jvm-target
             defaultArguments              : 1.8
+MODULE                        : kotlinMultiPlatform.app.androidTest
+MODULE                        : kotlinMultiPlatform.app.main
+MODULE                        : kotlinMultiPlatform.app.unitTest
 MODULE                        : kotlinMultiPlatform.module2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -2402,6 +2411,7 @@ MODULE                        : kotlinMultiPlatform.module2
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             MinSdkVersion
                 ApiLevel                      : 16
                 ApiString                     : 16
@@ -2479,6 +2489,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     ShadersDirectories            : <ROOT>/module2/src/androidTest/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2554,6 +2565,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     ShadersDirectories            : <ROOT>/module2/src/testDebug/shaders [-]
                     ShadersDirectories            : <ROOT>/module2/src/androidTestDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2649,6 +2661,7 @@ MODULE                        : kotlinMultiPlatform.module2
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
             MainArtifact
                 Name                          : MAIN
@@ -2892,5 +2905,8 @@ MODULE                        : kotlinMultiPlatform.module2
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : kotlinMultiPlatform.module2.androidTest
 MODULE                        : kotlinMultiPlatform.module2.commonMain
 MODULE                        : kotlinMultiPlatform.module2.commonTest
+MODULE                        : kotlinMultiPlatform.module2.main
+MODULE                        : kotlinMultiPlatform.module2.unitTest

@@ -52,6 +52,7 @@ MODULE                        : project.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : google.simpleapplication
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -109,6 +110,7 @@ MODULE                        : project.app
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -161,6 +163,9 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/app/proguard-rules.pro
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -243,7 +248,10 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=19, codename=null, apiString=19)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -2051,7 +2059,7 @@ MODULE                        : project.app
                             BuildId                       : <ROOT>
                         ModuleDependency
                             ProjectPath                   : :lib
-                            Variant                       : debugTestFixtures
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                         ModuleDependency
                             LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
@@ -2060,6 +2068,9 @@ MODULE                        : project.app
                             BuildId                       : <ROOT>
                     RuntimeOnlyClasses            : <M2>/com/google/code/gson/gson/2.2.4/gson-2.2.4.jar
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.app.androidTest
+MODULE                        : project.app.main
+MODULE                        : project.app.unitTest
 MODULE                        : project.lib
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -2109,6 +2120,7 @@ MODULE                        : project.lib
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2172,6 +2184,7 @@ MODULE                        : project.lib
                     ShadersDirectories            : <ROOT>/lib/src/testFixtures/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2240,6 +2253,7 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/testFixturesDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testFixturesDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2328,6 +2342,7 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -2522,7 +2537,7 @@ MODULE                        : project.lib
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :lib
-                            Variant                       : debugTestFixtures
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                         ModuleDependency
                             LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
@@ -2611,7 +2626,7 @@ MODULE                        : project.lib
                     ModuleDependencies
                         ModuleDependency
                             ProjectPath                   : :lib
-                            Variant                       : debugTestFixtures
+                            Variant                       : debug
                             BuildId                       : <ROOT>
                         ModuleDependency
                             LintJars                      : <ROOT>/lib/build/intermediates/lint_publish_jar/global/lint.jar [-]
@@ -2702,3 +2717,7 @@ MODULE                        : project.lib
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleDebugTestFixtures
                 GeneratedResourceFolders      : <ROOT>/lib/build/generated/res/resValues/testFixtures/debug [-]
+MODULE                        : project.lib.androidTest
+MODULE                        : project.lib.main
+MODULE                        : project.lib.testFixtures
+MODULE                        : project.lib.unitTest

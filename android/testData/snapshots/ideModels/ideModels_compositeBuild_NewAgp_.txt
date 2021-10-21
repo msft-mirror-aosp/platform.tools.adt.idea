@@ -51,6 +51,7 @@ MODULE                        : TestCompositeLib1.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.test.composite1
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -109,6 +110,7 @@ MODULE                        : TestCompositeLib1.app
                     ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -161,6 +163,9 @@ MODULE                        : TestCompositeLib1.app
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/TestCompositeLib1/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/TestCompositeLib1/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -243,7 +248,10 @@ MODULE                        : TestCompositeLib1.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -2041,6 +2049,9 @@ MODULE                        : TestCompositeLib1.app
                             Variant                       : debug
                             BuildId                       : <ROOT>/TestCompositeLib3
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : TestCompositeLib1.app.androidTest
+MODULE                        : TestCompositeLib1.app.main
+MODULE                        : TestCompositeLib1.app.unitTest
 MODULE                        : TestCompositeLib1.lib
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -2090,6 +2101,7 @@ MODULE                        : TestCompositeLib1.lib
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             VersionName                   : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
@@ -2147,6 +2159,7 @@ MODULE                        : TestCompositeLib1.lib
                     ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2199,6 +2212,9 @@ MODULE                        : TestCompositeLib1.lib
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/TestCompositeLib1/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2271,7 +2287,10 @@ MODULE                        : TestCompositeLib1.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -3972,6 +3991,9 @@ MODULE                        : TestCompositeLib1.lib
                             Variant                       : debug
                             BuildId                       : <ROOT>/TestCompositeLib3
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : TestCompositeLib1.lib.androidTest
+MODULE                        : TestCompositeLib1.lib.main
+MODULE                        : TestCompositeLib1.lib.unitTest
 MODULE                        : TestCompositeLib3
 MODULE                        : TestCompositeLib3.app
     ModelVersion                  : <AGP_VERSION>
@@ -4025,6 +4047,7 @@ MODULE                        : TestCompositeLib3.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.test.composite3
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -4083,6 +4106,7 @@ MODULE                        : TestCompositeLib3.app
                     ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -4135,6 +4159,9 @@ MODULE                        : TestCompositeLib3.app
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/TestCompositeLib3/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/TestCompositeLib3/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -4217,7 +4244,10 @@ MODULE                        : TestCompositeLib3.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -5991,6 +6021,9 @@ MODULE                        : TestCompositeLib3.app
                             Variant                       : debug
                             BuildId                       : <ROOT>/TestCompositeLib3
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : TestCompositeLib3.app.androidTest
+MODULE                        : TestCompositeLib3.app.main
+MODULE                        : TestCompositeLib3.app.unitTest
 MODULE                        : TestCompositeLib3.lib
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -6040,6 +6073,7 @@ MODULE                        : TestCompositeLib3.lib
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             VersionName                   : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
@@ -6097,6 +6131,7 @@ MODULE                        : TestCompositeLib3.lib
                     ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -6149,6 +6184,9 @@ MODULE                        : TestCompositeLib3.lib
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/TestCompositeLib3/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -6221,7 +6259,10 @@ MODULE                        : TestCompositeLib3.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -7835,10 +7876,21 @@ MODULE                        : TestCompositeLib3.lib
                             Variant                       : debug
                             BuildId                       : <ROOT>/TestCompositeLib3
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : TestCompositeLib3.lib.androidTest
+MODULE                        : TestCompositeLib3.lib.main
+MODULE                        : TestCompositeLib3.lib.unitTest
 MODULE                        : com.test.compositeNest3.compositeNest
+MODULE                        : com.test.compositeNest3.compositeNest.main
+MODULE                        : com.test.compositeNest3.compositeNest.test
 MODULE                        : composite2
+MODULE                        : composite2.main
+MODULE                        : composite2.test
 MODULE                        : composite4
+MODULE                        : composite4.main
+MODULE                        : composite4.test
 MODULE                        : compositeNest
+MODULE                        : compositeNest.main
+MODULE                        : compositeNest.test
 MODULE                        : project
 MODULE                        : project.app
     ModelVersion                  : <AGP_VERSION>
@@ -7892,6 +7944,7 @@ MODULE                        : project.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.test.compositeapp
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -7950,6 +8003,7 @@ MODULE                        : project.app
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -8002,6 +8056,9 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -8084,7 +8141,10 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -10171,6 +10231,9 @@ MODULE                        : project.app
             defaultArguments              : -P
             defaultArguments              : -jvm-target
             defaultArguments              : 1.8
+MODULE                        : project.app.androidTest
+MODULE                        : project.app.main
+MODULE                        : project.app.unitTest
 MODULE                        : project.lib
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -10220,6 +10283,7 @@ MODULE                        : project.lib
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             VersionName                   : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
@@ -10277,6 +10341,7 @@ MODULE                        : project.lib
                     ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -10329,6 +10394,9 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -10401,7 +10469,10 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -12336,3 +12407,6 @@ MODULE                        : project.lib
             defaultArguments              : -P
             defaultArguments              : -jvm-target
             defaultArguments              : 1.8
+MODULE                        : project.lib.androidTest
+MODULE                        : project.lib.main
+MODULE                        : project.lib.unitTest

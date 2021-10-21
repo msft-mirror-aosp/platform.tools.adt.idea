@@ -49,6 +49,7 @@ MODULE                        : project.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
             ApplicationId                 : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -100,6 +101,7 @@ MODULE                        : project.app
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -146,6 +148,7 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -222,7 +225,10 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             DeprecatedPreMergedApplicationId        : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long
             MainArtifact
                 Name                          : MAIN
@@ -296,6 +302,78 @@ MODULE                        : project.app
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    SelectedVariantName           : debug
+    SelectedAbiName               : x86
+    Name                          : app
+    NativeBuildSystem             : CMAKE
+    NdkVersion                    : <DEFAULT_NDK_VERSION>
+    ExternalNativeBuildFile       : <ROOT>/app/CMakeLists.txt
+    Variants
+        NativeVariant
+            Name                          : debug
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{DEBUG}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{DEBUG}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{DEBUG}/x86/build_file_index.txt [-]
+        NativeVariant
+            Name                          : release
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{RELEASE}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{RELEASE}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{RELEASE}/x86/build_file_index.txt [-]
+MODULE                        : project.app.androidTest
+    SelectedVariantName           : debug
+    SelectedAbiName               : x86
+    Name                          : app
+    NativeBuildSystem             : CMAKE
+    NdkVersion                    : <DEFAULT_NDK_VERSION>
+    ExternalNativeBuildFile       : <ROOT>/app/CMakeLists.txt
+    Variants
+        NativeVariant
+            Name                          : debug
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{DEBUG}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{DEBUG}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{DEBUG}/x86/build_file_index.txt [-]
+        NativeVariant
+            Name                          : release
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{RELEASE}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{RELEASE}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{RELEASE}/x86/build_file_index.txt [-]
+MODULE                        : project.app.main
+    SelectedVariantName           : debug
+    SelectedAbiName               : x86
+    Name                          : app
+    NativeBuildSystem             : CMAKE
+    NdkVersion                    : <DEFAULT_NDK_VERSION>
+    ExternalNativeBuildFile       : <ROOT>/app/CMakeLists.txt
+    Variants
+        NativeVariant
+            Name                          : debug
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{DEBUG}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{DEBUG}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{DEBUG}/x86/build_file_index.txt [-]
+        NativeVariant
+            Name                          : release
+        ABIs
+            NativeAbi
+                Name                          : x86
+                SourceFlagsFile               : <ROOT>/app/<CXX>/{RELEASE}/x86/compile_commands.json.bin [-]
+                SymbolFolderIndexFile         : <ROOT>/app/<CXX>/{RELEASE}/x86/symbol_folder_index.txt [-]
+                BuildFileIndexFile            : <ROOT>/app/<CXX>/{RELEASE}/x86/build_file_index.txt [-]
+MODULE                        : project.app.unitTest
     SelectedVariantName           : debug
     SelectedAbiName               : x86
     Name                          : app

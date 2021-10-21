@@ -62,6 +62,13 @@ MODULE                        : project.app
         IncludeInBundle               : true
     DefaultConfig
         ProductFlavor
+            Name                          : main
+            ApplicationIdSuffix           : defaultSuffix
+            VersionNameSuffix             : vns
+            ManifestPlaceholders
+                aa                            : aaa
+                bb                            : bbb
+                cc                            : true
             ApplicationId                 : com.example.psd.sample.app.default
             VersionCode                   : 1
             VersionName                   : 1.0
@@ -116,6 +123,7 @@ MODULE                        : project.app
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -162,6 +170,9 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
+            ApplicationIdSuffix           : suffix
+            VersionNameSuffix             : vsuffix
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -208,6 +219,8 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
         BuildType
+            Name                          : specialRelease
+            VersionNameSuffix             : vnsSpecial
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -255,6 +268,7 @@ MODULE                        : project.app
                     ShadersDirectories            : <ROOT>/app/src/testSpecialRelease/shaders [-]
     ProductFlavors
         ProductFlavor
+            Name                          : basic
             Dimension                     : foo
             ApplicationId                 : com.example.psd.sample.app
             VectorDrawables
@@ -297,6 +311,8 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasic/shaders [-]
         ProductFlavor
+            Name                          : paid
+            VersionNameSuffix             : vnsFoo
             Dimension                     : foo
             ApplicationId                 : com.example.psd.sample.app.paid
             VersionCode                   : 2
@@ -355,6 +371,8 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testPaid/shaders [-]
         ProductFlavor
+            Name                          : bar
+            ApplicationIdSuffix           : barSuffix
             Dimension                     : bar
             VectorDrawables
         SourceProvider
@@ -396,6 +414,7 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBar/shaders [-]
         ProductFlavor
+            Name                          : otherBar
             Dimension                     : bar
             resourceConfigurations        : hdpi
             resourceConfigurations        : xhdpi
@@ -565,12 +584,20 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : basic-bar-debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
             MaxSdkVersion                 : 26
+            VersionCode                   : 1
+            VersionNameSuffix             : vns
+            VersionNameWithSuffix         : 1.0vns
             TestApplicationId             : com.example.psd.sample.app.default.test
             DeprecatedPreMergedApplicationId        : com.example.psd.sample.app.defaultSuffix.barSuffix
             ProductFlavors                : basic
             ProductFlavors                : bar
+            ManifestPlaceholders
+                aa                            : aaa
+                bb                            : bbb
+                cc                            : true
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileBasicBarDebugSources
@@ -2522,6 +2549,9 @@ MODULE                        : project.app
                             BuildId                       : <ROOT>
                     RuntimeOnlyClasses            : <ROOT>/jav/build/libs/jav.jar [-]
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.app.androidTest
+MODULE                        : project.app.main
+MODULE                        : project.app.unitTest
 MODULE                        : project.dyn_feature
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_DYNAMIC_FEATURE
@@ -2569,6 +2599,7 @@ MODULE                        : project.dyn_feature
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2611,6 +2642,7 @@ MODULE                        : project.dyn_feature
                     ShadersDirectories            : <ROOT>/dyn_feature/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2657,6 +2689,7 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2725,6 +2758,7 @@ MODULE                        : project.dyn_feature
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
             DeprecatedPreMergedApplicationId        : com.example.dyn_feature
             MainArtifact
                 Name                          : MAIN
@@ -2790,7 +2824,12 @@ MODULE                        : project.dyn_feature
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.dyn_feature.androidTest
+MODULE                        : project.dyn_feature.main
+MODULE                        : project.dyn_feature.unitTest
 MODULE                        : project.jav
+MODULE                        : project.jav.main
+MODULE                        : project.jav.test
 MODULE                        : project.lib
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -2838,6 +2877,7 @@ MODULE                        : project.lib
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             VersionName                   : 1.0
             MinSdkVersion
@@ -2888,6 +2928,7 @@ MODULE                        : project.lib
                     ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -2934,6 +2975,7 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -3000,7 +3042,10 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=16, codename=null, apiString=16)
             TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            VersionCode                   : 1
+            VersionNameWithSuffix         : 1.0
             DeprecatedPreMergedApplicationId        : com.example.projectwithappandlib.lib
             MainArtifact
                 Name                          : MAIN
@@ -4615,6 +4660,9 @@ MODULE                        : project.lib
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.lib.androidTest
+MODULE                        : project.lib.main
+MODULE                        : project.lib.unitTest
 MODULE                        : project.nested1
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -4662,6 +4710,7 @@ MODULE                        : project.nested1
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -4704,6 +4753,7 @@ MODULE                        : project.nested1
                     ShadersDirectories            : <ROOT>/nested1/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -4750,6 +4800,7 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -4816,6 +4867,7 @@ MODULE                        : project.nested1
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
             DeprecatedPreMergedApplicationId        : com.example.nested1
             MainArtifact
                 Name                          : MAIN
@@ -4884,6 +4936,7 @@ MODULE                        : project.nested1
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.nested1.androidTest
 MODULE                        : project.nested1.deep
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -4931,6 +4984,7 @@ MODULE                        : project.nested1.deep
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VersionCode                   : 1
             resourceConfigurations        : en
             resourceConfigurations        : fr
@@ -4976,6 +5030,7 @@ MODULE                        : project.nested1.deep
                     ShadersDirectories            : <ROOT>/nested1/deep/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5022,6 +5077,7 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5088,6 +5144,8 @@ MODULE                        : project.nested1.deep
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
+            VersionCode                   : 1
             DeprecatedPreMergedApplicationId        : com.example.nested1.deep
             ResourceConfigurations        : en
             ResourceConfigurations        : fr
@@ -5158,6 +5216,11 @@ MODULE                        : project.nested1.deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.nested1.deep.androidTest
+MODULE                        : project.nested1.deep.main
+MODULE                        : project.nested1.deep.unitTest
+MODULE                        : project.nested1.main
+MODULE                        : project.nested1.unitTest
 MODULE                        : project.nested2
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -5208,6 +5271,7 @@ MODULE                        : project.nested2
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -5250,6 +5314,7 @@ MODULE                        : project.nested2
                     ShadersDirectories            : <ROOT>/nested2/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5296,6 +5361,7 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5343,6 +5409,7 @@ MODULE                        : project.nested2
                     ShadersDirectories            : <ROOT>/nested2/src/testRelease/shaders [-]
     ProductFlavors
         ProductFlavor
+            Name                          : basic
             Dimension                     : foo
             VectorDrawables
         SourceProvider
@@ -5384,6 +5451,7 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasic/shaders [-]
         ProductFlavor
+            Name                          : paid
             Dimension                     : foo
             VectorDrawables
         SourceProvider
@@ -5453,6 +5521,8 @@ MODULE                        : project.nested2
             BuildType                     : debug
             DisplayName                   : basic-debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
+            VersionNameSuffix             :
             DeprecatedPreMergedApplicationId        : com.example.nested2
             ProductFlavors                : basic
             MainArtifact
@@ -5555,6 +5625,7 @@ MODULE                        : project.nested2
                             Variant                       : basicDebug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.nested2.androidTest
 MODULE                        : project.nested2.deep
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
@@ -5602,6 +5673,7 @@ MODULE                        : project.nested2.deep
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -5644,6 +5716,7 @@ MODULE                        : project.nested2.deep
                     ShadersDirectories            : <ROOT>/nested2/deep/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5690,6 +5763,7 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -5756,6 +5830,7 @@ MODULE                        : project.nested2.deep
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
             DeprecatedPreMergedApplicationId        : com.example.nested2.deep
             MainArtifact
                 Name                          : MAIN
@@ -5824,6 +5899,10 @@ MODULE                        : project.nested2.deep
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.nested2.deep.androidTest
+MODULE                        : project.nested2.deep.main
+MODULE                        : project.nested2.deep.unitTest
+MODULE                        : project.nested2.main
 MODULE                        : project.nested2.trans
 MODULE                        : project.nested2.trans.deep2
     ModelVersion                  : 4.2.0
@@ -5872,6 +5951,7 @@ MODULE                        : project.nested2.trans.deep2
         Enabled                       : false
     DefaultConfig
         ProductFlavor
+            Name                          : main
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -5914,6 +5994,7 @@ MODULE                        : project.nested2.trans.deep2
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/test/shaders [-]
     BuildTypes
         BuildType
+            Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : true
             IsRenderscriptDebuggable      : false
@@ -5960,6 +6041,7 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/shaders [-]
         BuildType
+            Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
             IsRenderscriptDebuggable      : false
@@ -6026,6 +6108,7 @@ MODULE                        : project.nested2.trans.deep2
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
+            MinSdkVersion                 : IdeApiVersionImpl(apiLevel=1, codename=null, apiString=1)
             DeprecatedPreMergedApplicationId        : com.example.nested2.trans.deep2
             MainArtifact
                 Name                          : MAIN
@@ -6094,3 +6177,7 @@ MODULE                        : project.nested2.trans.deep2
                             Variant                       : debug
                             BuildId                       : <ROOT>
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+MODULE                        : project.nested2.trans.deep2.androidTest
+MODULE                        : project.nested2.trans.deep2.main
+MODULE                        : project.nested2.trans.deep2.unitTest
+MODULE                        : project.nested2.unitTest
