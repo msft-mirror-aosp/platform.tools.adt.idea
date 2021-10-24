@@ -117,6 +117,7 @@ maven_repository(
         "@maven_tests//:androidx.core.core-ktx_1.6.0",
         "@maven_tests//:androidx.lifecycle.lifecycle-livedata-ktx_2.3.1",
         "@maven_tests//:androidx.lifecycle.lifecycle-runtime_2.3.0-rc01",
+        "@maven_tests//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.3.1",
         "@maven_tests//:androidx.navigation.navigation-fragment-ktx_2.3.5",
         "@maven_tests//:androidx.navigation.navigation-ui-ktx_2.3.5",
         "@maven_tests//:androidx.test.espresso.espresso-core_3.1.0",
