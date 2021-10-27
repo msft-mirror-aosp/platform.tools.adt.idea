@@ -123,6 +123,7 @@ maven_repository(
         "@maven_tests//:androidx.test.espresso.espresso-core_3.1.0",
         "@maven_tests//:androidx.test.espresso.espresso-core_3.2.0",
         "@maven_tests//:androidx.test.ext.junit_1.1.1",
+        "@maven_tests//:androidx.test.ext.junit_1.1.3-alpha02",
         "@maven_tests//:com.android.support.appcompat-v7_25.4.0",
         "@maven_tests//:com.android.support.constraint.constraint-layout_1.0.2",
         "@maven_tests//:com.android.support.constraint.constraint-layout_2.0.4",
