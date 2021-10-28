@@ -57,6 +57,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import org.jetbrains.android.AndroidTestCase;
@@ -267,6 +268,36 @@ public class ModuleClassLoaderTest extends AndroidTestCase {
     ModuleClassLoader loader = ModuleClassLoaderManager.get().getShared(null, ModuleRenderContext.forModule(myModule), this);
     loader.loadClass("p1.p2.R");
     ModuleClassLoaderManager.get().release(loader, this);
+  }
+
+  // Regression test for b/162056408
+  public void testDisallowLoadingAndroidDispatcherFactory() throws Exception {
+    setupTestProjectFromAndroidModel(
+      getProject(),
+      new File(Objects.requireNonNull(getProject().getBasePath())),
+      new AndroidModuleModelBuilder(
+        ":",
+        "debug",
+        createAndroidProjectBuilderForDefaultTestProjectStructure(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY)));
+
+    ModuleClassLoader loader = ModuleClassLoaderManager.get().getShared(null, ModuleRenderContext.forModule(myModule), this);
+    try {
+      try {
+        loader.loadClass("kotlinx.coroutines.android.AndroidDispatcherFactory");
+        fail("AndroidDispatcherFactory should not be allowed to load by ModuleClassLoader since it would trigger the use of Android " +
+             "coroutines instead of the host ones");
+      }
+      catch (IllegalArgumentException ignored) {
+      }
+
+      // Check we can load resources from the layoutlib-extensions.jar
+      assertNotNull(loader.getResource("META-INF/services/_layoutlib_._internal_.kotlinx.coroutines.internal.MainDispatcherFactory"));
+
+      // Verify that not existing resources return null
+      assertNull(loader.getResource("META-INF/services/does.not.exist"));
+    } finally {
+      ModuleClassLoaderManager.get().release(loader, this);
+    }
   }
 
   public void testNotUpToDate_whenDependenciesChange() throws IOException {
