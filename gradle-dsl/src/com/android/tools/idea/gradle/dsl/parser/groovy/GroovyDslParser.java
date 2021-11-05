@@ -64,8 +64,11 @@ import com.intellij.util.IncorrectOperationException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
+import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyElementVisitor;
@@ -105,11 +108,13 @@ import org.jetbrains.plugins.groovy.lang.psi.api.types.GrCodeReferenceElement;
 public class GroovyDslParser extends GroovyDslNameConverter implements GradleDslParser {
   @NotNull private final GroovyFile myPsiFile;
   @NotNull private final GradleDslFile myDslFile;
+  @NotNull private final Set<Pair<GradleDslSimpleExpression, PsiElement>> myExtractValueSet;
 
   public GroovyDslParser(@NotNull GroovyFile file, @NotNull BuildModelContext context, @NotNull GradleDslFile dslFile) {
     super(context);
     myPsiFile = file;
     myDslFile = dslFile;
+    myExtractValueSet = new HashSet<>();
   }
 
   @Override
@@ -181,7 +186,21 @@ public class GroovyDslParser extends GroovyDslNameConverter implements GradleDsl
         GradleDslElement e = context.resolveExternalSyntaxReference(literal.getText(), true);
         // Only attempt to get the value if it is a simple expression.
         if (e instanceof GradleDslSimpleExpression) {
-          return ((GradleDslSimpleExpression)e).getValue();
+          synchronized (myExtractValueSet) {
+            Pair<GradleDslSimpleExpression, PsiElement> key = new Pair<>(context, literal);
+            if (myExtractValueSet.contains(key)) {
+              // in the course of attempting to resolve literal in context, we are now trying again to perform that exact same
+              // resolution: break the circularity by returning DslRawText to indicate that there was a problem.
+              return new GroovyDslRawText(literal.getText());
+            }
+            myExtractValueSet.add(key);
+            try {
+              return ((GradleDslSimpleExpression)e).getValue();
+            }
+            finally {
+              myExtractValueSet.remove(key);
+            }
+          }
         }
       }
       return literal.getText();
