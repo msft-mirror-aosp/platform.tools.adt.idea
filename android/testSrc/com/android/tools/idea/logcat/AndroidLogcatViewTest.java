@@ -15,13 +15,23 @@
  */
 package com.android.tools.idea.logcat;
 
-import static org.junit.Assert.assertEquals;
+import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.android.ddmlib.Client;
+import com.android.ddmlib.ClientData;
 import com.android.tools.idea.ddms.DeviceContext;
 import com.android.tools.idea.testing.AndroidProjectRule;
+import com.intellij.diagnostic.logging.LogFilterListener;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.Disposer;
+import java.awt.event.ItemListener;
 import javax.swing.ListModel;
 import org.junit.After;
 import org.junit.Before;
@@ -29,17 +39,21 @@ import org.junit.Rule;
 import org.junit.Test;
 
 public final class AndroidLogcatViewTest {
+  private static final int PID = 123;
+  private static final String PACKAGE_NAME = "com.package.name";
+
+
   @Rule
   public final AndroidProjectRule myRule = AndroidProjectRule.inMemory();
 
+  private final DeviceContext myDeviceContext = new DeviceContext();
   private AndroidLogcatView myLogcatView;
   private final Disposable myDisposable = Disposer.newDisposable();
 
   @Before
   public void newAndroidLogcatView() {
-    ApplicationManager.getApplication().invokeAndWait(() -> {
-      myLogcatView = new AndroidLogcatView(myRule.getProject(), new DeviceContext(), myDisposable);
-    });
+    ApplicationManager.getApplication()
+      .invokeAndWait(() -> myLogcatView = new AndroidLogcatView(myRule.getProject(), myDeviceContext, myDisposable));
   }
 
   @After
@@ -50,18 +64,57 @@ public final class AndroidLogcatViewTest {
   @Test
   public void updateDefaultFilters() {
     myLogcatView.createEditFiltersComboBox();
-    myLogcatView.updateDefaultFilters(null);
+    myLogcatView.updateDefaultFilters(/* client= */ null);
 
     ListModel<AndroidLogcatFilter> model = myLogcatView.getEditFiltersComboBoxModel();
 
-    assertEquals(3, model.getSize());
+    assertThat(model.getSize()).isEqualTo(3);
+    assertThat(model.getElementAt(0)).isEqualTo(new SelectedProcessFilter(/* client= */ null));
+    assertThat(model.getElementAt(1)).isEqualTo(AndroidLogcatView.NO_FILTERS_ITEM);
+    assertThat(model.getElementAt(2)).isEqualTo(AndroidLogcatView.EDIT_FILTER_CONFIGURATION_ITEM);
+  }
 
-    int index = 0;
+  @Test
+  public void updateDefaultFilters_doesNotTriggerItemChangeEvent() {
+    ComboBox<AndroidLogcatFilter> comboBox = myLogcatView.createEditFiltersComboBox();
+    ItemListener mockItemListener = mock(ItemListener.class);
+    comboBox.addItemListener(mockItemListener);
 
-    assertEquals(AndroidLogcatView.FAKE_SHOW_ONLY_SELECTED_APPLICATION_FILTER, model.getElementAt(index++));
-    assertEquals(AndroidLogcatView.NO_FILTERS_ITEM, model.getElementAt(index++));
+    myLogcatView.updateDefaultFilters(/* client= */ null);
 
-    // noinspection UnusedAssignment
-    assertEquals(AndroidLogcatView.EDIT_FILTER_CONFIGURATION_ITEM, model.getElementAt(index++));
+    verify(mockItemListener, never()).itemStateChanged(any());
+  }
+
+  @Test
+  public void clientSelected_updatesFilter() {
+    myLogcatView.createEditFiltersComboBox();
+    ListModel<AndroidLogcatFilter> model = myLogcatView.getEditFiltersComboBoxModel();
+    Client client = createMockClient(PID, PACKAGE_NAME);
+
+    myDeviceContext.fireClientSelected(client);
+
+    assertThat(model.getElementAt(0)).isEqualTo(new SelectedProcessFilter(client.getClientData()));
+  }
+
+  @Test
+  public void clientSelected_appliesFilter() {
+    myLogcatView.createEditFiltersComboBox();
+    Client client = createMockClient(PID, PACKAGE_NAME);
+    LogFilterListener mockFilterListener = mock(LogFilterListener.class);
+    myLogcatView.getLogFilterModel().addFilterListener(mockFilterListener);
+
+    myDeviceContext.fireClientSelected(client);
+
+    verify(mockFilterListener).onTextFilterChange();
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private static Client createMockClient(int pid, String packageName) {
+    ClientData mockClientData = mock(ClientData.class);
+    when(mockClientData.getPid()).thenReturn(pid);
+    when(mockClientData.getPackageName()).thenReturn(packageName);
+    Client mockClient = mock(Client.class);
+    when(mockClient.getClientData()).thenReturn(mockClientData);
+    return mockClient;
   }
 }

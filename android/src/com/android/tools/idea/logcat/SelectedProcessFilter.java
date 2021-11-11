@@ -15,14 +15,19 @@
  */
 package com.android.tools.idea.logcat;
 
+import com.android.ddmlib.ClientData;
 import com.android.ddmlib.logcat.LogCatMessage;
+import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 final class SelectedProcessFilter implements AndroidLogcatFilter {
-  private final int myProcessId;
 
-  SelectedProcessFilter(int processId) {
-    myProcessId = processId;
+  private @Nullable ClientData myClientData;
+
+  SelectedProcessFilter(@Nullable ClientData clientData) {
+
+    myClientData = clientData;
   }
 
   @NotNull
@@ -33,6 +38,24 @@ final class SelectedProcessFilter implements AndroidLogcatFilter {
 
   @Override
   public boolean isApplicable(@NotNull LogCatMessage logCatMessage) {
-    return myProcessId == logCatMessage.getHeader().getPid();
+    return myClientData == null || myClientData.getPid() == logCatMessage.getHeader().getPid();
+  }
+
+  @Override
+  public void setClient(@Nullable ClientData client) {
+    myClientData = client;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SelectedProcessFilter filter = (SelectedProcessFilter)o;
+    return Objects.equals(myClientData, filter.myClientData);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(myClientData);
   }
 }
