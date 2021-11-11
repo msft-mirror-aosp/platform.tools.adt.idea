@@ -3,6 +3,8 @@ package com.android.tools.idea.gradle.run;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.testartifacts.scopes.GradleTestArtifactSearchScopes;
+import com.android.utils.StringHelper;
+import com.intellij.openapi.externalSystem.model.project.ModuleData;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -10,9 +12,7 @@ import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestTasksProvider;
-import com.android.utils.StringHelper;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil;
@@ -32,7 +32,9 @@ public class AndroidGradleTestTasksProvider implements GradleTestTasksProvider {
     AndroidModuleModel androidModel = getAndroidModelIfPossible(module);
     if (androidModel == null) return Collections.emptyList();
     // Filter out non-unit tests artifacts, because this task provider is only for unit tests artifacts.
-    if (Objects.requireNonNull(GradleTestArtifactSearchScopes.getInstance(module)).isUnitTestSource(source)) {
+    //also, filter out directories test sources as these are handled in a special way by the AllInDirectoryGradleConfigurationProducer,
+    // and for which, we do need to inject some TestData that the Gradle producers handle properly when generating test tasks.
+    if (Objects.requireNonNull(GradleTestArtifactSearchScopes.getInstance(module)).isUnitTestSource(source) && !source.isDirectory()) {
       return getTasksFromAndroidModule(module, androidModel);
     }
     return Collections.emptyList();
@@ -45,8 +47,22 @@ public class AndroidGradleTestTasksProvider implements GradleTestTasksProvider {
     if (gradlePath != null) {
       taskNamePrefix = gradlePath.equals(":") ? gradlePath : gradlePath + ":";
     }
-    final String testTask = "test" + StringUtil.capitalize(variant) + "UnitTest";
-    return Arrays.asList(StringHelper.appendCapitalized(taskNamePrefix + "clean", testTask), taskNamePrefix + testTask);
+    return Collections.singletonList(taskNamePrefix + getUnitTestTask(variant));
+  }
+
+  /**
+   * Get test tasks for a given android model.
+   * @return the full path to the test task for the module.
+   */
+  public static String getTasksFromAndroidModuleData(@NotNull ModuleData moduleData, @NotNull AndroidModuleModel androidModuleModel) {
+    final String variant = androidModuleModel.getSelectedVariant().getName();
+    String gradlePath = GradleProjectResolverUtil.getGradlePath(moduleData);
+    String taskNamePrefix = gradlePath.equals(":") ? gradlePath : gradlePath + ":";
+    return taskNamePrefix + getUnitTestTask(variant);
+  }
+
+  static private String getUnitTestTask(@NotNull String variantName) {
+    return StringHelper.appendCapitalized("test", variantName, "unitTest");
   }
 
   @Nullable
