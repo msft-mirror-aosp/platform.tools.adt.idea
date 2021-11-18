@@ -59,6 +59,7 @@ import com.intellij.util.Alarm
 import com.intellij.util.containers.ConcurrentList
 import com.intellij.util.containers.ContainerUtil
 import io.grpc.CallCredentials
+import io.grpc.ClientCall
 import io.grpc.CompressorRegistry
 import io.grpc.ConnectivityState
 import io.grpc.DecompressorRegistry
@@ -302,11 +303,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val method = EmulatorControllerGrpc.getStreamClipboardMethod()
     val call = emulatorControllerStub.channel.newCall(method, emulatorControllerStub.callOptions)
     ClientCalls.asyncServerStreamingCall(call, EMPTY_PROTO, DelegatingStreamObserver(streamObserver, method))
-    return object : Cancelable {
-      override fun cancel() {
-        call.cancel("Canceled by consumer", null)
-      }
-    }
+    return CancelableClientCall(call)
   }
 
   /**
@@ -349,11 +346,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val method = EmulatorControllerGrpc.getStreamNotificationMethod()
     val call = emulatorControllerStub.channel.newCall(method, emulatorControllerStub.callOptions)
     ClientCalls.asyncServerStreamingCall(call, EMPTY_PROTO, DelegatingStreamObserver(streamObserver, method))
-    return object : Cancelable {
-      override fun cancel() {
-        call.cancel("Canceled by consumer", null)
-      }
-    }
+    return CancelableClientCall(call)
   }
 
   /**
@@ -402,11 +395,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     }
     val call = emulatorControllerStub.channel.newCall(streamScreenshotMethod, emulatorControllerStub.callOptions)
     ClientCalls.asyncServerStreamingCall(call, imageFormat, DelegatingStreamObserver(streamObserver, streamScreenshotMethod))
-    return object : Cancelable {
-      override fun cancel() {
-        call.cancel("Canceled by consumer", null)
-      }
-    }
+    return CancelableClientCall(call);
   }
 
   /**
@@ -650,6 +639,15 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     RUNNING,
     SHUTDOWN_REQUESTED,
     SHUTDOWN_SENT
+  }
+
+  inner class CancelableClientCall(private val call: ClientCall<*, *>) : Cancelable {
+
+    override fun cancel() {
+      if (connectionState == ConnectionState.CONNECTED) {
+        call.cancel("Canceled by consumer", null)
+      }
+    }
   }
 
   open inner class DelegatingStreamObserver<RequestT, ResponseT>(
