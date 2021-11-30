@@ -28,14 +28,8 @@ public interface LogcatFilterProvider {
     ExtensionPointName.create("com.android.logcat.filterProvider");
 
   /**
-   * Provide a filter that should act on Android logcat input. {@link ClientData} is passed in,
-   * containing information about the active debuggable process, if any. In particular,
-   * {@link ClientData#getPid()} can be useful for constructing an {@link AndroidLogcatFilter} with
-   * narrowed scope.
-   *
-   * If {@code client} is {@code null}, it means that no client is focused (e.g. any filter you
-   * provide should act on all logcat text).
+   * Provide a filter that should act on Android logcat input.
    */
   @NotNull
-  AndroidLogcatFilter getFilter(@Nullable ClientData client);
+  AndroidLogcatFilter getFilter();
 }

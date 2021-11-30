@@ -32,7 +32,7 @@ class ComposeExperimentalConfiguration : SimplePersistentStateComponent<ComposeE
     var isAnimationPreviewEnabled by property(false)
     var isDeployToDeviceEnabled by property(true)
     var isInteractiveEnabled by property(true)
-    var isPreviewPickerEnabled by property(true)
+    var isPreviewPickerEnabled by property(false)
   }
 
   /**
