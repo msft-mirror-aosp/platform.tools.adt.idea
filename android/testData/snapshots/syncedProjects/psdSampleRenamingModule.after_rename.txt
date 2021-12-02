@@ -71,7 +71,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -113,6 +112,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testPsdSampleRenamingModule.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -434,6 +435,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testPsdSampleRenamingModule.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -608,7 +611,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -650,6 +652,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.container1.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.container1.main
         ModuleFile                    : <PROJECT>/.idea/modules/container1/testPsdSampleRenamingModule.container1.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -736,7 +740,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -778,6 +781,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.container1.deep.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.container1.deep.main
         ModuleFile                    : <PROJECT>/.idea/modules/container1/deep/testPsdSampleRenamingModule.container1.deep.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -899,6 +904,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.container1.deep.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.container1.deep.main
         ModuleFile                    : <PROJECT>/.idea/modules/container1/deep/testPsdSampleRenamingModule.container1.deep.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1005,6 +1012,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.container1.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.container1.main
         ModuleFile                    : <PROJECT>/.idea/modules/container1/testPsdSampleRenamingModule.container1.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1076,7 +1085,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 6
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1118,6 +1126,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.dyn_feature.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.dyn_feature.main
         ModuleFile                    : <PROJECT>/.idea/modules/dyn_feature/testPsdSampleRenamingModule.dyn_feature.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1239,6 +1249,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.dyn_feature.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.dyn_feature.main
         ModuleFile                    : <PROJECT>/.idea/modules/dyn_feature/testPsdSampleRenamingModule.dyn_feature.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1325,6 +1337,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/jav/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.jav.main
         ModuleFile                    : <PROJECT>/.idea/modules/jav/testPsdSampleRenamingModule.jav.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jav/src/test [-]
@@ -1374,7 +1388,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1416,6 +1429,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.lib.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/testPsdSampleRenamingModule.lib.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1629,6 +1644,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.lib.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/testPsdSampleRenamingModule.lib.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1765,7 +1782,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1807,6 +1823,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/testPsdSampleRenamingModule.nested2.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1911,7 +1929,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1953,6 +1970,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.deep.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.deep.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/deep/testPsdSampleRenamingModule.nested2.deep.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2074,6 +2093,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.deep.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.deep.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/deep/testPsdSampleRenamingModule.nested2.deep.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2248,7 +2269,6 @@ PROJECT                       : testPsdSampleRenamingModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -2290,6 +2310,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.trans.deep2.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.trans.deep2.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/trans/deep2/testPsdSampleRenamingModule.nested2.trans.deep2.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2411,6 +2433,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.trans.deep2.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.trans.deep2.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/trans/deep2/testPsdSampleRenamingModule.nested2.trans.deep2.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2457,6 +2481,8 @@ PROJECT                       : testPsdSampleRenamingModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdSampleRenamingModule.nested2.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdSampleRenamingModule.nested2.main
         ModuleFile                    : <PROJECT>/.idea/modules/nested2/testPsdSampleRenamingModule.nested2.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android

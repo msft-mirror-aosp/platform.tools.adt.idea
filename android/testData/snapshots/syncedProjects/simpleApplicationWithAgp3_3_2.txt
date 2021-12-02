@@ -63,7 +63,6 @@ PROJECT                       : testSimpleApplicationWithAgp3_3_2
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -105,6 +104,8 @@ PROJECT                       : testSimpleApplicationWithAgp3_3_2
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSimpleApplicationWithAgp3_3_2.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSimpleApplicationWithAgp3_3_2.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testSimpleApplicationWithAgp3_3_2.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -344,6 +345,8 @@ PROJECT                       : testSimpleApplicationWithAgp3_3_2
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSimpleApplicationWithAgp3_3_2.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSimpleApplicationWithAgp3_3_2.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testSimpleApplicationWithAgp3_3_2.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android

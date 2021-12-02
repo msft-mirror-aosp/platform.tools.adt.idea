@@ -63,7 +63,6 @@ PROJECT                       : withGradleMetadata
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -105,6 +104,8 @@ PROJECT                       : withGradleMetadata
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/withGradleMetadata.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : withGradleMetadata.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/withGradleMetadata.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -247,6 +248,8 @@ PROJECT                       : withGradleMetadata
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/withGradleMetadata.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : withGradleMetadata.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/withGradleMetadata.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android

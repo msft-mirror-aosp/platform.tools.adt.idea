@@ -67,7 +67,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -109,6 +108,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testPsdDependencyUpgradeLibraryModule.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -358,6 +359,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testPsdDependencyUpgradeLibraryModule.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -518,19 +521,11 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             LIBRARY
                 *CLASSES                      : jar://<PROJECT>/jModuleK/libs/jarlib-1.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Provided
-            LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/0.9.1/lib3-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib3:1.0 [=]
             Scope                         : Runtime
         LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Provided
-            LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/0.9.1/lib4-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:1.0 [=]
             Scope                         : Runtime
         ORDER_ENTRY                   : testPsdDependencyUpgradeLibraryModule.jModuleL.main
@@ -545,6 +540,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/jModuleK/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.jModuleK.main
         ModuleFile                    : <PROJECT>/.idea/modules/jModuleK/testPsdDependencyUpgradeLibraryModule.jModuleK.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jModuleK/src/test [-]
@@ -559,19 +556,11 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             LIBRARY
                 *CLASSES                      : jar://<PROJECT>/jModuleK/libs/jarlib-1.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Provided
-            LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/0.9.1/lib3-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib3:1.0 [=]
             Scope                         : Runtime
         LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Provided
-            LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/0.9.1/lib4-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:1.0 [=]
             Scope                         : Runtime
         ORDER_ENTRY                   : testPsdDependencyUpgradeLibraryModule.jModuleK.main
@@ -633,6 +622,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/jModuleL/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.jModuleL.main
         ModuleFile                    : <PROJECT>/.idea/modules/jModuleL/testPsdDependencyUpgradeLibraryModule.jModuleL.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jModuleL/src/test [-]
@@ -689,15 +680,7 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/0.9.1/lib3-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/0.9.1/lib4-0.9.1.jar!/
     MODULE                        : testPsdDependencyUpgradeLibraryModule.jModuleM.test
         ExternalModuleGroup           : testPsdDependencyUpgradeLibraryModule
         ExternalModuleType            : sourceSet
@@ -709,6 +692,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/jModuleM/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.jModuleM.main
         ModuleFile                    : <PROJECT>/.idea/modules/jModuleM/testPsdDependencyUpgradeLibraryModule.jModuleM.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jModuleM/src/test [-]
@@ -718,15 +703,7 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib3:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/0.9.1/lib3-0.9.1.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib4:0.9.1
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/0.9.1/lib4-0.9.1.jar!/
         ORDER_ENTRY                   : testPsdDependencyUpgradeLibraryModule.jModuleM.main
     MODULE                        : testPsdDependencyUpgradeLibraryModule.jModuleZ
         ExternalModuleGroup           : testPsdDependencyUpgradeLibraryModule
@@ -853,6 +830,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/jModuleZ/nestedZ/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.jModuleZ.nestedZ.main
         ModuleFile                    : <PROJECT>/.idea/modules/jModuleZ/nestedZ/testPsdDependencyUpgradeLibraryModule.jModuleZ.nestedZ.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jModuleZ/nestedZ/src/test [-]
@@ -874,6 +853,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/jModuleZ/build/classes/java/test [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.jModuleZ.main
         ModuleFile                    : <PROJECT>/.idea/modules/jModuleZ/testPsdDependencyUpgradeLibraryModule.jModuleZ.test.iml
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>/jModuleZ/src/test [-]
@@ -952,7 +933,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -994,6 +974,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.mainModule.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.mainModule.main
         ModuleFile                    : <PROJECT>/.idea/modules/mainModule/testPsdDependencyUpgradeLibraryModule.mainModule.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1253,6 +1235,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.mainModule.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.mainModule.main
         ModuleFile                    : <PROJECT>/.idea/modules/mainModule/testPsdDependencyUpgradeLibraryModule.mainModule.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1410,7 +1394,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1452,6 +1435,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleA.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleA.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleA/testPsdDependencyUpgradeLibraryModule.moduleA.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1669,6 +1654,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleA.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleA.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleA/testPsdDependencyUpgradeLibraryModule.moduleA.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1804,7 +1791,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -1846,6 +1832,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleB.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleB.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleB/testPsdDependencyUpgradeLibraryModule.moduleB.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2062,6 +2050,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleB.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleB.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleB/testPsdDependencyUpgradeLibraryModule.moduleB.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2196,7 +2186,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -2238,6 +2227,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleC.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleC.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleC/testPsdDependencyUpgradeLibraryModule.moduleC.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2449,6 +2440,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleC.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleC.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleC/testPsdDependencyUpgradeLibraryModule.moduleC.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2584,7 +2577,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -2626,6 +2618,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleFlavor.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleFlavor.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleFlavor/testPsdDependencyUpgradeLibraryModule.moduleFlavor.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2783,6 +2777,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.moduleFlavor.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.moduleFlavor.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleFlavor/testPsdDependencyUpgradeLibraryModule.moduleFlavor.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -2872,7 +2868,6 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -2914,6 +2909,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.modulePlus.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.modulePlus.main
         ModuleFile                    : <PROJECT>/.idea/modules/modulePlus/testPsdDependencyUpgradeLibraryModule.modulePlus.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -3020,17 +3017,9 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.example.jlib:lib3:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Test
-            LIBRARY                       : Gradle: com.example.jlib:lib3:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/1.0/lib3-1.0.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Test
-            LIBRARY                       : Gradle: com.example.jlib:lib4:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/1.0/lib4-1.0.jar!/
         LIBRARY                       : Gradle: com.example.libs:lib1:1.0@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.example.libs:lib2:1.0@aar [=]
@@ -3128,15 +3117,7 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         LIBRARY                       : Gradle: com.android.support:versionedparcelable:<VERSION>@aar [=]
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
         LIBRARY                       : Gradle: com.example.jlib:lib3:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib3:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/1.0/lib3-1.0.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: com.example.jlib:lib4:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/1.0/lib4-1.0.jar!/
         LIBRARY                       : Gradle: com.example.libs:lib1:1.0@aar [=]
         LIBRARY                       : Gradle: com.example.libs:lib2:1.0@aar [=]
         ORDER_ENTRY                   : testPsdDependencyUpgradeLibraryModule.jModuleK.main
@@ -3155,6 +3136,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testPsdDependencyUpgradeLibraryModule.modulePlus.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testPsdDependencyUpgradeLibraryModule.modulePlus.main
         ModuleFile                    : <PROJECT>/.idea/modules/modulePlus/testPsdDependencyUpgradeLibraryModule.modulePlus.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -3246,17 +3229,9 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.example.jlib:lib3:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Test
-            LIBRARY                       : Gradle: com.example.jlib:lib3:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib3/1.0/lib3-1.0.jar!/
         LIBRARY                       : Gradle: com.example.jlib:lib4:1.0 [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
             Scope                         : Test
-            LIBRARY                       : Gradle: com.example.jlib:lib4:1.0
-                *CLASSES                      : jar://<DEV>/tools/adt/idea/android/testData/projects/psdSampleRepo/com/example/jlib/lib4/1.0/lib4-1.0.jar!/
         LIBRARY                       : Gradle: com.example.libs:lib1:1.0@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.example.libs:lib2:1.0@aar [=]

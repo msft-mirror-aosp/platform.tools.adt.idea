@@ -23,12 +23,12 @@ MODULE                        : project.app
             NamespacingMode               : DISABLED
         MainArtifact
             ApplicationId                 :
-            - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/rs/debug [-]
             - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/resValues/debug [-]
-            - GeneratedSourceFolders      : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
+            - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/rs/debug [-]
             - GeneratedSourceFolders      : <ROOT>/app/build/generated/aidl_source_output_dir/debug/out [-]
-            - GeneratedSourceFolders      : <ROOT>/app/build/generated/source/buildConfig/debug [-]
+            - GeneratedSourceFolders      : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
             - GeneratedSourceFolders      : <ROOT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
+            - GeneratedSourceFolders      : <ROOT>/app/build/generated/source/buildConfig/debug [-]
             Dependencies
                 CompileDependencies
                 PackageDependencies
@@ -37,23 +37,23 @@ MODULE                        : project.app
         TestArtifact
             Dependencies
                 CompileDependencies
-                    artifacts::app                : null => artifacts::app:unspecified
+                    artifacts::app                : null => :app@main
                 PackageDependencies
-                    artifacts::app                : null => artifacts::app:unspecified
+                    artifacts::app                : null => :app@main
             - ClassOutputs                : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar [-]
             - ClassOutputs                : <ROOT>/app/build/intermediates/javac/debugUnitTest/classes [-]
         ApplicationId                 :
-        - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/rs/androidTest/debug [-]
         - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
-        - GeneratedSourceFolders      : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        - GeneratedResourceFolders    : <ROOT>/app/build/generated/res/rs/androidTest/debug [-]
         - GeneratedSourceFolders      : <ROOT>/app/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
-        - GeneratedSourceFolders      : <ROOT>/app/build/generated/source/buildConfig/androidTest/debug [-]
+        - GeneratedSourceFolders      : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
         - GeneratedSourceFolders      : <ROOT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
+        - GeneratedSourceFolders      : <ROOT>/app/build/generated/source/buildConfig/androidTest/debug [-]
         Dependencies
             CompileDependencies
-                artifacts::app                : null => artifacts::app:unspecified
+                artifacts::app                : null => :app@main
             PackageDependencies
-                artifacts::app                : null => artifacts::app:unspecified
+                artifacts::app                : null => :app@main
         - ClassOutputs                : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
         - ClassOutputs                : <ROOT>/app/build/intermediates/javac/debugAndroidTest/classes [-]
         MinSdkVersion                 : API 16
@@ -93,7 +93,7 @@ MODULE                        : project.app
         Debuggable                    : true
         LibraryResolver
             LintModelLibrary              : LocalLibrary(:app)
-                ArtifactAddress               : artifacts::app:unspecified
+                Identifier                    : :app@main
                 ProjectPath                   : :app
 MODULE                        : project.app.androidTest
 MODULE                        : project.app.main

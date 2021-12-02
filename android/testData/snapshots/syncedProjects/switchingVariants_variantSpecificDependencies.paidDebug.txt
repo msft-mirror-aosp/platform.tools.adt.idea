@@ -67,7 +67,6 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -109,6 +108,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testSwitchingVariants_variantSpecificDependencies.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -364,6 +365,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testSwitchingVariants_variantSpecificDependencies.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -518,7 +521,6 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -560,6 +562,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.moduleA.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.moduleA.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleA/testSwitchingVariants_variantSpecificDependencies.moduleA.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -771,6 +775,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.moduleA.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.moduleA.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleA/testSwitchingVariants_variantSpecificDependencies.moduleA.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -902,7 +908,6 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -944,6 +949,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.moduleB.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.moduleB.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleB/testSwitchingVariants_variantSpecificDependencies.moduleB.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1155,6 +1162,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testSwitchingVariants_variantSpecificDependencies.moduleB.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testSwitchingVariants_variantSpecificDependencies.moduleB.main
         ModuleFile                    : <PROJECT>/.idea/modules/moduleB/testSwitchingVariants_variantSpecificDependencies.moduleB.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android

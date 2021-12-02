@@ -63,7 +63,6 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 0
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -105,6 +104,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testTestFixturesWithModulePerSourceSetEnabled.app.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testTestFixturesWithModulePerSourceSetEnabled.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testTestFixturesWithModulePerSourceSetEnabled.app.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -222,11 +223,17 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             Scope                         : Test
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
             Scope                         : Test
+        LIBRARY                       : Gradle: com.example.javaLib:javaLib:1.0 [=]
+            Scope                         : Test
+        LIBRARY                       : Gradle: com.example.publishedLib:publishedLib:1.0@aar [=]
+            Scope                         : Test
         LIBRARY                       : Gradle: com.google.code.findbugs:jsr305:2.0.1 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.google.guava:guava:19.0 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: com.squareup:javawriter:2.1.1 [=]
+            Scope                         : Test
+        LIBRARY                       : Gradle: commons-io:commons-io:2.4 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: javax.inject:javax.inject:1 [=]
             Scope                         : Test
@@ -241,6 +248,7 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-library:1.3 [=]
             Scope                         : Test
         ORDER_ENTRY                   : testTestFixturesWithModulePerSourceSetEnabled.app.main
+        ORDER_ENTRY                   : testTestFixturesWithModulePerSourceSetEnabled.lib.main
     MODULE                        : testTestFixturesWithModulePerSourceSetEnabled.app.main
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testTestFixturesWithModulePerSourceSetEnabled.app
@@ -333,7 +341,11 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
         LIBRARY                       : Gradle: com.android.support:swiperefreshlayout:<VERSION>@aar [=]
         LIBRARY                       : Gradle: com.android.support:versionedparcelable:<VERSION>@aar [=]
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
+        LIBRARY                       : Gradle: com.example.javaLib:javaLib:1.0 [=]
+        LIBRARY                       : Gradle: com.example.publishedLib:publishedLib:1.0@aar [=]
         LIBRARY                       : Gradle: com.google.guava:guava:19.0 [=]
+        LIBRARY                       : Gradle: commons-io:commons-io:2.4 [=]
+        ORDER_ENTRY                   : testTestFixturesWithModulePerSourceSetEnabled.lib.main
     MODULE                        : testTestFixturesWithModulePerSourceSetEnabled.app.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testTestFixturesWithModulePerSourceSetEnabled.app
@@ -349,6 +361,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testTestFixturesWithModulePerSourceSetEnabled.app.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testTestFixturesWithModulePerSourceSetEnabled.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/testTestFixturesWithModulePerSourceSetEnabled.app.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -523,7 +537,6 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             UseCustomApkResourceFolder    : false
-            UseCustomCompilerManifest     : false
             ProjectType                   : 1
             RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
@@ -566,6 +579,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testTestFixturesWithModulePerSourceSetEnabled.lib.androidTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testTestFixturesWithModulePerSourceSetEnabled.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/testTestFixturesWithModulePerSourceSetEnabled.lib.androidTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -739,6 +754,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testTestFixturesWithModulePerSourceSetEnabled.lib.testFixtures [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testTestFixturesWithModulePerSourceSetEnabled.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/testTestFixturesWithModulePerSourceSetEnabled.lib.testFixtures.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -804,6 +821,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/testTestFixturesWithModulePerSourceSetEnabled.lib.unitTest [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : testTestFixturesWithModulePerSourceSetEnabled.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/testTestFixturesWithModulePerSourceSetEnabled.lib.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
@@ -1013,17 +1032,17 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
             *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewpager-<VERSION>/res [-]
             *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewpager-<VERSION>/jars/classes.jar!/
         LIBRARY                       : Gradle: com.example.javaLib:javaLib:1.0
-            *CLASSES                      : jar://<PROJECT>/localrepo/com/example/javaLib/javaLib/1.0/javaLib-1.0-test-fixtures.jar!/
-        LIBRARY                       : Gradle: com.example.javaLib:javaLib:1.0 (1)
             *CLASSES                      : jar://<PROJECT>/localrepo/com/example/javaLib/javaLib/1.0/javaLib-1.0.jar!/
+        LIBRARY                       : Gradle: com.example.javaLib:javaLib:1.0 (1)
+            *CLASSES                      : jar://<PROJECT>/localrepo/com/example/javaLib/javaLib/1.0/javaLib-1.0-test-fixtures.jar!/
         LIBRARY                       : Gradle: com.example.publishedLib:publishedLib:1.0@aar
-            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/AndroidManifest.xml
-            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/res
-            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/jars/classes.jar!/
-        LIBRARY                       : Gradle: com.example.publishedLib:publishedLib:1.0@aar (1)
             *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0/AndroidManifest.xml
             *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0/res
             *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0/jars/classes.jar!/
+        LIBRARY                       : Gradle: com.example.publishedLib:publishedLib:1.0@aar (1)
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/AndroidManifest.xml
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/res
+            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/publishedLib-1.0-test-fixtures/jars/classes.jar!/
         LIBRARY                       : Gradle: com.google.auto.value:auto-value-annotations:1.6.3
             *CLASSES                      : jar://<M2>/com/google/auto/value/auto-value-annotations/1.6.3/auto-value-annotations-1.6.3.jar!/
         LIBRARY                       : Gradle: com.google.code.findbugs:jsr305:2.0.1
