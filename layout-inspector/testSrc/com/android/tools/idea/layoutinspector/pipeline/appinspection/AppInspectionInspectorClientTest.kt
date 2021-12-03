@@ -316,7 +316,7 @@ class AppInspectionInspectorClientTest {
     val banner = InspectorBanner(inspectorRule.project)
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.text.text).isEqualTo(INCOMPATIBLE_LIBRARY_MESSAGE)
   }
 
@@ -326,6 +326,7 @@ class AppInspectionInspectorClientTest {
     val banner = InspectorBanner(inspectorRule.project)
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
 
     assertThat(banner.text.text).isEqualTo(PROGUARDED_LIBRARY_MESSAGE)
   }
@@ -506,7 +507,7 @@ class AppInspectionInspectorClientTest {
       }.build()
     }
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.text.text).isEqualTo("here's my error")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
   }
@@ -522,7 +523,7 @@ class AppInspectionInspectorClientTest {
     }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.text.text).isEqualTo("here's my error")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
   }
@@ -547,6 +548,8 @@ class AppInspectionInspectorClientTest {
     PropertiesComponent.getInstance().setValue(KEY_HIDE_ACTIVITY_RESTART_BANNER, true)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     assertThat(banner.isVisible).isFalse()
   }
 
@@ -558,6 +561,8 @@ class AppInspectionInspectorClientTest {
     val banner = InspectorBanner(inspectorRule.project)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     val actionPanel = banner.components[1] as JPanel
     val doNotShowAction = actionPanel.components[1] as HyperlinkLabel
     doNotShowAction.doClick()
@@ -570,6 +575,7 @@ class AppInspectionInspectorClientTest {
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     val banner = InspectorBanner(inspectorRule.project)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.isVisible).isFalse()
   }
 
@@ -582,6 +588,8 @@ class AppInspectionInspectorClientTest {
     val banner = InspectorBanner(inspectorRule.project)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     assertThat(banner.isVisible).isFalse()
   }
 
@@ -645,11 +653,13 @@ class AppInspectionInspectorClientTest {
   }
 
   private fun verifyActivityRestartBanner(banner: InspectorBanner, runConfigActionExpected: Boolean) {
-    assertThat(banner.isVisible).isTrue()
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.text.text).isEqualTo("The activity was restarted. This can be avoided by enabling " +
                                            "\"Connect without restarting activity\" in the run configuration options.")
     val service = InspectorBannerService.getInstance(inspectorRule.project)
     service.DISMISS_ACTION.actionPerformed(mock())
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     val actionPanel = banner.getComponent(1) as JPanel
     if (runConfigActionExpected) {
       assertThat(actionPanel.componentCount).isEqualTo(3)
@@ -690,6 +700,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     val packages = RepositoryPackages(listOf(sdkPackage), listOf())
     val sdkHandler = AndroidSdkHandler(sdkRoot, null, MockFileOp(sdkRoot.fileSystem), FakeRepoManager(sdkRoot, packages))
     val banner = InspectorBanner(inspectorRule.project)
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
@@ -716,6 +728,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     val packages = RepositoryPackages(listOf(sdkPackage), listOf())
     val sdkHandler = AndroidSdkHandler(sdkRoot, null, MockFileOp(sdkRoot.fileSystem), FakeRepoManager(sdkRoot, packages))
     val banner = InspectorBanner(inspectorRule.project)
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
@@ -725,9 +739,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
                                                 sdkHandler = sdkHandler)
       client.connect()
       waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }
-      invokeAndWaitIfNeeded {
-        UIUtil.dispatchAllInvocationEvents()
-      }
+      invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
       assertThat(banner.isVisible).isTrue()
       assertThat(banner.text.text).isEqualTo(API_29_BUG_MESSAGE)
     })
@@ -747,9 +759,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
                                                 sdkHandler = sdkHandler)
       client.connect()
       waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }
-      invokeAndWaitIfNeeded {
-        UIUtil.dispatchAllInvocationEvents()
-      }
+      invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
       assertThat(banner.isVisible).isTrue()
       assertThat(banner.text.text).isEqualTo("$API_29_BUG_MESSAGE $API_29_BUG_UPGRADE")
     })
@@ -846,6 +856,7 @@ class AppInspectionInspectorClientWithFailingClientTest {
     }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     assertThat(banner.text.text).isEqualTo("Unable to detect a live inspection service. To enable live inspections, restart the device.")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
   }
