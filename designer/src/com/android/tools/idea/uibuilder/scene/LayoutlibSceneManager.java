@@ -1658,6 +1658,24 @@ public class LayoutlibSceneManager extends SceneManager {
     }
   }
 
+  /**
+   * Executes the given block under a {@link RenderSession}. This allows the given block to access resources since they are set up
+   * before executing it.
+   * @return A {@link CompletableFuture} that completes when the block finalizes.
+   * @see RenderTask#runAsyncRenderActionWithSession(Runnable)
+   */
+  @NotNull
+  public CompletableFuture<Void> executeInRenderSessionAsync(@NotNull Runnable block) {
+    synchronized (myRenderingTaskLock) {
+      if (myRenderTask != null) {
+        return myRenderTask.runAsyncRenderActionWithSession(block);
+      }
+      else {
+        return CompletableFuture.completedFuture(null);
+      }
+    }
+  }
+
   private long currentTimeNanos() {
     synchronized (myRenderingTaskLock) {
       return mySessionClock.getTimeNanos();
