@@ -270,21 +270,27 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
           credentialAttributesForKey(keyStorePasswordKey),
           createKeystoreDeprecatedAttributesPre_2021_1_1_3(keyStorePasswordKey),
           createDeprecatedAttributesPre_3_2(keyStorePasswordKey)
-        )).map(Credentials::getPassword).ifPresent(password -> GuiUtils.invokeLaterIfNeeded(() -> {
-          if (myKeyStorePasswordField.getPassword().length == 0) {
-            myKeyStorePasswordField.setText(password.toString());
-          }
-        }, ModalityState.stateForComponent(myKeyStorePasswordField)));
+        )).map(Credentials::getPassword).ifPresent(password -> GuiUtils.invokeLaterIfNeeded(
+          () -> {
+            if (myKeyStorePasswordField.getPassword().length == 0) {
+              myKeyStorePasswordField.setText(password.toString());
+            }
+          },
+          // Need to be any modality as it is not guaranteed that dialog is already opened, but we need to run anyway.
+          ModalityState.any()));
 
         retrievePassword(passwordSafe, Arrays.asList(
           credentialAttributesForKey(keyPasswordKey),
           createKeyDeprecatedAttributesPre_2021_1_1_3(keyPasswordKey),
           createDeprecatedAttributesPre_3_2(keyPasswordKey)
-        )).map(Credentials::getPassword).ifPresent(password -> GuiUtils.invokeLaterIfNeeded(() -> {
-          if (myKeyPasswordField.getPassword().length == 0) {
-            myKeyPasswordField.setText(password.toString());
-          }
-        }, ModalityState.stateForComponent(myKeyPasswordField)));
+        )).map(Credentials::getPassword).ifPresent(password -> GuiUtils.invokeLaterIfNeeded(
+          () -> {
+            if (myKeyPasswordField.getPassword().length == 0) {
+              myKeyPasswordField.setText(password.toString());
+            }
+          },
+          // Need to be any modality as it is not guaranteed that dialog is already opened, but we need to run anyway.
+          ModalityState.any()));
       }
       catch (Throwable t) {
         Logger.getInstance(KeystoreStep.class).error("Unable to use password safe", t);
