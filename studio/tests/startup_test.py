@@ -140,8 +140,6 @@ class StartUpTest(unittest.TestCase):
                   "JetBrains maven model api classes",
                   "Kotlin",
                   "Machine Learning Code Completion",
-                  "Machine Learning Code Completion Models",
-                  "Machine Learning Local Models",
                   "Mercurial",
                   "Next File Prediction",
                   "Properties",
