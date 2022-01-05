@@ -530,10 +530,10 @@ android_studio(
         ":com.google.urlassistant",
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
-    version_eap = False,
-    version_full = "Bumblebee | {0}.{1}.{2}",
-    version_micro = 1,
-    version_patch = 20,
+    version_eap = True,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 
