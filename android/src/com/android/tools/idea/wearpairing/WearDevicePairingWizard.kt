@@ -42,7 +42,7 @@ import java.net.URL
 // Keep an instance, so if the wizard is already running, just bring it to the front
 private var wizardDialog: ModelWizardDialog? = null
 
-internal class WearDevicePairingWizard {
+class WearDevicePairingWizard {
   @Synchronized
   private fun show(project: Project?, selectedDevice: PairingDevice?) {
     wizardDialog?.apply {
@@ -60,7 +60,7 @@ internal class WearDevicePairingWizard {
           )
         }
         else {
-          // Action id is from com.android.tools.idea.avdmanager.actions.RunAndroidAvdManagerAction.
+          // Action id is from com.android.tools.idea.devicemanager.legacy.actions.RunAndroidAvdManagerAction.
           val runAndroidAvdManagerAction = ActionManager.getInstance().getAction("Android.RunAndroidAvdManager")
           val projectContext = SimpleDataContext.getProjectContext(project)
           ActionUtil.invokeAction(runAndroidAvdManagerAction, projectContext, ActionPlaces.UNKNOWN, null, null)

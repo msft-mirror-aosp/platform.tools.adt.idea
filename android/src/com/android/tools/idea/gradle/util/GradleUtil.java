@@ -27,10 +27,10 @@ import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 import static com.android.SdkConstants.GRADLE_PATH_SEPARATOR;
 import static com.android.tools.idea.Projects.getBaseDirPath;
+import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
 import static com.google.common.base.Splitter.on;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.getExecutionSettings;
-import static com.intellij.openapi.util.io.FileUtil.filesEqual;
 import static com.intellij.openapi.util.io.FileUtil.join;
 import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
 import static com.intellij.openapi.util.text.StringUtil.trimLeading;
@@ -50,23 +50,16 @@ import static org.jetbrains.plugins.gradle.settings.DistributionType.LOCAL;
 import com.android.ide.common.repository.GradleCoordinate;
 import com.android.ide.common.repository.GradleVersion;
 import com.android.tools.idea.IdeInfo;
-import com.android.tools.idea.gradle.model.IdeAndroidArtifact;
-import com.android.tools.idea.gradle.model.IdeAndroidLibrary;
-import com.android.tools.idea.gradle.model.IdeAndroidProject;
-import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
-import com.android.tools.idea.gradle.model.IdeDependencies;
-import com.android.tools.idea.gradle.model.IdeVariant;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacetConfiguration;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
+import com.android.tools.idea.projectsystem.AndroidModuleSystem;
 import com.android.tools.idea.projectsystem.ModuleSystemUtil;
 import com.android.utils.BuildScriptUtil;
 import com.android.utils.SdkUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.intellij.facet.ProjectFacetManager;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.Application;
@@ -123,8 +116,7 @@ public final class GradleUtil {
   @NotNull
   public static Icon getModuleIcon(@NotNull Module module) {
     if (ModuleSystemUtil.isHolderModule(module) || ModuleSystemUtil.isMainModule(module)) {
-      AndroidModuleModel androidModuleModel = AndroidModuleModel.get(module);
-      return androidModuleModel != null ? getAndroidModuleIcon(androidModuleModel) : AllIcons.Nodes.Module;
+      return getAndroidModuleIcon(getModuleSystem(module));
     } else if (ModuleSystemUtil.isAndroidTestModule(module)) {
       return ANDROID_MODULE;
     }
@@ -134,23 +126,25 @@ public final class GradleUtil {
   }
 
   @NotNull
-  public static Icon getAndroidModuleIcon(@NotNull AndroidModuleModel androidModuleModel) {
-    return getAndroidModuleIcon(androidModuleModel.getAndroidProject().getProjectType());
+  public static Icon getAndroidModuleIcon(@NotNull AndroidModuleSystem androidModuleSystem) {
+    return getAndroidModuleIcon(androidModuleSystem.getType());
   }
 
   @NotNull
-  public static Icon getAndroidModuleIcon(@NotNull IdeAndroidProjectType androidProjectType) {
+  public static Icon getAndroidModuleIcon(@NotNull AndroidModuleSystem.Type androidProjectType) {
     switch (androidProjectType) {
-      case PROJECT_TYPE_APP:
+      case TYPE_NON_ANDROID:
+        return AllIcons.Nodes.Module;
+      case TYPE_APP:
         return ANDROID_MODULE;
-      case PROJECT_TYPE_FEATURE:
-      case PROJECT_TYPE_DYNAMIC_FEATURE:
+      case TYPE_FEATURE:
+      case TYPE_DYNAMIC_FEATURE:
         return FEATURE_MODULE;
-      case PROJECT_TYPE_INSTANTAPP:
+      case TYPE_INSTANTAPP:
         return INSTANT_APPS;
-      case PROJECT_TYPE_LIBRARY:
+      case TYPE_LIBRARY:
         return LIBRARY_MODULE;
-      case PROJECT_TYPE_TEST:
+      case TYPE_TEST:
         return ANDROID_TEST_ROOT;
       default:
         return ANDROID_MODULE;
@@ -441,53 +435,6 @@ public final class GradleUtil {
     return false;
   }
 
-  /**
-   * Determines version of the Android gradle plugin (and model) used by the project. The result can be absent if there are no android
-   * modules in the project or if the last sync has failed.
-   */
-  @Nullable
-  public static GradleVersion getAndroidGradleModelVersionInUse(@NotNull Project project) {
-    Set<String> foundInLibraries = Sets.newHashSet();
-    Set<String> foundInApps = Sets.newHashSet();
-    for (Module module : ModuleManager.getInstance(project).getModules()) {
-
-      AndroidModuleModel androidModel = AndroidModuleModel.get(module);
-      if (androidModel != null) {
-        IdeAndroidProject androidProject = androidModel.getAndroidProject();
-        String modelVersion = androidProject.getAgpVersion();
-        if (androidModel.getAndroidProject().getProjectType() == IdeAndroidProjectType.PROJECT_TYPE_APP) {
-          foundInApps.add(modelVersion);
-        }
-        else {
-          foundInLibraries.add(modelVersion);
-        }
-      }
-    }
-
-    String found = null;
-
-    // Prefer the version in app.
-    if (foundInApps.size() == 1) {
-      found = getOnlyElement(foundInApps);
-    }
-    else if (foundInApps.isEmpty() && foundInLibraries.size() == 1) {
-      found = getOnlyElement(foundInLibraries);
-    }
-
-    return found != null ? GradleVersion.tryParse(found) : null;
-  }
-
-  @Nullable
-  public static GradleVersion getAndroidGradleModelVersionInUse(@NotNull Module module) {
-    AndroidModuleModel androidModel = AndroidModuleModel.get(module);
-    if (androidModel != null) {
-      IdeAndroidProject androidProject = androidModel.getAndroidProject();
-      return GradleVersion.tryParse(androidProject.getAgpVersion());
-    }
-
-    return null;
-  }
-
   public static void attemptToUseEmbeddedGradle(@NotNull Project project) {
     if (IdeInfo.getInstance().isAndroidStudio()) {
       GradleWrapper gradleWrapper = GradleWrapper.find(project);
@@ -567,25 +514,6 @@ public final class GradleUtil {
   }
 
   /**
-   * Find the Library whose exploded aar folder matches given directory.
-   *
-   * @param bundleDir The directory to search for.
-   * @param variant   The variant.
-   * @return the Library matches contains given bundleDir
-   */
-  @Nullable
-  public static IdeAndroidLibrary findLibrary(@NotNull File bundleDir, @NotNull IdeVariant variant) {
-    IdeAndroidArtifact artifact = variant.getMainArtifact();
-    IdeDependencies dependencies = artifact.getLevel2Dependencies();
-    for (IdeAndroidLibrary library : dependencies.getAndroidLibraries()) {
-      if (filesEqual(bundleDir, library.getFolder())) {
-        return library;
-      }
-    }
-    return null;
-  }
-
-  /**
    * This method converts a configuration name from (for example) "compile" to "implementation" if the
    * Gradle plugin version is 3.0 or higher.
    *
@@ -641,28 +569,6 @@ public final class GradleUtil {
     configuration = replaceSuffixWithCase(configuration, "apk", "runtimeOnly");
 
     return configuration;
-  }
-
-  /**
-   * Returns true if we should use compatibility configuration names (such as "compile") instead
-   * of the modern configuration names (such as "api" or "implementation") for the given project
-   *
-   * @param project the project to consult
-   * @return true if we should use compatibility configuration names
-   */
-  public static boolean useCompatibilityConfigurationNames(@NotNull Project project) {
-    return useCompatibilityConfigurationNames(getAndroidGradleModelVersionInUse(project));
-  }
-
-  /**
-   * Returns true if we should use compatibility configuration names (such as "compile") instead
-   * of the modern configuration names (such as "api" or "implementation") for the given Gradle version
-   *
-   * @param gradleVersion the Gradle plugin version to check
-   * @return true if we should use compatibility configuration names
-   */
-  public static boolean useCompatibilityConfigurationNames(@Nullable GradleVersion gradleVersion) {
-    return gradleVersion != null && gradleVersion.getMajor() < 3;
   }
 
 

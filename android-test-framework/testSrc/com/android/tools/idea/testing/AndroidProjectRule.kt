@@ -199,8 +199,8 @@ class AndroidProjectRule private constructor(
   fun <T : Any> registerExtension(epName: ExtensionPointName<T>, extension: T) =
     project.registerExtension(epName, extension, fixture.projectDisposable)
 
-  fun <T: CodeInsightTestFixture> getFixture(type: Class<T>): T? {
-    return if (type.isInstance(fixture)) fixture as T else null
+  inline fun <reified T: CodeInsightTestFixture> getTypedFixture(): T? {
+    return fixture as? T
   }
 
   override fun before(description: Description) {
@@ -223,7 +223,7 @@ class AndroidProjectRule private constructor(
     }
 
     userHome = System.getProperty("user.home")
-    val testSpecificName = UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName
+    val testSpecificName = UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName.substringAfterLast('$')
     // Reset user home directory.
     System.setProperty("user.home", FileUtils.join(FileUtil.getTempDirectory(), testSpecificName, "nonexistent_user_home"))
 
@@ -270,7 +270,7 @@ class AndroidProjectRule private constructor(
         AndroidTestCase.AndroidModuleFixtureBuilder::class.java,
         AndroidTestCase.AndroidModuleFixtureBuilderImpl::class.java)
 
-    val name = fixtureName ?: description.className.substringAfterLast('.')
+    val name = fixtureName ?: description.className.substringAfterLast('.').substringAfterLast('$')
     val tempDirFixture = object: AndroidTempDirTestFixture(name) {
       private val tempRoot: String = FileUtil.createTempDirectory(UsefulTestCase.TEMP_DIR_MARKER + name, "", false).path
       override fun getRootTempDirectory(): String = tempRoot

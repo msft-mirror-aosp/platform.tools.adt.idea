@@ -32,6 +32,7 @@ import com.android.tools.idea.compose.preview.navigation.PreviewNavigationHandle
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeSceneUpdateListener
 import com.android.tools.idea.compose.preview.util.PreviewElement
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.tools.idea.testing.deleteLine
 import com.android.tools.idea.testing.executeAndSave
 import com.android.tools.idea.testing.insertText
@@ -42,14 +43,19 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisi
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.RealTimeSessionClock
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.idea.wearpairing.await
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteActionAndWait
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -70,6 +76,7 @@ import java.nio.file.Paths
 import java.time.Duration
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.test.assertFalse
 
 
 private class TestComposePreviewView(parentDisposable: Disposable, project: Project) : ComposePreviewView, JPanel() {
@@ -275,13 +282,15 @@ class ComposePreviewRepresentationTest {
       fixture.openFileInEditor(psiMainFile.virtualFile)
     }
 
-    runAndWaitForRefresh(Duration.ofSeconds(5)) {
+    runAndWaitForRefresh(Duration.ofSeconds(15)) {
       // Remove the @Preview from the NavigatablePreview
       runWriteActionAndWait {
         fixture.moveCaret("NavigatablePreview|")
         // Move to the line with the annotation
         fixture.editor.moveCaretLines(-2)
         fixture.editor.executeAndSave { fixture.editor.deleteLine() }
+        PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+        FileDocumentManager.getInstance().saveAllDocuments()
       }
     }
     invokeAndWaitIfNeeded {
@@ -312,16 +321,20 @@ class ComposePreviewRepresentationTest {
       fixture.editor.executeAndSave {
         insertText("\nText(\"Hello 3\")\n")
       }
+      PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+      FileDocumentManager.getInstance().saveAllDocuments()
     }
 
+    assertTrue(composePreviewRepresentation.buildWillTriggerRefresh())
     buildAndRefresh()
+    assertFalse(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
 
     val secondRender = findSceneViewRenderWithName("TwoElementsPreview")
     assertTrue(
       "Second image expected at least 10% higher but were second=${secondRender.height} first=${firstRender.height}",
       secondRender.height > (firstRender.height * 1.10))
     try {
-      ImageDiffUtil.assertImageSimilar("testImage", firstRender, secondRender, 3.0, 20)
+      ImageDiffUtil.assertImageSimilar("testImage", firstRender, secondRender, 10.0, 20)
       fail("First render and second render are expected to be different")
     }
     catch (_: AssertionError) {
@@ -337,6 +350,37 @@ class ComposePreviewRepresentationTest {
     buildAndRefresh()
 
     val thirdRender = findSceneViewRenderWithName("TwoElementsPreview")
-    ImageDiffUtil.assertImageSimilar("testImage", firstRender, thirdRender, 3.0, 20)
+    ImageDiffUtil.assertImageSimilar("testImage", firstRender, thirdRender, 10.0, 20)
+  }
+
+  @Test
+  fun `build clean triggers needs refresh`() {
+    assertFalse(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
+    runBlocking {
+      GradleBuildInvoker.getInstance(projectRule.project).cleanProject().await()
+    }
+    assertTrue(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
+    assertTrue(composePreviewRepresentation.buildWillTriggerRefresh())
+  }
+
+  @Test
+  fun `updating different file triggers needs refresh`() {
+    val otherFile = VfsUtil.findRelativeFile(SimpleComposeAppPaths.APP_OTHER_PREVIEWS.path,
+                                             ProjectRootManager.getInstance(projectRule.project).contentRoots[0])!!
+
+    assertFalse(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
+
+    runWriteActionAndWait {
+      projectRule.fixture.openFileInEditor(otherFile)
+      projectRule.fixture.moveCaret("Text(\"Line3\")|")
+      projectRule.fixture.type("\nText(\"added during test execution\")")
+      PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+      FileDocumentManager.getInstance().saveAllDocuments()
+    }
+    assertTrue(composePreviewRepresentation.buildWillTriggerRefresh())
+    runBlocking {
+      projectRule.build()
+    }
+    assertFalse(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
   }
 }

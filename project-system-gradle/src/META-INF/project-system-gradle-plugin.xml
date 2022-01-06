@@ -19,6 +19,10 @@
   <depends>org.jetbrains.plugins.gradle</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends optional="true" config-file="project-system-gradle-plugin-androidstudio.xml">com.intellij.modules.androidstudio</depends>
+  <extensions defaultExtensionNs="com.android">
+    <androidStartupActivity implementation="com.android.tools.idea.gradle.util.LastBuildOrSyncStartupActivity" />
+    <moduleImporter implementation="com.android.tools.idea.gradle.project.GradleModuleImporter$GradleAndroidModuleImporter" />
+  </extensions>
   <extensions defaultExtensionNs="com.android.project">
     <projectsystem implementation="com.android.tools.idea.projectsystem.gradle.GradleProjectSystemProvider"/>
   </extensions>
@@ -40,6 +44,7 @@
                        order="first, before gradle"/>
     <projectService serviceInterface="com.android.tools.idea.gradle.actions.BuildsToPathsMapper"
                     serviceImplementation="com.android.tools.idea.gradle.project.build.BuildsToPathsMapperImpl"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.LibraryFilePaths"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.idea.data.DataNodeCaches"/>
     <projectService serviceInterface="com.android.tools.idea.gradle.project.sync.issues.SyncIssueUsageReporter"
                     serviceImplementation="com.android.tools.idea.gradle.project.sync.issues.SyncIssueUsageReporterImpl"/>
@@ -48,6 +53,7 @@
     <projectService serviceInterface="com.android.tools.idea.gradle.project.sync.GradleSyncState"
         serviceImplementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateImpl"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.util.LastBuildOrSyncService" />
     <facet.toolWindow id="Build Variants"
                       facetIdList="android,android-gradle"
                       anchor="left"
@@ -67,6 +73,7 @@
     <externalSystemExecutionConsoleManager implementation="com.android.tools.idea.gradle.filters.AndroidGradleExecutionConsoleManager"
                                            order="before gradle"/>
     <externalSystemTaskNotificationListener implementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$SyncStateUpdater" />
+    <externalSystemTaskNotificationListener implementation="com.android.tools.idea.gradle.util.LastBuildOrSyncListener" />
     <resolveScopeProvider implementation="com.android.tools.idea.testartifacts.scopes.TestArtifactResolveScopeProvider" order="first"/>
     <useScopeOptimizer implementation="com.android.tools.idea.testartifacts.scopes.TestArtifactUseScopeOptimizer"/>
     <projectModelModifier implementation="com.android.tools.idea.gradle.AndroidGradleJavaProjectModelModifier"/>
@@ -83,6 +90,10 @@
                        implementation="org.jetbrains.android.refactoring.GradleUsageTypeProvider" order="first" />
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.GradleFiles"/>
     <postStartupActivity implementation="com.android.tools.idea.gradle.project.sync.GradleFiles$UpdateHashesStartupActivity"/>
+    <intentionAction>
+      <className>org.jetbrains.android.intentions.AndroidAddLibraryDependencyAction</className>
+      <category>Android</category>
+    </intentionAction>
   </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
@@ -92,8 +103,10 @@
     <gradleModelFacade implementation="org.jetbrains.kotlin.android.configure.AndroidGradleModelFacade"/>
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+    <orderEnumerationHandlerFactory implementation="com.android.tools.idea.gradle.project.AndroidGradleOrderEnumeratorHandlerFactory"/>
     <projectResolve implementation="com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver" order="first"/>
     <projectResolve implementation="org.jetbrains.kotlin.android.configure.KotlinAndroidMPPGradleProjectResolver"/>
+    <resolve.contributor implementation="com.android.tools.idea.gradle.service.resolve.AndroidDslContributor"/>
     <taskManager implementation="com.android.tools.idea.gradle.task.AndroidGradleTaskManager"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.AgpVersionNotSupportedIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.CachedDependencyNotFoundIssueChecker"/>

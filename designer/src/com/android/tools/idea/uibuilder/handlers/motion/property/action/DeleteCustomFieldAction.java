@@ -23,17 +23,18 @@ import com.android.tools.idea.uibuilder.handlers.motion.property.MotionLayoutAtt
 import com.android.tools.idea.uibuilder.handlers.motion.property.MotionSelection;
 import com.android.tools.idea.uibuilder.property.NlPropertyItem;
 import com.android.tools.property.panel.api.TableLineModel;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 
 public class DeleteCustomFieldAction extends AnAction {
+  private static final String REMOVE_ATTRIBUTE = "Remove selected attribute";
   private TableLineModel myLineModel;
 
   public DeleteCustomFieldAction() {
-    super(null, "Remove selected attribute", StudioIcons.Common.REMOVE);
+    super(REMOVE_ATTRIBUTE, REMOVE_ATTRIBUTE, AllIcons.General.Remove);
     ActionManager manager = ActionManager.getInstance();
     setShortcutSet(manager.getAction(ACTION_DELETE).getShortcutSet());
   }
@@ -46,9 +47,6 @@ public class DeleteCustomFieldAction extends AnAction {
   public void update(@NotNull AnActionEvent event) {
     boolean enabled = myLineModel != null && !myLineModel.getTableModel().getItems().isEmpty();
     event.getPresentation().setEnabled(enabled);
-
-    // Hack: the FocusableActionButton will update when the state of the template presentation is updated:
-    getTemplatePresentation().setEnabled(enabled);
   }
 
   @Override

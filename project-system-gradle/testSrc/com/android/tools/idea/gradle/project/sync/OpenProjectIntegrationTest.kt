@@ -26,6 +26,7 @@ import com.android.tools.idea.testing.GradleIntegrationTest
 import com.android.tools.idea.testing.OpenPreparedProjectOptions
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths
+import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PSD_SAMPLE_REPO
 import com.android.tools.idea.testing.fileUnderGradleRoot
 import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.onEdt
@@ -39,8 +40,11 @@ import com.intellij.execution.RunManagerEx
 import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.PathUtil.toSystemDependentName
+import org.jetbrains.android.AndroidTestBase
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -69,19 +73,37 @@ class OpenProjectIntegrationTest : GradleIntegrationTest {
   @Test
   fun testReopenProject() {
     prepareGradleProject(TestProjectPaths.SIMPLE_APPLICATION, "project")
-    openPreparedProject("project") { }
-    openPreparedProject("project") { project ->
+    val before = openPreparedProject("project") { project -> project.saveAndDump() }
+    val after = openPreparedProject("project") { project ->
       verifySyncSkipped(project, projectRule.fixture.testRootDisposable)
+      project.saveAndDump()
     }
+    assertThat(after).isEqualTo(before)
+  }
+
+  @Test
+  fun testReimportProject() {
+    val root = prepareGradleProject(TestProjectPaths.SIMPLE_APPLICATION, "project")
+    val before = openPreparedProject("project") { project -> project.saveAndDump() }
+    FileUtil.delete(File(root, ".idea"))
+    val after = openPreparedProject("project") { project ->
+      // Synced again.
+      assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult())
+        .isEqualTo(ProjectSystemSyncManager.SyncResult.SUCCESS)
+      project.saveAndDump()
+    }
+    assertThat(after).isEqualTo(before)
   }
 
   @Test
   fun testReopenKaptProject() {
     prepareGradleProject(TestProjectPaths.KOTLIN_KAPT, "project")
-    openPreparedProject("project") { }
-    openPreparedProject("project") { project ->
+    val before = openPreparedProject("project") { project -> project.saveAndDump() }
+    val after = openPreparedProject("project") { project ->
       verifySyncSkipped(project, projectRule.fixture.testRootDisposable)
+      project.saveAndDump()
     }
+    assertThat(after).isEqualTo(before)
   }
 
   @Test
@@ -89,16 +111,17 @@ class OpenProjectIntegrationTest : GradleIntegrationTest {
     val root = prepareGradleProject(TestProjectPaths.SIMPLE_APPLICATION, "project")
     val buildFile = VfsUtil.findFileByIoFile(root.resolve("app/build.gradle"), true)!!
 
-    val lastSyncFinishedTimestamp = openPreparedProject("project") { project ->
+    val (snapshots, lastSyncFinishedTimestamp) = openPreparedProject("project") { project ->
+      val initial = project.saveAndDump()
       runWriteAction {
         buildFile.setBinaryContent("*bad*".toByteArray())
       }
       syncProject(project, GradleSyncInvoker.Request.testRequest())
       assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult()).isEqualTo(ProjectSystemSyncManager.SyncResult.FAILURE)
-      GradleSyncState.getInstance(project).lastSyncFinishedTimeStamp
+      (initial to project.saveAndDump()) to GradleSyncState.getInstance(project).lastSyncFinishedTimeStamp
     }
-
-    openPreparedProject(
+    val (initial, before) = snapshots
+    val after = openPreparedProject(
       "project",
       options = OpenPreparedProjectOptions(
         verifyOpened = { project ->
@@ -108,16 +131,32 @@ class OpenProjectIntegrationTest : GradleIntegrationTest {
     ) { project ->
       // Make sure we tried to sync.
       assertThat(GradleSyncState.getInstance(project).lastSyncFinishedTimeStamp).isNotEqualTo(lastSyncFinishedTimestamp)
+      project.saveAndDump()
     }
+    assertThat(before).isEqualTo(initial)
+    // TODO(b/211782178): assertThat(after).isEqualTo(before)
   }
 
   @Test
   fun testReopenCompositeBuildProject() {
     prepareGradleProject(TestProjectPaths.COMPOSITE_BUILD, "project")
-    openPreparedProject("project") { }
-    openPreparedProject("project") { project ->
+    val before = openPreparedProject("project") { project -> project.saveAndDump() }
+    val after = openPreparedProject("project") { project ->
       verifySyncSkipped(project, projectRule.fixture.testRootDisposable)
+      project.saveAndDump()
     }
+    assertThat(after).isEqualTo(before)
+  }
+
+  @Test
+  fun testReopenPsdSampleGroovy() {
+    prepareGradleProject(TestProjectPaths.PSD_SAMPLE_GROOVY, "project")
+    val before = openPreparedProject("project") { project -> project.saveAndDump() }
+    val after = openPreparedProject("project") { project ->
+      verifySyncSkipped(project, projectRule.fixture.testRootDisposable)
+      project.saveAndDump()
+    }
+    assertThat(after).isEqualTo(before)
   }
 
   @Test
@@ -180,8 +219,20 @@ class OpenProjectIntegrationTest : GradleIntegrationTest {
     assertThat(reopenedDebug).isEqualTo(debugBefore)
   }
 
+  @Test
+  fun testResyncPsdDependency() {
+    prepareGradleProject(TestProjectToSnapshotPaths.PSD_DEPENDENCY, "project")
+    openPreparedProject("project") { project: Project ->
+      val firstSync = project.saveAndDump()
+      syncProject(project, GradleSyncInvoker.Request.testRequest())
+      val secondSync = project.saveAndDump()
+      assertThat(firstSync).isEqualTo(secondSync)
+    }
+  }
+
   override fun getName(): String = testName.methodName
   override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = TestProjectPaths.TEST_DATA_PATH
-  override fun getAdditionalRepos(): Collection<File> = listOf()
+  override fun getAdditionalRepos() =
+    listOf(File(AndroidTestBase.getTestDataPath(), toSystemDependentName(PSD_SAMPLE_REPO)))
 }

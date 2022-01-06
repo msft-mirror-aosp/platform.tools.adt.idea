@@ -19,6 +19,7 @@ import com.android.SdkConstants.BUTTON
 import com.android.SdkConstants.LINEAR_LAYOUT
 import com.android.SdkConstants.TEXT_VIEW
 import com.android.tools.adtui.common.secondaryPanelBackground
+import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.componenttree.api.BadgeItem
 import com.android.tools.componenttree.api.ComponentTreeBuilder
 import com.android.tools.componenttree.api.ComponentTreeModel
@@ -29,6 +30,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.DataManagerImpl
 import com.intellij.ide.ui.laf.IntelliJLaf
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.mock.MockApplication
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -86,6 +88,7 @@ object ComponentTreeManualTest {
     ApplicationManager.setApplication(app, disposable)
     app.registerService(DataManager::class.java, DataManagerImpl())
     app.registerService(WindowManager::class.java, WindowManagerImpl())
+    app.registerService(PropertiesComponent::class.java, PropertiesComponentMock())
     @Suppress("UnstableApiUsage")
     app.extensionArea.registerExtensionPoint(AdvancedSettingBean.EP_NAME.name, AdvancedSettingBean::class.java.name,
                                              ExtensionPoint.Kind.BEAN_CLASS, false)
@@ -115,6 +118,7 @@ private class ComponentTreeTest {
 
     val badge1 = Badge("badge1")
     val badge2 = Badge("badge2")
+    val badge3 = Badge("badge3")
 
     val result = ComponentTreeBuilder()
       .withNodeType(ItemNodeType())
@@ -122,7 +126,9 @@ private class ComponentTreeTest {
       .withoutTreeSearch()
       .withBadgeSupport(badge1)
       .withBadgeSupport(badge2)
+      .withBadgeSupport(badge3)
       .withHorizontalScrollBar()
+      .withDnD()
       .build()
     tree = result.component
     model = result.model
@@ -199,11 +205,16 @@ private class ComponentTreeTest {
     val button2 = Item(BUTTON, "@+id/button1", "OK", buttonIcon, layout2)
     val textView3 = Item(TEXT_VIEW, "@+id/textView3", "Hello London calling we are here", textIcon, layout3)
     val layout4 = Item(LINEAR_LAYOUT, null, null, layoutIcon, layout3)
-    val button3 = Item(BUTTON, "@+id/button1", "PressMe", buttonIcon, layout3)
+    val button3 = Item(BUTTON, "@+id/button3", "PressMe", buttonIcon, layout3)
     textView1.badge1 = StudioIcons.Common.ERROR_INLINE
     textView1.badge2 = StudioIcons.Common.CLOSE
-    textView2.badge2 = StudioIcons.Common.DELETE
+    textView1.hover3 = StudioIcons.LayoutEditor.Properties.VISIBLE
+    textView2.badge2 = StudioIcons.Common.CLEAR
+    textView2.hover3 = StudioIcons.LayoutEditor.Properties.VISIBLE
+    textView3.badge3 = StudioIcons.Common.FILTER
+    textView3.hover3 = StudioIcons.LayoutEditor.Properties.VISIBLE
     button1.badge1 = StudioIcons.Common.WARNING_INLINE
+    button1.hover3 = StudioIcons.LayoutEditor.Properties.VISIBLE
     return layout1
   }
 
@@ -222,8 +233,24 @@ private class ComponentTreeTest {
 
     override fun getIcon(item: Any): Icon? {
       val itemValue = item as? Item
-      return if (context == "badge1") itemValue?.badge1 else itemValue?.badge2
+      return when (context) {
+        "badge1" -> itemValue?.badge1
+        "badge2" -> itemValue?.badge2
+        "badge3" -> itemValue?.badge3
+        else -> null
+      }
     }
+
+    override fun getHoverIcon(item: Any): Icon? {
+      val itemValue = item as? Item
+      return when (context) {
+        "badge3" -> itemValue?.hover3
+        else -> null
+      }
+    }
+
+    override val leftDivider: Boolean
+      get() = context == "badge3"
 
     override fun getTooltipText(item: Any?) = "Tooltip for $item"
 

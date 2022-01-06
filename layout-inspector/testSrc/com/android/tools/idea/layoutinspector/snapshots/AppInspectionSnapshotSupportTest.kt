@@ -58,7 +58,7 @@ class AppInspectionSnapshotSupportTest {
 
   private val projectRule = AndroidProjectRule.withSdk()
   private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(appInspectorRule.createInspectorClientProvider(), projectRule) { it.name == PROCESS.name }
+  private val inspectorRule = LayoutInspectorRule(listOf(appInspectorRule.createInspectorClientProvider()), projectRule) { it.name == PROCESS.name }
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(appInspectorRule).around(inspectorRule).around(disposableRule)!!
@@ -235,7 +235,7 @@ class AppInspectionSnapshotSupportTest {
       assertThat(item.type).isEqualTo(INT32)
       checkedProperties = true
     }
-    snapshotLoader.propertiesProvider.requestProperties(newModel[VIEW2]!!)
+    snapshotLoader.propertiesProvider.requestProperties(newModel[VIEW2]!!).get()
     assertThat(checkedProperties).isTrue()
   }
 

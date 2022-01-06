@@ -532,29 +532,31 @@ public final class StudioFlags {
     "If enabled, AS executes Run Configuration via new.AndroidRunProfileState",
     false);
 
-    /**
-     * The level of APK change that will be supported by the deployment pipeline's optimistic
-     * "deploy-without-installing" path. Deploying changes that exceed the level of support
-     * configured here will cause the deployment to install via the package manager.
-     */
-    public enum OptimisticInstallSupportLevel {
-        /** Always fall back to a package manager installation. */
-        DISABLED,
-        /** Support deploying changes to dex files only. */
-        DEX,
-        /** Support deploying changes to dex files and native libraries only. */
-        DEX_AND_NATIVE,
-        /** Support deploying changes to dex files, native libraries, and resources. */
-        DEX_AND_NATIVE_AND_RESOURCES,
-    }
+  /**
+   * The level of APK change that will be supported by the deployment pipeline's optimistic
+   * "deploy-without-installing" path. Deploying changes that exceed the level of support
+   * configured here will cause the deployment to install via the package manager.
+   */
+  public enum OptimisticInstallSupportLevel {
+    /** Always fall back to a package manager installation. */
+    DISABLED,
+    /** Support deploying changes to dex files only. */
+    DEX,
+    /** Support deploying changes to dex files and native libraries only. */
+    DEX_AND_NATIVE,
+    /** Support deploying changes to dex files, native libraries, and resources. */
+    DEX_AND_NATIVE_AND_RESOURCES,
+  }
 
-    public static final Flag<OptimisticInstallSupportLevel> OPTIMISTIC_INSTALL_SUPPORT_LEVEL =
-            Flag.create(
-                    RUNDEBUG,
-                    "optimisticinstall.supportlevel",
-                    "The amount of support for using the 'Apply Changes 2.0' pipeline on Run.",
-                    "This can be \"DISABLED\" to always use a package manager installation; \"DEX\" to use the pipeline for dex-only changes; \"DEX_AND_NATIVE\" to use the pipeline for dex and native library-only changes; or \"DEX_AND_NATIVE_AND_RESOURCES\" to use the pipeline for changes to dex, native libraries, and/or resource/asset files. Deploying changes that exceed the level of support configured here will cause the deployment to install via the package manager.",
-                    OptimisticInstallSupportLevel.DEX_AND_NATIVE);
+  public static final Flag<OptimisticInstallSupportLevel> OPTIMISTIC_INSTALL_SUPPORT_LEVEL = Flag.create(
+    RUNDEBUG,
+    "optimisticinstall.supportlevel",
+    "The amount of support for using the 'Apply Changes 2.0' pipeline on Run.",
+    "This can be \"DISABLED\" to always use a package manager installation; \"DEX\" to use the pipeline for dex-only changes;" +
+        " \"DEX_AND_NATIVE\" to use the pipeline for dex and native library-only changes;" +
+        " or \"DEX_AND_NATIVE_AND_RESOURCES\" to use the pipeline for changes to dex, native libraries, and/or resource/asset files." +
+        " Deploying changes that exceed the level of support configured here will cause the deployment to install via the package manager.",
+    OptimisticInstallSupportLevel.DEX_AND_NATIVE);
 
   public static final Flag<Boolean> APPLY_CHANGES_STRUCTURAL_DEFINITION = Flag.create(
     RUNDEBUG,
@@ -624,6 +626,13 @@ public final class StudioFlags {
     "adblib.migration.wifi.pairing",
     "Use adblib in Pair Device over Wi-Fi",
     "Use adblib instead of ddmlib for Pair Device over Wi-Fi",
+    true);
+
+  public static final Flag<Boolean> ADBLIB_MIGRATION_LOGCAT_V2 = Flag.create(
+    RUNDEBUG,
+    "adblib.migration.logcatv2",
+    "Use adblib in the logcat v2 toolwindow",
+    "Use adblib instead of ddmlib in the logcat v2 toolwindow",
     true);
 
   public static final Flag<Boolean> SUPPORT_FEATURE_ON_FEATURE_DEPS = Flag.create(
@@ -696,7 +705,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> GRADLE_SYNC_PARALLEL_SYNC_ENABLED = Flag.create(
     GRADLE_IDE, "gradle.sync.parallel.sync.enabled", "Enables parallel sync",
-    "This allows the IDE to fetch models in parallel (if supported by Gralde and enabled via org.gradle.parallel=true).", false);
+    "This allows the IDE to fetch models in parallel (if supported by Gradle and enabled via org.gradle.parallel=true).", false);
 
   public static final Flag<Boolean> GRADLE_SYNC_PARALLEL_SYNC_PREFETCH_VARIANTS = Flag.create(
     GRADLE_IDE, "gradle.sync.parallel.sync.prefetch.variants", "Enables speculative syncing of current variants",
@@ -795,6 +804,18 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = Flag.create(
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery",
+    false);
+  //endregion
+
+  //region Device Mirroring
+  private static final FlagGroup DEVICE_MIRRORING = new FlagGroup(FLAGS, "device.mirroring", "Device Mirroring");
+  public static final Flag<Boolean> DEVICE_MIRRORING_ENABLED = Flag.create(
+    DEVICE_MIRRORING, "enabled", "Enable Mirroring of Physical Devices",
+    "Mirrors displays of connected physical devices",
+    false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_STANDALONE_EMULATORS = Flag.create(
+    DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
+    "Treats standalone emulators the same as physical devices for the purpose of display mirroring",
     false);
   //endregion
 
@@ -1312,7 +1333,7 @@ public final class StudioFlags {
     "paired.devices.tab.enabled",
     "Enable the Paired devices tab",
     "Enable the Paired devices tab in the details panel",
-    false);
+    true);
   // endregion
 
   //region DDMLIB

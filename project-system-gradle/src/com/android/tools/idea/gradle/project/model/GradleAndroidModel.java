@@ -17,9 +17,9 @@ package com.android.tools.idea.gradle.project.model;
 
 import static com.android.tools.idea.gradle.project.model.AndroidModelSourceProviderUtils.convertVersion;
 import static com.android.tools.idea.gradle.project.model.AndroidModuleModelUtilKt.classFieldsToDynamicResourceValues;
-import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.getOutputListingFile;
-import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.loadBuildOutputListingFile;
-import static com.android.tools.idea.gradle.util.GradleBuildOutputUtil.variantOutputInformation;
+import static com.android.tools.idea.gradle.util.BuildOutputUtil.getOutputListingFile;
+import static com.android.tools.idea.gradle.util.BuildOutputUtil.loadBuildOutputListingFile;
+import static com.android.tools.idea.gradle.util.BuildOutputUtil.variantOutputInformation;
 import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
 import static com.android.tools.lint.client.api.LintClient.getGradleDesugaring;
 import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
@@ -55,6 +55,7 @@ import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.ClassJarProvider;
 import com.android.tools.idea.model.Namespacing;
 import com.android.tools.idea.model.TestExecutionOption;
+import com.android.tools.idea.model.TestOptions;
 import com.android.tools.lint.detector.api.Desugaring;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -68,9 +69,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.serialization.PropertyMapping;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -174,7 +173,7 @@ public class GradleAndroidModel implements AndroidModuleModel {
     myRootDirPath = rootDirPath;
     myAndroidProject = androidProject;
     myCachedVariantsByName = cachedVariantsByName;
-    mySelectedVariantName = findVariantToSelect(variantName);
+    setSelectedVariantName(variantName);
 
     myAgpVersion = GradleVersion.parseAndroidGradlePluginVersion(myAndroidProject.getAgpVersion()); // Fail sync if the reported version cannot be parsed.
     myFeatures = new AndroidModelFeatures(myAgpVersion);
@@ -395,7 +394,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
     return myProjectSystemId;
   }
 
-  @Override
   @Nullable
   public IdeBuildTypeContainer findBuildType(@NotNull String name) {
     return myBuildTypesByName.get(name);
@@ -411,7 +409,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
     return myProductFlavorsByName.keySet();
   }
 
-  @Override
   @Nullable
   public IdeProductFlavorContainer findProductFlavor(@NotNull String name) {
     return myProductFlavorsByName.get(name);
@@ -427,7 +424,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
    * @return the path of the root directory of the imported Android-Gradle project. The returned path belongs to the IDEA module containing
    * the build.gradle file.
    */
-  @Override
   @NotNull
   public File getRootDirPath() {
     return myRootDirPath;
@@ -445,7 +441,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
   /**
    * @return the imported Android-Gradle project.
    */
-  @Override
   @NotNull
   public IdeAndroidProject getAndroidProject() {
     return myAndroidProject;
@@ -454,7 +449,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
   /**
    * @return the selected build variant.
    */
-  @Override
   @NotNull
   public IdeVariant getSelectedVariant() {
     IdeVariant selected = myCachedVariantsByName.get(mySelectedVariantName);
@@ -465,7 +459,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
   /**
    * Returns the selected variant name
    */
-  @Override
   public String getSelectedVariantName() {
     return mySelectedVariantName;
   }
@@ -473,7 +466,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
   /**
    * @return a list of synced build variants.
    */
-  @Override
   @NotNull
   public ImmutableList<IdeVariant> getVariants() {
     return ImmutableList.copyOf(myCachedVariantsByName.values());
@@ -491,27 +483,12 @@ public class GradleAndroidModel implements AndroidModuleModel {
    * @param name the new name.
    */
   public void setSelectedVariantName(@NotNull String name) {
-    mySelectedVariantName = findVariantToSelect(name);
+    if (findVariantByName(name) == null) throw new IllegalStateException("Unknown variant: " + name);
+    mySelectedVariantName = name;
 
     // force lazy recompute
     myOverridesManifestPackage = null;
     myMinSdkVersion = null;
-  }
-
-  @VisibleForTesting
-  @NotNull
-  String findVariantToSelect(@NotNull String variantName) {
-    String newVariantName;
-    if (myCachedVariantsByName.containsKey(variantName)) {
-      newVariantName = variantName;
-    }
-    else {
-      List<String> sorted = new ArrayList<>(myCachedVariantsByName.keySet());
-      Collections.sort(sorted);
-      assert !myCachedVariantsByName.isEmpty() : "There is no variant model in GradleAndroidModel!";
-      newVariantName = sorted.get(0);
-    }
-    return newVariantName;
   }
 
   @NotNull
@@ -571,7 +548,6 @@ public class GradleAndroidModel implements AndroidModuleModel {
    *
    * <p>For test-only modules this is the main artifact.
    */
-  @Override
   @Nullable
   public IdeAndroidArtifact getArtifactForAndroidTest() {
     return getAndroidProject().getProjectType() == IdeAndroidProjectType.PROJECT_TYPE_TEST ?
@@ -701,22 +677,39 @@ public class GradleAndroidModel implements AndroidModuleModel {
   }
 
   @Override
-  public @Nullable TestExecutionOption getTestExecutionOption() {
-    IdeAndroidArtifact testArtifact = getSelectedVariant().getAndroidTestArtifact();
-    if (testArtifact == null) return null;
+  public @NotNull TestOptions getTestOptions() {
+    @Nullable IdeAndroidArtifact testArtifact = getSelectedVariant().getAndroidTestArtifact();
+    @Nullable IdeTestOptions testOptions = testArtifact != null ? testArtifact.getTestOptions() : null;
+    @Nullable IdeTestOptions.Execution execution = testOptions != null ? testOptions.getExecution() : null;
 
-    IdeTestOptions testOptions = testArtifact.getTestOptions();
-    if (testOptions == null) return null;
-
-    IdeTestOptions.Execution execution = testOptions.getExecution();
-    if (execution == null) return null;
-
-    switch (execution) {
-      case ANDROID_TEST_ORCHESTRATOR: return TestExecutionOption.ANDROID_TEST_ORCHESTRATOR;
-      case ANDROIDX_TEST_ORCHESTRATOR: return TestExecutionOption.ANDROIDX_TEST_ORCHESTRATOR;
-      case HOST: return TestExecutionOption.HOST;
-      default: throw new IllegalStateException("Unknown option: " + execution);
+    TestExecutionOption executionOption;
+    if (execution != null) {
+      switch (execution) {
+        case ANDROID_TEST_ORCHESTRATOR:
+          executionOption = TestExecutionOption.ANDROID_TEST_ORCHESTRATOR;
+          break;
+        case ANDROIDX_TEST_ORCHESTRATOR:
+          executionOption = TestExecutionOption.ANDROIDX_TEST_ORCHESTRATOR;
+          break;
+        case HOST:
+          executionOption = TestExecutionOption.HOST;
+          break;
+        default:
+          throw new IllegalStateException("Unknown option: " + execution);
+      }
     }
+    else {
+      executionOption = null;
+    }
+
+    boolean animationsDisabled = testOptions != null && testOptions.getAnimationsDisabled();
+
+    return new TestOptions(
+      executionOption,
+      animationsDisabled,
+      getSelectedVariant().getTestInstrumentationRunner(),
+      getSelectedVariant().getTestInstrumentationRunnerArguments()
+    );
   }
 
   @Override

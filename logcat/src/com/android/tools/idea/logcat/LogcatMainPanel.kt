@@ -39,11 +39,11 @@ import com.android.tools.idea.logcat.messages.MessageBacklog
 import com.android.tools.idea.logcat.messages.MessageFormatter
 import com.android.tools.idea.logcat.messages.MessageProcessor
 import com.android.tools.idea.logcat.messages.TextAccumulator
+import com.android.tools.idea.logcat.settings.LogcatSettings
 import com.android.tools.idea.logcat.util.MostRecentlyAddedSet
 import com.android.tools.idea.logcat.util.createLogcatEditor
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
-import com.intellij.execution.impl.ConsoleBuffer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -71,6 +71,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 
 // This is probably a massive overkill as we do not expect this many tags/packages in a real Logcat
@@ -93,6 +94,7 @@ internal class LogcatMainPanel(
   private val popupActionGroup: ActionGroup,
   logcatColors: LogcatColors,
   state: LogcatPanelConfig?,
+  private var logcatSettings: LogcatSettings = LogcatSettings.getInstance(),
   hyperlinkDetector: HyperlinkDetector? = null,
   foldingDetector: FoldingDetector? = null,
   packageNamesProvider: PackageNamesProvider = ProjectPackageNamesProvider(project),
@@ -102,7 +104,7 @@ internal class LogcatMainPanel(
   @VisibleForTesting
   internal val editor: EditorEx = createLogcatEditor(project)
   private val document = editor.document
-  private val documentAppender = DocumentAppender(project, document, ConsoleBuffer.getCycleBufferSize())
+  private val documentAppender = DocumentAppender(project, document, logcatSettings.bufferSize)
   private val deviceContext = DeviceContext()
 
   @VisibleForTesting
@@ -110,7 +112,7 @@ internal class LogcatMainPanel(
   private val messageFormatter = MessageFormatter(formattingOptions, logcatColors, zoneId)
 
   @VisibleForTesting
-  internal val messageBacklog = MessageBacklog(ConsoleBuffer.getCycleBufferSize())
+  internal val messageBacklog = AtomicReference(MessageBacklog(logcatSettings.bufferSize))
   private val tags = MostRecentlyAddedSet<String>(MAX_TAGS)
   private val packages = MostRecentlyAddedSet<String>(MAX_PACKAGE_NAMES)
 
@@ -153,14 +155,16 @@ internal class LogcatMainPanel(
     addToCenter(editor.component)
 
     deviceContext.addListener(object : DeviceConnectionListener() {
+      @UiThread
       override fun onDeviceConnected(device: IDevice) {
         logcatReader?.let {
           Disposer.dispose(it)
         }
         document.setText("")
-        logcatReader = LogcatReader(device, this@LogcatMainPanel).also(LogcatReader::start)
+        logcatReader = LogcatReader.create(project, device, this@LogcatMainPanel)
       }
 
+      @UiThread
       override fun onDeviceDisconnected(device: IDevice) {
         logcatReader?.let {
           Disposer.dispose(it)
@@ -206,7 +210,7 @@ internal class LogcatMainPanel(
   }
 
   override suspend fun processMessages(messages: List<LogCatMessage>) {
-    messageBacklog.addAll(messages)
+    messageBacklog.get().addAll(messages)
     tags.addAll(messages.map { it.header.tag })
     packages.addAll(messages.map(LogCatMessage::getPackageNameOrPid))
     messageProcessor.appendMessages(messages)
@@ -246,6 +250,13 @@ internal class LogcatMainPanel(
     EditorFactory.getInstance().releaseEditor(editor)
   }
 
+  override fun applyLogcatSettings(logcatSettings: LogcatSettings) {
+    this.logcatSettings = logcatSettings
+    val bufferSize = logcatSettings.bufferSize
+    documentAppender.setMaxDocumentSize(bufferSize)
+    messageBacklog.get().setMaxSize(bufferSize)
+  }
+
   @UiThread
   override fun applyFilter(logcatFilter: LogcatFilter?) {
     messageProcessor.logcatFilter = logcatFilter
@@ -262,7 +273,7 @@ internal class LogcatMainPanel(
   override fun reloadMessages() {
     document.setText("")
     AndroidCoroutineScope(this, workerThread).launch {
-      messageProcessor.appendMessages(messageBacklog.messages)
+      messageProcessor.appendMessages(messageBacklog.get().messages)
     }
   }
 
@@ -290,22 +301,15 @@ internal class LogcatMainPanel(
   @UiThread
   override fun clearMessageView() {
     AndroidCoroutineScope(this, ioThread).launch {
-      logcatReader?.let {
-        it.stop()
-        it.clearLogcat()
-      }
-      messageBacklog.clear()
-      logcatReader?.start()
+      logcatReader?.clearLogcat()
+      messageBacklog.set(MessageBacklog(logcatSettings.bufferSize))
       withContext(uiThread) {
         document.setText("")
-        withContext(workerThread) {
-          messageProcessor.appendMessages(messageBacklog.messages)
-        }
       }
     }
   }
 
-  override fun isLogcatEmpty() = messageBacklog.messages.isEmpty()
+  override fun isLogcatEmpty() = messageBacklog.get().messages.isEmpty()
 
   // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
   @UiThread

@@ -20,5 +20,5 @@ import com.android.tools.lint.checks.WearableConfigurationActionDetector
 import com.android.tools.idea.lint.AndroidLintBundle.Companion.message
 
 class AndroidLintWearableConfigurationActionInspection : AndroidLintInspectionBase(
-  message("android.lint.inspections.wearable.configuration.action"), WearableConfigurationActionDetector.ISSUE
+  message("android.lint.inspections.wearable.configuration.action"), WearableConfigurationActionDetector.CONFIGURATION_ACTION
 )

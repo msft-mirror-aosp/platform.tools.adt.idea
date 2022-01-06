@@ -40,7 +40,6 @@
       corrupt. There is no point on performing any initialization task if the installation is corrupt.
     -->
     <actionConfigurationCustomizer id="Startup.AndroidStudioInitializer" order="first" implementation="com.android.tools.idea.startup.AndroidStudioInitializer" />
-    <actionConfigurationCustomizer id="Startup.GradleSpecificInitializer" order="after Startup.AndroidStudioInitializer" implementation="com.android.tools.idea.startup.GradleSpecificInitializer" />
     <androidStudioInitializer id="Startup.AndroidSdkInitializer" order="last" implementation="com.android.tools.idea.startup.AndroidSdkInitializer" />
 
     <applicationService serviceInterface="com.intellij.openapi.updateSettings.UpdateStrategyCustomization"
@@ -103,7 +102,7 @@
       <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="CompileProject"/>
     </action>
 
-    <action id="WelcomeScreen.RunAndroidAvdManager" class="com.android.tools.idea.avdmanager.actions.RunAndroidAvdManagerAction"
+    <action id="WelcomeScreen.RunAndroidAvdManager" class="com.android.tools.idea.devicemanager.legacy.actions.RunAndroidAvdManagerAction"
             icon="StudioIcons.Shell.Menu.AVD_MANAGER">
       <add-to-group group-id="WelcomeScreen.QuickStart" relative-to-action="WelcomeScreen.RunAndroidSdkManager" anchor="after"/>
     </action>
@@ -114,7 +113,6 @@
       <add-to-group group-id="WelcomeScreen.QuickStart"/>
     </action>
 
-    <action id="InferNullity" text="Infer Nullity..." class="com.android.tools.idea.actions.AndroidInferNullityAnnotationAction" overrides="true"/>
     <group id="Android.NavBarToolBar">
       <reference id="Android.SyncProject" />
       <reference id="Android.RunAndroidAvdManager" />

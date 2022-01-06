@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.SdkConstants.FN_SETTINGS_GRADLE
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
 import com.android.tools.idea.gradle.structure.model.meta.DslText
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
@@ -35,6 +34,7 @@ import com.android.tools.idea.testing.TestProjectToSnapshotPaths.COMPATIBILITY_T
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.COMPOSITE_BUILD
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_GRADLE_DSL
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_KAPT
+import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.MULTI_FLAVOR
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NESTED_MODULE
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NEW_SYNC_KOTLIN_TEST
@@ -45,9 +45,9 @@ import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PSD_SAMPLE_REPO
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PURE_JAVA_PROJECT
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.SIMPLE_APPLICATION
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.TEST_FIXTURES
+import com.android.tools.idea.testing.TestProjectToSnapshotPaths.TEST_ONLY_MODULE
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.TRANSITIVE_DEPENDENCIES
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.TWO_JARS
-import com.android.tools.idea.testing.TestProjectToSnapshotPaths.VARIANT_SPECIFIC_DEPENDENCIES
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.WITH_GRADLE_METADATA
 import com.android.tools.idea.testing.assertAreEqualToSnapshots
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
@@ -56,7 +56,6 @@ import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.tools.idea.testing.saveAndDump
-import com.android.tools.idea.testing.switchVariant
 import com.google.common.truth.Truth.assertAbout
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
@@ -168,14 +167,15 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
     }
 
     @Test
-    fun testTestFixturesWithModulePerSourceSetEnabled() {
-      StudioFlags.USE_MODULE_PER_SOURCE_SET.override(true)
-      try {
-        val text = importSyncAndDumpProject(TEST_FIXTURES)
-        assertIsEqualToSnapshot(text)
-      } finally {
-        StudioFlags.USE_MODULE_PER_SOURCE_SET.clearOverride()
-      }
+    fun testTestFixtures() {
+      val text = importSyncAndDumpProject(TEST_FIXTURES)
+      assertIsEqualToSnapshot(text)
+    }
+
+    @Test
+    fun testTestOnlyModule() {
+      val text = importSyncAndDumpProject(TEST_ONLY_MODULE)
+      assertIsEqualToSnapshot(text)
     }
 
     @Test
@@ -225,19 +225,6 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
       // TODO(b/125321223): Remove suffixes from the snapshot files when fixed.
       val text = importSyncAndDumpProject(NEW_SYNC_KOTLIN_TEST)
       assertIsEqualToSnapshot(text)
-    }
-
-    @Test
-    fun testPsdDependency() {
-      importSyncAndDumpProject(PSD_DEPENDENCY) { project ->
-        val firstSync = project.saveAndDump()
-        val secondSync = project.syncAndDumpProject()
-        // TODO(b/124677413): When fixed, [secondSync] should match the same snapshot. (Remove ".second_sync")
-        assertAreEqualToSnapshots(
-          firstSync to "",
-          secondSync to ".second_sync"
-        )
-      }
     }
 
     @Test
@@ -295,62 +282,6 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
     }
 
     @Test
-    fun testPsdSampleRenamingModule() {
-      importSyncAndDumpProject(PSD_SAMPLE_GROOVY) { project ->
-        val beforeRename = project.saveAndDump()
-        PsProjectImpl(project).let { projectModel ->
-          projectModel.removeModule(":nested1")
-          projectModel.removeModule(":nested1:deep")
-          with(projectModel.parsedModel.projectSettingsModel!!) {
-            addModulePath(":container1")
-            addModulePath(":container1:deep")
-          }
-          projectModel.applyChanges()
-        }
-        run<Throwable> {
-          project.guessProjectDir()!!.findFileByRelativePath("nested1")!!.rename("test", "container1")
-        }
-        ApplicationManager.getApplication().saveAll()
-        val afterRename = project.syncAndDumpProject()
-        assertAreEqualToSnapshots(
-          beforeRename to "",
-          afterRename to ".after_rename"
-        )
-      }
-    }
-
-    @Test
-    fun testPsdDependencyUpgradeLibraryModule() {
-      importSyncAndDumpProject(PSD_DEPENDENCY) { project ->
-        val beforeLibUpgrade = project.saveAndDump()
-        PsProjectImpl(project).let { projectModel ->
-          projectModel
-            .findModuleByGradlePath(":modulePlus")!!
-            .dependencies
-            .findLibraryDependencies("com.example.libs", "lib1")
-            .forEach { it.version = "1.0".asParsed() }
-          projectModel
-            .findModuleByGradlePath(":mainModule")!!
-            .dependencies
-            .findLibraryDependencies("com.example.libs", "lib1")
-            .forEach { it.version = "0.9.1".asParsed() }
-          projectModel
-            .findModuleByGradlePath(":mainModule")!!
-            .dependencies
-            .findLibraryDependencies("com.example.jlib", "lib3")
-            .single().version = "0.9.1".asParsed()
-          projectModel.applyChanges()
-        }
-        val afterLibUpgrade = project.syncAndDumpProject()
-        // TODO(b/124677413): Remove irrelevant changes from the snapshot when the bug is fixed.
-        assertAreEqualToSnapshots(
-          beforeLibUpgrade to ".before_lib_upgrade",
-          afterLibUpgrade to ".after_lib_upgrade"
-        )
-      }
-    }
-
-    @Test
     fun testTwoJarsWithTheSameName() {
       val text = importSyncAndDumpProject(TWO_JARS)
       // TODO(b/125680482): Update the snapshot when the bug is fixed.
@@ -362,9 +293,7 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
       // TODO(b/169230806): Dependencies on nested included builds are broken.
       // uncomment link in main builds apps build.gradle to test.
       val text = importSyncAndDumpProject(COMPOSITE_BUILD)
-/* b/202448739
       assertIsEqualToSnapshot(text)
-b/202448739 */
     }
 
     @Test
@@ -375,101 +304,14 @@ b/202448739 */
 
     @Test
     fun testKmp() {
-      val text = importSyncAndDumpProject("../projects/testArtifacts/kotlinMultiplatform")
+      val text = importSyncAndDumpProject(KOTLIN_MULTIPLATFORM)
       assertIsEqualToSnapshot(text)
     }
 
     @Test
-    fun testKmp_mpss() {
-      StudioFlags.USE_MODULE_PER_SOURCE_SET.override(true)
-      try {
-        val text = importSyncAndDumpProject("../projects/testArtifacts/kotlinMultiplatform")
-        assertIsEqualToSnapshot(text)
-      }
-      finally {
-        StudioFlags.USE_MODULE_PER_SOURCE_SET.clearOverride()
-      }
-    }
-
-    @Test
     fun testKapt() {
-      importSyncAndDumpProject(KOTLIN_KAPT) { project ->
-        val debugBefore = project.saveAndDump()
-        switchVariant(project, ":app", "release")
-        val release = project.saveAndDump()
-        switchVariant(project, ":app", "debug")
-        val debugAfter = project.saveAndDump()
-        assertAreEqualToSnapshots(
-          debugBefore to ".debug.before",
-          release to ".release",
-          debugAfter to ".debug.before"
-        )
-      }
-    }
-
-    @Test
-    fun testSwitchingVariants_simpleApplication() {
-      importSyncAndDumpProject(SIMPLE_APPLICATION) { project ->
-        val debugBefore = project.saveAndDump()
-        switchVariant(project, ":app", "release")
-        val release = project.saveAndDump()
-        switchVariant(project, ":app", "debug")
-        val debugAfter = project.saveAndDump()
-        assertAreEqualToSnapshots(
-          debugBefore to ".debug",
-          release to ".release",
-          debugAfter to ".debug"
-        )
-      }
-    }
-
-    @Test
-    fun testReimportSimpleApplication() {
-      val root = prepareGradleProject(SIMPLE_APPLICATION, "project")
-      val before = openPreparedProject("project") { project: Project ->
-        project.saveAndDump()
-      }
-      FileUtil.delete(File(root, ".idea"))
-      val after = openPreparedProject("project") { project ->
-        project.saveAndDump()
-      }
-      assertAreEqualToSnapshots(
-        before to ".same",
-        after to ".same"
-      )
-    }
-
-    @Test
-    fun testReopenSimpleApplication() {
-      val root = prepareGradleProject(SIMPLE_APPLICATION, "project")
-      val before = openPreparedProject("project") { project: Project ->
-        project.saveAndDump()
-      }
-      val after = openPreparedProject("project") { project ->
-        project.saveAndDump()
-      }
-      assertAreEqualToSnapshots(
-        before to ".same",
-        after to ".same"
-      )
-    }
-
-    @Test
-    fun testSwitchingVariants_variantSpecificDependencies() {
-      importSyncAndDumpProject(VARIANT_SPECIFIC_DEPENDENCIES) { project ->
-        val freeDebugBefore = project.saveAndDump()
-        switchVariant(project, ":app", "paidDebug")
-        val paidDebug = project.saveAndDump()
-
-        switchVariant(project, ":app", "freeDebug")
-        val freeDebugAfter = project.saveAndDump()
-
-        assertAreEqualToSnapshots(
-          freeDebugBefore to ".freeDebug",
-          paidDebug to ".paidDebug",
-          freeDebugAfter to ".freeDebug"
-        )
-      }
+      val text = importSyncAndDumpProject(KOTLIN_KAPT)
+      assertIsEqualToSnapshot(text)
     }
 
     @Test
@@ -493,41 +335,8 @@ b/202448739 */
       val text = importSyncAndDumpProject(projectDir = API_DEPENDENCY)
       assertIsEqualToSnapshot(text)
     }
-
-    @Test
-    fun testModulePerSourceSet() {
-      StudioFlags.USE_MODULE_PER_SOURCE_SET.override(true)
-      try {
-        val text = importSyncAndDumpProject(PSD_SAMPLE_GROOVY)
-        assertIsEqualToSnapshot(text)
-      }
-      finally {
-        StudioFlags.USE_MODULE_PER_SOURCE_SET.clearOverride()
-      }
-    }
-
-    @Test
-    fun testModulePerSourceSetReopen() {
-      StudioFlags.USE_MODULE_PER_SOURCE_SET.override(true)
-      try {
-        prepareGradleProject(PSD_SAMPLE_GROOVY, "project")
-        val before = openPreparedProject("project") { project: Project ->
-          project.saveAndDump()
-        }
-        val after = openPreparedProject("project") { project ->
-          project.saveAndDump()
-        }
-        assertAreEqualToSnapshots(
-          before to ".same",
-          after to ".same"
-        )
-      }
-      finally {
-        StudioFlags.USE_MODULE_PER_SOURCE_SET.clearOverride()
-      }
-    }
-
   }
+
   override val snapshotDirectoryWorkspaceRelativePath: String = "tools/adt/idea/android/testData/snapshots/syncedProjects"
   override val snapshotSuffixes = listOfNotNull(
     // Suffixes to use to override the default expected result.

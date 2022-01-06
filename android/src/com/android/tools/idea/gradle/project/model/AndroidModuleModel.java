@@ -16,16 +16,8 @@
 package com.android.tools.idea.gradle.project.model;
 
 import com.android.ide.common.repository.GradleVersion;
-import com.android.tools.idea.gradle.model.IdeAndroidArtifact;
-import com.android.tools.idea.gradle.model.IdeAndroidProject;
-import com.android.tools.idea.gradle.model.IdeBuildTypeContainer;
-import com.android.tools.idea.gradle.model.IdeDependencies;
-import com.android.tools.idea.gradle.model.IdeProductFlavorContainer;
-import com.android.tools.idea.gradle.model.IdeVariant;
 import com.android.tools.idea.model.AndroidModel;
-import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.module.Module;
-import java.io.File;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,22 +28,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface AndroidModuleModel extends AndroidModel, ModuleModel {
   @NotNull GradleVersion getAgpVersion();
-
-  @Nullable IdeBuildTypeContainer findBuildType(@NotNull String name);
-
-  @Nullable IdeProductFlavorContainer findProductFlavor(@NotNull String name);
-
-  @NotNull File getRootDirPath();
-
-  @NotNull IdeAndroidProject getAndroidProject();
-
-  @NotNull IdeVariant getSelectedVariant();
-
-  String getSelectedVariantName();
-
-  @NotNull ImmutableList<IdeVariant> getVariants();
-
-  @Nullable IdeAndroidArtifact getArtifactForAndroidTest();
 
   @Nullable
   static AndroidModuleModel get(@NotNull Module module) {

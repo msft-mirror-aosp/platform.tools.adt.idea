@@ -55,7 +55,6 @@ iml_module(
     test_data = [
         ":test_deps",
         "//prebuilts/studio/sdk:platforms/latest",
-        "//prebuilts/studio/sdk:platforms/android-31",
         "//tools/base/build-system:studio_repo",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
         "//tools/base/build-system:gradle-distrib",
@@ -92,6 +91,7 @@ iml_module(
         "//tools/adt/idea/android-npw:intellij.android.newProjectWizard[module, test]",
         "//tools/adt/idea/android-templates:intellij.android.templates[module, test]",
         "//tools/base/flags:studio.android.sdktools.flags[module, test]",
+        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module, test]",
     ],
 )
 
@@ -109,7 +109,7 @@ maven_repository(
         "@maven//:androidx.compose.ui.ui-test-manifest_1.1.0-beta01",
         "@maven//:androidx.compose.ui.ui-tooling_1.1.0-beta01",
         "@maven//:androidx.constraintlayout.constraintlayout_2.0.4",
-        "@maven//:androidx.core.core-ktx_1.6.0",
+        "@maven//:androidx.core.core-ktx_1.7.0",
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
         "@maven//:androidx.leanback.leanback_1.0.0",

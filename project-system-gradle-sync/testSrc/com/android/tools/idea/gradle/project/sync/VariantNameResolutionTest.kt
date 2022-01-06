@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.ide.common.repository.GradleVersion
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.testing.AndroidProjectBuilder
+import com.android.tools.idea.testing.buildAndroidProjectStub
 import com.android.utils.appendCapitalized
 import com.google.common.truth.Truth
 import org.gradle.tooling.model.BuildIdentifier
@@ -26,7 +26,6 @@ import org.gradle.tooling.model.ProjectIdentifier
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.junit.Test
 import java.io.File
-import java.lang.UnsupportedOperationException
 
 private val PROJECT_ROOT = File("/")
 private val APP_MODULE_ROOT = File("/app")
@@ -34,7 +33,12 @@ private val APP_MODULE_ROOT = File("/app")
 class VariantNameResolutionTest {
 
   @Test
-  fun `matches`() {
+  fun `matches when flavors in default order`() = matches(reorderFlavors = false)
+
+  @Test
+  fun `matches when flavors reordered`() = matches(reorderFlavors = true)
+
+  private fun matches(reorderFlavors: Boolean) {
     val projectModelBuilder =
       AndroidProjectBuilder(
         flavorDimensions = { listOf("dim1", "dim2") },
@@ -72,26 +76,17 @@ class VariantNameResolutionTest {
                 )
               )
             }
+        },
+        androidProject = {
+          buildAndroidProjectStub()
+            .let { if (reorderFlavors) it.copy(productFlavors = it.productFlavors.reversed()) else it }
         }
       )
         .build()
     val (androidProject, variants, ndkModel) =
       projectModelBuilder("projectName", PROJECT_ROOT, APP_MODULE_ROOT, "99.99.99-agp-version")
 
-    val module = AndroidModule(
-      modelVersion = GradleVersion(99, 99),
-      buildName = "rootBuild",
-      buildNameMap = mapOf("rootBuild" to PROJECT_ROOT),
-      gradleProject = APP_BASIC_GRADLE_PROJECT,
-      androidProject = androidProject,
-      allVariantNames = variants.map { it.name }.toSet(),
-      defaultVariantName = variants.map { it.name }.first(),
-      v2Variants = variants.toList(),
-      nativeAndroidProject = null,
-      nativeModule = ndkModel?.nativeModule
-    )
-
-    val resolver = module.buildVariantNameResolver()
+    val resolver = buildVariantNameResolver(androidProject, variants)
     Truth.assertThat(
       resolver(
         "debug"

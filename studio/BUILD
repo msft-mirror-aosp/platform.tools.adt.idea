@@ -97,7 +97,6 @@ studio_plugin(
         ],
         "android.jar": [
             "//tools/adt/idea/analytics:analytics",
-            "//tools/adt/idea/android-layout-inspector:android-layout-inspector",
             "//tools/base/flags:studio.android.sdktools.flags",
             "//tools/adt/idea/assistant:assistant",
             "//tools/adt/idea/connection-assistant:connection-assistant",
@@ -125,6 +124,7 @@ studio_plugin(
             "//tools/adt/idea/debuggers:intellij.android.debuggers",
             "//tools/adt/idea/deploy:intellij.android.deploy",
             "//tools/adt/idea/device-explorer:intellij.android.device-explorer",
+            "//tools/adt/idea/device-manager:intellij.android.device-manager",
             "//tools/adt/idea/emulator:intellij.android.emulator",
             "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api",
             "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl",
@@ -252,6 +252,9 @@ studio_plugin(
         ],
     },
     resources = {
+        "lib": [
+            "//prebuilts/tools/common/m2:ffmpeg-platform-bundle",
+        ],
         "resources": [
             "//tools/adt/idea/android/lib:sample-data-bundle",
             "//tools/adt/idea/artwork:device-art-resources-bundle",  # duplicated in android.jar

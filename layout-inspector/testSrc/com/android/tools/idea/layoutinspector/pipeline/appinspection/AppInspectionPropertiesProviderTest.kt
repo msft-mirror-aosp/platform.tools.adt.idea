@@ -41,9 +41,9 @@ import com.android.tools.idea.layoutinspector.properties.PropertyType
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.property.panel.api.PropertiesTable
-import com.android.tools.property.ptable2.PTable
-import com.android.tools.property.ptable2.PTableGroupItem
-import com.android.tools.property.ptable2.PTableGroupModification
+import com.android.tools.property.ptable.PTable
+import com.android.tools.property.ptable.PTableGroupItem
+import com.android.tools.property.ptable.PTableGroupModification
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -59,7 +59,7 @@ import org.mockito.Mockito.spy
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
 
-/** Timeout used in this test. While debugging, you may want extend the timeout */
+/** Timeout used in this test. While debugging, you may want to extend the timeout */
 private const val TIMEOUT = 3L
 private val TIMEOUT_UNIT = TimeUnit.SECONDS
 private val MODERN_PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
@@ -70,7 +70,7 @@ class AppInspectionPropertiesProviderTest {
   private val disposableRule = DisposableRule()
   private val projectRule = AndroidProjectRule.withSdk()
   private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(inspectionRule.createInspectorClientProvider(), projectRule) {
+  private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider()), projectRule) {
     it.name == MODERN_PROCESS.name
   }
 

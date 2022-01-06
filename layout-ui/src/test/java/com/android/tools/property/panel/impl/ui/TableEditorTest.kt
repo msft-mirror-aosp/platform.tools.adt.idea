@@ -19,36 +19,25 @@ import com.android.tools.property.panel.impl.model.TableLineModelImpl
 import com.android.tools.property.panel.impl.model.util.FakePTableModel
 import com.android.tools.property.panel.impl.model.util.TestGroupItem
 import com.android.tools.property.panel.impl.model.util.TestTableItem
-import com.android.tools.property.ptable2.DefaultPTableCellEditor
-import com.android.tools.property.ptable2.DefaultPTableCellRendererProvider
-import com.android.tools.property.ptable2.PTable
-import com.android.tools.property.ptable2.PTableCellEditor
-import com.android.tools.property.ptable2.PTableCellEditorProvider
-import com.android.tools.property.ptable2.PTableColumn
-import com.android.tools.property.ptable2.PTableGroupItem
-import com.android.tools.property.ptable2.PTableItem
-import com.android.tools.property.ptable2.impl.PTableModelImpl
+import com.android.tools.property.ptable.DefaultPTableCellEditor
+import com.android.tools.property.ptable.DefaultPTableCellRendererProvider
+import com.android.tools.property.ptable.PTable
+import com.android.tools.property.ptable.PTableCellEditor
+import com.android.tools.property.ptable.PTableCellEditorProvider
+import com.android.tools.property.ptable.PTableColumn
+import com.android.tools.property.ptable.PTableGroupItem
+import com.android.tools.property.ptable.PTableItem
+import com.android.tools.property.ptable.impl.PTableModelImpl
 import com.android.tools.property.testing.PropertyAppRule
 import com.google.common.truth.Truth.assertThat
-import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.DataContext
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.mock
 import javax.swing.JPanel
 
 class TableEditorTest {
 
   @JvmField @Rule
   val appRule = PropertyAppRule()
-
-  @Before
-  fun setUp() {
-    `when`(DataManager.getInstance().getDataContext(ArgumentMatchers.any())).thenReturn(mock(DataContext::class.java))
-  }
 
   @Test
   fun testRequestFocusInBestMatch() {

@@ -23,26 +23,23 @@ import com.android.builder.model.NativeVariantAbi
 import com.android.builder.model.ProjectSyncIssues
 import com.android.builder.model.SyncIssue
 import com.android.builder.model.Variant
-import com.android.builder.model.v2.dsl.BuildType
-import com.android.builder.model.v2.dsl.ProductFlavor
 import com.android.builder.model.v2.ide.BasicVariant
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
-import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.VariantDependencies
-import com.android.builder.model.v2.models.AndroidProject as V2AndroidProject
+import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModelBuilderParameter
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.builder.model.v2.models.ProjectSyncIssues as V2ProjectSyncIssues
-import com.android.builder.model.v2.ide.Variant as V2Variant
 import com.android.ide.common.repository.GradleVersion
 import com.android.ide.gradle.model.composites.BuildMap
+import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
-import com.android.tools.idea.gradle.model.IdeVariant
-import com.android.tools.idea.gradle.model.ndk.v1.IdeNativeVariantAbi
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependencies
+import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
+import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
+import com.android.tools.idea.gradle.model.ndk.v1.IdeNativeVariantAbi
 import com.android.tools.idea.gradle.project.upgrade.ForcePluginUpgradeReason.MINIMUM
 import com.android.tools.idea.gradle.project.upgrade.ForcePluginUpgradeReason.NO_FORCE
 import com.android.tools.idea.gradle.project.upgrade.ForcePluginUpgradeReason.PREVIEW
@@ -61,6 +58,9 @@ import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 import org.jetbrains.plugins.gradle.tooling.ModelBuilderService
 import java.io.File
 import java.util.LinkedList
+import com.android.builder.model.v2.ide.Variant as V2Variant
+import com.android.builder.model.v2.models.AndroidProject as V2AndroidProject
+import com.android.builder.model.v2.models.ProjectSyncIssues as V2ProjectSyncIssues
 
 internal class AndroidExtraModelProviderWorker(
   controller: BuildController,
@@ -115,20 +115,64 @@ internal class AndroidExtraModelProviderWorker(
   )
 
   sealed class AndroidProjectResult {
-    class V1Project(val androidProject: AndroidProject) : AndroidProjectResult() {
+    class V1Project(val modelCache: ModelCache.V1, androidProject: AndroidProject) : AndroidProjectResult() {
       override val buildName: String? = null
+      override val agpVersion: String = safeGet(androidProject::getModelVersion, "")
+      override val ideAndroidProject: IdeAndroidProject = modelCache.androidProjectFrom(androidProject)
+      override val allVariantNames: Set<String> = safeGet(androidProject::getVariantNames, null).orEmpty().toSet()
+      override val defaultVariantName: String? = safeGet(androidProject::getDefaultVariant, null)
+                                                 ?: allVariantNames.getDefaultOrFirstItem("debug")
+      override val syncIssues: Collection<SyncIssue>? = @Suppress("DEPRECATION") safeGet(androidProject::getSyncIssues, null)
+      override val variantNameResolver: VariantNameResolver = fun(_: String?, _: (String) -> String?): String? = null
+      val ndkVersion: String = safeGet(androidProject::getNdkVersion, "")
+
+      override fun createVariantFetcher(): IdeVariantFetcher = v1VariantFetcher(modelCache)
     }
 
     class V2Project(
-      val basicAndroidProject: BasicAndroidProject,
-      val androidProject: V2AndroidProject,
+      val modelCache: ModelCache.V2,
+      basicAndroidProject: BasicAndroidProject,
+      androidProject: V2AndroidProject,
       val modelVersions: Versions,
-      val androidDsl: AndroidDsl
+      androidDsl: AndroidDsl
     ) : AndroidProjectResult() {
       override val buildName: String = basicAndroidProject.buildName
+      override val agpVersion: String = modelVersions.agp
+      override val ideAndroidProject: IdeAndroidProject =
+        modelCache.androidProjectFrom(basicAndroidProject, androidProject, modelVersions, androidDsl)
+      val basicVariants: List<BasicVariant> = basicAndroidProject.variants.toList()
+      val v2Variants: List<IdeVariantImpl> = let {
+        val v2Variants: List<V2Variant> = androidProject.variants.toList()
+        val basicVariantMap = basicVariants.associateBy { it.name }
+
+        v2Variants.map {
+          modelCache.variantFrom(
+            androidProject = ideAndroidProject,
+            basicVariant = basicVariantMap[it.name] ?: error("BasicVariant not found. Name: ${it.name}"),
+            variant = it,
+            modelVersion = GradleVersion.tryParseAndroidGradlePluginVersion(agpVersion)
+          )
+        }
+      }
+
+      override val allVariantNames: Set<String> = basicVariants.map { it.name }.toSet()
+      override val defaultVariantName: String? =
+        // Try to get the default variant based on default BuildTypes and productFlavors, otherwise get first one in the list.
+        basicVariants.getDefaultVariant(androidDsl.buildTypes, androidDsl.productFlavors)
+      override val syncIssues: Collection<SyncIssue>? = null
+      override val variantNameResolver: VariantNameResolver = buildVariantNameResolver(ideAndroidProject, v2Variants)
+
+      override fun createVariantFetcher(): IdeVariantFetcher = v2VariantFetcher(modelCache, v2Variants)
     }
 
     abstract val buildName: String?
+    abstract val agpVersion: String
+    abstract val ideAndroidProject: IdeAndroidProject
+    abstract val allVariantNames: Set<String>
+    abstract val defaultVariantName: String?
+    abstract val syncIssues: Collection<SyncIssue>?
+    abstract val variantNameResolver: VariantNameResolver
+    abstract fun createVariantFetcher(): IdeVariantFetcher
   }
 
   private fun canFetchV2Models(gradlePluginVersion: GradleVersion?): Boolean {
@@ -186,7 +230,7 @@ internal class AndroidExtraModelProviderWorker(
                 }
 
                 androidProjectResult =
-                  AndroidProjectResult.V2Project(basicAndroidProject, androidProject, versions, androidDsl)
+                  AndroidProjectResult.V2Project(modelCache as ModelCache.V2, basicAndroidProject, androidProject, versions, androidDsl)
 
                 // TODO(solodkyy): Perhaps request the version interface depending on AGP version.
                 val nativeModule = controller.getNativeModuleFromGradle(gradleProject, syncAllVariantsAndAbis = false)
@@ -219,7 +263,7 @@ internal class AndroidExtraModelProviderWorker(
               } else if (canFetchV2Models == true) {
                 error("Cannot initiate V1 models for Sync.")
               }
-              androidProjectResult = AndroidProjectResult.V1Project(androidProject)
+              androidProjectResult = AndroidProjectResult.V1Project(modelCache as ModelCache.V1, androidProject)
 
               val nativeModule = controller.getNativeModuleFromGradle(gradleProject, syncAllVariantsAndAbis = false)
               val nativeAndroidProject: NativeAndroidProject? =
@@ -247,10 +291,8 @@ internal class AndroidExtraModelProviderWorker(
 
     modules.filterIsInstance<AndroidModule>().forEach { androidModulesById[it.id] = it }
 
-    val variantNameResolvers = modules.filterIsInstance<AndroidModule>()
-      .associate { (it.gradleProject.projectIdentifier.buildIdentifier.rootDir to it.gradleProject.path) to it.buildVariantNameResolver() } +
-      modules.filterIsInstance<JavaModule>()
-      .associate { (it.gradleProject.projectIdentifier.buildIdentifier.rootDir to it.gradleProject.path) to {_, _ -> null} }
+    val variantNameResolvers = modules
+      .associate { (it.gradleProject.projectIdentifier.buildIdentifier.rootDir to it.gradleProject.path) to it.variantNameResolver }
 
     fun getVariantNameResolver(buildId: File, projectPath: String): VariantNameResolver =
       variantNameResolvers.getOrElse(buildId to projectPath) {
@@ -281,12 +323,13 @@ internal class AndroidExtraModelProviderWorker(
   }
 
   private fun checkAgpVersionCompatibility(agpVersionString: String?, syncOptions: SyncActionOptions) {
-    if (syncOptions.flags.studioFlagDisableForcedUpgrades) return
     val agpVersion = if (agpVersionString != null) GradleVersion.parse(agpVersionString) else return
     val latestKnown = GradleVersion.parse(Version.ANDROID_GRADLE_PLUGIN_VERSION)
     when (computeForcePluginUpgradeReason(agpVersion, latestKnown)) {
+      // We want to report to the user that they are using an AGP version that is below the minimum supported version for Android Studio,
+      // and this is regardless of whether we want to trigger the upgrade assistant or not. Sync should always fail here.
       MINIMUM -> throw AgpVersionTooOld(agpVersion)
-      PREVIEW -> throw AgpVersionIncompatible(agpVersion)
+      PREVIEW -> if (!syncOptions.flags.studioFlagDisableForcedUpgrades) throw AgpVersionIncompatible(agpVersion)
       NO_FORCE -> Unit
     }
   }
@@ -338,7 +381,7 @@ internal class AndroidExtraModelProviderWorker(
       androidModules.map { module ->
         fun(controller: BuildController) {
           val syncIssues = if (syncOptions.flags.studioFlagUseV2BuilderModels && (module is AndroidModule) &&
-                               canFetchV2Models(module.modelVersion)) {
+                               canFetchV2Models(module.agpVersion)) {
             // Request V2 sync issues.
             controller.findModel(module.findModelRoot, V2ProjectSyncIssues::class.java)?.syncIssues?.toV2SyncIssueData()
           } else {
@@ -397,20 +440,6 @@ internal class AndroidExtraModelProviderWorker(
     modelType: Class<T>
   ): T? {
     return findModel(project, modelType)
-  }
-
-  /**
-   * Valid only for [VariantDependencies] using model parameter for the given [BasicGradleProject] using .
-   */
-  private fun BuildController.findVariantDependenciesV2Model(
-    project: BasicGradleProject,
-    variantName: String
-  ): VariantDependencies? {
-    return findModel(
-      project,
-      VariantDependencies::class.java,
-      com.android.builder.model.v2.models.ModelBuilderParameter::class.java
-    ) { it.variantName = variantName }
   }
 
   private fun BuildController.getNativeModuleFromGradle(project: BasicGradleProject, syncAllVariantsAndAbis: Boolean): NativeModule? {
@@ -731,34 +760,11 @@ internal class AndroidExtraModelProviderWorker(
   ): (BuildController) -> SyncVariantResultCore? {
     val module = androidModulesById[moduleConfiguration.id] ?: return { null }
     return fun(controller: BuildController): SyncVariantResultCore? {
-      val ideVariant : IdeVariant?
-      val abiToRequest : String?
-      val nativeVariantAbi : NativeVariantAbiResult?
-      var variantName = ""
-
-      if (syncOptions.flags.studioFlagUseV2BuilderModels && canFetchV2Models == true) {
-        // In V2, we get the variants from AndroidModule.v2Variants.
-        val variant = module.v2Variants?.firstOrNull { it.name == moduleConfiguration.variant }
-                      ?: error("Resolved variant '${moduleConfiguration.variant}' does not exist.")
-
-        variantName = variant.name
-
-        // Request VariantDependencies model for the variant's dependencies.
-        val variantDependencies = controller.findVariantDependenciesV2Model(module.gradleProject, moduleConfiguration.variant) ?: return null
-        ideVariant = modelCache.variantFrom(
-          variant,
-          variantDependencies,
-          variantNameResolvers,
-          module.buildNameMap ?: error("Build name map not available for: ${module.id}")
-        )
-      }
-      else {
-        val androidModuleId = ModuleId(module.gradleProject.path, module.gradleProject.projectIdentifier.buildIdentifier.rootDir.path)
-        val adjustedVariantName = module.adjustForTestFixturesSuffix(moduleConfiguration.variant)
-        val variant = controller.findVariantModel(module, adjustedVariantName) ?: return null
-        variantName = variant.name
-        ideVariant = modelCache.variantFrom(module.androidProject, variant, module.modelVersion, androidModuleId)
-      }
+      val abiToRequest: String?
+      val nativeVariantAbi: NativeVariantAbiResult?
+      val ideVariant: IdeVariant = module.variantFetcher(controller, variantNameResolvers, module, moduleConfiguration)
+                                   ?: error("Resolved variant '${moduleConfiguration.variant}' does not exist.")
+      val variantName = ideVariant.name
 
       module.kotlinGradleModel = controller.findKotlinGradleModelForAndroidProject(module.findModelRoot, variantName)
       module.kaptGradleModel = controller.findKaptGradleModelForAndroidProject(module.findModelRoot, variantName)
@@ -785,19 +791,6 @@ internal class AndroidExtraModelProviderWorker(
     }
   }
 
-
-  private fun BuildController.findVariantModel(
-    module: AndroidModule,
-    variantName: String
-  ): Variant? {
-    return findModel(
-      module.findModelRoot,
-      Variant::class.java,
-      ModelBuilderParameter::class.java
-    ) { parameter ->
-      parameter.setVariantName(variantName)
-    }
-  }
 
   sealed class NativeVariantAbiResult {
     class V1(val variantAbi: IdeNativeVariantAbi) : NativeVariantAbiResult()
@@ -894,78 +887,16 @@ private fun createAndroidModule(
   buildNameMap: Map<String, File>,
   modelCache: ModelCache
 ): AndroidModule {
-  val gradleVersionString = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project -> safeGet(androidProjectResult.androidProject::getModelVersion, "")
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project -> safeGet(androidProjectResult.modelVersions::agp, "")
-  }
-  val modelVersion: GradleVersion? = GradleVersion.tryParseAndroidGradlePluginVersion(gradleVersionString)
+  val agpVersion: GradleVersion? = GradleVersion.tryParseAndroidGradlePluginVersion(androidProjectResult.agpVersion)
 
-  val ideAndroidProject = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project -> modelCache.androidProjectFrom(androidProjectResult.androidProject)
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project -> modelCache.androidProjectFrom(androidProjectResult.basicAndroidProject,
-                                                                                                       androidProjectResult.androidProject,
-                                                                                                       androidProjectResult.modelVersions,
-                                                                                                       androidProjectResult.androidDsl)
-  }
-
-  val (basicVariants, v2Variants) = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project -> null to null
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project ->
-      safeGet(androidProjectResult.basicAndroidProject::variants, null)?.toList() to safeGet(
-        androidProjectResult.androidProject::variants, null)?.toList()
-  }
-
-  // Single-variant-sync models have variantNames property and all-variants-sync model should have all variants present instead.
-  val allVariantNames: Set<String>? = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project ->
-      safeGet(androidProjectResult.androidProject::getVariantNames, null).orEmpty().toSet()
-    // For V2, the project always have allVariants because these do not contain any dependency data.
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project -> basicVariants?.map { it.name }?.toSet()
-  }
-
-  fun List<BasicVariant>.getDefaultVariant(
-    buildTypes: List<BuildType>,
-    productFlavors: List<ProductFlavor>,
-    flavorDimensions: Collection<String>
-  ) : String? {
-    // Get the default buildType or fall back to debug if none isDefault.
-    val defaultBuildTypeName = buildTypes.firstOrNull { it.isDefault == true } ?: "debug"
-
-    val defaultFlavors = mutableListOf<String>()
-    // Get the default product flavors in each dimension.
-    for (flavorDimension in flavorDimensions) {
-      val defaultProductFlavorName = productFlavors.firstOrNull { it.dimension == flavorDimension && it.isDefault == true }?.name ?:
-                                 // if no productFlavor is marked isDefault within the dimension, then we get the first one in an alphabetical order.
-                                 productFlavors.filter { it.dimension == flavorDimension }.minByOrNull { it.name }?.name
-
-      if (defaultProductFlavorName != null) defaultFlavors.add(defaultProductFlavorName)
-    }
-
-    // Get the variants with buildType marked as default.
-    val variants = this.filter { variant -> variant.buildType == defaultBuildTypeName }
-
-    // Find the variant for which all the the productFlavors are marked as default.
-    return variants.firstOrNull { variant -> defaultFlavors.containsAll(variant.productFlavors) }?.name
-  }
-
-
-  val defaultVariantName: String? = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project ->
-      safeGet(androidProjectResult.androidProject::getDefaultVariant, null)
-      ?: allVariantNames?.getDefaultOrFirstItem("debug")
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project -> {
-      val flavorDimensions = androidProjectResult.androidDsl.flavorDimensions
-      val productFlavors = androidProjectResult.androidDsl.productFlavors
-      val buildTypes = androidProjectResult.androidDsl.buildTypes
-      // Try to get the default variant based on default BuildTypes and productFlavors, otherwise get first one in the list.
-      basicVariants?.getDefaultVariant(buildTypes, productFlavors, flavorDimensions) ?: allVariantNames?.getDefaultOrFirstItem("debug")
-    }
-  }
+  val ideAndroidProject = androidProjectResult.ideAndroidProject
+  val allVariantNames = androidProjectResult.allVariantNames
+  val defaultVariantName: String? = androidProjectResult.defaultVariantName
 
   val ideNativeAndroidProject = when (androidProjectResult) {
     is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project ->
       nativeAndroidProject?.let {
-        modelCache.nativeAndroidProjectFrom(it, safeGet(androidProjectResult.androidProject::getNdkVersion, ""))
+        modelCache.nativeAndroidProjectFrom(it, androidProjectResult.ndkVersion)
       }
     is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project ->
       if (nativeAndroidProject != null) {
@@ -976,34 +907,21 @@ private fun createAndroidModule(
   }
   val ideNativeModule = nativeModule?.let(modelCache::nativeModuleFrom)
 
-  val basicVariantMap = basicVariants?.associateBy { it.name }.orEmpty()
-
   val androidModule = AndroidModule(
-    modelVersion = modelVersion,
+    agpVersion = agpVersion,
     buildName = androidProjectResult.buildName,
     buildNameMap = buildNameMap,
     gradleProject = gradleProject,
     androidProject = ideAndroidProject,
     allVariantNames = allVariantNames,
     defaultVariantName = defaultVariantName,
-    v2Variants = v2Variants?.map { modelCache.variantFrom(
-      androidProject = ideAndroidProject,
-      basicVariant = basicVariantMap[it.name] ?: error("BasicVariant not found. Name: ${it.name}"),
-      variant = it,
-      modelVersion = modelVersion
-    ) },
+    variantNameResolver = androidProjectResult.variantNameResolver,
+    variantFetcher = androidProjectResult.createVariantFetcher(),
     nativeAndroidProject = ideNativeAndroidProject,
     nativeModule = ideNativeModule
   )
 
-  @Suppress("DEPRECATION")
-  val syncIssues = when (androidProjectResult) {
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V1Project ->
-      safeGet(androidProjectResult.androidProject::getSyncIssues, null)
-    // For V2, we are going to request the Sync issues model after populating build models.
-    is AndroidExtraModelProviderWorker.AndroidProjectResult.V2Project -> null
-  }
-
+  val syncIssues = androidProjectResult.syncIssues
   // It will be overridden if we receive something here but also a proper sync issues model later.
   if (syncIssues != null) androidModule.setSyncIssues(syncIssues.toSyncIssueData())
 
@@ -1023,3 +941,69 @@ private inline fun <T> safeGet(original: () -> T, default: T): T = try {
 catch (ignored: UnsupportedOperationException) {
   default
 }
+
+private fun BuildController.findVariantModel(
+  module: AndroidModule,
+  variantName: String
+): Variant? {
+  return findModel(
+    module.findModelRoot,
+    Variant::class.java,
+    ModelBuilderParameter::class.java
+  ) { parameter ->
+    parameter.setVariantName(variantName)
+  }
+}
+
+/**
+ * Valid only for [VariantDependencies] using model parameter for the given [BasicGradleProject] using .
+ */
+private fun BuildController.findVariantDependenciesV2Model(
+  project: BasicGradleProject,
+  variantName: String
+): VariantDependencies? {
+  return findModel(
+    project,
+    VariantDependencies::class.java,
+    com.android.builder.model.v2.models.ModelBuilderParameter::class.java
+  ) { it.variantName = variantName }
+}
+
+// Keep fetchers outside of AndroidProjectResult to avoid accidental references on larger builder models.
+fun v1VariantFetcher(modelCache: ModelCache.V1): IdeVariantFetcher {
+  return fun(
+    controller: BuildController,
+    variantNameResolvers: (buildId: File, projectPath: String) -> VariantNameResolver,
+    module: AndroidModule,
+    configuration: ModuleConfiguration
+  ): IdeVariantImpl? {
+    val androidModuleId = ModuleId(module.gradleProject.path, module.gradleProject.projectIdentifier.buildIdentifier.rootDir.path)
+    val adjustedVariantName = module.adjustForTestFixturesSuffix(configuration.variant)
+    val variant = controller.findVariantModel(module, adjustedVariantName) ?: return null
+    return modelCache.variantFrom(module.androidProject, variant, module.agpVersion, androidModuleId)
+  }
+}
+
+// Keep fetchers outside of AndroidProjectResult to avoid accidental references on larger builder models.
+fun v2VariantFetcher(modelCache: ModelCache.V2, v2Variants: List<IdeVariantImpl>): IdeVariantFetcher {
+  return fun(
+    controller: BuildController,
+    variantNameResolvers: (buildId: File, projectPath: String) -> VariantNameResolver,
+    module: AndroidModule,
+    configuration: ModuleConfiguration
+  ): IdeVariantImpl? {
+    // In V2, we get the variants from AndroidModule.v2Variants.
+    val variant = v2Variants?.firstOrNull { it.name == configuration.variant }
+                  ?: error("Resolved variant '${configuration.variant}' does not exist.")
+
+    // Request VariantDependencies model for the variant's dependencies.
+    val variantDependencies = controller.findVariantDependenciesV2Model(module.gradleProject, configuration.variant) ?: return null
+    return modelCache.variantFrom(
+      variant,
+      variantDependencies,
+      variantNameResolvers,
+      module.buildNameMap ?: error("Build name map not available for: ${module.id}")
+    )
+  }
+}
+

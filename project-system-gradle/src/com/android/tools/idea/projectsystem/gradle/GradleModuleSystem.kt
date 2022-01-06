@@ -23,9 +23,8 @@ import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeDependencies
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
-import com.android.tools.idea.gradle.util.DynamicAppUtils
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.gradle.util.GradleUtil
 import com.android.tools.idea.project.getPackageName
 import com.android.tools.idea.projectsystem.AndroidModuleSystem
@@ -54,8 +53,10 @@ import com.android.tools.idea.res.AndroidDependenciesCache
 import com.android.tools.idea.res.MainContentRootSampleDataDirectoryProvider
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.run.GradleApplicationIdProvider
+import com.android.tools.idea.stats.recordTestLibraries
 import com.android.tools.idea.testartifacts.scopes.GradleTestArtifactSearchScopes
 import com.android.tools.idea.util.androidFacet
+import com.google.wireless.android.sdk.stats.TestLibraries
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -100,6 +101,18 @@ class GradleModuleSystem(
   private val moduleHierarchyProvider: ModuleHierarchyProvider,
 ) : AndroidModuleSystem,
     SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module) {
+
+  override val type: AndroidModuleSystem.Type
+    get() = when(GradleAndroidModel.get(module)?.androidProject?.projectType) {
+      IdeAndroidProjectType.PROJECT_TYPE_APP -> AndroidModuleSystem.Type.TYPE_APP
+      IdeAndroidProjectType.PROJECT_TYPE_ATOM -> AndroidModuleSystem.Type.TYPE_ATOM
+      IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE -> AndroidModuleSystem.Type.TYPE_DYNAMIC_FEATURE
+      IdeAndroidProjectType.PROJECT_TYPE_FEATURE -> AndroidModuleSystem.Type.TYPE_FEATURE
+      IdeAndroidProjectType.PROJECT_TYPE_INSTANTAPP -> AndroidModuleSystem.Type.TYPE_INSTANTAPP
+      IdeAndroidProjectType.PROJECT_TYPE_LIBRARY -> AndroidModuleSystem.Type.TYPE_LIBRARY
+      IdeAndroidProjectType.PROJECT_TYPE_TEST -> AndroidModuleSystem.Type.TYPE_TEST
+      null -> AndroidModuleSystem.Type.TYPE_NON_ANDROID
+    }
 
   override val moduleClassFileFinder: ClassFileFinder = GradleClassFileFinder(module)
   private val androidTestsClassFileFinder: ClassFileFinder = GradleClassFileFinder(module, true)
@@ -175,7 +188,7 @@ class GradleModuleSystem(
   }
 
   private fun getDependenciesFor(module: Module, scope: DependencyScopeType): IdeDependencies? {
-    val gradleModel = AndroidModuleModel.get(module) ?: return null
+    val gradleModel = GradleAndroidModel.get(module) ?: return null
 
     return when (scope) {
              DependencyScopeType.MAIN -> gradleModel.selectedVariant.mainArtifact.level2Dependencies
@@ -275,7 +288,7 @@ class GradleModuleSystem(
 
   override fun getManifestPlaceholders(): Map<String, String> {
     val facet = AndroidFacet.getInstance(module)
-    val androidModel = facet?.let(AndroidModuleModel::get) ?: return emptyMap()
+    val androidModel = facet?.let(GradleAndroidModel::get) ?: return emptyMap()
     return androidModel.selectedVariant.manifestPlaceholders
   }
 
@@ -291,7 +304,7 @@ class GradleModuleSystem(
     )
   }
 
-  private fun getVersionNameOverride(facet: AndroidFacet, gradleModel: AndroidModuleModel): String? {
+  private fun getVersionNameOverride(facet: AndroidFacet, gradleModel: GradleAndroidModel): String? {
     val variant = gradleModel.selectedVariant
     val versionNameWithSuffix = variant.versionNameWithSuffix
     val versionNameSuffix = variant.versionNameSuffix
@@ -304,12 +317,12 @@ class GradleModuleSystem(
 
   override fun getPackageName(): String? {
     val facet = AndroidFacet.getInstance(module) ?: return null
-    return AndroidModuleModel.get(facet)?.androidProject?.namespace ?: getPackageName(module)
+    return GradleAndroidModel.get(facet)?.androidProject?.namespace ?: getPackageName(module)
   }
 
   override fun getTestPackageName(): String? {
     val facet = AndroidFacet.getInstance(module) ?: return null
-    val androidModuleModel = AndroidModuleModel.get(facet)
+    val androidModuleModel = GradleAndroidModel.get(facet)
     val testPackage = androidModuleModel?.androidProject?.testNamespace
     if (testPackage != null) {
       return testPackage
@@ -353,13 +366,13 @@ class GradleModuleSystem(
   override fun getTestArtifactSearchScopes(): TestArtifactSearchScopes? = GradleTestArtifactSearchScopes.getInstance(module)
 
   private inline fun <T> readFromAgpFlags(read: (IdeAndroidGradlePluginProjectFlags) -> T): T? {
-    return AndroidModuleModel.get(module)?.androidProject?.agpFlags?.let(read)
+    return GradleAndroidModel.get(module)?.androidProject?.agpFlags?.let(read)
   }
 
   override val usesCompose: Boolean get() = readFromAgpFlags { it.usesCompose } ?: false
 
   override val codeShrinker: CodeShrinker?
-    get() = when (AndroidModuleModel.get(module)?.selectedVariant?.mainArtifact?.codeShrinker) {
+    get() = when (GradleAndroidModel.get(module)?.selectedVariant?.mainArtifact?.codeShrinker) {
       com.android.tools.idea.gradle.model.CodeShrinker.PROGUARD -> CodeShrinker.PROGUARD
       com.android.tools.idea.gradle.model.CodeShrinker.R8 -> CodeShrinker.R8
       null -> null
@@ -367,14 +380,19 @@ class GradleModuleSystem(
 
   override val isRClassTransitive: Boolean get() = readFromAgpFlags { it.transitiveRClasses } ?: true
 
+  override fun getTestLibrariesInUse(): TestLibraries? {
+    val androidTestArtifact = GradleAndroidModel.get(module)?.selectedVariant?.androidTestArtifact ?: return null
+    return TestLibraries.newBuilder().also { recordTestLibraries(it, androidTestArtifact) }.build()
+  }
+
   override fun getDynamicFeatureModules(): List<Module> {
-    val project = AndroidModuleModel.get(module)?.androidProject ?: return emptyList()
-    return DynamicAppUtils.getDependentFeatureModulesForBase(module.project, project)
+    val project = GradleAndroidModel.get(module)?.androidProject ?: return emptyList()
+    return GradleProjectSystemUtil.getDependentFeatureModulesForBase(module.project, project)
   }
 
   override val isMlModelBindingEnabled: Boolean get() = readFromAgpFlags { it.mlModelBindingEnabled } ?: false
 
-  override val isViewBindingEnabled: Boolean get() = AndroidModuleModel.get(module)?.androidProject?.viewBindingOptions?.enabled ?: false
+  override val isViewBindingEnabled: Boolean get() = GradleAndroidModel.get(module)?.androidProject?.viewBindingOptions?.enabled ?: false
 
   override val applicationRClassConstantIds: Boolean get() = readFromAgpFlags { it.applicationRClassConstantIds } ?: true
 
@@ -390,12 +408,15 @@ private fun AndroidFacet.getLibraryManifests(dependencies: List<AndroidFacet>): 
   fun IdeAndroidLibrary.manifestFile(): File? = this.folder?.resolve(this.manifest)
 
   val aarManifests =
-    GradleAndroidModel.get(this)
-      ?.selectedMainCompileLevel2Dependencies
-      ?.androidLibraries
-      ?.mapNotNull { it.manifestFile() }
-      ?.toSet()
-      .orEmpty()
+    (listOf(this) + dependencies)
+      .flatMap {
+        GradleAndroidModel.get(it)
+          ?.selectedMainCompileLevel2Dependencies
+          ?.androidLibraries
+          ?.mapNotNull { it.manifestFile() }
+          .orEmpty()
+      }
+      .toSet()
 
   // Local library manifests come first because they have higher priority.
   return localLibManifests +

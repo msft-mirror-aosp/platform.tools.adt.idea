@@ -40,6 +40,7 @@ import com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
+import com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl
@@ -66,7 +67,6 @@ import com.android.tools.idea.gradle.project.facet.java.JavaFacet
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
 import com.android.tools.idea.gradle.project.importing.withAfterCreate
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.android.tools.idea.gradle.project.model.JavaModuleModel
@@ -477,7 +477,8 @@ fun AndroidProjectStubBuilder.createMainSourceProviderForDefaultTestProjectStruc
     myAssetsDirectories = emptyList(),
     myJniLibsDirectories = emptyList(),
     myMlModelsDirectories = emptyList(),
-    myShadersDirectories = emptyList()
+    myShadersDirectories = emptyList(),
+    myCustomSourceDirectories = emptyList(),
   )
 }
 
@@ -521,7 +522,8 @@ private fun sourceProvider(name: String, rootDir: File): IdeSourceProviderImpl =
   myAssetsDirectories = listOf("assets"),
   myJniLibsDirectories = listOf("jniLibs"),
   myMlModelsDirectories = listOf("ml"),
-  myShadersDirectories = listOf("shaders")
+  myShadersDirectories = listOf("shaders"),
+  myCustomSourceDirectories = listOf(IdeCustomSourceDirectoryImpl("custom", rootDir, "custom")),
 )
 
 fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePluginProjectFlagsImpl =
@@ -1100,7 +1102,7 @@ private fun setupTestProjectFromAndroidModelCore(
   )
   PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
 
-  val androidModels = mutableListOf<AndroidModuleModel>()
+  val androidModels = mutableListOf<GradleAndroidModel>()
   moduleBuilders.forEach { moduleBuilder ->
     val gradlePath = moduleBuilder.gradlePath
     val moduleName = gradlePath.substringAfterLast(':').nullize() ?: projectName;
@@ -1541,7 +1543,7 @@ private fun Project.verifyModelsAttached() {
       // Java facets are not created for modules without GradleFacet even if there is a JavaModuleModel.
       module.verifyModel(JavaFacet::getInstance, JavaFacet::getJavaModuleModel)
     }
-    module.verifyModel(AndroidFacet::getInstance, AndroidModuleModel::get)
+    module.verifyModel(AndroidFacet::getInstance, GradleAndroidModel::get)
     module.verifyModel({ NdkFacet.getInstance(this) }, { ndkModuleModel })
   }
 }
@@ -1551,12 +1553,12 @@ fun Project.requestSyncAndWait() {
 }
 
 /**
- * Set up data nodes that are normally created by the project resolver when processing [AndroidModuleModel]s.
+ * Set up data nodes that are normally created by the project resolver when processing [GradleAndroidModel]s.
  */
 private fun setupDataNodesForSelectedVariant(
   project: Project,
   buildId: String,
-  androidModuleModels: List<AndroidModuleModel>,
+  androidModuleModels: List<GradleAndroidModel>,
   projectDataNode: DataNode<ProjectData>
 ) {
   val moduleNodes = ExternalSystemApiUtil.findAll(projectDataNode, ProjectKeys.MODULE)

@@ -39,7 +39,7 @@ import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
 import com.android.tools.idea.gradle.project.build.invoker.TestCompileType;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
+import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.project.model.NdkModuleModel;
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
@@ -49,6 +49,7 @@ import com.android.tools.idea.gradle.util.BuildMode;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleBuilds;
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem;
@@ -285,7 +286,7 @@ public class MakeBeforeRunTaskProvider extends BeforeRunTaskProvider<MakeBeforeR
     // If the project has native modules, and there are any un-synced variants.
     for (Module module : ModuleManager.getInstance(myProject).getModules()) {
       NdkModuleModel ndkModel = NdkModuleModel.get(module);
-      AndroidModuleModel androidModel = AndroidModuleModel.get(module);
+      GradleAndroidModel androidModel = GradleAndroidModel.get(module);
       if (ndkModel != null && androidModel != null) {
         String selectedVariantName = androidModel.getSelectedVariant().getName();
         Set<String> availableAbis = ndkModel.getSyncedVariantAbis().stream()
@@ -480,7 +481,7 @@ public class MakeBeforeRunTaskProvider extends BeforeRunTaskProvider<MakeBeforeR
                                                      @NotNull AndroidRunConfiguration configuration) {
     Set<String> disabledFeatures = new HashSet<>(configuration.getDisabledDynamicFeatures());
     return Arrays.stream(modules)
-      .flatMap(module -> DynamicAppUtils.getDependentFeatureModulesForBase(module).stream())
+      .flatMap(module -> GradleProjectSystemUtil.getDependentFeatureModulesForBase(module).stream())
       .map(Module::getName)
       .filter(name -> !disabledFeatures.contains(name))
       .map(moduleName -> {

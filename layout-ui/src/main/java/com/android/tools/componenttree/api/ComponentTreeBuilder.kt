@@ -21,10 +21,13 @@ import com.android.tools.componenttree.impl.TreeImpl
 import com.android.tools.componenttree.treetable.TreeTableImpl
 import com.android.tools.componenttree.treetable.TreeTableModelImpl
 import com.android.tools.idea.flags.StudioFlags
+import com.intellij.designer.componentTree.ComponentTreeBuilder
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.tree.ui.Control
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
+import java.awt.GraphicsEnvironment
 import javax.swing.JComponent
 import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
 import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
@@ -50,6 +53,7 @@ class ComponentTreeBuilder {
   private var contextPopup: ContextPopupHandler = { _, _, _ -> }
   private var doubleClick: DoubleClickHandler = { }
   private val badges = mutableListOf<BadgeItem>()
+  private val columns = mutableListOf<ColumnInfo>()
   private var selectionMode = SINGLE_TREE_SELECTION
   private var invokeLater: (Runnable) -> Unit = SwingUtilities::invokeLater
   private var installTreeSearch = true
@@ -57,6 +61,7 @@ class ComponentTreeBuilder {
   private var showRootHandles = false
   private var horizontalScrollbar = false
   private var autoScroll = false
+  private var dndSupport = false
   private var componentName =  "componentTree"
   private var painter: (() -> Control.Painter?)? = null
   private var installKeyboardActions: (JComponent) -> Unit = {}
@@ -102,9 +107,21 @@ class ComponentTreeBuilder {
   fun withoutTreeSearch() = apply { installTreeSearch = false }
 
   /**
-   * Add a badge icon to go to the right of a tree node item.
+   * Add a column to the right of the tree node item.
+   *
+   * Note: This is only supported by the TreeTable implementation.
+   */
+  fun withColumn(columnInfo: ColumnInfo) = apply { columns.add(columnInfo) }
+
+  /**
+   * Add a badge icon to the right of any column added with [withColumn].
    */
   fun withBadgeSupport(badge: BadgeItem) = apply { badges.add(badge) }
+
+  /**
+   * Add Drag and Drop support.
+   */
+  fun withDnD() = apply { dndSupport = true }
 
   /**
    * Don't show the root node.
@@ -148,6 +165,9 @@ class ComponentTreeBuilder {
     if (StudioFlags.USE_COMPONENT_TREE_TABLE.get()) buildTreeTable() else buildTree()
 
   private fun buildTree(): ComponentTreeBuildResult {
+    if (columns.isNotEmpty()) {
+      Logger.getInstance(ComponentTreeBuilder::class.java).warn("Columns are not supported with the Tree implementations")
+    }
     val model = ComponentTreeModelImpl(nodeTypeMap, invokeLater)
     val selectionModel = ComponentTreeSelectionModelImpl(model, selectionMode)
     val tree = TreeImpl(model, contextPopup, doubleClick, badges, componentName, painter, installKeyboardActions, selectionModel,
@@ -158,14 +178,17 @@ class ComponentTreeBuilder {
     val horizontalPolicy = if (horizontalScrollbar) HORIZONTAL_SCROLLBAR_AS_NEEDED else HORIZONTAL_SCROLLBAR_NEVER
     val scrollPane = ScrollPaneFactory.createScrollPane(tree, VERTICAL_SCROLLBAR_AS_NEEDED, horizontalPolicy)
     scrollPane.border = JBUI.Borders.empty()
-    return ComponentTreeBuildResult(scrollPane, tree, tree, model, selectionModel)
+    return ComponentTreeBuildResult(scrollPane, tree, tree, model, selectionModel) { _, _ -> }
   }
 
   private fun buildTreeTable(): ComponentTreeBuildResult {
-    val model = TreeTableModelImpl(badges, nodeTypeMap, invokeLater)
+    val model = TreeTableModelImpl(badges, columns, nodeTypeMap, invokeLater)
     val table = TreeTableImpl(model, contextPopup, doubleClick, painter, installKeyboardActions, selectionMode, autoScroll,
                               installTreeSearch)
     table.name = componentName // For UI tests
+    if (dndSupport && !GraphicsEnvironment.isHeadless()) {
+      table.enableDnD()
+    }
     val tree = table.tree
     tree.toggleClickCount = toggleClickCount
     tree.isRootVisible = isRootVisible
@@ -174,7 +197,9 @@ class ComponentTreeBuilder {
     val horizontalPolicy = if (horizontalScrollbar) HORIZONTAL_SCROLLBAR_AS_NEEDED else HORIZONTAL_SCROLLBAR_NEVER
     val scrollPane = ScrollPaneFactory.createScrollPane(table, VERTICAL_SCROLLBAR_AS_NEEDED, horizontalPolicy)
     scrollPane.border = JBUI.Borders.empty()
-    return ComponentTreeBuildResult(scrollPane, table, tree, model, table.treeTableSelectionModel)
+    return ComponentTreeBuildResult(scrollPane, table, tree, model, table.treeTableSelectionModel) {
+      columnIndex, visible -> table.setColumnVisibility(columnIndex, visible)
+    }
   }
 }
 
@@ -211,5 +236,12 @@ class ComponentTreeBuildResult(
   /**
    * The component tree selection model.
    */
-  val selectionModel: ComponentTreeSelectionModel
+  val selectionModel: ComponentTreeSelectionModel,
+
+  /**
+   * Callback for controlling the visibility of each column.
+   *
+   * (This only works for the TreeTable implementation.)
+   */
+  val setColumnVisibility: (columnIndex: Int, visible: Boolean) -> Unit
 )

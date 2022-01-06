@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.project.sync.Modules.createUniqueModuleId
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependencies
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
+import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.Model
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.annotations.VisibleForTesting
@@ -38,9 +39,17 @@ import org.jetbrains.kotlin.kapt.idea.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 import java.io.File
 
+typealias IdeVariantFetcher = (
+  controller: BuildController,
+  variantNameResolvers: (buildId: File, projectPath: String) -> VariantNameResolver,
+  module: AndroidModule,
+  configuration: ModuleConfiguration
+) -> IdeVariantImpl?
+
 @UsedInBuildAction
 abstract class GradleModule(val gradleProject: BasicGradleProject) {
   abstract fun deliverModels(consumer: ProjectImportModelProvider.BuildModelConsumer)
+  abstract val variantNameResolver: VariantNameResolver
   val findModelRoot: Model get() = gradleProject
   val id = createUniqueModuleId(gradleProject)
 
@@ -71,6 +80,8 @@ class JavaModule(
       kaptGradleModel?.deliver()
     }
   }
+
+  override val variantNameResolver: VariantNameResolver = fun(_: String?, _: (dimension: String) -> String): String? = null
 }
 
 /**
@@ -79,7 +90,7 @@ class JavaModule(
 @UsedInBuildAction
 @VisibleForTesting
 class AndroidModule constructor(
-  val modelVersion: GradleVersion?,
+  val agpVersion: GradleVersion?,
   val buildName: String?,
   val buildNameMap: Map<String, File>?,
   gradleProject: BasicGradleProject,
@@ -87,9 +98,9 @@ class AndroidModule constructor(
   /** All configured variant names if supported by the AGP version. */
   val allVariantNames: Set<String>?,
   val defaultVariantName: String?,
-  // The list of partial IdeVariant models populated from V2 models only.
-  val v2Variants: List<IdeVariantImpl>?,
+  val variantFetcher: IdeVariantFetcher,
   /** Old V1 model. It's only set if [nativeModule] is not set. */
+  override val variantNameResolver: VariantNameResolver,
   private val nativeAndroidProject: IdeNativeAndroidProject?,
   /** New V2 model. It's only set if [nativeAndroidProject] is not set. */
   private val nativeModule: IdeNativeModule?
@@ -121,8 +132,8 @@ class AndroidModule constructor(
 
   var unresolvedDependencies: List<IdeUnresolvedDependencies> = emptyList()
 
-  /** Returns the list of all libraries this currently selected variant depends on (and temporarily maybe some of the
-   * libraries other variants depend on.
+  /** Returns the list of all libraries this currently selected variant depends on (and temporarily maybe some
+   * libraries other variants depend on).
    **/
   fun getLibraryDependencies(): Collection<ArtifactIdentifier> {
     return collectIdentifiers(listOfNotNull(syncedVariant))
@@ -159,7 +170,7 @@ class AndroidModule constructor(
 data class ModuleConfiguration(val id: String, val variant: String, val abi: String?)
 
 @UsedInBuildAction
-class  NativeVariantsAndroidModule private constructor(
+class NativeVariantsAndroidModule private constructor(
   gradleProject: BasicGradleProject,
   private val nativeVariants: List<IdeNativeVariantAbi>? // Null means V2.
 ) : GradleModule(gradleProject) {
@@ -174,6 +185,8 @@ class  NativeVariantsAndroidModule private constructor(
       IdeAndroidNativeVariantsModels(nativeVariants, projectSyncIssues.orEmpty()).deliver()
     }
   }
+
+  override val variantNameResolver: VariantNameResolver = fun(_: String?, _: (String) -> String?): String? = null
 }
 
 @UsedInBuildAction

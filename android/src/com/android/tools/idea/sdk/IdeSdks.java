@@ -25,7 +25,6 @@ import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8;
 import static com.intellij.openapi.projectRoots.JdkUtil.checkForJdk;
 import static com.intellij.openapi.projectRoots.JdkUtil.isModularRuntime;
 import static com.intellij.openapi.util.io.FileUtil.notNullize;
-import static com.intellij.openapi.util.io.FileUtil.toCanonicalPath;
 import static org.jetbrains.android.sdk.AndroidSdkData.getSdkData;
 
 import com.android.SdkConstants;
@@ -43,7 +42,6 @@ import com.android.tools.idea.progress.StudioLoggerProgressIndicator;
 import com.android.utils.FileUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionPlaces;
@@ -123,7 +121,6 @@ import org.jetbrains.annotations.TestOnly;
  */
 public class IdeSdks {
   @NonNls public static final String MAC_JDK_CONTENT_PATH = "Contents/Home";
-  @NonNls private static final String ANDROID_SDK_PATH_KEY = "android.sdk.path";
   @NotNull public static final JavaSdkVersion DEFAULT_JDK_VERSION = JDK_11;
   @NotNull public static final String JDK_LOCATION_ENV_VARIABLE_NAME = "STUDIO_GRADLE_JDK";
   @NotNull private static final Logger LOG = Logger.getInstance(IdeSdks.class);
@@ -188,10 +185,9 @@ public class IdeSdks {
     // There is a possible case that android sdk which path was applied previously (setAndroidSdkPath()) didn't have any
     // platforms downloaded. Hence, no ide android sdk was created and we can't deduce android sdk location from it.
     // Hence, we fallback to the explicitly stored android sdk path here.
-    PropertiesComponent component = PropertiesComponent.getInstance();
-    String sdkPath = component.getValue(ANDROID_SDK_PATH_KEY);
+    Path sdkPath = AndroidSdkPathStore.getInstance().getAndroidSdkPath();
     if (sdkPath != null) {
-      File candidate = new File(sdkPath);
+      File candidate = sdkPath.toFile();
       if (isValidAndroidSdkPath(candidate)) {
         return candidate;
       }
@@ -450,16 +446,8 @@ public class IdeSdks {
     if (isValidAndroidSdkPath(path)) {
       ApplicationManager.getApplication().assertWriteAccessAllowed();
 
-      // There is a possible case that no platform is downloaded for the android sdk which path is given as an argument
-      // to the current method. Hence, no ide android sdk is configured and our further android sdk lookup
-      // (check project jdk table for the configured ide android sdk and deduce the path from it) wouldn't work. So, we save
-      // given path as well in order to be able to fallback to it later if there is still no android sdk configured within the ide.
-      String sdkPath = toCanonicalPath(path.getAbsolutePath());
-      if (currentProject != null && !currentProject.isDisposed()) {
-        PropertiesComponent.getInstance(currentProject).setValue(ANDROID_SDK_PATH_KEY, sdkPath);
-      }
       // Store default sdk path for the application as well in order to be able to re-use it for other ide projects if necessary.
-      PropertiesComponent.getInstance().setValue(ANDROID_SDK_PATH_KEY, sdkPath);
+      AndroidSdkPathStore.getInstance().setAndroidSdkPath(path.toPath());
 
       // Since removing SDKs is *not* asynchronous, we force an update of the SDK Manager.
       // If we don't force this update, AndroidSdks will still use the old SDK until all SDKs are properly deleted.
@@ -496,49 +484,6 @@ public class IdeSdks {
   private void updateSdkData(@NotNull File path) {
     AndroidSdkData oldSdkData = getSdkData(path);
     myAndroidSdks.setSdkData(oldSdkData);
-  }
-
-  /**
-   * Updates ProjectJdkTable based on what is currently available on Android SDK path and what SDK Manager says
-   *
-   * @param currentProject used to get Android SDK path. If {@code null} or if it does not have Android SDK path setup this function will
-   *                       use the result from {@link IdeSdks#getAndroidSdkPath()()}
-   */
-  public void updateFromAndroidSdkPath(@Nullable Project currentProject) {
-    File sdkDir = null;
-    if (currentProject != null && !currentProject.isDisposed()) {
-      String sdkPath = PropertiesComponent.getInstance(currentProject).getValue(ANDROID_SDK_PATH_KEY);
-      if (sdkPath != null) {
-        sdkDir = new File(sdkPath);
-      }
-    }
-    // Current project is null or it does not have ANDROID_SDK_PATH_KEY set
-    if (sdkDir == null) {
-      sdkDir = getAndroidSdkPath();
-    }
-    assert sdkDir != null;
-    assert isValidAndroidSdkPath(sdkDir);
-    updateSdkData(sdkDir);
-    // See what Android Sdk's no longer exist and remove them
-    ProjectJdkTable jdkTable = ProjectJdkTable.getInstance();
-    for (Sdk sdk : getEligibleAndroidSdks()) {
-      VirtualFile homeDir = sdk.getHomeDirectory();
-      if (homeDir == null || !homeDir.exists()) {
-        jdkTable.removeJdk(sdk);
-      }
-      else {
-        IAndroidTarget target = getTarget(sdk);
-        File targetFile = new File(target.getLocation());
-        if (!targetFile.exists()) {
-          // Home folder exists but does not contain target
-          jdkTable.removeJdk(sdk);
-        }
-      }
-    }
-
-    // Add new SDK's from SDK manager
-    Path resolved = resolvePath(sdkDir.toPath());
-    createAndroidSdkPerAndroidTarget(resolved.toFile());
   }
 
   private static void afterAndroidSdkPathUpdate(@NotNull File androidSdkPath) {

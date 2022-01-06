@@ -125,7 +125,7 @@ iml_module(
     iml_files = ["intellij.android.core.tests.iml"],
     split_test_targets = {
         "gradle": {
-            "shard_count": 10,
+            "shard_count": 6,
             "data": ["//prebuilts/studio/sdk:ndk"],
             "test_filter": "com.android.tools.idea.gradle",
         },
@@ -330,6 +330,7 @@ iml_module(
         "//tools/adt/idea/android-lint:intellij.android.lint[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils[module, test]",
+        "//tools/adt/idea/device-manager:intellij.android.device-manager[module, test]",
     ],
 )
 
@@ -597,6 +598,7 @@ iml_module(
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
+        "//tools/adt/idea/android/testData:javadoc",
         "//tools/adt/idea/android/testData:projects",
         "//tools/base/build-system:gradle-distrib",  # Please do not add old versions of AGP here. Use the old-agp-tests module instead.
         "//tools/base/build-system:studio_repo",
@@ -615,6 +617,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
         "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd[module, test]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
         "//tools/adt/idea/.idea/libraries:truth",

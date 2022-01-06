@@ -19,12 +19,11 @@ import static com.android.AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP;
 
 import com.android.annotations.concurrency.Slow;
 import com.android.ddmlib.Client;
-import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.TestExecutionOption;
 import com.android.tools.idea.run.ApplicationIdProvider;
-import com.android.tools.idea.run.tasks.ConnectJavaDebuggerTask;
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask;
+import com.android.tools.idea.run.tasks.ConnectJavaDebuggerTask;
 import com.android.tools.idea.testartifacts.instrumented.orchestrator.OrchestratorUtilsKt;
 import com.intellij.debugger.impl.DebuggerSession;
 import com.intellij.execution.ExecutionException;
@@ -89,13 +88,11 @@ public class AndroidJavaDebugger extends AndroidDebuggerImplBase<AndroidDebugger
   @NotNull
   @Override
   public ConnectDebuggerTask getConnectDebuggerTask(@NotNull ExecutionEnvironment env,
-                                                    @Nullable AndroidVersion version,
                                                     @NotNull ApplicationIdProvider applicationIdProvider,
                                                     @NotNull AndroidFacet facet,
-                                                    @NotNull AndroidDebuggerState state,
-                                                    @NotNull String runConfigTypeId) {
+                                                    @NotNull AndroidDebuggerState state) {
     ConnectJavaDebuggerTask baseConnector = new ConnectJavaDebuggerTask(
-      applicationIdProvider, this, env.getProject(),
+      applicationIdProvider, env.getProject(),
       facet.getConfiguration().getProjectType() == PROJECT_TYPE_INSTANTAPP);
     TestExecutionOption executionType = Optional.ofNullable(AndroidModel.get(facet))
       .map(AndroidModel::getTestExecutionOption)
@@ -116,7 +113,7 @@ public class AndroidJavaDebugger extends AndroidDebuggerImplBase<AndroidDebugger
 
   @Slow
   @Override
-  public void attachToClient(@NotNull Project project, @NotNull Client client, @Nullable RunConfiguration config) {
+  public void attachToClient(@NotNull Project project, @NotNull Client client, @Nullable AndroidDebuggerState debugState) {
     String debugPort = getClientDebugPort(client);
     String runConfigName = getRunConfigurationName(debugPort);
 

@@ -16,11 +16,15 @@
 package com.android.tools.componenttree.treetable
 
 import com.android.tools.componenttree.api.BadgeItem
+import com.android.tools.componenttree.api.ColumnInfo
 import com.android.tools.componenttree.api.ContextPopupHandler
 import com.android.tools.componenttree.api.DoubleClickHandler
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.invokeLater
+import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.TreeSpeedSearch
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.ui.tree.ui.Control
 import com.intellij.ui.treeStructure.treetable.TreeTable
 import com.intellij.ui.treeStructure.treetable.TreeTableModel
@@ -30,9 +34,14 @@ import com.intellij.util.ui.tree.TreeUtil
 import java.awt.Component
 import java.awt.Graphics
 import java.awt.Point
+import java.awt.datatransfer.Transferable
+import java.awt.dnd.DnDConstants
+import java.awt.dnd.DropTarget
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
+import javax.swing.JTable
 import javax.swing.ListSelectionModel
+import javax.swing.TransferHandler
 import javax.swing.event.TreeExpansionEvent
 import javax.swing.event.TreeModelEvent
 import javax.swing.event.TreeWillExpandListener
@@ -41,6 +50,15 @@ import javax.swing.table.TableCellRenderer
 import javax.swing.tree.ExpandVetoException
 import javax.swing.tree.TreePath
 import javax.swing.tree.TreeSelectionModel
+
+private const val HOVER_CELL = "component.tree.hover.cell"
+internal class Cell(val row: Int, val column: Int) {
+  fun equalTo(otherRow: Int, otherColumn: Int) = otherRow == row && otherColumn == column
+}
+
+internal var JTable.hoverCell: Cell?
+  get() = getClientProperty(HOVER_CELL) as? Cell
+  set(value) { putClientProperty(HOVER_CELL, value)}
 
 class TreeTableImpl(
   model: TreeTableModelImpl,
@@ -52,9 +70,12 @@ class TreeTableImpl(
   autoScroll: Boolean,
   installTreeSearch: Boolean
 ) : TreeTable(model) {
+  private val extraColumns: List<ColumnInfo>
   private val badgeItems: List<BadgeItem>
   private val badgeRenderers: List<BadgeRenderer>
   private var initialized = false
+  private var dropTargetHandler: TreeTableDropTargetHandler? = null
+  private val hiddenColumns = mutableSetOf<Int>()
   val treeTableSelectionModel = TreeTableSelectionModelImpl(this)
 
   init {
@@ -63,11 +84,16 @@ class TreeTableImpl(
     tree.selectionModel.selectionMode = treeSelectionMode
     selectionModel.selectionMode = treeSelectionMode.toTableSelectionMode()
     setExpandableItemsEnabled(true)
+    extraColumns = model.columns
     badgeItems = model.badgeItems
     badgeRenderers = badgeItems.map { BadgeRenderer(it) }
+    initExtraColumns()
     initBadgeColumns()
     model.addTreeModelListener(DataUpdateHandler(treeTableSelectionModel))
-    addMouseListener(MouseHandler())
+    MouseHandler().let {
+      addMouseListener(it)
+      addMouseMotionListener(it)
+    }
     if (autoScroll) {
       treeTableSelectionModel.addAutoScrollListener {
         invokeLater {
@@ -82,15 +108,50 @@ class TreeTableImpl(
     updateUI()
   }
 
-  private fun initBadgeColumns() {
-    val badgeWidth = EmptyIcon.ICON_16.iconWidth
-    for (index in 1 until columnCount) {
-      columnModel.getColumn(index).apply {
-        minWidth = badgeWidth
-        maxWidth = badgeWidth
-        preferredWidth = badgeWidth
-      }
+  private fun initExtraColumns() {
+    for (index in extraColumns.indices) {
+      val columnInfo = extraColumns[index]
+      val width = columnInfo.width.takeIf { it > 0 }
+                  ?: columnInfo.computeWidth(this, tableModel.allNodes).takeIf { it > 0 }
+                  ?: JBUIScale.scale(10)
+      setColumnWidth(index + 1, width)
     }
+  }
+
+  private fun initBadgeColumns() {
+    val badgeWidth = EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(2)
+    for (index in 1 + extraColumns.size until columnCount) {
+      setColumnWidth(index, badgeWidth)
+    }
+  }
+
+  private fun setColumnWidth(columnIndex: Int, wantedWidth: Int) {
+    val width = if (hiddenColumns.contains(columnIndex)) 0 else wantedWidth
+    columnModel.getColumn(columnIndex).apply {
+      maxWidth = width
+      minWidth = width
+      maxWidth = width // set maxWidth twice, since implementation of setMaxWidth depends on the value of minWidth and vice versa
+      preferredWidth = width
+    }
+  }
+
+  fun setColumnVisibility(columnIndex: Int, visible: Boolean) {
+    if (visible) {
+      hiddenColumns.remove(columnIndex)
+    }
+    else {
+      hiddenColumns.add(columnIndex)
+    }
+    initExtraColumns()
+    initBadgeColumns()
+  }
+
+  fun enableDnD() {
+    dragEnabled = true
+    val treeTransferHandler = TreeTableTransferHandler()
+    transferHandler = treeTransferHandler
+    dropTargetHandler = TreeTableDropTargetHandler(this) { treeTransferHandler.draggedItem }
+    dropTarget = DropTarget(this, dropTargetHandler)
   }
 
   override fun getTableModel(): TreeTableModelImpl {
@@ -102,13 +163,17 @@ class TreeTableImpl(
     if (initialized) {
       tableModel.clearRendererCache()
       installKeyboardActions(this)
+      extraColumns.forEach { it.updateUI() }
       initBadgeColumns()
+      initExtraColumns()
+      dropTargetHandler?.updateUI()
     }
   }
 
   override fun getCellRenderer(row: Int, column: Int): TableCellRenderer = when (column) {
     0 -> super.getCellRenderer(row, column)
-    else -> badgeRenderers[column - 1]
+    in 1..extraColumns.size -> extraColumns[column - 1].renderer
+    else -> badgeRenderers[column - 1 - extraColumns.size]
   }
 
   override fun adapt(treeTableModel: TreeTableModel): TreeTableModelAdapter =
@@ -124,6 +189,22 @@ class TreeTableImpl(
   override fun paintComponent(g: Graphics) {
     tree.putClientProperty(Control.Painter.KEY, painter?.invoke())
     super.paintComponent(g)
+    dropTargetHandler?.paintDropTargetPosition(g)
+    paintBadgeDividers(g)
+  }
+
+  private fun paintBadgeDividers(g: Graphics) {
+    val color = g.color
+    g.color = JBColor.border()
+    var x = width
+    for (index in badgeItems.indices.reversed()) {
+      val item = badgeItems[index]
+      x -= columnModel.getColumn(1 + extraColumns.size + index).maxWidth
+      if (!hiddenColumns.contains(index) && item.leftDivider) {
+        g.drawLine(x, 0, x, height)
+      }
+    }
+    g.color = color
   }
 
   override fun initializeLocalVars() {
@@ -139,11 +220,21 @@ class TreeTableImpl(
     tree.width - tree.insets.right - computeLeftOffset(nodeDepth)
 
   /**
+   * Return the depth of a given pixel distance from the left edge of the table tree.
+   */
+  fun findDepthFromOffset(x: Int): Int {
+    val ourUi = tree.ui as BasicTreeUI
+    val childIndent = ourUi.leftChildIndent + ourUi.rightChildIndent
+    return maxOf(0, (x - tree.insets.left) / childIndent)
+  }
+
+  /**
    * Compute the left offset of a row with the specified [nodeDepth] in the tree.
    *
    * Note: This code is based on the internals of the UI for the tree e.g. the method [BasicTreeUI.getRowX].
    */
-  private fun computeLeftOffset(nodeDepth: Int): Int {
+  @VisibleForTesting
+  fun computeLeftOffset(nodeDepth: Int): Int {
     val ourUi = tree.ui as BasicTreeUI
     return tree.insets.left + (ourUi.leftChildIndent + ourUi.rightChildIndent) * (nodeDepth - 1)
   }
@@ -156,6 +247,15 @@ class TreeTableImpl(
     return parentPath.parentPath == null && !tree.isRootVisible && !tree.showsRootHandles
   }
 
+  private val selectedItem: Any?
+    get() {
+      val selectedRow = selectedRow
+      if (selectedRow < 0) {
+        return null
+      }
+      return getValueAt(selectedRow, 0)
+    }
+
   private fun Int.toTableSelectionMode() = when(this) {
     TreeSelectionModel.SINGLE_TREE_SELECTION -> ListSelectionModel.SINGLE_SELECTION
     TreeSelectionModel.CONTIGUOUS_TREE_SELECTION -> ListSelectionModel.SINGLE_INTERVAL_SELECTION
@@ -165,11 +265,14 @@ class TreeTableImpl(
 
   private inner class DataUpdateHandler(private val selectionModel: TreeTableSelectionModelImpl): TreeTableModelImplAdapter() {
     override fun treeChanged(event: TreeModelEvent) {
+      initExtraColumns()
       selectionModel.keepSelectionDuring {
         val expanded = TreeUtil.collectExpandedPaths(tree)
         tableModel.fireTreeStructureChange(event)
         TreeUtil.restoreExpandedPaths(tree, expanded)
       }
+      (transferHandler as? TreeTableTransferHandler)?.resetDraggedItem()
+      dropTargetHandler?.reset()
       if (!tree.isRootVisible || !tree.showsRootHandles) {
         tableModel.root?.let { root ->
           val paths = mutableListOf(TreePath(root))
@@ -177,6 +280,11 @@ class TreeTableImpl(
           paths.filter { alwaysExpanded(it) }.forEach { tree.expandPath(it) }
         }
       }
+    }
+
+    override fun columnDataChanged() {
+      initExtraColumns()
+      repaint()
     }
   }
 
@@ -192,28 +300,82 @@ class TreeTableImpl(
 
   private inner class MouseHandler : PopupHandler() {
     override fun invokePopup(comp: Component, x: Int, y: Int) {
-      val (row, column) = position(x, y)
-      val item = getValueAt(row, column)
-      when (column) {
-        0 -> contextPopup(this@TreeTableImpl, x, y)
-        else -> badgeItems[column - 1].showPopup(item, this@TreeTableImpl, x, y)
+      val cell = position(x, y) ?: return
+      val item = getValueAt(cell.row, cell.column)
+      when {
+        cell.column == 0 -> contextPopup(this@TreeTableImpl, x, y)
+        cell.column > extraColumns.size -> badgeItems[cell.column - 1 - extraColumns.size].showPopup(item, this@TreeTableImpl, x, y)
       }
     }
 
     override fun mouseClicked(event: MouseEvent) {
       if (event.button == MouseEvent.BUTTON1 && !event.isPopupTrigger && !event.isShiftDown && !event.isControlDown && !event.isMetaDown) {
-        val (row, column) = position(event.x, event.y)
-        val item = getValueAt(row, column)
+        val cell = position(event.x, event.y) ?: return
+        val item = getValueAt(cell.row, cell.column)
         when {
-          column == 0 && event.clickCount == 2 -> doubleClick()
-          column > 0 && event.clickCount == 1 -> badgeItems[column - 1].performAction(item)
+          cell.column == 0 && event.clickCount == 2 -> doubleClick()
+          cell.column > extraColumns.size && event.clickCount == 1 -> badgeItems[cell.column - 1 - extraColumns.size].performAction(item)
         }
       }
     }
 
-    private fun position(x: Int, y: Int): Pair<Int, Int> {
+    override fun mouseMoved(event: MouseEvent) {
+      val cell = position(event.x, event.y)
+      val oldHoverCell = hoverCell
+      if (cell != oldHoverCell) {
+        hoverCell = cell
+        repaintBadge(oldHoverCell)
+        repaintBadge(cell)
+      }
+    }
+
+    override fun mouseExited(event: MouseEvent) {
+      repaintBadge(hoverCell)
+      hoverCell = null
+    }
+
+    private fun position(x: Int, y: Int): Cell? {
       val point = Point(x, y)
-      return Pair(rowAtPoint(point), columnAtPoint(point))
+      val row = rowAtPoint(point)
+      val column = columnAtPoint(point)
+      return if (row >= 0 && column >= 0) Cell(row, column) else null
+    }
+
+    private fun repaintBadge(cell: Cell?) {
+      val column = cell?.column ?: return
+      if (column >= 1 + extraColumns.size) {
+        val badge = badgeItems[column - 1 - extraColumns.size]
+        val item = getValueAt(cell.row, column) ?: return
+        if (badge.getHoverIcon(item) != null) {
+          repaint(getCellRect(cell.row, column, true))
+        }
+      }
+    }
+  }
+
+  private inner class TreeTableTransferHandler : TransferHandler() {
+    var draggedItem: Any? = null
+      private set
+
+    fun resetDraggedItem() {
+      draggedItem = null
+    }
+
+    override fun getSourceActions(component: JComponent): Int = DnDConstants.ACTION_COPY_OR_MOVE
+
+    override fun createTransferable(component: JComponent): Transferable? {
+      val item = selectedItem ?: return null
+      val transferable = tableModel.createTransferable(item) ?: return null
+      dragImage = tableModel.createDragImage(item)
+      draggedItem = item
+      return transferable
+    }
+
+    override fun exportDone(source: JComponent, data: Transferable, action: Int) {
+      if (action == DnDConstants.ACTION_MOVE) {
+        draggedItem?.let { tableModel.delete(it) }
+      }
+      draggedItem = null
     }
   }
 }

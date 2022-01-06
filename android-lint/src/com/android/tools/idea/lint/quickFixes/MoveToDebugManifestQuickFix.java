@@ -23,9 +23,9 @@ import static com.android.tools.lint.checks.ManifestDetector.MOCK_LOCATION_PERMI
 
 import com.android.tools.idea.gradle.model.IdeBuildType;
 import com.android.tools.idea.gradle.model.IdeBuildTypeContainer;
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
+import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.lint.common.AndroidQuickfixContexts;
-import com.android.tools.idea.lint.common.LintIdeQuickFix;
+import com.android.tools.idea.lint.common.DefaultLintQuickFix;
 import com.android.utils.Pair;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
@@ -54,7 +54,11 @@ import org.jetbrains.annotations.Nullable;
  * Quickfix for the {@link com.android.tools.lint.checks.ManifestDetector#MOCK_LOCATION} error, which deletes a mock
  * location permission from a non-debug manifest and adds it to a debug specific one (which is created if possible)
  */
-public class MoveToDebugManifestQuickFix implements LintIdeQuickFix {
+public class MoveToDebugManifestQuickFix extends DefaultLintQuickFix {
+  public MoveToDebugManifestQuickFix() {
+    super("Move to debug-specific manifest");
+  }
+
   @Override
   public void apply(@NotNull PsiElement startElement, @NotNull PsiElement endElement, @NotNull AndroidQuickfixContexts.Context context) {
     final XmlAttribute attribute = PsiTreeUtil.getParentOfType(startElement, XmlAttribute.class);
@@ -71,7 +75,7 @@ public class MoveToDebugManifestQuickFix implements LintIdeQuickFix {
           if (facet != null) {
             VirtualFile mainManifest = SourceProviderManager.getInstance(facet).getMainManifestFile();
             // TODO: b/22928250
-            AndroidModuleModel androidModel = AndroidModuleModel.get(facet);
+            GradleAndroidModel androidModel = GradleAndroidModel.get(facet);
             if (androidModel != null && mainManifest != null
                 && mainManifest.getParent() != null && mainManifest.getParent().getParent() != null) {
               final VirtualFile src = mainManifest.getParent().getParent();
@@ -160,11 +164,5 @@ public class MoveToDebugManifestQuickFix implements LintIdeQuickFix {
                               @NotNull PsiElement endElement,
                               @NotNull AndroidQuickfixContexts.ContextType contextType) {
     return PsiTreeUtil.getParentOfType(startElement, XmlAttribute.class) != null;
-  }
-
-  @NotNull
-  @Override
-  public String getName() {
-    return "Move to debug-specific manifest";
   }
 }
