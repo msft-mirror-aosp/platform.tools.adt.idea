@@ -222,7 +222,7 @@
             <![CDATA[
             <p>
             The Animated Drawable Preview tool offers the ability to preview the animated drawable resources.
-            This tool helps developers preview <animation-list>, <animated-vector>, and <animated-selector>
+            This tool helps developers preview &lt;animation-list&gt;, &lt;animated-vector&gt;, and &lt;animated-selector&gt;
             resources in Android Studio instantly.
             </p>
               <br>
@@ -236,7 +236,7 @@
         <stepElement>
           <section>
             <![CDATA[
-              <br><em>Last updated 01/4/2022</em><br><br>
+              <br><em>Last updated 01/6/2022</em><br><br>
             ]]>
           </section>
         </stepElement>
