@@ -6,9 +6,9 @@ MODULE                        : My_First_App.app
     MavenName                     : My First App:app:
     GradleVersion                 : <AGP_VERSION>
     BuildFolder                   : <ROOT>/firstapp/app/build [-]
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-30/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-31/android.jar
     JavaSourceLevel               : 1.8
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -255,7 +255,7 @@ MODULE                        : My_First_App.app
         - ClassOutputs                : <ROOT>/firstapp/app/build/intermediates/javac/debugAndroidTest/classes [-]
         - ClassOutputs                : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugAndroidTest [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 30
+        TargetSdkVersion              : API 31
         SourceProviders
             ManifestFile                  : <ROOT>/firstapp/app/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/firstapp/app/src/main/java
@@ -703,9 +703,9 @@ MODULE                        : My_First_App.app.mysharedlibrary
     MavenName                     : My First App.app:mysharedlibrary:
     GradleVersion                 : <AGP_VERSION>
     BuildFolder                   : <ROOT>/shared/mysharedlibrary/build [-]
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-30/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-31/android.jar
     JavaSourceLevel               : 1.8
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -971,7 +971,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         - ClassOutputs                : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debugAndroidTest/classes [-]
         - ClassOutputs                : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugAndroidTest [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 30
+        TargetSdkVersion              : API 31
         SourceProviders
             ManifestFile                  : <ROOT>/shared/mysharedlibrary/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/shared/mysharedlibrary/src/main/java [-]

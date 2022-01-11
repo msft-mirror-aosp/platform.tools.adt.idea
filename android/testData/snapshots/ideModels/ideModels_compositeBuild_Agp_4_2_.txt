@@ -2,7 +2,7 @@ MODULE                        : TestCompositeLib1
 MODULE                        : TestCompositeLib1.app
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/TestCompositeLib1/app/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -41,7 +41,7 @@ MODULE                        : TestCompositeLib1.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -57,8 +57,8 @@ MODULE                        : TestCompositeLib1.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -223,7 +223,7 @@ MODULE                        : TestCompositeLib1.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.composite1
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -2019,7 +2019,7 @@ MODULE                        : TestCompositeLib1.app
 MODULE                        : TestCompositeLib1.lib
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/TestCompositeLib1/lib/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2058,7 +2058,7 @@ MODULE                        : TestCompositeLib1.lib
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2070,8 +2070,8 @@ MODULE                        : TestCompositeLib1.lib
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2226,7 +2226,7 @@ MODULE                        : TestCompositeLib1.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.composite1
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -3928,7 +3928,7 @@ MODULE                        : TestCompositeLib3
 MODULE                        : TestCompositeLib3.app
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/TestCompositeLib3/app/build [-]
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
@@ -3967,7 +3967,7 @@ MODULE                        : TestCompositeLib3.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -3983,8 +3983,8 @@ MODULE                        : TestCompositeLib3.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -4149,7 +4149,7 @@ MODULE                        : TestCompositeLib3.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.composite3
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -5924,7 +5924,7 @@ MODULE                        : TestCompositeLib3.app
 MODULE                        : TestCompositeLib3.lib
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/TestCompositeLib3/lib/build [-]
     buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
@@ -5963,7 +5963,7 @@ MODULE                        : TestCompositeLib3.lib
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -5975,8 +5975,8 @@ MODULE                        : TestCompositeLib3.lib
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -6131,7 +6131,7 @@ MODULE                        : TestCompositeLib3.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.composite3
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -7753,7 +7753,7 @@ MODULE                        : project
 MODULE                        : project.app
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/app/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -7792,7 +7792,7 @@ MODULE                        : project.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -7808,8 +7808,8 @@ MODULE                        : project.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -7974,7 +7974,7 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.compositeapp
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -9773,7 +9773,7 @@ MODULE                        : project.app
 MODULE                        : project.lib
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/lib/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -9812,7 +9812,7 @@ MODULE                        : project.lib
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -9824,8 +9824,8 @@ MODULE                        : project.lib
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -9980,7 +9980,7 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.test.composite0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact

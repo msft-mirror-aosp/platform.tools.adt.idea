@@ -49,6 +49,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExternalResource
@@ -95,6 +96,7 @@ class ResolutionElementEditorTest {
   val ignoreTests = IgnoreTestRule()
 
   @Test
+  @Ignore("b/214034154")
   fun testPaintOpen() {
     if (SystemInfo.isWindows) {
       // Do not run on Windows: b/187441420
@@ -106,6 +108,7 @@ class ResolutionElementEditorTest {
   }
 
   @Test
+  @Ignore("b/214034154")
   fun testPaintOpenWithDetails() {
     if (SystemInfo.isWindows) {
       // Do not run on Windows: b/187441420
@@ -119,6 +122,7 @@ class ResolutionElementEditorTest {
   }
 
   @Test
+  @Ignore("b/214034154")
   fun testPaintOpenWithTwoDetails() {
     if (SystemInfo.isWindows) {
       // Do not run on Windows: b/187441420
