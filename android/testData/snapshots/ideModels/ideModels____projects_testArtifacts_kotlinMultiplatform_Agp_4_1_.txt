@@ -2,7 +2,7 @@ MODULE                        : kotlinMultiPlatform
 MODULE                        : kotlinMultiPlatform.app
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/app/build [-]
     buildToolsVersion             : 29.0.2
     IsBaseSplit                   : true
@@ -41,7 +41,7 @@ MODULE                        : kotlinMultiPlatform.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -57,8 +57,8 @@ MODULE                        : kotlinMultiPlatform.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -223,7 +223,7 @@ MODULE                        : kotlinMultiPlatform.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.android.kotlin
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
@@ -2050,7 +2050,7 @@ MODULE                        : kotlinMultiPlatform.app
 MODULE                        : kotlinMultiPlatform.module2
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2089,7 +2089,7 @@ MODULE                        : kotlinMultiPlatform.module2
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2098,8 +2098,8 @@ MODULE                        : kotlinMultiPlatform.module2
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2317,7 +2317,7 @@ MODULE                        : kotlinMultiPlatform.module2
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -2563,7 +2563,7 @@ MODULE                        : kotlinMultiPlatform.module2
 MODULE                        : kotlinMultiPlatform.module2.androidAndroidTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2602,7 +2602,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTest
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2611,8 +2611,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTest
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2830,7 +2830,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTest
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -3076,7 +3076,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTest
 MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestDebug
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -3115,7 +3115,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestDe
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -3124,8 +3124,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestDe
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -3343,7 +3343,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestDe
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -3589,7 +3589,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestDe
 MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestRelease
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -3628,7 +3628,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestRe
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -3637,8 +3637,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestRe
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -3856,7 +3856,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestRe
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -4102,7 +4102,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidAndroidTestRe
 MODULE                        : kotlinMultiPlatform.module2.androidDebug
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -4141,7 +4141,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebug
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -4150,8 +4150,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebug
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -4369,7 +4369,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebug
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -4615,7 +4615,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebug
 MODULE                        : kotlinMultiPlatform.module2.androidDebugAndroidTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -4654,7 +4654,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugAndroidT
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -4663,8 +4663,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugAndroidT
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -4882,7 +4882,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugAndroidT
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -5128,7 +5128,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugAndroidT
 MODULE                        : kotlinMultiPlatform.module2.androidDebugUnitTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -5167,7 +5167,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugUnitTest
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -5176,8 +5176,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugUnitTest
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -5395,7 +5395,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugUnitTest
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -5641,7 +5641,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidDebugUnitTest
 MODULE                        : kotlinMultiPlatform.module2.androidMain
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -5680,7 +5680,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidMain
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -5689,8 +5689,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidMain
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -5908,7 +5908,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidMain
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -6154,7 +6154,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidMain
 MODULE                        : kotlinMultiPlatform.module2.androidRelease
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -6193,7 +6193,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidRelease
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -6202,8 +6202,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidRelease
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -6421,7 +6421,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidRelease
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -6667,7 +6667,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidRelease
 MODULE                        : kotlinMultiPlatform.module2.androidReleaseUnitTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -6706,7 +6706,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidReleaseUnitTe
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -6715,8 +6715,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidReleaseUnitTe
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -6934,7 +6934,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidReleaseUnitTe
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -7180,7 +7180,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidReleaseUnitTe
 MODULE                        : kotlinMultiPlatform.module2.androidTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -7219,7 +7219,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTest
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -7228,8 +7228,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidTest
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -7447,7 +7447,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTest
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -7693,7 +7693,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTest
 MODULE                        : kotlinMultiPlatform.module2.androidTestDebug
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -7732,7 +7732,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestDebug
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -7741,8 +7741,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestDebug
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -7960,7 +7960,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestDebug
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -8206,7 +8206,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestDebug
 MODULE                        : kotlinMultiPlatform.module2.androidTestRelease
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -8245,7 +8245,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestRelease
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -8254,8 +8254,8 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestRelease
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -8473,7 +8473,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestRelease
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -8719,7 +8719,7 @@ MODULE                        : kotlinMultiPlatform.module2.androidTestRelease
 MODULE                        : kotlinMultiPlatform.module2.commonMain
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -8758,7 +8758,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -8767,8 +8767,8 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -8986,7 +8986,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN
@@ -9232,7 +9232,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
 MODULE                        : kotlinMultiPlatform.module2.commonTest
     ModelVersion                  : 4.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -9271,7 +9271,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -9280,8 +9280,8 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -9499,7 +9499,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             DeprecatedPreMergedApplicationId        : com.example.test.multiproject.module2
             MainArtifact
                 Name                          : MAIN

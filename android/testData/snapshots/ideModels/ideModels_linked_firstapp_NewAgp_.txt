@@ -2,7 +2,7 @@ MODULE                        : My_First_App
 MODULE                        : My_First_App.app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/firstapp/app/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -43,7 +43,7 @@ MODULE                        : My_First_App.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -59,8 +59,8 @@ MODULE                        : My_First_App.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -243,7 +243,7 @@ MODULE                        : My_First_App.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             TestInstrumentationRunner     : androidx.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -2007,7 +2007,7 @@ MODULE                        : My_First_App.app
 MODULE                        : My_First_App.app.mysharedlibrary
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/shared/mysharedlibrary/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2048,7 +2048,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2060,8 +2060,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2234,7 +2234,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             TestInstrumentationRunner     : androidx.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN

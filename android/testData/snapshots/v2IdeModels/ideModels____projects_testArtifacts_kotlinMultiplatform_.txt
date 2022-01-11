@@ -2,7 +2,7 @@ MODULE                        : kotlinMultiPlatform
 MODULE                        : kotlinMultiPlatform.app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/app/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -43,7 +43,7 @@ MODULE                        : kotlinMultiPlatform.app
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -59,8 +59,8 @@ MODULE                        : kotlinMultiPlatform.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -243,7 +243,7 @@ MODULE                        : kotlinMultiPlatform.app
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
             MainArtifact
                 Name                          : MAIN
@@ -2069,7 +2069,7 @@ MODULE                        : kotlinMultiPlatform.app
 MODULE                        : kotlinMultiPlatform.module2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2110,7 +2110,7 @@ MODULE                        : kotlinMultiPlatform.module2
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2119,8 +2119,8 @@ MODULE                        : kotlinMultiPlatform.module2
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2362,7 +2362,7 @@ MODULE                        : kotlinMultiPlatform.module2
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -2606,7 +2606,7 @@ MODULE                        : kotlinMultiPlatform.module2
 MODULE                        : kotlinMultiPlatform.module2.commonMain
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2647,7 +2647,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2656,8 +2656,8 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -2899,7 +2899,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -3143,7 +3143,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonMain
 MODULE                        : kotlinMultiPlatform.module2.commonTest
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/module2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -3184,7 +3184,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -3193,8 +3193,8 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -3436,7 +3436,7 @@ MODULE                        : kotlinMultiPlatform.module2.commonTest
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources

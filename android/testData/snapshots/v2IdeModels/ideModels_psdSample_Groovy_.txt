@@ -2,7 +2,7 @@ MODULE                        : project
 MODULE                        : project.app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/app/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -55,7 +55,7 @@ MODULE                        : project.app
     VariantNames                  : paidOtherBarSpecialRelease
     FlavorDimensions              : foo
     FlavorDimensions              : bar
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     DynamicFeatures               : :dyn_feature
     ViewBindingOptions
         Enabled                       : false
@@ -74,8 +74,8 @@ MODULE                        : project.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -615,7 +615,7 @@ MODULE                        : project.app
             BuildType                     : debug
             DisplayName                   : basic-bar-debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             MaxSdkVersion                 : 26
             TestApplicationId             : com.example.psd.sample.app.default.test
             ProductFlavors                : basic
@@ -2581,7 +2581,7 @@ MODULE                        : project.app
 MODULE                        : project.dyn_feature
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_DYNAMIC_FEATURE
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/dyn_feature/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2622,7 +2622,7 @@ MODULE                        : project.dyn_feature
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2869,7 +2869,7 @@ MODULE                        : project.jav
 MODULE                        : project.lib
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/lib/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2910,7 +2910,7 @@ MODULE                        : project.lib
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -2921,8 +2921,8 @@ MODULE                        : project.lib
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 30
-                ApiString                     : 30
+                ApiLevel                      : 31
+                ApiString                     : 31
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -3095,7 +3095,7 @@ MODULE                        : project.lib
             BuildType                     : debug
             DisplayName                   : debug
             InstantAppCompatible          : false
-            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=30, codename=null, apiString=30)
+            TargetSdkVersion              : IdeApiVersionImpl(apiLevel=31, codename=null, apiString=31)
             MainArtifact
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
@@ -4709,7 +4709,7 @@ MODULE                        : project.lib
 MODULE                        : project.nested1
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/nested1/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -4750,7 +4750,7 @@ MODULE                        : project.nested1
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -4994,7 +4994,7 @@ MODULE                        : project.nested1
 MODULE                        : project.nested1.deep
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/nested1/deep/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -5035,7 +5035,7 @@ MODULE                        : project.nested1.deep
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -5284,7 +5284,7 @@ MODULE                        : project.nested1.deep
 MODULE                        : project.nested2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/nested2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -5328,7 +5328,7 @@ MODULE                        : project.nested2
     VariantNames                  : basicRelease
     VariantNames                  : paidRelease
     FlavorDimensions              : foo
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -5715,7 +5715,7 @@ MODULE                        : project.nested2
 MODULE                        : project.nested2.deep
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/nested2/deep/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -5756,7 +5756,7 @@ MODULE                        : project.nested2.deep
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -6001,7 +6001,7 @@ MODULE                        : project.nested2.trans
 MODULE                        : project.nested2.trans.deep2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-30
+    CompileTarget                 : android-31
     BuildFolder                   : <ROOT>/nested2/trans/deep2/build [-]
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -6042,7 +6042,7 @@ MODULE                        : project.nested2.trans.deep2
         MlModelBindingEnabled         : false
     VariantNames                  : debug
     VariantNames                  : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-30/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-31/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
