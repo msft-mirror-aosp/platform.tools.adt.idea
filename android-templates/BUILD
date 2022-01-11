@@ -68,7 +68,7 @@ maven_repository(
         "@maven_tests//:androidx.compose.compiler.compiler_1.0.1",
         "@maven_tests//:androidx.compose.ui.ui-tooling_1.0.1",
         "@maven_tests//:androidx.constraintlayout.constraintlayout_2.0.4",
-        "@maven_tests//:androidx.core.core-ktx_1.6.0",
+        "@maven_tests//:androidx.core.core-ktx_1.7.0",
         "@maven_tests//:androidx.core.core_1.5.0-beta01",
         "@maven_tests//:androidx.core.core_1.5.0-rc02",
         "@maven_tests//:androidx.leanback.leanback_1.0.0",
