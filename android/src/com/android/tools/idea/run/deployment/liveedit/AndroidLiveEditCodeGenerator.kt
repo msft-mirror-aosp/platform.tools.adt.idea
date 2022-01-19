@@ -17,11 +17,13 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.annotations.Trace
 import com.android.tools.idea.editors.literals.LiveEditService
+import com.android.tools.idea.editors.liveedit.LiveEditConfig
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import org.objectweb.asm.ClassReader
 import org.jetbrains.kotlin.backend.common.output.OutputFile
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.backend.jvm.jvmPhases
@@ -170,7 +172,7 @@ class AndroidLiveEditCodeGenerator {
     // TODO: Resolve this using the project itself, somehow.
     compilerConfiguration.put(CommonConfigurationKeys.MODULE_NAME, "app_debug")
 
-    val useComposeIR = StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_USE_EMBEDDED_COMPILER.get();
+    val useComposeIR = LiveEditConfig.getInstance().useEmbeddedCompiler
     if (useComposeIR) {
       // Not 100% sure what causes the issue but not seeing this in the IR backend causes exceptions.
       compilerConfiguration.put(JVMConfigurationKeys.DO_NOT_CLEAR_BINDING_CONTEXT, true)
@@ -233,19 +235,42 @@ class AndroidLiveEditCodeGenerator {
       throw LiveEditUpdateException.internalError("No compiler output.")
     }
 
+    fun isProxiable(clazzFile : ClassReader) : Boolean = clazzFile.superName == "kotlin/jvm/internal/Lambda" || clazzFile.className.contains("ComposableSingletons\$")
+
     // TODO: This needs a bit more work. Lambdas, inner classes..etc need to be mapped back.
     val internalClassName = className.replace(".", "/")
     var primaryClass = ByteArray(0)
     val supportClasses = mutableMapOf<String, ByteArray>()
+    // TODO: Remove all these println once we are more stable.
+    println("Lived edit classes summary start")
     for (c in compilerOutput) {
+
+      // We get things like folder path an
+      if (!c.relativePath.endsWith(".class")) {
+        println("   Skipping output: ${c.relativePath}")
+        continue
+      }
+
+      // The class to become interpreted
       if (c.relativePath == "$internalClassName.class") {
         primaryClass = c.asByteArray()
+        println("   Primary class: ${c.relativePath}")
+        continue
       }
-      else if (c.relativePath.endsWith(".class")) {
+
+      // Lambdas and compose classes are proxied in the interpreted on device.
+      val reader = ClassReader(c.asByteArray());
+      if (isProxiable(reader)) {
+        println("   Proxiable class: ${c.relativePath}")
         val name = c.relativePath.substringBefore(".class")
         supportClasses[name] = c.asByteArray()
+        continue
       }
+
+      println("   Ignored class: ${c.relativePath}")
+      // TODO: New classes (or existing unmodified classes) are not handled here. We should let the user know here.
     }
+    println("Lived edit classes summary end")
     val idx = methodSignature.indexOf('(')
     val methodName = methodSignature.substring(0, idx);
     val methodDesc = methodSignature.substring(idx)

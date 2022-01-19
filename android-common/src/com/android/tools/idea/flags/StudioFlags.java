@@ -216,10 +216,6 @@ public final class StudioFlags {
     NELE, "motion.area.graph", "Show area graph in Timeline panel",
     "Show area graph in Timeline panel for Motion Editor.",
     true);
-  public static final Flag<Boolean> NELE_CONSTRAINT_SELECTOR = Flag.create(
-    NELE, "constraint.selection", "Allow selection of Constraints",
-    "Allow the selection of constraints.",
-    true);
   public static final Flag<Boolean> NELE_MOTION_HORIZONTAL = Flag.create(
     NELE, "animated.motion.horizontal", "Display motion editor horizontally",
     "Controls the placement of the motion editor (horizontal versus vertical).",
@@ -228,11 +224,6 @@ public final class StudioFlags {
     NELE, "mockup.editor", "Enable the Mockup Editor",
     "Enable the Mockup Editor to ease the creation of Layouts from a design file.",
     false);
-
-  public static final Flag<Boolean> NELE_CONVERT_VIEW = Flag.create(
-    NELE, "convert.view", "Enable the Convert View action",
-    "Enable the Convert View Action when right clicking on a component",
-    true);
 
   public static final Flag<Boolean> NELE_RENDER_DIAGNOSTICS = Flag.create(
     NELE, "diagnostics", "Enable rendering on-screen stats",
@@ -533,6 +524,14 @@ public final class StudioFlags {
     false);
 
   /**
+   * Details: go/decouple-android-debuggers-from-android-configurations, "Android Java Debugger refactoring" section .
+   */
+  public static final Flag<Boolean> NEW_EXECUTION_FLOW_FOR_JAVA_DEBUGGER = Flag.create(
+    RUNDEBUG, "android.new.execution.flow.for.java.debugger.enabled", "Enable new Execution flow for debuggers",
+    "If enabled, AS executes Run Java debugger via com.android.tools.idea.run.debug.StartJavaDebuggerKt.attachJavaDebuggerToClient",
+    false);
+
+  /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
    * "deploy-without-installing" path. Deploying changes that exceed the level of support
    * configured here will cause the deployment to install via the package manager.
@@ -556,7 +555,7 @@ public final class StudioFlags {
         " \"DEX_AND_NATIVE\" to use the pipeline for dex and native library-only changes;" +
         " or \"DEX_AND_NATIVE_AND_RESOURCES\" to use the pipeline for changes to dex, native libraries, and/or resource/asset files." +
         " Deploying changes that exceed the level of support configured here will cause the deployment to install via the package manager.",
-    OptimisticInstallSupportLevel.DEX_AND_NATIVE);
+    OptimisticInstallSupportLevel.DEX);
 
   public static final Flag<Boolean> APPLY_CHANGES_STRUCTURAL_DEFINITION = Flag.create(
     RUNDEBUG,
@@ -684,15 +683,9 @@ public final class StudioFlags {
     "When a project is loaded, automatically add a \"Gradle-aware Make\" task to each Run Configuration if the task is missing",
     true);
 
-  public static final Flag<Boolean> NEW_PSD_ENABLED = Flag.create(
-    GRADLE_IDE, "new.psd", "Enable new \"Project Structure\" dialog",
-    "Turns on the new \"Project Structure\" dialog.", true);
   public static final Flag<Boolean> USE_DEVELOPMENT_OFFLINE_REPOS = Flag.create(
     GRADLE_IDE, "development.offline.repos", "Enable development offline repositories",
     "Makes Gradle use development offline repositories such as /out/repo", StudioPathManager.isRunningFromSources());
-  public static final Flag<Boolean> BUILD_ATTRIBUTION_ENABLED = Flag.create(
-    GRADLE_IDE, "build.attribution", "Enable build attribution",
-    "Enable build attribution.", true);
   public static final Flag<Boolean> BUILD_ANALYZER_JETIFIER_ENABLED = Flag.create(
     GRADLE_IDE, "build.analyzer.jetifier.warning", "Enable Jetifier usage analyzis",
     "Enable Jetifier usage analyzis is Build Analyzer.", true);
@@ -1053,6 +1046,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_CONSTRAINTLAYOUT_COMPLETION = Flag.create(
+    COMPOSE, "editor.completion.constraintlayout.json",
+    "Completion for ConstraintLayout JSON syntax",
+    "If enabled, code completion will be abailable for the JSON syntax of Compose ConstraintLayout.",
+    true
+  );
+
   public static final Flag<Boolean> COMPOSE_AUTO_DOCUMENTATION = Flag.create(
     COMPOSE, "editor.auto.documentation",
     "Show quick documentation automatically for Compose",
@@ -1135,13 +1135,6 @@ public final class StudioFlags {
     "Enable live edits deploy",
     "If enabled, edits within Kotlin and Composable functions are instantly deployed to device",
     false
-  );
-
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_USE_EMBEDDED_COMPILER = Flag.create(
-    COMPOSE, "deploy.live.edit.deploy.embeddedcompiler",
-    "Enable embedded compose compiler in live edits deploy",
-    "If enabled, live edit will use embedded compose compiler. For now if this is disabled, @Composable with not be updated.",
-    true
   );
 
   public static final Flag<Integer> COMPOSE_LIVE_LITERALS_UPDATE_RATE = Flag.create(
@@ -1295,6 +1288,11 @@ public final class StudioFlags {
     NETWORK_INSPECTOR, "enable.network.inspector.tab", "Enable Network Inspector Tab",
     "Enables a Network Inspector Tab in the App Inspection tool window",
     true
+  );
+  public static final Flag<Boolean> ENABLE_NETWORK_INTERCEPTION = Flag.create(
+    NETWORK_INSPECTOR, "enable.network.interception", "Enable Network Interception",
+    "Enables interceptions on network requests and responses",
+    false
   );
   // endregion
 

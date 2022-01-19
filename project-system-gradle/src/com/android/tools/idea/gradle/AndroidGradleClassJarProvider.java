@@ -16,12 +16,15 @@
 package com.android.tools.idea.gradle;
 
 import com.android.tools.idea.gradle.model.IdeJavaLibrary;
+import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency;
+import com.android.tools.idea.gradle.project.model.ClassFileUtil;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.model.ClassJarProvider;
 import com.android.utils.ImmutableCollectors;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import java.io.File;
 import java.util.List;
 import java.util.stream.Stream;
@@ -44,12 +47,18 @@ public class AndroidGradleClassJarProvider implements ClassJarProvider {
     return Stream.of(model.getSelectedMainCompileLevel2Dependencies().getRuntimeOnlyClasses().stream(),
                      model.getSelectedMainCompileLevel2Dependencies().getAndroidLibraries().stream()
                        .flatMap(
-                         library -> library.getRuntimeJarFiles().stream())
+                         library -> library.getTarget().getRuntimeJarFiles().stream())
                        .map(jar -> new File(jar)),
                      model.getSelectedMainCompileLevel2Dependencies().getJavaLibraries().stream()
+                       .map(IdeJavaLibraryDependency::getTarget)
                        .map(IdeJavaLibrary::getArtifact))
       // Flat map the concatenated streams
       .flatMap(s -> s)
       .collect(ImmutableCollectors.toImmutableList());
+  }
+
+  @Override
+  public boolean isClassFileOutOfDate(@NotNull Module module, @NotNull String fqcn, @NotNull VirtualFile classFile) {
+    return ClassFileUtil.isClassSourceFileNewerThanClassClassFile(module, fqcn, classFile);
   }
 }

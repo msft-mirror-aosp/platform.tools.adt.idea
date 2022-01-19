@@ -21,7 +21,6 @@ import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration
-import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResults
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.getFullTestCaseName
@@ -31,6 +30,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCase
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestSuiteResult
+import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.state.AndroidTestResultsUserPreferencesManager
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.ParallelAndroidTestReportUiEvent
@@ -41,6 +41,7 @@ import com.intellij.lang.jvm.JvmMethod
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
@@ -89,6 +90,7 @@ class AndroidTestResultsTableViewTest {
 
   @Mock lateinit var mockListener: AndroidTestResultsTableListener
   @Mock lateinit var mockJavaPsiFacade: JavaPsiFacade
+  @Mock lateinit var mockModule: Module
   @Mock lateinit var mockTestArtifactSearchScopes: TestArtifactSearchScopes
   @Mock lateinit var mockLogger: AndroidTestSuiteLogger
   @Mock lateinit var mockAndroidTestResultsUserPreferencesManager: AndroidTestResultsUserPreferencesManager
@@ -133,7 +135,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun initialTable() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
 
     // Assert columns.
     assertThat(table.getModelForTesting().columnInfos).hasLength(2)
@@ -146,7 +149,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addDevice() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
 
     table.addDevice(device("deviceId1", "deviceName1"))
     table.addDevice(device("deviceId2", "deviceName2"))
@@ -161,7 +165,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addTestResults() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     val testcase1OnDevice1 = AndroidTestCase("testid1", "method1", "class1", "package1")
@@ -228,7 +233,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addTestResultsWithLogcat() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     table.addDevice(device1)
@@ -257,7 +263,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addTestResultsWithBenchmark() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     table.addDevice(device1)
@@ -286,7 +293,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addTestResultsWithRetention() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val retentionFilePath = "foo"
     val testcase1OnDevice1 = AndroidTestCase(id = "testid1",
@@ -305,7 +313,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun addTestResultsWithDuration() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     table.addDevice(device1)
@@ -340,7 +349,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun clickTestResultsRow() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
 
@@ -378,7 +388,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun editCellAtShouldNotCrashWithFilterApplied() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
 
@@ -397,7 +408,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun setRowFilter() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device = device("deviceId", "deviceName")
     val testcase1 = AndroidTestCase("testid1", "method1", "class1", "package1")
     val testcase2 = AndroidTestCase("testid2", "method2", "class2", "package2")
@@ -418,7 +430,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun setColumnFilter() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     val device3 = device("deviceId3", "deviceName3")
@@ -473,7 +486,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun setColumnFilterWithSortColumnSelected() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
     val device3 = device("deviceId3", "deviceName3")
@@ -534,7 +548,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun startTime() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
 
     val startTime0 = 100L
@@ -559,7 +574,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun startTimeWithNull() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
 
     val startTime0 = 100L
@@ -579,7 +595,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun startTimeAllNull() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
 
     val startTime0: Long? = null
@@ -599,7 +616,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun sortRows() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
 
     table.addDevice(device1)
@@ -701,7 +719,7 @@ class AndroidTestResultsTableViewTest {
   fun tableShouldUpdateColumnsWidthsAfterResize() {
     `when`(mockAndroidTestRunConfiguration.project).thenReturn(projectRule.project)
     val androidTestResultsUserPreferencesManager = AndroidTestResultsUserPreferencesManager(mockAndroidTestRunConfiguration, hashSetOf("deviceId1"))
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, androidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, androidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     table.addDevice(device1)
     table.addTestCase(device1, AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.PASSED, "test logcat message"))
@@ -728,7 +746,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun tableShouldRetainSelectionAfterDataIsUpdated() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
 
@@ -761,6 +780,7 @@ class AndroidTestResultsTableViewTest {
     val mockPsiMethod = mock<PsiMethod>()
     `when`(mockTestArtifactSearchScopes.androidTestSourceScope).thenReturn(mockAndroidTestSourceScope)
     `when`(mockJavaPsiFacade.findClasses(eq("mytestpackage.mytestclass"), eq(mockAndroidTestSourceScope))).thenReturn(arrayOf(mockPsiClass))
+    `when`(mockTestArtifactSearchScopes.androidTestSourceScope).thenReturn(mockAndroidTestSourceScope)
     `when`(mockPsiClass.findMethodsByName(any(), anyBoolean())).thenReturn(arrayOf())
     `when`(mockPsiClass.findMethodsByName(eq("myTestMethodName"), anyBoolean())).thenReturn(arrayOf(mockPsiMethod))
     `when`(mockPsiClass.name).thenReturn("myTestClassName")
@@ -771,7 +791,8 @@ class AndroidTestResultsTableViewTest {
     `when`(mockPsiMethod.project).thenReturn(projectRule.project)
     `when`(mockJavaPsiFacade.project).thenReturn(projectRule.project)
 
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     assertThat(table.getTableViewForTesting()).isInstanceOf(DataProvider::class.java)
 
     val device1 = device("deviceId1", "deviceName1")
@@ -811,7 +832,8 @@ class AndroidTestResultsTableViewTest {
     val mockDataProvider = mock<DataProvider>()
     TestApplicationManager.getInstance().setDataProvider(mockDataProvider, disposableRule.disposable)
 
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val tableView = table.getTableViewForTesting()
 
     table.addTestCase(device("deviceId1", "deviceName1"),
@@ -830,7 +852,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun expandAllAndCollapseAllAction() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     table.addDevice(device1)
     table.addTestCase(device1, AndroidTestCase("testid1", "method1", "class1", "package1"))
@@ -869,7 +892,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun navigateToPrevAndNextFailedTestAction() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     table.addDevice(device1)
     table.addTestCase(device1, AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.FAILED))
@@ -897,7 +921,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun setTestSuiteResult() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
 
     table.addDevice(device1)
@@ -922,7 +947,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun setTestResultStatsForListOfDevices() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     val device2 = device("deviceId2", "deviceName2")
 
@@ -948,7 +974,8 @@ class AndroidTestResultsTableViewTest {
 
   @Test
   fun selectAndroidTestCase() {
-    val table = AndroidTestResultsTableView(mockListener, mockJavaPsiFacade, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
+    val table = AndroidTestResultsTableView(
+      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
     val device1 = device("deviceId1", "deviceName1")
     table.addDevice(device1)
 

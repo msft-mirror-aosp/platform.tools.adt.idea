@@ -125,9 +125,9 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.0.0",
-        "@maven//:androidx.compose.compiler.compiler_1.1.0-beta01",
-        "@maven//:androidx.compose.ui.ui-test-junit4_1.1.0-beta01",
-        "@maven//:androidx.compose.ui.ui-tooling_1.1.0-beta01",
+        "@maven//:androidx.compose.compiler.compiler_1.1.0-rc01",
+        "@maven//:androidx.compose.ui.ui-test-junit4_1.1.0-rc01",
+        "@maven//:androidx.compose.ui.ui-tooling_1.1.0-rc01",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.0.4",
         "@maven//:androidx.core.core-ktx_1.0.1",
@@ -156,6 +156,7 @@ maven_repository(
         "@maven//:androidx.test.ext.junit_1.1.1",
         "@maven//:androidx.wear.wear_1.1.0",
         "@maven//:com.android.support.appcompat-v7_25.4.0",
+        "@maven//:com.android.support.appcompat-v7_28.0.0",
         "@maven//:com.android.support.constraint.constraint-layout_1.0.2",
         "@maven//:com.android.support.constraint.constraint-layout_1.1.0",
         "@maven//:com.android.support.constraint.constraint-layout_1.1.3",
@@ -198,12 +199,16 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.30",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.6.0",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.6.0",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.6.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.6.0",
         "@maven//:org.mockito.mockito-core_3.0.0",
     ],
 )
@@ -211,7 +216,13 @@ maven_repository(
 java_test(
     name = "LayoutEditorMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/LayoutTest/**"]) + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/LayoutTest/**"]) + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.LayoutEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
         "very_flaky",
@@ -302,7 +313,13 @@ java_test(
 java_test(
     name = "NavEditorMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/Navigation/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/Navigation/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.NavEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
         "very_flaky",
@@ -315,7 +332,13 @@ java_test(
 java_test(
     name = "VisualizationTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualizationTest"],
     tags = COMMON_TAGS + [
         "very_flaky",
@@ -328,7 +351,13 @@ java_test(
 java_test(
     name = "ComposePreviewTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/SimpleComposeApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/SimpleComposeApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.ComposePreviewTest"],
     tags = COMMON_TAGS + [
         "very_flaky",
@@ -341,7 +370,13 @@ java_test(
 java_test(
     name = "CustomViewPreviewTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/SimpleComposeApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/SimpleComposeApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.customview.CustomViewPreviewTest"],
     tags = COMMON_TAGS + [
         "very_flaky",

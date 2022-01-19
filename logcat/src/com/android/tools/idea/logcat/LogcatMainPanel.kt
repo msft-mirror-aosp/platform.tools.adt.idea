@@ -78,6 +78,8 @@ import kotlin.math.max
 private const val MAX_TAGS = 1000
 private const val MAX_PACKAGE_NAMES = 1000
 
+private const val DEFAULT_FILTER = "package:mine"
+
 /**
  * The top level Logcat panel.
  *
@@ -121,17 +123,15 @@ internal class LogcatMainPanel(
     project,
     logcatPresenter = this,
     deviceContext, packageNamesProvider,
-    state?.filter ?: "",
-    state?.showOnlyProjectApps ?: true)
+    state?.filter ?: DEFAULT_FILTER,
+  )
 
   @VisibleForTesting
   internal val messageProcessor = MessageProcessor(
     this,
     messageFormatter::formatMessages,
-    packageNamesProvider,
-    LogcatFilterParser(project, packageNamesProvider).parse(headerPanel.getFilterText()),
-    headerPanel.isShowProjectApps())
-  private var logcatReader: LogcatReader? = null
+    LogcatFilterParser(project, packageNamesProvider).parse(headerPanel.getFilterText()))
+  private var deviceManager: LogcatDeviceManager? = null
   private val toolbar = ActionManager.getInstance().createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
   private val hyperlinkDetector = hyperlinkDetector ?: EditorHyperlinkDetector(project, editor)
   private val foldingDetector = foldingDetector ?: EditorFoldingDetector(project, editor)
@@ -157,19 +157,19 @@ internal class LogcatMainPanel(
     deviceContext.addListener(object : DeviceConnectionListener() {
       @UiThread
       override fun onDeviceConnected(device: IDevice) {
-        logcatReader?.let {
+        deviceManager?.let {
           Disposer.dispose(it)
         }
         document.setText("")
-        logcatReader = LogcatReader.create(project, device, this@LogcatMainPanel)
+        deviceManager = LogcatDeviceManager.create(project, device, this@LogcatMainPanel, packageNamesProvider)
       }
 
       @UiThread
       override fun onDeviceDisconnected(device: IDevice) {
-        logcatReader?.let {
+        deviceManager?.let {
           Disposer.dispose(it)
         }
-        logcatReader = null
+        deviceManager = null
       }
     }, this)
 
@@ -220,8 +220,7 @@ internal class LogcatMainPanel(
     LogcatPanelConfig(
       deviceContext.selectedDevice?.serialNumber,
       formattingOptions,
-      headerPanel.getFilterText(),
-      headerPanel.isShowProjectApps()))
+      headerPanel.getFilterText()))
 
   override suspend fun appendMessages(textAccumulator: TextAccumulator) = withContext(uiThread(ModalityState.any())) {
     if (!isActive) {
@@ -264,12 +263,6 @@ internal class LogcatMainPanel(
   }
 
   @UiThread
-  override fun setShowOnlyProjectApps(enabled: Boolean) {
-    messageProcessor.showOnlyProjectApps = enabled
-    reloadMessages()
-  }
-
-  @UiThread
   override fun reloadMessages() {
     document.setText("")
     AndroidCoroutineScope(this, workerThread).launch {
@@ -277,7 +270,7 @@ internal class LogcatMainPanel(
     }
   }
 
-  override fun isAttachedToDevice() = logcatReader != null
+  override fun isAttachedToDevice() = deviceManager != null
 
   override fun getTags(): Set<String> = tags
 
@@ -301,7 +294,7 @@ internal class LogcatMainPanel(
   @UiThread
   override fun clearMessageView() {
     AndroidCoroutineScope(this, ioThread).launch {
-      logcatReader?.clearLogcat()
+      deviceManager?.clearLogcat()
       messageBacklog.set(MessageBacklog(logcatSettings.bufferSize))
       withContext(uiThread) {
         document.setText("")

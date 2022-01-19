@@ -130,12 +130,10 @@ public class AndroidGradleOrderEnumeratorHandlerFactory extends FactoryImpl {
   }
 
   private static void addFoldersFromBaseArtifact(@NotNull IdeBaseArtifact artifact, @NotNull List<String> toAdd) {
-    toAdd.add(pathToIdeaUrl(artifact.getClassesFolder()));
-    artifact.getAdditionalClassesFolders().stream()
+    artifact.getClassesFolder().stream()
       .filter(Objects::nonNull)
       .map(FilePaths::pathToIdeaUrl)
       .forEach(toAdd::add);
-    if (artifact.getJavaResourcesFolder() != null) toAdd.add(pathToIdeaUrl(artifact.getJavaResourcesFolder()));
   }
 
   private static void addFoldersFromJavaArtifact(@NotNull IdeJavaArtifact artifact, @NotNull List<String> toAdd) {

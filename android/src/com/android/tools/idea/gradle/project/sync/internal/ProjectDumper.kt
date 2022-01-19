@@ -17,18 +17,18 @@ package com.android.tools.idea.gradle.project.sync.internal
 
 import com.android.SdkConstants
 import com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
+import com.android.Version.ANDROID_TOOLS_BASE_VERSION
 import com.android.sdklib.SdkVersionInfo
 import com.android.sdklib.devices.Abi
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.util.StudioPathManager
 import com.android.utils.FileUtils
-import com.intellij.ide.plugins.PluginManager
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.io.FileUtil
 import org.jetbrains.android.facet.AndroidFacetProperties
 import org.jetbrains.kotlin.config.KotlinCompilerVersion
+import org.jetbrains.kotlin.idea.artifacts.KotlinArtifacts
 import java.io.File
 import java.lang.Math.max
 import java.util.Locale
@@ -40,8 +40,7 @@ class ProjectDumper(
   private val offlineRepos: List<File> = getOfflineM2Repositories(),
   private val androidSdk: File = IdeSdks.getInstance().androidSdkPath!!,
   private val devBuildHome: File = File(PathManager.getCommunityHomePath()),
-  private val kotlinPlugin: File? =
-    PluginManager.getInstance().findEnabledPlugin(PluginId.findId("org.jetbrains.kotlin")!!)?.pluginPath?.toFile(),
+  private val kotlinPlugin: File? = KotlinArtifacts.instance.kotlincDirectory,
   private val additionalRoots: Map<String, File> = emptyMap()
 ) {
   private val gradleCache: File = getGradleCacheLocation()
@@ -77,7 +76,7 @@ class ProjectDumper(
   private val gradleDistPattern = Regex("/[0-9a-z]{${gradleDistStub.length - 3},${gradleDistStub.length}}/")
   private val gradleHashPattern = Regex("[0-9a-f]{${gradleHashStub.length - 3},${gradleHashStub.length}}")
   private val gradleLongHashPattern = Regex("[0-9a-f]{${gradleLongHashStub.length - 3},${gradleLongHashStub.length}}")
-  private val gradleVersionPattern = Regex("gradle-.*${SdkConstants.GRADLE_LATEST_VERSION}")
+  private val gradleVersionPattern = Regex("gradle-[^/]*${SdkConstants.GRADLE_LATEST_VERSION}")
   private val kotlinVersionPattern =
     // org.jetbrains.kotlin:kotlin-smth-smth-smth:1.3.1-eap-23"
     // kotlin-something-1.3.1-eap-23
@@ -154,6 +153,7 @@ class ProjectDumper(
         else it
       }
       .replace(ANDROID_GRADLE_PLUGIN_VERSION, "<AGP_VERSION>")
+      .replace(ANDROID_TOOLS_BASE_VERSION, "<ANDROID_TOOLS_BASE_VERSION>")
       .let {
         kotlinVersionPattern.find(it)?.let { match ->
           it.replace(match.groupValues[1], "<KOTLIN_VERSION>")
@@ -201,6 +201,7 @@ class ProjectDumper(
       .replace(gradleHashPattern, gradleHashStub)
       .replace(gradleDistPattern, "/$gradleDistStub/")
       .replace(ANDROID_GRADLE_PLUGIN_VERSION, "<AGP_VERSION>")
+      .replace(ANDROID_TOOLS_BASE_VERSION, "<ANDROID_TOOLS_BASE_VERSION>")
       .replace(dotAndroidFolderPathPattern, "<.ANDROID>")
       .let {
         kotlinVersionPattern.find(it)?.let { match ->
@@ -208,6 +209,13 @@ class ProjectDumper(
         } ?: it
       }
       .removeAndroidVersionsFromPath()
+
+  fun replaceToolsVersion(id: String, version: String?): String? {
+    if (id.startsWith("com.android.tools")) {
+      return version?.replaceKnownPaths()
+    }
+    return version
+  }
 
   fun appendln(data: String) {
     output.append(currentNestingPrefix)

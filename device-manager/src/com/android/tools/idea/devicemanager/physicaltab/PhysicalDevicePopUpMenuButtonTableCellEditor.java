@@ -15,9 +15,12 @@
  */
 package com.android.tools.idea.devicemanager.physicaltab;
 
+import com.android.tools.idea.devicemanager.DetailsPanel;
 import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
 import com.android.tools.idea.devicemanager.DeviceType;
+import com.android.tools.idea.flags.StudioFlags;
+import com.android.tools.idea.wearpairing.AndroidWearPairingBundle;
 import com.android.tools.idea.wearpairing.PairingDevice;
 import com.android.tools.idea.wearpairing.WearDevicePairingWizard;
 import com.android.tools.idea.wearpairing.WearPairingManager;
@@ -37,7 +40,6 @@ import javax.swing.JTable;
 import kotlin.coroutines.CoroutineContext;
 import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.GlobalScope;
-import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.annotations.NotNull;
 
 final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonTableCellEditor {
@@ -79,19 +81,15 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
 
     item.setEnabled(phone && online);
 
-    String key;
-
     if (phone && online) {
-      key = "wear.assistant.device.list.tooltip.ok";
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.ok"));
     }
     else if (phone) {
-      key = "wear.assistant.device.list.tooltip.offline";
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.offline"));
     }
     else {
-      key = "wear.assistant.device.list.tooltip.unsupported";
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.unsupported"));
     }
-
-    item.setToolTipText(AndroidBundle.message(key));
 
     item.addActionListener(actionEvent -> {
       DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
@@ -116,7 +114,7 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
 
     JMenuItem item = new JBMenuItem("Unpair device");
     PairingDevice otherDevice = pair.getPeerDevice(key);
-    item.setToolTipText(AndroidBundle.message("wear.assistant.device.list.forget.connection", otherDevice.getDisplayName()));
+    item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.forget.connection", otherDevice.getDisplayName()));
     item.addActionListener(actionEvent -> {
       DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
         .setKind(DeviceManagerEvent.EventKind.PHYSICAL_UNPAIR_DEVICE_ACTION)
@@ -124,13 +122,18 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
 
       DeviceManagerUsageTracker.log(deviceManagerEvent);
 
-      try {
-        CoroutineContext context = GlobalScope.INSTANCE.getCoroutineContext();
-        BuildersKt.runBlocking(context, (scope, continuation) -> myManager.removePairedDevices(key, true, continuation));
+      if (StudioFlags.PAIRED_DEVICES_TAB_ENABLED.get()) {
+        myPanel.viewDetails(DetailsPanel.PAIRED_DEVICES_TAB_INDEX);
       }
-      catch (InterruptedException exception) {
-        Thread.currentThread().interrupt();
-        Logger.getInstance(PhysicalDevicePopUpMenuButtonTableCellEditor.class).warn(exception);
+      else {
+        try {
+          CoroutineContext context = GlobalScope.INSTANCE.getCoroutineContext();
+          BuildersKt.runBlocking(context, (scope, continuation) -> myManager.removePairedDevices(key, true, continuation));
+        }
+        catch (InterruptedException exception) {
+          Thread.currentThread().interrupt();
+          Logger.getInstance(PhysicalDevicePopUpMenuButtonTableCellEditor.class).warn(exception);
+        }
       }
     });
 

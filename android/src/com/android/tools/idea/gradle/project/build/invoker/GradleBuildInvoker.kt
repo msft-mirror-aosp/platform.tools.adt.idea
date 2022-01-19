@@ -32,6 +32,7 @@ interface GradleBuildInvoker {
 
   fun generateSources(modules: Array<Module>): ListenableFuture<GradleMultiInvocationResult>
   fun compileJava(modules: Array<Module>, testCompileType: TestCompileType): ListenableFuture<GradleMultiInvocationResult>
+  fun assemble(testCompileType: TestCompileType): ListenableFuture<AssembleInvocationResult>
   fun assemble(modules: Array<Module>, testCompileType: TestCompileType): ListenableFuture<AssembleInvocationResult>
   fun bundle(modules: Array<Module>): ListenableFuture<AssembleInvocationResult>
 
@@ -79,7 +80,7 @@ interface GradleBuildInvoker {
       fun builder(
         project: Project,
         rootProjectPath: File,
-        gradleTasks: List<String>
+        gradleTasks: Collection<String>
       ): Builder = Builder(project, rootProjectPath, gradleTasks.toList())
 
       @JvmStatic
