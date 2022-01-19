@@ -195,7 +195,7 @@ class RenderTemplateModel private constructor(
     ): Boolean {
       paths.moduleRoot ?: return false
 
-      if (newTemplate.constraints.contains(TemplateConstraint.Compose)) {
+      if (newTemplate.category == Category.Compose) {
         // Compose requires this specific Kotlin
         moduleTemplateDataBuilder.projectTemplateDataBuilder.kotlinVersion =
           getComposeKotlinVersion(isMaterial3 = newTemplate.constraints.contains(TemplateConstraint.Material3))
@@ -274,6 +274,6 @@ class RenderTemplateModel private constructor(
         Language.Java
     }
 
-    fun getComposeKotlinVersion(isMaterial3: Boolean): String = "1.6.0"
+    fun getComposeKotlinVersion(isMaterial3: Boolean): String = "1.5.31"
   }
 }

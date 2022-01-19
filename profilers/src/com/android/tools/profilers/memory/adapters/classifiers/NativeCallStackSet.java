@@ -17,6 +17,7 @@ package com.android.tools.profilers.memory.adapters.classifiers;
 
 import com.android.tools.profiler.proto.Memory;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Native callstack {@link ClassifierSet} that represents a heapprofd call graph node. End nodes return a {@link NativeAllocationMethodSet}
@@ -28,7 +29,7 @@ public class NativeCallStackSet extends ClassifierSet {
 
   @NotNull
   public static Classifier createDefaultClassifier() {
-    return NativeFunctionClassifier.of(0);
+    return new NativeFunctionClassifier(0);
   }
 
   public NativeCallStackSet(@NotNull Memory.AllocationStack.StackFrame stackFrame, int callstackDepth) {
@@ -51,6 +52,6 @@ public class NativeCallStackSet extends ClassifierSet {
   @NotNull
   @Override
   public Classifier createSubClassifier() {
-    return NativeFunctionClassifier.of(myCallstackDepth);
+    return new NativeFunctionClassifier(myCallstackDepth);
   }
 }

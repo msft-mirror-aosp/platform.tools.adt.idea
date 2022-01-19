@@ -16,6 +16,7 @@
 package com.android.tools.idea.run.deployment;
 
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiAction;
+import com.android.tools.idea.wearpairing.actions.WearDevicePairingAction;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
@@ -49,8 +50,7 @@ final class PopupActionGroup extends DefaultActionGroup {
 
     add(manager.getAction(SelectMultipleDevicesAction.ID));
     add(manager.getAction(PairDevicesUsingWiFiAction.ID));
-    // Action Id is from com.android.tools.idea.wearpairing.actions.WearDevicePairingAction.
-    add(manager.getAction("Android.WearDevicePairing"));
+    add(manager.getAction(WearDevicePairingAction.ID));
     // Action Id is from com.android.tools.idea.devicemanager.legacy.actions.Android.RunAndroidAvdManager.
     add(manager.getAction("Android.RunAndroidAvdManager"));
 

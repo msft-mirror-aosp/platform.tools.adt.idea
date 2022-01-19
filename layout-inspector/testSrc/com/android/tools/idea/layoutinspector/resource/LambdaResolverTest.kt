@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.layoutinspector.resource
 
-import com.android.testutils.ignore.OnWindows
-import com.android.testutils.ignore.IgnoreTestRule
 import com.android.testutils.TestUtils
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
@@ -32,10 +30,9 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class LambdaResolverTest {
   private val projectRule = AndroidProjectRule.inMemory()
-  private val ignoreTestsRule = IgnoreTestRule.allTestsMatching(OnWindows::class.java)
 
   @get:Rule
-  val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(ignoreTestsRule)
+  val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
 
   @Before
   fun before() {

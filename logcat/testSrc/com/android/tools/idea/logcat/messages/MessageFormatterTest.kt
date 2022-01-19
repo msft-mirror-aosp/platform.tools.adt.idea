@@ -24,7 +24,6 @@ import com.android.ddmlib.Log.LogLevel.VERBOSE
 import com.android.ddmlib.Log.LogLevel.WARN
 import com.android.ddmlib.logcat.LogCatHeader
 import com.android.ddmlib.logcat.LogCatMessage
-import com.android.tools.idea.logcat.SYSTEM_HEADER
 import com.android.tools.idea.logcat.messages.ProcessThreadFormat.Style.PID
 import com.android.tools.idea.logcat.messages.TimestampFormat.Style.DATETIME
 import com.android.tools.idea.logcat.messages.TimestampFormat.Style.TIME
@@ -325,16 +324,16 @@ class MessageFormatterTest {
     messageFormatter.formatMessages(textAccumulator, messages)
 
     // Filter the ranges corresponding to a LogLevel and build a map level -> color.
-    val textAttributes = textAccumulator.textAttributesKeyRanges.filter { it.getText(textAccumulator.text).matches(" [VDIWEA] ".toRegex()) }
+    val textAttributes = textAccumulator.highlightRanges.filter { it.getText(textAccumulator.text).matches(" [VDIWEA] ".toRegex()) }
       .associate { it.getText(textAccumulator.text).trim() to it.data }
 
     assertThat(textAttributes).containsExactly(
-      "V", logcatColors.getLogLevelKey(VERBOSE),
-      "D", logcatColors.getLogLevelKey(DEBUG),
-      "I", logcatColors.getLogLevelKey(INFO),
-      "W", logcatColors.getLogLevelKey(WARN),
-      "E", logcatColors.getLogLevelKey(ERROR),
-      "A", logcatColors.getLogLevelKey(ASSERT),
+      "V", logcatColors.getLogLevelColor(VERBOSE),
+      "D", logcatColors.getLogLevelColor(DEBUG),
+      "I", logcatColors.getLogLevelColor(INFO),
+      "W", logcatColors.getLogLevelColor(WARN),
+      "E", logcatColors.getLogLevelColor(ERROR),
+      "A", logcatColors.getLogLevelColor(ASSERT),
     )
   }
 
@@ -349,18 +348,13 @@ class MessageFormatterTest {
     messageFormatter.formatMessages(textAccumulator, messages)
 
     // Filter the ranges corresponding to a LogLevel and build a map level -> color.
-    val textAttributes = textAccumulator.textAttributesKeyRanges.filter {
-      it.getText(textAccumulator.text).matches(" message-.*\n".toRegex())
-    }
+    val textAttributes = textAccumulator.highlightRanges.filter { it.getText(textAccumulator.text).matches(" message-.*\n".toRegex()) }
       .associate { it.getText(textAccumulator.text).trim() to it.data }
 
     assertThat(textAttributes).containsExactly(
-      "message-VERBOSE", logcatColors.getMessageKey(VERBOSE),
-      "message-DEBUG", logcatColors.getMessageKey(DEBUG),
-      "message-INFO", logcatColors.getMessageKey(INFO),
-      "message-WARN", logcatColors.getMessageKey(WARN),
-      "message-ERROR", logcatColors.getMessageKey(ERROR),
-      "message-ASSERT", logcatColors.getMessageKey(ASSERT),
+      "message-WARN", logcatColors.getMessageColor(WARN),
+      "message-ERROR", logcatColors.getMessageColor(ERROR),
+      "message-ASSERT", logcatColors.getMessageColor(ASSERT),
     )
   }
 
@@ -377,7 +371,7 @@ class MessageFormatterTest {
     messageFormatter.formatMessages(textAccumulator, messages)
 
     // Filter the ranges corresponding to a tag and build a map tag -> color.
-    val tagColors = textAccumulator.textAttributesRanges.filter { it.getText(textAccumulator.text).matches("tag\\d+ *".toRegex()) }
+    val tagColors = textAccumulator.highlightRanges.filter { it.getText(textAccumulator.text).matches("tag\\d+ *".toRegex()) }
       .associate { it.getText(textAccumulator.text).trim() to it.data }
     assertThat(tagColors).hasSize(numTags)
     tagColors.forEach { (tag, color) ->
@@ -408,7 +402,7 @@ class MessageFormatterTest {
     messageFormatter.formatMessages(
       textAccumulator,
       listOf(
-        LogCatMessage(SYSTEM_HEADER, "message"),
+        LogCatMessage(LogCatHeader(WARN, 1, 2, appName = "", tag = "", Instant.EPOCH), "message"),
       ))
 
     assertThat(textAccumulator.text).isEqualTo("message\n")

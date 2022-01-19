@@ -55,7 +55,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.IdeActions
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.util.ColorProgressBar
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.pom.Navigatable
@@ -87,6 +86,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.io.File
 import java.time.Duration
+import java.util.Comparator
 import java.util.Vector
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -112,13 +112,11 @@ import kotlin.math.max
  */
 class AndroidTestResultsTableView(listener: AndroidTestResultsTableListener,
                                   javaPsiFacade: JavaPsiFacade,
-                                  module: Module?,
-                                  scopes: TestArtifactSearchScopes?,
+                                  testArtifactSearchScopes: TestArtifactSearchScopes?,
                                   logger: AndroidTestSuiteLogger,
                                   androidTestResultsUserPreferencesManager: AndroidTestResultsUserPreferencesManager?) {
   private val myModel = AndroidTestResultsTableModel()
-  private val myTableView =
-    AndroidTestResultsTableViewComponent(myModel, listener, javaPsiFacade, module, scopes, logger, androidTestResultsUserPreferencesManager)
+  private val myTableView = AndroidTestResultsTableViewComponent(myModel, listener, javaPsiFacade, testArtifactSearchScopes, logger, androidTestResultsUserPreferencesManager)
   private val myTableViewContainer = JBScrollPane(myTableView)
   private val failedTestsNavigator = FailedTestsNavigator(myTableView)
 
@@ -396,8 +394,7 @@ private val SKIPPED_TEST_TEXT_COLOR = JBColor(Gray._130, Gray._200)
 private class AndroidTestResultsTableViewComponent(private val model: AndroidTestResultsTableModel,
                                                    private val listener: AndroidTestResultsTableListener,
                                                    private val javaPsiFacade: JavaPsiFacade,
-                                                   private val module: Module?,
-                                                   private val scopes: TestArtifactSearchScopes?,
+                                                   private val testArtifactSearchScopes: TestArtifactSearchScopes?,
                                                    private val logger: AndroidTestSuiteLogger,
                                                    private val androidTestResultsUserPreferencesManager: AndroidTestResultsUserPreferencesManager?)
   : TreeTableView(model), DataProvider {
@@ -549,7 +546,7 @@ private class AndroidTestResultsTableViewComponent(private val model: AndroidTes
       }
       Location.DATA_KEY.`is`(dataId) -> {
         val psiElement = getData(CommonDataKeys.PSI_ELEMENT.name) as? PsiElement ?: return null
-        PsiLocation.fromPsiElement(psiElement, module)
+        PsiLocation.fromPsiElement(psiElement, testArtifactSearchScopes?.module)
       }
       RunConfiguration.DATA_KEY.`is`(dataId) -> {
         return AndroidTestRunConfiguration(javaPsiFacade.project, AndroidTestRunConfigurationType.getInstance().factory)
@@ -561,7 +558,7 @@ private class AndroidTestResultsTableViewComponent(private val model: AndroidTes
   private val myPsiElementCache: MutableMap<AndroidTestResults, Lazy<PsiElement?>> = mutableMapOf()
 
   fun getPsiElement(androidTestResults: AndroidTestResults): PsiElement? {
-    val androidTestSourceScope = scopes?.androidTestSourceScope ?: return null
+    val androidTestSourceScope = testArtifactSearchScopes?.androidTestSourceScope ?: return null
     return myPsiElementCache.getOrPut(androidTestResults) {
       lazy<PsiElement?> {
         val testClasses = androidTestResults.getFullTestClassName().let {

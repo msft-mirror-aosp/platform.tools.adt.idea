@@ -1,7 +1,7 @@
 android {
   compileOptions {
-    sourceCompatibility(1.8)
-    targetCompatibility("1.9")
+    setSourceCompatibility(1.8)
+    setTargetCompatibility("1.9")
     encoding = "ISO-2022-JP"
     incremental = true
   }

@@ -41,7 +41,6 @@ import com.android.tools.idea.gradle.dsl.api.java.JavaModel;
 import com.android.tools.idea.gradle.model.IdeBaseArtifact;
 import com.android.tools.idea.gradle.model.IdeDependencies;
 import com.android.tools.idea.gradle.model.IdeJavaLibrary;
-import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency;
 import com.android.tools.idea.gradle.model.IdeVariant;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
@@ -365,11 +364,10 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
   @Nullable
   private static ArtifactDependencySpec findMatchedLibrary(@NotNull Library library, @NotNull IdeBaseArtifact artifact) {
     IdeDependencies dependencies = artifact.getLevel2Dependencies();
-    for (IdeJavaLibraryDependency gradleLibrary : dependencies.getJavaLibraries()) {
-      IdeJavaLibrary libraryTarget = gradleLibrary.getTarget();
-      String libraryName = getNameWithoutExtension(libraryTarget.getArtifact());
+    for (IdeJavaLibrary gradleLibrary : dependencies.getJavaLibraries()) {
+      String libraryName = getNameWithoutExtension(gradleLibrary.getArtifact());
       if (libraryName.equals(library.getName())) {
-        return ArtifactDependencySpec.create(libraryTarget.getArtifactAddress());
+        return ArtifactDependencySpec.create(gradleLibrary.getArtifactAddress());
       }
     }
     return null;

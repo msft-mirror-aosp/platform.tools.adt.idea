@@ -46,8 +46,8 @@ import com.android.tools.adtui.stdui.StreamingScrollbar
 import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorAspect
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
-import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorServices
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkTrafficTooltipModel
+import com.android.tools.idea.appinspection.inspectors.network.model.analytics.NetworkInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.SelectionRangeDataListener
 import com.android.tools.idea.appinspection.inspectors.network.view.constants.DEFAULT_BACKGROUND
@@ -71,7 +71,6 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtilities
 import icons.StudioIcons
-import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.annotations.VisibleForTesting
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -100,8 +99,7 @@ class NetworkInspectorView(
   val model: NetworkInspectorModel,
   val componentsProvider: UiComponentsProvider,
   private val parentPane: TooltipLayeredPane,
-  val inspectorServices: NetworkInspectorServices,
-  scope: CoroutineScope
+  usageTracker: NetworkInspectorTracker
 ) : AspectObserver() {
 
   val component = JPanel(BorderLayout())
@@ -125,7 +123,7 @@ class NetworkInspectorView(
   val connectionsView = ConnectionsView(model, parentPane)
 
   @VisibleForTesting
-  val connectionDetails = ConnectionDetailsView(this, scope, inspectorServices.usageTracker)
+  val connectionDetails = ConnectionDetailsView(this, usageTracker)
   private val mainPanel = JPanel(TabularLayout("*,Fit-", "Fit-,*"))
   private val tooltipBinder = ViewBinder<NetworkInspectorView, TooltipModel, TooltipView>()
 
@@ -138,7 +136,7 @@ class NetworkInspectorView(
 
     model.aspect.addDependency(this)
       .onChange(NetworkInspectorAspect.SELECTED_CONNECTION) {
-        inspectorServices.usageTracker.trackConnectionDetailsSelected()
+        usageTracker.trackConnectionDetailsSelected()
         updateConnectionDetailsView()
       }
     tooltipBinder.bind(NetworkTrafficTooltipModel::class.java) { view: NetworkInspectorView, tooltip ->
@@ -146,7 +144,7 @@ class NetworkInspectorView(
     }
     connectionDetails.minimumSize = Dimension(JBUI.scale(450), connectionDetails.minimumSize.getHeight().toInt())
     val threadsView = ThreadsView(model, parentPane)
-    val leftSplitter = JBSplitter(true, 0.25f)
+    val leftSplitter = JBSplitter(true)
     leftSplitter.divider.border = DEFAULT_HORIZONTAL_BORDERS
     leftSplitter.firstComponent = buildMonitorUi()
     val connectionsPanel = JPanel(CardLayout())
@@ -363,7 +361,7 @@ class NetworkInspectorView(
       val index = Collections.binarySearch(list, SeriesData(time, 0L)) { o1, o2 ->
         o1.x.compareTo(o2.x)
       }
-      if (index < 0) -(index + 1) else index
+      if (index < 0) - (index + 1) else index
     }
     val minIndex = getInsertPoint(range.min.toLong())
     val maxIndex = getInsertPoint(range.max.toLong())

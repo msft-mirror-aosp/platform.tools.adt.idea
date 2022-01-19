@@ -15,29 +15,21 @@
  */
 package com.android.tools.idea.logcat
 
-import com.android.testutils.MockitoKt.any
-import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.logcat.filters.LogcatFilterColorSettingsPage
 import com.android.tools.idea.logcat.messages.FormattingOptions
 import com.android.tools.idea.logcat.messages.TagFormat
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.Gson
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.replaceService
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
 
 @RunsInEdt
 class LogcatToolWindowFactoryTest {
@@ -89,10 +81,10 @@ class LogcatToolWindowFactoryTest {
 
   @Test
   fun createChildComponent_parsesState() {
-    val logcatPanelConfig = LogcatPanelConfig("device", FormattingOptions(tagFormat = TagFormat(15)), "filter")
+    val logcatPanelConfig = LogcatPanelConfig("device", FormattingOptions(tagFormat = TagFormat(15)), "filter", showOnlyProjectApps = true)
 
     val logcatMainPanel = LogcatToolWindowFactory()
-      .createChildComponent(projectRule.project, ActionGroup.EMPTY_GROUP, clientState = Gson().toJson(logcatPanelConfig))
+      .createChildComponent(projectRule.project, ActionGroup.EMPTY_GROUP, clientState = Gson().toJson(logcatPanelConfig)) as LogcatMainPanel
 
     // It's enough to assert on just one field in the config. We test more thoroughly in LogcatMainPanelTest
     assertThat(logcatMainPanel.formattingOptions).isEqualTo(logcatPanelConfig.formattingOptions)
@@ -102,33 +94,9 @@ class LogcatToolWindowFactoryTest {
   @Test
   fun createChildComponent_invalidState() {
     val logcatMainPanel = LogcatToolWindowFactory()
-      .createChildComponent(projectRule.project, ActionGroup.EMPTY_GROUP, clientState = "invalid state")
+      .createChildComponent(projectRule.project, ActionGroup.EMPTY_GROUP, clientState = "invalid state") as LogcatMainPanel
 
     assertThat(logcatMainPanel.formattingOptions).isEqualTo(FormattingOptions())
     Disposer.dispose(logcatMainPanel)
-  }
-
-  @Test
-  fun colorSettingsPagesRegistration_obeysFlag_true() {
-    // We have to use a mock because there is no clean way to clean up ColorSettingsPages
-    val mockColorSettingsPages = mock<ColorSettingsPages>()
-    ApplicationManager.getApplication().replaceService(ColorSettingsPages::class.java, mockColorSettingsPages, projectRule.project)
-    StudioFlags.LOGCAT_V2_ENABLE.override(true)
-
-    LogcatToolWindowFactory()
-
-    verify(mockColorSettingsPages).registerPage(any(LogcatFilterColorSettingsPage::class.java))
-  }
-
-  @Test
-  fun colorSettingsPagesRegistration_obeysFlag_false() {
-    // We have to use a mock because there is no clean way to clean up ColorSettingsPages
-    val mockColorSettingsPages = mock<ColorSettingsPages>()
-    ApplicationManager.getApplication().replaceService(ColorSettingsPages::class.java, mockColorSettingsPages, projectRule.project)
-    StudioFlags.LOGCAT_V2_ENABLE.override(false)
-
-    LogcatToolWindowFactory()
-
-    verify(mockColorSettingsPages, never()).registerPage(any(LogcatFilterColorSettingsPage::class.java))
   }
 }

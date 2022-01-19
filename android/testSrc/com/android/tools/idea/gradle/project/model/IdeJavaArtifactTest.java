@@ -24,9 +24,6 @@ import com.android.tools.idea.gradle.model.IdeJavaArtifact;
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesImpl;
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl;
 import com.android.tools.idea.gradle.model.stubs.JavaArtifactStub;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
@@ -41,7 +38,9 @@ public class IdeJavaArtifactTest {
           convertArtifactName(original.getName()),
           original.getCompileTaskName(),
           original.getAssembleTaskName(),
-          Arrays.asList(original.getClassesFolder()),
+          original.getClassesFolder(),
+          original.getAdditionalClassesFolders(),
+          original.getJavaResourcesFolder(),
           null,
           null,
           original.getIdeSetupTaskNames(),

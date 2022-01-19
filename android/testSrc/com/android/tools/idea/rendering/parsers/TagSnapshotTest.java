@@ -21,7 +21,7 @@ import static com.android.SdkConstants.ATTR_LAYOUT_WIDTH;
 import static com.android.SdkConstants.ATTR_ORIENTATION;
 import static com.android.SdkConstants.VALUE_VERTICAL;
 import static com.android.SdkConstants.VALUE_WRAP_CONTENT;
-import static com.google.common.truth.Truth.assertThat;
+import static junit.framework.TestCase.assertEquals;
 
 import com.android.tools.idea.testing.AndroidProjectRule;
 import com.intellij.openapi.application.ApplicationManager;
@@ -58,27 +58,26 @@ public class TagSnapshotTest {
         callCount.incrementAndGet();
 
         if ("LinearLayout".equals(tag.tagName)) {
-          assertThat(tag.getAttribute(ATTR_ORIENTATION, ANDROID_URI)).isEqualTo(VALUE_VERTICAL);
-          assertThat(tag.children.size()).isEqualTo(2);
+          assertEquals(VALUE_VERTICAL, tag.getAttribute(ATTR_ORIENTATION, ANDROID_URI));
+          assertEquals(2, tag.children.size());
         }
         else {
-          assertThat(tag.getAttribute(ATTR_LAYOUT_WIDTH, ANDROID_URI)).isEqualTo(VALUE_WRAP_CONTENT);
-          assertThat(tag.getAttribute(ATTR_LAYOUT_HEIGHT, ANDROID_URI)).isEqualTo(VALUE_WRAP_CONTENT);
-          assertThat(tag.children.size()).isEqualTo(0);
+          assertEquals(VALUE_WRAP_CONTENT, tag.getAttribute(ATTR_LAYOUT_WIDTH, ANDROID_URI));
+          assertEquals(VALUE_WRAP_CONTENT, tag.getAttribute(ATTR_LAYOUT_HEIGHT, ANDROID_URI));
+          assertEquals(0, tag.children.size());
         }
       });
     });
 
     // Once per element
-    assertThat(callCount.get()).isEqualTo(3);
+    assertEquals(3, callCount.get());
     TagSnapshot synthetic = ApplicationManager.getApplication().runReadAction((Computable<TagSnapshot>)() -> {
       XmlTag tag = XmlElementFactory.getInstance(myProjectRule.getProject()).createTagFromText("<transformed />");
       return TagSnapshot.createSyntheticTag(tag, "synthetic", null, null,
                                             Collections.emptyList(), Collections.emptyList(), null);
     });
     synthetic.children = Collections.singletonList(snapshot);
-    assertThat(synthetic.toString())
-      .isEqualTo("TagSnapshot{synthetic, attributes=[], children=\n" +
+    assertEquals("TagSnapshot{synthetic, attributes=[], children=\n" +
                  "[TagSnapshot{LinearLayout, attributes=[AttributeSnapshot{orientation=\"vertical\"}], children=\n" +
                  "[TagSnapshot{Button, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
                  "[]\n" +
@@ -86,7 +85,8 @@ public class TagSnapshotTest {
                  "[]\n" +
                  "}]\n" +
                  "}]\n" +
-                 "}");
+                 "}",
+                 synthetic.toString());
   }
 
   @Test
@@ -106,12 +106,13 @@ public class TagSnapshotTest {
       return TagSnapshot.createTagSnapshot(image, null);
     });
     String expectedId = Long.toString(AaptAttrAttributeSnapshot.ourUniqueId.get() - 1);
-    assertThat(root.toString()).isEqualTo(
+    assertEquals(
       "TagSnapshot{ImageView, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}, AttributeSnapshot{src=\"@aapt:_aapt/aapt" +
       expectedId +
       "\"}], children=\n" +
       "[]\n" +
-      "}");
+      "}",
+      root.toString());
   }
 
 
@@ -127,10 +128,11 @@ public class TagSnapshotTest {
       XmlTag image = XmlElementFactory.getInstance(myProjectRule.getProject()).createTagFromText(imageString);
       return TagSnapshot.createTagSnapshot(image, null);
     });
-    assertThat(button.toString()).isEqualTo(
+    assertEquals(
       "TagSnapshot{Button, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}, AttributeSnapshot{useTag=\"Button\"}], children=\n" +
       "[]\n" +
-      "}");
+      "}",
+      button.toString());
   }
 
   @Test
@@ -143,9 +145,10 @@ public class TagSnapshotTest {
       XmlTag image = XmlElementFactory.getInstance(myProjectRule.getProject()).createTagFromText(imageString);
       return TagSnapshot.createTagSnapshot(image, null);
     });
-    assertThat(button.toString()).isEqualTo(
+    assertEquals(
       "TagSnapshot{androidx.compose.ui.tooling.ComposeViewAdapter, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
       "[]\n" +
-      "}");
+      "}",
+      button.toString());
   }
 }

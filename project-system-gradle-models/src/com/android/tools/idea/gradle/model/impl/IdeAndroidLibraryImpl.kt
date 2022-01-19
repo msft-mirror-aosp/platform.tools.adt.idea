@@ -25,7 +25,8 @@ import java.io.Serializable
  **/
 data class IdeAndroidLibraryImpl(
   val core: IdeAndroidLibraryCore,
-  override val name: String
+  override val name: String,
+  override val isProvided: Boolean
 ) : IdeAndroidLibrary by core, Serializable {
   @VisibleForTesting
   constructor(
@@ -46,7 +47,8 @@ data class IdeAndroidLibraryImpl(
     externalAnnotations: String,
     publicResources: String,
     artifact: File,
-    symbolFile: String
+    symbolFile: String,
+    isProvided: Boolean
   ) : this(
     IdeAndroidLibraryCore.create(
       artifactAddress,
@@ -68,7 +70,8 @@ data class IdeAndroidLibraryImpl(
       symbolFile,
       deduplicate = { this }
     ),
-    name
+    name,
+    isProvided
   )
 }
 
@@ -134,6 +137,9 @@ data class IdeAndroidLibraryCore(
   override val name: String
     get() = ""
 
+  override val isProvided: Nothing
+    get() = error("abstract")
+
   companion object {
     fun create(
       artifactAddress: String,
@@ -180,3 +186,6 @@ data class IdeAndroidLibraryCore(
     }
   }
 }
+
+private fun unsupportedMethodForAndroidLibrary(methodName: String): UnsupportedOperationException =
+  UnsupportedOperationException("$methodName() cannot be called when getType() returns ANDROID_LIBRARY")

@@ -15,15 +15,16 @@
  */
 package com.android.tools.idea.tests.gui.customview
 
-import com.android.tools.idea.bleak.UseBleak
 import com.android.tools.idea.tests.gui.framework.GuiTestRule
 import com.android.tools.idea.tests.gui.framework.RunIn
 import com.android.tools.idea.tests.gui.framework.TestGroup
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture
 import com.android.tools.idea.tests.gui.framework.fixture.designer.getSplitEditorFixture
+import com.android.tools.idea.bleak.UseBleak
 import com.android.tools.idea.tests.gui.uibuilder.RenderTaskLeakCheckRule
 import com.intellij.testGuiFramework.framework.GuiTestRemoteRunner
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,33 +41,28 @@ class CustomViewPreviewTest {
   @Test
   @RunIn(TestGroup.UNRELIABLE)
   fun testOpenBuildAndClosePreview() {
-    openBuildAndClosePreview(importProject())
+    openBuildAndClosePreview(guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleComposeApplication"))
   }
 
   @Test
   @UseBleak
   @RunIn(TestGroup.PERFORMANCE)
   fun testOpenBuildAndClosePreviewWithBleak() {
-    val fixture = importProject()
+    val fixture = guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleComposeApplication")
     guiTest.runWithBleak { openBuildAndClosePreview(fixture) }
   }
-
-  private fun importProject(): IdeFrameFixture =
-    guiTest.importProjectAndWaitForProjectSyncToFinish("SimpleComposeApplication", null, null, "1.6.0",
-                                                       GuiTestRule.DEFAULT_IMPORT_AND_SYNC_WAIT)
 
   @Throws(Exception::class)
   private fun openBuildAndClosePreview(fixture: IdeFrameFixture) {
     val editor = fixture.editor
     val file = "app/src/main/java/google/simpleapplication/CustomViews.kt"
-
     editor.open(file)
-    val multiRepresentationFixture = editor.getSplitEditorFixture().apply {
-      setSplitMode()
-      setRepresentation("Custom views")
-      waitForRenderToFinish()
-    }
+
+    val multiRepresentationFixture = editor.getSplitEditorFixture().waitForRenderToFinish()
     guiTest.robot().waitForIdle()
+
+    assertTrue(multiRepresentationFixture.hasRenderErrors())
+
     fixture.invokeAndWaitForBuildAction("Build", "Make Project")
 
     multiRepresentationFixture.waitForRenderToFinish()

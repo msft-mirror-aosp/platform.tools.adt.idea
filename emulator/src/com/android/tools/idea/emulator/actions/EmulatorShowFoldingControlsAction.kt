@@ -21,10 +21,20 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 /**
  * Shows the virtual sensors page of the emulator extended controls.
  */
-class EmulatorShowFoldingControlsAction : AbstractEmulatorAction(configFilter = { config -> config.isFoldable || config.isRollable}) {
+class EmulatorShowFoldingControlsAction : AbstractEmulatorAction() {
 
   override fun actionPerformed(event: AnActionEvent) {
     val emulatorController = getEmulatorController(event) ?: return
     showExtendedControls(emulatorController, getProject(event), PaneIndex.VIRT_SENSORS)
+  }
+
+  override fun update(event: AnActionEvent) {
+    super.update(event)
+    event.presentation.isVisible = isEmulatorConnected(event) && isFoldableOrRollable(event)
+  }
+
+  private fun isFoldableOrRollable(event: AnActionEvent): Boolean {
+    val config = getEmulatorController(event)?.emulatorConfig ?: return false
+    return config.foldable || config.rollable
   }
 }

@@ -36,7 +36,7 @@ class EmulatorConfigurationTest {
   @Test
   fun testPhone() {
     // Prepare.
-    val avdFolder = FakeEmulator.createPhoneAvd(avdParentFolder, sdkFolder, api = 29)
+    val avdFolder = FakeEmulator.createPhoneAvd(avdParentFolder, sdkFolder)
 
     // Act.
     val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
@@ -51,19 +51,17 @@ class EmulatorConfigurationTest {
     assertThat(config?.skinFolder?.toString()?.replace('\\', '/'))
         .endsWith("tools/adt/idea/artwork/resources/device-art-resources/pixel_3_xl")
     assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isFalse()
-    assertThat(config?.isRollable).isFalse()
-    assertThat(config?.isWearOs).isFalse()
+    assertThat(config?.foldable).isFalse()
+    assertThat(config?.rollable).isFalse()
     assertThat(config?.hasOrientationSensors).isTrue()
     assertThat(config?.initialOrientation).isEqualTo(SkinRotation.PORTRAIT)
     assertThat(config?.displayModes).isEmpty()
-    assertThat(config?.api).isEqualTo(29)
   }
 
   @Test
   fun testTablet() {
     // Prepare.
-    val avdFolder = FakeEmulator.createTabletAvd(avdParentFolder, sdkFolder, api = 29)
+    val avdFolder = FakeEmulator.createTabletAvd(avdParentFolder, sdkFolder)
 
     // Act.
     val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
@@ -77,45 +75,17 @@ class EmulatorConfigurationTest {
     assertThat(config?.density).isEqualTo(320)
     assertThat(config?.skinFolder?.toString()?.replace('\\', '/')).isEqualTo("${baseDir}/Android/Sdk/skins/nexus_10")
     assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isFalse()
-    assertThat(config?.isRollable).isFalse()
-    assertThat(config?.isWearOs).isFalse()
+    assertThat(config?.foldable).isFalse()
+    assertThat(config?.rollable).isFalse()
     assertThat(config?.hasOrientationSensors).isTrue()
     assertThat(config?.initialOrientation).isEqualTo(SkinRotation.LANDSCAPE)
     assertThat(config?.displayModes).isEmpty()
-    assertThat(config?.api).isEqualTo(29)
-  }
-
-  @Test
-  fun testWatch() {
-    // Prepare.
-    val avdFolder = FakeEmulator.createWatchAvd(avdParentFolder, sdkFolder, api = 30)
-
-    // Act.
-    val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
-
-    // Assert.
-    assertThat(config).isNotNull()
-    assertThat(config?.avdFolder).isEqualTo(avdFolder)
-    assertThat(config?.avdName).isEqualTo("Android Wear Round API 30")
-    assertThat(config?.displayWidth).isEqualTo(320)
-    assertThat(config?.displayHeight).isEqualTo(320)
-    assertThat(config?.density).isEqualTo(240)
-    assertThat(config?.skinFolder?.toString()).isEqualTo(FakeEmulator.getSkinFolder("wearos_small_round").toString())
-    assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isFalse()
-    assertThat(config?.isRollable).isFalse()
-    assertThat(config?.isWearOs).isTrue()
-    assertThat(config?.hasOrientationSensors).isTrue()
-    assertThat(config?.initialOrientation).isEqualTo(SkinRotation.PORTRAIT)
-    assertThat(config?.displayModes).isEmpty()
-    assertThat(config?.api).isEqualTo(30)
   }
 
   @Test
   fun testFoldable() {
     // Prepare.
-    val avdFolder = FakeEmulator.createFoldableAvd(avdParentFolder, sdkFolder, api = 29)
+    val avdFolder = FakeEmulator.createFoldableAvd(avdParentFolder, sdkFolder)
 
     // Act.
     val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
@@ -129,19 +99,17 @@ class EmulatorConfigurationTest {
     assertThat(config?.density).isEqualTo(480)
     assertThat(config?.skinFolder).isNull()
     assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isTrue()
-    assertThat(config?.isRollable).isFalse()
-    assertThat(config?.isWearOs).isFalse()
+    assertThat(config?.foldable).isTrue()
+    assertThat(config?.rollable).isFalse()
     assertThat(config?.hasOrientationSensors).isTrue()
     assertThat(config?.initialOrientation).isEqualTo(SkinRotation.PORTRAIT)
     assertThat(config?.displayModes).isEmpty()
-    assertThat(config?.api).isEqualTo(29)
   }
 
   @Test
   fun testRollable() {
     // Prepare.
-    val avdFolder = FakeEmulator.createRollableAvd(avdParentFolder, sdkFolder, api = 31)
+    val avdFolder = FakeEmulator.createRollableAvd(avdParentFolder, sdkFolder)
 
     // Act.
     val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
@@ -155,19 +123,17 @@ class EmulatorConfigurationTest {
     assertThat(config?.density).isEqualTo(420)
     assertThat(config?.skinFolder).isNull()
     assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isFalse()
-    assertThat(config?.isRollable).isTrue()
-    assertThat(config?.isWearOs).isFalse()
+    assertThat(config?.foldable).isFalse()
+    assertThat(config?.rollable).isTrue()
     assertThat(config?.hasOrientationSensors).isTrue()
     assertThat(config?.initialOrientation).isEqualTo(SkinRotation.PORTRAIT)
     assertThat(config?.displayModes).isEmpty()
-    assertThat(config?.api).isEqualTo(31)
   }
 
   @Test
   fun testResizable() {
     // Prepare.
-    val avdFolder = FakeEmulator.createResizableAvd(avdParentFolder, sdkFolder, api = 32)
+    val avdFolder = FakeEmulator.createResizableAvd(avdParentFolder, sdkFolder)
 
     // Act.
     val config = EmulatorConfiguration.readAvdDefinition(avdFolder.fileName.toString().substringBeforeLast("."), avdFolder)
@@ -181,15 +147,13 @@ class EmulatorConfigurationTest {
     assertThat(config?.density).isEqualTo(420)
     assertThat(config?.skinFolder).isNull()
     assertThat(config?.hasAudioOutput).isTrue()
-    assertThat(config?.isFoldable).isFalse()
-    assertThat(config?.isRollable).isFalse()
-    assertThat(config?.isWearOs).isFalse()
+    assertThat(config?.foldable).isFalse()
+    assertThat(config?.rollable).isFalse()
     assertThat(config?.hasOrientationSensors).isTrue()
     assertThat(config?.initialOrientation).isEqualTo(SkinRotation.PORTRAIT)
     assertThat(config?.displayModes).containsExactly(DisplayMode(DisplayModeValue.PHONE, 1080, 2340),
                                                      DisplayMode(DisplayModeValue.FOLDABLE, 1768, 2208),
                                                      DisplayMode(DisplayModeValue.TABLET, 1920, 1200),
                                                      DisplayMode(DisplayModeValue.DESKTOP, 1920, 1080))
-    assertThat(config?.api).isEqualTo(32)
   }
 }

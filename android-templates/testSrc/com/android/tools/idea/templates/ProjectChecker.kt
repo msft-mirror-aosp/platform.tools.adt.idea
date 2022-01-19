@@ -75,7 +75,7 @@ data class ProjectChecker(
     val modifiedModuleName = getModifiedModuleName(moduleName, avoidModifiedModuleName)
     val fixture = setUpFixtureForProject(modifiedModuleName)
     val project = fixture.project!!
-    moduleState = getDefaultModuleState(project, template)
+    moduleState = getDefaultModuleState(project)
     customizers.forEach {
       it(moduleState, moduleState.projectTemplateDataBuilder)
     }

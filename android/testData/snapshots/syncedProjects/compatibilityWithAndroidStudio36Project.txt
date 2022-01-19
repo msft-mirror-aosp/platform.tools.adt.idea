@@ -245,8 +245,6 @@ PROJECT                       : AS36
             Scope                         : Test
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-library:1.3 [=]
             Scope                         : Test
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/AS36.app.androidTest
     MODULE                        : AS36.app.main
         LINKED_ANDROID_MODULE_GROUP
             holder                        : AS36.app
@@ -340,8 +338,6 @@ PROJECT                       : AS36
         LIBRARY                       : Gradle: androidx.vectordrawable:vectordrawable:1.0.1@aar [=]
         LIBRARY                       : Gradle: androidx.versionedparcelable:versionedparcelable:1.0.0@aar [=]
         LIBRARY                       : Gradle: androidx.viewpager:viewpager:1.0.0@aar [=]
-        Classes
-            -                             : file://<PROJECT>/build/classes/production/AS36.app.main
     MODULE                        : AS36.app.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : AS36.app
@@ -459,8 +455,6 @@ PROJECT                       : AS36
             Scope                         : Test
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-core:1.3 [=]
             Scope                         : Test
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/AS36.app.unitTest
     MODULE                        : AS36.features
         ExternalModuleGroup           : AS36
         ExternalModuleVersion         : unspecified
@@ -1213,8 +1207,6 @@ PROJECT                       : AS36
             Scope                         : Test
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-library:1.3 [=]
             Scope                         : Test
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/AS36.libs.android_library.androidTest
     MODULE                        : AS36.libs.android_library.main
         LINKED_ANDROID_MODULE_GROUP
             holder                        : AS36.libs.android_library
@@ -1308,8 +1300,6 @@ PROJECT                       : AS36
         LIBRARY                       : Gradle: androidx.vectordrawable:vectordrawable:1.0.1@aar [=]
         LIBRARY                       : Gradle: androidx.versionedparcelable:versionedparcelable:1.0.0@aar [=]
         LIBRARY                       : Gradle: androidx.viewpager:viewpager:1.0.0@aar [=]
-        Classes
-            -                             : file://<PROJECT>/build/classes/production/AS36.libs.android_library.main
     MODULE                        : AS36.libs.android_library.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : AS36.libs.android_library
@@ -1427,8 +1417,6 @@ PROJECT                       : AS36
             Scope                         : Test
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-core:1.3 [=]
             Scope                         : Test
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/AS36.libs.android_library.unitTest
     MODULE                        : AS36.libs.java_lib
         ExternalModuleGroup           : AS36.libs
         ExternalModuleVersion         : unspecified
@@ -1473,8 +1461,6 @@ PROJECT                       : AS36
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
-        Classes
-            -                             : file://<PROJECT>/libs/java_lib/build/classes/java/main
     MODULE                        : AS36.libs.java_lib.test
         ExternalModuleGroup           : AS36.libs
         ExternalModuleType            : sourceSet

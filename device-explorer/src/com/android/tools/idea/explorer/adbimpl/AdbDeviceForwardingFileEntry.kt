@@ -17,6 +17,7 @@ package com.android.tools.idea.explorer.adbimpl
 
 import com.android.tools.idea.explorer.fs.DeviceFileEntry
 import com.android.tools.idea.explorer.fs.FileTransferProgress
+import com.google.common.util.concurrent.ListenableFuture
 import java.nio.file.Path
 
 /**
@@ -31,29 +32,29 @@ abstract class AdbDeviceForwardingFileEntry(
   private val forwardedFileEntry: AdbDeviceFileEntry
 ) : AdbDeviceFileEntry(forwardedFileEntry.fileSystem, forwardedFileEntry.myEntry, forwardedFileEntry.parent) {
 
-  override suspend fun entries(): List<DeviceFileEntry> =
-    forwardedFileEntry.entries()
+  override val entries: ListenableFuture<List<DeviceFileEntry>>
+    get() = forwardedFileEntry.entries
 
-  override suspend fun delete() {
+  override fun delete(): ListenableFuture<Unit> {
     return forwardedFileEntry.delete()
   }
 
-  override suspend fun createNewFile(fileName: String) {
+  override fun createNewFile(fileName: String): ListenableFuture<Unit> {
     return forwardedFileEntry.createNewFile(fileName)
   }
 
-  override suspend fun createNewDirectory(directoryName: String) {
+  override fun createNewDirectory(directoryName: String): ListenableFuture<Unit> {
     return forwardedFileEntry.createNewDirectory(directoryName)
   }
 
-  override suspend fun isSymbolicLinkToDirectory(): Boolean =
-    forwardedFileEntry.isSymbolicLinkToDirectory()
+  override val isSymbolicLinkToDirectory: ListenableFuture<Boolean>
+    get() = forwardedFileEntry.isSymbolicLinkToDirectory
 
-  override suspend fun downloadFile(localPath: Path, progress: FileTransferProgress) {
-    forwardedFileEntry.downloadFile(localPath, progress)
+  override fun downloadFile(localPath: Path, progress: FileTransferProgress): ListenableFuture<Unit> {
+    return forwardedFileEntry.downloadFile(localPath, progress)
   }
 
-  override suspend fun uploadFile(localPath: Path, fileName: String, progress: FileTransferProgress) {
-    forwardedFileEntry.uploadFile(localPath, fileName, progress)
+  override fun uploadFile(localPath: Path, fileName: String, progress: FileTransferProgress): ListenableFuture<Unit> {
+    return forwardedFileEntry.uploadFile(localPath, fileName, progress)
   }
 }

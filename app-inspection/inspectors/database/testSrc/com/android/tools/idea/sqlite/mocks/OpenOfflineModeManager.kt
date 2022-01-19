@@ -19,13 +19,9 @@ import com.android.tools.idea.sqlite.FileDatabaseManager
 import com.android.tools.idea.sqlite.OfflineModeManager
 import com.android.tools.idea.sqlite.OfflineModeManagerImpl
 import com.intellij.openapi.project.Project
-import kotlin.coroutines.CoroutineContext
 
 open class OpenOfflineModeManager(
   private val project: Project,
   private val fileDatabaseManager: FileDatabaseManager,
-  private val uiDispatcher: CoroutineContext,
-  private val offlineModeManager: OfflineModeManager = OfflineModeManagerImpl(
-    project, fileDatabaseManager, uiDispatcher, isFileDownloadAllowed = { true }
-  )
+  private val offlineModeManager: OfflineModeManager = OfflineModeManagerImpl(project, fileDatabaseManager)
 ) : OfflineModeManager by offlineModeManager

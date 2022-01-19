@@ -87,7 +87,7 @@ class AdbServiceWrapperImpl(
         return createAdbOnlineDevice(device, rem)
       }
 
-      if (rem.remainingNanos<= 0) {
+      if (rem.remainingUnits <= 0) {
         throw AdbCommandException("Device did not connect within specified timeout", -1, emptyList())
       }
 

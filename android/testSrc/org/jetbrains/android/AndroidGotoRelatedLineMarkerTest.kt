@@ -18,6 +18,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlAttributeValue
 import com.intellij.testFramework.TestActionEvent
+import junit.framework.TestCase
 import org.jetbrains.kotlin.psi.KtClass
 import java.io.File
 import java.util.ArrayList
@@ -119,7 +120,7 @@ class AndroidGotoRelatedLineMarkerTest : AndroidTestCase() {
       when (val element = item.element) {
         is PsiFile -> psiFileTarget = element
         is XmlAttributeValue -> manifestDeclarationTarget = element
-        else -> fail("Unexpected element: " + element!!)
+        else -> TestCase.fail("Unexpected element: " + element!!)
       }
     }
     assertThat(psiFileTarget!!.virtualFile).isEqualTo(layoutFile)

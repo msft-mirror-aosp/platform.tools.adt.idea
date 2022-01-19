@@ -207,13 +207,18 @@ public final class GroovyDslUtil {
     }
     else if (element instanceof GrMethodCallExpression) {
       GrMethodCallExpression call = ((GrMethodCallExpression)element);
-      // getArgumentList() logs an error if the argument list has already been deleted.
       GrArgumentList argumentList = null;
-      for (PsiElement curr = call.getFirstChild(); curr != null; curr = curr.getNextSibling()) {
-        if (curr instanceof GrArgumentList) {
-          argumentList = (GrArgumentList)curr;
-          break;
+      try {
+        for (PsiElement curr = call.getFirstChild(); curr != null; curr = curr.getNextSibling()) {
+          if (curr instanceof GrArgumentList) {
+            argumentList = (GrArgumentList)curr;
+            break;
+          }
         }
+      }
+      catch (AssertionError e) {
+        // We will get this exception if the argument list is already deleted.
+        argumentList = null;
       }
       GrClosableBlock[] closureArguments = call.getClosureArguments();
       if ((argumentList == null || argumentList.getAllArguments().length == 0)
@@ -1108,16 +1113,14 @@ public final class GroovyDslUtil {
     return parent != null && parent.getPsiElement() == null;
   }
 
-  static boolean closableBlockNeedsNewline(@NotNull GrClosableBlock block) {
-    PsiElement start = block.getLBrace();
-    PsiElement end = block.getRBrace();
-    if (end == null) return false;
+  static boolean hasNewLineBetween(@NotNull PsiElement start, @NotNull PsiElement end) {
+    assert start.getParent() == end.getParent() && start.getStartOffsetInParent() <= end.getStartOffsetInParent();
     for (PsiElement element = start; element != end; element = element.getNextSibling()) {
       if (element.getNode().getElementType().equals(GroovyTokenTypes.mNLS)) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   static List<GradleReferenceInjection> findInjections(@NotNull GradleDslSimpleExpression context,

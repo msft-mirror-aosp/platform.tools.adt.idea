@@ -29,7 +29,8 @@ import java.io.File
 private val minimumSupportedAgpVersion = GradleVersion.tryParseAndroidGradlePluginVersion("4.0.0-beta05")!!
 
 fun isBuildAttributionEnabledForProject(project: Project): Boolean {
-  return isAgpVersionHigherOrEqualToMinimal(project)
+  return StudioFlags.BUILD_ATTRIBUTION_ENABLED.get()
+         && isAgpVersionHigherOrEqualToMinimal(project)
 }
 
 fun isAgpVersionHigherOrEqualToMinimal(project: Project): Boolean {

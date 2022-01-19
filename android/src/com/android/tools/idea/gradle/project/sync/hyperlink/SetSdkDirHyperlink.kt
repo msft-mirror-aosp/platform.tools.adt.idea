@@ -82,7 +82,6 @@ class SetSdkDirHyperlink(
     val sdkData = AndroidSdks.getInstance().tryToChooseAndroidSdk()
     if (sdkData != null) {
       ModalityUiUtil.invokeLaterIfNeeded(
-        ModalityState.defaultModalityState())
         {
           CommandProcessor.getInstance().executeCommand(project, {
             val undoableAction = SetSdkDirUndoableAction(localProperties, sdkData)
@@ -90,7 +89,7 @@ class SetSdkDirHyperlink(
             UndoManager.getInstance(project).undoableActionPerformed(undoableAction)
             GradleSyncInvoker.getInstance().requestProjectSync(project, GradleSyncInvoker.Request(TRIGGER_QF_SDK_PATH_CHANGED))
           }, SDK_DIR_UNDO_NAME, null)
-        }
+        }, ModalityState.defaultModalityState())
     }
   }
 }

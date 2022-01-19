@@ -56,6 +56,5 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//tools/adt/idea/android-lint:intellij.android.lint[module]",
         "//tools/adt/idea/device-manager:intellij.android.device-manager[module]",
-        "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing[module]",
     ],
 )

@@ -265,7 +265,7 @@ class LogcatFilterParserTest {
 
   @Test
   fun parse_appFilter() {
-    assertThat(logcatFilterParser().parse("package:mine")).isEqualTo(ProjectAppFilter(fakePackageNamesProvider))
+    assertThat(logcatFilterParser().parse("app!")).isEqualTo(ProjectAppFilter(fakePackageNamesProvider))
   }
 
   @Test

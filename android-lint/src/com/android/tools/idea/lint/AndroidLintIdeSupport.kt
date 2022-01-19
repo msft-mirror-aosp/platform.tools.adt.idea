@@ -16,6 +16,7 @@
 package com.android.tools.idea.lint
 
 import com.android.SdkConstants.ANDROID_MANIFEST_XML
+import com.android.SdkConstants.DOT_GRADLE
 import com.android.ide.common.repository.GradleCoordinate
 import com.android.ide.common.repository.GradleVersion
 import com.android.ide.common.repository.SdkMavenRepository
@@ -47,6 +48,7 @@ import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.client.api.LintDriver
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.Platform
+import com.android.utils.SdkUtils
 import com.google.wireless.android.sdk.stats.LintSession
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.codeInspection.LocalQuickFix
@@ -68,7 +70,7 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.plugins.gradle.config.isGradleFile
+import org.jetbrains.plugins.groovy.GroovyFileType
 import java.io.File
 import java.util.EnumSet
 
@@ -155,13 +157,18 @@ class AndroidLintIdeSupport : LintIdeSupport() {
     else if (fileType === FileTypes.PLAIN_TEXT) {
       return super.canAnnotate(file, module)
     }
-    else if (file.isGradleFile()) {
-      // Ensure that we're listening to the PSI structure for Gradle file edit notifications
-      val project = file.project
-      if (AndroidProjectInfo.getInstance(project).requiresAndroidModel()) {
-        AndroidFileChangeListener.getInstance(project)
+    else if (fileType === GroovyFileType.GROOVY_FILE_TYPE) {
+      if (!SdkUtils.endsWithIgnoreCase(file.name, DOT_GRADLE)) {
+        return false
       }
-      return true
+      else {
+        // Ensure that we're listening to the PSI structure for Gradle file edit notifications
+        val project = file.project
+        if (AndroidProjectInfo.getInstance(project).requiresAndroidModel()) {
+          AndroidFileChangeListener.getInstance(project)
+        }
+        return true
+      }
     }
     return false
   }

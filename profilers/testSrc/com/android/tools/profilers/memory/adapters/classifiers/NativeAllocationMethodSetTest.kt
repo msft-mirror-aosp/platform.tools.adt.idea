@@ -28,7 +28,7 @@ class NativeAllocationMethodSetTest {
   fun subClassifierIsDefault() {
     val callstackSet = NativeAllocationMethodSet("Test")
     assertThat(callstackSet.createSubClassifier()).isEqualTo(
-      Classifier.Id)
+      Classifier.IDENTITY_CLASSIFIER)
   }
 
   @Test

@@ -23,14 +23,11 @@ import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.internal.builders.AllDefaultPossibilitiesBuilder;
-import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
 import org.junit.runners.JUnit4;
-import org.junit.runners.Parameterized;
 import org.junit.runners.model.InitializationError;
 
 /**
@@ -93,37 +90,6 @@ public class OldAgpSuiteTest {
     }
   }
 
-  @OldAgpTest
-  @RunWith(Parameterized.class)
-  public static class ParametrizedAgpTest {
-    @Parameterized.Parameter(0)
-    public boolean param = true;
-
-    @Parameterized.Parameters(name = "{0}")
-    public static List<Boolean> paramValues() {
-      return ImmutableList.of(false, true);
-    }
-
-    @Test
-    public void shouldRun() {
-    }
-  }
-
-  @RunWith(Parameterized.class)
-  public static class ParametrizedOtherTest {
-    @Parameterized.Parameter(0)
-    public boolean param = true;
-
-    @Parameterized.Parameters(name = "{0}")
-    public static List<Boolean> paramValues() {
-      return ImmutableList.of(false, true);
-    }
-
-    @Test
-    public void shouldNotRun() {
-    }
-  }
-
   @JarTestSuiteRunner.ExcludeClasses({ExampleSuite.class, MethodOnly.class})
   public static class ExampleSuite {
   }
@@ -131,7 +97,7 @@ public class OldAgpSuiteTest {
   @Test
   public void filterRunners_keepsTestMethods() throws Throwable {
     List<Runner> runners = createRunners(AgpTestMultiple.class, OverrideAgpTest.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", false);
+    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2");
 
     List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
 
@@ -143,7 +109,7 @@ public class OldAgpSuiteTest {
   @Test
   public void filterRunners_filterGradleVersion() throws Throwable {
     List<Runner> runners = createRunners(AgpTestMultiple.class, OverrideAgpTest.class);
-    OldAgpFilter filter = new OldAgpFilter("4.1", "4.2", false);
+    OldAgpFilter filter = new OldAgpFilter("4.1", "4.2");
 
     List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
 
@@ -154,7 +120,7 @@ public class OldAgpSuiteTest {
   @Test
   public void filterRunners_noTestsFailsSuite() throws Throwable {
     List<Runner> runners = createRunners(MethodOnly.class);
-    OldAgpFilter filter = new OldAgpFilter("0.0", "0.0", false);
+    OldAgpFilter filter = new OldAgpFilter("0.0", "0.0");
 
     try {
       List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
@@ -168,7 +134,7 @@ public class OldAgpSuiteTest {
   @Test
   public void filterRunners_methodOnly() throws Throwable {
     List<Runner> runners = createRunners(MethodOnly.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", false);
+    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2");
 
     List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
 
@@ -177,33 +143,24 @@ public class OldAgpSuiteTest {
   }
 
   @Test
-  public void filterRunners_missingAnnotation_doNotIgnoreOtherTests() throws Throwable {
-    List<Runner> runners = createRunners(MissingAnnotation.class, AgpTestMultiple.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", false);
+  public void filterRunners_missingAnnotation() throws Throwable {
+    List<Runner> runners = createRunners(MissingAnnotation.class);
+    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2");
 
     try {
-      List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
-      fail("Expected to fail on test MissingAnnotation, got: " + filteredRunners);
+    List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
+      fail("Expected 0 runners, got: " + filteredRunners);
     }
     catch (IllegalStateException e) {
       // expected as no runners were left to run
     }
-  }
 
-  @Test
-  public void filterRunners_missingAnnotation_ignoreOtherTests() throws Throwable {
-    List<Runner> runners = createRunners(MissingAnnotation.class, AgpTestMultiple.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", true);
-
-    List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
-    hasTest(filteredRunners, "AgpTestMultiple.shouldRun");
-    assertThat(runnerTestCount(filteredRunners)).isEqualTo(1);
   }
 
   @Test
   public void filterRunners_missingVersions() throws Throwable {
     List<Runner> runners = createRunners(MissingVersions.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", false);
+    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2");
 
     try {
     List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
@@ -218,7 +175,7 @@ public class OldAgpSuiteTest {
   @Test
   public void filterRunners_missingAnnotationValue() throws Throwable {
     List<Runner> runners = createRunners(InvalidAnnotation.class);
-    OldAgpFilter filter = new OldAgpFilter("4.1", "4.2", true);
+    OldAgpFilter filter = new OldAgpFilter("4.1", "4.2");
 
     try {
       List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
@@ -236,35 +193,14 @@ public class OldAgpSuiteTest {
     assertThat(OldAgpSuite.excludeTests(testClasses, ExampleSuite.class)).containsExactly(OverrideAgpTest.class);
   }
 
-  @Test
-  public void testParametrized() throws Throwable {
-    List<Runner> runners = createRunners(ParametrizedAgpTest.class, ParametrizedOtherTest.class);
-    OldAgpFilter filter = new OldAgpFilter("4.2", "4.2", true);
-
-    List<Runner> filteredRunners = OldAgpSuite.filterRunners(filter, runners);
-
-    hasTest(filteredRunners, "ParametrizedAgpTest.shouldRun[false]");
-    hasTest(filteredRunners, "ParametrizedAgpTest.shouldRun[true]");
-    assertThat(runnerTestCount(filteredRunners)).isEqualTo(2);
-  }
-
   private static String className(Runner runner) {
     return ((JUnit4)runner).getTestClass().getName();
-  }
-
-  private static Stream<Description> descriptionTreeLeaves(Description description) {
-    if (!description.getChildren().isEmpty()) {
-      return description.getChildren().stream().flatMap(OldAgpSuiteTest::descriptionTreeLeaves);
-    }
-    else {
-      return Stream.of(description);
-    }
   }
 
   private static void hasTest(List<Runner> runners, String testName) {
     // build a list of $className.$methodName
     List<String> testNames = runners.stream()
-      .flatMap(r -> descriptionTreeLeaves(r.getDescription()))
+      .flatMap(r -> r.getDescription().getChildren().stream())
       .map(desc -> String.format("%s.%s", desc.getTestClass().getSimpleName(), desc.getMethodName()))
       .collect(Collectors.toList());
 

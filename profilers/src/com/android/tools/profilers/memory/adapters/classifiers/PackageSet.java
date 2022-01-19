@@ -16,9 +16,16 @@
 package com.android.tools.profilers.memory.adapters.classifiers;
 
 import com.android.tools.profilers.memory.adapters.CaptureObject;
+import com.android.tools.profilers.memory.adapters.ClassDb;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
-import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Classifies {@link InstanceObject}s based on its package name. Primitive arrays are classified as leaf nodes directly under the root.
@@ -29,7 +36,7 @@ public class PackageSet extends ClassifierSet {
 
   @NotNull
   public static Classifier createDefaultClassifier(@NotNull CaptureObject captureObject) {
-    return packageClassifier(captureObject, 0);
+    return new PackageClassifier(captureObject, 0);
   }
 
   public PackageSet(@NotNull CaptureObject captureObject, @NotNull String packageElementName, int packageNameIndex) {
@@ -41,17 +48,54 @@ public class PackageSet extends ClassifierSet {
   @NotNull
   @Override
   public Classifier createSubClassifier() {
-    return packageClassifier(myCaptureObject, myPackageNameIndex + 1);
+    return new PackageClassifier(myCaptureObject, myPackageNameIndex + 1);
   }
 
-  private static Classifier packageClassifier(CaptureObject captureObject, int packageNameIndex) {
-    return new Classifier.Join<>(packageElementAt(packageNameIndex), elem -> new PackageSet(captureObject, elem, packageNameIndex),
-                                 Classifier.of(InstanceObject::getClassEntry, ClassSet::new));
-  }
+  private static final class PackageClassifier extends Classifier {
+    @NotNull private final Map<String, PackageSet> myPackageElements = new LinkedHashMap<>();
+    @NotNull private final Map<ClassDb.ClassEntry, ClassSet> myClassMap = new LinkedHashMap<>();
+    @NotNull private final CaptureObject myCaptureObject;
+    private final int myPackageNameIndex;
 
-  private static Function1<InstanceObject, String> packageElementAt(int packageNameIndex) {
-    return inst -> packageNameIndex < inst.getClassEntry().getSplitPackageName().length
-                   ? inst.getClassEntry().getSplitPackageName()[packageNameIndex]
-                   : null;
+    private PackageClassifier(@NotNull CaptureObject captureObject, int packageNameIndex) {
+      myCaptureObject = captureObject;
+      myPackageNameIndex = packageNameIndex;
+    }
+
+    @Nullable
+    @Override
+    public ClassifierSet getClassifierSet(@NotNull InstanceObject instance, boolean createIfAbsent) {
+      if (myPackageNameIndex >= instance.getClassEntry().getSplitPackageName().length) {
+        ClassDb.ClassEntry classEntry = instance.getClassEntry();
+        ClassSet classSet = myClassMap.get(classEntry);
+        if (classSet == null && createIfAbsent) {
+          classSet = new ClassSet(classEntry);
+          myClassMap.put(classEntry, classSet);
+        }
+        return classSet;
+      }
+      else {
+        String subPackageName = instance.getClassEntry().getSplitPackageName()[myPackageNameIndex];
+        PackageSet packageSet = myPackageElements.get(subPackageName);
+        if (packageSet == null && createIfAbsent) {
+          packageSet = new PackageSet(myCaptureObject, subPackageName, myPackageNameIndex);
+          myPackageElements.put(subPackageName, packageSet);
+        }
+        return packageSet;
+      }
+    }
+
+    @NotNull
+    @Override
+    public List<ClassifierSet> getFilteredClassifierSets() {
+      return Stream.concat(myPackageElements.values().stream(), myClassMap.values().stream()).filter(child -> !child.getIsFiltered())
+        .collect(Collectors.toList());
+    }
+
+    @NotNull
+    @Override
+    protected List<ClassifierSet> getAllClassifierSets() {
+      return Stream.concat(myPackageElements.values().stream(), myClassMap.values().stream()).collect(Collectors.toList());
+    }
   }
 }

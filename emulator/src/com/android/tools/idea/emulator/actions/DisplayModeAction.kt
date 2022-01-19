@@ -36,15 +36,17 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 /**
  * Sets a display mode for a resizable AVD.
  */
-internal sealed class DisplayModeAction(
-  val mode: DisplayModeValue,
-) : AbstractEmulatorAction(configFilter = { config -> config.displayModes.isNotEmpty() }) {
+internal sealed class DisplayModeAction(val mode: DisplayModeValue) : AbstractEmulatorAction() {
 
   override fun actionPerformed(event: AnActionEvent) {
     if (getCurrentDisplayMode(event) != mode) {
       val emulator = getEmulatorController(event) ?: return
       emulator.setDisplayMode(mode)
     }
+  }
+
+  override fun update(event: AnActionEvent) {
+    event.presentation.isEnabled = hasDisplayModes(event) && isEmulatorConnected(event)
   }
 
   class Desktop : DisplayModeAction(DisplayModeValue.DESKTOP)
@@ -55,6 +57,9 @@ internal sealed class DisplayModeAction(
 
   class Tablet : DisplayModeAction(DisplayModeValue.TABLET)
 }
+
+internal fun hasDisplayModes(event: AnActionEvent): Boolean =
+  getEmulatorController(event)?.emulatorConfig?.displayModes?.isNotEmpty() ?: false
 
 internal fun getCurrentDisplayMode(event: AnActionEvent) =
   getEmulatorView(event)?.displayMode?.displayModeId ?: DisplayModeValue.UNRECOGNIZED

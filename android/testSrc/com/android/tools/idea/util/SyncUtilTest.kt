@@ -21,7 +21,6 @@ import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncResult
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncResultListener
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
@@ -31,6 +30,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.util.ThrowableRunnable
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -41,6 +42,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
+import kotlin.test.assertEquals
 
 /**
  * Test [ProjectSystemSyncManager] that allows to manually change the [isSyncInProgress()] value
@@ -107,7 +109,7 @@ class SyncUtilTest {
   fun waitForSmartAndSyncedWhenSmartAndSynced() {
     val callCount = AtomicInteger(0)
     project.runWhenSmartAndSynced(callback = Consumer { callCount.incrementAndGet() })
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
   }
 
   @Test
@@ -117,11 +119,11 @@ class SyncUtilTest {
     startDumbMode()
 
     project.runWhenSmartAndSynced(callback = Consumer { callCount.incrementAndGet() })
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
     emulateSync(SyncResult.SUCCESS)
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
     stopDumbMode()
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
   }
 
   @Test
@@ -131,10 +133,10 @@ class SyncUtilTest {
     syncManager.testIsSyncInProgress = true
     project.runWhenSmartAndSynced(callback = Consumer { callCount.incrementAndGet() },
                                   syncManager = syncManager)
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
     syncManager.testIsSyncInProgress = false
     emulateSync(SyncResult.SUCCESS)
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
   }
 
   @Test
@@ -146,18 +148,18 @@ class SyncUtilTest {
     project.runWhenSmartAndSynced(
       callback = Consumer { callCount.incrementAndGet() },
       syncManager = syncManager)
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
     syncManager.testIsSyncInProgress = false
     emulateSync(SyncResult.SUCCESS)
     // Now we are in dumb mode but synced
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
 
     stopDumbMode()
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
 
     // Once the callback has been called, new syncs or dumb mode changes won't call the method
     emulateSync(SyncResult.SUCCESS)
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
   }
 
   @Test
@@ -171,7 +173,7 @@ class SyncUtilTest {
     executeOnPooledThread {
       project.runWhenSmartAndSyncedOnEdt(
         callback = Consumer {
-          assertThat(ApplicationManager.getApplication().isDispatchThread).isTrue()
+          assertTrue(ApplicationManager.getApplication().isDispatchThread)
           latch.await(1, TimeUnit.SECONDS)
           callCount.incrementAndGet()
         },
@@ -180,23 +182,23 @@ class SyncUtilTest {
     }
     // Wait for the thread to start
     startThreadLatch.await(1, TimeUnit.SECONDS)
-    assertThat(callCount.get()).isEqualTo(0)
+    assertEquals(0, callCount.get())
     latch.countDown()
     invokeAndWaitIfNeeded { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(1, callCount.get())
 
     val latch2 = CountDownLatch(1)
     executeOnPooledThread {
       project.runWhenSmartAndSynced(
         callback = Consumer {
-          assertThat(ApplicationManager.getApplication().isDispatchThread).isFalse()
+          assertFalse(ApplicationManager.getApplication().isDispatchThread)
           callCount.incrementAndGet()
           latch2.countDown()
         },
         syncManager = syncManager)
     }
     latch2.await(1, TimeUnit.SECONDS)
-    assertThat(callCount.get()).isEqualTo(2)
+    assertEquals(2, callCount.get())
   }
 
   @Test
@@ -210,17 +212,17 @@ class SyncUtilTest {
         callCount.incrementAndGet()
       },
       syncManager = syncManager)
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(callCount.get(), 1)
 
     val disposedDisposable = Disposer.newDisposable()
     Disposer.dispose(disposedDisposable)
-    assertThat(Disposer.isDisposed(disposedDisposable)).isTrue()
+    assertTrue(Disposer.isDisposed(disposedDisposable))
     project.runWhenSmartAndSynced(
       parentDisposable = disposedDisposable,
       callback = Consumer {
         callCount.incrementAndGet()
       },
       syncManager = syncManager)
-    assertThat(callCount.get()).isEqualTo(1)
+    assertEquals(callCount.get(), 1)
   }
 }

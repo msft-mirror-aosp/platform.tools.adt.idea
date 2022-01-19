@@ -30,6 +30,7 @@ fun RecipeExecutor.generateWearModule(
   generateCommonModule(
     data, appTitle, useKts,
     generateManifest(
+      packageName = data.packageName,
       hasApplicationBlock = !data.isLibrary,
       theme = "@android:style/Theme.DeviceDefault",
       usesFeatureBlock = usesFeatureBlock,

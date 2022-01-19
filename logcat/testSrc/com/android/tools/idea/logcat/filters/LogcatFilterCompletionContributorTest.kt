@@ -30,6 +30,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
+private const val PACKAGE_KEY = "package"
+private const val TAG_KEY = "tag"
+private const val AGE_KEY = "age:"
+private const val PROJECT_APP = "app! "
 
 private val STRING_KEYS = listOf(
   "line",
@@ -44,7 +48,7 @@ private val LEVEL_KEYS = listOf(
   "toLevel:",
 )
 
-private val KEYS = STRING_KEYS + LEVEL_KEYS + AGE_KEY + MY_PACKAGE
+private val KEYS = STRING_KEYS + LEVEL_KEYS + AGE_KEY + PROJECT_APP
 
 /**
  * Tests for [LogcatFilterCompletionContributor]
@@ -73,13 +77,7 @@ class LogcatFilterCompletionContributorTest {
 
       fixture.completeBasic()
 
-      if (key.isPackageKey()) {
-        // Package always has a "mine" item even if not apps are present.
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace").containsExactly("mine ")
-      }
-      else {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace").isEmpty()
-      }
+      assertThat(fixture.lookupElementStrings).named("$key with no whitespace").isEmpty()
     }
   }
 
@@ -90,13 +88,7 @@ class LogcatFilterCompletionContributorTest {
 
       fixture.completeBasic()
 
-      if (key.isPackageKey()) {
-        // Package always has a "mine" item even if not apps are present.
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace").containsExactly("mine ")
-      }
-      else {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace").isEmpty()
-      }
+      assertThat(fixture.lookupElementStrings).named("$key with whitespace").isEmpty()
     }
   }
 
@@ -164,14 +156,7 @@ class LogcatFilterCompletionContributorTest {
 
       fixture.completeBasic()
 
-      if (key.isPackageKey()) {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace")
-          .containsExactlyElementsIn(setOf("mine ", "package1 ", "package2 "))
-      }
-      else {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace")
-          .containsExactlyElementsIn(setOf("package1 ", "package2 "))
-      }
+      assertThat(fixture.lookupElementStrings).named("$key without whitespace").containsExactlyElementsIn(setOf("package1 ", "package2 "))
     }
   }
 
@@ -182,14 +167,7 @@ class LogcatFilterCompletionContributorTest {
 
       fixture.completeBasic()
 
-      if (key.isPackageKey()) {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace")
-          .containsExactlyElementsIn(setOf("mine ", "package1 ", "package2 "))
-      }
-      else {
-        assertThat(fixture.lookupElementStrings).named("$key with whitespace")
-          .containsExactlyElementsIn(setOf("package1 ", "package2 "))
-      }
+      assertThat(fixture.lookupElementStrings).named("$key with whitespace").containsExactlyElementsIn(setOf("package1 ", "package2 "))
     }
   }
 
@@ -237,8 +215,6 @@ class LogcatFilterCompletionContributorTest {
     }
   }
 }
-
-private fun String.isPackageKey() = equals("$PACKAGE_KEY:")
 
 /**
  * Configure fixture with given text and set up its editor.

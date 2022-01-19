@@ -27,7 +27,6 @@ import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyImpl;
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl;
 import com.android.tools.idea.projectsystem.SourceProviders;
 import com.android.tools.idea.res.ResourceClassRegistry;
@@ -396,30 +395,26 @@ public class ModuleClassLoaderTest extends AndroidTestCase {
     ModuleClassLoaderManager.get().release(loader, this);
   }
 
-  private static IdeAndroidLibraryDependencyImpl ideAndroidLibrary(File gradleCacheRoot,
-                                                                   @SuppressWarnings("SameParameterValue") String artifactAddress,
-                                                                   String folder,
-                                                                   String libJar) {
-    return new IdeAndroidLibraryDependencyImpl(
-      new IdeAndroidLibraryImpl(
-        artifactAddress,
-        artifactAddress,
-        gradleCacheRoot.toPath().resolve(folder).toFile(),
-        "manifest.xml",
-        ImmutableList.of("api.jar"),
-        ImmutableList.of(libJar),
-        "res",
-        new File(folder + File.separator + "res.apk"),
-        "assets",
-        "jni",
-        "aidl",
-        "renderscriptFolder",
-        "proguardRules",
-        "lint.jar",
-        "externalAnnotations",
-        "publicResources",
-        gradleCacheRoot.toPath().resolve("artifactFile").toFile(),
-        "symbolFile"),
+  private static IdeAndroidLibraryImpl ideAndroidLibrary(File gradleCacheRoot, @SuppressWarnings("SameParameterValue") String artifactAddress, String folder, String libJar) {
+    return new IdeAndroidLibraryImpl(
+      artifactAddress,
+      artifactAddress,
+      gradleCacheRoot.toPath().resolve(folder).toFile(),
+      "manifest.xml",
+      ImmutableList.of("api.jar"),
+      ImmutableList.of(libJar),
+      "res",
+      new File(folder + File.separator + "res.apk"),
+      "assets",
+      "jni",
+      "aidl",
+      "renderscriptFolder",
+      "proguardRules",
+      "lint.jar",
+      "externalAnnotations",
+      "publicResources",
+      gradleCacheRoot.toPath().resolve("artifactFile").toFile(),
+      "symbolFile",
       false);
   }
 }

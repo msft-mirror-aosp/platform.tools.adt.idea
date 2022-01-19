@@ -21,6 +21,12 @@ import com.android.tools.adtui.model.filter.Filter;
 import com.android.tools.profilers.memory.adapters.ClassDb;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Classifies {@link InstanceObject}s based on their {@link Class}.
@@ -32,7 +38,7 @@ public class ClassSet extends ClassifierSet {
 
   @NotNull
   public static Classifier createDefaultClassifier() {
-    return classClassifier();
+    return new ClassClassifier();
   }
 
   public ClassSet(@NotNull ClassDb.ClassEntry classEntry) {
@@ -49,7 +55,7 @@ public class ClassSet extends ClassifierSet {
   @Override
   public Classifier createSubClassifier() {
     // Do nothing, as this is a leaf node (presently).
-    return Classifier.Id.INSTANCE;
+    return Classifier.IDENTITY_CLASSIFIER;
   }
 
   @Override
@@ -68,7 +74,31 @@ public class ClassSet extends ClassifierSet {
     return filter.matches(myClassEntry.getClassName());
   }
 
-  private static Classifier classClassifier() {
-    return Classifier.of(InstanceObject::getClassEntry, ClassSet::new);
+  private static final class ClassClassifier extends Classifier {
+    @NotNull private final Map<ClassDb.ClassEntry, ClassSet> myClassMap = new LinkedHashMap<>();
+
+    @Nullable
+    @Override
+    public ClassifierSet getClassifierSet(@NotNull InstanceObject instance, boolean createIfAbsent) {
+      ClassDb.ClassEntry classEntry = instance.getClassEntry();
+      ClassSet classSet = myClassMap.get(classEntry);
+      if (classSet == null && createIfAbsent) {
+        classSet = new ClassSet(classEntry);
+        myClassMap.put(classEntry, classSet);
+      }
+      return classSet;
+    }
+
+    @NotNull
+    @Override
+    public List<ClassifierSet> getFilteredClassifierSets() {
+      return myClassMap.values().stream().filter(child -> !child.getIsFiltered()).collect(Collectors.toList());
+    }
+
+    @NotNull
+    @Override
+    protected List<ClassifierSet> getAllClassifierSets() {
+      return myClassMap.values().stream().collect(Collectors.toList());
+    }
   }
 }

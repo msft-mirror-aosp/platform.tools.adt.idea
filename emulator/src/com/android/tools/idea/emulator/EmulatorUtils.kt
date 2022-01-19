@@ -30,7 +30,6 @@ import java.awt.Container
 import java.awt.Dimension
 import java.awt.Point
 import kotlin.math.ceil
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -109,19 +108,6 @@ internal fun Point.scaled(scale: Double): Point {
 }
 
 /**
- * Converts the given [value] from the `[0, fromRange-1]` interval to the `[0, toRange - 1]`
- * interval by scaling by the [toRange]/[fromRange] factor while maintaining symmetry with
- * respect to the centers of the two intervals.
- */
-internal fun Int.scaledUnbiased(fromRange: Int, toRange: Int): Int {
-  if (fromRange <= 1) {
-    return toRange / 2
-  }
-  val shift = (toRange + fromRange / 2) / (2 * fromRange)
-  return (shift + toLong() * (toRange - 2 * shift) / (fromRange - 1)).toInt()
-}
-
-/**
  * Returns this [Dimension] rotated according to [rotation].
  */
 internal fun Dimension.rotated(rotation: SkinRotation): Dimension {
@@ -145,18 +131,6 @@ internal fun Point.rotated(rotation: SkinRotation): Point {
     SkinRotation.REVERSE_LANDSCAPE -> Point(-y, x)
     else -> this
   }
-}
-
-/**
- * Returns this Dimension if both its components are not greater than the [maximumValue], otherwise
- * returns this Dimension scaled down to satisfy this requirement while preserving the aspect ratio.
- */
-internal fun Dimension.coerceAtMost(maximumValue: Dimension): Dimension {
-  if (width <= maximumValue.width && height <= maximumValue.height) {
-    return this
-  }
-  val scale = min(maximumValue.width.toDouble() / width, maximumValue.height.toDouble() / height).coerceAtMost(1.0)
-  return Dimension(width.scaled(scale).coerceAtMost(maximumValue.width), height.scaled(scale).coerceAtMost(maximumValue.height))
 }
 
 internal val Container.sizeWithoutInsets: Dimension

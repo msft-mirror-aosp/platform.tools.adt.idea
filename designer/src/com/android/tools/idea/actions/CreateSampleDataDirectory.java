@@ -21,7 +21,6 @@ import com.android.tools.idea.util.FileExtensions;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
@@ -32,6 +31,7 @@ import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static com.intellij.openapi.actionSystem.LangDataKeys.MODULE;
 import static com.intellij.openapi.actionSystem.LangDataKeys.MODULE_CONTEXT_ARRAY;
 
 /**
@@ -53,7 +53,7 @@ public class CreateSampleDataDirectory extends AnAction {
     if (modules != null && modules.length > 0) {
       return modules[0];
     } else {
-      return PlatformCoreDataKeys.MODULE.getData(dataContext);
+      return  MODULE.getData(dataContext);
     }
   }
 

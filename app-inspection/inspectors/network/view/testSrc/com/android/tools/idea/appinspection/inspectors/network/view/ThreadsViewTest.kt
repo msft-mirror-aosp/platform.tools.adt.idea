@@ -36,13 +36,8 @@ import com.android.tools.idea.codenavigation.CodeLocation
 import com.android.tools.idea.codenavigation.CodeNavigator
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.cancel
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -84,7 +79,6 @@ class ThreadsViewTest {
   private lateinit var threadsView: ThreadsView
   private lateinit var fakeUi: FakeUi
   private lateinit var table: JTable
-  private lateinit var scope: CoroutineScope
 
   @Before
   fun setUp() {
@@ -98,8 +92,7 @@ class ThreadsViewTest {
     })
     val parentPanel = JPanel()
     val component = TooltipLayeredPane(parentPanel)
-    scope = CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
-    inspectorView = NetworkInspectorView(model, FakeUiComponentsProvider(), component, services, scope)
+    inspectorView = NetworkInspectorView(model, FakeUiComponentsProvider(), component, StubNetworkInspectorTracker())
     parentPanel.add(inspectorView.component)
 
     threadsView = ThreadsView(model, component)
@@ -114,11 +107,6 @@ class ThreadsViewTest {
     // already be in its final size.
     table.size = threadsView.component.size
     fakeUi = FakeUi(threadsView.component)
-  }
-
-  @After
-  fun tearDown() {
-    scope.cancel()
   }
 
   @Test

@@ -28,12 +28,13 @@ import java.io.File
 import java.util.concurrent.Executor
 import java.util.function.Supplier
 
-const val OPERATION_TIMEOUT_MILLIS = 10L
+const val OPERATION_TIMEOUT_MILLIS = 10
 
 class MockDeviceFileSystemService(val project: Project, edtExecutor: Executor, taskExecutor: Executor)
   : DeviceFileSystemService<DeviceFileSystem> {
 
   val edtExecutor = FutureCallbackExecutor(edtExecutor)
+  private val myTaskExecutor = FutureCallbackExecutor(taskExecutor)
   private val myListeners: MutableList<DeviceFileSystemServiceListener> = ArrayList()
   private val myDevices: MutableList<MockDeviceFileSystem> = ArrayList()
 
@@ -49,12 +50,12 @@ class MockDeviceFileSystemService(val project: Project, edtExecutor: Executor, t
     get() = myListeners.toTypedArray()
 
   override suspend fun start(adbSupplier: Supplier<File?>) {
-    delay(OPERATION_TIMEOUT_MILLIS)
+    delay(OPERATION_TIMEOUT_MILLIS.toLong())
   }
 
   override suspend fun restart(adbSupplier: Supplier<File?>) {
     coroutineScope {
-      delay(OPERATION_TIMEOUT_MILLIS)
+      delay(OPERATION_TIMEOUT_MILLIS.toLong())
       launch(uiThread) {
         myListeners.forEach { it.serviceRestarted() }
       }
@@ -65,7 +66,7 @@ class MockDeviceFileSystemService(val project: Project, edtExecutor: Executor, t
     get() = ArrayList<DeviceFileSystem>(myDevices)
 
   fun addDevice(deviceName: String): MockDeviceFileSystem {
-    val device = MockDeviceFileSystem(this, deviceName)
+    val device = MockDeviceFileSystem(this, deviceName, myTaskExecutor)
     myDevices.add(device)
     myListeners.forEach { it.deviceAdded(device) }
     return device

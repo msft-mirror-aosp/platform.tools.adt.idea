@@ -17,26 +17,71 @@ package com.android.tools.profilers.memory.adapters.classifiers;
 
 import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
-import kotlin.jvm.functions.Function1;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-final class NativeFunctionClassifier {
+final class NativeFunctionClassifier extends Classifier {
+  @NotNull private final Map<Memory.AllocationStack.StackFrame, NativeCallStackSet> myFunctions = new LinkedHashMap<>();
+  @NotNull private final Map<String, NativeAllocationMethodSet> myAllocations = new LinkedHashMap<>();
+  private final int myDepth;
 
-  public static Classifier of(int depth) {
-    return new Classifier.Join<>(stackFrameAt(depth), frame -> new NativeCallStackSet(frame, depth + 1),
-                                 Classifier.of(inst -> inst.getClassEntry().getClassName(), NativeAllocationMethodSet::new));
+  NativeFunctionClassifier(int depth) {
+    myDepth = depth;
   }
 
-  private static Function1<InstanceObject, Memory.AllocationStack.StackFrame> stackFrameAt(int depth) {
-    return instance -> {
-      int stackDepth = instance.getCallStackDepth();
-      Memory.AllocationStack stack = instance.getAllocationCallStack();
-      if (stackDepth <= 0 || depth >= stackDepth || stack == null) {
-        return null;
+  @Nullable
+  @Override
+  public ClassifierSet getClassifierSet(@NotNull InstanceObject instance, boolean createIfAbsent) {
+    // First check if the instance has a child node.
+    Memory.AllocationStack.StackFrame function = getFrameAtCurrentDepth(instance);
+    if (function != null) {
+      NativeCallStackSet methodSet = myFunctions.get(function);
+      if (methodSet == null && createIfAbsent) {
+        methodSet = new NativeCallStackSet(function, myDepth + 1);
+        myFunctions.put(function, methodSet);
       }
+      return methodSet;
+    }
+    // No function exist at current depth means we are at the leaf.
+    // Return the allocation function as an allocation.
+    String name = instance.getClassEntry().getClassName();
+    NativeAllocationMethodSet allocation = myAllocations.get(name);
+    if (allocation == null && createIfAbsent) {
+      allocation = new NativeAllocationMethodSet(name);
+      myAllocations.put(name, allocation);
+    }
+    return allocation;
+  }
 
-      int frameIndex = stackDepth - depth - 1;
-      Memory.AllocationStack.StackFrameWrapper fullStack = stack.getFullStack();
-      return fullStack.getFrames(frameIndex);
-    };
+  @Nullable
+  private Memory.AllocationStack.StackFrame getFrameAtCurrentDepth(@NotNull InstanceObject instance) {
+    int stackDepth = instance.getCallStackDepth();
+    Memory.AllocationStack stack = instance.getAllocationCallStack();
+    if (stackDepth <= 0 || myDepth >= stackDepth || stack == null) {
+      return null;
+    }
+
+    int frameIndex = stackDepth - myDepth - 1;
+    Memory.AllocationStack.StackFrameWrapper fullStack = stack.getFullStack();
+    Memory.AllocationStack.StackFrame stackFrame = fullStack.getFrames(frameIndex);
+    return stackFrame;
+  }
+
+  @NotNull
+  @Override
+  public List<ClassifierSet> getFilteredClassifierSets() {
+    return Stream.concat(myFunctions.values().stream(), myAllocations.values().stream()).filter(child -> !child.getIsFiltered())
+      .collect(Collectors.toList());
+  }
+
+  @NotNull
+  @Override
+  protected List<ClassifierSet> getAllClassifierSets() {
+    return Stream.concat(myFunctions.values().stream(), myAllocations.values().stream()).collect(Collectors.toList());
   }
 }

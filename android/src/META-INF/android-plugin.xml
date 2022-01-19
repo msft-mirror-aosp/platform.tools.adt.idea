@@ -85,6 +85,11 @@
     <action id="Android.OpenStringResourceEditor" class="com.android.tools.idea.actions.OpenStringResourceEditorAction">
       <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="EditSource"/>
     </action>
+    <action id="Android.WearDevicePairing"
+            class="com.android.tools.idea.wearpairing.actions.WearDevicePairingAction"
+            icon="StudioIcons.LayoutEditor.Toolbar.INSERT_HORIZ_CHAIN"
+            text="Wear OS emulator pairing assistant"
+            description="Opens the Wear OS emulator pairing assistant" />
     <group id="AndroidToolsGroup" class="org.jetbrains.android.actions.AndroidToolsActionGroup" text="Android" icon="StudioIcons.Common.ANDROID_HEAD" popup="true">
       <separator/>
       <action id="Android.RunAndroidAvdManager" class="com.android.tools.idea.devicemanager.legacy.actions.RunAndroidAvdManagerAction"/>
@@ -289,6 +294,7 @@
     <actionConfigurationCustomizer implementation="org.jetbrains.android.AndroidPlugin$ActionCustomizer"/>
     <applicationService serviceImplementation="org.jetbrains.android.AndroidPlugin" preload="true"/>
     <applicationService serviceImplementation="com.android.tools.idea.emulator.EmulatorSettings"/>
+    <applicationService serviceImplementation="com.android.tools.idea.wearpairing.WearPairingSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData" />
     <applicationService serviceImplementation="com.android.tools.idea.ui.GuiTestingService"/>
     <applicationService serviceImplementation="com.android.tools.idea.ui.designer.overlays.OverlayPersistentStateService"/>
@@ -445,6 +451,10 @@
     <completion.contributor language="JAVA"
                             implementationClass="org.jetbrains.android.AndroidNonTransitiveRClassJavaCompletionContributor"
                             order="last, before javaLegacy"/>
+    <completion.confidence language="any"
+                           id="EnableAutoPopupInStringLiteralForGradleDependencyCompletion"
+                           implementationClass="com.android.tools.idea.gradle.completions.EnableAutoPopupInStringLiteralForGradleDependencyCompletion"
+                           order="first"/>
 
     <renamePsiElementProcessor implementation="org.jetbrains.android.refactoring.renaming.ResourceReferenceRenameProcessor" order="first"/>
     <renamePsiElementProcessor implementation="org.jetbrains.android.AndroidApplicationPackageRenameProcessor" order="first"/>
@@ -530,6 +540,7 @@
     <projectService serviceImplementation="com.android.tools.idea.apk.debugging.DexSourceFiles"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.ProjectStructure"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.PostProjectBuildTasksExecutor"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.project.BuildSettings"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.projectsystem.GradleSyncResultPublisher"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.GradleBuildState"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidNotification"/>
@@ -581,7 +592,6 @@
     <sdkType implementation="org.jetbrains.android.sdk.AndroidSdkType"/>
     <gotoDeclarationHandler implementation="org.jetbrains.android.AndroidGotoDeclarationHandler"/>
     <gotoSymbolContributor implementation="com.android.tools.idea.res.psi.GoToAndroidResourceContributor"/>
-    <moduleRendererFactory implementation="com.android.tools.idea.res.psi.ResourceModuleRendererFactory" order="first"/>
     <importFilter implementation="com.android.tools.idea.editors.AndroidImportFilter" />
     <overrideImplementsAnnotationsHandler implementation="com.android.tools.idea.editors.AndroidOverrideAnnotationsHandler" />
     <editorTabTitleProvider implementation="com.android.tools.idea.editors.AndroidEditorTitleProvider"/>
@@ -601,9 +611,6 @@
 
     <additionalTextAttributes scheme="Default" file="colorschemes/LiveLiteralsColorSchemeDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorschemes/LiveLiteralsColorSchemeDarcula.xml"/>
-
-    <applicationConfigurable provider="com.android.tools.idea.editors.liveedit.ui.LiveEditConfigurableProvider"
-                             key="live.edit.configurable.display.name" bundle="messages.AndroidBundle" groupId="editor"/>
 
     <usageTargetProvider implementation="org.jetbrains.android.AndroidUsagesTargetProvider"/>
     <renameHandler implementation="org.jetbrains.android.refactoring.renaming.ResourceRenameHandler" order="first"/>
@@ -809,6 +816,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.android">
+    <androidStartupActivity implementation="com.android.tools.idea.wearpairing.WearPairingManager" />
     <androidStartupActivity implementation="com.android.tools.idea.gradle.project.sync.setup.post.project.ExpiredPreviewBuildCheck"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.gradle.sync">
@@ -875,4 +883,3 @@
   <!-- Resource Explorer is included at the bottom since it has dependencies on the general Android Plugin declarations -->
   <xi:include href="/com/android/tools/idea/ui/resourcemanager/META-INF/resources-explorer.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>
-

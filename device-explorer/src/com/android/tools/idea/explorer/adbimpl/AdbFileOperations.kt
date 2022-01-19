@@ -22,25 +22,27 @@ import com.android.ddmlib.SyncException
 import com.android.ddmlib.TimeoutException
 import com.android.tools.idea.adb.AdbShellCommandException
 import com.android.tools.idea.adb.AdbShellCommandsUtil
+import com.android.tools.idea.concurrency.FutureCallbackExecutor
 import com.android.tools.idea.flags.StudioFlags
 import com.google.common.base.Strings.emptyToNull
+import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.util.text.StringUtil
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.util.concurrent.Executor
 
 class AdbFileOperations(
     private val myDevice: IDevice,
     private val deviceCapabilities: AdbDeviceCapabilities,
-    private val dispatcher: CoroutineDispatcher) {
+    taskExecutor: Executor) {
+  private val myExecutor = FutureCallbackExecutor.wrap(taskExecutor)
   private val myShellCommandsUtil = AdbShellCommandsUtil(StudioFlags.ADBLIB_MIGRATION_DEVICE_EXPLORER.get())
 
-  suspend fun createNewFile(parentPath: String, fileName: String) {
+  fun createNewFile(parentPath: String, fileName: String): ListenableFuture<Unit> {
     return createNewFileRunAs(parentPath, fileName, null)
   }
 
-  suspend fun createNewFileRunAs(parentPath: String, fileName: String, runAs: String?) {
-    return withContext(dispatcher) {
+  fun createNewFileRunAs(parentPath: String, fileName: String, runAs: String?): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       if (fileName.contains(AdbPathUtil.FILE_SEPARATOR)) {
         throw AdbShellCommandException.create("File name $fileName contains invalid characters")
       }
@@ -63,12 +65,12 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun createNewDirectory(parentPath: String, directoryName: String) {
+  fun createNewDirectory(parentPath: String, directoryName: String): ListenableFuture<Unit> {
     return createNewDirectoryRunAs(parentPath, directoryName, null)
   }
 
-  suspend fun createNewDirectoryRunAs(parentPath: String, directoryName: String, runAs: String?) {
-    return withContext(dispatcher) {
+  fun createNewDirectoryRunAs(parentPath: String, directoryName: String, runAs: String?): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       if (directoryName.contains(AdbPathUtil.FILE_SEPARATOR)) {
         throw AdbShellCommandException.create("Directory name \"$directoryName\" contains invalid characters")
       }
@@ -80,8 +82,8 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun listPackages(): List<String> {
-    return withContext(dispatcher) {
+  fun listPackages(): ListenableFuture<List<String>> {
+    return myExecutor.executeAsync {
       val command = getCommand(null, "pm list packages").build()
       val commandResult = myShellCommandsUtil.executeCommand(myDevice, command)
       commandResult.throwIfError()
@@ -89,8 +91,8 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun listPackageInfo(): List<PackageInfo> {
-    return withContext(dispatcher) {
+  fun listPackageInfo(): ListenableFuture<List<PackageInfo>> {
+    return myExecutor.executeAsync {
       val command = getCommand(null, "pm list packages -f").build()
       val commandResult = myShellCommandsUtil.executeCommand(myDevice, command)
       commandResult.throwIfError()
@@ -104,34 +106,34 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun deleteFile(path: String) {
+  fun deleteFile(path: String): ListenableFuture<Unit> {
     return deleteFileRunAs(path, null)
   }
 
-  suspend fun deleteFileRunAs(path: String, runAs: String?) {
-    return withContext(dispatcher) {
+  fun deleteFileRunAs(path: String, runAs: String?): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       val command = getRmCommand(runAs, path, false)
       myShellCommandsUtil.executeCommand(myDevice, command).throwIfError()
     }
   }
 
-  suspend fun deleteRecursive(path: String) {
+  fun deleteRecursive(path: String): ListenableFuture<Unit> {
     return deleteRecursiveRunAs(path, null)
   }
 
-  suspend fun deleteRecursiveRunAs(path: String, runAs: String?) {
-    return withContext(dispatcher) {
+  fun deleteRecursiveRunAs(path: String, runAs: String?): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       val command = getRmCommand(runAs, path, true)
       myShellCommandsUtil.executeCommand(myDevice, command).throwIfError()
     }
   }
 
-  suspend fun copyFile(source: String, destination: String) {
+  fun copyFile(source: String, destination: String): ListenableFuture<Unit> {
     return copyFileRunAs(source, destination, null)
   }
 
-  suspend fun copyFileRunAs(source: String, destination: String, runAs: String?) {
-    return withContext(dispatcher) {
+  fun copyFileRunAs(source: String, destination: String, runAs: String?): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       val command = when {
         deviceCapabilities.supportsCpCommand() ->
           getCommand(runAs, "cp ").withEscapedPath(source).withText(" ").withEscapedPath(destination).build()
@@ -142,12 +144,12 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun createTempFile(tempPath: String): String {
+  fun createTempFile(tempPath: String): ListenableFuture<String> {
     return createTempFileRunAs(tempPath, null)
   }
 
-  suspend fun createTempFileRunAs(tempDirectory: String, runAs: String?): String {
-    return withContext(dispatcher) {
+  fun createTempFileRunAs(tempDirectory: String, runAs: String?): ListenableFuture<String> {
+    return myExecutor.executeAsync {
 
       // Note: Instead of using "mktemp", we use our own unique filename generation + a call to "touch"
       //       for 2 reasons:
@@ -161,8 +163,8 @@ class AdbFileOperations(
     }
   }
 
-  suspend fun touchFileAsDefaultUser(remotePath: String) {
-    return withContext(dispatcher) {
+  fun touchFileAsDefaultUser(remotePath: String): ListenableFuture<Unit> {
+    return myExecutor.executeAsync {
       val command = when {
         deviceCapabilities.supportsTouchCommand() ->
           // Touch creates an empty file if the file does not exist.

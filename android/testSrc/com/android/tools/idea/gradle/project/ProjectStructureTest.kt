@@ -24,6 +24,7 @@ import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.setupTestProjectFromAndroidModel
 import com.google.common.truth.Truth
 import com.intellij.testFramework.PlatformTestCase
+import junit.framework.TestCase
 import java.io.File
 
 /**
@@ -46,7 +47,7 @@ class ProjectStructureTest : PlatformTestCase() {
     val appModules = projectStructure.appModules.map { it.name }
     Truth.assertThat(appModules).containsAllOf("app", "instantApp")
     val agpPluginVersions = projectStructure.androidPluginVersions
-    Truth.assertThat(agpPluginVersions.isEmpty).isFalse()
+    TestCase.assertFalse(agpPluginVersions.isEmpty)
     // Verify that the AGP versions were recorded correctly.
     val internalMap = agpPluginVersions.internalMap
     Truth.assertThat(internalMap).containsEntry(":app", GradleVersion.parse("3.0"))
@@ -69,11 +70,10 @@ class ProjectStructureTest : PlatformTestCase() {
     )
 
     val projectStructure = ProjectStructure.getInstance(project)
-    // Verify that app and leaf modules are returned. note, that empty holder modules are included. We can't skip them at this stage.
-    // They are ignored when we attempt to find Gradle tasks to run.
+    // Verify that app and leaf modules are returned.
     val leafModules = projectStructure.leafModules.map { it.name }
-    Truth.assertThat(leafModules)
-      .containsExactly("testLeafModulesAreRecorded", "app", "instantApp", "leaf1", "leaf2", "leaf3")
+    Truth.assertThat(leafModules).containsExactly("app", "instantApp", "leaf1", "leaf2")
+    Truth.assertThat(leafModules).doesNotContain("leaf3")
   }
 
   fun testLeafModulesContainsBaseAndFeatureModules() {
@@ -92,7 +92,7 @@ class ProjectStructureTest : PlatformTestCase() {
     Truth.assertThat(appModules).containsExactly("app")
     // Verify that app and leaf modules are returned.
     val leafModules = projectStructure.leafModules.map { it.name }
-    Truth.assertThat(leafModules).containsExactly("testLeafModulesContainsBaseAndFeatureModules", "app", "feature1", "feature2")
+    Truth.assertThat(leafModules).containsExactly("app", "feature1", "feature2")
   }
 
   private fun javaModule(gradlePath: String, buildable: Boolean = true) = JavaModuleModelBuilder(gradlePath, buildable)

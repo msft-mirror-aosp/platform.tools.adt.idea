@@ -43,6 +43,7 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisi
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.RealTimeSessionClock
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.idea.wearpairing.await
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runReadAction
@@ -73,7 +74,6 @@ import java.awt.Dimension
 import java.awt.image.BufferedImage
 import java.nio.file.Paths
 import java.time.Duration
-import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.test.assertFalse
@@ -356,7 +356,9 @@ class ComposePreviewRepresentationTest {
   @Test
   fun `build clean triggers needs refresh`() {
     assertFalse(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
-    GradleBuildInvoker.getInstance(projectRule.project).cleanProject().get(2, TimeUnit.SECONDS)
+    runBlocking {
+      GradleBuildInvoker.getInstance(projectRule.project).cleanProject().await()
+    }
     assertTrue(composePreviewRepresentation.needsRefreshOnSuccessfulBuild())
     assertTrue(composePreviewRepresentation.buildWillTriggerRefresh())
   }

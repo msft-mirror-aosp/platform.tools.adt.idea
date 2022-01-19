@@ -35,6 +35,7 @@ import static com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgrade.
 import static com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgrade.expireProjectUpgradeNotifications;
 import static com.android.tools.idea.gradle.util.AndroidGradleSettings.ANDROID_HOME_JVM_ARG;
 import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
+import static com.android.tools.idea.testartifacts.scopes.ExcludedRoots.getAllSourceFolders;
 import static com.android.utils.BuildScriptUtil.findGradleSettingsFile;
 import static com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventCategory.GRADLE_SYNC;
 import static com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.GRADLE_SYNC_FAILURE_DETAILS;
@@ -144,7 +145,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.ZipException;
 import kotlin.Unit;
 import org.gradle.tooling.model.ProjectIdentifier;
@@ -194,6 +194,8 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
 
   public static final GradleVersion MINIMUM_SUPPORTED_VERSION = GradleVersion.parse(GRADLE_PLUGIN_MINIMUM_VERSION);
   public static final String BUILD_SYNC_ORPHAN_MODULES_NOTIFICATION_GROUP_NAME = "Build sync orphan modules";
+
+  private static final Key<Boolean> IS_ANDROID_PROJECT_KEY = Key.create("IS_ANDROID_PROJECT_KEY");
 
   private static final Key<Boolean> IS_ANDROID_PLUGIN_REQUESTING_KOTLIN_GRADLE_MODEL_KEY =
     Key.create("IS_ANDROID_PLUGIN_REQUESTING_KOTLIN_GRADLE_MODEL_KEY");
@@ -267,7 +269,7 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
 
           if (sourceSet != null && sourceSet.getCanBeConsumed()) {
             GradleProjectPath gradleProjectPath = new GradleProjectPath(
-              projectIdentifier.getBuildIdentifier().getRootDir().getPath(),
+              projectIdentifier.getBuildIdentifier().getRootDir(),
               projectIdentifier.getProjectPath(),
               sourceSet
             );
@@ -816,7 +818,12 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
 
   // Indicates it is an "Android" project if at least one module has an AndroidProject.
   private boolean isAndroidGradleProject() {
-    return resolverCtx.hasModulesWithModel(IdeAndroidModels.class);
+    Boolean isAndroidGradleProject = resolverCtx.getUserData(IS_ANDROID_PROJECT_KEY);
+    if (isAndroidGradleProject != null) {
+      return isAndroidGradleProject;
+    }
+    isAndroidGradleProject = resolverCtx.hasModulesWithModel(IdeAndroidModels.class);
+    return resolverCtx.putUserDataIfAbsent(IS_ANDROID_PROJECT_KEY, isAndroidGradleProject);
   }
 
   @Override
@@ -1120,17 +1127,5 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
 
   private boolean isModulePerSourceSetEnabled() {
     return myIsModulePerSourceSetMode;
-  }
-
-  private static Collection<File> getAllSourceFolders(IdeSourceProvider provider) {
-    return Stream.of(
-      provider.getJavaDirectories(),
-      provider.getKotlinDirectories(),
-      provider.getResDirectories(),
-      provider.getAidlDirectories(),
-      provider.getRenderscriptDirectories(),
-      provider.getAssetsDirectories(),
-      provider.getJniLibsDirectories()
-    ).flatMap(Collection::stream).collect(Collectors.toList());
   }
 }

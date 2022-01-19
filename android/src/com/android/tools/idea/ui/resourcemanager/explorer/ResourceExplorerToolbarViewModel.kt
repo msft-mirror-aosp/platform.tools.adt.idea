@@ -40,7 +40,6 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.LangDataKeys
-import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.thisLogger
@@ -222,7 +221,7 @@ class ResourceExplorerToolbarViewModel(
    */
   override fun getData(dataId: String): Any? = when (dataId) {
     CommonDataKeys.PROJECT.name -> facet.module.project
-    PlatformCoreDataKeys.MODULE.name -> facet.module
+    LangDataKeys.MODULE.name -> facet.module
     LangDataKeys.IDE_VIEW.name -> this
     CommonDataKeys.PSI_ELEMENT.name -> getPsiDirForResourceType()
     else -> null

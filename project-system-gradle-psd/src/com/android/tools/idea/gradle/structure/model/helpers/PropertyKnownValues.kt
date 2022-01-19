@@ -73,8 +73,7 @@ fun installedCompiledApis(model: Any?): ListenableFuture<List<ValueDescriptor<St
 fun languageLevels(model: Any?): ListenableFuture<List<ValueDescriptor<LanguageLevel>>> = immediateFuture(listOf(
   ValueDescriptor(value = LanguageLevel.JDK_1_6, description = "Java 6"),
   ValueDescriptor(value = LanguageLevel.JDK_1_7, description = "Java 7"),
-  ValueDescriptor(value = LanguageLevel.JDK_1_8, description = "Java 8"),
-  ValueDescriptor(value = LanguageLevel.JDK_11, description = "Java 11"),
+  ValueDescriptor(value = LanguageLevel.JDK_1_8, description = "Java 8")
 ))
 
 fun signingConfigs(module: PsAndroidModule): ListenableFuture<List<ValueDescriptor<Unit>>> = immediateFuture(module.signingConfigs.map {

@@ -25,7 +25,6 @@ import com.android.tools.idea.wizard.template.Language
 import com.android.tools.idea.wizard.template.renderIf
 
 fun buildGradle(
-  packageName: String,
   buildApiString: String,
   minApi: String,
   targetApiString: String,
@@ -58,7 +57,6 @@ fun buildGradle(
 ${emptyPluginsBlock()}
 
 android {
-    namespace '$packageName'
     ${toAndroidFieldVersion("compileSdk", buildApiString, gradlePluginVersion)}
 
     compileOptions {

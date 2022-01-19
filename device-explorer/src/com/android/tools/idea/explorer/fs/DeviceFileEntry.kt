@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.explorer.fs
 
+import com.google.common.util.concurrent.ListenableFuture
 import java.nio.file.Path
 
 /**
@@ -44,58 +45,60 @@ interface DeviceFileEntry {
   /**
    * The list of entries contained in this directory.
    */
-  suspend fun entries(): List<DeviceFileEntry>
+  val entries: ListenableFuture<List<DeviceFileEntry>>
 
   /**
    * Deletes the entry from the device file system.
    */
-  suspend fun delete()
+  fun delete(): ListenableFuture<Unit>
 
   /**
-   * Creates a new file "`fileName`" in this directory, and returns  when the file is created.
-   * Throws an exception if there is any error creating the file (including the path already exists).
+   * Creates a new file "`fileName`" in this directory, and returns a future that
+   * completes when the file is created. If there is any error creating the file (including the path
+   * already exists), the future completes with an exception.
    */
-  suspend fun createNewFile(fileName: String)
+  fun createNewFile(fileName: String): ListenableFuture<Unit>
 
   /**
-   * Creates a new directory "`directoryName`" in this directory, and returns when the directory is created.
-   * Throws an exception if there is any error creating the directory (including the path already exists).
+   * Creates a new directory "`directoryName`" in this directory, and returns a future that
+   * completes when the directory is created. If there is any error creating the directory
+   * (including the path already exists), the future completes with an exception.
    */
-  suspend fun createNewDirectory(directoryName: String)
+  fun createNewDirectory(directoryName: String): ListenableFuture<Unit>
 
   /**
    * Returns `true` if the entry is a symbolic link that points to a directory.
    *
    * @see com.android.tools.idea.explorer.adbimpl.AdbFileListing.isDirectoryLink
    */
-  suspend fun isSymbolicLinkToDirectory(): Boolean
+  val isSymbolicLinkToDirectory: ListenableFuture<Boolean>
 
   /**
    * Downloads the contents of the [DeviceFileEntry] to a local file.
    */
-  suspend fun downloadFile(
+  fun downloadFile(
     localPath: Path,
     progress: FileTransferProgress
-  )
+  ): ListenableFuture<Unit>
 
   /**
    * Uploads the contents of a local file to a remote [DeviceFileEntry] directory.
    */
-  suspend fun uploadFile(
+  fun uploadFile(
     localPath: Path,
     progress: FileTransferProgress
-  ) {
+  ): ListenableFuture<Unit> {
     return uploadFile(localPath, localPath.fileName.toString(), progress)
   }
 
   /**
    * Uploads the contents of a local file to a remote [DeviceFileEntry] directory.
    */
-  suspend fun uploadFile(
+  fun uploadFile(
     localPath: Path,
     fileName: String,
     progress: FileTransferProgress
-  )
+  ): ListenableFuture<Unit>
 
   /**
    * The permissions associated to this entry, similar to unix permissions.

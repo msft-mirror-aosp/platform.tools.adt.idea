@@ -71,7 +71,6 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
 import layoutinspector.view.inspection.LayoutInspectorViewProtocol
@@ -90,8 +89,10 @@ private const val USER_PKG = 123
 
 private val PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
+@RunsInEdt
 class LayoutInspectorTreePanelTreeTest : LayoutInspectorTreePanelTest(useTreeTable = false)
 
+@RunsInEdt
 class LayoutInspectorTreePanelTreeTableTest : LayoutInspectorTreePanelTest(useTreeTable = true)
 
 abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
@@ -191,27 +192,24 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
 
   @Test
   fun testGotoDeclaration() {
-    runInEdtAndWait {
-      val disposable = projectRule.fixture.testRootDisposable
-      val tree = LayoutInspectorTreePanel(disposable)
-      val model = inspectorRule.inspectorModel
-      val inspector = inspectorRule.inspector
-      setToolContext(tree, inspector)
+    val disposable = projectRule.fixture.testRootDisposable
+    val tree = LayoutInspectorTreePanel(disposable)
+    val model = inspectorRule.inspectorModel
+    val inspector = inspectorRule.inspector
+    setToolContext(tree, inspector)
 
-      model.setSelection(model["title"], SelectionOrigin.INTERNAL)
+    model.setSelection(model["title"], SelectionOrigin.INTERNAL)
 
-      val focusManager = FakeKeyboardFocusManager(disposable)
-      focusManager.focusOwner = tree.component
+    val focusManager = FakeKeyboardFocusManager(disposable)
+    focusManager.focusOwner = tree.component
 
-      val dispatcher = IdeKeyEventDispatcher(null)
-      val modifier = if (SystemInfo.isMac) KeyEvent.META_DOWN_MASK else KeyEvent.CTRL_DOWN_MASK
-      dispatcher.dispatchKeyEvent(KeyEvent(tree.component, KeyEvent.KEY_PRESSED, 0, modifier, KeyEvent.VK_B, 'B'))
-    }
+    val dispatcher = IdeKeyEventDispatcher(null)
+    val modifier = if (SystemInfo.isMac) KeyEvent.META_DOWN_MASK else KeyEvent.CTRL_DOWN_MASK
+    dispatcher.dispatchKeyEvent(KeyEvent(tree.component, KeyEvent.KEY_PRESSED, 0, modifier, KeyEvent.VK_B, 'B'))
 
     fileOpenCaptureRule.checkEditor("demo.xml", 9, "<TextView")
   }
 
-  @RunsInEdt
   @Test
   fun testGotoDeclarationByDoubleClick() {
     val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
@@ -236,7 +234,6 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
     assertThat(data.gotoDeclaration.doubleClicks).isEqualTo(1)
   }
 
-  @RunsInEdt
   @Test
   fun testMultiWindowWithVisibleSystemNodes() {
     val demo = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "demo")
@@ -275,7 +272,6 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
     assertThat(tree.rowCount).isEqualTo(5)
   }
 
-  @RunsInEdt
   @Test
   fun testMultiWindowWithHiddenSystemNodes() {
     val android = ResourceReference(ResourceNamespace.ANDROID, ResourceType.LAYOUT, "simple_screen")
@@ -511,7 +507,6 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
     verify(callbacks).startFiltering("T")
   }
 
-  @RunsInEdt
   @Test
   fun testTreeNavigationWithUpDownKeys() {
     val tree = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)

@@ -483,6 +483,7 @@ class DaggerCustomUsageSearcherTest : DaggerTestCase() {
     val presentation = myFixture.getUsageViewTreeTextRepresentation(provider)
     assertThat(presentation).contains(
       """
+      | Usages in Project Files (4)
       |  Consumers (4)
       |   ${module.name} (4)
       |    example (4)
@@ -537,6 +538,7 @@ class DaggerCustomUsageSearcherTest : DaggerTestCase() {
 
     assertThat(presentation).contains(
       """
+      | Usages in Project Files (1)
       |  Providers (1)
       |   ${module.name} (1)
       |    test (1)
@@ -553,6 +555,7 @@ class DaggerCustomUsageSearcherTest : DaggerTestCase() {
 
     assertThat(presentation).contains(
       """
+      | Usages in Project Files (1)
       |  Exposed by components (1)
       |   ${module.name} (1)
       |    test (1)
@@ -597,6 +600,7 @@ class DaggerCustomUsageSearcherTest : DaggerTestCase() {
 
     assertThat(presentation).contains(
       """
+      | Usages in Project Files (1)
       |  Providers (1)
       |   ${module.name} (1)
       |    test (1)

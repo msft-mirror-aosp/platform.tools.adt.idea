@@ -16,22 +16,31 @@
 package com.android.tools.idea.explorer.mocks
 
 import com.android.ddmlib.FileListingService
-import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
+import com.android.tools.idea.adb.AdbShellCommandException
+import com.android.tools.idea.concurrency.FutureCallbackExecutor
+import com.android.tools.idea.concurrency.delayedError
+import com.android.tools.idea.concurrency.delayedValue
 import com.android.tools.idea.explorer.fs.DeviceFileEntry
 import com.android.tools.idea.explorer.fs.DeviceFileSystem
 import com.android.tools.idea.explorer.fs.DeviceState
 import com.android.tools.idea.explorer.fs.FileTransferProgress
 import com.android.tools.idea.explorer.mocks.MockDeviceFileEntry.Companion.createRoot
+import com.google.common.util.concurrent.FutureCallback
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import com.intellij.util.Alarm
 import java.io.FileOutputStream
-import java.io.OutputStream
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Executor
 import kotlin.math.min
 
-class MockDeviceFileSystem(val service: MockDeviceFileSystemService, override val name: String) : DeviceFileSystem {
+class MockDeviceFileSystem(val service: MockDeviceFileSystemService, override val name: String, taskExecutor: Executor) : DeviceFileSystem {
 
   override val deviceSerialNumber = name
   val root: MockDeviceFileEntry = createRoot(this)
@@ -42,108 +51,250 @@ class MockDeviceFileSystem(val service: MockDeviceFileSystemService, override va
   var downloadError: Throwable? = null
   var rootDirectoryError: Throwable? = null
   var uploadError: Throwable? = null
+  private val myTaskExecutor = FutureCallbackExecutor(taskExecutor)
 
   override val deviceState: DeviceState
     get() = DeviceState.ONLINE
 
-  override suspend fun rootDirectory(): DeviceFileEntry {
-    delay(OPERATION_TIMEOUT_MILLIS)
-    rootDirectoryError?.let { throw it }
-    return this.root
-  }
-
-  override suspend fun getEntry(path: String): DeviceFileEntry {
-    val root = rootDirectory()
-    if (StringUtil.isEmpty(path) || StringUtil.equals(path, FileListingService.FILE_SEPARATOR)) {
-      return root
+  override val rootDirectory: ListenableFuture<DeviceFileEntry>
+    get() = when (val error = rootDirectoryError) {
+      null -> delayedValue(this.root, OPERATION_TIMEOUT_MILLIS)
+      else -> delayedError(error, OPERATION_TIMEOUT_MILLIS)
     }
-    val pathSegments = path.substring(1).split(FileListingService.FILE_SEPARATOR.toRegex()).toList()
-    return resolvePathSegments(root, pathSegments)
+
+  override fun getEntry(path: String): ListenableFuture<DeviceFileEntry> {
+    val resultFuture = SettableFuture.create<DeviceFileEntry>()
+    val currentDir = rootDirectory
+    myTaskExecutor.addCallback(currentDir, object : FutureCallback<DeviceFileEntry> {
+      override fun onSuccess(result: DeviceFileEntry?) {
+        assert(result != null)
+        if (StringUtil.isEmpty(path) || StringUtil.equals(path, FileListingService.FILE_SEPARATOR)) {
+          resultFuture.set(result)
+          return
+        }
+        val pathSegments = path.substring(1).split(FileListingService.FILE_SEPARATOR.toRegex()).toTypedArray()
+        resolvePathSegments(resultFuture, result!!, pathSegments, 0)
+      }
+
+      override fun onFailure(t: Throwable) {
+        resultFuture.setException(t)
+      }
+    })
+    return resultFuture
   }
 
-  private suspend fun resolvePathSegments(
-    rootEntry: DeviceFileEntry,
-    segments: List<String>
-  ): DeviceFileEntry {
-    var currentEntry = rootEntry
-    for (segment in segments) {
-      currentEntry = currentEntry.entries().find { it.name == segment } ?: throw IllegalArgumentException("Path not found")
+  private fun resolvePathSegments(
+    future: SettableFuture<DeviceFileEntry>,
+    currentEntry: DeviceFileEntry,
+    segments: Array<String>,
+    segmentIndex: Int
+  ) {
+    if (segmentIndex >= segments.size) {
+      future.set(currentEntry)
+      return
     }
-    return currentEntry
+    val entriesFuture = currentEntry.entries
+    myTaskExecutor.addCallback(entriesFuture, object : FutureCallback<List<DeviceFileEntry>?> {
+      override fun onSuccess(result: List<DeviceFileEntry>?) {
+        checkNotNull(result)
+        val entry = result.stream()
+          .filter { x: DeviceFileEntry -> x.name == segments[segmentIndex] }
+          .findFirst()
+        if (!entry.isPresent) {
+          future.setException(IllegalArgumentException("Path not found"))
+        } else {
+          resolvePathSegments(future, entry.get(), segments, segmentIndex + 1)
+        }
+      }
+
+      override fun onFailure(t: Throwable) {
+        future.setException(t)
+      }
+    })
   }
 
-  suspend fun downloadFile(entry: DeviceFileEntry, localPath: Path, progress: FileTransferProgress) {
-    delay(OPERATION_TIMEOUT_MILLIS)
-    downloadError?.let { throw it }
+  fun downloadFile(entry: DeviceFileEntry, localPath: Path, progress: FileTransferProgress): ListenableFuture<Unit> =
+    when (val error = downloadError) {
+      null -> DownloadWorker(entry as MockDeviceFileEntry, localPath, progress).myFutureResult
+      else -> delayedError(error, OPERATION_TIMEOUT_MILLIS)
+    }
 
-    withContext(ioThread) {
-      delay(downloadChunkIntervalMillis)
+  fun uploadFile(localFilePath: Path,
+    remoteDirectory: DeviceFileEntry,
+    fileName: String,
+    progress: FileTransferProgress
+  ): ListenableFuture<Unit> =
+    when (val error = uploadError) {
+      null -> UploadWorker(remoteDirectory as MockDeviceFileEntry, fileName, localFilePath, progress).myFutureResult
+      else -> delayedError(error, OPERATION_TIMEOUT_MILLIS)
+    }
+
+  inner class DownloadWorker(
+    private val myEntry: MockDeviceFileEntry,
+    private val myPath: Path,
+    private val myProgress: FileTransferProgress
+  ) : Disposable {
+    val myFutureResult: SettableFuture<Unit> = SettableFuture.create()
+    private val myAlarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, this)
+    private var myCurrentOffset: Long = 0
+    private var myOutputStream: FileOutputStream? = null
+
+    init {
+      Disposer.register(ApplicationManager.getApplication(), this)
+      addRequest()
+    }
+
+    private fun addRequest() {
+      myAlarm.addRequest({ processNextChunk() }, downloadChunkIntervalMillis)
+    }
+
+    private fun processNextChunk() {
+      assert(!myFutureResult.isDone)
 
       // Create file if needed
-      FileOutputStream(localPath.toFile()).use { outputStream ->
-        var currentOffset: Long = 0
-        progress.report(currentOffset, entry.size)
+      try {
+        writeBytes(0)
+      } catch (e: IOException) {
+        doneWithError(e)
+        return
+      }
 
-        while (currentOffset < entry.size) {
-          // Write bytes
-          val chunkSize = min(downloadChunkSize, entry.size - currentOffset).toInt()
-          writeBytes(outputStream, chunkSize)
-          currentOffset += chunkSize
+      // Report progress
+      val currentOffset = myCurrentOffset
+      service.edtExecutor.execute { myProgress.progress(currentOffset, myEntry.size) }
 
-          delay(downloadChunkIntervalMillis)
-          progress.report(currentOffset, entry.size)
+      // Write bytes and enqueue next request if not done yet
+      if (myCurrentOffset < myEntry.size) {
+        addRequest()
+        val chunkSize = min(downloadChunkSize, myEntry.size - myCurrentOffset).toInt()
+        try {
+          writeBytes(chunkSize)
+          myCurrentOffset += chunkSize
+        } catch (e: IOException) {
+          doneWithError(e)
+        }
+        return
+      }
+
+      // Complete future if done
+      done()
+    }
+
+    private fun done() {
+      try {
+        Disposer.dispose(this)
+      } finally {
+        myFutureResult.set(Unit)
+      }
+    }
+
+    private fun doneWithError(t: Throwable) {
+      try {
+        Disposer.dispose(this)
+      } finally {
+        myFutureResult.setException(t)
+      }
+    }
+
+    @Throws(IOException::class)
+    private fun writeBytes(count: Int) {
+      val outputStream = myOutputStream ?: FileOutputStream(myPath.toFile()).also { myOutputStream = it }
+      if (count > 0) {
+        val bytes = ByteArray(count)
+        // Write ascii characters to that the file is easily auto-detected as a text file
+        // in unit tests.
+        for (i in 0 until count) {
+          bytes[i] = (if (i % 80 == 0) '\n' else '0' + i % 10).toByte()
+        }
+        outputStream.write(bytes)
+      }
+    }
+
+    override fun dispose() {
+      myAlarm.cancelAllRequests()
+      myOutputStream?.let {
+        try {
+          it.close()
+          myOutputStream = null
+        } catch (e: IOException) {
+          throw RuntimeException(e)
         }
       }
     }
   }
 
-  private fun FileTransferProgress.report(currentBytes: Long, totalBytes: Long) {
-    service.edtExecutor.execute { progress(currentBytes, totalBytes) }
-  }
+  inner class UploadWorker(
+    private val myEntry: MockDeviceFileEntry,
+    private val myFileName: String,
+    private val myPath: Path,
+    private val myProgress: FileTransferProgress
+  ) : Disposable {
+    val myFutureResult: SettableFuture<Unit> = SettableFuture.create()
+    private val myAlarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, this)
+    private var myCurrentOffset: Long = 0
+    private var myFileLength: Long = 0
+    private var myCreatedEntry: MockDeviceFileEntry? = null
 
-  private fun writeBytes(outputStream: OutputStream, count: Int) {
-    if (count > 0) {
-      val bytes = ByteArray(count)
-      // Write ascii characters to that the file is easily auto-detected as a text file
-      // in unit tests.
-      for (i in 0 until count) {
-        bytes[i] = (if (i % 80 == 0) '\n' else '0' + i % 10).toByte()
-      }
-      outputStream.write(bytes)
-    }
-  }
-
-  suspend fun uploadFile(localFilePath: Path,
-    remoteDirectory: DeviceFileEntry,
-    fileName: String,
-    progress: FileTransferProgress
-  ) {
-    delay(OPERATION_TIMEOUT_MILLIS)
-    uploadError?.let { throw it }
-
-    if (remoteDirectory !is MockDeviceFileEntry) {
-      throw AssertionError("Expected MockDeviceFileEntry")
+    init {
+      Disposer.register(ApplicationManager.getApplication(), this)
+      addRequest()
     }
 
-    withContext(ioThread) {
-      delay(uploadChunkIntervalMillis)
+    private fun addRequest() {
+      myAlarm.addRequest({ processNextChunk() }, uploadChunkIntervalMillis)
+    }
 
-      val fileLength = Files.size(localFilePath)
+    private fun processNextChunk() {
+      assert(!myFutureResult.isDone)
 
       // Add entry right away (simulate behavior of device upload, where an empty file is immediately created on upload)
-      val createdEntry = remoteDirectory.addFile(fileName)
+      val createdEntry =
+        myCreatedEntry ?: try {
+          myFileLength = Files.size(myPath)
+          myEntry.addFile(myFileName).also { myCreatedEntry = it }
+        } catch (e: AdbShellCommandException) {
+          doneWithError(e)
+          return
+        } catch (e: IOException) {
+          doneWithError(e)
+          return
+        }
 
-      var currentOffset: Long = 0
-      progress.report(currentOffset, fileLength)
+      // Report progress
+      val currentOffset = myCurrentOffset
+      service.edtExecutor.execute { myProgress.progress(currentOffset, myFileLength) }
 
-      while (currentOffset < fileLength) {
-        val chunkSize = min(uploadChunkSize, fileLength - currentOffset)
+      // Write bytes and enqueue next request if not done yet
+      if (myCurrentOffset < myFileLength) {
+        addRequest()
+        val chunkSize = min(uploadChunkSize, myFileLength - myCurrentOffset)
         createdEntry.size += chunkSize
-        currentOffset += chunkSize
-
-        delay(uploadChunkIntervalMillis)
-        progress.report(currentOffset, fileLength)
+        myCurrentOffset += chunkSize
+        return
       }
+
+      // Complete future if done
+      done()
+    }
+
+    private fun done() {
+      try {
+        Disposer.dispose(this)
+      } finally {
+        myFutureResult.set(Unit)
+      }
+    }
+
+    private fun doneWithError(t: Throwable) {
+      try {
+        Disposer.dispose(this)
+      } finally {
+        myFutureResult.setException(t)
+      }
+    }
+
+    override fun dispose() {
+      myAlarm.cancelAllRequests()
     }
   }
 }

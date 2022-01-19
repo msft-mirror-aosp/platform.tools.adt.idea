@@ -19,25 +19,25 @@ import com.android.annotations.concurrency.WorkerThread;
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.android.tools.idea.gradle.util.BuildMode;
+import com.google.common.collect.ListMultimap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class GradleTaskRunner {
   @WorkerThread
   public static AssembleInvocationResult run(@NotNull Project project,
                                              @NotNull Module[] assembledModules,
-                                             @NotNull Map<Path, Collection<String>> tasks,
-                                             @NotNull BuildMode buildMode,
+                                             @NotNull ListMultimap<Path, String> tasks,
+                                             @Nullable BuildMode buildMode,
                                              @NotNull List<String> commandLineArguments) {
     assert !ApplicationManager.getApplication().isDispatchThread();
     GradleBuildInvoker gradleBuildInvoker = GradleBuildInvoker.getInstance(project);

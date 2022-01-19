@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
-import com.android.tools.idea.devicemanager.TestDeviceManagerFutures;
 import com.google.common.util.concurrent.Futures;
 import java.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
@@ -48,7 +47,7 @@ public final class AsyncPhysicalDeviceBuilderTest {
     Future<PhysicalDevice> future = builder.buildAsync();
 
     // Assert
-    assertEquals(TestPhysicalDevices.GOOGLE_PIXEL_3, TestDeviceManagerFutures.get(future));
+    assertEquals(TestPhysicalDevices.GOOGLE_PIXEL_3, DeviceManagerFutures.get(future));
   }
 
   @Test
@@ -61,7 +60,7 @@ public final class AsyncPhysicalDeviceBuilderTest {
     Future<PhysicalDevice> future = builder.buildAsync();
 
     // Assert
-    assertEquals(TestPhysicalDevices.GOOGLE_PIXEL_3, TestDeviceManagerFutures.get(future));
+    assertEquals(TestPhysicalDevices.GOOGLE_PIXEL_3, DeviceManagerFutures.get(future));
   }
 
   @Test
@@ -74,6 +73,6 @@ public final class AsyncPhysicalDeviceBuilderTest {
     Future<PhysicalDevice> future = builder.buildAsync();
 
     // Assert
-    assertEquals(TestPhysicalDevices.ONLINE_GOOGLE_PIXEL_3, TestDeviceManagerFutures.get(future));
+    assertEquals(TestPhysicalDevices.ONLINE_GOOGLE_PIXEL_3, DeviceManagerFutures.get(future));
   }
 }

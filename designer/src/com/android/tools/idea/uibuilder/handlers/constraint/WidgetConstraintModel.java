@@ -289,7 +289,7 @@ public class WidgetConstraintModel implements SelectionListener {
 
   private void fireUIUpdate() {
     if (myUpdateCallback != null) {
-      ModalityUiUtil.invokeLaterIfNeeded(ModalityState.any(), () -> {
+      ModalityUiUtil.invokeLaterIfNeeded(() -> {
         myIsInCallback = true;
         try {
           myUpdateCallback.run();
@@ -297,7 +297,7 @@ public class WidgetConstraintModel implements SelectionListener {
         finally {
           myIsInCallback = false;
         }
-      });
+      }, ModalityState.any());
     }
   }
 

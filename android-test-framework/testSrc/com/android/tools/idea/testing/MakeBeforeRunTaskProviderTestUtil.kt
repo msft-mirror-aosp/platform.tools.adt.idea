@@ -27,7 +27,6 @@ import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.deployment.AndroidExecutionTarget
 import com.google.common.truth.Truth
-import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.ExecutionTargetManager
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
@@ -83,7 +82,7 @@ fun AndroidRunConfigurationBase.executeMakeBeforeRunStepInTest(deviceFutures: De
     deviceFutures?.let { executionEnvironment.putCopyableUserData(DeviceFutures.KEY, deviceFutures) }
     try {
       Truth.assertThat(
-        BeforeRunTaskProvider.getProvider(project, MakeBeforeRunTaskProvider.ID)!!
+        MakeBeforeRunTaskProvider.getProvider(project, MakeBeforeRunTaskProvider.ID)!!
           .executeTask(
             DataContext.EMPTY_CONTEXT,
             this,

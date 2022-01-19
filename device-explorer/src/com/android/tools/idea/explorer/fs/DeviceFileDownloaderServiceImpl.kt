@@ -23,12 +23,13 @@ import com.android.tools.idea.explorer.DeviceExplorerFileManager
 import com.android.tools.idea.explorer.adbimpl.AdbDeviceFileSystemService
 import com.android.tools.idea.explorer.adbimpl.AdbPathUtil
 import com.android.utils.FileUtils
+import com.google.common.util.concurrent.Futures
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.NonInjectable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.nio.file.Path
@@ -96,25 +97,17 @@ class DeviceFileDownloaderServiceImpl @NonInjectable @TestOnly constructor(
       val parentPath = AdbPathUtil.getParentPath(onDevicePaths[0])
       val parentEntry =
         try {
-          deviceFileSystem.getEntry(parentPath)
+          deviceFileSystem.getEntry(parentPath).await()
         } catch (e: IllegalArgumentException) {
           // if the path is not found getEntry fails with IllegalArgumentException.
           return emptyList()
         }
       return getEntriesFromCommonParent(parentEntry, onDevicePaths)
     } else {
-      return coroutineScope {
-        onDevicePaths.map {
-          async {
-            try {
-              deviceFileSystem.getEntry(it)
-            } catch (e: IllegalArgumentException) {
-              // if the path is not found, getEntry fails with IllegalArgumentException; return null and filter below
-              null
-            }
-          }
-        }.awaitAll().filterNotNull()
-      }
+      val entries = Futures.successfulAsList(onDevicePaths.map { deviceFileSystem.getEntry(it) }).await()
+      //val entries = onDevicePaths.map { deviceFileSystem.getEntry(it).await() }
+      // if the path is not found, getEntry fails with IllegalArgumentException, and successfulAsList maps it to null
+      return entries.filterNotNull()
     }
   }
 
@@ -123,7 +116,7 @@ class DeviceFileDownloaderServiceImpl @NonInjectable @TestOnly constructor(
    * If a path doesn't have a corresponding child, it is skipped.
    */
   private suspend fun getEntriesFromCommonParent(parent: DeviceFileEntry, paths: List<String>): List<DeviceFileEntry> {
-    val entries = parent.entries()
+    val entries = parent.entries.await()
     val pathSet = paths.toSet()
     return entries.filter { pathSet.contains(it.fullPath) }
   }

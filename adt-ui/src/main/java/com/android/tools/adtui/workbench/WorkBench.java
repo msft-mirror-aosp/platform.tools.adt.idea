@@ -114,7 +114,7 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
    * @param delayTimeMs milliseconds to wait before switching to the loading mode of the {@link WorkBench}.
    */
   public WorkBench(@NotNull Project project, @NotNull String name, @Nullable FileEditor fileEditor, @NotNull Disposable parentDisposable, int delayTimeMs) {
-    this(project, name, fileEditor, InitParams.createParams(project, parentDisposable), DetachedToolWindowManager.getInstance(project), delayTimeMs);
+    this(project, name, fileEditor, InitParams.createParams(project), DetachedToolWindowManager.getInstance(project), delayTimeMs);
 
     Disposer.register(parentDisposable, this);
   }
@@ -271,11 +271,6 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     myDetachedToolWindowManager.unregister(myFileEditor);
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", myMyPropertyChangeListener);
     setToolContext(null);
-
-    // Clean up all the children panels to avoid accidental memory leaks.
-    myMainPanel.removeAll();
-    mySplitter.removeAll();
-    myLoadingPanel.removeAll();
   }
 
   // ----------------------------------- Implementation --------------------------------------------------------------- //
@@ -307,6 +302,7 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     myMainPanel.add(myRightMinimizePanel, BorderLayout.EAST);
     myLoadingPanel = new WorkBenchLoadingPanel(new BorderLayout(), this, startDelayMs);
     myLoadingPanel.add(myMainPanel);
+    Disposer.register(this, mySplitter);
     Disposer.register(this, layeredPanel);
     add(myLoadingPanel, JLayeredPane.DEFAULT_LAYER);
     myMainPanel.setVisible(false);
@@ -781,10 +777,10 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
       myRightMinimizePanel = rightMinimizePanel;
     }
 
-    private static <T> InitParams<T> createParams(@NotNull Project project, @NotNull Disposable parentDisposable) {
+    private static <T> InitParams<T> createParams(@NotNull Project project) {
       SideModel<T> model = new SideModel<>(project);
       return new InitParams<>(model,
-                              new ThreeComponentsSplitter(project),
+                              new ThreeComponentsSplitter(),
                               new MinimizedPanel<>(Side.LEFT, model),
                               new MinimizedPanel<>(Side.RIGHT, model));
     }

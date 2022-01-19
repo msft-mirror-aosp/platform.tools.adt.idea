@@ -36,10 +36,7 @@ import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
 import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.ide.common.repository.GradleVersion
 import com.android.sdklib.AndroidVersion
-import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
-import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency
-import com.android.tools.idea.gradle.model.IdeModuleDependency
 import com.android.tools.lint.model.DefaultLintModelAndroidArtifact
 import com.android.tools.lint.model.DefaultLintModelAndroidLibrary
 import com.android.tools.lint.model.DefaultLintModelBuildFeatures
@@ -163,8 +160,7 @@ class LintModelFactory : LintModelModuleLoader {
       )
     )
 
-    private fun getLibrary(dependency: IdeAndroidLibraryDependency): LintModelLibrary {
-        val library = dependency.target
+    private fun getLibrary(library: IdeAndroidLibrary): LintModelLibrary {
         // TODO: Construct file objects lazily!
         return DefaultLintModelAndroidLibrary(
           identifier = library.getIdentifier(),
@@ -178,29 +174,28 @@ class LintModelFactory : LintModelModuleLoader {
           publicResources = File(library.publicResources),
           symbolFile = File(library.symbolFile),
           externalAnnotations = File(library.externalAnnotations),
-          provided = dependency.isProvided,
+          provided = library.isProvided,
           resolvedCoordinates = library.getMavenName(),
           proguardRules = File(library.proguardRules)
         )
     }
 
-    private fun getLibrary(dependency: IdeJavaLibraryDependency): LintModelLibrary {
-        val library = dependency.target
+    private fun getLibrary(library: IdeJavaLibrary): LintModelLibrary {
         return DefaultLintModelJavaLibrary(
           identifier = library.getIdentifier(),
           // TODO - expose compile jar vs impl jar?
           jarFiles = listOf(library.artifact),
-          provided = dependency.isProvided,
+          provided = library.isProvided,
           resolvedCoordinates = library.getMavenName()
         )
     }
 
-    private fun getLibrary(dependency: IdeModuleDependency): LintModelLibrary {
-        val projectPath = dependency.projectPath
+    private fun getLibrary(library: IdeModuleLibrary): LintModelLibrary {
+        val projectPath = library.projectPath
         return DefaultLintModelModuleLibrary(
-          identifier = dependency.getIdentifier(),
+          identifier = library.getIdentifier(),
           projectPath = projectPath,
-          lintJar = dependency.target.lintJar?.let(::File),
+          lintJar = library.lintJar?.let(::File),
           provided = false
         )
     }
@@ -211,11 +206,11 @@ class LintModelFactory : LintModelModuleLoader {
     private fun IdeJavaLibrary.getArtifactName(): String =
         getMavenName().let { mavenName -> "${mavenName.groupId}:${mavenName.artifactId}" }
 
-    private fun IdeModuleDependency.getArtifactName(): String = "artifacts:$projectPath"
+    private fun IdeModuleLibrary.getArtifactName(): String = "artifacts:$projectPath"
 
     private fun IdeArtifactLibrary.getMavenName(): LintModelMavenName = getMavenName(artifactAddress)
 
-    private fun IdeModuleDependency.getIdentifier(): String = "$projectPath@${sourceSet.sourceSetName}"
+    private fun IdeModuleLibrary.getIdentifier(): String = "$projectPath@${sourceSet.sourceSetName}"
 
     private fun IdeArtifactLibrary.getIdentifier(): String = name
 
@@ -246,11 +241,10 @@ class LintModelFactory : LintModelModuleLoader {
         val dependencies = artifact.level2Dependencies
 
         for (dependency in dependencies.androidLibraries) {
-          val androidLibrary = dependency.target
-          if (androidLibrary.isValid()) {
+            if (dependency.isValid()) {
                 val lintModelDependency = getGraphItem(
-                  androidLibrary.getIdentifier(),
-                  androidLibrary.getArtifactName(),
+                    dependency.getIdentifier(),
+                    dependency.getArtifactName(),
                 ) {
                     getLibrary(dependency)
                 }
@@ -261,11 +255,10 @@ class LintModelFactory : LintModelModuleLoader {
             }
         }
         for (dependency in dependencies.javaLibraries) {
-          val javaLibrary = dependency.target
-          if (javaLibrary.isValid()) {
+            if (dependency.isValid()) {
                 val lintModelDependency = getGraphItem(
-                  javaLibrary.getIdentifier(),
-                  javaLibrary.getArtifactName(),
+                    dependency.getIdentifier(),
+                    dependency.getArtifactName(),
                 ) {
                     getLibrary(dependency)
                 }
@@ -309,7 +302,7 @@ class LintModelFactory : LintModelModuleLoader {
           dependencies = getDependencies(artifact),
           generatedSourceFolders = artifact.generatedSourceFolders,
           generatedResourceFolders = artifact.generatedResourceFolders,
-          classOutputs = artifact.classesFolder.toList()
+          classOutputs = artifact.getClassFolders()
         )
     }
 
@@ -318,8 +311,19 @@ class LintModelFactory : LintModelModuleLoader {
     ): LintModelJavaArtifact {
         return DefaultLintModelJavaArtifact(
           dependencies = getDependencies(artifact),
-          classFolders = artifact.classesFolder.toList()
+          classFolders = artifact.getClassFolders()
         )
+    }
+
+    private fun IdeBaseArtifact.getClassFolders(): List<File> {
+        return if (additionalClassesFolders.isEmpty()) {
+            listOf(classesFolder)
+        } else {
+            val folders = ArrayList<File>(additionalClassesFolders.size + 1)
+            folders.add(classesFolder)
+            folders.addAll(additionalClassesFolders)
+            folders
+        }
     }
 
     private fun getBuildType(project: IdeAndroidProject, variant: IdeVariant): IdeBuildType {

@@ -31,7 +31,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.timeout
 
-private const val TIMEOUT = 1000L // milliseconds
+private const val TIMEOUT = 200L // milli seconds
 
 class FileOpenCaptureRule(private val projectRule: AndroidProjectRule) : ExternalResource() {
   private var componentStack: ComponentStack? = null

@@ -27,7 +27,8 @@ class NativeCallStackSetTest {
   @Test
   fun subClassifierIsDefault() {
     val callstackSet = NativeCallStackSet(Memory.AllocationStack.StackFrame.getDefaultInstance(), 0)
-    assertThat(callstackSet.createSubClassifier().isTerminalClassifier).isFalse()
+    assertThat(callstackSet.createSubClassifier()).isInstanceOf(
+      NativeFunctionClassifier::class.java)
   }
 
   @Test

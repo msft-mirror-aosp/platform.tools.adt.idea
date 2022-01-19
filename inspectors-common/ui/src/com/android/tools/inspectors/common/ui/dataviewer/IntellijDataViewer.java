@@ -53,22 +53,14 @@ public class IntellijDataViewer implements DataViewer {
    * <p>
    * Note: to prevent UI from being frozen by large text, the content will be truncated.
    */
-  public static IntellijDataViewer createRawTextViewer(@NotNull byte[] content, Boolean isEditable) {
+
+  public static IntellijDataViewer createRawTextViewer(@NotNull byte[] content) {
     JTextArea textArea = new JTextArea(new String(content, 0, Math.min(content.length, RAW_VIEWER_MAX_STRING_LENGTH)));
     textArea.setLineWrap(true);
     textArea.setFont(AdtUiUtils.DEFAULT_FONT.biggerOn(3f));
-    textArea.setEditable(isEditable);
+    textArea.setEditable(false);
     textArea.setBackground(null);
     return new IntellijDataViewer(textArea, Style.RAW);
-  }
-
-  /**
-   * Create an editable data viewer that renders its content as is, without any attempt to clean it up.
-   * <p>
-   * Note: to prevent UI from being frozen by large text, the content will be truncated.
-   */
-  public static IntellijDataViewer createRawTextViewer(@NotNull byte[] content) {
-    return createRawTextViewer(content, false);
   }
 
   /**

@@ -57,7 +57,6 @@ import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.SdkVersionInfo;
-import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.res.ResourceRepositoryManager;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -70,6 +69,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
+import org.jetbrains.android.dom.manifest.Manifest;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -159,6 +159,7 @@ class MergedManifestSnapshotFactory {
                                       null,
                                       null,
                                       null,
+                                      null,
                                       ImmutableMap.of(),
                                       null,
                                       AndroidVersion.DEFAULT,
@@ -183,6 +184,7 @@ class MergedManifestSnapshotFactory {
   @NotNull
   private static MergedManifestSnapshot createFailedMergedManifestSnapshot(@NotNull Module module, @NotNull MergedManifestInfo mergedManifestInfo) {
     return new MergedManifestSnapshot(module,
+                                      null,
                                       null,
                                       null,
                                       null,
@@ -225,7 +227,8 @@ class MergedManifestSnapshotFactory {
 
       // The package comes from the main manifest, NOT from the merged manifest.
       final String appId = getAttributeValue(root, null, ATTRIBUTE_PACKAGE);
-      final String packageName = ProjectSystemUtil.getModuleSystem(facet).getPackageName();
+      Manifest manifest = Manifest.getMainManifest(facet);
+      String packageName = manifest == null ? appId : manifest.getPackage().getValue();
       if (packageName == null) {
         throw new MergedManifestException.MissingAttribute(TAG_MANIFEST, null, ATTRIBUTE_PACKAGE, mergedManifestInfo);
       }
@@ -342,7 +345,7 @@ class MergedManifestSnapshotFactory {
 
         Actions actions = mergedManifestInfo.getActions();
         ImmutableList<MergingReport.Record> loggingRecords = mergedManifestInfo.getLoggingRecords();
-        return new MergedManifestSnapshot(facet.getModule(), packageName, versionCode, manifestTheme,
+        return new MergedManifestSnapshot(facet.getModule(), packageName, appId, versionCode, manifestTheme,
                                           ImmutableMap.copyOf(activityAttributesMap),
                                           mergedManifestInfo, minSdk, targetSdk, appIcon, appLabel, supportsRtl, isAppDebuggable, document,
                                           ImmutableList.copyOf(mergedManifestInfo.getFiles()),

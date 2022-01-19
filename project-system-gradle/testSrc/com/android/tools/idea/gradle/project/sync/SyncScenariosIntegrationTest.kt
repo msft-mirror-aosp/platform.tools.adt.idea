@@ -143,11 +143,9 @@ class SyncScenariosIntegrationTest : GradleIntegrationTest {
     listOf(File(AndroidTestBase.getTestDataPath(), PathUtil.toSystemDependentName(TestProjectToSnapshotPaths.PSD_SAMPLE_REPO)))
 }
 
-private fun Project.dumpModule(moduleName: String, sourcesetModule: Module.() -> Module?) =
+private fun Project.dumpModule(moduleName: String, sourcesetModule: Module.() -> Module) =
       saveAndDump { project, dumper ->
-        project.gradleModule(moduleName)!!.sourcesetModule()?.also {
-          dumper.dump(it)
-        }
+        dumper.dump(project.gradleModule(moduleName)!!.sourcesetModule())
       }
 
 private fun <T : Any> T.asParsed() = ParsedValue.Set.Parsed(this, DslText.Literal)

@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "common.h"
-#include "controller.h"
 #include "display_streamer.h"
 
 namespace screensharing {
@@ -34,7 +33,6 @@ public:
   void Run();
 
   static void OnVideoOrientationChanged(int32_t orientation);
-  static void OnMaxVideoResolutionChanged(Size max_video_resolution);
 
   static void Shutdown();
 
@@ -46,9 +44,8 @@ private:
   static Agent* instance_;
 
   int32_t display_id_ = 0;
-  Size max_video_resolution_;
+  int32_t max_video_resolution_ = std::numeric_limits<int32_t>::max();
   DisplayStreamer* display_streamer_ = nullptr;
-  Controller* controller_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(Agent);
 };

@@ -22,6 +22,8 @@ import static com.android.tools.idea.gradle.util.BuildOutputUtil.loadBuildOutput
 import static com.android.tools.idea.gradle.util.BuildOutputUtil.variantOutputInformation;
 import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
 import static com.android.tools.lint.client.api.LintClient.getGradleDesugaring;
+import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
+import static com.intellij.openapi.vfs.VfsUtilCore.isAncestor;
 import static java.util.stream.Collectors.toMap;
 
 import com.android.annotations.concurrency.GuardedBy;
@@ -427,6 +429,15 @@ public class GradleAndroidModel implements AndroidModuleModel {
     return myRootDirPath;
   }
 
+  @Override
+  public boolean isGenerated(@NotNull VirtualFile file) {
+    VirtualFile buildFolder = findFileByIoFile(myAndroidProject.getBuildFolder(), false);
+    if (buildFolder != null && isAncestor(buildFolder, file, false)) {
+      return true;
+    }
+    return false;
+  }
+
   /**
    * @return the imported Android-Gradle project.
    */
@@ -566,6 +577,11 @@ public class GradleAndroidModel implements AndroidModuleModel {
   @NotNull
   public ClassJarProvider getClassJarProvider() {
     return new AndroidGradleClassJarProvider();
+  }
+
+  @Override
+  public boolean isClassFileOutOfDate(@NotNull Module module, @NotNull String fqcn, @NotNull VirtualFile classFile) {
+    return ClassFileUtil.isClassSourceFileNewerThanClassClassFile(module, fqcn, classFile);
   }
 
   @NotNull

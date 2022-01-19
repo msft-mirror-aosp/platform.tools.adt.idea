@@ -16,7 +16,7 @@
 package com.android.tools.idea.logcat.messages
 
 import com.android.ddmlib.logcat.LogCatMessage
-import com.android.tools.idea.logcat.SYSTEM_HEADER
+import java.time.Instant
 import java.time.ZoneId
 
 
@@ -35,7 +35,7 @@ internal class MessageFormatter(private val formattingOptions: FormattingOptions
     // Replace each newline with a newline followed by the indentation of the message portion
     val newline = "\n".padEnd(formattingOptions.getHeaderWidth() + 5)
     for (message in messages) {
-      if (message.header === SYSTEM_HEADER) {
+      if (message.header.timestamp == Instant.EPOCH) {
         textAccumulator.accumulate(message.message + '\n')
         continue
       }
@@ -45,13 +45,10 @@ internal class MessageFormatter(private val formattingOptions: FormattingOptions
 
       textAccumulator.accumulate(formattingOptions.timestampFormat.format(header.timestamp, zoneId))
       textAccumulator.accumulate(formattingOptions.processThreadFormat.format(header.pid, header.tid))
-      textAccumulator.accumulate(formattingOptions.tagFormat.format(tag, previousTag), textAttributes = logcatColors.getTagColor(tag),
-                                 hint = tag)
+      textAccumulator.accumulate(formattingOptions.tagFormat.format(tag, previousTag), logcatColors.getTagColor(tag), tag)
       textAccumulator.accumulate(formattingOptions.appNameFormat.format(appName, header.pid, previousPid), hint = appName)
-      textAccumulator.accumulate(" ${header.logLevel.priorityLetter} ", textAttributesKey = logcatColors.getLogLevelKey(header.logLevel))
-      textAccumulator.accumulate(
-        " ${message.message.replace("\n", newline)}\n",
-        textAttributesKey = logcatColors.getMessageKey(header.logLevel))
+      textAccumulator.accumulate(" ${header.logLevel.priorityLetter} ", logcatColors.getLogLevelColor(header.logLevel))
+      textAccumulator.accumulate(" ${message.message.replace("\n", newline)}\n", logcatColors.getMessageColor(header.logLevel))
 
       previousTag = tag
       previousPid = header.pid

@@ -31,6 +31,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import java.nio.file.Path
 
@@ -419,6 +420,16 @@ enum class ScopeType {
     }
 }
 
+fun AndroidModuleSystem.getResolveScope(file: VirtualFile): GlobalSearchScope {
+  val scopeType = getScopeType(file, module.project)
+  return getResolveScope(scopeType)
+}
+
+fun AndroidModuleSystem.getResolveScope(element: PsiElement): GlobalSearchScope {
+  val scopeType = element.containingFile?.virtualFile?.let { getScopeType(it, module.project) } ?: ScopeType.MAIN
+  return getResolveScope(scopeType)
+}
+
 fun AndroidModuleSystem.getScopeType(file: VirtualFile, project: Project): ScopeType {
   if (!TestSourcesFilter.isTestSources(file, project)) return ScopeType.MAIN
   val testScopes = getTestArtifactSearchScopes() ?: return ScopeType.ANDROID_TEST
@@ -433,34 +444,25 @@ fun AndroidModuleSystem.getScopeType(file: VirtualFile, project: Project): Scope
   }
 }
 
-fun Module.getAllLinkedModules() : List<Module> = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.getModules() ?: listOf(this)
+fun Module.getAllLinkedModules() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.getModules() ?: listOf(this)
 
-fun Module.getHolderModule() : Module = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.holder ?: this
+fun Module.getHolderModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.holder ?: this
 
-fun Module.isHolderModule() : Boolean = getHolderModule() == this
+fun Module.isHolderModule() = getHolderModule() == this
 
-fun Module.getMainModule() : Module = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.main ?: this
+fun Module.getMainModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.main ?: this
 
-fun Module.isMainModule() : Boolean = getMainModule() == this
+fun Module.isMainModule() = getMainModule() == this
 
-fun Module.getUnitTestModule() : Module?  {
-  val linkedGroup = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) ?: return this
-  return linkedGroup.unitTest
-}
+fun Module.getUnitTestModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.unitTest ?: this
 
-fun Module.isUnitTestModule() : Boolean = getUnitTestModule() == this
+fun Module.isUnitTestModule() = getUnitTestModule() == this
 
-fun Module.getAndroidTestModule() : Module? {
-  val linkedGroup = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) ?: return this
-  return linkedGroup.androidTest
-}
+fun Module.getAndroidTestModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.androidTest ?: this
 
-fun Module.isAndroidTestModule() : Boolean = getAndroidTestModule() == this
+fun Module.isAndroidTestModule() = getAndroidTestModule() == this
 
-fun Module.getTestFixturesModule() : Module? {
-  val linkedGroup = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) ?: return null
-  return linkedGroup.testFixtures
-}
+fun Module.getTestFixturesModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP)?.testFixtures
 
 /**
  * Utility method to find out if a module is derived from an Android Gradle project. This will return true

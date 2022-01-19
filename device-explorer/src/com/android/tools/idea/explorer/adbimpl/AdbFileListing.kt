@@ -21,32 +21,36 @@ import com.android.ddmlib.IDevice
 import com.android.ddmlib.ShellCommandUnresponsiveException
 import com.android.ddmlib.TimeoutException
 import com.android.tools.idea.adb.AdbShellCommandsUtil
+import com.android.tools.idea.concurrency.FutureCallbackExecutor
 import com.android.tools.idea.explorer.adbimpl.AdbFileListingEntry.EntryKind
 import com.android.tools.idea.flags.StudioFlags
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.diagnostic.thisLogger
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.util.concurrent.Executor
 import java.util.regex.MatchResult
 
 class AdbFileListing(
     private val myDevice: IDevice,
     private val myDeviceCapabilities: AdbDeviceCapabilities,
-    private val dispatcher: CoroutineDispatcher) {
+    taskExecutor: Executor) {
   private val LOGGER = thisLogger()
+  private val myExecutor = FutureCallbackExecutor.wrap(taskExecutor)
   private val myShellCommandsUtil = AdbShellCommandsUtil(StudioFlags.ADBLIB_MIGRATION_DEVICE_EXPLORER.get())
 
-  val root: AdbFileListingEntry = AdbFileListingEntryBuilder().setPath("/").setKind(EntryKind.DIRECTORY).build()
+  val root: ListenableFuture<AdbFileListingEntry>
+    get() = Futures.immediateFuture(AdbFileListingEntryBuilder().setPath("/").setKind(EntryKind.DIRECTORY).build())
 
-  suspend fun getChildren(parentEntry: AdbFileListingEntry): List<AdbFileListingEntry> {
+  fun getChildren(parentEntry: AdbFileListingEntry): ListenableFuture<List<AdbFileListingEntry>> {
     return getChildrenRunAs(parentEntry, null)
   }
 
-  suspend fun getChildrenRunAs(
+  fun getChildrenRunAs(
     parentEntry: AdbFileListingEntry,
     runAs: String?
-  ): List<AdbFileListingEntry> {
-    return withContext(dispatcher) {
+  ): ListenableFuture<List<AdbFileListingEntry>> {
+    return myExecutor.executeAsync {
       // Run "ls -al" command and process matching output lines
       val command = getCommand(runAs, "ls -al ").withDirectoryEscapedPath(parentEntry.fullPath).build() //$NON-NLS-1$
       val commandResult = myShellCommandsUtil.executeCommand(myDevice, command)
@@ -62,22 +66,21 @@ class AdbFileListing(
 
   /**
    * Determine if a symlink entry points to a directory. This is a best effort process,
-   * as the target of the symlink might not be accessible, in which case the return value
-   * is `false`.
-   *
-   * May throw an exception in case of ADB specific errors, such as device disconnected, etc.
+   * as the target of the symlink might not be accessible, in which case the future value
+   * is `false`. The future may still complete with an exception in case of ADB
+   * specific errors, such as device disconnected, etc.
    */
-  suspend fun isDirectoryLink(entry: AdbFileListingEntry): Boolean {
+  fun isDirectoryLink(entry: AdbFileListingEntry): ListenableFuture<Boolean> {
     return isDirectoryLinkRunAs(entry, null)
   }
 
-  suspend fun isDirectoryLinkRunAs(
+  fun isDirectoryLinkRunAs(
     entry: AdbFileListingEntry,
     runAs: String?
-  ): Boolean {
+  ): ListenableFuture<Boolean> {
     return if (!entry.isSymbolicLink) {
-      false
-    } else withContext(dispatcher) {
+      Futures.immediateFuture(false)
+    } else myExecutor.executeAsync {
 
       // We simply need to determine whether the referent is a directory or not.
       // We do this by running `ls -ld ${link}/`.  If the referent exists and is a

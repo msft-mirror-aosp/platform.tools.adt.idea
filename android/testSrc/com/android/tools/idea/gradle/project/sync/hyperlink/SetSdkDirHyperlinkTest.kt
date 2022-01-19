@@ -21,6 +21,7 @@ import com.android.tools.idea.testing.AndroidGradleTestCase
 import com.android.tools.idea.testing.TestProjectPaths.COMPOSITE_BUILD
 import com.android.utils.SdkUtils.escapePropertyValue
 import com.intellij.openapi.util.io.FileUtil.loadFile
+import junit.framework.TestCase
 import org.junit.Test
 import java.io.File
 import javax.swing.event.HyperlinkEvent
@@ -71,7 +72,7 @@ class SetSdkDirHyperlinkTest : AndroidGradleTestCase() {
 
   private fun deletePropertiesFile(localPropertiesPath: File) {
     if (localPropertiesPath.exists()) {
-      assertTrue(localPropertiesPath.delete())
+      TestCase.assertTrue(localPropertiesPath.delete())
     }
   }
 }

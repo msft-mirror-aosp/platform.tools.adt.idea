@@ -15,32 +15,18 @@
  */
 package com.android.tools.compose
 
-import com.android.flags.junit.SetFlagRule
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.project.DefaultModuleSystem
-import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.testing.AndroidProjectRule
-import com.intellij.codeInsight.daemon.impl.HighlightInfo
-import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.util.text.StringUtil
-import junit.framework.Assert.assertEquals
+import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
+import org.jetbrains.android.compose.stubComposableAnnotation
 import org.jetbrains.android.compose.stubComposeRuntime
 import org.jetbrains.android.compose.stubKotlinStdlib
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.jetbrains.kotlin.idea.inspections.FunctionNameInspection
 
 /**
  * Tests for [ComposeSampleResolutionService]
  */
-class ComposableCallCheckerTest {
-  @get:Rule
-  val androidProject = AndroidProjectRule.inMemory()
+class ComposableCallCheckerTest : JavaCodeInsightFixtureTestCase() {
 
-  @get:Rule
-  val flagRule = SetFlagRule(StudioFlags.COMPOSE_EDITOR_SUPPORT, true)
-
-  @Test
   fun testCfromNC() = doTest(
     """
     import androidx.compose.runtime.*
@@ -51,7 +37,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testNCfromC() = doTest(
     """
     import androidx.compose.runtime.*
@@ -61,7 +46,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCfromC() = doTest(
     """
         import androidx.compose.runtime.*
@@ -71,7 +55,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinCLambdaArg() = doTest(
     """
     import androidx.compose.runtime.*
@@ -85,7 +68,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinInlinedNCLambdaArg() = doTest(
     """
     import androidx.compose.runtime.*
@@ -99,7 +81,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinLambdaArgOfNC() = doTest(
     """
     import androidx.compose.runtime.*
@@ -113,7 +94,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinLambdaArgOfC() = doTest(
     """
     import androidx.compose.runtime.*
@@ -127,7 +107,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinCPropGetter() = doTest(
     """
         import androidx.compose.runtime.*
@@ -136,7 +115,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinNCPropGetter() = doTest(
     """
     import androidx.compose.runtime.*
@@ -145,7 +123,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCinTopLevelInitializer() = doTest(
     """
     import androidx.compose.runtime.*
@@ -155,7 +132,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testCTypeAlias() = doTest(
     """
     import androidx.compose.runtime.*
@@ -170,7 +146,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testPreventedCaptureOnInlineLambda() = doTest(
     """
     import androidx.compose.runtime.*
@@ -188,7 +163,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testComposableReporting001() {
     doTest(
       """
@@ -210,7 +184,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting002() {
     doTest(
       """
@@ -225,7 +198,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting006() {
     doTest(
       """
@@ -245,7 +217,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting007() {
     doTest(
       """
@@ -258,7 +229,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting008() {
     doTest(
       """
@@ -276,7 +246,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting009() {
     doTest(
       """
@@ -296,7 +265,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting017() {
     doTest(
       """
@@ -317,7 +285,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting018() {
     doTest(
       """
@@ -334,7 +301,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting022() {
     doTest(
       """
@@ -354,7 +320,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting023() {
     doTest(
       """
@@ -375,7 +340,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting024() {
     doTest(
       """
@@ -398,7 +362,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting024x() {
     doTest(
       """
@@ -414,7 +377,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting025() {
     doTest(
       """
@@ -431,7 +393,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting026() {
     doTest(
       """
@@ -453,7 +414,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting027() {
     doTest(
       """
@@ -477,7 +437,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting028() {
     doTest(
       """
@@ -491,7 +450,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting030() {
     doTest(
       """
@@ -506,7 +464,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting032() {
     doTest(
       """
@@ -526,7 +483,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting033() {
     doTest(
       """
@@ -546,7 +502,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting034() {
     doTest(
       """
@@ -563,7 +518,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting035() {
     doTest(
       """
@@ -572,13 +526,12 @@ class ComposableCallCheckerTest {
           @Composable
           fun Foo(x: String) {
               @Composable operator fun String.invoke() {}
-              x()
+              <error descr="[MISSING_DEPENDENCY_SUPERCLASS] Cannot access 'java.io.Serializable' which is a supertype of 'kotlin.String'. Check your module classpath for missing or conflicting dependencies">x</error>()
           }
           """
     )
   }
 
-  @Test
   fun testComposableReporting039() {
     doTest(
       """
@@ -600,7 +553,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting041() {
     doTest(
       """
@@ -622,7 +574,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting043() {
     doTest(
       """
@@ -638,7 +589,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting044() {
     doTest(
       """
@@ -657,7 +607,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting045() {
     doTest(
       """
@@ -672,7 +621,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting048() {
     // Type inference for nullable @Composable lambdas, with a nullable default value
     doTest(
@@ -697,7 +645,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting049() {
     doTest(
       """
@@ -709,7 +656,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting050() {
     doTest(
       """
@@ -725,7 +671,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting051() {
     doTest(
       """
@@ -751,7 +696,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting052() {
     doTest(
       """
@@ -767,7 +711,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting053() {
     doTest(
       """
@@ -783,7 +726,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting054() {
     doTest(
       """
@@ -821,7 +763,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting055() {
     doTest(
       """
@@ -853,7 +794,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testComposableReporting057() {
     doTest(
       """
@@ -872,7 +812,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testTryCatchReporting001() {
     doTest(
       """
@@ -883,14 +822,13 @@ class ComposableCallCheckerTest {
           @Composable fun bar() {
               <error descr="[ILLEGAL_TRY_CATCH_AROUND_COMPOSABLE] Try catch is not supported around composable function invocations.">try</error> {
                   foo()
-              } catch(e: Exception) {
+              } catch(e: <error descr="[UNRESOLVED_REFERENCE] Unresolved reference: Exception">Exception</error>) {
               }
           }
           """
     )
   }
 
-  @Test
   fun testTryCatchReporting002() {
     doTest(
       """
@@ -901,14 +839,13 @@ class ComposableCallCheckerTest {
           @Composable fun bar() {
               try {
                   foo()
-              } catch(e: Exception) {
+              } catch(e: <error descr="[UNRESOLVED_REFERENCE] Unresolved reference: Exception">Exception</error>) {
               }
           }
           """
     )
   }
 
-  @Test
   fun testTryCatchReporting003() {
     doTest(
       """
@@ -918,7 +855,7 @@ class ComposableCallCheckerTest {
 
           @Composable fun bar() {
               try {
-              } catch(e: Exception) {
+              } catch(e: <error descr="[UNRESOLVED_REFERENCE] Unresolved reference: Exception">Exception</error>) {
                   foo()
               } finally {
                   foo()
@@ -928,7 +865,6 @@ class ComposableCallCheckerTest {
     )
   }
 
-  @Test
   fun testTryCatchReporting005() {
     doTest(
       """
@@ -954,7 +890,6 @@ class ComposableCallCheckerTest {
   }
 
 
-  @Test
   fun testDisallowComposableCallPropagation() = doTest(
     """
         import androidx.compose.runtime.*
@@ -971,7 +906,6 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
   fun testReadOnlyComposablePropagation() = doTest(
     """
         import androidx.compose.runtime.*
@@ -1052,56 +986,7 @@ class ComposableCallCheckerTest {
     """
   )
 
-  @Test
-  fun testComposableCallHighlighting() = doTest(
-    """
-    import androidx.compose.runtime.*
-    fun notC() { }
-    @Composable fun C() { }
-    @Composable fun C1(<warning descr="[UNUSED_PARAMETER] Parameter 'a' is never used">a</warning>: Int) { }
-    @Composable fun C2(<warning descr="[UNUSED_PARAMETER] Parameter 'a' is never used">a</warning>: Int, lambdaC: @Composable () -> Unit) { 
-      lambdaC()
-    }
-    @Composable <warning descr="[NOTHING_TO_INLINE] Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of functional types">inline</warning> fun InlineC() {}
-    inline fun InlineNC(lambda: () -> Unit) { lambda() }
-
-    @Composable fun C3() {
-        InlineNC {
-            C()
-            C1(1)
-        }
-        C1(2)
-    }
-
-    @Composable fun C4() {
-        C1(3)
-        notC()
-        C2(3) {
-          notC()
-          InlineC()
-        }
-    }
-    """
-  ) { highlights ->
-    assertEquals(
-      """
-        lambdaC@8
-        C@15
-        C1@16
-        C1@18
-        C1@22
-        C2@24
-        InlineC@26
-      """.trimIndent(),
-      highlights
-        .filter { (highlight, _) ->
-          highlight.severity == HighlightSeverity.INFORMATION && highlight.forcedTextAttributesKey == ComposableAnnotator.COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY
-        }
-        .joinToString("\n") { (highlight, line) -> "${highlight.text}@$line" })
-  }
-
-  private fun doTest(expectedText: String,
-                     verifyHighlights: ((List<Pair<HighlightInfo, Int>>) -> Unit)? = null): Unit = androidProject.fixture.run {
+  private fun doTest(expectedText: String): Unit = myFixture.run {
     stubComposeRuntime()
     stubKotlinStdlib()
 
@@ -1116,13 +1001,16 @@ class ComposableCallCheckerTest {
 
     configureFromExistingVirtualFile(file.virtualFile)
     checkHighlighting()
-    verifyHighlights?.let {
-      it(doHighlighting().map { it to StringUtil.offsetToLineNumber(file.text, it.actualStartOffset) })
-    }
   }
 
-  @Before
-  fun setUp() {
-    (androidProject.fixture.module.getModuleSystem() as DefaultModuleSystem).usesCompose = true
+  override fun setUp() {
+    super.setUp()
+    StudioFlags.COMPOSE_EDITOR_SUPPORT.override(true)
   }
+
+  override fun tearDown() {
+    StudioFlags.COMPOSE_EDITOR_SUPPORT.clearOverride()
+    super.tearDown()
+  }
+
 }

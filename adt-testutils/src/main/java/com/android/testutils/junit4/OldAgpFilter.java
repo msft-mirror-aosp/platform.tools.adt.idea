@@ -36,14 +36,12 @@ import org.junit.runner.manipulation.Filter;
 class OldAgpFilter extends Filter {
   private final String allowedGradleVersion;
   private final String allowedAgpVersion;
-  private final boolean ignoreOtherTests;
 
   private final Set<Description> expectedAllowedChildren = new HashSet<>();
 
-  OldAgpFilter(String allowedGradleVersion, String allowedAgpVersion, boolean ignoreOtherTests) {
+  OldAgpFilter(String allowedGradleVersion, String allowedAgpVersion) {
     this.allowedGradleVersion = allowedGradleVersion;
     this.allowedAgpVersion = allowedAgpVersion;
-    this.ignoreOtherTests = ignoreOtherTests;
   }
 
   @Override
@@ -51,20 +49,9 @@ class OldAgpFilter extends Filter {
     List<String> gradleVersions = getGradleVersions(description);
     List<String> agpVersions = getAgpVersions(description);
 
-    if (description.getTestClass() == null && gradleVersions.isEmpty() && agpVersions.isEmpty()) {
-      // Parametrised test group.
-      expectedAllowedChildren.addAll(description.getChildren());
-      return true;
-    }
-    if (!isOldAgpTest(description)) {
-      if (!ignoreOtherTests) {
-        throw new IllegalStateException("@OldAgpTest is missing for " + description);
-      }
-      expectedAllowedChildren.remove(description);
-      return false;
-    }
     boolean result;
-    if (expectedAllowedChildren.remove(description)) {
+    if ((description.getTestClass() == null && gradleVersions.isEmpty() && agpVersions.isEmpty())
+        || expectedAllowedChildren.remove(description)) {
       expectedAllowedChildren.addAll(description.getChildren());
       result = true; // parametrised tests.
     }
@@ -86,15 +73,6 @@ class OldAgpFilter extends Filter {
   public String describe() {
     return "Filters on gradleVersion=" + allowedGradleVersion
            + " agpVersions=" + allowedAgpVersion;
-  }
-
-  private boolean isOldAgpTest(Description description) {
-    OldAgpTest annotation = description.getAnnotation(OldAgpTest.class);
-    if (annotation != null) {
-      return true;
-    }
-    Class<?> testClass = description.getTestClass();
-    return testClass != null && testClass.getAnnotation(OldAgpTest.class) != null;
   }
 
   private List<String> getGradleVersions(Description description) {

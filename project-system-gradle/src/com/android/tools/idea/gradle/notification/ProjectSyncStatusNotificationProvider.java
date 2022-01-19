@@ -42,6 +42,7 @@ import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.editor.colors.EditorColors;
+import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.module.Module;
@@ -218,7 +219,6 @@ public class ProjectSyncStatusNotificationProvider extends EditorNotifications.P
     @NotNull private final Type type;
 
     NotificationPanel(@NotNull Type type, @NotNull String text) {
-      super(EditorColors.READONLY_BACKGROUND_COLOR);
       this.type = type;
       setText(text);
     }
@@ -310,10 +310,10 @@ public class ProjectSyncStatusNotificationProvider extends EditorNotifications.P
       });
     }
 
-    @NotNull
     @Override
-    public Color getFallbackBackgroundColor() {
-      return UIUtil.getPanelBackground();
+    public Color getBackground() {
+      Color color = EditorColorsManager.getInstance().getGlobalScheme().getColor(EditorColors.READONLY_BACKGROUND_COLOR);
+      return color == null ? UIUtil.getPanelBackground() : color;
     }
 
     static boolean userAllowsShow() {

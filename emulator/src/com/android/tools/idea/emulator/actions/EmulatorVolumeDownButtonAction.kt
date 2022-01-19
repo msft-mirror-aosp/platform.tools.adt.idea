@@ -18,5 +18,4 @@ package com.android.tools.idea.emulator.actions
 /**
  * Simulates pressing the Volume Down button on an Android virtual device.
  */
-class EmulatorVolumeDownButtonAction : EmulatorPushButtonAction("AudioVolumeDown",
-                                                                configFilter = { config -> !config.isWearOs || config.api < 28 })
+class EmulatorVolumeDownButtonAction : EmulatorPushButtonAction("AudioVolumeDown")

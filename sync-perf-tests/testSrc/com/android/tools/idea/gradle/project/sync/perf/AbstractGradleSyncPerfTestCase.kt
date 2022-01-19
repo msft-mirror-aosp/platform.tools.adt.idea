@@ -94,16 +94,15 @@ abstract class AbstractGradleSyncPerfTestCase {
 
     projectRule.fixture.testDataPath = getModulePath ("sync-perf-tests") + File.separator + "testData"
     disableExpensivePlatformAssertions(projectRule.fixture)
-    StudioFlags.GRADLE_SYNC_USE_V2_MODEL.override(useModelV2)
   }
 
   @After
   open fun tearDown() {
-    StudioFlags.GRADLE_SYNC_USE_V2_MODEL.clearOverride()
     try {
       myScheduler!!.advanceBy(0)
       myUsageTracker!!.close()
       cleanAfterTesting()
+      StudioFlags.GRADLE_SYNC_USE_V2_MODEL.clearOverride()
     }
     catch (_: Throwable) {
     }
@@ -116,6 +115,9 @@ abstract class AbstractGradleSyncPerfTestCase {
   @Throws(java.lang.Exception::class)
   @Test
   open fun testInitialization() {
+    if (!useModelV2) {
+      StudioFlags.GRADLE_SYNC_USE_V2_MODEL.override(false)
+    }
     setWriterForTest(myUsageTracker!!) // Start logging data for performance dashboard
     projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION)
     val log: Logger = getLogger()
@@ -143,6 +145,9 @@ abstract class AbstractGradleSyncPerfTestCase {
   @Throws(java.lang.Exception::class)
   @Test
   open fun testSyncTimes() {
+    if (!useModelV2) {
+      StudioFlags.GRADLE_SYNC_USE_V2_MODEL.override(false)
+    }
     setWriterForTest(myUsageTracker!!) // Start logging data for performance dashboard
     val scenarioName = getScenarioName()
     val memoryThread = MemoryMeasurementThread(scenarioName)

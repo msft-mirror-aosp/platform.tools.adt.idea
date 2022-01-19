@@ -73,6 +73,16 @@ class ObsoleteConfigurationsTest {
   @JvmField
   val guiTest = GuiTestRule()
 
+  @Before
+  fun setUp() {
+    StudioFlags.NEW_PSD_ENABLED.override(true)
+  }
+
+  @After
+  fun tearDown() {
+    StudioFlags.NEW_PSD_ENABLED.clearOverride()
+  }
+
   @Test
   fun testQuickFixesOffered() {
     val ide = guiTest.importProjectAndWaitForProjectSyncToFinish("psdObsoleteScopes")

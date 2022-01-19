@@ -119,7 +119,7 @@ class PsAndroidArtifactDependencyCollection(val artifact: PsAndroidArtifact)
     val dependencies = resolvedArtifact.level2Dependencies
 
     for (androidLibrary in dependencies.androidLibraries) {
-      addLibrary(androidLibrary.target, artifact)
+      addLibrary(androidLibrary, artifact)
     }
 
     for (moduleLibrary in dependencies.moduleDependencies) {
@@ -133,7 +133,7 @@ class PsAndroidArtifactDependencyCollection(val artifact: PsAndroidArtifact)
       }
     }
     for (javaLibrary in dependencies.javaLibraries) {
-      addLibrary(javaLibrary.target, artifact)
+      addLibrary(javaLibrary, artifact)
     }
   }
 

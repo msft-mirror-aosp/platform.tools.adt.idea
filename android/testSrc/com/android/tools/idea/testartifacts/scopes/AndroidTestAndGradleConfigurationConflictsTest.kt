@@ -18,9 +18,10 @@ package com.android.tools.idea.testartifacts.scopes
 import com.android.tools.idea.testartifacts.TestConfigurationTesting
 import com.android.tools.idea.testartifacts.createAndroidGradleConfigurationFromDirectory
 import com.android.tools.idea.testing.AndroidGradleTestCase
-import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.project.Project
+import junit.framework.TestCase
+
 
 /**
  * Tests for verifying that there is no conflict creating an instrumented test after a Gradle unit test.
@@ -30,7 +31,9 @@ class AndroidTestAndGradleConfigurationConflictsTest : AndroidGradleTestCase() {
   @Throws(Exception::class)
   fun testCanCreateInstrumentedTestConfiguration() {
     loadSimpleApplication()
-    assertThat(createAndroidGradleConfigurationFromDirectory(project, "app/src/test/java/google/simpleapplication")).isNotNull()
+    val gradleRunConfiguration = TestCase.assertNotNull(createAndroidGradleConfigurationFromDirectory(
+      project, "app/src/test/java/google/simpleapplication"))
+    TestCase.assertNotNull(gradleRunConfiguration)
 
     // Verify that that no configuration is created from the context of AndroidTest artifact.
     // This follows the workflow on AS when trying create a AndroidTest configuration, where we first check if any existing configuration
@@ -39,12 +42,12 @@ class AndroidTestAndGradleConfigurationConflictsTest : AndroidGradleTestCase() {
     // because it doesn't check for the unique PSI location.
     var androidTestRunConfiguration = findExistingAndroidTestConfigurationFromDirectory(
       project, "app/src/androidTest/java/google/simpleapplication")
-    assertThat(androidTestRunConfiguration).isNull()
+    TestCase.assertNull(androidTestRunConfiguration)
 
     // Verify that we can successfully create an AndroidTest run configuration.
     androidTestRunConfiguration = TestConfigurationTesting.createAndroidTestConfigurationFromDirectory(
       project, "app/src/androidTest/java/google/simpleapplication")
-    assertThat(androidTestRunConfiguration).isNotNull()
+    TestCase.assertNotNull(androidTestRunConfiguration)
   }
 
   private fun findExistingAndroidTestConfigurationFromDirectory(project: Project, directory: String): RunConfiguration? {

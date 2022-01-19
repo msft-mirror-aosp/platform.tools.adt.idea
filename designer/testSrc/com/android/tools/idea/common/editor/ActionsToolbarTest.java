@@ -15,12 +15,6 @@
  */
 package com.android.tools.idea.common.editor;
 
-import static com.android.SdkConstants.LINEAR_LAYOUT;
-import static com.android.SdkConstants.TEXT_VIEW;
-import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
-
 import com.android.tools.idea.common.SyncNlModel;
 import com.android.tools.idea.common.error.IssueModel;
 import com.android.tools.idea.common.error.IssuePanel;
@@ -33,9 +27,16 @@ import com.android.tools.idea.uibuilder.type.LayoutFileType;
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl;
 import com.intellij.openapi.actionSystem.impl.PresentationFactory;
 import com.intellij.openapi.util.Disposer;
+import org.jetbrains.annotations.NotNull;
+
 import java.lang.reflect.Field;
 import java.util.Map;
-import org.jetbrains.annotations.NotNull;
+
+import static com.android.SdkConstants.LINEAR_LAYOUT;
+import static com.android.SdkConstants.TEXT_VIEW;
+import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 public class ActionsToolbarTest extends LayoutTestCase {
 
@@ -69,7 +70,6 @@ public class ActionsToolbarTest extends LayoutTestCase {
     NlDesignSurface surface = (NlDesignSurface)model.getSurface();
     NlActionManager actionManager = new NlActionManager(surface);
     IssueModel issueModel = new IssueModel();
-    Disposer.register(myFixture.getTestRootDisposable(), issueModel);
     IssuePanel issuePanel = new IssuePanel(issueModel, new DesignSurfaceIssueListenerImpl(surface));
     Disposer.register(getTestRootDisposable(), issuePanel);
     doReturn(actionManager).when(surface).getActionManager();

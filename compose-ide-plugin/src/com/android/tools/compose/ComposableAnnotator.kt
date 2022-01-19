@@ -16,9 +16,9 @@
 
 package com.android.tools.compose
 
+import com.intellij.lang.annotation.Annotation
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
-import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -82,10 +82,8 @@ class ComposableAnnotator : Annotator {
         }
         if (!shouldStyleCall(analysisResult.bindingContext, element)) return
         val elementToStyle = element.calleeExpression ?: return
-        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-          .range(elementToStyle)
-          .textAttributes(COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY)
-          .create()
+        val annotation: Annotation = holder.createInfoAnnotation(elementToStyle.textRange, null)
+        annotation.textAttributes = COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY
     }
 
     private fun shouldStyleCall(bindingContext: BindingContext, element: KtCallExpression): Boolean {

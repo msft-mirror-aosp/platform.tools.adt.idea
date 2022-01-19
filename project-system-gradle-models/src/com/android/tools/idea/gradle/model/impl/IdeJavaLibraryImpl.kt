@@ -25,14 +25,16 @@ import java.io.Serializable
  **/
 data class IdeJavaLibraryImpl(
   val core: IdeJavaLibraryCore,
-  override val name: String
+  override val name: String,
+  override val isProvided: Boolean
 ) : IdeJavaLibrary by core, Serializable {
   @VisibleForTesting
   constructor(
     artifactAddress: String,
     name: String,
-    artifact: File
-  ) : this(IdeJavaLibraryCore(artifactAddress, artifact), name)
+    artifact: File,
+    isProvided: Boolean
+  ) : this(IdeJavaLibraryCore(artifactAddress, artifact), name, isProvided)
 }
 
 data class IdeJavaLibraryCore(
@@ -50,4 +52,7 @@ data class IdeJavaLibraryCore(
 
   override val name: String
     get() = ""
+
+  override val isProvided: Nothing
+    get() = error("abstract")
 }

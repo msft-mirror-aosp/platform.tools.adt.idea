@@ -25,48 +25,57 @@ final class CpuProfilerNotifications {
   @NotNull
   static final Notification CAPTURE_START_FAILURE = createError(
     "Recording failed to start",
-    "Try recording again, or "
-  );
+    "Try recording again, or ",
+    true);
 
   @NotNull
   static final Notification CAPTURE_STOP_FAILURE = createError(
     "Recording failed to stop",
-    "Try recording another method trace, or "
-  );
+    "Try recording another method trace, or ",
+    true);
 
   @NotNull
   static final Notification PARSING_FAILURE = createError(
     "Trace data was not recorded",
     "The profiler was unable to parse the method trace data. " +
-    "Try recording another method trace, or "
-  );
+    "Try recording another method trace, or ",
+    true);
 
   @NotNull
   static final Notification PREPROCESS_FAILURE = createError(
     "Trace data was not recorded",
     "The profiler was unable to pre-process the method trace data. " +
-    "Try recording another method trace, or "
-  );
+    "Try recording another method trace, or ",
+    true);
 
   @NotNull
-  static final Notification PARSING_ABORTED = createWarning(
+  static final Notification PARSING_ABORTED = createError(
     "Parsing trace file aborted",
-    "Please record another trace."
-  );
+    "The CPU profiler was closed before the recorded trace file could be " +
+    "parsed. Please record another trace.",
+    false);
 
   @NotNull
   static final Notification IMPORT_TRACE_PARSING_FAILURE = createError(
     "Trace file was not parsed",
     "The profiler was unable to parse the trace file. Please make sure the file " +
-    "selected is a valid trace. Alternatively, try importing another file, or "
-  );
+    "selected is a valid trace. Alternatively, try importing another file, or ",
+    true);
+
+  @NotNull
+  static final Notification IMPORT_TRACE_PARSING_ABORTED = createError(
+    "Parsing trace file aborted",
+    "The profiler changed to a different session before the imported " +
+    "trace file could be parsed. Please try importing your trace " +
+    "file again.",
+    false);
 
   @NotNull
   static final Notification ATRACE_BUFFER_OVERFLOW = createWarning(
     "System Trace Buffer Overflow Detected",
     "Your capture exceeded the buffer limit, some data may be missing. " +
-    "Consider recording a shorter trace."
-  );
+    "Consider recording a shorter trace.",
+    false);
 
   @NotNull
   private static Notification createNotification(@NotNull Notification.Severity severity,
@@ -81,12 +90,12 @@ final class CpuProfilerNotifications {
   }
 
   @NotNull
-  private static Notification createWarning(@NotNull String title, @NotNull String text) {
-    return createNotification(Notification.Severity.WARNING, title, text, false);
+  private static Notification createWarning(@NotNull String title, @NotNull String text, boolean reportBug) {
+    return createNotification(Notification.Severity.WARNING, title, text, reportBug);
   }
 
   @NotNull
-  private static Notification createError(@NotNull String title, @NotNull String text) {
-    return createNotification(Notification.Severity.ERROR, title, text, true);
+  private static Notification createError(@NotNull String title, @NotNull String text, boolean reportBug) {
+    return createNotification(Notification.Severity.ERROR, title, text, reportBug);
   }
 }

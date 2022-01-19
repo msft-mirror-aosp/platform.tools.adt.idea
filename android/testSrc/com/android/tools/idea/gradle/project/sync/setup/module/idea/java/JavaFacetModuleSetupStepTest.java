@@ -33,6 +33,7 @@ import java.io.IOException;
 
 import static com.android.tools.idea.testing.Facets.createAndAddGradleFacet;
 import static com.android.tools.idea.testing.Facets.createAndAddJavaFacet;
+import static com.intellij.openapi.util.io.FileUtil.toSystemIndependentName;
 import static org.mockito.Mockito.*;
 
 /**
@@ -57,6 +58,7 @@ public class JavaFacetModuleSetupStepTest extends PlatformTestCase {
     boolean buildable = true;
 
     JavaModuleModel javaModel = mock(JavaModuleModel.class);
+    when(javaModel.getBuildFolderPath()).thenReturn(buildFolderPath);
     when(javaModel.isBuildable()).thenReturn(buildable);
 
     Module module = getModule();
@@ -78,6 +80,7 @@ public class JavaFacetModuleSetupStepTest extends PlatformTestCase {
     boolean buildable = true;
 
     JavaModuleModel javaModel = mock(JavaModuleModel.class);
+    when(javaModel.getBuildFolderPath()).thenReturn(buildFolderPath);
     when(javaModel.isBuildable()).thenReturn(buildable);
 
     Module module = getModule();
@@ -110,9 +113,11 @@ public class JavaFacetModuleSetupStepTest extends PlatformTestCase {
   }
 
   public void testDoSetUpModuleWithoutGradleFacet() throws IOException {
+    File buildFolderPath = createTempDir("build");
     boolean buildable = true;
 
     JavaModuleModel javaModel = mock(JavaModuleModel.class);
+    when(javaModel.getBuildFolderPath()).thenReturn(buildFolderPath);
     when(javaModel.isBuildable()).thenReturn(buildable);
 
     Module module = getModule();

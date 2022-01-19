@@ -16,20 +16,10 @@ add_library(
 
         accessors/display_info.cc
         accessors/display_manager.cc
-        accessors/input_manager.cc
-        accessors/key_character_map.cc
-        accessors/key_event.cc
-        accessors/motion_event.cc
-        accessors/pointer_helper.cc
         accessors/service_manager.cc
         accessors/surface_control.cc
-        accessors/window_manager.cc
         agent.cc
-        base128_input_stream.cc
-        control_messages.cc
-        controller.cc
         display_streamer.cc
-        io_exception.cc
         jvm.cc
         log.cc
         main.cc

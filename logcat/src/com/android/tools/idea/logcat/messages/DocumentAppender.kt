@@ -52,14 +52,9 @@ internal class DocumentAppender(project: Project, private val document: Document
 
     // Document has a cyclic buffer, so we need to get document.textLength again after inserting text.
     val offset = document.textLength - text.length
-    for (range in buffer.textAttributesRanges) {
+    for (range in buffer.highlightRanges) {
       range.applyRange(offset) { start, end, textAttributes ->
         markupModel.addRangeHighlighter(start, end, HighlighterLayer.SYNTAX, textAttributes, HighlighterTargetArea.EXACT_RANGE)
-      }
-    }
-    for (range in buffer.textAttributesKeyRanges) {
-      range.applyRange(offset) { start, end, textAttributesKey ->
-        markupModel.addRangeHighlighter(textAttributesKey, start, end, HighlighterLayer.SYNTAX, HighlighterTargetArea.EXACT_RANGE)
       }
     }
     for (range in buffer.hintRanges) {
@@ -79,7 +74,6 @@ internal class DocumentAppender(project: Project, private val document: Document
     maxDocumentSize = size
     trimToSize()
   }
-
   /**
    * Trim the document to size at a line boundary (Based on Document.trimToSize).
    */

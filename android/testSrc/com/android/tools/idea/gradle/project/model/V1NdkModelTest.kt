@@ -29,6 +29,7 @@ import com.intellij.serialization.ObjectSerializer
 import com.intellij.serialization.ReadConfiguration
 import com.intellij.serialization.SkipNullAndEmptySerializationFilter
 import com.intellij.serialization.WriteConfiguration
+import junit.framework.TestCase
 import org.apache.commons.lang.builder.EqualsBuilder
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -230,7 +231,7 @@ class V1NdkModelTest {
       val bytes = ObjectSerializer.instance.writeAsBytes(value, configuration)
       val deserialized = ObjectSerializer.instance.read(T::class.java, bytes, ReadConfiguration(allowAnySubTypes = true))
       val bytes2 = ObjectSerializer.instance.writeAsBytes(deserialized, configuration)
-      Truth.assertThat(String(bytes2)).isEqualTo(String(bytes))
+      TestCase.assertEquals(String(bytes), String(bytes2))
       EqualsBuilder.reflectionEquals(value, deserialized)
       return deserialized
     }

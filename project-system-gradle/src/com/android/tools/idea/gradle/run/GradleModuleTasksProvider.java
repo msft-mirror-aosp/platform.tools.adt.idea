@@ -20,13 +20,12 @@ import static com.android.tools.idea.gradle.project.build.invoker.TestCompileTyp
 import com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder;
 import com.android.tools.idea.gradle.project.build.invoker.TestCompileType;
 import com.android.tools.idea.gradle.util.BuildMode;
+import com.google.common.collect.ListMultimap;
 import com.intellij.openapi.compiler.CompileScope;
 import com.intellij.openapi.compiler.CompilerManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 public class GradleModuleTasksProvider {
@@ -41,10 +40,11 @@ public class GradleModuleTasksProvider {
     myProject = myModules[0].getProject();
   }
 
-  public Map<Path, Collection<String>> getUnitTestTasks(@NotNull BuildMode buildMode) {
+  @NotNull
+  public ListMultimap<Path, String> getUnitTestTasks(@NotNull BuildMode buildMode) {
     // Make sure all "intermediates/classes" directories are up-to-date.
     Module[] affectedModules = getAffectedModules(myProject, myModules);
-    return GradleTaskFinder.getInstance().findTasksToExecuteForTest(affectedModules, myModules, buildMode, UNIT_TESTS).asMap();
+    return GradleTaskFinder.getInstance().findTasksToExecuteForTest(affectedModules, myModules, buildMode, UNIT_TESTS);
   }
 
   @NotNull
@@ -54,7 +54,8 @@ public class GradleModuleTasksProvider {
     return scope.getAffectedModules();
   }
 
-  public Map<Path, Collection<String>> getTasksFor(@NotNull BuildMode buildMode, @NotNull TestCompileType testCompileType) {
-    return GradleTaskFinder.getInstance().findTasksToExecute(myModules, buildMode, testCompileType).asMap();
+  @NotNull
+  public ListMultimap<Path, String> getTasksFor(@NotNull BuildMode buildMode, @NotNull TestCompileType testCompileType) {
+    return GradleTaskFinder.getInstance().findTasksToExecute(myModules, buildMode, testCompileType);
   }
 }

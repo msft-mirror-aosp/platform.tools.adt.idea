@@ -50,12 +50,11 @@ public class AndroidRunConfigurationModule extends JavaRunConfigurationModule {
       } else {
         module = ModuleSystemUtil.getMainModule(module);
       }
-      if (module != null) {
-        return GlobalSearchScope.moduleWithDependenciesScope(module);
-      }
+      return GlobalSearchScope.moduleWithDependenciesScope(module);
     }
-
-    return GlobalSearchScope.projectScope(getProject());
+    else {
+      return GlobalSearchScope.projectScope(getProject());
+    }
   }
 
   @Override

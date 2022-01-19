@@ -220,7 +220,6 @@ class InspectorModel(val project: Project) : ViewNodeAndResourceLookup {
         val allNodes = root.flatten().toSet()
         hiddenNodes.removeIf { !allNodes.contains(it) }
       }
-      root.calculateTransitiveBounds()
       modificationListeners.forEach { it(oldWindow, windows[newWindow?.id], structuralChange) }
     }
     finally {

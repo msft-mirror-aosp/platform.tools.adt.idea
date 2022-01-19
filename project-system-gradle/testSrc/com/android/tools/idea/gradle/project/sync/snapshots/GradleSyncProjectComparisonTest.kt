@@ -17,8 +17,9 @@ package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.SdkConstants.FN_SETTINGS_GRADLE
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
+import com.android.tools.idea.gradle.structure.model.meta.DslText
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.sdk.IdeSdks
-import com.android.tools.idea.testing.AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.FileSubject.file
 import com.android.tools.idea.testing.GradleIntegrationTest
@@ -352,10 +353,7 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
   ): T {
     val projectRootPath = prepareGradleProject(projectDir, projectName)
     patch?.invoke(projectRootPath)
-    return openPreparedProject(projectName) { project ->
-      waitForSourceFolderManagerToProcessUpdates(project)
-      body(project)
-    }
+    return openPreparedProject(projectName) { project -> body(project) }
   }
 
   protected fun importSyncAndDumpProject(projectDir: String): String =
@@ -363,8 +361,6 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
   protected fun Project.syncAndDumpProject(): String {
     requestSyncAndWait()
-    waitForSourceFolderManagerToProcessUpdates(this)
-
     return this.saveAndDump()
   }
 
@@ -402,3 +398,5 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
   override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
 }
+
+private fun <T : Any> T.asParsed() = ParsedValue.Set.Parsed(this, DslText.Literal)

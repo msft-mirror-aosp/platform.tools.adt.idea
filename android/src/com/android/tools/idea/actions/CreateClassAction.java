@@ -32,7 +32,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.LangDataKeys;
-import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
@@ -83,7 +82,7 @@ public final class CreateClassAction extends AnAction {
       return;
     }
 
-    Module module = PlatformCoreDataKeys.MODULE.getData(context);
+    Module module = LangDataKeys.MODULE.getData(context);
 
     if (module == null) {
       return;

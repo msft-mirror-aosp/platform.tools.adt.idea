@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.uibuilder.mockup.editor;
 
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.ui.ThreeComponentsSplitter;
 import com.intellij.util.Consumer;
 import org.jetbrains.annotations.NotNull;
@@ -40,22 +39,22 @@ public class AnimatedComponentSplitter extends ThreeComponentsSplitter {
   /**
    * {@inheritDoc}
    */
-  public AnimatedComponentSplitter(@NotNull Disposable disposable) {
-    super(disposable);
+  public AnimatedComponentSplitter() {
+    super();
   }
 
   /**
    * {@inheritDoc}
    */
-  public AnimatedComponentSplitter(boolean vertical, @NotNull Disposable disposable) {
-    super(vertical, disposable);
+  public AnimatedComponentSplitter(boolean vertical) {
+    super(vertical);
   }
 
   /**
    * {@inheritDoc}
    */
-  public AnimatedComponentSplitter(boolean vertical, boolean onePixelDividers, @NotNull Disposable disposable) {
-    super(vertical, onePixelDividers, disposable);
+  public AnimatedComponentSplitter(boolean vertical, boolean onePixelDividers) {
+    super(vertical, onePixelDividers);
   }
 
   /**

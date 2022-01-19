@@ -23,21 +23,21 @@ interface IdeDependencies {
    *
    * @return the list of libraries of type LIBRARY_ANDROID.
    */
-  val androidLibraries: Collection<IdeAndroidLibraryDependency>
+  val androidLibraries: Collection<IdeAndroidLibrary>
 
   /**
    * Returns the Java library dependencies, both direct and transitive dependencies.
    *
    * @return the list of libraries of type LIBRARY_JAVA.
    */
-  val javaLibraries: Collection<IdeJavaLibraryDependency>
+  val javaLibraries: Collection<IdeJavaLibrary>
 
   /**
    * Returns the Module dependencies.
    *
    * @return the list of libraries of type LIBRARY_MODULE.
    */
-  val moduleDependencies: Collection<IdeModuleDependency>
+  val moduleDependencies: Collection<IdeModuleLibrary>
 
   /**
    * Returns the list of runtime only classes.

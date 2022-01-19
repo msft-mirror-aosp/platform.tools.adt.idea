@@ -39,6 +39,12 @@ internal interface LogcatPresenter : TagsProvider, PackageNamesProvider, Disposa
   fun applyFilter(logcatFilter: LogcatFilter?)
 
   /**
+   * Enabled/disables the `My Apps` filter
+   */
+  @UiThread
+  fun setShowOnlyProjectApps(enabled: Boolean)
+
+  /**
    * Clears the message view
    */
   @UiThread

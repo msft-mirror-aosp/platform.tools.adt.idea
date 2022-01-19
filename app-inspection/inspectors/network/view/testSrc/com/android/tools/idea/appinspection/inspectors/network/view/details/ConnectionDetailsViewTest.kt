@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.view.details
 
-import com.android.flags.junit.SetFlagRule
 import com.android.tools.adtui.LegendComponent
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.AspectObserver
@@ -23,13 +22,12 @@ import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.legend.Legend
 import com.android.tools.adtui.stdui.TooltipLayeredPane
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
-import com.android.tools.adtui.swing.enableHeadlessDialogs
+import com.android.tools.idea.appinspection.inspectors.network.model.CodeNavigationProvider
 import com.android.tools.idea.appinspection.inspectors.network.model.FakeCodeNavigationProvider
 import com.android.tools.idea.appinspection.inspectors.network.model.FakeNetworkInspectorDataSource
-import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorClient
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.TestNetworkInspectorServices
+import com.android.tools.idea.appinspection.inspectors.network.model.analytics.StubNetworkInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.FAKE_THREAD_LIST
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpDataModel
@@ -37,29 +35,19 @@ import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.Ja
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.createFakeHttpData
 import com.android.tools.idea.appinspection.inspectors.network.view.FakeUiComponentsProvider
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkInspectorView
-import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.codenavigation.CodeLocation
+import com.android.tools.idea.codenavigation.CodeNavigator
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.inspectors.common.api.stacktrace.StackTraceModel
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.MoreExecutors
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.cancel
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.RuleChain
 import java.awt.Component
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
-import javax.swing.JTextArea
 import javax.swing.JTextPane
 
 private const val FAKE_TRACE = "com.google.downloadUrlToStream(ImageFetcher.java:274)"
@@ -86,43 +74,18 @@ private fun <T : TabContent?> ConnectionDetailsView.findTab(tabClass: Class<T>):
 
 @RunsInEdt
 class ConnectionDetailsViewTest {
-
-  private class TestNetworkInspectorClient : NetworkInspectorClient {
-    private var lastInterceptedUrl: String? = null
-    private var lastInterceptedBody: String? = null
-
-    override suspend fun getStartTimeStampNs() = 0L
-
-    override suspend fun interceptResponse(url: String, body: String) {
-      lastInterceptedUrl = url
-      lastInterceptedBody = body
-    }
-
-    fun verifyInterceptResponse(url: String, body: String) {
-      assertThat(lastInterceptedUrl).isEqualTo(url)
-      assertThat(lastInterceptedBody).isEqualTo(body)
-    }
-  }
-
-  private val setFlagRule = SetFlagRule(StudioFlags.ENABLE_NETWORK_INTERCEPTION, true)
-
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(ProjectRule()).around(EdtRule()).around(setFlagRule)!!
-
-  private lateinit var client: TestNetworkInspectorClient
-  private lateinit var services: TestNetworkInspectorServices
   private lateinit var model: NetworkInspectorModel
   private lateinit var inspectorView: NetworkInspectorView
   private lateinit var detailsView: ConnectionDetailsView
   private val timer: FakeTimer = FakeTimer()
-  private lateinit var scope: CoroutineScope
-  private lateinit var disposable: Disposable
+
+  @get:Rule
+  val edtRule = EdtRule()
 
   @Before
   fun before() {
     val codeNavigationProvider = FakeCodeNavigationProvider()
-    client = TestNetworkInspectorClient()
-    services = TestNetworkInspectorServices(codeNavigationProvider, timer, client)
+    val services = TestNetworkInspectorServices(codeNavigationProvider, timer)
     model = NetworkInspectorModel(services, FakeNetworkInspectorDataSource(), object : HttpDataModel {
       private val dataList = listOf(DEFAULT_DATA)
       override fun getData(timeCurrentRangeUs: Range): List<HttpData> {
@@ -131,17 +94,9 @@ class ConnectionDetailsViewTest {
     })
     val parentPanel = JPanel()
     val component = TooltipLayeredPane(parentPanel)
-    scope = CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
-    inspectorView = NetworkInspectorView(model, FakeUiComponentsProvider(), component, services, scope)
+    inspectorView = NetworkInspectorView(model, FakeUiComponentsProvider(), component, StubNetworkInspectorTracker())
     parentPanel.add(inspectorView.component)
     detailsView = inspectorView.connectionDetails
-    disposable = Disposer.newDisposable()
-  }
-
-  @After
-  fun tearDown() {
-    scope.cancel()
-    Disposer.dispose(disposable)
   }
 
   @Test
@@ -175,22 +130,6 @@ class ConnectionDetailsViewTest {
     val payloadBody = detailsView.findTab(ResponseTabContent::class.java)!!.findPayloadBody()!!
     assertThat(TreeWalker(payloadBody).descendants().any { c -> c.name == "View Parsed" }).isTrue()
     assertThat(TreeWalker(payloadBody).descendants().any { c -> c.name == "View Source" }).isTrue()
-  }
-
-  @Test
-  fun sendsInterceptResponseFromDialog() {
-    enableHeadlessDialogs(disposable)
-    val newText = "NEW TEXT"
-    val dialog = ResponseTabContent.ResponseInterceptDialog(DEFAULT_DATA, services, scope)
-    createModalDialogAndInteractWithIt({ dialog.show() }) {
-      val textArea = firstDescendantWithType(dialog.contentPane, JTextArea::class.java)
-      assertThat(textArea.isEditable).isTrue()
-      assertThat(textArea.text).isEqualTo("RESPONSE")
-      textArea.text = newText
-      dialog.clickDefaultButton()
-    }
-    assertThat(dialog.exitCode).isEqualTo(DialogWrapper.OK_EXIT_CODE)
-    client.verifyInterceptResponse(DEFAULT_DATA.url, newText)
   }
 
   @Test

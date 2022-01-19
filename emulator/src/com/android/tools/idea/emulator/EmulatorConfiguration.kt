@@ -33,14 +33,12 @@ class EmulatorConfiguration private constructor(
   val displaySize: Dimension,
   val density: Int,
   val skinFolder: Path?,
-  val isFoldable: Boolean,
-  val isRollable: Boolean,
-  val isWearOs: Boolean,
+  val foldable: Boolean,
+  val rollable: Boolean,
   val hasOrientationSensors: Boolean,
   val hasAudioOutput: Boolean,
   val initialOrientation: SkinRotation,
-  val displayModes: List<DisplayMode>,
-  val api: Int,
+  val displayModes: List<DisplayMode>
 ) {
 
   val displayWidth
@@ -61,28 +59,27 @@ class EmulatorConfiguration private constructor(
       val hardwareIni = readKeyValueFile(hardwareIniFile, keysToExtract1) ?: return null
 
       val sdkPath = hardwareIni["android.sdk.root"] ?: System.getenv(ANDROID_HOME_ENV) ?: ""
-      val androidSdkRoot = avdFolder.resolve(sdkPath)
+      val androidSdkRoot = avdFolder.fileSystem.getPath(sdkPath)
       val displayWidth = parseInt(hardwareIni["hw.lcd.width"], 0)
       val displayHeight = parseInt(hardwareIni["hw.lcd.height"], 0)
-      if (displayWidth <= 0 || displayHeight <= 0) {
-        return null
-      }
       val density = parseInt(hardwareIni["hw.lcd.density"], 0)
       val hasAudioOutput = hardwareIni["hw.audioOutput"]?.toBoolean() ?: true
-      val isFoldable = parseInt(hardwareIni["hw.sensor.hinge.count"], 0) > 0
-      val isRollable = parseInt(hardwareIni["hw.sensor.roll.count"], 0) > 0
+      val foldable = parseInt(hardwareIni["hw.sensor.hinge.count"], 0) > 0
+      val rollable = parseInt(hardwareIni["hw.sensor.roll.count"], 0) > 0
 
-      val configIniFile = avdFolder.resolve("config.ini")
       val keysToExtract2 = setOf("avd.ini.displayname", "hw.resizable.configs", "hw.sensors.orientation", "hw.initialOrientation",
-                                 "image.sysdir.1", "showDeviceFrame", "skin.path", "tag.id")
+                                 "showDeviceFrame", "skin.path")
+      val configIniFile = avdFolder.resolve("config.ini")
       val configIni = readKeyValueFile(configIniFile, keysToExtract2) ?: return null
 
       val avdName = configIni["avd.ini.displayname"] ?: avdId.replace('_', ' ')
       val initialOrientation = if ("landscape".equals(configIni["hw.initialOrientation"], ignoreCase = true))
           SkinRotation.LANDSCAPE else SkinRotation.PORTRAIT
       val skinPath = getSkinPath(configIni, androidSdkRoot)
-      val isWearOs = configIni["tag.id"]?.equals("android-wear", ignoreCase = true) ?: false
       val hasOrientationSensors = configIni["hw.sensors.orientation"]?.equals("yes", ignoreCase = true) ?: true
+      if (displayWidth <= 0 || displayHeight <= 0) {
+        return null
+      }
       val displayModes = try {
         configIni["hw.resizable.configs"]?.let(::parseDisplayModes) ?: emptyList()
       }
@@ -92,30 +89,17 @@ class EmulatorConfiguration private constructor(
         emptyList()
       }
 
-      val api: Int
-      val systemImage = configIni["image.sysdir.1"]
-      if (systemImage != null) {
-        val sourcePropertiesFile = androidSdkRoot.resolve(systemImage).resolve("source.properties")
-        val sourceProperties = readKeyValueFile(sourcePropertiesFile, setOf("AndroidVersion.ApiLevel")) ?: return null
-        api = parseInt(sourceProperties["AndroidVersion.ApiLevel"], 0)
-      }
-      else {
-        api = 0
-      }
-
       return EmulatorConfiguration(avdName = avdName,
                                    avdFolder = avdFolder,
                                    displaySize = Dimension(displayWidth, displayHeight),
                                    density = density,
                                    skinFolder = skinPath,
-                                   isFoldable = isFoldable,
-                                   isRollable = isRollable,
-                                   isWearOs = isWearOs,
+                                   foldable = foldable,
+                                   rollable = rollable,
                                    hasOrientationSensors = hasOrientationSensors,
                                    hasAudioOutput = hasAudioOutput,
                                    initialOrientation = initialOrientation,
-                                   displayModes = displayModes,
-                                   api = api)
+                                   displayModes = displayModes)
     }
 
     private fun getSkinPath(configIni: Map<String, String>, androidSdkRoot: Path): Path? {

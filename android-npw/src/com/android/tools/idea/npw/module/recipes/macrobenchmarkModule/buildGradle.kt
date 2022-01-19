@@ -26,7 +26,6 @@ import com.android.tools.idea.wizard.template.renderIf
 import com.intellij.openapi.module.Module
 
 fun buildGradle(
-  packageName: String,
   buildApiString: String,
   minApi: String,
   targetApiString: String,
@@ -65,7 +64,6 @@ fun buildGradle(
 ${emptyPluginsBlock()}
 
 android {
-    namespace '$packageName'
     ${toAndroidFieldVersion("compileSdk", buildApiString, gradlePluginVersion)}
 
     compileOptions {

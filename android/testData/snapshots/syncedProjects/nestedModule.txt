@@ -244,8 +244,6 @@ PROJECT                       : testNestedModule
             Scope                         : Test
         ORDER_ENTRY                   : testNestedModule.app.main
         ORDER_ENTRY                   : testNestedModule.main
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/testNestedModule.app.androidTest
     MODULE                        : testNestedModule.app.main
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testNestedModule.app
@@ -339,8 +337,6 @@ PROJECT                       : testNestedModule
         LIBRARY                       : Gradle: com.android.support:versionedparcelable:<VERSION>@aar [=]
         LIBRARY                       : Gradle: com.android.support:viewpager:<VERSION>@aar [=]
         ORDER_ENTRY                   : testNestedModule.main
-        Classes
-            -                             : file://<PROJECT>/build/classes/production/testNestedModule.app.main
     MODULE                        : testNestedModule.app.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testNestedModule.app
@@ -458,8 +454,6 @@ PROJECT                       : testNestedModule
             Scope                         : Test
         ORDER_ENTRY                   : testNestedModule.app.main
         ORDER_ENTRY                   : testNestedModule.main
-        Classes
-            -                             : file://<PROJECT>/build/classes/test/testNestedModule.app.unitTest
     MODULE                        : testNestedModule.main
         ExternalModuleGroup           :
         ExternalModuleType            : sourceSet
@@ -479,8 +473,6 @@ PROJECT                       : testNestedModule
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
-        Classes
-            -                             : file://<PROJECT>/build/classes/java/main
     MODULE                        : testNestedModule.test
         ExternalModuleGroup           :
         ExternalModuleType            : sourceSet

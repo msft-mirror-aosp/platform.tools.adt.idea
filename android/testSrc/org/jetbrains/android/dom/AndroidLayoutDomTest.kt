@@ -12,7 +12,6 @@ import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.loadNewFile
 import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.documentation.DocumentationManager
@@ -37,7 +36,9 @@ import com.intellij.psi.xml.XmlAttribute
 import com.intellij.spellchecker.inspections.SpellCheckingInspection
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
+import com.intellij.testFramework.UsefulTestCase
 import com.intellij.util.xml.DomManager
+import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.dom.converters.ResourceReferenceConverter
 import org.jetbrains.android.dom.resources.ResourceValue
@@ -735,8 +736,8 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(copyFileToProject("an7.xml"))
     myFixture.complete(CompletionType.BASIC)
     val lookupElementStrings = myFixture.lookupElementStrings!!.subList(0, 5)
-    assertThat(lookupElementStrings).containsExactly(
-      "android:layout_above", "android:layout_alignBaseline",
+    UsefulTestCase.assertSameElements(
+      lookupElementStrings, "android:layout_above", "android:layout_alignBaseline",
       "android:layout_alignBottom", "android:layout_alignEnd", "android:layout_alignLeft")
   }
 
@@ -765,10 +766,10 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
       }
     }
 
-    assertThat(editableElement!!.lookupString).isEqualTo("android:editable")
+    TestCase.assertEquals("android:editable", editableElement!!.lookupString)
     val presentation = LookupElementPresentation()
     editableElement.renderElement(presentation)
-    assertThat(presentation.isStrikeout).isTrue()
+    TestCase.assertTrue(presentation.isStrikeout)
   }
 
   // "conDes" is completed to "android:contentDescription", "xmlns:android" with right value is inserted
@@ -957,18 +958,18 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(lf1)
     myFixture.complete(CompletionType.BASIC)
     var variants = myFixture.lookupElementStrings
-    assertThat(variants).contains("p1.p2.LabelView")
+    TestCase.assertTrue(variants!!.contains("p1.p2.LabelView"))
 
     val psiLabelViewFile = PsiManager.getInstance(project).findFile(labelViewJava)
-    assertThat(psiLabelViewFile).isInstanceOf(PsiJavaFile::class.java)
+    UsefulTestCase.assertInstanceOf(psiLabelViewFile, PsiJavaFile::class.java)
     myFixture.renameElement((psiLabelViewFile as PsiJavaFile).classes[0], "LabelView1")
 
     val lf2 = myFixture.copyFileToProject(myTestFolder + '/'.toString() + "ctn0.xml", "res/layout/layout2.xml")
     myFixture.configureFromExistingVirtualFile(lf2)
     myFixture.complete(CompletionType.BASIC)
     variants = myFixture.lookupElementStrings
-    assertThat(variants).doesNotContain("p1.p2.LabelView")
-    assertThat(variants).contains("p1.p2.LabelView1")
+    TestCase.assertFalse(variants!!.contains("p1.p2.LabelView"))
+    TestCase.assertTrue(variants.contains("p1.p2.LabelView1"))
 
     runWriteCommandAction(project) {
       try {
@@ -983,8 +984,8 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(lf3)
     myFixture.complete(CompletionType.BASIC)
     variants = myFixture.lookupElementStrings
-    assertThat(variants).doesNotContain("p1.p2.LabelView")
-    assertThat(variants).doesNotContain("p1.p2.LabelView1")
+    TestCase.assertFalse(variants!!.contains("p1.p2.LabelView"))
+    TestCase.assertFalse(variants.contains("p1.p2.LabelView1"))
   }
 
   fun testCustomTagCompletion1() {
@@ -1229,7 +1230,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(file)
     myFixture.complete(CompletionType.BASIC)
 
-    assertThat(myFixture.lookupElementStrings).doesNotContain("android.widget.Button")
+    TestCase.assertFalse(myFixture.lookupElementStrings!!.contains("android.widget.Button"))
   }
 
   fun testTagNameCompletion7() {
@@ -1241,7 +1242,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(file)
     myFixture.complete(CompletionType.BASIC)
 
-    assertThat(myFixture.lookupElementStrings).contains("widget.Button")
+    TestCase.assertTrue(myFixture.lookupElementStrings!!.contains("widget.Button"))
   }
 
   fun testTagNameCompletion9() {
@@ -1253,7 +1254,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(file)
     myFixture.complete(CompletionType.BASIC)
 
-    assertThat(myFixture.lookupElementStrings).doesNotContain("android.widget.Button")
+    TestCase.assertFalse(myFixture.lookupElementStrings!!.contains("android.widget.Button"))
   }
 
   fun testTagNameCompletion11() {
@@ -1284,7 +1285,9 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.complete(CompletionType.BASIC)
     val completionResult = myFixture.lookupElementStrings
 
-    assertThat(completionResult).containsExactly("android.support.v7.widget.GridLayout", "GridLayout").inOrder()
+    // Check the elements are in the right order
+    TestCase.assertEquals("android.support.v7.widget.GridLayout", completionResult!![0])
+    TestCase.assertEquals("GridLayout", completionResult[1])
   }
 
   // Test android:layout_width and android:layout_height highlighting for framework and library layouts
@@ -1318,10 +1321,10 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
       if (elementsToCheck.contains(s)) {
         val presentation = LookupElementPresentation()
         element.renderElement(presentation)
-        assertWithMessage("no icon for element: $element").that(presentation.icon).isNotNull()
+        TestCase.assertNotNull("no icon for element: $element", presentation.icon)
 
         if ("Button" == s) {
-          assertThat(obj).isInstanceOf(PsiClass::class.java)
+          UsefulTestCase.assertInstanceOf(obj, PsiClass::class.java)
         }
       }
     }
@@ -1529,10 +1532,10 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val text = psiFile.text
     val rootOffset = text.indexOf("ScrollView")
     val rootViewClass = psiFile.findReferenceAt(rootOffset)!!.resolve()
-    assertThat(rootViewClass).isInstanceOf(PsiClass::class.java)
+    TestCase.assertTrue("Must be PsiClass reference", rootViewClass is PsiClass)
     val childOffset = text.indexOf("LinearLayout")
     val childViewClass = psiFile.findReferenceAt(childOffset)!!.resolve()
-    assertThat(childViewClass).isInstanceOf(PsiClass::class.java)
+    TestCase.assertTrue("Must be PsiClass reference", childViewClass is PsiClass)
   }
 
   fun testViewClassReference1() {
@@ -1548,7 +1551,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val rootOffset = text.indexOf("ScrollView")
 
     val rootViewClass = psiFile.findReferenceAt(rootOffset)!!.resolve()
-    assertThat(rootViewClass).isInstanceOf(PsiClass::class.java)
+    TestCase.assertTrue("Must be PsiClass reference", rootViewClass is PsiClass)
   }
 
   fun testOnClickCompletion() {
@@ -1629,11 +1632,11 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.configureFromExistingVirtualFile(file)
 
     val reference = TargetElementUtil.findReference(myFixture.editor, myFixture.caretOffset)
-    assertThat(reference).isInstanceOf(PsiPolyVariantReference::class.java)
+    UsefulTestCase.assertInstanceOf(reference, PsiPolyVariantReference::class.java)
     val results = (reference as PsiPolyVariantReference).multiResolve(false)
-    assertThat(results.size).isEqualTo(2)
+    TestCase.assertEquals(2, results.size)
     for (result in results) {
-      assertThat(result.element).isInstanceOf(PsiMethod::class.java)
+      UsefulTestCase.assertInstanceOf(result.element, PsiMethod::class.java)
     }
   }
 
@@ -1659,7 +1662,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
         }
       }
     }
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
 
     runWriteCommandAction(project) { actions[0].invoke(project, myFixture.editor, myFixture.file) }
     myFixture.checkResultByFile("res/values/drawables.xml", myTestFolder + '/'.toString() + getTestName(true) + "_drawable_after.xml", true)
@@ -1780,8 +1783,8 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     myFixture.complete(CompletionType.BASIC)
     val variants = myFixture.lookupElementStrings
 
-    assertThat(variants).isNotEmpty()
-    assertThat(containElementStartingWith(variants!!, prefix)).isFalse()
+    TestCase.assertTrue(!variants!!.isEmpty())
+    TestCase.assertFalse(containElementStartingWith(variants, prefix))
   }
 
   fun testAttrReferences4() {
@@ -1840,14 +1843,15 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     lookup.setCurrentItem(dpElement)
     docTargetElement = DocumentationManager.getInstance(project).findTargetElement(myFixture.editor, myFixture.file, originalElement)
     provider = DocumentationManager.getProviderFromElement(docTargetElement)
-    assertThat(provider.generateDoc(docTargetElement, originalElement)).isEqualTo(
-      "<html><body><b>Density-independent Pixels</b> - an abstract unit that is based on the physical " + "density of the screen.</body></html>")
+    TestCase.assertEquals(
+      "<html><body><b>Density-independent Pixels</b> - an abstract unit that is based on the physical " + "density of the screen.</body></html>",
+      provider.generateDoc(docTargetElement, originalElement))
 
     lookup.setCurrentItem(pxElement)
     docTargetElement = DocumentationManager.getInstance(project).findTargetElement(myFixture.editor, myFixture.file, originalElement)
     provider = DocumentationManager.getProviderFromElement(docTargetElement)
-    assertThat(provider.generateDoc(docTargetElement, originalElement)).isEqualTo(
-      "<html><body><b>Pixels</b> - corresponds to actual pixels on the screen. Not recommended.</body></html>")
+    TestCase.assertEquals("<html><body><b>Pixels</b> - corresponds to actual pixels on the screen. Not recommended.</body></html>",
+                          provider.generateDoc(docTargetElement, originalElement))
   }
 
   fun testMipMapCompletionInDrawableXML() {
@@ -2000,7 +2004,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntention.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val action = AndroidCreateOnClickHandlerAction()
-    assertThat(action.isAvailable(myFixture.project, myFixture.editor, myFixture.file)).isTrue()
+    TestCase.assertTrue(action.isAvailable(myFixture.project, myFixture.editor, myFixture.file))
     myFixture.launchAction(action)
     myFixture.checkResultByFile("$myTestFolder/onClickIntention.xml")
     myFixture.checkResultByFile("src/p1/p2/Activity1.java", "$myTestFolder/OnClickActivity_after.java", false)
@@ -2011,7 +2015,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntentionIncorrectName.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val action = AndroidCreateOnClickHandlerAction()
-    assertThat(action.isAvailable(myFixture.project, myFixture.editor, myFixture.file)).isFalse()
+    TestCase.assertFalse(action.isAvailable(myFixture.project, myFixture.editor, myFixture.file))
   }
 
   fun testOnClickQuickFixEmptyKotlin() {
@@ -2020,7 +2024,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntentionWithContext.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val actions = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
     myFixture.launchAction(actions[0])
     myFixture.checkResultByFile("$myTestFolder/onClickIntentionWithContext.xml")
     myFixture.checkResultByFile("src/p1/p2/Activity1.kt", "$myTestFolder/OnClickActivity_after.kt", false)
@@ -2032,7 +2036,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntentionWithContext.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val actions = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
     myFixture.launchAction(actions[0])
 
     myFixture.checkResultByFile("$myTestFolder/onClickIntentionWithContext.xml")
@@ -2045,7 +2049,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntention.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val actions = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
     myFixture.launchAction(actions[0])
 
     myFixture.checkResultByFile("$myTestFolder/onClickIntention.xml")
@@ -2058,7 +2062,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntention.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val fixes = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(fixes).isEmpty()
+    UsefulTestCase.assertEmpty(fixes)
   }
 
   fun testOnClickQuickFix2() {
@@ -2067,7 +2071,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntention.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val actions = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
     myFixture.launchAction(actions[0])
 
     myFixture.checkResultByFile("$myTestFolder/onClickIntention.xml")
@@ -2097,7 +2101,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     val file = copyFileToProject("onClickIntentionIncorrectName.xml")
     myFixture.configureFromExistingVirtualFile(file)
     val fixes = highlightAndFindQuickFixes(AndroidMissingOnClickHandlerInspection.MyQuickFix::class.java)
-    assertThat(fixes).isEmpty()
+    UsefulTestCase.assertEmpty(fixes)
   }
 
   fun testSpellchecker() {
@@ -2573,7 +2577,7 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
   private fun doCreateFileResourceFromUsage(virtualFile: VirtualFile) {
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val actions = highlightAndFindQuickFixes(CreateFileResourceQuickFix::class.java)
-    assertThat(actions).hasSize(1)
+    TestCase.assertEquals(1, actions.size)
 
     runWriteCommandAction(project) { actions[0].invoke(project, myFixture.editor, myFixture.file) }
   }
@@ -2584,6 +2588,6 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
 
   private fun setAndroidx() = runWriteCommandAction(project) {
     project.setAndroidxProperties("true")
-    assertThat(project.isAndroidx()).isTrue()  // Sanity check, regression test for b/145854589.
+    assertTrue(project.isAndroidx()) // Sanity check, regression test for b/145854589.
   }
 }

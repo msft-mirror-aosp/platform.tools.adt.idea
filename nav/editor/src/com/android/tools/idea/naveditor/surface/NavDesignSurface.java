@@ -617,7 +617,7 @@ public class NavDesignSurface extends DesignSurface {
     // track user triggered change
     getAnalyticsManager().trackZoom(type);
     boolean scaled = super.zoom(type, x, y);
-    boolean isFitZoom = type == ZoomType.FIT;
+    boolean isFitZoom = type == ZoomType.FIT || type == ZoomType.FIT_INTO;
 
     if (scaled || isFitZoom) {
       // The padding around the nav editor is calculated when NavSceneManager.requestLayout is called. If we have changed the scale
