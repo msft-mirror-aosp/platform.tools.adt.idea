@@ -40,7 +40,7 @@ Android Studio.app/Contents/bin/lldb/helpers/renderers/jb_lldb_natvis_loader.py
 Android Studio.app/Contents/bin/lldb/helpers/renderers/jb_lldb_utils.py
 Android Studio.app/Contents/bin/log.xml
 Android Studio.app/Contents/bin/ltedit.sh
-Android Studio.app/Contents/bin/printenv.py
+Android Studio.app/Contents/bin/printenv
 Android Studio.app/Contents/bin/profiler.sh
 Android Studio.app/Contents/bin/restarter
 Android Studio.app/Contents/bin/studio.svg
