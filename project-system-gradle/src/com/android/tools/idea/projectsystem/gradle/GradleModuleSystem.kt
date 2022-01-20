@@ -21,6 +21,7 @@ import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
 import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
+import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
@@ -43,10 +44,14 @@ import com.android.tools.idea.projectsystem.SampleDataDirectoryProvider
 import com.android.tools.idea.projectsystem.ScopeType
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
 import com.android.tools.idea.projectsystem.buildNamedModuleTemplatesFor
+import com.android.tools.idea.projectsystem.getAndroidTestModule
 import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifests
 import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifestsOfLibs
 import com.android.tools.idea.projectsystem.getForFile
+import com.android.tools.idea.projectsystem.getMainModule
+import com.android.tools.idea.projectsystem.getTestFixturesModule
 import com.android.tools.idea.projectsystem.getTransitiveNavigationFiles
+import com.android.tools.idea.projectsystem.getUnitTestModule
 import com.android.tools.idea.projectsystem.isAndroidTestFile
 import com.android.tools.idea.projectsystem.sourceProviders
 import com.android.tools.idea.res.AndroidDependenciesCache
@@ -57,7 +62,6 @@ import com.android.tools.idea.stats.recordTestLibraries
 import com.android.tools.idea.testartifacts.scopes.GradleTestArtifactSearchScopes
 import com.android.tools.idea.util.androidFacet
 import com.google.wireless.android.sdk.stats.TestLibraries
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.vfs.VfsUtil
@@ -84,8 +88,6 @@ import java.util.concurrent.TimeUnit
  * For now always look at the transitive closure of dependencies.
  */
 const val CHECK_DIRECT_GRADLE_DEPENDENCIES = false
-
-private val LOG: Logger get() = Logger.getInstance("GradleModuleSystem.kt")
 
 /** Creates a map for the given pairs, filtering out null values. */
 private fun <K, V> notNullMapOf(vararg pairs: Pair<K, V?>): Map<K, V> {
@@ -130,15 +132,15 @@ class GradleModuleSystem(
   override fun getResolvedDependency(coordinate: GradleCoordinate, scope: DependencyScopeType): GradleCoordinate? {
     return getDependenciesFor(module, scope)
       ?.let { it.androidLibraries.asSequence() + it.javaLibraries.asSequence() }
-      ?.mapNotNull { GradleCoordinate.parseCoordinateString(it.artifactAddress) }
+      ?.mapNotNull { GradleCoordinate.parseCoordinateString(it.target.artifactAddress) }
       ?.find { it.matches(coordinate) }
   }
 
   override fun getDependencyPath(coordinate: GradleCoordinate): Path? {
     return getDependenciesFor(module, DependencyScopeType.MAIN)
       ?.let { dependencies ->
-        dependencies.androidLibraries.asSequence().map { it.artifactAddress to it.artifact } +
-        dependencies.javaLibraries.asSequence().map { it.artifactAddress to it.artifact }
+        dependencies.androidLibraries.asSequence().map { it.target.artifactAddress to it.target.artifact } +
+        dependencies.javaLibraries.asSequence().map { it.target.artifactAddress to it.target.artifact }
       }
       ?.find { GradleCoordinate.parseCoordinateString(it.first)?.matches(coordinate) ?: false }
       ?.second?.toPath()
@@ -164,7 +166,7 @@ class GradleModuleSystem(
     else {
       getDependenciesFor(module, DependencyScopeType.MAIN)
         ?.let { it.androidLibraries.asSequence() + it.javaLibraries.asSequence() }
-        ?.mapNotNull { GradleCoordinate.parseCoordinateString(it.artifactAddress) } ?: emptySequence()
+        ?.mapNotNull { GradleCoordinate.parseCoordinateString(it.target.artifactAddress) } ?: emptySequence()
     }
   }
 
@@ -184,7 +186,11 @@ class GradleModuleSystem(
 
   override fun getAndroidLibraryDependencies(scope: DependencyScopeType): Collection<ExternalAndroidLibrary> {
     // TODO: b/129297171 When this bug is resolved we may not need getResolvedLibraryDependencies(Module)
-    return getDependenciesFor(module, scope)?.androidLibraries?.map(::convertLibraryToExternalLibrary) ?: emptyList()
+    return getDependenciesFor(module, scope)
+             ?.androidLibraries
+             ?.map(IdeAndroidLibraryDependency::target)
+             ?.map(::convertLibraryToExternalLibrary)
+           ?: emptyList()
   }
 
   private fun getDependenciesFor(module: Module, scope: DependencyScopeType): IdeDependencies? {
@@ -195,7 +201,7 @@ class GradleModuleSystem(
              DependencyScopeType.ANDROID_TEST -> gradleModel.selectedVariant.androidTestArtifact?.level2Dependencies
              DependencyScopeType.UNIT_TEST -> gradleModel.selectedVariant.unitTestArtifact?.level2Dependencies
              DependencyScopeType.TEST_FIXTURES -> gradleModel.selectedVariant.testFixturesArtifact?.level2Dependencies
-           } ?: return null
+           }
   }
 
   override fun canRegisterDependency(type: DependencyType): CapabilityStatus {
@@ -345,25 +351,21 @@ class GradleModuleSystem(
   }
 
   override fun getResolveScope(scopeType: ScopeType): GlobalSearchScope {
-    val testScopes = getTestArtifactSearchScopes()
-    return when {
-      scopeType == ScopeType.MAIN -> module.getModuleWithDependenciesAndLibrariesScope(false)
-      testScopes == null -> module.getModuleWithDependenciesAndLibrariesScope(true)
-      else -> {
-        val excludeScope = when (scopeType) {
-          ScopeType.SHARED_TEST -> testScopes.sharedTestExcludeScope
-          ScopeType.UNIT_TEST -> testScopes.unitTestExcludeScope
-          ScopeType.ANDROID_TEST -> testScopes.androidTestExcludeScope
-          else -> error("Unknown test scope")
-        }
-
-        // Usual scope minus things to exclude:
-        module.getModuleWithDependenciesAndLibrariesScope(true).intersectWith(GlobalSearchScope.notScope(excludeScope))
-      }
-    }
+    val type = type
+    val mainModule = if (type == AndroidModuleSystem.Type.TYPE_TEST) null else module.getMainModule()
+    val androidTestModule = if (type == AndroidModuleSystem.Type.TYPE_TEST) module.getMainModule() else module.getAndroidTestModule()
+    val unitTestModule = module.getUnitTestModule()
+    val fixturesModule = module.getTestFixturesModule()
+    return when (scopeType) {
+      ScopeType.MAIN -> mainModule?.getModuleWithDependenciesAndLibrariesScope(false)
+      ScopeType.UNIT_TEST -> unitTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
+      ScopeType.ANDROID_TEST -> androidTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
+      ScopeType.TEST_FIXTURES -> fixturesModule?.getModuleWithDependenciesAndLibrariesScope(false)
+      ScopeType.SHARED_TEST -> GlobalSearchScope.EMPTY_SCOPE
+    } ?: GlobalSearchScope.EMPTY_SCOPE
   }
 
-  override fun getTestArtifactSearchScopes(): TestArtifactSearchScopes? = GradleTestArtifactSearchScopes.getInstance(module)
+  override fun getTestArtifactSearchScopes(): TestArtifactSearchScopes = GradleTestArtifactSearchScopes(module)
 
   private inline fun <T> readFromAgpFlags(read: (IdeAndroidGradlePluginProjectFlags) -> T): T? {
     return GradleAndroidModel.get(module)?.androidProject?.agpFlags?.let(read)
@@ -413,7 +415,7 @@ private fun AndroidFacet.getLibraryManifests(dependencies: List<AndroidFacet>): 
         GradleAndroidModel.get(it)
           ?.selectedMainCompileLevel2Dependencies
           ?.androidLibraries
-          ?.mapNotNull { it.manifestFile() }
+          ?.mapNotNull { it.target.manifestFile() }
           .orEmpty()
       }
       .toSet()

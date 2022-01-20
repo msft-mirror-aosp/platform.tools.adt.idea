@@ -330,7 +330,6 @@ iml_module(
         "//tools/adt/idea/android-lint:intellij.android.lint[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils[module, test]",
-        "//tools/adt/idea/device-manager:intellij.android.device-manager[module, test]",
     ],
 )
 
@@ -444,7 +443,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.0.0",
-        "@maven//:androidx.compose.ui.ui-tooling_1.1.0-beta01",
+        "@maven//:androidx.compose.ui.ui-tooling_1.1.0-rc01",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.0.4",
         "@maven//:androidx.core.core-ktx_1.0.1",
@@ -473,7 +472,7 @@ maven_repository(
         "@maven//:com.android.support.multidex-instrumentation_1.0.2",
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
-        "@maven//:com.android.tools.desugar_jdk_libs_1.0.5",
+        "@maven//:com.android.tools.desugar_jdk_libs_1.1.5",
         "@maven//:com.google.android.gms.play-services-maps_17.0.1",
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.auto.value.auto-value_1.6.2",

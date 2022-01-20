@@ -17,7 +17,8 @@ package com.android.tools.idea.testartifacts.instrumented.testsuite.view
 
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.projectsystem.TestArtifactSearchScopes.Companion.getInstance
+import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration
 import com.android.tools.idea.testartifacts.instrumented.testsuite.actions.ExportAndroidTestResultsAction
 import com.android.tools.idea.testartifacts.instrumented.testsuite.actions.ImportTestGroup
@@ -207,7 +208,6 @@ class AndroidTestSuiteView @UiThread @JvmOverloads constructor(
   var testExecutionDurationOverride: Duration? = null
 
   init {
-    val testArtifactSearchScopes = module?.let { getInstance(module) }
     val androidTestResultsUserPreferencesManager: AndroidTestResultsUserPreferencesManager? = if (runConfiguration is AndroidTestRunConfiguration) {
       val scheduledDeviceIds = HashSet<String>()
       myScheduledDevices.forEach { scheduledDeviceIds.add(it.id) }
@@ -216,7 +216,13 @@ class AndroidTestSuiteView @UiThread @JvmOverloads constructor(
       null
     }
     myResultsTableView = AndroidTestResultsTableView(
-      this, JavaPsiFacade.getInstance(myProject), testArtifactSearchScopes, myLogger, androidTestResultsUserPreferencesManager)
+      this,
+      JavaPsiFacade.getInstance(myProject),
+      module,
+      module?.let { TestArtifactSearchScopes.getInstance(module) },
+      myLogger,
+      androidTestResultsUserPreferencesManager
+    )
     myResultsTableView.setRowFilter { testResults: AndroidTestResults ->
       if (testResults.isRootAggregationResult()) {
         return@setRowFilter true

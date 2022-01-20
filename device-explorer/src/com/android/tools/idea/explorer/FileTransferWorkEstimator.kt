@@ -23,7 +23,6 @@ import com.android.tools.idea.explorer.fs.DeviceFileEntry
 import com.android.tools.idea.explorer.fs.ThrottledProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -91,11 +90,11 @@ class FileTransferWorkEstimator {
     progress: FileTransferWorkEstimatorProgress
   ) {
     if (progress.isCancelled) {
-      throw CancellationException()
+      cancelAndThrow()
     }
     reportProgress(estimate, progress)
     if (entry.isDirectory || isLinkToDirectory) {
-      val children = entry.entries.await()
+      val children = entry.entries()
       estimate.addDirectoryCount(1)
       estimate.addWorkUnits(directoryWorkUnits)
       for (child in children) {
@@ -128,7 +127,7 @@ class FileTransferWorkEstimator {
     progress: FileTransferWorkEstimatorProgress
   ) {
     if (progress.isCancelled) {
-      throw CancellationException()
+      cancelAndThrow()
     }
     reportProgress(estimate, progress)
     if (file.isDirectory) {

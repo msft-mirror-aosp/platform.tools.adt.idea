@@ -413,94 +413,94 @@ MODULE                        : project
                     scope                         : RUNTIME
                     packaging                     : jar
                     classpathOrder                : 31
-                externalDependency            : com.android.tools.build:manifest-merger:30.2.0-dev
+                externalDependency            : com.android.tools.build:manifest-merger:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.build
                     name                          : manifest-merger
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 8
-                externalDependency            : com.android.tools.external.com-intellij:intellij-core:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:intellij-core:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : intellij-core
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 5
-                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : kotlin-compiler
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 6
-                externalDependency            : com.android.tools.external.org-jetbrains:uast:30.2.0-dev
+                externalDependency            : com.android.tools.external.org-jetbrains:uast:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.org-jetbrains
                     name                          : uast
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 7
-                externalDependency            : com.android.tools.layoutlib:layoutlib-api:30.2.0-dev
+                externalDependency            : com.android.tools.layoutlib:layoutlib-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.layoutlib
                     name                          : layoutlib-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 10
-                externalDependency            : com.android.tools.lint:lint-api:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 2
-                externalDependency            : com.android.tools.lint:lint-checks:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-checks:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-checks
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 1
-                externalDependency            : com.android.tools.lint:lint-model:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-model:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-model
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 4
-                externalDependency            : com.android.tools:annotations:30.2.0-dev
+                externalDependency            : com.android.tools:annotations:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : annotations
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 20
-                externalDependency            : com.android.tools:common:30.2.0-dev
+                externalDependency            : com.android.tools:common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 9
-                externalDependency            : com.android.tools:repository:30.2.0-dev
+                externalDependency            : com.android.tools:repository:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : repository
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 22
-                externalDependency            : com.android.tools:sdk-common:30.2.0-dev
+                externalDependency            : com.android.tools:sdk-common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdk-common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 11
-                externalDependency            : com.android.tools:sdklib:30.2.0-dev
+                externalDependency            : com.android.tools:sdklib:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdklib
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 12
@@ -701,94 +701,94 @@ MODULE                        : project
                     scope                         : RUNTIME
                     packaging                     : jar
                     classpathOrder                : 31
-                externalDependency            : com.android.tools.build:manifest-merger:30.2.0-dev
+                externalDependency            : com.android.tools.build:manifest-merger:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.build
                     name                          : manifest-merger
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 8
-                externalDependency            : com.android.tools.external.com-intellij:intellij-core:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:intellij-core:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : intellij-core
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 5
-                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : kotlin-compiler
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 6
-                externalDependency            : com.android.tools.external.org-jetbrains:uast:30.2.0-dev
+                externalDependency            : com.android.tools.external.org-jetbrains:uast:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.org-jetbrains
                     name                          : uast
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 7
-                externalDependency            : com.android.tools.layoutlib:layoutlib-api:30.2.0-dev
+                externalDependency            : com.android.tools.layoutlib:layoutlib-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.layoutlib
                     name                          : layoutlib-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 10
-                externalDependency            : com.android.tools.lint:lint-api:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 2
-                externalDependency            : com.android.tools.lint:lint-checks:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-checks:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-checks
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 1
-                externalDependency            : com.android.tools.lint:lint-model:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-model:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-model
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 4
-                externalDependency            : com.android.tools:annotations:30.2.0-dev
+                externalDependency            : com.android.tools:annotations:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : annotations
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 20
-                externalDependency            : com.android.tools:common:30.2.0-dev
+                externalDependency            : com.android.tools:common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 9
-                externalDependency            : com.android.tools:repository:30.2.0-dev
+                externalDependency            : com.android.tools:repository:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : repository
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 22
-                externalDependency            : com.android.tools:sdk-common:30.2.0-dev
+                externalDependency            : com.android.tools:sdk-common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdk-common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 11
-                externalDependency            : com.android.tools:sdklib:30.2.0-dev
+                externalDependency            : com.android.tools:sdklib:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdklib
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 12
@@ -989,94 +989,94 @@ MODULE                        : project
                     scope                         : RUNTIME
                     packaging                     : jar
                     classpathOrder                : 31
-                externalDependency            : com.android.tools.build:manifest-merger:30.2.0-dev
+                externalDependency            : com.android.tools.build:manifest-merger:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.build
                     name                          : manifest-merger
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 8
-                externalDependency            : com.android.tools.external.com-intellij:intellij-core:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:intellij-core:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : intellij-core
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 5
-                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:30.2.0-dev
+                externalDependency            : com.android.tools.external.com-intellij:kotlin-compiler:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.com-intellij
                     name                          : kotlin-compiler
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 6
-                externalDependency            : com.android.tools.external.org-jetbrains:uast:30.2.0-dev
+                externalDependency            : com.android.tools.external.org-jetbrains:uast:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.external.org-jetbrains
                     name                          : uast
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 7
-                externalDependency            : com.android.tools.layoutlib:layoutlib-api:30.2.0-dev
+                externalDependency            : com.android.tools.layoutlib:layoutlib-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.layoutlib
                     name                          : layoutlib-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 10
-                externalDependency            : com.android.tools.lint:lint-api:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-api:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-api
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 2
-                externalDependency            : com.android.tools.lint:lint-checks:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-checks:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-checks
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 1
-                externalDependency            : com.android.tools.lint:lint-model:30.2.0-dev
+                externalDependency            : com.android.tools.lint:lint-model:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools.lint
                     name                          : lint-model
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 4
-                externalDependency            : com.android.tools:annotations:30.2.0-dev
+                externalDependency            : com.android.tools:annotations:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : annotations
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 20
-                externalDependency            : com.android.tools:common:30.2.0-dev
+                externalDependency            : com.android.tools:common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 9
-                externalDependency            : com.android.tools:repository:30.2.0-dev
+                externalDependency            : com.android.tools:repository:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : repository
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 22
-                externalDependency            : com.android.tools:sdk-common:30.2.0-dev
+                externalDependency            : com.android.tools:sdk-common:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdk-common
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 11
-                externalDependency            : com.android.tools:sdklib:30.2.0-dev
+                externalDependency            : com.android.tools:sdklib:<ANDROID_TOOLS_BASE_VERSION>
                     group                         : com.android.tools
                     name                          : sdklib
-                    version                       : 30.2.0-dev
+                    version                       : <ANDROID_TOOLS_BASE_VERSION>
                     scope                         : PROVIDED
                     packaging                     : jar
                     classpathOrder                : 12
@@ -1462,14 +1462,14 @@ MODULE                        : project.app
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
-                ClassFolder                   : <ROOT>/app/build/intermediates/javac/debug/classes [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/aidl_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/source/buildConfig/debug [-]
-                AdditionalClassesFolders      : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -1497,14 +1497,14 @@ MODULE                        : project.app
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
-                ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugAndroidTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/source/buildConfig/androidTest/debug [-]
-                AdditionalClassesFolders      : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -1531,11 +1531,11 @@ MODULE                        : project.app
                 Name                          : UNIT_TEST
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
-                ClassFolder                   : <ROOT>/app/build/intermediates/javac/debugUnitTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
-                AdditionalClassesFolders      : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugUnitTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -1777,14 +1777,14 @@ MODULE                        : project.library
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
-                ClassFolder                   : <ROOT>/library/build/intermediates/javac/debug/classes [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/aidl_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/ap_generated_sources/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/renderscript_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/source/buildConfig/debug [-]
-                AdditionalClassesFolders      : <ROOT>/library/build/intermediates/compile_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/compile_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/javac/debug/classes [-]
                 Level2Dependencies
                 IsSigned                      : false
                 CodeShrinker                  : null
@@ -1800,14 +1800,14 @@ MODULE                        : project.library
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
-                ClassFolder                   : <ROOT>/library/build/intermediates/javac/debugAndroidTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/ap_generated_sources/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/source/buildConfig/androidTest/debug [-]
-                AdditionalClassesFolders      : <ROOT>/library/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/javac/debugAndroidTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -1830,11 +1830,11 @@ MODULE                        : project.library
                 Name                          : UNIT_TEST
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
-                ClassFolder                   : <ROOT>/library/build/intermediates/javac/debugUnitTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/library/build/generated/ap_generated_sources/debugUnitTest/out [-]
-                AdditionalClassesFolders      : <ROOT>/library/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugUnitTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugUnitTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library/build/intermediates/javac/debugUnitTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -2069,14 +2069,14 @@ MODULE                        : project.library-remote
                 Name                          : MAIN
                 CompileTaskName               : compileDebugSources
                 AssembleTaskName              : assembleDebug
-                ClassFolder                   : <ROOT>/library-remote/build/intermediates/javac/debug/classes [-]
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/aidl_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/ap_generated_sources/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/renderscript_source_output_dir/debug/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/source/buildConfig/debug [-]
-                AdditionalClassesFolders      : <ROOT>/library-remote/build/intermediates/compile_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/compile_r_class_jar/debug/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/javac/debug/classes [-]
                 Level2Dependencies
                 IsSigned                      : false
                 CodeShrinker                  : null
@@ -2092,14 +2092,14 @@ MODULE                        : project.library-remote
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileDebugAndroidTestSources
                 AssembleTaskName              : assembleDebugAndroidTest
-                ClassFolder                   : <ROOT>/library-remote/build/intermediates/javac/debugAndroidTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/ap_generated_sources/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/source/buildConfig/androidTest/debug [-]
-                AdditionalClassesFolders      : <ROOT>/library-remote/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/javac/debugAndroidTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency
@@ -2122,11 +2122,11 @@ MODULE                        : project.library-remote
                 Name                          : UNIT_TEST
                 CompileTaskName               : compileDebugUnitTestSources
                 AssembleTaskName              : assembleDebugUnitTest
-                ClassFolder                   : <ROOT>/library-remote/build/intermediates/javac/debugUnitTest/classes [-]
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/library-remote/build/generated/ap_generated_sources/debugUnitTest/out [-]
-                AdditionalClassesFolders      : <ROOT>/library-remote/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugUnitTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugUnitTest/R.jar [-]
+                ClassesFolder                 : <ROOT>/library-remote/build/intermediates/javac/debugUnitTest/classes [-]
                 Level2Dependencies
                     ModuleDependencies
                         ModuleDependency

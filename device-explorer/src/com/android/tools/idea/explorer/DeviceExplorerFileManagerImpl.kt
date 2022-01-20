@@ -40,7 +40,6 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.NonInjectable
 import com.intellij.util.PathUtilRt
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.file.Files
@@ -135,7 +134,7 @@ class DeviceExplorerFileManagerImpl @NonInjectable @VisibleForTesting constructo
     val fileTransferProgress = createFileTransferProgress(entry, progress)
     progress.onStarting(entry.fullPath)
     try {
-      entry.downloadFile(localPath, fileTransferProgress).await()
+      entry.downloadFile(localPath, fileTransferProgress)
       return findFile(localPath)
     } catch (t: Throwable) {
       deleteTemporaryFile(localPath)
@@ -187,7 +186,7 @@ class DeviceExplorerFileManagerImpl @NonInjectable @VisibleForTesting constructo
   override suspend fun openFile(localPath: Path) {
     val file = findFile(localPath)
     withContext(uiThread) {
-      FileTypeChooser.getKnownFileTypeOrAssociate(file, myProject) ?: throw CancellationException("Operation cancelled by user")
+      FileTypeChooser.getKnownFileTypeOrAssociate(file, myProject) ?: cancelAndThrow()
       OpenFileAction.openFile(file, myProject)
       myTemporaryEditorFiles.add(file)
     }

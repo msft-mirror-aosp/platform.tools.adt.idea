@@ -21,13 +21,11 @@ import com.android.sdklib.BuildToolInfo;
 import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.OptionalLibrary;
 import com.android.sdklib.repository.targets.PlatformTarget;
-import com.android.tools.idea.rendering.multi.CompatibilityRenderTarget;
 import com.android.tools.idea.util.StudioPathManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.application.PluginPathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
@@ -106,7 +104,7 @@ public class StudioEmbeddedRenderTarget implements IAndroidTarget {
 
     String path = FileUtil.join(homePath, "/resources/layoutlib/");
     if (StudioPathManager.isRunningFromSources()) {
-      path = FileUtil.join(StudioPathManager.getSourcesRoot(), "prebuilts/studio/layoutlib/");
+      path = StudioPathManager.resolvePathFromSourcesRoot("prebuilts/studio/layoutlib/").toString();
     }
 
     VirtualFile root = LocalFileSystem.getInstance().findFileByPath(FileUtil.toSystemIndependentName(path));

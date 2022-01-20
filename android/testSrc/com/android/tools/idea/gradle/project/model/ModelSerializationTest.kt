@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
+import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl
@@ -69,7 +70,6 @@ import com.intellij.serialization.ObjectSerializer
 import com.intellij.serialization.ReadConfiguration
 import com.intellij.serialization.SkipNullAndEmptySerializationFilter
 import com.intellij.serialization.WriteConfiguration
-import junit.framework.TestCase
 import org.jetbrains.kotlin.kapt.idea.KaptGradleModelImpl
 import org.junit.Test
 import java.io.File
@@ -116,7 +116,7 @@ class ModelSerializationTest : AndroidGradleTestCase() {
     )
 
     val module = project.gradleModule(":moduleName")
-    TestCase.assertNotNull(module)
+    Truth.assertThat(module).isNotNull()
     GradleAndroidModel.get(module!!)!!
   }
 
@@ -194,6 +194,32 @@ class ModelSerializationTest : AndroidGradleTestCase() {
       "publicResources",
       File("artifactFile"),
       "symbolFile",
+    )
+  }
+
+  @Test
+  fun testLevel2AndroidLibraryDependency() = assertSerializable {
+    IdeAndroidLibraryDependencyImpl(
+      IdeAndroidLibraryImpl(
+        "artifactAddress",
+        "name",
+        File("folder"),
+        "manifest",
+        listOf("compileJarFiles"),
+        listOf("runtimeJarFiles"),
+        "resFolder",
+        File("resStaticLibrary"),
+        "assetsFolder",
+        "jniFolder",
+        "aidlFolder",
+        "renderscriptFolder",
+        "prouardRules",
+        "lintJar",
+        "externalAnnotations",
+        "publicResources",
+        File("artifactFile"),
+        "symbolFile",
+      ),
       true
     )
   }

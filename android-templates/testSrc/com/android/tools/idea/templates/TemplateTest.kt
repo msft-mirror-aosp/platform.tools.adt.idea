@@ -306,8 +306,6 @@ class TemplateTest(private val runTemplateCoverageOnly: Boolean = false) : Andro
     val withSpecificKotlin: ProjectStateCustomizer = { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
       projectData.language = Language.Kotlin
       projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
-      RenderTemplateModel.Companion.toString()
-      moduleData.category = Category.Compose
     }
     checkCreateTemplate("Empty Compose Activity", withSpecificKotlin) // Compose is always Kotlin
   }
@@ -319,7 +317,6 @@ class TemplateTest(private val runTemplateCoverageOnly: Boolean = false) : Andro
       val withSpecificKotlin: ProjectStateCustomizer = { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
         projectData.language = Language.Kotlin
         projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = true)
-        moduleData.category = Category.Compose
       }
       checkCreateTemplate("Empty Compose Activity (Material3)", withSpecificKotlin) // Compose is always Kotlin
     } finally {
@@ -340,6 +337,15 @@ class TemplateTest(private val runTemplateCoverageOnly: Boolean = false) : Andro
   @TemplateCheck
   fun testNewBlankWearActivity() {
     checkCreateTemplate("Blank Activity")
+  }
+
+  @TemplateCheck
+  fun testNewComposeWearActivity() {
+    val withSpecificKotlin: ProjectStateCustomizer = { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+      projectData.language = Language.Kotlin
+      projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
+    }
+    checkCreateTemplate("Empty Wear OS Compose Activity", withSpecificKotlin)
   }
 
   @TemplateCheck

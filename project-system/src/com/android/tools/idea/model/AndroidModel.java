@@ -61,7 +61,6 @@ public interface AndroidModel {
    */
   static void set(@NotNull AndroidFacet facet, @Nullable AndroidModel androidModel) {
     facet.putUserData(KEY, androidModel);
-    facet.getModule().getProject().getMessageBus().syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet);
   }
 
   /**
@@ -121,13 +120,10 @@ public interface AndroidModel {
 
   default @NotNull EnumSet<Abi> getSupportedAbis() { return EnumSet.allOf(Abi.class); }
 
-  /**
-   * Indicates whether the given file or directory is generated.
-   *
-   * @param file the file or directory.
-   * @return {@code true} if the given file or directory is generated; {@code false} otherwise.
-   */
-  boolean isGenerated(@NotNull VirtualFile file);
+  @Deprecated
+  default boolean isGenerated(@NotNull VirtualFile file) {
+    throw new UnsupportedOperationException("Deprecated. Use GeneratedSourcesFilter.");
+  }
 
   /**
    * @return A provider for finding .class output files and external .jars.
@@ -135,13 +131,10 @@ public interface AndroidModel {
   @NotNull
   ClassJarProvider getClassJarProvider();
 
-  /**
-   * @return Whether the class specified by fqcn is out of date and needs to be rebuilt.
-   * <p>
-   * NOTE: Implementations are not necessarily able to detect all the cases when the file is out of date. Therefore, {@code false} should
-   *       be interpreted as meaning "not known".
-   */
-  boolean isClassFileOutOfDate(@NotNull Module module, @NotNull String fqcn, @NotNull VirtualFile classFile);
+  @Deprecated
+  default boolean isClassFileOutOfDate(@NotNull Module module, @NotNull String fqcn, @NotNull VirtualFile classFile) {
+    throw new UnsupportedOperationException("Deprecated. Use ClassJarProvider.isClassFileOutOfDate");
+  }
 
   @NotNull
   Namespacing getNamespacing();

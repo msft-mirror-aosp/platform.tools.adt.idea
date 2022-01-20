@@ -23,7 +23,7 @@ import com.android.testutils.ImageDiffUtil
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
-import com.android.testutils.TestUtils.getWorkspaceRoot
+import com.android.testutils.TestUtils
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -200,6 +200,141 @@ class EmulatorToolWindowPanelTest {
     focusManager.focusOwner = null
     call.waitForCancellation(2, TimeUnit.SECONDS)
 
+    panel.destroyContent()
+    assertThat(panel.primaryEmulatorView).isNull()
+    streamScreenshotCall.waitForCancellation(2, TimeUnit.SECONDS)
+  }
+
+  @Test
+  fun testWearToolbarActionsApi30() {
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 30)
+    val panel = createWindowPanel(avdFolder)
+    val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
+
+    assertThat(panel.primaryEmulatorView).isNull()
+
+    panel.createContent(true)
+    val emulatorView = panel.primaryEmulatorView ?: throw AssertionError()
+
+    // Check appearance.
+    var frameNumber = emulatorView.frameNumber
+    assertThat(frameNumber).isEqualTo(0)
+    panel.size = Dimension(430, 450)
+    ui.updateToolbars()
+    ui.layoutAndDispatchEvents()
+    val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 320 height: 320")
+    assertAppearance(ui, "WearToolbarActions1", 0.08)
+
+    // Check Wear1ButtonAction.
+    var button = ui.getComponent<ActionButton> { it.action.templateText == "First" }
+    ui.mouseClickOn(button)
+    var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+    assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "Home"""")
+
+    // Check Wear2ButtonAction.
+    button = ui.getComponent { it.action.templateText == "Second" }
+    ui.mousePressOn(button)
+    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+    assertThat(shortDebugString(call.request)).isEqualTo("""key: "Power"""")
+    ui.mouseRelease()
+    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+    assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keyup key: "Power"""")
+
+    // Check PalmAction.
+    button = ui.getComponent { it.action.templateText == "Palm" }
+    ui.mouseClickOn(button)
+    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+    assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "Standby"""")
+
+    // Check TiltAction.
+    button = ui.getComponent { it.action.templateText == "Tilt" }
+    ui.mouseClickOn(button)
+    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setPhysicalModel")
+    assertThat(shortDebugString(call.request)).isEqualTo("target: WRIST_TILT value { data: 1.0 }")
+
+    // Check that the buttons not applicable to Wear OS 3 are hidden.
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Power" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Up" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Down" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Left" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Home" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNull()
+
+    panel.destroyContent()
+    assertThat(panel.primaryEmulatorView).isNull()
+    streamScreenshotCall.waitForCancellation(2, TimeUnit.SECONDS)
+  }
+
+  @Test
+  fun testWearToolbarActionsApi28() {
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 28)
+    val panel = createWindowPanel(avdFolder)
+    val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
+
+    assertThat(panel.primaryEmulatorView).isNull()
+
+    panel.createContent(true)
+    panel.size = Dimension(430, 450)
+    ui.updateToolbars()
+    ui.layoutAndDispatchEvents()
+
+    // Check toolbar buttons.
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "First" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Second" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Palm" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Tilt" }).isNotNull()
+
+    // Check that the buttons not applicable to Wear OS 3 are hidden.
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Power" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Up" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Down" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Left" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Home" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNull()
+
+    val streamScreenshotCall = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    panel.destroyContent()
+    assertThat(panel.primaryEmulatorView).isNull()
+    streamScreenshotCall.waitForCancellation(2, TimeUnit.SECONDS)
+  }
+
+  @Test
+  fun testWearToolbarActionsApi27() {
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 27)
+    val panel = createWindowPanel(avdFolder)
+    val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
+
+    assertThat(panel.primaryEmulatorView).isNull()
+
+    panel.createContent(true)
+    panel.size = Dimension(430, 450)
+    ui.updateToolbars()
+    ui.layoutAndDispatchEvents()
+
+    // Check that the buttons specific to Wear OS 3 are hidden.
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "First" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Second" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Palm" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Tilt" }).isNull()
+
+    // The device doesn't run Wear OS 3. Check that regular toolbar buttons are present.
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Power" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Up" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Volume Down" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Left" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Home" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNotNull()
+
+    val streamScreenshotCall = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
     panel.destroyContent()
     assertThat(panel.primaryEmulatorView).isNull()
     streamScreenshotCall.waitForCancellation(2, TimeUnit.SECONDS)
@@ -486,7 +621,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   private fun createDropTarget(): DnDTarget {
-    val adb = getWorkspaceRoot().resolve("$TEST_DATA_PATH/fake-adb")
+    val adb = TestUtils.resolveWorkspacePathUnchecked("$TEST_DATA_PATH/fake-adb")
     val savedAdbPath = System.getProperty(ADB_PATH_PROPERTY)
     if (savedAdbPath != null) {
       Disposer.register(testRootDisposable) { System.setProperty(ADB_PATH_PROPERTY, savedAdbPath) }
@@ -538,6 +673,13 @@ class EmulatorToolWindowPanelTest {
 
   private fun FakeUi.mouseRelease() {
     mouse.release()
+    // Allow events to propagate.
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+  }
+
+  private fun FakeUi.mouseClickOn(component: Component) {
+    val location: Point = getPosition(component)
+    mouse.click(location.x, location.y)
     // Allow events to propagate.
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
   }
@@ -607,7 +749,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   private fun getGoldenFile(name: String): Path {
-    return getWorkspaceRoot().resolve("$TEST_DATA_PATH/golden/${name}.png")
+    return TestUtils.resolveWorkspacePathUnchecked("$TEST_DATA_PATH/golden/${name}.png")
   }
 }
 

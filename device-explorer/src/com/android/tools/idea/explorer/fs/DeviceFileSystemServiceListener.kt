@@ -15,11 +15,12 @@
  */
 package com.android.tools.idea.explorer.fs
 
-import com.android.tools.idea.explorer.fs.DeviceFileSystem
+import com.android.annotations.concurrency.UiThread
 
 /**
  * Events fired by an instance of [DeviceFileSystemService].
  */
+@UiThread
 interface DeviceFileSystemServiceListener {
   /**
    * The internal state of the [DeviceFileSystemService] has changed,

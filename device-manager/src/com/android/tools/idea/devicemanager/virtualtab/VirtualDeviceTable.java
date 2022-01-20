@@ -17,33 +17,38 @@ package com.android.tools.idea.devicemanager.virtualtab;
 
 import com.android.sdklib.internal.avd.AvdInfo;
 import com.android.tools.idea.avdmanager.ApiLevelComparator;
-import com.android.tools.idea.avdmanager.AvdManagerConnection;
+import com.android.tools.idea.concurrency.FutureUtils;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowButtonTableCellEditor;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowButtonTableCellRenderer;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowValue;
 import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
+import com.android.tools.idea.devicemanager.DevicePanel;
 import com.android.tools.idea.devicemanager.DeviceTable;
+import com.android.tools.idea.devicemanager.IconButtonTableCellRenderer;
 import com.android.tools.idea.devicemanager.Table;
 import com.android.tools.idea.devicemanager.Tables;
 import com.android.tools.idea.devicemanager.legacy.AvdActionPanel.AvdRefreshProvider;
 import com.android.tools.idea.devicemanager.legacy.AvdUiAction.AvdInfoProvider;
 import com.android.tools.idea.devicemanager.legacy.CreateAvdAction;
 import com.android.tools.idea.devicemanager.virtualtab.VirtualDeviceTableModel.Actions;
+import com.android.tools.idea.devicemanager.virtualtab.VirtualDeviceTableModel.EditValue;
 import com.android.tools.idea.devicemanager.virtualtab.VirtualDeviceTableModel.LaunchInEmulatorValue;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
+import com.intellij.icons.AllIcons;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.scale.JBUIScale;
+import com.intellij.util.concurrency.EdtExecutorService;
 import java.awt.Point;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import javax.swing.ActionMap;
 import javax.swing.DefaultRowSorter;
 import javax.swing.JComponent;
@@ -58,20 +63,44 @@ import org.jetbrains.annotations.Nullable;
 
 public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> implements Table, AvdRefreshProvider, AvdInfoProvider {
   private final @NotNull VirtualDevicePanel myPanel;
-  private final @NotNull Supplier<@NotNull List<@NotNull AvdInfo>> myGetAvds;
+  private final @NotNull VirtualDeviceAsyncSupplier myAsyncSupplier;
+
+  private static final class SetDevices implements FutureCallback<List<VirtualDevice>> {
+    private final @NotNull VirtualDeviceTableModel myModel;
+
+    private SetDevices(@NotNull VirtualDeviceTableModel model) {
+      myModel = model;
+    }
+
+    @Override
+    public void onSuccess(@Nullable List<@NotNull VirtualDevice> devices) {
+      assert devices != null;
+      myModel.setDevices(devices);
+
+      DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
+        .setKind(DeviceManagerEvent.EventKind.VIRTUAL_DEVICE_COUNT)
+        .setVirtualDeviceCount(devices.size())
+        .build();
+
+      DeviceManagerUsageTracker.log(event);
+    }
+
+    @Override
+    public void onFailure(@NotNull Throwable throwable) {
+      Logger.getInstance(VirtualDeviceTable.class).warn(throwable);
+    }
+  }
 
   VirtualDeviceTable(@NotNull VirtualDevicePanel panel) {
-    this(panel, new VirtualDeviceTableModel(), () -> AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(true));
+    this(panel, new VirtualDeviceTableModel());
   }
 
   @VisibleForTesting
-  VirtualDeviceTable(@NotNull VirtualDevicePanel panel,
-                     @NotNull VirtualDeviceTableModel model,
-                     @NotNull Supplier<@NotNull List<@NotNull AvdInfo>> getAvds) {
+  VirtualDeviceTable(@NotNull VirtualDevicePanel panel, @NotNull VirtualDeviceTableModel model) {
     super(model, VirtualDevice.class, VirtualDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX);
 
     myPanel = panel;
-    myGetAvds = getAvds;
+    myAsyncSupplier = new VirtualDeviceAsyncSupplier();
 
     model.addTableModelListener(event -> sizeWidthsToFit());
 
@@ -85,10 +114,14 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
                                                                                    this,
                                                                                    EventKind.VIRTUAL_DEVICE_FILE_EXPLORER_ACTION));
 
+      setDefaultEditor(EditValue.class, new EditButtonTableCellEditor(panel));
+
       setDefaultRenderer(LaunchInEmulatorValue.class, new LaunchInEmulatorButtonTableCellRenderer());
 
       setDefaultRenderer(ActivateDeviceFileExplorerWindowValue.class,
                          new ActivateDeviceFileExplorerWindowButtonTableCellRenderer<>(project, this));
+
+      setDefaultRenderer(EditValue.class, new IconButtonTableCellRenderer(AllIcons.Actions.Edit, "Edit this AVD"));
     }
     else {
       setDefaultEditor(Actions.class, new ActionsTableCell(this));
@@ -96,6 +129,8 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     }
 
     setDefaultRenderer(Device.class, new VirtualDeviceTableCellRenderer());
+    setDefaultRenderer(Long.class, new SizeOnDiskTableCellRenderer());
+
     setRowSorter(newRowSorter(model));
     setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     setShowGrid(false);
@@ -151,7 +186,7 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     return sorter;
   }
 
-  @NotNull VirtualDevicePanel getPanel() {
+  public @NotNull DevicePanel getPanel() {
     return myPanel;
   }
 
@@ -209,25 +244,12 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
 
   @Override
   public void refreshAvds() {
-    List<VirtualDevice> devices = myGetAvds.get().stream()
-      .map(VirtualDevices::build)
-      .collect(Collectors.toList());
-
-    getModel().setDevices(devices);
-
-    DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
-      .setKind(EventKind.VIRTUAL_DEVICE_COUNT)
-      .setVirtualDeviceCount(devices.size())
-      .build();
-
-    DeviceManagerUsageTracker.log(event);
+    FutureUtils.addCallback(myAsyncSupplier.get(), EdtExecutorService.getInstance(), new SetDevices(getModel()));
   }
 
   @Override
   public void refreshAvdsAndSelect(@Nullable AvdInfo device) {
     refreshAvds();
-
-    //changeSelection(); TODO
   }
 
   @Override

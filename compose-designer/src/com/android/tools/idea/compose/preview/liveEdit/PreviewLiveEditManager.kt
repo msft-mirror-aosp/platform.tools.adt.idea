@@ -284,9 +284,8 @@ private fun defaultCompileClassPathLocator(module: Module): List<String> {
     ?.selectedVariant
     ?.mainArtifact
   val modulePath = listOfNotNull(
-    CompilerModuleExtension.getInstance(module)?.compilerOutputPath?.path,
-    mainArtifact?.classesFolder?.absolutePath
-  ) + (mainArtifact?.additionalClassesFolders?.map { it.absolutePath } ?: emptyList())
+    CompilerModuleExtension.getInstance(module)?.compilerOutputPath?.path
+  ) + (mainArtifact?.classesFolder?.map { it.absolutePath } ?: emptyList())
 
   val libraryDeps = module.getLibraryDependenciesJars()
     .map { it.toString() }
@@ -315,7 +314,7 @@ private fun defaultRuntimeVersionLocator(module: Module): GradleVersion =
 private fun findDaemonPath(version: String): String {
   val homePath = FileUtil.toSystemIndependentName(PathManager.getHomePath())
   val jarRootPath = if (StudioPathManager.isRunningFromSources()) {
-    FileUtil.join(StudioPathManager.getSourcesRoot(), "tools/adt/idea/compose-designer/lib/")
+    StudioPathManager.resolvePathFromSourcesRoot("tools/adt/idea/compose-designer/lib/").toString()
   }
   else {
     // When running as part of the distribution, we allow also to override the path to the daemon via a system property.

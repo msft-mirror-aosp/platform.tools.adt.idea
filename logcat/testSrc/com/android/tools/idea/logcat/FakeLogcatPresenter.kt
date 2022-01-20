@@ -38,7 +38,8 @@ import com.android.tools.idea.logcat.settings.LogcatSettings
 internal class FakeLogcatPresenter : LogcatPresenter {
   var reloadedMessages = 0
   var attachedToDevice = false
-  val messageBatches = mutableListOf<List<String>>()
+  val messageBatches = mutableListOf<List<LogCatMessage>>()
+  val lineBatches = mutableListOf<List<String>>()
 
   override fun reloadMessages() {
     reloadedMessages++
@@ -48,21 +49,19 @@ internal class FakeLogcatPresenter : LogcatPresenter {
     TODO("Not yet implemented")
   }
 
-  override fun setShowOnlyProjectApps(enabled: Boolean) {
-    TODO("Not yet implemented")
-  }
-
   override fun clearMessageView() {
-    messageBatches.clear()
+    lineBatches.clear()
   }
 
-  override fun isLogcatEmpty(): Boolean = messageBatches.isEmpty()
+  override fun isLogcatEmpty(): Boolean = lineBatches.isEmpty()
 
-  override suspend fun processMessages(messages: List<LogCatMessage>) {}
+  override suspend fun processMessages(messages: List<LogCatMessage>) {
+    messageBatches.add(messages)
+  }
 
   override suspend fun appendMessages(textAccumulator: TextAccumulator) {
     val list: List<String> = textAccumulator.text.trim().split("\n")
-    messageBatches.add(list)
+    lineBatches.add(list)
   }
 
   override fun isAttachedToDevice() = attachedToDevice
@@ -80,7 +79,7 @@ internal class FakeLogcatPresenter : LogcatPresenter {
   }
 
   fun appendMessage(message: String) {
-    messageBatches.add(listOf(message))
+    lineBatches.add(listOf(message))
   }
 
   override fun dispose() {}

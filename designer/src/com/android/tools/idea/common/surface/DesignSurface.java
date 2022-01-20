@@ -54,7 +54,6 @@ import com.android.tools.idea.common.type.DefaultDesignerFileType;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.ui.designer.EditorDesignSurface;
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent;
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContentLayoutManager;
@@ -69,8 +68,8 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataProvider;
 import com.intellij.openapi.actionSystem.LangDataKeys;
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -312,6 +311,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
     super(new BorderLayout());
 
     Disposer.register(parentDisposable, this);
+    Disposer.register(this, myIssueModel);
     myProject = project;
     mySelectionModel = selectionModel;
     myZoomControlsPolicy = zoomControlsPolicy;
@@ -1014,11 +1014,9 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
         scaled = setScale(1d / getScreenScalingFactor());
         break;
       case FIT:
-      case FIT_INTO:
-        scaled = setScale(getFitScale(type == ZoomType.FIT_INTO));
+        scaled = setScale(getFitScale(false));
         break;
       default:
-      case SCREEN:
         throw new UnsupportedOperationException("Not yet implemented: " + type);
     }
 
@@ -1040,7 +1038,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
    * This function doesn't consider the legal scale range, which can be get by {@link #getMaxScale()} and {@link #getMinScale()}.
    *
    * @param size    dimension to fit into the view
-   * @param fitInto {@link ZoomType#FIT_INTO}
+   * @param fitInto If true, don't scale to more than 100%
    * @return The scale to make the content fit the design surface
    * @see {@link #getScreenScalingFactor()}
    */
@@ -1791,7 +1789,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
     if (DESIGN_SURFACE.is(dataId) || ZOOMABLE_KEY.is(dataId) || PANNABLE_KEY.is(dataId)) {
       return this;
     }
-    if (PlatformDataKeys.FILE_EDITOR.is(dataId)) {
+    if (PlatformCoreDataKeys.FILE_EDITOR.is(dataId)) {
       return myFileEditorDelegate.get();
     }
     else if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId) ||
@@ -1838,7 +1836,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
     }
     else {
       NlModel model = getModel();
-      if (LangDataKeys.MODULE.is(dataId) && model != null) {
+      if (PlatformCoreDataKeys.MODULE.is(dataId) && model != null) {
         return model.getModule();
       }
     }
@@ -1916,7 +1914,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   abstract public List<NlComponent> getSelectableComponents();
 
   /**
-   * Sets the maximum zoom level allowed for {@link ZoomType#FIT} or {@link ZoomType#FIT_INTO}. By default there is no maximum value.
+   * Sets the maximum zoom level allowed for {@link ZoomType#FIT}. By default there is no maximum value.
    */
   public void setMaxFitIntoZoomLevel(@SurfaceZoomLevel double maxFitIntoZoomLevel) {
     myMaxFitIntoScale = maxFitIntoZoomLevel / getScreenScalingFactor();

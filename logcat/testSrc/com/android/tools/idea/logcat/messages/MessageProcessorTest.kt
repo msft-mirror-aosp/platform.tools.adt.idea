@@ -20,9 +20,7 @@ import com.android.ddmlib.logcat.LogCatHeader
 import com.android.ddmlib.logcat.LogCatMessage
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.logcat.FakeLogcatPresenter
-import com.android.tools.idea.logcat.FakePackageNamesProvider
 import com.android.tools.idea.logcat.LogcatPresenter
-import com.android.tools.idea.logcat.PackageNamesProvider
 import com.android.tools.idea.logcat.filters.LogcatFilterField.LINE
 import com.android.tools.idea.logcat.filters.StringFilter
 import com.android.tools.idea.logcat.onIdle
@@ -77,7 +75,7 @@ class MessageProcessorTest {
     messageProcessor.start()
 
     messageProcessor.onIdle {
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly((batch1 + batch2).mapMessages())
+      assertThat(fakeLogcatPresenter.lineBatches).containsExactly((batch1 + batch2).mapMessages())
     }
   }
 
@@ -99,7 +97,7 @@ class MessageProcessorTest {
 
     messageProcessor.onIdle {
       @Suppress("ConvertLambdaToReference") // Calling inOrder() confuses IDEA.
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(
+      assertThat(fakeLogcatPresenter.lineBatches).containsExactly(
         batch1.mapMessages(),
         batch2.mapMessages(),
       ).inOrder()
@@ -128,7 +126,7 @@ class MessageProcessorTest {
 
     messageProcessor.onIdle {
       @Suppress("ConvertLambdaToReference") // Calling inOrder() confuses IDEA.
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(
+      assertThat(fakeLogcatPresenter.lineBatches).containsExactly(
         (batch1 + batch2).mapMessages(),
         batch3.mapMessages()
       ).inOrder()
@@ -147,7 +145,7 @@ class MessageProcessorTest {
 
     messageProcessor.onIdle {
       @Suppress("ConvertLambdaToReference") // Calling inOrder() confuses IDEA.
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(
+      assertThat(fakeLogcatPresenter.lineBatches).containsExactly(
         batch1.mapMessages(),
         batch2.mapMessages(),
       ).inOrder()
@@ -164,48 +162,13 @@ class MessageProcessorTest {
     messageProcessor.appendMessages(batch)
 
     messageProcessor.onIdle {
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(listOf(message2).mapMessages())
-    }
-  }
-
-  @Test
-  fun appendMessages_showOnlyProjectApps() = runBlocking {
-    val message1 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app1", "tag", timestamp), "message1")
-    val message2 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app2", "tag", timestamp), "message2")
-    val message3 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app3", "tag", timestamp), "message3")
-    val messageProcessor = messageProcessor(fakeLogcatPresenter, packageNamesProvider = FakePackageNamesProvider("app1", "app3"))
-    val batch = listOf(message1, message2, message3)
-    messageProcessor.showOnlyProjectApps = true
-
-    messageProcessor.appendMessages(batch)
-
-    messageProcessor.onIdle {
-      @Suppress("ConvertLambdaToReference") // Calling inOrder() confuses IDEA.
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(listOf(message1, message3).mapMessages()).inOrder()
-    }
-  }
-
-  @Test
-  fun appendMessages_showOnlyProjectAppsWithFilter() = runBlocking {
-    val message1 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app1", "tag1", timestamp), "message1")
-    val message2 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app2", "tag1", timestamp), "message2")
-    val message3 = LogCatMessage(LogCatHeader(WARN, 1, 2, "app3", "tag2", timestamp), "message3")
-    val messageProcessor = messageProcessor(fakeLogcatPresenter, packageNamesProvider = FakePackageNamesProvider("app1", "app3"))
-    val batch = listOf(message1, message2, message3)
-    messageProcessor.showOnlyProjectApps = true
-    messageProcessor.logcatFilter = StringFilter("tag1", LINE)
-
-    messageProcessor.appendMessages(batch)
-
-    messageProcessor.onIdle {
-      assertThat(fakeLogcatPresenter.messageBatches).containsExactly(listOf(message1).mapMessages())
+      assertThat(fakeLogcatPresenter.lineBatches).containsExactly(listOf(message2).mapMessages())
     }
   }
 
   private fun messageProcessor(
     logcatPresenter: LogcatPresenter = fakeLogcatPresenter,
     formatMessagesInto: (TextAccumulator, List<LogCatMessage>) -> Unit = messageFormatter,
-    packageNamesProvider: PackageNamesProvider = FakePackageNamesProvider(),
     clock: Clock = Clock.systemDefaultZone(),
     maxTimePerBatchMs: Int = MAX_TIME_PER_BATCH_MS,
     maxMessagesPerBatch: Int = MAX_MESSAGES_PER_BATCH,
@@ -213,9 +176,7 @@ class MessageProcessorTest {
   ) = MessageProcessor(
     logcatPresenter,
     formatMessagesInto,
-    packageNamesProvider,
     logcatFilter = null,
-    showOnlyProjectApps = false,
     clock,
     maxTimePerBatchMs,
     maxMessagesPerBatch,
