@@ -13,5 +13,5 @@ androidComponents {
 
 android {
   namespace = "com.example.lib"
-  compileSdk = 30
+  compileSdk = 31
 }
