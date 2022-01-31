@@ -40,17 +40,16 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
   override val configuration = environment.runProfile as AndroidComplicationConfiguration
 
   @WorkerThread
-  override fun doOnDevices(devices: List<IDevice>): RunContentDescriptor? {
+  override fun doOnDevices(devices: List<IDevice>): RunContentDescriptor {
     val isDebug = environment.executor.id == DefaultDebugExecutor.EXECUTOR_ID
     if (isDebug && devices.size > 1) {
       throw ExecutionException("Debugging is allowed only for single device")
     }
-    val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
-    Disposer.register(project, console)
+    val console = createConsole()
     val indicator = ProgressIndicatorProvider.getGlobalProgressIndicator()
     val applicationInstaller = getApplicationInstaller()
     val mode = if (isDebug) AppComponent.Mode.DEBUG else AppComponent.Mode.RUN
-    val watchFaceInfo = "${(configuration as AndroidComplicationConfiguration).watchFaceInfo.appId} ${configuration.watchFaceInfo.watchFaceFQName}"
+    val watchFaceInfo = "${configuration.watchFaceInfo.appId} ${configuration.watchFaceInfo.watchFaceFQName}"
     val processHandler = ComplicationProcessHandler(AppComponent.getFQEscapedName(appId, configuration.componentName!!), console)
     devices.forEach { device ->
       processHandler.addDevice(device)
@@ -75,7 +74,7 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
   }
 
   private fun installWatchApp(device: IDevice, console: ConsoleView): App {
-    val watchFaceInfo = (configuration as AndroidComplicationConfiguration).watchFaceInfo
+    val watchFaceInfo = configuration.watchFaceInfo
     return getApplicationInstaller().installAppOnDevice(device, watchFaceInfo.appId, listOf(watchFaceInfo.apk), "") { info ->
       console.print(info, ConsoleViewContentType.NORMAL_OUTPUT)
     }
@@ -88,7 +87,7 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
 class ComplicationProcessHandler(private val complicationComponentName: String,
                                  private val console: ConsoleView) : AndroidProcessHandlerForDevices() {
   override fun destroyProcessOnDevice(device: IDevice) {
-    val receiver = AndroidConfigurationExecutorBase.AndroidLaunchReceiver({ false }, console)
+    val receiver = AndroidLaunchReceiver({ false }, console)
 
     val removeComplicationCommand = Complication.ShellCommand.REMOVE_ALL_INSTANCES_FROM_CURRENT_WF + complicationComponentName
     console.printShellCommand(removeComplicationCommand)

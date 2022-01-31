@@ -90,6 +90,7 @@ import com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID
 import com.android.tools.idea.gradle.util.emulateStartupActivityForTest
 import com.android.tools.idea.gradle.variant.view.BuildVariantUpdater
 import com.android.tools.idea.io.FilePaths
+import com.android.tools.idea.model.ClassJarProvider
 import com.android.tools.idea.projectsystem.AndroidProjectRootUtil
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
@@ -132,7 +133,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.StdModuleTypes.JAVA
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.doNotEnableExternalStorageByDefaultInTests
 import com.intellij.openapi.project.ex.ProjectEx
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.openapi.util.Disposer
@@ -991,7 +991,8 @@ fun setupTestProjectFromAndroidModel(
     error("There is already more than one module in the test project.")
   }
 
-  ProjectSystemService.getInstance(project).replaceProjectSystemForTests(object: AndroidProjectSystem by GradleProjectSystem(project) {
+  val gradleProjectSystem = GradleProjectSystem(project)
+  ProjectSystemService.getInstance(project).replaceProjectSystemForTests(object: AndroidProjectSystem by gradleProjectSystem {
     // Many tests that invoke `compileProject` work with timestamps. To avoid flaky tests we inject a millisecond delay each time
     // build is requested.
     private val buildManager = TestProjectSystemBuildManager(ensureClockAdvancesWhileBuilding = true)
@@ -1452,11 +1453,7 @@ private fun <T> openPreparedProject(
     }
   }
 
-  var result: Result<T> = Result.failure(IllegalStateException())
-  doNotEnableExternalStorageByDefaultInTests {
-    result = Result.success(body())
-  }
-  return result.getOrThrow()
+  return body()
 }
 
 private fun GradleIntegrationTest.nameToPath(name: String) =

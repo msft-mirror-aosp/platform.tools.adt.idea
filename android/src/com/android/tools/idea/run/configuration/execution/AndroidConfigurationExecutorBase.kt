@@ -17,7 +17,6 @@ package com.android.tools.idea.run.configuration.execution
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
-import com.android.ddmlib.MultiLineReceiver
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.run.LaunchableAndroidDevice
 import com.android.tools.idea.run.configuration.ComponentSpecificConfiguration
@@ -32,15 +31,16 @@ import com.intellij.execution.ExecutionException
 import com.intellij.execution.ExecutionResult
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
+import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ProgramRunner
-import com.intellij.execution.runners.showRunContent
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.execution.ui.ExecutionUiService
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.util.Disposer
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.AndroidBundle
 import java.util.concurrent.TimeUnit
@@ -58,7 +58,8 @@ abstract class AndroidConfigurationExecutorBase(protected val environment: Execu
   }
 
   @WorkerThread
-  fun execute(stats: RunStats): RunContentDescriptor? {
+  @Throws(ExecutionException::class)
+  fun execute(stats: RunStats): RunContentDescriptor {
     val facet = AndroidFacet.getInstance(configuration.module!!)!!
     stats.setDebuggable(LaunchUtils.canDebugApp(facet))
     stats.setExecutor(environment.executor.id)
@@ -76,7 +77,8 @@ abstract class AndroidConfigurationExecutorBase(protected val environment: Execu
   }
 
   @VisibleForTesting
-  abstract fun doOnDevices(devices: List<IDevice>): RunContentDescriptor?
+  @Throws(ExecutionException::class)
+  abstract fun doOnDevices(devices: List<IDevice>): RunContentDescriptor
 
   private fun getDevices(stats: RunStats): List<IDevice> {
     val facet = AndroidFacet.getInstance(configuration.module!!)!!
@@ -125,6 +127,12 @@ abstract class AndroidConfigurationExecutorBase(protected val environment: Execu
     return ApplicationInstallerImpl(project)
   }
 
+  internal fun createConsole(): ConsoleView {
+    val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+    Disposer.register(project, console)
+    return console
+  }
+
   @VisibleForTesting
   fun getDebugSessionStarter(): DebugSessionStarter {
     return DebugSessionStarter(environment)
@@ -145,22 +153,15 @@ abstract class AndroidConfigurationExecutorBase(protected val environment: Execu
     devices: List<IDevice>,
     processHandler: AndroidProcessHandlerForDevices,
     console: ConsoleView
-  ): RunContentDescriptor? {
+  ): RunContentDescriptor {
     return if (environment.executor.isDebug) {
       processHandler.startNotify()
       startDebugger(devices.single(), processHandler, console)
     }
     else {
-      invokeAndWaitIfNeeded { showRunContent(DefaultExecutionResult(console, processHandler), environment) }
-    }
-  }
-
-  open class AndroidLaunchReceiver(private val isCancelledCheck: () -> Boolean,
-                                   private val consoleView: ConsoleView) : MultiLineReceiver() {
-    override fun isCancelled() = isCancelledCheck()
-
-    override fun processNewLines(lines: Array<String>) = lines.forEach {
-      consoleView.print(it + "\n", ConsoleViewContentType.NORMAL_OUTPUT)
+      invokeAndWaitIfNeeded {
+        ExecutionUiService.getInstance().showRunContent(DefaultExecutionResult(console, processHandler), environment)
+      }
     }
   }
 }

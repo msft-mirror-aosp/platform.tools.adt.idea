@@ -47,6 +47,7 @@ import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
+import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
@@ -96,7 +97,7 @@ private val MODERN_PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST
 private val OTHER_MODERN_PROCESS = MODERN_DEVICE.createProcess(name = "com.other", streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 /** Timeout used in this test. While debugging, you may want to extend the timeout */
-private const val TIMEOUT = 1L
+private const val TIMEOUT = 10L
 private val TIMEOUT_UNIT = TimeUnit.SECONDS
 
 class AppInspectionInspectorClientTest {
@@ -157,36 +158,10 @@ class AppInspectionInspectorClientTest {
   fun inspectorStartsFetchingContinuouslyOnConnectIfLiveMode() = runBlocking {
     InspectorClientSettings.isCapturingModeOn = true
 
-    val startFetchReceived = CompletableDeferred<Unit>()
+    val startFetchReceived = ReportingCountDownLatch(1)
     inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) { command ->
       assertThat(command.startFetchCommand.continuous).isTrue()
-      startFetchReceived.complete(Unit)
-    }
-
-    // Initial fetch additionally triggers requests for composables
-    val composeCommands = ArrayBlockingQueue<ComposeProtocol.Command>(1)
-    inspectionRule.composeInspector.listenWhen({ true }) { command ->
-      composeCommands.add(command)
-    }
-
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    startFetchReceived.await() // If here, we already successfully connected (and sent an initial command)
-    assertThat(inspectorRule.inspectorClient).isInstanceOf(AppInspectionInspectorClient::class.java)
-
-    // View Inspector layout event -> Compose Inspector get composables command
-    composeCommands.take().let { command ->
-      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.GET_COMPOSABLES_COMMAND)
-    }
-  }
-
-  @Test
-  fun inspectorRequestsSingleFetchIfSnapshotMode() = runBlocking {
-    InspectorClientSettings.isCapturingModeOn = false
-
-    val startFetchReceived = CompletableDeferred<Unit>()
-    inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) { command ->
-      assertThat(command.startFetchCommand.continuous).isFalse()
-      startFetchReceived.complete(Unit)
+      startFetchReceived.countDown()
     }
 
     // Initial fetch additionally triggers requests for composables
@@ -196,9 +171,89 @@ class AppInspectionInspectorClientTest {
     }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    startFetchReceived.await() // If here, we already successfully connected (and sent an initial command)
+    startFetchReceived.await(TIMEOUT, TIMEOUT_UNIT) // If here, we already successfully connected (and sent an initial command)
+    assertThat(inspectorRule.inspectorClient).isInstanceOf(AppInspectionInspectorClient::class.java)
+    assertThat(inspectorRule.inspectorClient.capabilities).contains(Capability.SUPPORTS_COMPOSE_RECOMPOSITION_COUNTS)
+
+    // View Inspector layout event -> Compose Inspector update settings command
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.UPDATE_SETTINGS_COMMAND)
+      assertThat(command.updateSettingsCommand.includeRecomposeCounts).isFalse()
+    }
+    // View Inspector layout event -> Compose Inspector get composables commands
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.GET_COMPOSABLES_COMMAND)
+    }
+
+    inspectorRule.inspector.treeSettings.showRecompositions = true
+    (inspectorRule.inspectorClient as AppInspectionInspectorClient).updateRecompositionCountSettings()
+
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.UPDATE_SETTINGS_COMMAND)
+      assertThat(command.updateSettingsCommand.includeRecomposeCounts).isTrue()
+    }
+  }
+
+  @Test
+  fun recomposingNotSupported() = runBlocking {
+    val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    inspectorState.simulateComposeVersionWithoutUpdateSettingsCommand()
+
+    InspectorClientSettings.isCapturingModeOn = true
+    inspectorRule.inspector.treeSettings.showRecompositions = true
+
+    val startFetchReceived = ReportingCountDownLatch(1)
+    inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) { command ->
+      assertThat(command.startFetchCommand.continuous).isTrue()
+      startFetchReceived.countDown()
+    }
+
+    // Initial fetch additionally triggers requests for composables
+    val composeCommands = ArrayBlockingQueue<ComposeProtocol.Command>(2)
+    inspectionRule.composeInspector.listenWhen({ true }) { command ->
+      composeCommands.add(command)
+    }
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    startFetchReceived.await(TIMEOUT, TIMEOUT_UNIT) // If here, we already successfully connected (and sent an initial command)
+    assertThat(inspectorRule.inspectorClient).isInstanceOf(AppInspectionInspectorClient::class.java)
+    assertThat(inspectorRule.inspectorClient.capabilities).doesNotContain(Capability.SUPPORTS_COMPOSE_RECOMPOSITION_COUNTS)
+
+    // View Inspector layout event -> Compose Inspector update settings command
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.UPDATE_SETTINGS_COMMAND)
+      assertThat(command.updateSettingsCommand.includeRecomposeCounts).isTrue()
+    }
+    // View Inspector layout event -> Compose Inspector get composables commands
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.GET_COMPOSABLES_COMMAND)
+    }
+  }
+
+  @Test
+  fun inspectorRequestsSingleFetchIfSnapshotMode() = runBlocking {
+    InspectorClientSettings.isCapturingModeOn = false
+
+    val startFetchReceived = ReportingCountDownLatch(1)
+    inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) { command ->
+      assertThat(command.startFetchCommand.continuous).isFalse()
+      startFetchReceived.countDown()
+    }
+
+    // Initial fetch additionally triggers requests for composables
+    val composeCommands = ArrayBlockingQueue<ComposeProtocol.Command>(3)
+    inspectionRule.composeInspector.listenWhen({ true }) { command ->
+      composeCommands.add(command)
+    }
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    startFetchReceived.await(TIMEOUT, TIMEOUT_UNIT) // If here, we already successfully connected (and sent an initial command)
     assertThat(inspectorRule.inspectorClient).isInstanceOf(AppInspectionInspectorClient::class.java)
 
+    // View Inspector layout event -> Compose Inspector get update settings command
+    composeCommands.take().let { command ->
+      assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.UPDATE_SETTINGS_COMMAND)
+    }
     // View Inspector layout event -> Compose Inspector get composables command
     composeCommands.take().let { command ->
       assertThat(command.specializedCase).isEqualTo(ComposeProtocol.Command.SpecializedCase.GET_COMPOSABLES_COMMAND)
@@ -512,6 +567,7 @@ class AppInspectionInspectorClientTest {
       val composeView = inspectorRule.inspectorModel[6]!!
       assertThat(composeView.qualifiedName).isEqualTo("android.view.ComposeView")
       assertThat(composeView.children.single().qualifiedName).isEqualTo("Surface")
+      assertThat((composeView.children.single() as ComposeViewNode).recomposeCount).isEqualTo(7)
     }
   }
 
@@ -724,7 +780,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
       val client = AppInspectionInspectorClient(processDescriptor2, isInstantlyAutoConnected = false, model(inspectorRule.project) {},
-                                                mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
+                                                mock(), mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
       // shouldn't get an exception
       client.connect(inspectorRule.project)
@@ -751,7 +807,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
       val client = AppInspectionInspectorClient(processDescriptor, isInstantlyAutoConnected = false, model(inspectorRule.project) {},
-                                                mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
+                                                mock(), mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
       client.connect(inspectorRule.project)
       waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }
@@ -770,7 +826,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     packages.setRemotePkgInfos(listOf(remotePackage))
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
       val client = AppInspectionInspectorClient(processDescriptor, isInstantlyAutoConnected = false, model(inspectorRule.project) {},
-                                                mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
+                                                mock(), mock(), disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
       client.connect(inspectorRule.project)
       waitForCondition(1, TimeUnit.SECONDS) { client.state == InspectorClient.State.DISCONNECTED }

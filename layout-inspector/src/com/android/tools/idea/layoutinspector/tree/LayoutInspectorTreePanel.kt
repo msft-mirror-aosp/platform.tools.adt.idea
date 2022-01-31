@@ -21,6 +21,7 @@ import com.android.tools.componenttree.api.ComponentTreeBuilder
 import com.android.tools.componenttree.api.ComponentTreeModel
 import com.android.tools.componenttree.api.ComponentTreeSelectionModel
 import com.android.tools.componenttree.api.ViewNodeType
+import com.android.tools.componenttree.api.createIntColumnInfo
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.common.showViewContextMenu
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
@@ -67,7 +68,9 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   @VisibleForTesting
   val focusComponent: JComponent
   private val componentTreePanel: JComponent
-  private val componentTreeModel: ComponentTreeModel
+  @VisibleForTesting
+  val componentTreeModel: ComponentTreeModel
+  private val setColumnVisibility: (columnIndex: Int, visible: Boolean) -> Unit
   private val nodeType = InspectorViewNodeType()
   // synthetic node to hold the root of the tree.
   private var root: TreeViewNode = ViewNode("root").treeNode
@@ -100,6 +103,7 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
       .withToggleClickCount(3)
       .withContextMenu(::showPopup)
       .withoutTreeSearch()
+      .withColumn(createIntColumnInfo<TreeViewNode>("RecompositionCounts", { (it.view as? ComposeViewNode)?.recomposeCount }))
       .withInvokeLaterOption { ApplicationManager.getApplication().invokeLater(it) }
       .withHorizontalScrollBar()
       .withComponentName("inspectorComponentTree")
@@ -112,6 +116,7 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     focusComponent = result.focusComponent
     componentTreeModel = result.model
     componentTreeSelectionModel = result.selectionModel
+    setColumnVisibility = result.setColumnVisibility
     ActionManager.getInstance()?.getAction(IdeActions.ACTION_GOTO_DECLARATION)?.shortcutSet
       ?.let { GotoDeclarationAction.registerCustomShortcutSet(it, componentTreePanel, parentDisposable) }
     componentTreeSelectionModel.addSelectionListener {
@@ -168,6 +173,9 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     GotoDeclarationAction.findNavigatable(model)?.navigate(true)
   }
 
+  fun showRecompositionColumn(show: Boolean) =
+    setColumnVisibility(1, show)
+
   // TODO: There probably can only be 1 layout inspector per project. Do we need to handle changes?
   override fun setToolContext(toolContext: LayoutInspector?) {
     layoutInspector?.layoutInspectorModel?.modificationListeners?.remove(modelModifiedListener)
@@ -178,6 +186,7 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     componentTreeModel.treeRoot = root
     layoutInspector?.layoutInspectorModel?.selectionListeners?.add(selectionChangedListener)
     layoutInspector?.layoutInspectorModel?.windows?.values?.forEach { modelModified(null, it, true) }
+    layoutInspector?.let { showRecompositionColumn(it.treeSettings.showRecompositions) }
   }
 
   override fun getAdditionalActions() = additionalActions
@@ -329,6 +338,8 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         rebuildRoot()
       }
       changedNode?.let { componentTreeModel.hierarchyChanged(it) }
+    } else {
+      componentTreeModel.columnDataChanged()
     }
   }
 

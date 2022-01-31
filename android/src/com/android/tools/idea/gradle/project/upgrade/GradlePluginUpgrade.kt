@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.sync.hyperlink.SearchInBuildFilesHyperlink
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages
 import com.android.tools.idea.gradle.project.sync.setup.post.TimeBasedReminder
+import com.android.tools.idea.gradle.project.upgrade.ForcePluginUpgradeReason.NO_FORCE
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.FORCE
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.NO_UPGRADE
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.RECOMMEND
@@ -55,6 +56,7 @@ import com.intellij.openapi.ui.MessageType
 import com.intellij.openapi.vcs.FileStatus
 import com.intellij.openapi.vcs.FileStatusManager
 import com.intellij.util.SystemProperties
+import com.jetbrains.rd.util.first
 import org.jetbrains.android.util.AndroidBundle
 import java.util.concurrent.TimeUnit
 
@@ -230,7 +232,7 @@ fun versionsShouldForcePluginUpgrade(
   current: GradleVersion,
   latestKnown: GradleVersion
 ) : Boolean {
-  return computeGradlePluginUpgradeState(current, latestKnown, setOf()).importance == FORCE
+  return computeForcePluginUpgradeReason(current, latestKnown) != NO_FORCE
 }
 
 /**
@@ -306,23 +308,72 @@ fun computeGradlePluginUpgradeState(
   when (computeForcePluginUpgradeReason(current, latestKnown)) {
     ForcePluginUpgradeReason.MINIMUM -> {
       val minimum = GradleVersion.parse(SdkConstants.GRADLE_PLUGIN_MINIMUM_VERSION)
-      val earliestStable = published.filter { !it.isPreview }.filter { it >= minimum }.minOrNull() ?: latestKnown
-      return GradlePluginUpgradeState(FORCE, earliestStable)
+      val earliestStable = published
+        .filter { !it.isPreview }
+        .filter { it >= minimum }
+        .filter { it <= latestKnown }
+        .groupBy { GradleVersion(it.major, it.minor) }
+        .minByOrNull { it.key }
+        ?.value
+        ?.maxOrNull()
+      return GradlePluginUpgradeState(FORCE, earliestStable ?: latestKnown)
     }
-    // TODO(xof): in the cae of a -dev latestKnown and a preview from an earlier series, we should perhaps return the latest stable
-    //  version from that series.  (During a -beta phase, there might not be any such version, though.)
-    ForcePluginUpgradeReason.PREVIEW -> return GradlePluginUpgradeState(FORCE, latestKnown)
-    ForcePluginUpgradeReason.NO_FORCE -> Unit
+    ForcePluginUpgradeReason.PREVIEW -> {
+      val seriesAcceptableStable = published
+        .filter { !it.isPreview }
+        .filter { GradleVersion(it.major, it.minor) == GradleVersion(current.major, current.minor) }
+        .filter { it <= latestKnown }
+        .maxOrNull()
+      // For the forced upgrade of a preview, we prefer the latest stable release in the same series as the preview, if one exists.  If
+      // there is no such release, we have no option but to force an upgrade to the latest known version.  (This will happen, for example,
+      // running a Canary Studio in series X+1 on a project using a Beta AGP from series X, until the Final AGP and Studio for series
+      // X are released.)
+      return GradlePluginUpgradeState(FORCE, seriesAcceptableStable ?: latestKnown)
+    }
+    NO_FORCE -> Unit
   }
 
   if (current >= latestKnown) return GradlePluginUpgradeState(NO_UPGRADE, current)
   if (!current.isPreview || current.previewType == "rc") {
-    // If our latestKnown is stable, recommend it.
-    if (!latestKnown.isPreview || latestKnown.previewType == "rc") return GradlePluginUpgradeState(RECOMMEND, latestKnown)
-    // Otherwise, look for a newer published stable.
-    val laterStable = published.filter { !it.isPreview }.filter { it > current }.maxOrNull()
-                      ?: return GradlePluginUpgradeState(NO_UPGRADE, current)
-    return GradlePluginUpgradeState(RECOMMEND, laterStable)
+    val acceptableStables = published
+      .asSequence()
+      .filter { !it.isPreview }
+      .filter { it > current }
+      .filter { it <= latestKnown }
+      // We use the fact that groupBy preserves order both of keys and of entries in the list value.
+      .sorted()
+      .groupBy { GradleVersion(it.major, it.minor) }
+      .asSequence()
+      .groupBy { it.key.major }
+
+    if (acceptableStables.isEmpty()) {
+      // The first two cases here are unlikely, but theoretically possible, if somehow our published information is out of date
+      return when {
+        // If our latestKnown is stable, recommend it.
+        !latestKnown.isPreview -> GradlePluginUpgradeState(RECOMMEND, latestKnown)
+        latestKnown.previewType == "rc" -> GradlePluginUpgradeState(RECOMMEND, latestKnown)
+        // Don't recommend upgrades from stable to preview.
+        else -> GradlePluginUpgradeState(NO_UPGRADE, current)
+      }
+    }
+
+    if (!acceptableStables.containsKey(current.major)) {
+      // We can't upgrade to a new version of our current series, but there are upgrade targets (acceptableStables is not empty).  We
+      // must be at the end of a major series, so recommend the latest compatible in the next major series.
+      return GradlePluginUpgradeState(RECOMMEND, acceptableStables.first().value.last().value.last())
+    }
+
+    val currentSeriesCandidates = acceptableStables[current.major]!!
+    val nextSeriesCandidates = acceptableStables.keys.firstOrNull { it > current.major }?.let { acceptableStables[it]!! }
+
+    if (currentSeriesCandidates.maxOf { it.key } == GradleVersion(current.major, current.minor)) {
+      // We have a version of the most recent series of our current major, though not the most up-to-date version of that.  If there's a
+      // later stable series, recommend upgrading to that, otherwise recommend upgrading our point release.
+      return GradlePluginUpgradeState(RECOMMEND, (nextSeriesCandidates ?: currentSeriesCandidates).last().value.last())
+    }
+
+    // Otherwise, we must have newer minor releases from our current major series.  Recommend upgrading to the latest minor release.
+    return GradlePluginUpgradeState(RECOMMEND, currentSeriesCandidates.last().value.last())
   }
   else if (current.previewType == "alpha" || current.previewType == "beta") {
     if (latestKnown.isSnapshot) {
@@ -334,8 +385,8 @@ fun computeGradlePluginUpgradeState(
     throw IllegalStateException("Unreachable: handled by computeForcePluginUpgradeReason")
   }
   else {
-    // Current is a snapshot, probably -dev, and is less than latestKnown.  Force an upgrade to latestKnown.
-    return GradlePluginUpgradeState(FORCE, latestKnown)
+    // Current is a snapshot.
+    throw IllegalStateException("Unreachable: handled by computeForcePluginUpgradeReason")
   }
 }
 

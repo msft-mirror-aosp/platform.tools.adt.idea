@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.android.synthetic.AndroidCommandLineProcessor.Compan
 import org.jetbrains.kotlin.android.synthetic.AndroidCommandLineProcessor.Companion.ENABLED_OPTION
 import org.jetbrains.kotlin.android.synthetic.AndroidCommandLineProcessor.Companion.EXPERIMENTAL_OPTION
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
-import org.jetbrains.kotlin.idea.configuration.GradleProjectImportHandler
+import org.jetbrains.kotlin.idea.gradleJava.configuration.GradleProjectImportHandler
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.AbstractProjectResolverExtension
@@ -64,12 +64,14 @@ class AndroidExtensionsProjectResolverExtension : AbstractProjectResolverExtensi
     override fun getToolingExtensionsClasses() = setOf(AndroidExtensionsModelBuilderService::class.java)
 
     override fun populateModuleExtraModels(gradleModule: IdeaModule, ideModule: DataNode<ModuleData>) {
-        val androidExtensionsModel = resolverCtx.getExtraProject(gradleModule, AndroidExtensionsGradleModel::class.java) ?: return
-        ideModule.createChild(ANDROID_EXTENSION_PROPERTIES, AndroidExtensionProperties().apply {
-            hasAndroidExtensionsPlugin = androidExtensionsModel.hasAndroidExtensionsPlugin
-            isExperimental = androidExtensionsModel.isExperimental
-            defaultCacheImplementation = androidExtensionsModel.defaultCacheImplementation
-        })
+        val androidExtensionsModel = resolverCtx.getExtraProject(gradleModule, AndroidExtensionsGradleModel::class.java)
+        if (androidExtensionsModel != null) {
+            ideModule.createChild(ANDROID_EXTENSION_PROPERTIES, AndroidExtensionProperties().apply {
+                hasAndroidExtensionsPlugin = androidExtensionsModel.hasAndroidExtensionsPlugin
+                isExperimental = androidExtensionsModel.isExperimental
+                defaultCacheImplementation = androidExtensionsModel.defaultCacheImplementation
+            })
+        }
         super.populateModuleExtraModels(gradleModule, ideModule)
     }
 }

@@ -195,7 +195,7 @@ class VisualizationForm(project: Project, parentDisposable: Disposable) : Visual
     surface.setSceneViewAlignment(DesignSurface.SceneViewAlignment.LEFT)
     surface.addPanZoomListener(this)
     updateScreenMode()
-    surface.name = VISUALIZATION_DESIGN_SURFACE
+    surface.name = VISUALIZATION_DESIGN_SURFACE_NAME
     myWorkBench = WorkBench(myProject, "Visualization", null, this)
     myWorkBench.setLoadingText("Loading...")
     myWorkBench.setToolContext(surface)
@@ -695,16 +695,12 @@ class VisualizationForm(project: Project, parentDisposable: Disposable) : Visual
   /**
    * A disabled action for displaying text in action toolbar. It does nothing.
    */
-  private class TextLabelAction(text: String) : AnAction(null as String?) {
-
-    init {
-      templatePresentation.setText(text, false)
-      templatePresentation.isEnabled = false
-    }
+  private class TextLabelAction(private val text: String) : AnAction(null as String?) {
 
     override fun actionPerformed(e: AnActionEvent) = Unit
 
     override fun update(e: AnActionEvent) {
+      e.presentation.setText(text, false)
       e.presentation.isEnabled = false
     }
 
@@ -739,7 +735,7 @@ class VisualizationForm(project: Project, parentDisposable: Disposable) : Visual
 
   companion object {
     @VisibleForTesting
-    const val VISUALIZATION_DESIGN_SURFACE = "VisualizationFormDesignSurface"
+    const val VISUALIZATION_DESIGN_SURFACE_NAME = "Layout Validation"
     private val VISUALIZATION_SUPPORTED_ACTIONS: Set<NlSupportedActions> =
       if (StudioFlags.NELE_VISUAL_LINT.get()) ImmutableSet.of(NlSupportedActions.TOGGLE_ISSUE_PANEL) else ImmutableSet.of()
 

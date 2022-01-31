@@ -29,6 +29,8 @@ import com.android.tools.idea.appinspection.inspector.api.launch.LaunchParameter
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.model.InspectorModel
+import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
+import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMonitor
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
@@ -45,6 +47,9 @@ import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetPara
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetParametersCommand
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetParametersResponse
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Response
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsCommand
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsResponse
+import java.util.EnumSet
 
 const val COMPOSE_LAYOUT_INSPECTOR_ID = "layoutinspector.compose.inspection"
 
@@ -68,10 +73,13 @@ private const val PROGUARD_LEARN_MORE = "https://d.android.com/r/studio-ui/layou
  * device.
  *
  * @param messenger The messenger that lets us communicate with the view inspector.
+ * @param capabilities Of the containing [InspectorClient]. Some capabilities may be added by this class.
  */
 class ComposeLayoutInspectorClient(
   model: InspectorModel,
+  private val treeSettings: TreeSettings,
   private val messenger: AppInspectorMessenger,
+  private val capabilities: EnumSet<Capability>,
   private val launchMonitor: InspectorClientLaunchMonitor
 ) {
 
@@ -84,6 +92,8 @@ class ComposeLayoutInspectorClient(
       apiServices: AppInspectionApiServices,
       process: ProcessDescriptor,
       model: InspectorModel,
+      treeSettings: TreeSettings,
+      capabilities: EnumSet<Capability>,
       launchMonitor: InspectorClientLaunchMonitor
     ): ComposeLayoutInspectorClient? {
       val jar = if (StudioFlags.APP_INSPECTION_USE_DEV_JAR.get()) {
@@ -109,7 +119,7 @@ class ComposeLayoutInspectorClient(
       val params = LaunchParameters(process, COMPOSE_LAYOUT_INSPECTOR_ID, jar, model.project.name, MINIMUM_COMPOSE_COORDINATE, force = true)
       return try {
         val messenger = apiServices.launchInspector(params)
-        ComposeLayoutInspectorClient(model, messenger, launchMonitor)
+        ComposeLayoutInspectorClient(model, treeSettings, messenger, capabilities, launchMonitor).apply { updateSettings() }
       }
       catch (ignored: AppInspectionVersionIncompatibleException) {
         InspectorBannerService.getInstance(model.project).setNotification(INCOMPATIBLE_LIBRARY_MESSAGE)
@@ -186,6 +196,18 @@ class ComposeLayoutInspectorClient(
       }.build()
     }
     return response.getParameterDetailsResponse
+  }
+
+  suspend fun updateSettings(): UpdateSettingsResponse {
+    val response = messenger.sendCommand {
+      updateSettingsCommand = UpdateSettingsCommand.newBuilder().apply {
+        includeRecomposeCounts = treeSettings.showRecompositions
+      }.build()
+    }
+    if (response.hasUpdateSettingsResponse()) {
+      capabilities.add(Capability.SUPPORTS_COMPOSE_RECOMPOSITION_COUNTS)
+    }
+    return response.updateSettingsResponse
   }
 
   fun disconnect() {

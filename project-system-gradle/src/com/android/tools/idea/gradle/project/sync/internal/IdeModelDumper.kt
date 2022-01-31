@@ -59,8 +59,8 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.util.io.sanitizeFileName
-import org.jetbrains.kotlin.gradle.KotlinGradleModel
-import org.jetbrains.kotlin.kapt.idea.KaptGradleModel
+import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradleModel
+import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ExternalDependency
 import org.jetbrains.plugins.gradle.model.ExternalProject
 import java.io.File
@@ -689,7 +689,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
             prop("pluginVersion") { value.pluginVersion?.replaceKnownPatterns() }
           }
         }
-        kotlinGradleModel.compilerArgumentsBySourceSet.forEach { key, value ->
+        kotlinGradleModel.cachedCompilerArgumentsBySourceSet.forEach { key, value ->
           head("compilerArgumentsBySourceSet") { key }
           nest {
             fun dumpArg(title: String, arg: String) {
@@ -707,9 +707,10 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
               }
             }
 
-            value.currentArguments.forEach { dumpArg("currentArguments", it) }
-            value.defaultArguments.forEach { dumpArg("defaultArguments", it) }
-            value.dependencyClasspath.forEach { prop("dependencyClasspath") { it.toPrintablePath() } }
+            // TODO(b/215353008): Fix compilation against Kotlin 213.
+            // value.currentArguments.forEach { dumpArg("currentArguments", it) }
+            // value.defaultArguments.forEach { dumpArg("defaultArguments", it) }
+            // value.dependencyClasspath.forEach { prop("dependencyClasspath") { it.toPrintablePath() } }
           }
         }
       }

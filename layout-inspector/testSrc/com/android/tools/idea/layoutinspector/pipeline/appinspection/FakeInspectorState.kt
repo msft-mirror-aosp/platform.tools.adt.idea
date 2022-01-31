@@ -342,6 +342,7 @@ class FakeInspectorState(
       packageHash = 1
       filename = 2
       name = 4
+      recomposeCount = 7
 
       ComposableNode {
         id = -3
@@ -793,6 +794,14 @@ class FakeInspectorState(
     composeInspector.interceptWhen({ it.hasGetParameterDetailsCommand() }) { command ->
       LayoutInspectorComposeProtocol.Response.newBuilder().apply {
         getParameterDetailsResponse = parameterDetailsCommands[command.getParameterDetailsCommand] ?: error("Unexpected command")
+      }.build()
+    }
+  }
+
+  fun simulateComposeVersionWithoutUpdateSettingsCommand() {
+    composeInspector.interceptWhen({ it.hasUpdateSettingsCommand() }) { _ ->
+      LayoutInspectorComposeProtocol.Response.newBuilder().apply {
+        unknownCommandResponse = LayoutInspectorComposeProtocol.UnknownCommandResponse.getDefaultInstance()
       }.build()
     }
   }

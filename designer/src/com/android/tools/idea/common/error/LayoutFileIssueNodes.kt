@@ -19,13 +19,13 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.ide.projectView.impl.CompoundIconProvider
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileNavigator
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.pom.Navigatable
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.tree.LeafState
@@ -34,7 +34,6 @@ import com.intellij.util.ui.tree.TreeUtil
 import icons.StudioIcons
 import java.util.Objects
 import javax.swing.tree.TreePath
-import kotlin.streams.toList
 
 /**
  * The node represents the layout file, which contains the issue(s).
@@ -44,21 +43,23 @@ class LayoutFileIssuedFileNode(val fileData: IssuedFileData, parent: DesignerCom
 
   override fun getLeafState() = LeafState.DEFAULT
 
-  override fun getName() = fileData.file.presentableName
+  override fun getName() = getVirtualFile().presentableName
 
-  override fun getVirtualFile() = fileData.file
+  @Suppress("UnstableApiUsage")
+  override fun getVirtualFile() = BackedVirtualFile.getOriginFileIfBacked(fileData.file)
 
   override fun getNavigatable() = project?.let { OpenFileDescriptor(it, fileData.file) }
 
   override fun update(project: Project, presentation: PresentationData) {
+    val virtualFile = getVirtualFile()
     presentation.addText(name, SimpleTextAttributes.REGULAR_ATTRIBUTES)
     presentation.setIcon(
-      CompoundIconProvider.findIcon(PsiUtilCore.findFileSystemItem(project, fileData.file), 0) ?: when (fileData.file.isDirectory) {
+      CompoundIconProvider.findIcon(PsiUtilCore.findFileSystemItem(project, virtualFile), 0) ?: when (virtualFile.isDirectory) {
         true -> AllIcons.Nodes.Folder
         else -> AllIcons.FileTypes.Any_type
       })
     if (parentDescriptor !is LayoutFileIssuedFileNode) {
-      val url = fileData.file.parent?.presentableUrl ?: return
+      val url = virtualFile.parent?.presentableUrl ?: return
       presentation.addText("  ${FileUtil.getLocationRelativeToUserHome(url)}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
     }
     val root = findAncestor<DesignerCommonIssueRoot>()
@@ -105,16 +106,10 @@ class LayoutFileIssueNode(val fileData: IssuedFileData, val issue: Issue, parent
 
   override fun getName() = text
 
-  override fun getVirtualFile() = fileData.file
+  @Suppress("UnstableApiUsage")
+  override fun getVirtualFile() = BackedVirtualFile.getOriginFileIfBacked(fileData.file)
 
-  override fun getChildren(): Collection<DesignerCommonIssueNode> {
-    val lines = issue.description.split("<BR/>", ignoreCase = true).filter { it.isNotBlank() }.map { it.trim() }
-
-    val descriptionNodes = lines.map { LayoutFileIssueDescriptionNode(fileData, issue, it, this) }
-
-    val fixNodes = issue.fixes.map { LayoutFileIssueFixNode(fileData, issue, it, this@LayoutFileIssueNode) }.toList()
-    return descriptionNodes + fixNodes
-  }
+  override fun getChildren(): Collection<DesignerCommonIssueNode> = emptySet()
 
   override fun getNavigatable() = project?.let {
     // Note: This only happens when double-clicking LayoutFileIssueNode doesn't expand the tree.
@@ -149,58 +144,6 @@ class LayoutFileIssueNode(val fileData: IssuedFileData, val issue: Issue, parent
     val that = other as? LayoutFileIssueNode ?: return false
     return that.project == project && that.fileData == fileData && that.issue == issue
   }
-}
-
-/**
- * The node represents the [Issue.description] of the layout file. This node only represents a line in the tree. To having multiple lines for
- * [Issue.description], use multiple [LayoutFileIssueDescriptionNode]s to display it.
- */
-class LayoutFileIssueDescriptionNode(val fileData: IssuedFileData, val issue: Issue,
-                                     val description: String, parent: LayoutFileIssueNode)
-  : DesignerCommonIssueNode(parent.project, parent) {
-  override fun update(project: Project, presentation: PresentationData) {
-    presentation.addText(description, SimpleTextAttributes.REGULAR_ATTRIBUTES)
-    presentation.tooltip = description
-  }
-
-  override fun getName(): String = description
-
-  override fun toString(): String = description
-
-  override fun getChildren(): Collection<DesignerCommonIssueNode> = emptyList()
-
-  override fun getVirtualFile(): VirtualFile = fileData.file
-
-  override fun getElement(): DesignerCommonIssueNode = this
-
-  override fun getLeafState(): LeafState = LeafState.ALWAYS
-}
-
-/**
- * This node represents the [Issue.Fix]. Using multiple [LayoutFileIssueFixNode] when there are multiple [Issue.Fix] in [Issue.fixes].
- */
-class LayoutFileIssueFixNode(val fileData: IssuedFileData, val issue: Issue,
-                             val fix: Issue.Fix, parent: DesignerCommonIssueNode)
-  : DesignerCommonIssueNode(parent.project, parent) {
-  override fun update(project: Project, presentation: PresentationData) {
-    presentation.addText(fix.description, SimpleTextAttributes.LINK_ATTRIBUTES)
-
-    presentation.tooltip = fix.description
-  }
-
-  override fun getName(): String = "${fix.buttonText}: ${fix.description}"
-
-  override fun toString(): String = fix.toString()
-
-  override fun getChildren(): Collection<DesignerCommonIssueNode> = emptyList()
-
-  override fun getVirtualFile(): VirtualFile = fileData.file
-
-  override fun getNavigatable(): Navigatable? = project?.let {
-    MyOpenFileDescriptor(it, fileData.file) { fix.runnable.run() }
-  }
-
-  override fun getLeafState(): LeafState = LeafState.ALWAYS
 }
 
 /**

@@ -22,10 +22,13 @@ import com.android.SdkConstants.ATTR_LAYOUT_WIDTH
 import com.android.SdkConstants.ATTR_MIN_HEIGHT
 import com.android.SdkConstants.ATTR_MIN_WIDTH
 import com.android.SdkConstants.VALUE_WRAP_CONTENT
+import com.android.resources.Density
+import com.android.resources.ScreenRound
 import com.android.sdklib.IAndroidTarget
 import com.android.sdklib.devices.Device
 import com.android.tools.compose.ComposeLibraryNamespace
 import com.android.tools.compose.PREVIEW_ANNOTATION_FQNS
+import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.compose.preview.PreviewElementProvider
 import com.android.tools.idea.compose.preview.pickers.properties.utils.findOrParseFromDefinition
 import com.android.tools.idea.configurations.Configuration
@@ -33,7 +36,7 @@ import com.android.tools.idea.kotlin.fqNameMatches
 import com.android.tools.idea.projectsystem.isTestFile
 import com.android.tools.idea.projectsystem.isUnitTestFile
 import com.android.tools.idea.rendering.Locale
-import org.jetbrains.android.sdk.CompatibilityRenderTarget
+import com.android.tools.idea.uibuilder.model.updateConfigurationScreenSize
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.ReadAction
@@ -46,6 +49,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.parentOfType
 import com.intellij.testFramework.LightVirtualFile
+import org.jetbrains.android.sdk.CompatibilityRenderTarget
 import org.jetbrains.android.uipreview.ModuleClassLoaderManager
 import org.jetbrains.android.uipreview.ModuleRenderContext
 import org.jetbrains.annotations.TestOnly
@@ -54,6 +58,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.allConstructors
 import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
+import java.awt.Dimension
 import java.util.Objects
 import kotlin.math.max
 import kotlin.math.min
@@ -162,10 +167,44 @@ private fun Int?.truncate(min: Int, max: Int): Int? {
 /** Empty device spec when the user has not specified any. */
 private const val NO_DEVICE_SPEC = ""
 
+/**
+ * Returns if the device has any state with [ScreenRound.ROUND] configuration.
+ */
+private fun Device.hasRoundFrame(): Boolean =
+  allStates.any { it.hardware.screen.screenRound  == ScreenRound.ROUND }
+
+/**
+ * Returns the same device without any round screen frames.
+ */
+private fun Device.withoutRoundScreenFrame(): Device = if (hasRoundFrame()) {
+  Device.Builder(this).build().also { newDevice ->
+    newDevice.allStates
+      .filter { it.hardware.screen.screenRound == ScreenRound.ROUND }
+      .onEach { it.hardware.screen.screenRound = ScreenRound.NOTROUND }
+  }
+} else this
+
+/**
+ * Applies the [PreviewConfiguration] to the given [Configuration].
+ *
+ * [highestApiTarget] should return the highest api target available for a given [Configuration].
+ * [devicesProvider] should return all the devices available for a [Configuration].
+ * [defaultDeviceProvider] should return which device to use for a [Configuration] if the device specified in the
+ * [PreviewConfiguration.deviceSpec] is not available or does not exist in the devices returned by [devicesProvider].
+ *
+ * If [useDeviceFrame] is false, the device frame configuration will be not used. For example, if the frame is round, this will be ignored
+ * and a regular square frame will be applied. This can be used when the `@Preview` element is not displaying the device decorations so the
+ * device frame sizes and ratios would not match.
+ *
+ * If [customSize] is not null, the dimensions will be forced
+ * in the resulting configuration.
+ */
 private fun PreviewConfiguration.applyTo(renderConfiguration: Configuration,
                                          highestApiTarget: (Configuration) -> IAndroidTarget?,
                                          devicesProvider: (Configuration) -> Collection<Device>,
-                                         defaultDeviceProvider: (Configuration) -> Device?) {
+                                         defaultDeviceProvider: (Configuration) -> Device?,
+                                         @AndroidDpCoordinate customSize: Dimension? = null,
+                                         useDeviceFrame: Boolean = false) {
   fun updateRenderConfigurationTargetIfChanged(newTarget: CompatibilityRenderTarget) {
     if ((renderConfiguration.target as? CompatibilityRenderTarget)?.hashString() != newTarget.hashString()) {
       renderConfiguration.target = newTarget
@@ -196,17 +235,70 @@ private fun PreviewConfiguration.applyTo(renderConfiguration: Configuration,
   val allDevices = devicesProvider(renderConfiguration)
   val device = allDevices.findOrParseFromDefinition(deviceSpec) ?: defaultDeviceProvider(renderConfiguration)
   if (device != null) {
-    renderConfiguration.setDevice(device, false)
+    // Ensure the device is reset
+    renderConfiguration.setEffectiveDevice(null, null)
+    // If the user is not using the device frame, we never want to use the round frame around. See b/202854655
+    renderConfiguration.setDevice(
+      if (useDeviceFrame) device else device.withoutRoundScreenFrame(),
+      false)
+  }
+
+  customSize?.let {
+    // When the device frame is not being displayed and the user has given us some specific sizes, we want to apply those to the
+    // device itself.
+    // This is to match the intuition that those sizes always determine the size of the composable.
+    renderConfiguration.device?.let { device ->
+      // The PX are converted to DP by multiplying it by the dpiFactor that is the ratio of the current dpi vs the default dpi (160).
+      val dpiFactor = renderConfiguration.density.dpiValue / Density.DEFAULT_DENSITY
+      updateConfigurationScreenSize(renderConfiguration,
+                                    it.width * dpiFactor,
+                                    it.height * dpiFactor, device)
+    }
   }
   renderConfiguration.finishBulkEditing()
+}
+
+/**
+ * If specified in the [PreviewElement], this method will return the `widthDp` and `heightDp` dimensions as a [Pair] as long as
+ * the device frame is disabled (i.e. `showDecorations` is false).
+ */
+@AndroidDpCoordinate
+private fun PreviewElement.getCustomDeviceSize(): Dimension? =
+  if (!displaySettings.showDecoration && configuration.width != -1 && configuration.height != -1) {
+    Dimension(configuration.width, configuration.height)
+  }
+  else null
+
+/**
+ * Applies the [PreviewElement] settings to the given [renderConfiguration].
+ */
+fun PreviewElement.applyTo(renderConfiguration: Configuration) {
+  configuration.applyTo(renderConfiguration,
+                        { it.configurationManager.highestApiTarget },
+                        { it.configurationManager.devices },
+                        {
+                          it.configurationManager.devices.find { device -> device.id == DEFAULT_DEVICE_ID }
+                          ?: it.configurationManager.defaultDevice
+                        },
+                        getCustomDeviceSize(),
+                        this.displaySettings.showDecoration)
 }
 
 @TestOnly
 fun PreviewConfiguration.applyConfigurationForTest(renderConfiguration: Configuration,
                                                    highestApiTarget: (Configuration) -> IAndroidTarget?,
                                                    devicesProvider: (Configuration) -> Collection<Device>,
-                                                   defaultDeviceProvider: (Configuration) -> Device?) {
-  applyTo(renderConfiguration, highestApiTarget, devicesProvider, defaultDeviceProvider)
+                                                   defaultDeviceProvider: (Configuration) -> Device?,
+                                                   useDeviceFrame: Boolean = false) {
+  applyTo(renderConfiguration, highestApiTarget, devicesProvider, defaultDeviceProvider, null, useDeviceFrame)
+}
+
+@TestOnly
+fun PreviewElement.applyConfigurationForTest(renderConfiguration: Configuration,
+                                             highestApiTarget: (Configuration) -> IAndroidTarget?,
+                                             devicesProvider: (Configuration) -> Collection<Device>,
+                                             defaultDeviceProvider: (Configuration) -> Device?) {
+  configuration.applyTo(renderConfiguration, highestApiTarget, devicesProvider, defaultDeviceProvider, getCustomDeviceSize())
 }
 
 /** id for the default device when no device is specified by the user. */
@@ -223,15 +315,6 @@ data class PreviewConfiguration internal constructor(val apiLevel: Int,
                                                      val fontScale: Float,
                                                      val uiMode: Int,
                                                      val deviceSpec: String) {
-  fun applyTo(renderConfiguration: Configuration) =
-    applyTo(renderConfiguration,
-            { it.configurationManager.highestApiTarget },
-            { it.configurationManager.devices },
-            {
-              it.configurationManager.devices.find { device -> device.id == DEFAULT_DEVICE_ID }
-              ?: it.configurationManager.defaultDevice
-            })
-
   companion object {
     /**
      * Cleans the given values and creates a PreviewConfiguration. The cleaning ensures that the user inputted value are within

@@ -165,6 +165,11 @@ public final class StudioFlags {
     PROFILER, "profileable.qr", "Support profileable processes on Q & R",
     "Show profileable processes on Q and R",
     PROFILEABLE.get() && true);
+
+  public static final Flag<Boolean> PROFILEABLE_BUILDS = Flag.create(
+    PROFILER, "profileable.builds", "Support building profileable apps",
+    "Allow users to build apps as profileable with a supported Gradle plugin version (>7.3.0)",
+    false);
   //endregion
 
   //region ML
@@ -766,6 +771,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.snapshots", "Enable snapshots",
     "Enable saving and loading snapshots in the layout inspector.", true);
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.counts", "Enable recomposition counts",
+    "Enable gathering and display of recomposition counts in the layout inspector.", false);
   //endregion
 
   //region Embedded Emulator
@@ -822,6 +830,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> MIGRATE_TO_NON_TRANSITIVE_R_CLASSES_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "migrateto.nontransitiverclasses.enabled", "Enable the Migrate to non-transitive R classes refactoring",
     "If enabled, show the action in the refactoring menu", true);
+
+  public static final Flag<Boolean> INFER_ANNOTATIONS_REFACTORING_ENABLED = Flag.create(
+    REFACTORINGS, "infer.annotations.enabled", "Enable the Infer Annotations refactoring",
+    "If enabled, show the action in the refactoring menu", false);
   //endregion
 
   //region NDK

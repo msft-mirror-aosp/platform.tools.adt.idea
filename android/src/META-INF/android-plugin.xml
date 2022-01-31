@@ -207,7 +207,7 @@
       <add-to-group group-id="RefactoringMenu"/>
     </action>
 
-    <action id="InferAnnotations" text="Infer Annotations..." class="com.android.tools.idea.actions.annotations.InferSupportAnnotationsAction">
+    <action id="InferAnnotations" text="Infer Annotations..." class="com.android.tools.idea.actions.annotations.InferAnnotationsAction">
       <add-to-group group-id="AnalyzeActions" anchor="after" relative-to-action="InferNullity"/>
     </action>
     <action
@@ -448,10 +448,6 @@
 
     <renamePsiElementProcessor implementation="org.jetbrains.android.refactoring.renaming.ResourceReferenceRenameProcessor" order="first"/>
     <renamePsiElementProcessor implementation="org.jetbrains.android.AndroidApplicationPackageRenameProcessor" order="first"/>
-    <projectService serviceInterface="com.intellij.codeInsight.NullableNotNullManager"
-                    serviceImplementation="com.android.tools.idea.lang.AndroidNullableNotNullManagerImpl"
-                    overrides="true"
-    />
 
     <java.languageFeatureProvider implementation="org.jetbrains.android.inspections.AndroidLanguageFeatureProvider"/>
 
@@ -739,7 +735,7 @@
     <usageGroupingRuleProvider implementation="com.android.tools.idea.gradle.project.upgrade.ComponentGroupingRuleProvider"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.AssistantInvoker"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.ContentManager"/>
-    <applicationInitializedListener implementation="com.android.tools.idea.stats.AndroidStudioStatisticsJobScheduler"/>
+    <applicationInitializedListener implementation="com.intellij.internal.statistic.updater.StatisticsStateCollectorsScheduler"/>
     <statistics.projectUsagesCollector implementation="com.intellij.internal.statistic.collectors.fus.fileTypes.FileTypeUsagesCollector"/>
   </extensions>
 

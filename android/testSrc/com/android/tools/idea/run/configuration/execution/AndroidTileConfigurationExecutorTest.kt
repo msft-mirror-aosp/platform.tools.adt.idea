@@ -17,13 +17,13 @@ package com.android.tools.idea.run.configuration.execution
 
 
 import com.android.ddmlib.IShellOutputReceiver
-import com.android.ddmlib.MultiLineReceiver
 import com.android.testutils.MockitoKt
 import com.android.tools.deployer.model.component.AppComponent
 import com.android.tools.idea.run.configuration.AndroidConfigurationProgramRunner
 import com.android.tools.idea.run.configuration.AndroidTileConfiguration
 import com.android.tools.idea.run.configuration.AndroidTileConfigurationType
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.RunManager
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -32,7 +32,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
-import org.mockito.invocation.InvocationOnMock
+import kotlin.test.assertFailsWith
 
 class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTest() {
 
@@ -51,25 +51,22 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
 
     val executor = Mockito.spy(AndroidTileConfigurationExecutor(env))
 
-    val device = getMockDevice()
-
-    Mockito.doAnswer { invocation: InvocationOnMock ->
-      // get the 4th arg (the receiver to feed it the lines).
-      val receiver = invocation.getArgument<MultiLineReceiver>(1)
-      // Test TileIndexReceiver.
-      receiver.processNewLines(arrayOf("Index=[1]"))
-    }.`when`(device)
-      // Test that we call activateComponent with right params.
-      .executeShellCommand(MockitoKt.eq(
-        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component"),
-                           MockitoKt.any(IShellOutputReceiver::class.java),
-                           MockitoKt.any(),
-                           MockitoKt.any())
+    val device = getMockDevice { request ->
+      when (request) {
+        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component" ->
+          "Broadcast completed: result=1, Index=[1]"
+        else -> "Unknown request: $request"
+      }
+    }
 
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     // Mock app installation.
     Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller()
+
+    // Mock console.
+    val console: ConsoleView = Mockito.mock(ConsoleView::class.java)
+    Mockito.doReturn(console).`when`(executor).createConsole()
 
     executor.doOnDevices(listOf(device))
 
@@ -88,6 +85,32 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component")
     // Showing Tile.
     assertThat(commands[1]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-tile --ei index 1")
+
+    // Verify that a warning was raised.
+    Mockito.verify(console, Mockito.times(1)).printError("Warning: Launch was successful, but you may need to bring up the tile manually.")
+  }
+
+  fun testException() {
+    // Use DefaultRunExecutor, equivalent of pressing run button.
+    val env = getExecutionEnvironment(DefaultRunExecutor.getRunExecutorInstance())
+
+    val executor = Mockito.spy(AndroidTileConfigurationExecutor(env))
+
+    val response = "Broadcast completed: result=2, data=\"Internal failure.\"\n" +
+                   "End of output."
+    val device = getMockDevice { request ->
+      when (request) {
+        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component" -> response
+        else -> "Unknown request: $request"
+      }
+    }
+
+    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val appInstaller = TestApplicationInstaller(appId, app) // Mock app installation.
+    Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller()
+
+    val e = assertFailsWith<ExecutionException> { executor.doOnDevices(listOf(device)) }
+    assertThat(e).hasMessageThat().contains("Error while setting the tile, message: $response")
   }
 
   fun testDebug() {
@@ -97,20 +120,15 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
     // Executor we test.
     val executor = Mockito.spy(AndroidTileConfigurationExecutor(env))
 
-    val device = getMockDevice()
+    val device = getMockDevice { request ->
+      when (request) {
+        // Test TileIndexReceiver
+        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component" ->
+          "Broadcast completed: result=1, Index=[101]"
+        else -> "Unknown request: $request"
+      }
+    }
 
-    Mockito.doAnswer { invocation: InvocationOnMock ->
-      // get the 4th arg (the receiver to feed it the lines).
-      val receiver = invocation.getArgument<MultiLineReceiver>(1)
-      // Test TileIndexReceiver.
-      receiver.processNewLines(arrayOf("Index=[101]"))
-    }.`when`(device)
-      // Test that we call activateComponent with right params.
-      .executeShellCommand(MockitoKt.eq(
-        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component"),
-                           MockitoKt.any(IShellOutputReceiver::class.java),
-                           MockitoKt.any(),
-                           MockitoKt.any())
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     // Mock app installation.

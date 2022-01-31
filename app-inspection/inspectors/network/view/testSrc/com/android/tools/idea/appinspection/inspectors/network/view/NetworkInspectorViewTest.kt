@@ -35,6 +35,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.ui.ThreeComponentsSplitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import kotlinx.coroutines.CoroutineScope
@@ -70,17 +72,20 @@ class NetworkInspectorViewTest {
   private lateinit var fakeUi: FakeUi
   private lateinit var model: NetworkInspectorModel
   private lateinit var inspectorView: NetworkInspectorView
-  private lateinit var disposable: Disposable
   private lateinit var scope: CoroutineScope
   private val timer = FakeTimer()
 
   @get:Rule
   val edtRule = EdtRule()
 
+  @get:Rule
+  val applicationRule = ApplicationRule()
+
+  @get:Rule
+  val disposableRule = DisposableRule()
+
   @Before
   fun setUp() {
-    disposable = Disposer.newDisposable()
-
     val codeNavigationProvider = FakeCodeNavigationProvider()
     val services = TestNetworkInspectorServices(codeNavigationProvider, timer)
     model = NetworkInspectorModel(services, FakeNetworkInspectorDataSource(
@@ -99,7 +104,7 @@ class NetworkInspectorViewTest {
 
     val parentPanel = JPanel(BorderLayout())
     parentPanel.background = DEFAULT_BACKGROUND
-    val splitter = ThreeComponentsSplitter(disposable)
+    val splitter = ThreeComponentsSplitter(disposableRule.disposable)
     splitter.focusTraversalPolicy = LayoutFocusTraversalPolicy()
     splitter.dividerWidth = 0
     splitter.setDividerMouseZoneSize(-1)
@@ -119,7 +124,6 @@ class NetworkInspectorViewTest {
   @After
   fun tearDown() {
     scope.cancel()
-    Disposer.dispose(disposable)
   }
 
   @Test

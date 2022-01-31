@@ -140,6 +140,13 @@ class InspectorModel(val project: Project) : ViewNodeAndResourceLookup {
   }
 
   /**
+   * In-place update of all nodes (no structural changes should be made).
+   */
+  fun updateAll(operation: (ViewNode) -> Unit) {
+    ViewNode.readAccess { root.flatten().forEach { operation(it) } }
+  }
+
+  /**
    * Update [root]'s bounds and children based on any updates to [windows]
    * Also adds a dark layer between windows if DIM_BEHIND is set.
    */
@@ -324,6 +331,7 @@ class InspectorModel(val project: Project) : ViewNodeAndResourceLookup {
         oldNode.composeOffset = newNode.composeOffset
         oldNode.composeLineNumber = newNode.composeLineNumber
         oldNode.composeFlags = newNode.composeFlags
+        oldNode.recomposeCount = newNode.recomposeCount
       }
 
       oldNode.children.clear()
