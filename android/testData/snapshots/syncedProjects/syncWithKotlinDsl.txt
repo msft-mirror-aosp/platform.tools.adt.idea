@@ -588,7 +588,7 @@ PROJECT                       : testSyncWithKotlinDsl
                 apiVersion                    : 1.5
                 languageVersion               : 1.5
             CompilerSettings
-                additionalArguments           : -version
+                additionalArguments           : -Xallow-no-source-files
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
@@ -674,7 +674,7 @@ PROJECT                       : testSyncWithKotlinDsl
                 apiVersion                    : 1.5
                 languageVersion               : 1.5
             CompilerSettings
-                additionalArguments           : -version
+                additionalArguments           : -Xallow-no-source-files
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
@@ -758,7 +758,7 @@ PROJECT                       : testSyncWithKotlinDsl
                 apiVersion                    : 1.5
                 languageVersion               : 1.5
             CompilerSettings
-                additionalArguments           : -version
+                additionalArguments           : -Xallow-no-source-files
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
