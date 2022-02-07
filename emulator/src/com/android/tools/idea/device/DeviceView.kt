@@ -103,7 +103,8 @@ class DeviceView(
   var frameNumber = 0
     private set
 
-  private val connected = true
+  private var connected = false
+  private var disposed = false
 
   private var multiTouchMode = false
     set(value) {
@@ -149,15 +150,19 @@ class DeviceView(
       deviceClient.startAgentAndConnect()
       val decoder = deviceClient.createVideoDecoder(realSize.rotatedByQuadrants(-displayRotationQuadrants))
       EventQueue.invokeLater {
-        this.deviceClient = deviceClient
-        this.decoder = decoder
-        if (width > 0 && height > 0) {
-          deviceClient.deviceController.sendControlMessage(SetMaxVideoResolutionMessage(realWidth, realHeight))
+        if (!disposed) {
+          this.deviceClient = deviceClient
+          this.decoder = decoder
+          if (width > 0 && height > 0) {
+            deviceClient.deviceController.sendControlMessage(SetMaxVideoResolutionMessage(realWidth, realHeight))
+          }
         }
       }
       decoder.addFrameListener(object : VideoDecoder.FrameListener {
+
         override fun onNewFrameAvailable() {
           EventQueue.invokeLater {
+            connected = true
             if (frameNumber == 0) {
               hideLongRunningOperationIndicatorInstantly()
             }
@@ -167,6 +172,10 @@ class DeviceView(
             }
           }
         }
+
+        override fun onEndOfVideoStream() {
+          showDisconnectedMessage("Lost connection to the device. See the error log.")
+        }
       })
       deviceClient.startVideoDecoding(decoder)
     }
@@ -175,15 +184,25 @@ class DeviceView(
     }
     catch (e: Throwable) {
       thisLogger().error("Failed to initialize the screen sharing agent", e)
-      EventQueue.invokeLater {
+      showDisconnectedMessage("Failed to initialize the device agent. See the error log.")
+    }
+  }
+
+  private fun showDisconnectedMessage(message: String) {
+    EventQueue.invokeLater {
+      if (!disposed) {
+        connected = false
+        decoder = null
         hideLongRunningOperationIndicatorInstantly()
-        disconnectedStateLabel.text = "Failed to initialize the device agent. See the error log."
+        disconnectedStateLabel.text = message
         add(disconnectedStateLabel)
+        revalidate()
       }
     }
   }
 
   override fun dispose() {
+    disposed = true
   }
 
   override fun canZoom(): Boolean = connected

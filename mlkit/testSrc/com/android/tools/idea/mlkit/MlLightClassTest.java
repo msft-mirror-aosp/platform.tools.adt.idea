@@ -41,6 +41,7 @@ import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers;
 import com.intellij.openapi.fileTypes.FileTypeExtensionPoint;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.ProjectUtil;
+import com.intellij.openapi.vfs.PersistentFSConstants;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
@@ -60,6 +61,11 @@ public class MlLightClassTest extends AndroidTestCase {
   public void setUp() throws Exception {
     super.setUp();
     StudioFlags.ML_MODEL_BINDING.override(true);
+
+    // b/214269405
+    // larger file size limit for FilenameIndex
+    PersistentFSConstants.setMaxIntellisenseFileSize(100_0000_000);
+
     ((DefaultModuleSystem)ProjectSystemUtil.getModuleSystem(myModule)).setMlModelBindingEnabled(true);
 
     // Pull in tflite model, which has image(i.e. name: image1) as input tensor and labels as output tensor
@@ -183,9 +189,7 @@ public class MlLightClassTest extends AndroidTestCase {
     );
 
     myFixture.configureFromExistingVirtualFile(activityFile.getVirtualFile());
-/* b/214269405
     myFixture.checkHighlighting();
-b/214269405 */
   }
 
   public void testHighlighting_newAPINotExistInLowAGP_java() {
@@ -447,9 +451,7 @@ b/214269405 */
     );
 
     myFixture.configureFromExistingVirtualFile(activityFile.getVirtualFile());
-/* b/214269405
     myFixture.checkHighlighting();
-b/214269405 */
   }
 
   public void testHighlighting_modelWithoutMetadata_kotlin() {
@@ -818,9 +820,7 @@ b/214269405 */
     MlModuleService mlkitService = MlModuleService.getInstance(myModule);
     List<LightModelClass> lightClasses = mlkitService.getLightModelClassList();
     List<String> classNameList = map(lightClasses, psiClass -> psiClass.getName());
-/* b/214269405
     assertThat(classNameList).containsExactly("MyModel", "MyPlainModel");
-b/214269405 */
     assertThat(ModuleUtilCore.findModuleForPsiElement(lightClasses.get(0))).isEqualTo(myModule);
   }
 

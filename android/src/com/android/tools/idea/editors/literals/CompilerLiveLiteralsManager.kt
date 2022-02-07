@@ -19,6 +19,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.runReadAction
 import com.android.tools.idea.editors.literals.internal.LiveLiteralsFinder
 import com.android.tools.idea.editors.literals.internal.MethodData
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -26,8 +27,8 @@ import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiFile
-import com.intellij.util.concurrency.AppExecutorUtil
 import kotlinx.coroutines.withContext
+import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.org.objectweb.asm.ClassReader
 
@@ -59,10 +60,8 @@ object CompilerLiveLiteralsManager {
   /**
    * Finds the list of Live Literals declared by the compiler in the given `.class` file.
    */
-  fun findLiteralsInClass(classFile: VirtualFile?): List<CompilerLiteralDefinition> {
-    if (classFile == null) return emptyList()
-
-    val reader = ClassReader(classFile.contentsToByteArray())
+  fun findLiteralsInClass(classContents: ByteArray): List<CompilerLiteralDefinition> {
+    val reader = ClassReader(classContents)
     val result = mutableListOf<CompilerLiteralDefinition>()
     // This uses the LiveLiteralsFinder to check all the annotations and retrieve the metadata. Because here we are not
     // transforming the class, we pass null as delegate.
@@ -77,8 +76,8 @@ object CompilerLiveLiteralsManager {
     return if (result.isEmpty()) emptyList() else result
   }
 
-  private fun findClassFileForSourceFileAndClassName(sourceFile: PsiFile, className: String): VirtualFile? =
-    sourceFile.module?.getModuleSystem()?.getClassFileFinderForSourceFile(sourceFile.virtualFile)?.findClassFile(className)
+  private suspend fun findClassFileForSourceFileAndClassName(sourceFile: PsiFile, className: String): VirtualFile? =
+    runReadAction{ sourceFile.module }?.getModuleSystem()?.getClassFileFinderForSourceFile(sourceFile.virtualFile)?.findClassFile(className)
 
   /**
    * Finds the literals declared by the compiler for the given [sourceFile] and returns a [Finder] object with the result.
@@ -89,11 +88,16 @@ object CompilerLiveLiteralsManager {
     }
     return withContext(workerThread) {
       val packageName = runReadAction { sourceFile.packageName }
+      val overlayLoader = if (FasterPreviewApplicationConfiguration.getInstance().isEnabled) {
+        runReadAction { sourceFile.module }?.let { ModuleClassLoaderOverlays.getInstance(it) }
+      } else null
       val liveLiteralClasses = runReadAction {
         classOwner.classes.mapNotNull { it.name }
       }
-        .mapNotNull { className ->
-          findClassFileForSourceFileAndClassName(sourceFile, "${packageName}.LiveLiterals${'$'}$className")
+        .map { className -> "${packageName}.LiveLiterals${'$'}$className" }
+        .mapNotNull { classFqn ->
+          overlayLoader?.classLoaderLoader?.loadClass(classFqn) ?:
+          findClassFileForSourceFileAndClassName(sourceFile, classFqn)?.contentsToByteArray()
         }
 
       val literalDefinitions = runReadAction {

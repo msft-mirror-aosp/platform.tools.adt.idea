@@ -489,7 +489,7 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
       buildId = buildId,
       projectPath = projectPath,
       variant = variant,
-      lintJar = lintJar?.path,
+      lintJar = lintJar?.path?.let(::File),
       sourceSet = if (isTestFixturesComponent) IdeModuleSourceSet.TEST_FIXTURES else IdeModuleSourceSet.MAIN
     )
     return moduleLibraryCores.internCore(core)
@@ -761,7 +761,7 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
       assembleTaskName = artifact.assembleTaskName,
       classesFolder = artifact.classesFolders,
       ideSetupTaskNames = artifact.ideSetupTaskNames.toList(),
-      mutableGeneratedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct().toMutableList(),
+      generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
       variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it) },
       multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it) },
       level2Dependencies = ThrowingIdeDependencies(),
@@ -804,7 +804,7 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
       assembleTaskName = artifact.assembleTaskName,
       classesFolder = artifact.classesFolders,
       ideSetupTaskNames = artifact.ideSetupTaskNames.deduplicateStrings(),
-      mutableGeneratedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct().toMutableList(),
+      generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
       variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it) },
       multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it) },
       level2Dependencies = ThrowingIdeDependencies(),
@@ -947,6 +947,7 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
       nativeBuildSystem = when (nativeModule.nativeBuildSystem) {
         NativeBuildSystem.NDK_BUILD -> com.android.tools.idea.gradle.model.ndk.v2.NativeBuildSystem.NDK_BUILD
         NativeBuildSystem.CMAKE -> com.android.tools.idea.gradle.model.ndk.v2.NativeBuildSystem.CMAKE
+        NativeBuildSystem.NINJA -> com.android.tools.idea.gradle.model.ndk.v2.NativeBuildSystem.NINJA
         // No forward compatibility. Old Studio cannot open projects with newer AGP.
         else -> error("Unknown native build system: ${nativeModule.nativeBuildSystem}")
       },
@@ -1122,7 +1123,9 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
       testNamespace = project.androidTestNamespace,
       projectType = copyProjectType(basicProject.projectType),
       isBaseSplit = isBaseSplit,
-      agpFlags = agpFlags)
+      agpFlags = agpFlags,
+      isKaptEnabled = false
+    )
   }
 
   return object : ModelCache.V2 {
@@ -1153,8 +1156,10 @@ internal fun modelCacheV2Impl(buildRootDirectory: File?): ModelCache {
     override fun nativeVariantAbiFrom(variantAbi: com.android.builder.model.NativeVariantAbi): IdeNativeVariantAbiImpl =
       throw UnsupportedOperationException("com.android.builder.model.NativeVariantAbi is a model v1 concept")
 
-    override fun nativeAndroidProjectFrom(project: com.android.builder.model.NativeAndroidProject,
-                                          ndkVersion: String): IdeNativeAndroidProjectImpl =
+    override fun nativeAndroidProjectFrom(
+      project: com.android.builder.model.NativeAndroidProject,
+      ndkVersion: String?
+    ): IdeNativeAndroidProjectImpl =
       throw UnsupportedOperationException("com.android.builder.model.NativeAndroidProject is a model v1 concept")
   }
 }

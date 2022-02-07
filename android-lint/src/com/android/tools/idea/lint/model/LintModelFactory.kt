@@ -40,6 +40,8 @@ import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency
 import com.android.tools.idea.gradle.model.IdeModuleDependency
+import com.android.tools.idea.gradle.model.projectPath
+import com.android.tools.idea.gradle.model.sourceSet
 import com.android.tools.lint.model.DefaultLintModelAndroidArtifact
 import com.android.tools.lint.model.DefaultLintModelAndroidLibrary
 import com.android.tools.lint.model.DefaultLintModelBuildFeatures
@@ -168,19 +170,19 @@ class LintModelFactory : LintModelModuleLoader {
         // TODO: Construct file objects lazily!
         return DefaultLintModelAndroidLibrary(
           identifier = library.getIdentifier(),
-          manifest = File(library.manifest),
+          manifest = library.manifest,
           // TODO - expose compile jar vs impl jar?
-          jarFiles = library.runtimeJarFiles.map { File(it) },
+          jarFiles = library.runtimeJarFiles,
           folder = library.folder!!, // Needed for workaround for b/66166521
-          resFolder = File(library.resFolder),
-          assetsFolder = File(library.assetsFolder),
-          lintJar = library.lintJar?.let(::File),
-          publicResources = File(library.publicResources),
-          symbolFile = File(library.symbolFile),
-          externalAnnotations = File(library.externalAnnotations),
+          resFolder = library.resFolder,
+          assetsFolder = library.assetsFolder,
+          lintJar = library.lintJar,
+          publicResources = library.publicResources,
+          symbolFile = library.symbolFile,
+          externalAnnotations = library.externalAnnotations,
           provided = dependency.isProvided,
           resolvedCoordinates = library.getMavenName(),
-          proguardRules = File(library.proguardRules)
+          proguardRules = library.proguardRules
         )
     }
 
@@ -200,7 +202,7 @@ class LintModelFactory : LintModelModuleLoader {
         return DefaultLintModelModuleLibrary(
           identifier = dependency.getIdentifier(),
           projectPath = projectPath,
-          lintJar = dependency.target.lintJar?.let(::File),
+          lintJar = dependency.target.lintJar,
           provided = false
         )
     }

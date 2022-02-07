@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.run.deployment.liveedit
 
-public class LiveEditUpdateException(val error: Error, val details: String = "") : RuntimeException() {
+class LiveEditUpdateException(val error: Error, val details: String = "", cause : Throwable?) : RuntimeException(details, cause) {
 
   /**
    * @param message Short description
@@ -34,13 +34,13 @@ public class LiveEditUpdateException(val error: Error, val details: String = "")
   companion object {
     // Sorted lexicographically for readability and consistency
 
-    fun analysisError(details: String) = LiveEditUpdateException(Error.ANALYSIS_ERROR, details)
+    fun analysisError(details: String, cause: Throwable? = null) = LiveEditUpdateException(Error.ANALYSIS_ERROR, details, cause)
 
-    fun compilationError(details: String) = LiveEditUpdateException(Error.COMPILATION_ERROR, details)
+    fun compilationError(details: String, cause: Throwable? = null) = LiveEditUpdateException(Error.COMPILATION_ERROR, details, cause)
 
-    fun internalError(details: String) = LiveEditUpdateException(Error.INTERNAL_ERROR, details)
+    fun internalError(details: String, cause: Throwable? = null) = LiveEditUpdateException(Error.INTERNAL_ERROR, details, cause)
 
-    fun knownIssue(bugNumber: Int, details: String) = LiveEditUpdateException(Error.INTERNAL_ERROR, "(b/$bugNumber) $details")
+    fun knownIssue(bugNumber: Int, details: String, cause: Throwable? = null) = LiveEditUpdateException(Error.KNOWN_ISSUE, "(b/$bugNumber) $details", cause)
   }
 }
 

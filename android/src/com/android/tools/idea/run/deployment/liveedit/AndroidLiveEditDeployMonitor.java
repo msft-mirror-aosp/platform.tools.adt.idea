@@ -43,7 +43,6 @@ import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.util.concurrency.AppExecutorUtil;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -255,6 +254,7 @@ public class AndroidLiveEditDeployMonitor {
       // We need to do this because currently error reporting requires an AdbClient object, which we don't create until we push.
       // Once compilation error reporting does *not* require device knowledge, this should be removed.
       exception = e;
+      LOGGER.error(e, "Error while compiling");
     } finally {
       compileFinish = System.nanoTime();
     }

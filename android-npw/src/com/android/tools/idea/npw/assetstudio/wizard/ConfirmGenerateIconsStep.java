@@ -19,6 +19,8 @@ import static com.android.tools.idea.npw.assetstudio.IconGenerator.getResDirecto
 import static com.android.tools.idea.npw.assetstudio.IconGenerator.pathToDensity;
 
 import com.android.resources.Density;
+import com.android.tools.adtui.common.ProposedFileTreeCellRenderer;
+import com.android.tools.adtui.common.ProposedFileTreeModel;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.adtui.validation.validators.FalseValidator;
@@ -31,11 +33,9 @@ import com.android.tools.idea.observable.core.ObjectProperty;
 import com.android.tools.idea.observable.core.ObservableBool;
 import com.android.tools.idea.observable.ui.SelectedItemProperty;
 import com.android.tools.idea.projectsystem.NamedModuleTemplate;
-import com.android.tools.idea.ui.wizard.ProposedFileTreeCellRenderer;
-import com.android.tools.idea.ui.wizard.ProposedFileTreeModel;
-import com.android.tools.idea.ui.wizard.WizardUtils;
 import com.android.tools.idea.wizard.model.ModelWizard;
 import com.android.tools.idea.wizard.model.ModelWizardStep;
+import com.android.tools.idea.wizard.ui.WizardUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.intellij.openapi.components.PersistentStateComponent;

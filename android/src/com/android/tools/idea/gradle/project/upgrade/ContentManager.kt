@@ -30,6 +30,7 @@ import com.android.tools.idea.observable.core.ObjectValueProperty
 import com.android.tools.idea.observable.core.OptionalValueProperty
 import com.google.wireless.android.sdk.stats.UpgradeAssistantEventInfo.UpgradeAssistantEventKind.FAILURE_PREDICTED
 import com.intellij.icons.AllIcons
+import com.intellij.ide.BrowserUtil
 import com.intellij.ide.plugins.newui.HorizontalLayout
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI.DEFAULT_STYLE_KEY
 import com.intellij.openapi.Disposable
@@ -56,6 +57,7 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.ScrollPaneFactory.createScrollPane
 import com.intellij.ui.SideBorder
 import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.JBPanel
@@ -76,6 +78,7 @@ import javax.swing.event.TreeModelEvent
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeSelectionModel
+import com.intellij.ui.components.panels.HorizontalLayout as IntellijUiHorizontalLayout
 
 private val LOG = Logger.getInstance("Upgrade Assistant")
 
@@ -98,12 +101,23 @@ class ToolWindowModel(
 
   val uiState = ObjectValueProperty<UIState>(UIState.Loading)
 
+  enum class Severity(val icon: Icon) {
+    ERROR(AllIcons.General.Error),
+    WARNING(AllIcons.General.Warning),
+  }
+
+  data class StatusMessage(
+    val severity: Severity,
+    val text: String,
+    val url: String? = null
+  )
+
   sealed class UIState{
     abstract val runEnabled: Boolean
     abstract val showLoadingState: Boolean
     abstract val runTooltip: String
     open val loadingText: String = ""
-    open val errorMessage: Pair<Icon, String>? = null
+    open val statusMessage: StatusMessage? = null
 
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -113,7 +127,7 @@ class ToolWindowModel(
       if (showLoadingState != other.showLoadingState) return false
       if (runTooltip != other.runTooltip) return false
       if (loadingText != other.loadingText) return false
-      if (errorMessage != other.errorMessage) return false
+      if (statusMessage != other.statusMessage) return false
 
       return true
     }
@@ -123,7 +137,7 @@ class ToolWindowModel(
       result = 31 * result + showLoadingState.hashCode()
       result = 31 * result + runTooltip.hashCode()
       result = 31 * result + loadingText.hashCode()
-      result = 31 * result + (errorMessage?.hashCode() ?: 0)
+      result = 31 * result + (statusMessage?.hashCode() ?: 0)
       return result
     }
 
@@ -159,7 +173,7 @@ class ToolWindowModel(
       override val runEnabled = true
       override val showLoadingState = false
       override val loadingText = ""
-      override val errorMessage = AllIcons.General.Warning to "Uncommitted changes in build files."
+      override val statusMessage = StatusMessage(Severity.WARNING, "Uncommitted changes in build files.")
       override val runTooltip = "There are uncommitted changes in project build files.  Before upgrading, " +
                                  "you should commit or revert changes to the build files so that changes from the upgrade process " +
                                  "can be handled separately."
@@ -168,18 +182,22 @@ class ToolWindowModel(
       override val runEnabled = false
       override val showLoadingState = false
       override val loadingText = ""
-      override val errorMessage = AllIcons.General.Error to "Cannot find AGP version in build files."
+      override val statusMessage = StatusMessage(
+        Severity.ERROR,
+        "Cannot find AGP version in build files.",
+        "https://developer.android.com/studio/build/agp-upgrade-assistant#project-structure"
+      )
       override val runTooltip = "Cannot locate the version specification for the Android Gradle Plugin dependency, " +
                                 "possibly because the project's build files use features not currently support by the " +
                                 "Upgrade Assistant (for example: using constants defined in buildSrc)."
     }
     class InvalidVersionError(
-      override val errorMessage: Pair<Icon, String>
+      override val statusMessage: StatusMessage
     ) : UIState() {
       override val runEnabled = false
       override val showLoadingState = false
       override val runTooltip: String
-        get() = errorMessage.second
+        get() = statusMessage.text
     }
   }
 
@@ -278,7 +296,7 @@ class ToolWindowModel(
   fun newVersionSet(newVersionString: String) {
     val status = editingValidation(newVersionString)
     _selectedVersion = if (status.first == EditingErrorCategory.ERROR) {
-      uiState.set(UIState.InvalidVersionError(AllIcons.General.Error to status.second))
+      uiState.set(UIState.InvalidVersionError(StatusMessage(Severity.ERROR, status.second)))
       null
     }
     else {
@@ -612,15 +630,26 @@ class ContentManager(val project: Project) {
       }
     }
     val messageLabel = JBLabel().apply {
-      this@View.model.uiState.get().let { uiState ->
-        icon = uiState.errorMessage?.first
-        text = uiState.errorMessage?.second
+      fun update(uiState: ToolWindowModel.UIState) {
+        icon = uiState.statusMessage?.severity?.icon
+        text = uiState.statusMessage?.text
       }
-      myListeners.listen(this@View.model.uiState) { uiState ->
-        icon = uiState.errorMessage?.first
-        text = uiState.errorMessage?.second
-      }
+      update(this@View.model.uiState.get())
+      myListeners.listen(this@View.model.uiState, ::update)
     }
+    val hyperlinkLabel = object : ActionLink("Read more") {
+      var url: String? = null
+    }
+      .apply {
+        addActionListener { url?.let { BrowserUtil.browse(it) } }
+        setExternalLinkIcon()
+        fun update(uiState: ToolWindowModel.UIState) {
+          url = uiState.statusMessage?.url
+          isVisible = url != null
+        }
+        update(this@View.model.uiState.get())
+        myListeners.listen(this@View.model.uiState, ::update)
+      }
 
     val detailsPanel = JBPanel<JBPanel<*>>().apply {
       layout = VerticalLayout(0, SwingConstants.LEFT)
@@ -679,13 +708,19 @@ class ContentManager(val project: Project) {
     }
 
     private fun makeTopComponent() = JBPanel<JBPanel<*>>().apply {
-      layout = HorizontalLayout(5)
-      add(upgradeLabel)
-      add(versionTextField)
-      add(okButton)
-      add(previewButton)
-      add(refreshButton)
-      add(messageLabel)
+      // This layout, rather than com.intellij.ide.plugins.newui.HorizontalLayout (used elsewhere in ContentManager), is needed to make
+      // the baseline of the hyperlinkLabel be aligned with the baselines of unstyled text in other elements.  It does not align the text
+      // in the versionTextField combo box with this baseline, however; instead the borders of the combo are aligned with the borders of
+      // the button.  Using GroupLayout (with BASELINE alignment) aligns all the text baselines, at the cost of misaligning the combo
+      // borders; altering the combo's dimensions or insets somehow might allow complete unity.
+      layout = IntellijUiHorizontalLayout(5)
+      add(upgradeLabel, IntellijUiHorizontalLayout.LEFT)
+      add(versionTextField, IntellijUiHorizontalLayout.LEFT)
+      add(okButton, IntellijUiHorizontalLayout.LEFT)
+      add(previewButton, IntellijUiHorizontalLayout.LEFT)
+      add(refreshButton, IntellijUiHorizontalLayout.LEFT)
+      add(messageLabel, IntellijUiHorizontalLayout.LEFT)
+      add(hyperlinkLabel, IntellijUiHorizontalLayout.LEFT)
     }
 
     private fun refreshDetailsPanel() {

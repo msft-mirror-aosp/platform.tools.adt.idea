@@ -96,7 +96,7 @@ private val LOG get() = logger<WearPairingManager>()
 
 class DevicesConnectionStep(model: WearDevicePairingModel,
                             val project: Project?,
-                            val wizardAction: WizardAction,
+                            private val wizardAction: WizardAction,
                             private val isFirstStage: Boolean = true) : ModelWizardStep<WearDevicePairingModel>(model, "") {
   private val coroutineScope = AndroidCoroutineScope(this)
   private var runningJob: Job? = null
@@ -188,8 +188,9 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
       return
     }
     val isNewWearPairingDevice =
-      WearPairingManager.getPairedDevices(phonePairingDevice.deviceID)?.wear?.deviceID != wearPairingDevice.deviceID
-    WearPairingManager.removePairedDevices(phonePairingDevice.deviceID, restartWearGmsCore = isNewWearPairingDevice)
+      WearPairingManager.getPairsForDevice(phonePairingDevice.deviceID)
+      .firstOrNull { wearPairingDevice.deviceID == it.wear.deviceID } == null
+    WearPairingManager.removeAllPairedDevices(wearPairingDevice.deviceID, restartWearGmsCore = isNewWearPairingDevice)
 
     companionAppStep(phoneDevice, wearDevice)
   }
@@ -716,7 +717,7 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
           val wearDeviceId = model.selectedWearDevice.valueOrNull?.deviceID ?: ""
           val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
           avdManager.findAvd(wearDeviceId)?.apply {
-            WearPairingManager.removePairedDevices(wearDeviceId, restartWearGmsCore = false)
+            WearPairingManager.removeAllPairedDevices(wearDeviceId, restartWearGmsCore = false)
             avdManager.stopAvd(this)
             waitForCondition(10_000) { model.selectedWearDevice.valueOrNull?.isOnline() != true }
             avdManager.wipeUserData(this)

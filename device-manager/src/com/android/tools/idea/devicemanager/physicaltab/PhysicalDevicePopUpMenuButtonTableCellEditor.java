@@ -19,6 +19,7 @@ import com.android.tools.idea.devicemanager.DetailsPanel;
 import com.android.tools.idea.devicemanager.Device;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
 import com.android.tools.idea.devicemanager.DeviceType;
+import com.android.tools.idea.devicemanager.MenuItems;
 import com.android.tools.idea.devicemanager.PopUpMenuButtonTableCellEditor;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.wearpairing.AndroidWearPairingBundle;
@@ -59,7 +60,7 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
     List<JComponent> items = new ArrayList<>();
     Optional<JComponent> optionalItem = newUnpairDeviceItem();
 
-    items.add(newViewDetailsItem());
+    items.add(MenuItems.newViewDetailsItem(myPanel));
     optionalItem.ifPresent(item -> items.add(new Separator()));
     items.add(newPairDeviceItem());
     optionalItem.ifPresent(items::add);
@@ -67,15 +68,8 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
     return items;
   }
 
-  private @NotNull JComponent newViewDetailsItem() {
-    AbstractButton item = new JBMenuItem("View details");
-    item.addActionListener(event -> myPanel.viewDetails());
-
-    return item;
-  }
-
   private @NotNull JMenuItem newPairDeviceItem() {
-    JMenuItem item = new JBMenuItem("Pair device");
+    JMenuItem item = new JBMenuItem("Pair Device");
 
     boolean phone = myDevice.getType().equals(DeviceType.PHONE);
     boolean online = myDevice.isOnline();
@@ -107,15 +101,13 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
   @SuppressWarnings("unused")
   private @NotNull Optional<@NotNull JComponent> newUnpairDeviceItem() {
     String key = myDevice.getKey().toString();
-    PhoneWearPair pair = myManager.getPairedDevices(key);
+    List<PhoneWearPair> pairList = myManager.getPairsForDevice(key);
 
-    if (pair == null) {
+    if (pairList.isEmpty()) {
       return Optional.empty();
     }
 
-    JMenuItem item = new JBMenuItem("Unpair device");
-    PairingDevice otherDevice = pair.getPeerDevice(key);
-    item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.forget.connection", otherDevice.getDisplayName()));
+    AbstractButton item = new JBMenuItem("Unpair Device");
     item.addActionListener(actionEvent -> {
       DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
         .setKind(DeviceManagerEvent.EventKind.PHYSICAL_UNPAIR_DEVICE_ACTION)
@@ -127,9 +119,14 @@ final class PhysicalDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButton
         myPanel.viewDetails(DetailsPanel.PAIRED_DEVICES_TAB_INDEX);
       }
       else {
+        PhoneWearPair pair = pairList.get(0);
+        PairingDevice otherDevice = pair.getPeerDevice(key);
+        item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.forget.connection", otherDevice.getDisplayName()));
         try {
           CoroutineContext context = GlobalScope.INSTANCE.getCoroutineContext();
-          BuildersKt.runBlocking(context, (scope, continuation) -> myManager.removePairedDevices(key, true, continuation));
+          BuildersKt.runBlocking(context, (scope, continuation) ->
+            myManager.removeAllPairedDevices(key, true, continuation)
+          );
         }
         catch (InterruptedException exception) {
           Thread.currentThread().interrupt();

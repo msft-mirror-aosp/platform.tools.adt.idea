@@ -159,6 +159,15 @@ public class AndroidUtils extends CommonAndroidUtil {
 
   private static final Lexer JAVA_LEXER = JavaParserDefinition.createLexer(LanguageLevel.JDK_1_5);
 
+  /**
+   * The package is used to create a directory (eg: MyApplication/app/src/main/java/src/my/package/name)
+   * A windows directory path cannot be longer than 250 chars
+   * On unix/mac a directory name cannot be longer than 250 chars
+   * On all platforms, aapt fails with really cryptic errors if the package name is longer that ~200 chars
+   * Having a sane length for the package also seems a good thing
+   */
+  private static final int PACKAGE_LENGTH_LIMIT = 100;
+
   private AndroidUtils() {
   }
 
@@ -369,9 +378,7 @@ public class AndroidUtils extends CommonAndroidUtil {
     properties.LIBS_FOLDER_RELATIVE_PATH = '/' + s + properties.LIBS_FOLDER_RELATIVE_PATH;
     properties.PROGUARD_LOGS_FOLDER_RELATIVE_PATH = '/' + s + properties.PROGUARD_LOGS_FOLDER_RELATIVE_PATH;
 
-    for (int i = 0; i < properties.RES_OVERLAY_FOLDERS.size(); i++) {
-      properties.RES_OVERLAY_FOLDERS.set(i, '/' + s + properties.RES_OVERLAY_FOLDERS.get(i));
-    }
+    properties.RES_OVERLAY_FOLDERS.replaceAll(overlayFolder -> '/' + s + overlayFolder);
   }
 
   @Nullable
@@ -633,6 +640,15 @@ public class AndroidUtils extends CommonAndroidUtil {
   }
 
   @Nullable
+  public static String validatePackageName(@Nullable String packageName) {
+    packageName = (packageName == null) ? "" : packageName;
+    if (packageName.length() >= PACKAGE_LENGTH_LIMIT) {
+      return AndroidBundle.message("android.wizard.module.package.too.long");
+    }
+    return AndroidUtils.validateAndroidPackageName(packageName);
+  }
+
+  @Nullable
   public static String isReservedKeyword(@NotNull String string) {
     Lexer lexer = JAVA_LEXER;
     lexer.start(string);
@@ -741,10 +757,14 @@ public class AndroidUtils extends CommonAndroidUtil {
     return false;
   }
 
+  /**
+   * Checks if the project contains a module with an Android, an Apk or a Gradle facet.
+   * See also {@link com.android.tools.idea.FacetUtils#hasAndroidOrApkFacet}.
+   */
   public static boolean hasAndroidFacets(@NotNull Project project) {
     ProjectFacetManager facetManager = ProjectFacetManager.getInstance(project);
-    return facetManager.hasFacets(AndroidFacet.getFacetType().getId()) ||
-           facetManager.hasFacets(ApkFacet.getFacetTypeId()) ||
+    return facetManager.hasFacets(AndroidFacet.ID) ||
+           facetManager.hasFacets(ApkFacet.ID) ||
            facetManager.hasFacets(GradleFacet.getFacetTypeId());
   }
 

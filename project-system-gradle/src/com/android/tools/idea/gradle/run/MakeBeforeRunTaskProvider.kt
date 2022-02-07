@@ -26,6 +26,7 @@ import com.android.builder.model.PROPERTY_EXTRACT_INSTANT_APK
 import com.android.builder.model.PROPERTY_INJECTED_DYNAMIC_MODULES_LIST
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.AndroidVersion.VersionCodes
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.GradleProjectInfo
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult
 import com.android.tools.idea.gradle.project.build.invoker.TestCompileType
@@ -40,9 +41,9 @@ import com.android.tools.idea.gradle.util.DynamicAppUtils
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths
 import com.android.tools.idea.gradle.util.GradleBuilds
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
-import com.android.tools.idea.project.AndroidProjectInfo
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
+import com.android.tools.idea.projectsystem.requiresAndroidModel
 import com.android.tools.idea.run.AndroidDeviceSpec
 import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.run.AndroidRunConfigurationBase
@@ -88,7 +89,6 @@ import javax.swing.Icon
  *
  */
 class MakeBeforeRunTaskProvider(private val project: Project) : BeforeRunTaskProvider<MakeBeforeRunTask>() {
-  private val androidProjectInfo: AndroidProjectInfo = AndroidProjectInfo.getInstance(project)
   private val gradleProjectInfo: GradleProjectInfo = GradleProjectInfo.getInstance(project)
 
   override fun getId(): Key<MakeBeforeRunTask> = ID
@@ -216,7 +216,7 @@ class MakeBeforeRunTaskProvider(private val project: Project) : BeforeRunTaskPro
     task: MakeBeforeRunTask
   ): Boolean {
     val androidRunConfiguration = if (configuration is AndroidRunConfigurationBase) configuration else null
-    if (!androidProjectInfo.requiresAndroidModel()) {
+    if (!project.requiresAndroidModel()) {
       val regularMake = CompileStepBeforeRun(project)
       return regularMake.executeTask(context, configuration, env, CompileStepBeforeRun.MakeBeforeRunTask())
     }
@@ -399,6 +399,10 @@ class MakeBeforeRunTaskProvider(private val project: Project) : BeforeRunTaskPro
         profilerProperties.store(writer, "Android Studio Profiler Gradle Plugin Properties")
         writer.close()
         arguments.add(AndroidGradleSettings.createJvmArg("android.profiler.properties", propertiesFile.absolutePath))
+      }
+      // Append PROFILING_MODE if set by profilers.
+      if (StudioFlags.PROFILEABLE_BUILDS.get() && state.PROFILING_MODE != ProfilerState.ProfilingMode.NOT_SET) {
+        arguments.add(AndroidGradleSettings.createProjectProperty(ProfilerState.PROFILING_MODE_PROPERTY_NAME, state.PROFILING_MODE.value))
       }
       return arguments
     }

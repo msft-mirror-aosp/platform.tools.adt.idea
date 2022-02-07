@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.npw.importing;
 
-import static com.android.tools.idea.ui.wizard.WizardUtils.toHtmlString;
+import static com.android.tools.idea.wizard.ui.WizardUtils.toHtmlString;
 import static com.google.common.base.Strings.nullToEmpty;
 
 import com.google.common.base.Objects;
@@ -27,15 +27,19 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Panel for setting up individual module import.

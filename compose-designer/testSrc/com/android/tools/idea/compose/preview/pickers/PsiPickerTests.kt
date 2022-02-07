@@ -21,6 +21,9 @@ import com.android.tools.idea.compose.preview.namespaceVariations
 import com.android.tools.idea.compose.preview.pickers.properties.PsiCallPropertyModel
 import com.android.tools.idea.compose.preview.pickers.properties.PsiPropertyItem
 import com.android.tools.idea.compose.preview.pickers.properties.PsiPropertyModel
+import com.android.tools.idea.compose.preview.pickers.properties.enumsupport.UiMode
+import com.android.tools.idea.compose.preview.pickers.properties.enumsupport.UiModeWithNightMaskEnumValue
+import com.android.tools.idea.compose.preview.pickers.properties.enumsupport.devices.DeviceEnumValueBuilder
 import com.android.tools.idea.compose.preview.pickers.tracking.NoOpTracker
 import com.android.tools.idea.compose.preview.pickers.tracking.PickerTrackableValue
 import com.android.tools.idea.compose.preview.pickers.tracking.PreviewPickerTracker
@@ -252,6 +255,40 @@ class PsiPickerTests(previewAnnotationPackage: String, composableAnnotationPacka
     checkFontScaleChange("8.f", "8.0")
   }
 
+  @RunsInEdt
+  @Test
+  fun showBackgroundEditing() = runBlocking {
+    @Language("kotlin")
+    val fileContent = """
+      import $composableAnnotationFqName
+      import $previewToolingPackage.Preview
+
+      @Composable
+      @Preview
+      fun PreviewNoParameters() {
+      }
+      """.trimIndent()
+
+    val model = getFirstModel(fileContent)
+    val preview = AnnotationFilePreviewElementFinder.findPreviewMethods(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
+
+    fun checkShowBackgroundChange(newValue: String?, expectedPropertyValue: String?) {
+      model.properties["", "showBackground"].value = newValue
+      assertEquals(expectedPropertyValue, model.properties["", "showBackground"].value)
+      assertEquals("@Preview(showBackground = $expectedPropertyValue)", preview.annotationText())
+    }
+    fun checkShowBackgroundEmptyChange(newValue: String?, expectedPropertyValue: String?) {
+      model.properties["", "showBackground"].value = newValue
+      assertEquals(expectedPropertyValue, model.properties["", "showBackground"].value)
+      assertEquals("@Preview", preview.annotationText())
+    }
+
+    checkShowBackgroundChange("true", "true")
+    checkShowBackgroundEmptyChange(null, null)
+    checkShowBackgroundChange("false", "false")
+    checkShowBackgroundEmptyChange("", null)
+  }
+
   @Test
   fun `original order is preserved`() = runBlocking {
     @Language("kotlin")
@@ -280,30 +317,8 @@ class PsiPickerTests(previewAnnotationPackage: String, composableAnnotationPacka
 
   @RunsInEdt
   @Test
-  fun testDevicePropertiesTracked() = runBlocking {
-    @Language("kotlin")
-    val fileContent = """
-      import $composableAnnotationFqName
-      import $previewToolingPackage.Preview
-
-      @Composable
-      @Preview(name = "Test")
-      fun PreviewNoParameters() {
-      }
-    """.trimIndent()
-    val testTracker = object : PreviewPickerTracker {
-      val valuesRegistered = mutableListOf<PickerTrackableValue>()
-
-      override fun registerModification(name: String, value: PickerTrackableValue) {
-        valuesRegistered.add(value)
-      }
-
-      override fun pickerShown() {} // Not tested
-      override fun pickerClosed() {} // Not tested
-      override fun logUsageData() {} // Not tested
-    }
-
-    val model = getFirstModel(fileContent, testTracker)
+  fun testDevicePropertiesTracked() {
+    val (testTracker, model) = simpleTrackingTestSetup()
 
     model.properties["", "Device"].value = "hello world"
 
@@ -349,6 +364,77 @@ class PsiPickerTests(previewAnnotationPackage: String, composableAnnotationPacka
     // Width/Height
     assertEquals(PickerTrackableValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index++])
     assertEquals(PickerTrackableValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index])
+  }
+
+  @RunsInEdt
+  @Test
+  fun testTrackedValuesOfDeviceOptions() {
+    val (testTracker, model) = simpleTrackingTestSetup()
+
+    val deviceProperty = model.properties["", "Device"] // Which parameter doesn't matter in this context, but best to test with Device
+    val deviceOptions = DeviceEnumValueBuilder()
+      .addGenericById("My Generic", "my_generic") // This is an example of an option generated from the Device Manager
+      .includeDefaultsAndBuild().associateBy { it.display } // Easier to test
+
+    deviceOptions["Phone"]!!.select(deviceProperty)
+    assertEquals("spec:shape=Normal,width=360,height=640,unit=dp,dpi=480", deviceProperty.value)
+
+    deviceOptions["Foldable"]!!.select(deviceProperty)
+    assertEquals("spec:shape=Normal,width=673,height=841,unit=dp,dpi=480", deviceProperty.value)
+
+    deviceOptions["Tablet"]!!.select(deviceProperty)
+    assertEquals("spec:shape=Normal,width=1280,height=800,unit=dp,dpi=480", deviceProperty.value)
+
+    deviceOptions["Desktop"]!!.select(deviceProperty)
+    assertEquals("spec:shape=Normal,width=1920,height=1080,unit=dp,dpi=480", deviceProperty.value)
+
+    deviceOptions["Square"]!!.select(deviceProperty) // Wear device
+    assertEquals("spec:shape=Square,width=300,height=300,unit=px,dpi=240", deviceProperty.value)
+
+    deviceOptions["55.0\" Tv 2160p"]!!.select(deviceProperty) // Tv device
+    assertEquals("spec:shape=Normal,width=3840,height=2160,unit=px,dpi=320", deviceProperty.value)
+
+    deviceOptions["8.4\" Auto 768p"]!!.select(deviceProperty) // Auto
+    assertEquals("spec:shape=Normal,width=1024,height=768,unit=px,dpi=320", deviceProperty.value)
+
+    deviceOptions["My Generic"]!!.select(deviceProperty) // Device Manager example
+    assertEquals("id:my_generic", deviceProperty.value)
+
+    assertEquals(8, testTracker.valuesRegistered.size)
+    var index = 0
+    assertEquals(PickerTrackableValue.DEVICE_REF_PHONE, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_REF_FOLDABLE, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_REF_TABLET, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_REF_DESKTOP, testTracker.valuesRegistered[index++])
+
+    // Non-reference devices
+    assertEquals(PickerTrackableValue.DEVICE_NOT_REF, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_NOT_REF, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_NOT_REF, testTracker.valuesRegistered[index++])
+    assertEquals(PickerTrackableValue.DEVICE_NOT_REF, testTracker.valuesRegistered[index])
+  }
+
+  @RunsInEdt
+  @Test
+  fun testTrackedValuesOfUiModeOptions() {
+    val (testTracker, model) = simpleTrackingTestSetup()
+
+    val uiModeProperty = model.properties["", "uiMode"]
+
+    val nightModeOption = UiModeWithNightMaskEnumValue.NormalNightEnumValue
+    val notNightOption = UiModeWithNightMaskEnumValue.NormalNotNightEnumValue
+
+    // The Night/NotNight is not explicitly set
+    val nightModeUndefined = UiMode.NORMAL
+
+    nightModeOption.select(uiModeProperty)
+    notNightOption.select(uiModeProperty)
+    nightModeUndefined.select(uiModeProperty)
+
+    assertEquals(3, testTracker.valuesRegistered.size)
+    assertEquals(PickerTrackableValue.UI_MODE_NIGHT, testTracker.valuesRegistered[0])
+    assertEquals(PickerTrackableValue.UI_MODE_NOT_NIGHT, testTracker.valuesRegistered[1])
+    assertEquals(PickerTrackableValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[2])
   }
 
   private suspend fun assertUpdatingModelUpdatesPsiCorrectly(fileContent: String) {
@@ -427,6 +513,22 @@ class PsiPickerTests(previewAnnotationPackage: String, composableAnnotationPacka
     assertEquals(0, expectedModificationsCountdown)
   }
 
+  private fun simpleTrackingTestSetup(): Pair<TestTracker, PsiPropertyModel> {
+    @Language("kotlin")
+    val fileContent = """
+      import $composableAnnotationFqName
+      import $previewToolingPackage.Preview
+
+      @Composable
+      @Preview(name = "Test")
+      fun PreviewNoParameters() {
+      }
+    """.trimIndent()
+    val testTracker = TestTracker()
+    val model = runBlocking { getFirstModel(fileContent, testTracker) }
+    return Pair(testTracker, model)
+  }
+
   private suspend fun getFirstModel(fileContent: String, tracker: PreviewPickerTracker = NoOpTracker): PsiPropertyModel {
     val file = fixture.configureByText("Test.kt", fileContent)
     val preview = AnnotationFilePreviewElementFinder.findPreviewMethods(fixture.project, file.virtualFile).first()
@@ -435,4 +537,16 @@ class PsiPickerTests(previewAnnotationPackage: String, composableAnnotationPacka
       PsiCallPropertyModel.fromPreviewElement(project, module, preview, tracker)
     }
   }
+}
+
+private class TestTracker : PreviewPickerTracker {
+  val valuesRegistered = mutableListOf<PickerTrackableValue>()
+
+  override fun registerModification(name: String, value: PickerTrackableValue) {
+    valuesRegistered.add(value)
+  }
+
+  override fun pickerShown() {} // Not tested
+  override fun pickerClosed() {} // Not tested
+  override fun logUsageData() {} // Not tested
 }

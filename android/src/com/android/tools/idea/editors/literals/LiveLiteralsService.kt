@@ -159,7 +159,7 @@ class LiveLiteralsService private constructor(private val project: Project,
 
     @Suppress("IncorrectParentDisposable")
     private fun clearAll() {
-      if (Disposer.isDisposed(project)) return
+      if (project.isDisposed()) return
       val highlightManager = HighlightManager.getInstance(project)
       val highlightersToRemove = outHighlighters.toSet()
       outHighlighters.clear()
@@ -489,10 +489,6 @@ class LiveLiteralsService private constructor(private val project: Project,
         buildStarted = true
         // Stop the literals listening while the build happens
         deactivateTracking()
-        // Clear all snapshots
-        editorWithCachedSnapshot.forEach {
-          it.document.clearCachedDocumentSnapshot()
-        }
       }
     }, newActivationDisposable)
 
@@ -514,6 +510,12 @@ class LiveLiteralsService private constructor(private val project: Project,
 
   private fun deactivateTracking() {
     log.debug("deactivateTracking")
+
+    // Clear all snapshots
+    editorWithCachedSnapshot.forEach {
+      it.document.clearCachedDocumentSnapshot()
+    }
+
     serviceStateLock.withLock {
       trackers.clear()
       val previousActivationDisposable = activationDisposable

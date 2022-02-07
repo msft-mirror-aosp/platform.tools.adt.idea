@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.sdk;
 
-import static com.android.tools.idea.gradle.project.AndroidGradleProjectSettingsControlBuilder.ANDROID_STUDIO_DEFAULT_JDK_NAME;
 import static com.android.tools.idea.sdk.AndroidSdks.SDK_NAME_PREFIX;
 import static com.android.tools.idea.sdk.SdkPaths.validateAndroidSdk;
 import static com.google.common.base.Preconditions.checkState;
@@ -37,8 +36,8 @@ import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.io.FilePaths;
-import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.utils.FileUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -123,6 +122,7 @@ public class IdeSdks {
   @NonNls public static final String MAC_JDK_CONTENT_PATH = "Contents/Home";
   @NotNull public static final JavaSdkVersion DEFAULT_JDK_VERSION = JDK_11;
   @NotNull public static final String JDK_LOCATION_ENV_VARIABLE_NAME = "STUDIO_GRADLE_JDK";
+  @NotNull public static final String ANDROID_STUDIO_DEFAULT_JDK_NAME = "Android Studio default JDK";
   @NotNull private static final Logger LOG = Logger.getInstance(IdeSdks.class);
   private static final JavaSdkVersion MIN_JDK_VERSION = JDK_1_8;
   private static final JavaSdkVersion MAX_JDK_VERSION = JDK_11; // the largest LTS JDK compatible with SdkConstants.GRADLE_LATEST_VERSION = "6.1.1"
@@ -494,7 +494,7 @@ public class IdeSdks {
 
     AndroidSdkEventListener[] eventListeners = AndroidSdkEventListener.EP_NAME.getExtensions();
     for (Project project : openProjects) {
-      if (!AndroidProjectInfo.getInstance(project).requiresAndroidModel()) {
+      if (!ProjectSystemUtil.requiresAndroidModel(project)) {
         continue;
       }
       for (AndroidSdkEventListener listener : eventListeners) {

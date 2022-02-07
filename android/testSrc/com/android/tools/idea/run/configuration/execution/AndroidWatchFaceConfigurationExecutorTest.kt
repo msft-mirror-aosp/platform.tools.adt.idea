@@ -48,44 +48,21 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
 
     val executor = Mockito.spy(AndroidWatchFaceConfigurationExecutor(env))
 
-    val device = getMockDevice()
+    val device = getMockDevice { request: String ->
+      when {
+        request.contains("DEBUG_SURFACE --es operation version") ->
+          "Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }\n" +
+          "Broadcast completed: result=1, data=\"3\""
+        request.contains("DEBUG_SURFACE --es operation set-watchface") ->
+          "Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }\n" +
+          "Broadcast completed: result=1, data=\"Favorite Id=[2] Runtime=[1]\""
+        else -> "Unknown request: $request"
+      }
+    }
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     // Mock app installation.
     Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller()
-
-    executor.doOnDevices(listOf(device))
-
-    // Verify commands sent to device.
-    val commandsCaptor = ArgumentCaptor.forClass(String::class.java)
-    Mockito.verify(device, Mockito.times(2)).executeShellCommand(
-      commandsCaptor.capture(),
-      MockitoKt.any(IShellOutputReceiver::class.java),
-      MockitoKt.any(),
-      MockitoKt.any()
-    )
-    val commands = commandsCaptor.allValues
-
-    // Set WatchFace.
-    assertThat(commands[0]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --ecn component com.example.app/com.example.app.Component")
-    // Showing WatchFace.
-    assertThat(commands[1]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface")
-  }
-
-  fun testDebug() {
-    // Use DefaultRunExecutor, equivalent of pressing debug button.
-    val env = getExecutionEnvironment(DefaultDebugExecutor.getDebugExecutorInstance())
-
-    // Executor we test.
-    val executor = Mockito.spy(AndroidWatchFaceConfigurationExecutor(env))
-
-    val device = getMockDevice()
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
-    val appInstaller = TestApplicationInstaller(appId, app)
-    // Mock app installation.
-    Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller()
-    // Mock debugSessionStarter.
-    Mockito.doReturn(Mockito.mock(DebugSessionStarter::class.java)).`when`(executor).getDebugSessionStarter()
 
     executor.doOnDevices(listOf(device))
 
@@ -99,13 +76,61 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     )
     val commands = commandsCaptor.allValues
 
-    // Set debug app.
-    assertThat(commands[0]).isEqualTo("am set-debug-app -w 'com.example.app'")
+
+    // check WatchFace API version.
+    assertThat(commands[0]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation version")
     // Set WatchFace.
-    assertThat(commands[1]).isEqualTo(
-      "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --ecn component com.example.app/com.example.app.Component")
+    assertThat(commands[1]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --ecn component com.example.app/com.example.app.Component")
     // Showing WatchFace.
     assertThat(commands[2]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface")
+  }
+
+  fun testDebug() {
+    // Use DefaultRunExecutor, equivalent of pressing debug button.
+    val env = getExecutionEnvironment(DefaultDebugExecutor.getDebugExecutorInstance())
+
+    // Executor we test.
+    val executor = Mockito.spy(AndroidWatchFaceConfigurationExecutor(env))
+
+    val device = getMockDevice { request: String ->
+      when {
+        request.contains("DEBUG_SURFACE --es operation version") ->
+          "Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }\n" +
+          "Broadcast completed: result=1, data=\"3\""
+        request.contains("DEBUG_SURFACE --es operation set-watchface") ->
+          "Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }\n" +
+          "Broadcast completed: result=1, data=\"Favorite Id=[2] Runtime=[1]\""
+        else -> "Unknown request: $request"
+      }
+    }
+    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val appInstaller = TestApplicationInstaller(appId, app)
+    // Mock app installation.
+    Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller()
+    // Mock debugSessionStarter.
+    Mockito.doReturn(Mockito.mock(DebugSessionStarter::class.java)).`when`(executor).getDebugSessionStarter()
+
+    executor.doOnDevices(listOf(device))
+
+    // Verify commands sent to device.
+    val commandsCaptor = ArgumentCaptor.forClass(String::class.java)
+    Mockito.verify(device, Mockito.times(4)).executeShellCommand(
+      commandsCaptor.capture(),
+      MockitoKt.any(IShellOutputReceiver::class.java),
+      MockitoKt.any(),
+      MockitoKt.any()
+    )
+    val commands = commandsCaptor.allValues
+
+    // check WatchFace API version.
+    assertThat(commands[0]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation version")
+    // Set debug app.
+    assertThat(commands[1]).isEqualTo("am set-debug-app -w 'com.example.app'")
+    // Set WatchFace.
+    assertThat(commands[2]).isEqualTo(
+      "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --ecn component com.example.app/com.example.app.Component")
+    // Showing WatchFace.
+    assertThat(commands[3]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface")
   }
 
   fun testWatchFaceProcessHandler() {

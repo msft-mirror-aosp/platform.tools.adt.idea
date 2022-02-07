@@ -19,34 +19,26 @@ import com.android.ddmlib.MultiLineReceiver
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 
-internal open class AndroidLaunchReceiver(private val isCancelledCheck: () -> Boolean,
+internal class ConsoleOutputReceiver(private val isCancelledCheck: () -> Boolean,
                                           private val consoleView: ConsoleView) : MultiLineReceiver() {
-  private val entireOutput = StringBuilder()
   override fun isCancelled() = isCancelledCheck()
 
   override fun processNewLines(lines: Array<String>) = lines.forEach {
-    entireOutput.append(it).append("\n")
     consoleView.print(it + "\n", ConsoleViewContentType.NORMAL_OUTPUT)
+  }
+}
+
+internal class RecordOutputReceiver(private val isCancelledCheck: () -> Boolean) : MultiLineReceiver() {
+  private val entireOutput = StringBuilder()
+
+  override fun isCancelled() = isCancelledCheck()
+
+  override fun processNewLines(lines: Array<out String>) = lines.forEach {
+    entireOutput.append(it).append("\n")
   }
 
   fun getOutput(): String {
     return entireOutput.toString()
-  }
-}
-
-internal open class CommandResultReceiver(isCancelledCheck: () -> Boolean, consoleView: ConsoleView) : AndroidLaunchReceiver(
-  isCancelledCheck, consoleView) {
-
-  private val resultCodePattern = "result=(\\d+)".toRegex()
-  var resultCode: Int? = null
-
-  override fun processNewLines(lines: Array<String>) {
-    super.processNewLines(lines)
-    lines.forEach { line -> extractPattern(line, resultCodePattern)?.let { resultCode = it.toInt() } }
-  }
-
-  companion object {
-    const val SUCCESS_CODE = 1
   }
 }
 

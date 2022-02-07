@@ -74,7 +74,6 @@ Android Studio Preview.app/Contents/jre/Contents/Home/Frameworks/JavaNativeFound
 Android Studio Preview.app/Contents/jre/Contents/Home/Frameworks/JavaNativeFoundation.framework/Versions/A/Modules/module.modulemap
 Android Studio Preview.app/Contents/jre/Contents/Home/Frameworks/JavaNativeFoundation.framework/Versions/A/Resources/Info.plist
 Android Studio Preview.app/Contents/jre/Contents/Home/Frameworks/JavaNativeFoundation.framework/Versions/Current
-Android Studio Preview.app/Contents/jre/Contents/Home/bin/jaotc
 Android Studio Preview.app/Contents/jre/Contents/Home/bin/jar
 Android Studio Preview.app/Contents/jre/Contents/Home/bin/jarsigner
 Android Studio Preview.app/Contents/jre/Contents/Home/bin/java
@@ -203,9 +202,6 @@ Android Studio Preview.app/Contents/jre/Contents/Home/legal/java.xml/xerces.md
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.accessibility/ADDITIONAL_LICENSE_INFO
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.accessibility/ASSEMBLY_EXCEPTION
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.accessibility/LICENSE
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.aot/ADDITIONAL_LICENSE_INFO
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.aot/ASSEMBLY_EXCEPTION
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.aot/LICENSE
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.attach/ADDITIONAL_LICENSE_INFO
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.attach/ASSEMBLY_EXCEPTION
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.attach/LICENSE
@@ -251,12 +247,6 @@ Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.opt/jop
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.ci/ADDITIONAL_LICENSE_INFO
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.ci/ASSEMBLY_EXCEPTION
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.ci/LICENSE
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler.management/ADDITIONAL_LICENSE_INFO
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler.management/ASSEMBLY_EXCEPTION
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler.management/LICENSE
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler/ADDITIONAL_LICENSE_INFO
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler/ASSEMBLY_EXCEPTION
-Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.internal.vm.compiler/LICENSE
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.jartool/ADDITIONAL_LICENSE_INFO
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.jartool/ASSEMBLY_EXCEPTION
 Android Studio Preview.app/Contents/jre/Contents/Home/legal/jdk.jartool/LICENSE
@@ -355,6 +345,10 @@ Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/FiraCode-Medium.
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/FiraCode-Regular.ttf
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/FiraCode-Retina.ttf
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/Inconsolata.ttf
+Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/Inter-Bold.otf
+Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/Inter-BoldItalic.otf
+Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/Inter-Italic.otf
+Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/Inter-Regular.otf
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/JetBrainsMono-Bold-Italic.ttf
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/JetBrainsMono-Bold.ttf
 Android Studio Preview.app/Contents/jre/Contents/Home/lib/fonts/JetBrainsMono-BoldItalic.ttf
@@ -1486,12 +1480,8 @@ Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/pytho
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/metadata.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/resources.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/scripts.py
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/t32.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/t64.exe
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/util.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/version.py
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/w32.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/w64.exe
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distlib/wheel.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/distro.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/pip/_vendor/html5lib/__init__.py
@@ -1739,9 +1729,6 @@ Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/pytho
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/_vendor/six.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/archive_util.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/build_meta.py
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/cli-32.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/cli-64.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/cli.exe
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/command/__init__.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/command/alias.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/command/bdist_egg.py
@@ -1776,9 +1763,6 @@ Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/pytho
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/extension.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/extern/__init__.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/glob.py
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/gui-32.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/gui-64.exe
-Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/gui.exe
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/installer.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/launch.py
 Android Studio Preview.app/Contents/plugins/android-ndk/resources/lldb/lib/python3.9/site-packages/setuptools/lib2to3_ex.py
