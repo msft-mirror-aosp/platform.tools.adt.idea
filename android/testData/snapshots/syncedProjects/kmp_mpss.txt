@@ -90,6 +90,7 @@ PROJECT                       : kotlinMultiPlatform
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
     MODULE                        : kotlinMultiPlatform.app.androidTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : kotlinMultiPlatform.app
@@ -656,6 +657,37 @@ PROJECT                       : kotlinMultiPlatform
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             GradlePath                    : :module2
+        CONENT_ENTRY                  : file://<PROJECT>/module2
+            EXCLUDE_FOLDER                : file://<PROJECT>/module2/.gradle [-]
+            EXCLUDE_FOLDER                : file://<PROJECT>/module2/build [-]
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
+            VersionString                 : JetBrains Runtime version <JDK_VERSION>
+        ORDER_ENTRY                   : <Module source>
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
+    MODULE                        : kotlinMultiPlatform.module2.androidTest
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : kotlinMultiPlatform.module2
+            main                          : kotlinMultiPlatform.module2.main
+            unitTest                      : kotlinMultiPlatform.module2.unitTest
+            androidTest                   : kotlinMultiPlatform.module2.androidTest
+        ExternalModuleType            : sourceSet
+        LinkedProjectId               : :module2:androidTest
+        LinkedProjectPath             : <PROJECT>/module2
+        RootProjectPath               : <PROJECT>
+        COMPILER_MODULE_EXTENSION
+            compilerSourceOutputPath      : file://<PROJECT>/build/classes/production/kotlinMultiPlatform.module2.androidTest [-]
+            compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.module2.androidTest [-]
+            isCompilerPathInherited       : true
+            isExcludeOutput               : true
+        TEST_MODULE_PROPERTIES
+            productionModuleName          : kotlinMultiPlatform.module2.main
+        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.androidTest.iml
+        ModuleTypeName                : JAVA_MODULE
+        HIDDEN FACET                  : Android
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ApiLevel                      : 1.5
@@ -678,7 +710,7 @@ PROJECT                       : kotlinMultiPlatform
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             ExternalProjectId             : :module2
-            IsTestModule                  : false
+            IsTestModule                  : true
             Kind                          : COMPILATION_AND_SOURCE_SET_HOLDER
             LanguageLevel                 : 1.5
             MergedCompilerArguments
@@ -696,82 +728,9 @@ PROJECT                       : kotlinMultiPlatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.5.0/kotlinx-coroutines-core-jvm-1.5.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core/1.5.0/kotlinx-coroutines-core-1.5.0.jar
             Platform                      : JVM (JVM_1_8)
-            - SourceSetName               : kotlinMultiPlatform.module2.commonMain
+            - SourceSetName               : kotlinMultiPlatform.module2.commonTest
             UseProjectSettings            : false
             Version                       : 4
-        CONENT_ENTRY                  : file://<PROJECT>/module2
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidAndroidTest/kotlin
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidAndroidTest/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidAndroidTestDebug/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidAndroidTestDebug/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/androidDebug/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/androidDebug/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidDebugAndroidTest/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidDebugAndroidTest/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidDebugUnitTest/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidDebugUnitTest/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/androidMain/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/androidMain/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/androidRelease/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/androidRelease/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidReleaseUnitTest/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidReleaseUnitTest/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidTest/java [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidTest/kotlin
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidTest/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidTestDebug/java [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidTestDebug/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidTestDebug/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/androidTestRelease/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/androidTestRelease/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/debug/java [-]
-            JavaSource                    : file://<PROJECT>/module2/src/debug/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/debug/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/main/java [-]
-            JavaSource                    : file://<PROJECT>/module2/src/main/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/main/resources [-]
-            JavaSource                    : file://<PROJECT>/module2/src/release/java [-]
-            JavaSource                    : file://<PROJECT>/module2/src/release/kotlin [-]
-            JavaResource                  : file://<PROJECT>/module2/src/release/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/test/java [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/test/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/test/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/testDebug/java [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/testDebug/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/testDebug/resources [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/testRelease/java [-]
-            JavaSource (test)             : file://<PROJECT>/module2/src/testRelease/kotlin [-]
-            JavaResource (test)           : file://<PROJECT>/module2/src/testRelease/resources [-]
-            EXCLUDE_FOLDER                : file://<PROJECT>/module2/.gradle [-]
-            EXCLUDE_FOLDER                : file://<PROJECT>/module2/build [-]
-        JDK                           : <NAME_CUT> Android SDK
-        *isInherited                  : false
-            SdkType                       : Android SDK
-            HomePath                      : <ANDROID_SDK>
-            VersionString                 : JetBrains Runtime version <JDK_VERSION>
-        ORDER_ENTRY                   : <Module source>
-        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
-        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonTest
-    MODULE                        : kotlinMultiPlatform.module2.androidTest
-        LINKED_ANDROID_MODULE_GROUP
-            holder                        : kotlinMultiPlatform.module2
-            main                          : kotlinMultiPlatform.module2.main
-            unitTest                      : kotlinMultiPlatform.module2.unitTest
-            androidTest                   : kotlinMultiPlatform.module2.androidTest
-        ExternalModuleType            : sourceSet
-        LinkedProjectId               : :module2:androidTest
-        LinkedProjectPath             : <PROJECT>/module2
-        RootProjectPath               : <PROJECT>
-        COMPILER_MODULE_EXTENSION
-            compilerSourceOutputPath      : file://<PROJECT>/build/classes/production/kotlinMultiPlatform.module2.androidTest [-]
-            compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.module2.androidTest [-]
-            isCompilerPathInherited       : true
-            isExcludeOutput               : true
-        TEST_MODULE_PROPERTIES
-            productionModuleName          : kotlinMultiPlatform.module2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.androidTest.iml
-        ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
@@ -850,6 +809,7 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
             Scope                         : Test
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonTest
         ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
     MODULE                        : kotlinMultiPlatform.module2.commonMain
         ExternalModuleGroup           : kotlinMultiPlatform
@@ -1000,6 +960,49 @@ PROJECT                       : kotlinMultiPlatform
         ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.main.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
+        FACET                         : Kotlin
+            TypeId                        : kotlin-language
+            ApiLevel                      : 1.5
+            CompilerArguments
+                apiVersion                    : 1.5
+                languageVersion               : 1.5
+                multiPlatform                 : true
+                - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.5.0/kotlinx-coroutines-core-jvm-1.5.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core/1.5.0/kotlinx-coroutines-core-1.5.0.jar
+            CompilerSettings
+                additionalArguments           : -Xallow-no-source-files
+                copyJsLibraryFiles            : true
+                outputDirectoryForJsLibraryFiles        : lib
+            ExternalProjectId             : :module2
+            IsTestModule                  : false
+            Kind                          : COMPILATION_AND_SOURCE_SET_HOLDER
+            LanguageLevel                 : 1.5
+            MergedCompilerArguments
+                apiVersion                    : 1.5
+                languageVersion               : 1.5
+                multiPlatform                 : true
+                - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.5.0/kotlinx-coroutines-core-jvm-1.5.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core/1.5.0/kotlinx-coroutines-core-1.5.0.jar
+            Platform                      : JVM (JVM_1_8)
+            - SourceSetName               : kotlinMultiPlatform.module2.commonMain
+            UseProjectSettings            : false
+            Version                       : 4
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/renderscript_source_output_dir/debug/out [-]
@@ -1063,6 +1066,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
     MODULE                        : kotlinMultiPlatform.module2.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : kotlinMultiPlatform.module2
@@ -1083,6 +1087,50 @@ PROJECT                       : kotlinMultiPlatform
         ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.unitTest.iml
         ModuleTypeName                : JAVA_MODULE
         HIDDEN FACET                  : Android
+        FACET                         : Kotlin
+            TypeId                        : kotlin-language
+            ApiLevel                      : 1.5
+            CompilerArguments
+                apiVersion                    : 1.5
+                languageVersion               : 1.5
+                multiPlatform                 : true
+                - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.5.0/kotlinx-coroutines-core-jvm-1.5.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core/1.5.0/kotlinx-coroutines-core-1.5.0.jar
+            CompilerSettings
+                additionalArguments           : -Xallow-no-source-files
+                copyJsLibraryFiles            : true
+                outputDirectoryForJsLibraryFiles        : lib
+            ExternalProjectId             : :module2
+            IsTestModule                  : true
+            Kind                          : COMPILATION_AND_SOURCE_SET_HOLDER
+            LanguageLevel                 : 1.5
+            MergedCompilerArguments
+                apiVersion                    : 1.5
+                languageVersion               : 1.5
+                multiPlatform                 : true
+                - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.5.0/kotlinx-coroutines-core-jvm-1.5.0.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/kotlinx/kotlinx-coroutines-core/1.5.0/kotlinx-coroutines-core-1.5.0.jar
+            Platform                      : JVM (JVM_1_8)
+            - SourceSetName               : kotlinMultiPlatform.module2.commonTest
+            - SourceSetName               : kotlinMultiPlatform.module2.androidTest
+            UseProjectSettings            : false
+            Version                       : 4
         CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugUnitTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidTest/aidl [-]
         CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidTest/assets [-]
