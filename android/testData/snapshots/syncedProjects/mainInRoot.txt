@@ -260,5 +260,5 @@ PROJECT                       : testMainInRoot
         ORDER_ENTRY                   : testMainInRoot.app.main
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : testMainInRoot.app
-        Module                        : testMainInRoot.app
+        ModuleName                    : testMainInRoot.app.main
+        Module                        : testMainInRoot.app.main

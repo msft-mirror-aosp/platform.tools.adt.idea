@@ -3240,8 +3240,8 @@ PROJECT                       : testPsdDependencyUpgradeLibraryModule
         ORDER_ENTRY                   : testPsdDependencyUpgradeLibraryModule.modulePlus.main
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : testPsdDependencyUpgradeLibraryModule.app
-        Module                        : testPsdDependencyUpgradeLibraryModule.app
+        ModuleName                    : testPsdDependencyUpgradeLibraryModule.app.main
+        Module                        : testPsdDependencyUpgradeLibraryModule.app.main
     LIBRARY_TABLE
         LIBRARY                       : Gradle: ./lib/libsam1-1.1.jar
             *CLASSES                      : jar://<PROJECT>/lib/libsam1-1.1.jar!/
