@@ -257,6 +257,7 @@ studio_plugin(
         ],
         "resources": [
             "//tools/adt/idea/android/lib:sample-data-bundle",
+            "//tools/adt/idea/android/lib:apks-bundle",
             "//tools/adt/idea/artwork:device-art-resources-bundle",  # duplicated in android.jar
             "//tools/adt/idea/android/annotations:androidAnnotations",
             "//tools/adt/idea/emulator/native:native_lib",
@@ -551,9 +552,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Dolphin | {0}.{1}.{2} Canary {3}",
-    version_micro = 1,
-    version_patch = 2,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 

@@ -18,16 +18,17 @@ package com.android.tools.componenttree.treetable
 import com.android.SdkConstants
 import com.android.flags.junit.SetFlagRule
 import com.android.testutils.MockitoKt.mock
+import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.laf.HeadlessTableUI
 import com.android.tools.adtui.swing.laf.HeadlessTreeUI
-import com.android.tools.componenttree.api.BadgeItem
 import com.android.tools.componenttree.api.ComponentTreeBuildResult
 import com.android.tools.componenttree.api.ComponentTreeBuilder
 import com.android.tools.componenttree.api.ContextPopupHandler
 import com.android.tools.componenttree.api.DoubleClickHandler
-import com.android.tools.componenttree.api.createIntColumnInfo
+import com.android.tools.componenttree.api.IconColumn
+import com.android.tools.componenttree.api.createIntColumn
 import com.android.tools.componenttree.util.Item
 import com.android.tools.componenttree.util.ItemNodeType
 import com.android.tools.componenttree.util.Style
@@ -40,6 +41,9 @@ import com.intellij.openapi.options.advanced.AdvancedSettings
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.JBColor
+import com.intellij.ui.scale.JBUIScale
+import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
 import org.junit.After
@@ -50,8 +54,10 @@ import org.junit.rules.RuleChain
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
+import java.awt.Color
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.event.MouseEvent
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JScrollPane
@@ -87,9 +93,13 @@ class TreeTableImplTest {
       clickCount++
     }
   }
-  private val badgeItem = object : BadgeItem {
+  private val badgeItem = object : IconColumn("b1") {
     var lastActionItem: Any? = null
+    var lastActionComponent: JComponent? = null
+    var lastActionBounds: Rectangle? = null
     var lastPopupItem: Any? = null
+
+    override var leftDivider: Boolean = false
 
     override fun getIcon(item: Any): Icon? = when (item) {
       item1 -> StudioIcons.Common.ERROR
@@ -103,23 +113,41 @@ class TreeTableImplTest {
       else -> null
     }
 
-    override fun getTooltipText(item: Any?): String = when (item) {
-      item1 -> "LinearLayout tip"
-      item2 -> "TextView tip"
-      style1 -> "style1 tip"
-      style2 -> "style2 tip"
-      else -> ""
-    }
+    override fun getTooltipText(item: Any): String = "Badge tooltip: $item".trim()
 
-    override fun performAction(item: Any) {
+    override fun performAction(item: Any, component: JComponent, bounds: Rectangle) {
       lastActionItem = item
+      lastActionComponent = component
+      lastActionBounds = bounds
     }
 
     override fun showPopup(item: Any, component: JComponent, x: Int, y: Int) {
       lastPopupItem = item
     }
   }
-  private val renderer = BadgeRenderer(badgeItem)
+  private val column2 = object {
+    var lastActionItem: Item? = null
+    var lastActionComponent: JComponent? = null
+    var lastActionBounds: Rectangle? = null
+    var lastPopupItem: Item? = null
+    var lastPopupComponent: JComponent? = null
+
+    fun performAction(item: Item, component: JComponent, bounds: Rectangle) {
+      lastActionItem = item
+      lastActionComponent = component
+      lastActionBounds = bounds
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun showPopup(item: Item, component: JComponent, x: Int, y: Int) {
+      lastPopupItem = item
+      lastPopupComponent = component
+    }
+
+    fun tooltip(item: Item): String {
+      return "Column2 tooltip: ${item.tagName.substringAfterLast('.').trim()}"
+    }
+  }
 
   @Before
   fun setUp() {
@@ -165,11 +193,26 @@ class TreeTableImplTest {
 
   @RunsInEdt
   @Test
+  fun testColumnPopup() {
+    val table = createTreeTable()
+    setScrollPaneSize(table, 400, 700)
+    val ui = FakeUi(table)
+    table.tree.expandRow(0)
+    table.tree.expandRow(1)
+    val columnCell = table.getCellRect(2, 2, true)
+    ui.mouse.rightClick(columnCell.x + 5, 30)
+    assertThat(contextPopup.popupInvokeCount).isEqualTo(0)
+    assertThat(column2.lastPopupItem).isEqualTo(item2)
+    assertThat(column2.lastPopupComponent).isEqualTo(table)
+  }
+
+  @RunsInEdt
+  @Test
   fun testBadgePopupWhenScrolled() {
     val table = createTreeTable()
     table.tree.expandRow(0)
     table.tree.expandRow(1)
-    val badgeCell = table.getCellRect(3, table.columnCount - 1, true)
+    val badgeCell = table.getCellRect(3, 3, true)
     val scrollPane = setScrollPaneSize(table, 400, 20)
     scrollPane.viewport.viewPosition = Point(0, badgeCell.bottom - 20)
     UIUtil.dispatchAllInvocationEvents()
@@ -191,6 +234,8 @@ class TreeTableImplTest {
     table.tree.expandRow(1)
     ui.mouse.click(390, 30)
     assertThat(badgeItem.lastActionItem).isEqualTo(item2)
+    assertThat(badgeItem.lastActionComponent).isSameAs(table)
+    assertThat(badgeItem.lastActionBounds).isEqualTo(table.getCellRect(1, 3, true))
   }
 
   @RunsInEdt
@@ -199,13 +244,30 @@ class TreeTableImplTest {
     val table = createTreeTable()
     table.tree.expandRow(0)
     table.tree.expandRow(1)
-    val badgeCell = table.getCellRect(3, table.columnCount - 1, true)
+    val badgeCell = table.getCellRect(3, 3, true)
     val scrollPane = setScrollPaneSize(table, 400, 20)
     scrollPane.viewport.viewPosition = Point(0, badgeCell.bottom - 20)
     UIUtil.dispatchAllInvocationEvents()
     val ui = FakeUi(table)
     ui.mouse.click(395, badgeCell.y + 5)
     assertThat(badgeItem.lastActionItem).isEqualTo(item3)
+    assertThat(badgeItem.lastActionComponent).isSameAs(table)
+    assertThat(badgeItem.lastActionBounds).isEqualTo(table.getCellRect(3, 3, true))
+  }
+
+  @RunsInEdt
+  @Test
+  fun testClickOnColumn() {
+    val table = createTreeTable()
+    setScrollPaneSize(table, 400, 700)
+    val ui = FakeUi(table)
+    table.tree.expandRow(0)
+    table.tree.expandRow(1)
+    val columnCell = table.getCellRect(2, 2, true)
+    ui.mouse.click(columnCell.x + 5, 30)
+    assertThat(column2.lastActionItem).isEqualTo(item2)
+    assertThat(column2.lastActionComponent).isSameAs(table)
+    assertThat(column2.lastActionBounds).isEqualTo(table.getCellRect(1, 2, true))
   }
 
   @RunsInEdt
@@ -339,7 +401,7 @@ class TreeTableImplTest {
     ui.mouse.moveTo(badge3.centerX.toInt(), badge3.centerY.toInt())
     assertThat(table.hoverCell?.equalTo(2, 3)).isTrue()
     verifyNoInteractions(manager) // badge in row 3 (style1) doesn't have a hoverIcon
-    assertThat(table.badgeIconOf(2, 3)).isNull()
+    assertThat(table.badgeIconOf(2, 3)).isSameAs(EmptyIcon.ICON_16)
 
     // move mouse over the badge column for item1 (row 0)
     ui.mouse.moveTo(badge1.centerX.toInt(), badge1.centerY.toInt())
@@ -362,6 +424,74 @@ class TreeTableImplTest {
     verify(manager, times(2)).addDirtyRegion(table, badge2.x, badge2.y, badge2.width, badge2.height)
     assertThat(table.badgeIconOf(0, 3)).isSameAs(StudioIcons.Common.ERROR)
     assertThat(table.badgeIconOf(1, 3)).isSameAs(StudioIcons.Common.FILTER)
+  }
+
+  @Test
+  fun testPreferredBadgeSize() {
+    val table = createTreeTable()
+    val renderer = table.getCellRenderer(0, 3)
+    val component = renderer.getTableCellRendererComponent(table, item1, true, true, 0, 3)
+    assertThat(component.preferredSize.width).isEqualTo(EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(4))
+    assertThat(table.columnModel.getColumn(3).width).isEqualTo(EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(4))
+  }
+
+  @Test
+  fun testPreferredBadgeSizeWithBadgeDivider() {
+    badgeItem.leftDivider = true
+    val table = createTreeTable()
+    val renderer = table.getCellRenderer(0, 3)
+    val component = renderer.getTableCellRendererComponent(table, item1, true, true, 0, 3)
+    assertThat(component.preferredSize.width).isEqualTo(EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(5))
+    assertThat(table.columnModel.getColumn(3).width).isEqualTo(EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(5))
+  }
+
+  @RunsInEdt
+  @Test
+  fun testTooltipText() {
+    val table = createTreeTable()
+    setScrollPaneSize(table, 400, 700)
+    FakeUi(table)
+    table.tree.expandRow(0)
+    table.tree.expandRow(1)
+    assertThat(tooltipTextAt(table, 0, 0)).isEqualTo("LinearLayout")
+    assertThat(tooltipTextAt(table, 0, 1)).isEqualTo("LinearLayout")
+    assertThat(tooltipTextAt(table, 0, 2)).isEqualTo("Column2 tooltip: LinearLayout")
+    assertThat(tooltipTextAt(table, 0, 3)).isEqualTo("Badge tooltip: android.widget.LinearLayout")
+    assertThat(tooltipTextAt(table, 1, 0)).isEqualTo("TextView")
+    assertThat(tooltipTextAt(table, 1, 1)).isEqualTo("TextView")
+    assertThat(tooltipTextAt(table, 1, 2)).isEqualTo("Column2 tooltip: TextView")
+    assertThat(tooltipTextAt(table, 1, 3)).isEqualTo("Badge tooltip: android.widget.TextView")
+  }
+
+  private fun tooltipTextAt(table: TreeTableImpl, row: Int, column: Int): String? {
+    val cell = table.getCellRect(row, column, true)
+    val event = MouseEvent(table, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, cell.centerX.toInt(), cell.centerY.toInt(),
+                           0, false)
+    return table.getToolTipText(event)
+  }
+
+  @Test
+  fun testColumnColor() {
+    val table = createTreeTable()
+    val focusManager = FakeKeyboardFocusManager(appRule.testRootDisposable)
+    assertThat(foregroundOf(table, 1, isSelected = false, hasFocus = false)).isEqualTo(UIUtil.getTableForeground(false, false))
+    assertThat(foregroundOf(table, 1, isSelected = true, hasFocus = false)).isEqualTo(UIUtil.getTableForeground(true, false))
+    focusManager.focusOwner = table
+    assertThat(foregroundOf(table, 1, isSelected = false, hasFocus = true)).isEqualTo(UIUtil.getTableForeground(false, true))
+    assertThat(foregroundOf(table, 1, isSelected = true, hasFocus = true)).isEqualTo(UIUtil.getTableForeground(true, true))
+
+    focusManager.clearFocusOwner()
+    assertThat(foregroundOf(table, 2, isSelected = false, hasFocus = false)).isEqualTo(JBColor.lightGray)
+    assertThat(foregroundOf(table, 2, isSelected = true, hasFocus = false)).isEqualTo(JBColor.lightGray)
+    focusManager.focusOwner = table
+    assertThat(foregroundOf(table, 2, isSelected = false, hasFocus = true)).isEqualTo(JBColor.lightGray)
+    assertThat(foregroundOf(table, 2, isSelected = true, hasFocus = true)).isEqualTo(UIUtil.getTableForeground(true, true))
+  }
+
+  private fun foregroundOf(table: JTable, column: Int, isSelected: Boolean, hasFocus: Boolean): Color {
+    val renderer = table.getCellRenderer(0, column)
+    val component = renderer.getTableCellRendererComponent(table, table.getValueAt(0, 2), isSelected, hasFocus, 0, column)
+    return component.foreground
   }
 
   private fun setScrollPaneSize(table: TreeTableImpl, width: Int, height: Int): JScrollPane {
@@ -401,8 +531,9 @@ class TreeTableImplTest {
     return ComponentTreeBuilder()
       .withNodeType(ItemNodeType())
       .withNodeType(StyleNodeType())
-      .withColumn(createIntColumnInfo("c1", Item::column1))
-      .withColumn(createIntColumnInfo("c2", Item::column2, getMax = { 6 }))
+      .withColumn(createIntColumn("c1", Item::column1))
+      .withColumn(createIntColumn("c2", Item::column2, maxInt = { 6 }, foreground = JBColor.lightGray, action = column2::performAction,
+                                  popup = column2::showPopup, tooltip = column2::tooltip))
       .withBadgeSupport(badgeItem)
       .withContextMenu(contextPopup)
       .withDoubleClick(doubleClickHandler)
@@ -418,7 +549,7 @@ class TreeTableImplTest {
     getCellRect(0, columnIndex, true).width
 
   private fun JTable.badgeIconOf(row: Int, column: Int): Icon? {
-    renderer.getTableCellRendererComponent(this, getValueAt(row, column), false, true, row, column)
-    return renderer.icon
+    badgeItem.renderer!!.getTableCellRendererComponent(this, getValueAt(row, column), false, true, row, column)
+    return badgeItem.renderer!!.icon
   }
 }

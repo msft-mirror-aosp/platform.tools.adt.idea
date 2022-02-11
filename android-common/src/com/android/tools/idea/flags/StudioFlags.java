@@ -536,6 +536,11 @@ public final class StudioFlags {
     "If enabled, AS executes Run Java debugger via com.android.tools.idea.run.debug.StartJavaDebuggerKt.attachJavaDebuggerToClient",
     false);
 
+  public static final Flag<Boolean> ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER = Flag.create(
+    RUNDEBUG, "run.wear.configuration.gutter.enabled", "Run Wear Configurations from gutter",
+    "If enabled, allow to Run Wear Configurations from the gutter.",
+    true);
+
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
    * "deploy-without-installing" path. Deploying changes that exceed the level of support
@@ -652,7 +657,7 @@ public final class StudioFlags {
     "coroutine.debugger.enable",
     "Enable Coroutine Debugger",
     "Enables the Coroutine Debugger, that shows up as a panel in the debugger when debugging an app that uses coroutines",
-    false
+    true
   );
 
   public static final Flag<Boolean> LOGCAT_EXPRESSION_FILTER_ENABLE = Flag.create(
@@ -982,12 +987,6 @@ public final class StudioFlags {
 
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_ONLY_KOTLIN_BUILD = Flag.create(
-    COMPOSE, "preview.fast.build.enabled", "Enable the use of \"compileDebugKotlin\" for the preview refresh",
-    "If enabled, the refresh button will only trigger the \"compileDebugKotlin\" task as opposed to others like" +
-    "\"generateDebugSources\" or \"compileJava\".",
-    true);
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_RUN_CONFIGURATION = Flag.create(
     COMPOSE, "preview.run.configuration", "Enable running Compose Previews on device/emulator",

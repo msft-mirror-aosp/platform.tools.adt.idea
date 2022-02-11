@@ -7,10 +7,10 @@ import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.SetPortableUiFontRule
-import com.android.tools.componenttree.api.BadgeItem
 import com.android.tools.componenttree.api.ComponentTreeBuilder
 import com.android.tools.componenttree.api.ContextPopupHandler
 import com.android.tools.componenttree.api.DoubleClickHandler
+import com.android.tools.componenttree.api.IconColumn
 import com.android.tools.componenttree.util.Item
 import com.android.tools.componenttree.util.ItemNodeType
 import com.android.tools.componenttree.util.Style
@@ -78,8 +78,10 @@ class TreeImplTest {
       clickCount++
     }
   }
-  private val badgeItem = object : BadgeItem {
+  private val badgeItem = object : IconColumn("Badge") {
     var lastActionItem: Any? = null
+    var lastActionComponent: JComponent? = null
+    var lastActionBounds: Rectangle? = null
     var lastPopupItem: Any? = null
 
     override fun getIcon(item: Any): Icon? = when (item) {
@@ -88,7 +90,7 @@ class TreeImplTest {
       else -> null
     }
 
-    override fun getTooltipText(item: Any?): String = when (item) {
+    override fun getTooltipText(item: Any): String = when (item) {
       item1 -> "LinearLayout tip"
       item2 -> "TextView tip"
       style1 -> "style1 tip"
@@ -96,8 +98,10 @@ class TreeImplTest {
       else -> ""
     }
 
-    override fun performAction(item: Any) {
+    override fun performAction(item: Any, component: JComponent, bounds: Rectangle) {
       lastActionItem = item
+      lastActionComponent = component
+      lastActionBounds = bounds
     }
 
     override fun showPopup(item: Any, component: JComponent, x: Int, y: Int) {
@@ -145,14 +149,13 @@ class TreeImplTest {
   @Test
   fun testBadgePopupWhenScrolled() {
     val tree = createTree()
-    val scrollPane = setScrollPaneSize(tree, 20, 20)
+    val scrollPane = setScrollPaneSize(tree, 200, 20)
     val ui = FakeUi(tree)
     val bounds = tree.getRowBounds(tree.rowCount - 1)
-    val right = bounds.maxX.toInt()
     val bottom = bounds.maxY.toInt()
-    scrollPane.viewport.viewPosition = Point(right - 20, bottom - 20)
+    scrollPane.viewport.viewPosition = Point(0, bottom - 20)
     UIUtil.dispatchAllInvocationEvents()
-    ui.mouse.rightClick(right - 10, bottom - 10)
+    ui.mouse.rightClick(190, bottom - 10)
     assertThat(contextPopup.popupInvokeCount).isEqualTo(0)
     assertThat(badgeItem.lastPopupItem).isEqualTo(item3)
   }
@@ -165,23 +168,27 @@ class TreeImplTest {
     val ui = FakeUi(tree)
     tree.expandRow(0)
     tree.expandRow(1)
+    val bounds = tree.getRowBounds(1)
     ui.mouse.click(390, 30)
     assertThat(badgeItem.lastActionItem).isEqualTo(item2)
+    assertThat(badgeItem.lastActionComponent).isSameAs(tree)
+    assertThat(badgeItem.lastActionBounds).isEqualTo(Rectangle(384, bounds.y, 16, bounds.height))
   }
 
   @RunsInEdt
   @Test
   fun testClickOnBadgeWhenScrolled() {
     val tree = createTree()
-    val scrollPane = setScrollPaneSize(tree, 20, 20)
+    val scrollPane = setScrollPaneSize(tree, 300, 20)
     val ui = FakeUi(tree)
     val bounds = tree.getRowBounds(tree.rowCount - 1)
-    val right = bounds.maxX.toInt()
     val bottom = bounds.maxY.toInt()
-    scrollPane.viewport.viewPosition = Point(right - 20, bottom - 20)
+    scrollPane.viewport.viewPosition = Point(0, bottom - 20)
     UIUtil.dispatchAllInvocationEvents()
-    ui.mouse.click(right - 10, bottom - 10)
+    ui.mouse.click(290, bottom - 10)
     assertThat(badgeItem.lastActionItem).isEqualTo(item3)
+    assertThat(badgeItem.lastActionComponent).isSameAs(tree)
+    assertThat(badgeItem.lastActionBounds).isEqualTo(Rectangle(284, bounds.y, 16, bounds.height))
   }
 
   @RunsInEdt
@@ -249,14 +256,14 @@ class TreeImplTest {
   private fun setScrollPaneSize(tree: TreeImpl, width: Int, height: Int): JScrollPane {
     val scrollPane = getScrollPane(tree)
     scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
-    scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS
-    scrollPane.setBounds(0, 0,
-                         width + scrollPane.verticalScrollBar.preferredSize.width,
-                         height + scrollPane.horizontalScrollBar.preferredSize.height)
+    scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 
     // This disables the "Show scroll bars when scrolling" option on Mac (for this test).
     scrollPane.verticalScrollBar.isOpaque = true
 
+    scrollPane.setBounds(0, 0,
+                         width + scrollPane.verticalScrollBar.preferredSize.width,
+                         height + scrollPane.horizontalScrollBar.preferredSize.height)
     scrollPane.doLayout()
     tree.parent.doLayout()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()

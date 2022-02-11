@@ -16,9 +16,8 @@
 
 <idea-plugin>
   <extensions defaultExtensionNs="com.intellij">
-    <facet.toolWindow
+    <toolWindow
         id="Logcat V2"
-        facetIdList="android,apk"
         anchor="bottom"
         icon="StudioIcons.Shell.ToolWindows.LOGCAT"
         canCloseContents="true"
@@ -56,6 +55,8 @@
 
     <additionalTextAttributes scheme="Default" file="colorSchemes/LogcatColorSchemeDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorSchemes/LogcatColorSchemeDarcula.xml"/>
+
+    <annotator language="LogcatFilter" implementationClass="com.android.tools.idea.logcat.filters.LogcatFilterErrorAnnotator"/>
 
   </extensions>
 </idea-plugin>

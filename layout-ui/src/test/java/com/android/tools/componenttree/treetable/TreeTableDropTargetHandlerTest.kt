@@ -22,9 +22,9 @@ import com.android.testutils.MockitoKt.mock
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.laf.HeadlessTableUI
 import com.android.tools.adtui.swing.laf.HeadlessTreeUI
-import com.android.tools.componenttree.api.BadgeItem
 import com.android.tools.componenttree.api.ComponentTreeBuildResult
 import com.android.tools.componenttree.api.ComponentTreeBuilder
+import com.android.tools.componenttree.api.IconColumn
 import com.android.tools.componenttree.util.Item
 import com.android.tools.componenttree.util.ItemNodeType
 import com.android.tools.idea.flags.StudioFlags
@@ -50,6 +50,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Point
+import java.awt.Rectangle
 import java.awt.RenderingHints
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
@@ -74,15 +75,15 @@ class TreeTableDropTargetHandlerTest {
   private val item5 = Item(SdkConstants.FQCN_CHECK_BOX)
   private val item6 = Item(SdkConstants.FQCN_TEXT_VIEW)
 
-  private val badgeItem = object : BadgeItem {
+  private val badgeItem = object : IconColumn("Badge") {
     override fun getIcon(item: Any): Icon? = when (item) {
       item1 -> StudioIcons.Common.ERROR
       item2 -> StudioIcons.Common.FILTER
       else -> StudioIcons.Common.CLOSE
     }
 
-    override fun getTooltipText(item: Any?): String = ""
-    override fun performAction(item: Any) {}
+    override fun getTooltipText(item: Any): String = ""
+    override fun performAction(item: Any, component: JComponent, bounds: Rectangle) {}
     override fun showPopup(item: Any, component: JComponent, x: Int, y: Int) {}
   }
 

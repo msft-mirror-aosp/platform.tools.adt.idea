@@ -21,8 +21,8 @@ import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.AppComponent
 import com.android.tools.deployer.model.component.Complication
 import com.android.tools.deployer.model.component.ComponentType
-import com.android.tools.deployer.model.component.WatchFace.ShellCommand.SHOW_WATCH_FACE
 import com.android.tools.deployer.model.component.WatchFace.ShellCommand.UNSET_WATCH_FACE
+import com.android.tools.deployer.model.component.WearComponent.CommandResultReceiver
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -34,7 +34,6 @@ import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.concurrency.Promise
-import java.util.concurrent.TimeUnit
 
 private const val COMPLICATION_MIN_DEBUG_SURFACE_VERSION = 2
 private const val COMPLICATION_RECOMMENDED_DEBUG_SURFACE_VERSION = 3
@@ -76,8 +75,7 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
                               receiver)
       }
       appWatchFace.activateComponent(ComponentType.WATCH_FACE, configuration.watchFaceInfo.watchFaceFQName, receiver)
-      console.printShellCommand(SHOW_WATCH_FACE)
-      device.executeShellCommand(SHOW_WATCH_FACE, receiver, 5, TimeUnit.SECONDS)
+      showWatchFace(device, console)
     }
     ProgressManager.checkCanceled()
     return createRunContentDescriptor(devices, processHandler, console)
@@ -97,13 +95,14 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
 class ComplicationProcessHandler(private val complicationComponentName: String,
                                  private val console: ConsoleView) : AndroidProcessHandlerForDevices() {
   override fun destroyProcessOnDevice(device: IDevice) {
-    val receiver = ConsoleOutputReceiver({ false }, console)
-
+    val removeReceiver = CommandResultReceiver()
     val removeComplicationCommand = Complication.ShellCommand.REMOVE_ALL_INSTANCES_FROM_CURRENT_WF + complicationComponentName
-    console.printShellCommand(removeComplicationCommand)
-    device.executeShellCommand(removeComplicationCommand, receiver, 5, TimeUnit.SECONDS)
+    device.executeShellCommand(removeComplicationCommand, console, removeReceiver)
 
-    console.printShellCommand(UNSET_WATCH_FACE)
-    device.executeShellCommand(UNSET_WATCH_FACE, receiver, 5, TimeUnit.SECONDS)
+    val unsetReceiver = CommandResultReceiver()
+    device.executeShellCommand(UNSET_WATCH_FACE, console, unsetReceiver)
+    if (removeReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE || unsetReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
+      console.printError("Warning: Complication was not stopped.")
+    }
   }
 }

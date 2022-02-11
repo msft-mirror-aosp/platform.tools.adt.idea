@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.gradle.model.impl
+package com.android.tools.idea.logcat.util
 
-import com.android.tools.idea.gradle.model.IdeUnresolvedDependencies
-import java.io.Serializable
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 
-data class IdeUnresolvedDependenciesImpl(
-  override val name: String,
-  override val cause: String?
-) : IdeUnresolvedDependencies, Serializable
+/**
+ * Detects if a given project is an Android Project
+ */
+internal interface AndroidProjectDetector {
+  fun isAndroidProject(project: Project): Boolean
+
+  companion object {
+    val KEY = Key<AndroidProjectDetector>("AndroidProjectDetector")
+  }
+}

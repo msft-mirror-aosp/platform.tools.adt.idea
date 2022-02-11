@@ -29,7 +29,6 @@ import com.intellij.ui.tree.ui.Control
 import com.intellij.ui.treeStructure.treetable.TreeTable
 import com.intellij.ui.treeStructure.treetable.TreeTableModel
 import com.intellij.ui.treeStructure.treetable.TreeTableModelAdapter
-import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.tree.TreeUtil
 import java.awt.Component
 import java.awt.Graphics
@@ -39,6 +38,7 @@ import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
+import javax.swing.JLabel
 import javax.swing.JTable
 import javax.swing.ListSelectionModel
 import javax.swing.TransferHandler
@@ -71,12 +71,12 @@ class TreeTableImpl(
   installTreeSearch: Boolean
 ) : TreeTable(model) {
   private val extraColumns: List<ColumnInfo>
-  private val badgeItems: List<BadgeItem>
-  private val badgeRenderers: List<BadgeRenderer>
   private var initialized = false
   private var dropTargetHandler: TreeTableDropTargetHandler? = null
   private val hiddenColumns = mutableSetOf<Int>()
   val treeTableSelectionModel = TreeTableSelectionModelImpl(this)
+  private val emptyComponent = JLabel()
+  private val emptyTreeCellRenderer = TableCellRenderer { _, _, _, _, _, _ -> emptyComponent }
 
   init {
     tree.cellRenderer = TreeCellRendererImpl(this)
@@ -85,10 +85,7 @@ class TreeTableImpl(
     selectionModel.selectionMode = treeSelectionMode.toTableSelectionMode()
     setExpandableItemsEnabled(true)
     extraColumns = model.columns
-    badgeItems = model.badgeItems
-    badgeRenderers = badgeItems.map { BadgeRenderer(it) }
     initExtraColumns()
-    initBadgeColumns()
     model.addTreeModelListener(DataUpdateHandler(treeTableSelectionModel))
     MouseHandler().let {
       addMouseListener(it)
@@ -118,13 +115,6 @@ class TreeTableImpl(
     }
   }
 
-  private fun initBadgeColumns() {
-    val badgeWidth = EmptyIcon.ICON_16.iconWidth + JBUIScale.scale(2)
-    for (index in 1 + extraColumns.size until columnCount) {
-      setColumnWidth(index, badgeWidth)
-    }
-  }
-
   private fun setColumnWidth(columnIndex: Int, wantedWidth: Int) {
     val width = if (hiddenColumns.contains(columnIndex)) 0 else wantedWidth
     columnModel.getColumn(columnIndex).apply {
@@ -136,14 +126,10 @@ class TreeTableImpl(
   }
 
   fun setColumnVisibility(columnIndex: Int, visible: Boolean) {
-    if (visible) {
-      hiddenColumns.remove(columnIndex)
+    val changed = if (visible) hiddenColumns.remove(columnIndex) else hiddenColumns.add(columnIndex)
+    if (changed) {
+      initExtraColumns()
     }
-    else {
-      hiddenColumns.add(columnIndex)
-    }
-    initExtraColumns()
-    initBadgeColumns()
   }
 
   fun enableDnD() {
@@ -164,7 +150,6 @@ class TreeTableImpl(
       tableModel.clearRendererCache()
       installKeyboardActions(this)
       extraColumns.forEach { it.updateUI() }
-      initBadgeColumns()
       initExtraColumns()
       dropTargetHandler?.updateUI()
     }
@@ -172,8 +157,7 @@ class TreeTableImpl(
 
   override fun getCellRenderer(row: Int, column: Int): TableCellRenderer = when (column) {
     0 -> super.getCellRenderer(row, column)
-    in 1..extraColumns.size -> extraColumns[column - 1].renderer
-    else -> badgeRenderers[column - 1 - extraColumns.size]
+    else -> extraColumns[column - 1].renderer ?: emptyTreeCellRenderer
   }
 
   override fun adapt(treeTableModel: TreeTableModel): TreeTableModelAdapter =
@@ -190,17 +174,17 @@ class TreeTableImpl(
     tree.putClientProperty(Control.Painter.KEY, painter?.invoke())
     super.paintComponent(g)
     dropTargetHandler?.paintDropTargetPosition(g)
-    paintBadgeDividers(g)
+    paintColumnDividers(g)
   }
 
-  private fun paintBadgeDividers(g: Graphics) {
+  private fun paintColumnDividers(g: Graphics) {
     val color = g.color
     g.color = JBColor.border()
     var x = width
-    for (index in badgeItems.indices.reversed()) {
-      val item = badgeItems[index]
-      x -= columnModel.getColumn(1 + extraColumns.size + index).maxWidth
-      if (!hiddenColumns.contains(index) && item.leftDivider) {
+    for (index in extraColumns.indices.reversed()) {
+      val columnInfo = extraColumns[index]
+      x -= columnModel.getColumn(1 + index).maxWidth
+      if (!hiddenColumns.contains(index) && columnInfo.leftDivider) {
         g.drawLine(x, 0, x, height)
       }
     }
@@ -304,7 +288,7 @@ class TreeTableImpl(
       val item = getValueAt(cell.row, cell.column)
       when {
         cell.column == 0 -> contextPopup(this@TreeTableImpl, x, y)
-        cell.column > extraColumns.size -> badgeItems[cell.column - 1 - extraColumns.size].showPopup(item, this@TreeTableImpl, x, y)
+        else -> extraColumns[cell.column - 1].showPopup(item, this@TreeTableImpl, x, y)
       }
     }
 
@@ -314,7 +298,10 @@ class TreeTableImpl(
         val item = getValueAt(cell.row, cell.column)
         when {
           cell.column == 0 && event.clickCount == 2 -> doubleClick()
-          cell.column > extraColumns.size && event.clickCount == 1 -> badgeItems[cell.column - 1 - extraColumns.size].performAction(item)
+          cell.column > 0 && event.clickCount == 1 -> {
+            val bounds = getCellRect(cell.row, cell.column, true)
+            extraColumns[cell.column - 1].performAction(item, this@TreeTableImpl, bounds)
+          }
         }
       }
     }
@@ -343,8 +330,8 @@ class TreeTableImpl(
 
     private fun repaintBadge(cell: Cell?) {
       val column = cell?.column ?: return
-      if (column >= 1 + extraColumns.size) {
-        val badge = badgeItems[column - 1 - extraColumns.size]
+      if (column >= 1) {
+        val badge = extraColumns[column - 1] as? BadgeItem ?: return
         val item = getValueAt(cell.row, column) ?: return
         if (badge.getHoverIcon(item) != null) {
           repaint(getCellRect(cell.row, column, true))

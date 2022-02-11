@@ -35,6 +35,8 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.times
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 
 class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecutorBaseTest() {
@@ -68,6 +70,8 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
         request.contains("DEBUG_SURFACE --es operation set-complication") ->
           "Broadcast completed: result=1"
         request.contains("DEBUG_SURFACE --es operation set-watchface") ->
+          "Broadcast completed: result=1"
+        request.contains("DEBUG_SYSUI --es operation show-watchface") ->
           "Broadcast completed: result=1"
         else -> "Unknown request: $request"
       }
@@ -148,6 +152,8 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
           "Broadcast completed: result=1"
         request.contains("DEBUG_SURFACE --es operation set-watchface") ->
           "Broadcast completed: result=1"
+        request.contains("DEBUG_SYSUI --es operation show-watchface") ->
+          "Broadcast completed: result=0"
         else -> "Unknown request: $request"
       }
     }
@@ -165,6 +171,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     )
     doReturn(appInstaller).`when`(executor).getApplicationInstaller()
     doReturn(Mockito.mock(DebugSessionStarter::class.java)).`when`(executor).getDebugSessionStarter()
+    // Mock console.
+    val console: ConsoleView = Mockito.mock(ConsoleView::class.java)
+    doReturn(console).`when`(executor).createConsole()
 
     executor.doOnDevices(listOf(device))
 
@@ -200,17 +209,29 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
                                       " --ecn component com.example.watchface/com.example.watchface.MyWatchFace")
     // Show watch face.
     assertThat(commands[6]).isEqualTo("am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface")
+
+    // Verify that a warning was raised.
+    Mockito.verify(console, times(1))
+      .printError("Warning: Launch was successful, but you may need to bring up the watch face manually")
   }
 
   fun testComplicationProcessHandler() {
     val processHandler = ComplicationProcessHandler(AppComponent.getFQEscapedName(appId, componentName),
                                                     Mockito.mock(ConsoleView::class.java))
-    val device = getMockDevice()
+    val countDownLatch = CountDownLatch(1)
+    val device = getMockDevice { request ->
+      if (request.contains("operation unset-watchface")) {
+        countDownLatch.countDown()
+      }
+      "Mock reply: $request"
+    }
     processHandler.addDevice(device)
 
     processHandler.startNotify()
 
     processHandler.destroyProcess()
+
+    assertThat(countDownLatch.await(3, TimeUnit.SECONDS)).isTrue()
 
     // Verify commands sent to device.
     val commandsCaptor = ArgumentCaptor.forClass(String::class.java)

@@ -17,7 +17,6 @@ package com.android.tools.idea.run.configuration.execution
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
-import com.android.ddmlib.MultiReceiver
 import com.android.tools.deployer.DeployerException
 import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.AppComponent
@@ -36,7 +35,6 @@ import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Disposer
 import org.jetbrains.concurrency.Promise
-import java.util.concurrent.TimeUnit
 
 private const val WATCH_FACE_MIN_DEBUG_SURFACE_VERSION = 2
 
@@ -91,28 +89,27 @@ class AndroidWatchFaceConfigurationExecutor(environment: ExecutionEnvironment) :
       throw throw ExecutionException("Error while launching watch face, message: ${outputReceiver.getOutput()}", ex)
     }
   }
+}
 
-  private fun showWatchFace(device: IDevice, console: ConsoleView) {
-    val indicator = ProgressIndicatorProvider.getGlobalProgressIndicator()?.apply {
-      checkCanceled()
-      text = "Jumping to the watch face"
-    }
-    val resultReceiver = CommandResultReceiver()
-    val receiver = MultiReceiver(resultReceiver, ConsoleOutputReceiver({ indicator?.isCanceled == true }, console))
-    console.printShellCommand(SHOW_WATCH_FACE)
-    device.executeShellCommand(SHOW_WATCH_FACE, receiver, 5, TimeUnit.SECONDS)
-    if (resultReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
-      console.printError("Warning: Launch was successful, but you may need to bring up the watch face manually")
-    }
+internal fun showWatchFace(device: IDevice, console: ConsoleView) {
+  ProgressIndicatorProvider.getGlobalProgressIndicator()?.apply {
+    checkCanceled()
+    text = "Jumping to the watch face"
+  }
+  val resultReceiver = CommandResultReceiver()
+  device.executeShellCommand(SHOW_WATCH_FACE, console, resultReceiver)
+  if (resultReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
+    console.printError("Warning: Launch was successful, but you may need to bring up the watch face manually")
   }
 }
 
 class WatchFaceProcessHandler(private val console: ConsoleView) : AndroidProcessHandlerForDevices() {
 
   override fun destroyProcessOnDevice(device: IDevice) {
-    val receiver = ConsoleOutputReceiver({ false }, console)
-
-    console.printShellCommand(UNSET_WATCH_FACE)
-    device.executeShellCommand(UNSET_WATCH_FACE, receiver, 5, TimeUnit.SECONDS)
+    val receiver = CommandResultReceiver()
+    device.executeShellCommand(UNSET_WATCH_FACE, console, receiver)
+    if (receiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
+      console.printError("Warning: Watch face was not stopped.")
+    }
   }
 }

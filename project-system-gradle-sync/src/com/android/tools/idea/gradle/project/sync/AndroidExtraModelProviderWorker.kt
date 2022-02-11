@@ -34,9 +34,8 @@ import com.android.ide.common.repository.GradleVersion
 import com.android.ide.gradle.model.composites.BuildMap
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeSyncIssue
-import com.android.tools.idea.gradle.model.IdeUnresolvedDependencies
+import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
-import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.tools.idea.gradle.model.buildId
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
@@ -661,7 +660,7 @@ internal class AndroidExtraModelProviderWorker(
     val module: AndroidModule,
     val ideVariant: IdeVariantImpl,
     val nativeVariantAbi: NativeVariantAbiResult,
-    val unresolvedDependencies: List<IdeUnresolvedDependencies>
+    val unresolvedDependencies: List<IdeUnresolvedDependency>
   )
 
   private class SyncVariantResult(
@@ -672,7 +671,7 @@ internal class AndroidExtraModelProviderWorker(
     val module: AndroidModule get() = core.module
     val ideVariant: IdeVariantImpl get() = core.ideVariant
     val nativeVariantAbi: NativeVariantAbiResult get() = core.nativeVariantAbi
-    val unresolvedDependencies: List<IdeUnresolvedDependencies> get() = core.unresolvedDependencies
+    val unresolvedDependencies: List<IdeUnresolvedDependency> get() = core.unresolvedDependencies
   }
 
   private fun SyncVariantResultCore.getModuleDependencyConfigurations(selectedVariants: SelectedVariants): List<ModuleConfiguration> {
@@ -775,8 +774,8 @@ internal class AndroidExtraModelProviderWorker(
       nativeVariantAbi = abiToRequest?.let {
         controller.findNativeVariantAbiModel(modelCache, module, variantName, it) } ?: NativeVariantAbiResult.None
 
-      fun getUnresolvedDependencies(): List<IdeUnresolvedDependencies> {
-         val unresolvedDependencies = mutableListOf<IdeUnresolvedDependencies>()
+      fun getUnresolvedDependencies(): List<IdeUnresolvedDependency> {
+         val unresolvedDependencies = mutableListOf<IdeUnresolvedDependency>()
         unresolvedDependencies.addAll(ideVariant.mainArtifact.unresolvedDependencies)
         ideVariant.androidTestArtifact?.let { unresolvedDependencies.addAll(it.unresolvedDependencies) }
         ideVariant.testFixturesArtifact?.let { unresolvedDependencies.addAll(it.unresolvedDependencies) }

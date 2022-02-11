@@ -18,6 +18,7 @@ package com.android.tools.idea.ui.resourcemanager.explorer
 import com.android.tools.idea.ui.resourcemanager.ResourceManagerTracking
 import com.android.tools.idea.ui.resourcemanager.actions.RefreshDesignAssetAction
 import com.android.tools.idea.ui.resourcemanager.explorer.ResourceExplorerListViewModel.UpdateUiReason
+import com.android.tools.idea.ui.resourcemanager.findCompatibleFacets
 import com.android.tools.idea.ui.resourcemanager.importer.ResourceImportDragTarget
 import com.android.tools.idea.ui.resourcemanager.model.Asset
 import com.android.tools.idea.ui.resourcemanager.model.DesignAsset
@@ -30,7 +31,6 @@ import com.android.tools.idea.ui.resourcemanager.widget.LinkLabelSearchView
 import com.android.tools.idea.ui.resourcemanager.widget.Section
 import com.android.tools.idea.ui.resourcemanager.widget.SectionList
 import com.android.tools.idea.ui.resourcemanager.widget.SectionListModel
-import com.android.tools.idea.util.androidFacet
 import com.intellij.concurrency.JobScheduler
 import com.intellij.icons.AllIcons
 import com.intellij.ide.dnd.DnDManager
@@ -44,7 +44,6 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.text.StringUtil
@@ -167,8 +166,7 @@ class ResourceExplorerListView(
       }
     }
 
-  private var gridMode: Boolean by Delegates.observable(
-    DEFAULT_GRID_MODE) { _, _, newValue ->
+  private var gridMode: Boolean by Delegates.observable(DEFAULT_GRID_MODE) { _, _, newValue ->
     val backgroundColor = if (newValue) GRID_MODE_BACKGROUND else LIST_MODE_BACKGROUND
     centerPanel.background = backgroundColor
     sectionList.background = backgroundColor
@@ -226,9 +224,9 @@ class ResourceExplorerListView(
   private val footerPanel = JPanel(BorderLayout()).apply {
     border = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
 
-    add(ActionManager.getInstance().createActionToolbar(
-      "resourceExplorer",
-      createBottomActions(), true).component, BorderLayout.EAST)
+    val bottomToolbar = ActionManager.getInstance().createActionToolbar("resourceExplorer", createBottomActions(), true)
+    bottomToolbar.targetComponent = this@ResourceExplorerListView
+    add(bottomToolbar.component, BorderLayout.EAST)
   }
 
   private val contentPanel: JPanel =
@@ -435,7 +433,7 @@ class ResourceExplorerListView(
     val actionManager = ActionManager.getInstance()
     viewModel.externalActions.forEach {
       actionManager.createActionToolbar("resourceExplorer", it, true).let { actionToolbar ->
-        actionToolbar.setTargetComponent(this@ResourceExplorerListView)
+        actionToolbar.targetComponent = this@ResourceExplorerListView
         topActionsPanel.add(actionToolbar.component.apply { border = TOOLBAR_BORDER })
       }
     }
@@ -472,9 +470,6 @@ class ResourceExplorerListView(
   private fun displaySearchLinkLabels(resourceSections: List<ResourceSection>, filter: String) {
     if (moduleSearchView == null) return // TODO: Log?
     val search = viewModel.speedSearch
-    // TODO: Get the facet when the module is being set in ResourceExplorerViewModel by passing the module name instead of the actual facet.
-    // I.e: This class should not be fetching module objects.
-    val modulesInProject = ModuleManager.getInstance(viewModel.facet.module.project).modules
     search.setEnabled(true)
     resourceSections.forEach { section ->
       val filteringModel = NameFilteringListModel(CollectionListModel(section.assetSets), { it.name }, search::shouldBeShowing,
@@ -482,10 +477,14 @@ class ResourceExplorerListView(
       filteringModel.refilter()
       val resourcesCount = filteringModel.size
       if (resourcesCount > 0) {
-        modulesInProject.first { it.name == section.libraryName }.androidFacet?.let { facetToChange ->
+        // TODO: Get the facet when the module is being set in ResourceExplorerViewModel by passing the module name instead of the actual facet.
+        // I.e: This class should not be fetching module objects.
+        findCompatibleFacets(viewModel.facet.module.project).firstOrNull {
+          it.module.name == section.libraryName
+        }?.let { facetToChange ->
           // Create [LinkLabel]s that when clicking them, changes the working module to the module in the given [AndroidFacet].
           moduleSearchView.addLabel(
-            "${resourcesCount} resource${if (resourcesCount > 1) "s" else ""} found in '${facetToChange.module.name}'") {
+            "$resourcesCount ${StringUtil.pluralize("resource", resourcesCount)} found in '${facetToChange.module.name}'") {
             viewModel.facetUpdated(facetToChange)
           }
         }
@@ -520,7 +519,7 @@ class ResourceExplorerListView(
 
   private fun displayLoading() {
     showLoadingFuture = null
-    if (populateResourcesFuture?.isDone?: true) {
+    if (populateResourcesFuture?.isDone ?: true) {
       return
     }
     sectionListModel.clear()
@@ -564,7 +563,8 @@ class ResourceExplorerListView(
     if (finalFileToSelect != null) {
       // Attempt to select resource by file, if it was pending.
       selectAsset(finalFileToSelect)
-    } else if (finalResourceToSelect != null) {
+    }
+    else if (finalResourceToSelect != null) {
       // Attempt to select resource by name, if it was pending.
       selectAsset(finalResourceToSelect, recentlyAdded = false)
     }
@@ -613,8 +613,12 @@ class ResourceExplorerListView(
       resourceToSelect = resourceName
     }
     if (!updatePending) {
-      doSelectAsset { assetSet ->
-        (assetSet.name == resourceName).also { if (it) resourceToSelect = null }
+      doSelectAsset isAsset@{ assetSet ->
+        val found = assetSet.name == resourceName
+        if (found) {
+          resourceToSelect = null
+        }
+        return@isAsset found
       }
     }
   }
@@ -725,8 +729,7 @@ class ResourceExplorerListView(
    * Button to enable the list view
    */
   private inner class ListModeButton
-    : ToggleAction("List mode", "Switch to list mode", StudioIcons.Common.LIST_VIEW),
-      DumbAware {
+    : ToggleAction("List mode", "Switch to list mode", StudioIcons.Common.LIST_VIEW), DumbAware {
 
     override fun isSelected(e: AnActionEvent) = !gridMode
 

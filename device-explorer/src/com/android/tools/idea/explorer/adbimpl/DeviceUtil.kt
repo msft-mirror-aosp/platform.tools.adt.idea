@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.lint.inspections;
+package com.android.tools.idea.explorer.adbimpl
 
-import com.android.tools.idea.lint.common.AndroidLintInspectionBase;
-import com.android.tools.idea.lint.AndroidLintBundle;
-import com.android.tools.lint.checks.UnpackedNativeCodeDetector;
+import com.android.ddmlib.IDevice
 
-public class AndroidLintUnpackedNativeCodeInspection extends AndroidLintInspectionBase {
-  public AndroidLintUnpackedNativeCodeInspection() {
-    super(AndroidLintBundle.message("android.lint.inspections.unpacked.native.code"), UnpackedNativeCodeDetector.ISSUE);
-  }
+fun IDevice.toDebugString(): String {
+  return "$name ($serialNumber) - $state"
 }

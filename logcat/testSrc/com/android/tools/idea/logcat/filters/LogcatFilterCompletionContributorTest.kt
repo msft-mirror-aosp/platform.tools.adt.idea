@@ -16,11 +16,13 @@
 package com.android.tools.idea.logcat.filters
 
 import com.android.ddmlib.Log.LogLevel
+import com.android.tools.idea.FakeAndroidProjectDetector
 import com.android.tools.idea.logcat.PACKAGE_NAMES_PROVIDER_KEY
 import com.android.tools.idea.logcat.PackageNamesProvider
 import com.android.tools.idea.logcat.TAGS_PROVIDER_KEY
 import com.android.tools.idea.logcat.TagsProvider
 import com.android.tools.idea.logcat.filters.parser.LogcatFilterFileType
+import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
 import com.google.common.truth.Truth.assertThat
@@ -34,17 +36,11 @@ import org.junit.rules.RuleChain
 private val STRING_KEYS = listOf(
   "line",
   "message",
-  PACKAGE_KEY,
-  TAG_KEY,
+  "package",
+  "tag",
 ).map(String::getKeyVariants).flatten()
 
-private val LEVEL_KEYS = listOf(
-  "fromLevel:",
-  "level:",
-  "toLevel:",
-)
-
-private val KEYS = STRING_KEYS + LEVEL_KEYS + AGE_KEY + MY_PACKAGE
+private val KEYS = STRING_KEYS + "level:" + "age:" + "package:mine "
 
 /**
  * Tests for [LogcatFilterCompletionContributor]
@@ -68,7 +64,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_afterKey_withoutWhitespace() {
-    for (key in STRING_KEYS + AGE_KEY) {
+    for (key in STRING_KEYS + "age:") {
       fixture.configure("$key$caret")
 
       fixture.completeBasic()
@@ -85,7 +81,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_afterKey_withWhitespace() {
-    for (key in STRING_KEYS + AGE_KEY) {
+    for (key in STRING_KEYS + "age:") {
       fixture.configure("$key  $caret")
 
       fixture.completeBasic()
@@ -103,30 +99,26 @@ class LogcatFilterCompletionContributorTest {
   @Test
   fun complete_levels_withoutWhitespace() {
     val levels = LogLevel.values().map { "${it.name} " }
-    for (key in LEVEL_KEYS) {
-      fixture.configure("$key$caret")
+    fixture.configure("level:$caret")
 
-      fixture.completeBasic()
+    fixture.completeBasic()
 
-      assertThat(fixture.lookupElementStrings).named("$key with no whitespace").containsExactlyElementsIn(levels)
-    }
+    assertThat(fixture.lookupElementStrings).named("level with no whitespace").containsExactlyElementsIn(levels)
   }
 
   @Test
   fun complete_levels_withWhitespace() {
     val levels = LogLevel.values().map { "${it.name} " }
-    for (key in LEVEL_KEYS) {
-      fixture.configure("$key  $caret")
+    fixture.configure("level:  $caret")
 
-      fixture.completeBasic()
+    fixture.completeBasic()
 
-      assertThat(fixture.lookupElementStrings).named("$key with whitespace").containsExactlyElementsIn(levels)
-    }
+    assertThat(fixture.lookupElementStrings).named("level with whitespace").containsExactlyElementsIn(levels)
   }
 
   @Test
   fun complete_tags_withoutWhiteSpace() {
-    for (key in TAG_KEY.getKeyVariants()) {
+    for (key in "tag".getKeyVariants()) {
       fixture.configure("$key$caret", tags = setOf("Tag1", "Tag2"))
 
       fixture.completeBasic()
@@ -137,7 +129,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_tags_withWhiteSpace() {
-    for (key in TAG_KEY.getKeyVariants()) {
+    for (key in "tag".getKeyVariants()) {
       fixture.configure("$key $caret", tags = setOf("Tag1", "Tag2"))
 
       fixture.completeBasic()
@@ -148,7 +140,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_tags_removesBankTags() {
-    for (key in TAG_KEY.getKeyVariants()) {
+    for (key in "tag".getKeyVariants()) {
       fixture.configure("$key $caret", tags = setOf("Tag1", "Tag2", "  "))
 
       fixture.completeBasic()
@@ -159,7 +151,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_packages_withoutWhiteSpace() {
-    for (key in PACKAGE_KEY.getKeyVariants()) {
+    for (key in "package".getKeyVariants()) {
       fixture.configure("$key$caret", packages = setOf("package1", "package2"))
 
       fixture.completeBasic()
@@ -177,7 +169,7 @@ class LogcatFilterCompletionContributorTest {
 
   @Test
   fun complete_packages_withWhiteSpace() {
-    for (key in PACKAGE_KEY.getKeyVariants()) {
+    for (key in "package".getKeyVariants()) {
       fixture.configure("$key $caret", packages = setOf("package1", "package2"))
 
       fixture.completeBasic()
@@ -236,20 +228,46 @@ class LogcatFilterCompletionContributorTest {
       assertThat(fixture.lookupElementStrings).named(it).containsExactlyElementsIn(KEYS)
     }
   }
+
+  @Test
+  fun nonAndroidProject_doesNotProvideProjectPackageKey() {
+    fixture.configure("package$caret",androidProjectDetector = FakeAndroidProjectDetector(false))
+
+    fixture.completeBasic()
+
+    assertThat(fixture.lookupElementStrings).containsExactly("package:", "package~:", "-package:", "-package~:")
+  }
+
+  @Test
+  fun nonAndroidProject_doesNotProvideProjectPackageValue() {
+    fixture.configure("package:$caret", packages = setOf("foo"), androidProjectDetector = FakeAndroidProjectDetector(false))
+
+    fixture.completeBasic()
+
+    assertThat(fixture.lookupElementStrings).containsExactly("foo ")
+  }
 }
 
-private fun String.isPackageKey() = equals("$PACKAGE_KEY:")
+private fun String.isPackageKey() = equals("package:")
 
 /**
  * Configure fixture with given text and set up its editor.
  */
-private fun CodeInsightTestFixture.configure(text: String, tags: Set<String> = emptySet(), packages: Set<String> = emptySet()) {
+private fun CodeInsightTestFixture.configure(
+  text: String,
+  tags: Set<String> = emptySet(),
+  packages: Set<String> = emptySet(),
+  androidProjectDetector: AndroidProjectDetector = FakeAndroidProjectDetector(true)
+) {
   configureByText(LogcatFilterFileType, text)
   // This can't be done in the setUp() method because the editor is only created when the fixture is configured.
-  editor.putUserData(TAGS_PROVIDER_KEY, object : TagsProvider {
-    override fun getTags(): Set<String> = tags
-  })
-  editor.putUserData(PACKAGE_NAMES_PROVIDER_KEY, object : PackageNamesProvider {
-    override fun getPackageNames(): Set<String> = packages
-  })
+  editor.apply {
+    putUserData(TAGS_PROVIDER_KEY, object : TagsProvider {
+      override fun getTags(): Set<String> = tags
+    })
+    putUserData(PACKAGE_NAMES_PROVIDER_KEY, object : PackageNamesProvider {
+      override fun getPackageNames(): Set<String> = packages
+    })
+    putUserData(AndroidProjectDetector.KEY, androidProjectDetector)
+  }
 }

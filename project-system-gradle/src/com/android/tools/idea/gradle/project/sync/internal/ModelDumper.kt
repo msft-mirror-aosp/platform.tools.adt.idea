@@ -35,6 +35,16 @@ interface ModelDumperContext {
 }
 
 /**
+ * A marker interface to hint dumpers that the collection needs to be sorted.
+ */
+interface UnorderedCollection<T>: Collection<T>
+
+/**
+ * Returns an instance of [UnorderedCollection] containing the same elements.
+ */
+fun <T> Collection<T>.asUnordered(): UnorderedCollection<T> = object: UnorderedCollection<T>, Collection<T> by this@asUnordered {}
+
+/**
  * A provider of custom handling of properties/values. See [SpecializedDumper] factory functions for possible ways to instantiate it.
  */
 interface SpecializedDumper {
@@ -130,6 +140,7 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
     }
 
   private val fileSuffixes = listOf("dir", "file", "path", "dirs", "files", "paths")
+  private val notFileSuffixes = listOf("projectPath")
 
   fun dumpModel(projectDumper: ProjectDumper, propertyName: String, v: Any?, defaultValue: Any? = null, mapEntry: Boolean = false) {
     with(projectDumper) {
@@ -143,15 +154,27 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
     defaultValue: Any? = null,
     mapEntry: Boolean = false
   ) {
+    fun ModelClassDumperDescriptor.getDisplayNamePropertyValue(v: Any): String? {
+      val displayNameProperty = displayNameProperty
+      return displayNameProperty?.getter?.invoke(v)?.toString()?.replaceKnownPaths()
+    }
+
+    fun Any.getSortPropertyValue(): String {
+      if (this::class.memberProperties.isNotEmpty()) {
+        val classDumperDescriptor = getClassDumperDescriptorFor(this)
+        return classDumperDescriptor.getDisplayNamePropertyValue(this) ?: toString()
+      }
+      return toString()
+    }
+
     fun processObject(v: Any) {
       val seen = !seen.add(v)
       val classDumperDescriptor = getClassDumperDescriptorFor(v)
 
-      val nameProperty = classDumperDescriptor.nameProperty
-      val name = nameProperty?.getter?.invoke(v)?.let { "${it.toString().replaceKnownPaths()} (${v.printableClassName})" }
-        ?: v.printableClassName
+      val name = classDumperDescriptor.getDisplayNamePropertyValue(v)
+      val displayName = name?.let { "$it (${v.printableClassName})" } ?: v.printableClassName
 
-      head(propertyName) { name + (if (seen) " (*seen*)" else "") }
+      head(propertyName) { displayName + (if (seen) " (*seen*)" else "") }
       if (!seen) {
         nest {
           outProperties(v, defaultValue, classDumperDescriptor)
@@ -176,7 +199,7 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
     }
 
     fun processUnorderedCollection(v: Collection<*>) {
-      doDump(propertyName, v.sortedBy { it.toString() }.toSet())
+      doDump(propertyName, v.sortedBy { it?.getSortPropertyValue() ?: "" }.toSet())
     }
 
     fun processOrderedMap(v: Map<*, *>) {
@@ -187,7 +210,7 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
     }
 
     fun processUnorderedMap(v: HashMap<*, *>) {
-      doDump(propertyName, v.entries.sortedBy { it.key.toString() }.associate { it.key to it.value })
+      doDump(propertyName, v.entries.sortedBy { it.key.getSortPropertyValue() }.associate { it.key to it.value })
     }
 
     fun processArray(v: Array<*>) {
@@ -218,7 +241,10 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
     }
 
     fun isIgnorableDefaultValue(any: Any?) = any.ignoreIfDefault() && (any == defaultValue || defaultValue.ignoreIfDefault())
-    fun isPathLikePropertyName() = fileSuffixes.any { suffix -> propertyName.endsWith(suffix, ignoreCase = true) }
+
+    fun isPathLikePropertyName() =
+      fileSuffixes.any { suffix -> propertyName.endsWith(suffix, ignoreCase = true) } &&
+        !notFileSuffixes.any { suffix -> propertyName.endsWith(suffix, ignoreCase = true) }
 
     when {
       propertyName == "classpath" && v is String ->
@@ -239,12 +265,16 @@ class ModelDumper(private val specializedDumpers: List<SpecializedDumper>) {
         processOrderedMap(v)
       v is HashSet<*> && v !is LinkedHashSet<*> ->
         processUnorderedCollection(v)
+      v is UnorderedCollection<*> ->
+        processUnorderedCollection(v)
       v is Collection<*> ->
         processOrderedCollection(v)
       !mapEntry && v is String && isPathLikePropertyName() ->
         processPathValue(v)
       v is String ->
         processString(v)
+      v is Enum<*> ->
+        processString(v.toString())
       v is File ->
         processFile(v)
       v::class.memberProperties.isNotEmpty() ->

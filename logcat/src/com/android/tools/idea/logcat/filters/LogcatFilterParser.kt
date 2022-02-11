@@ -36,6 +36,10 @@ import com.android.tools.idea.logcat.filters.parser.LogcatFilterTypes.STRING_KEY
 import com.android.tools.idea.logcat.filters.parser.LogcatFilterTypes.VALUE
 import com.android.tools.idea.logcat.filters.parser.isTopLevelValue
 import com.android.tools.idea.logcat.filters.parser.toText
+import com.android.tools.idea.logcat.util.AndroidProjectDetector
+import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent.TermVariants
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
@@ -48,7 +52,6 @@ import com.intellij.psi.util.elementType
 import java.text.ParseException
 import java.time.Clock
 import java.time.Duration
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 private val DURATION_RE = "\\d+[smhd]".toRegex()
@@ -59,6 +62,7 @@ private val DURATION_RE = "\\d+[smhd]".toRegex()
 internal class LogcatFilterParser(
   project: Project,
   private val packageNamesProvider: PackageNamesProvider,
+  private val androidProjectDetector: AndroidProjectDetector = AndroidProjectDetectorImpl(),
   private val joinConsecutiveTopLevelValue: Boolean = false,
   private val topLevelSameKeyTreatment: CombineWith = OR,
   private val clock: Clock = Clock.systemDefaultZone(),
@@ -70,19 +74,97 @@ internal class LogcatFilterParser(
 
   private val psiFileFactory = PsiFileFactory.getInstance(project)
 
-  fun parse(string: String): LogcatFilter? {
-    return try {
-      val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, string)
-      if (PsiTreeUtil.hasErrorElements(psi)) {
-        val errorElement = PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java) as PsiErrorElement
-        throw LogcatFilterParseException(errorElement)
+  /**
+   * Parse a filter provided by a string in the [com.android.tools.idea.logcat.filters.parser.LogcatFilterLanguage]
+   *
+   * @param filterString a string in the Logcat filter language
+   * @return A [LogcatFilter] representing the provided string or null if the filter is empty.
+   */
+  fun parse(filterString: String): LogcatFilter? {
+    return when {
+      filterString.isEmpty() -> null
+      filterString.isBlank() -> StringFilter(filterString, IMPLICIT_LINE)
+      else -> {
+        try {
+          val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+          if (PsiTreeUtil.hasErrorElements(psi)) {
+            val errorElement = PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java) as PsiErrorElement
+            throw LogcatFilterParseException(errorElement)
+          }
+          psi.toFilter()
+        }
+        catch (e: LogcatFilterParseException) {
+          // Any error in parsing results in a filter that matches the raw string with the entire line.
+          StringFilter(filterString, IMPLICIT_LINE)
+        }
       }
-      psi.toFilter()
+    }
+  }
+
+  /**
+   * Parse a filter provided by a string in the Logcat filter language ([com.android.tools.idea.logcat.filters.parser.LogcatFilterLanguage])
+   * and return a usage tracking event representing it.
+   *
+   * @param filterString a string in the Logcat filter language
+   * @return A [LogcatFilterEvent] representing the provided string.
+   */
+  fun getUsageTrackingEvent(filterString: String): LogcatFilterEvent {
+    val builder = LogcatFilterEvent.newBuilder()
+    try {
+      val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+      if (PsiTreeUtil.hasErrorElements(psi)) {
+        builder.containsErrors = true
+      }
+      else {
+        // We should not be getting a null here because we don't call this method if filterString is empty
+        val logcatFilter = psi.toFilter() ?: return builder.build()
+        processFilters(logcatFilter) { filter ->
+          when {
+            filter is StringFilter && filter.field == IMPLICIT_LINE -> builder.implicitLineTerms++
+            filter is StringFilter -> builder.updateTermVariants(filter.field) { it.count++ }
+            filter is NegatedStringFilter -> builder.updateTermVariants(filter.field) { it.countNegated++ }
+            filter is RegexFilter -> builder.updateTermVariants(filter.field) { it.countRegex++ }
+            filter is NegatedRegexFilter -> builder.updateTermVariants(filter.field) { it.countNegatedRegex++ }
+            filter is ProjectAppFilter -> builder.packageProjectTerms++
+            filter is LevelFilter -> builder.levelTerms++
+            filter is AgeFilter -> builder.ageTerms++
+          }
+        }
+
+        PsiTreeUtil.processElements(psi) {
+          when (it) {
+            is LogcatFilterParenExpression -> builder.parentheses++
+            is LogcatFilterAndExpression -> builder.andOperators++
+            is LogcatFilterOrExpression -> builder.orOperators++
+          }
+          true
+        }
+      }
     }
     catch (e: LogcatFilterParseException) {
-      // Any error in parsing results in a filter that matches the raw string with the entire line.
-      StringFilter(string, IMPLICIT_LINE)
+      builder.containsErrors = true
     }
+    return builder.build()
+  }
+
+  private fun processFilters(filter: LogcatFilter, process: (LogcatFilter) -> Unit) {
+    when (filter) {
+      is AndLogcatFilter -> filter.filters.forEach { processFilters(it, process) }
+      is OrLogcatFilter -> filter.filters.forEach { processFilters(it, process) }
+      else -> process(filter)
+    }
+  }
+
+  private fun LogcatFilterEvent.Builder.updateTermVariants(
+    field: LogcatFilterField, updater: (TermVariants.Builder) -> Unit) {
+    val terms = when (field) {
+      TAG -> tagTermsBuilder
+      APP -> packageTermsBuilder
+      MESSAGE -> messageTermsBuilder
+      LINE -> lineTermsBuilder
+      IMPLICIT_LINE -> return
+    }
+    updater(terms)
   }
 
   private fun PsiFile.toFilter(): LogcatFilter? {
@@ -91,9 +173,7 @@ internal class LogcatFilterParser(
     return when {
       expressions == null -> null
       expressions.size == 1 -> expressions[0].toFilter()
-      else -> {
-        createTopLevelFilter(expressions)
-      }
+      else -> createTopLevelFilter(expressions)
     }
   }
 
@@ -108,6 +188,7 @@ internal class LogcatFilterParser(
   }
 
   private fun createComplexTopLevelFilter(filters: List<LogcatFilter>): LogcatFilter {
+    @Suppress("ConvertLambdaToReference") // IJ wants to convert "it.value" to "IndexedValue<LogcatFilter>::value"
     val groups = filters.withIndex().groupBy({ it.value.getFieldForImplicitOr(it.index) }, { it.value }).values
     return AndLogcatFilter(groups.map { if (it.size == 1) it[0] else OrLogcatFilter(it.toList()) })
   }
@@ -150,16 +231,18 @@ internal class LogcatFilterParser(
   private fun LogcatFilterLiteralExpression.literalToFilter() =
     when (firstChild.elementType) {
       VALUE -> StringFilter(firstChild.toText(), IMPLICIT_LINE)
-      KEY, STRING_KEY, REGEX_KEY -> toKeyFilter(clock, packageNamesProvider)
+      KEY, STRING_KEY, REGEX_KEY -> toKeyFilter(clock, packageNamesProvider, androidProjectDetector)
       else -> throw ParseException("Unexpected elementType: $firstChild.elementType", -1) // Should not happen
     }
 }
 
-private fun LogcatFilterLiteralExpression.toKeyFilter(clock: Clock, packageNamesProvider: PackageNamesProvider): LogcatFilter {
+private fun LogcatFilterLiteralExpression.toKeyFilter(
+  clock: Clock,
+  packageNamesProvider: PackageNamesProvider,
+  androidProjectDetector: AndroidProjectDetector,
+): LogcatFilter {
   return when (val key = firstChild.text.trim(':', '-', '~')) {
     "level" -> LevelFilter(lastChild.asLogLevel())
-    "fromLevel" -> FromLevelFilter(lastChild.asLogLevel())
-    "toLevel" -> ToLevelFilter(lastChild.asLogLevel())
     "age" -> AgeFilter(lastChild.asDuration(), clock)
     else -> {
       val value = lastChild.toText()
@@ -181,7 +264,7 @@ private fun LogcatFilterLiteralExpression.toKeyFilter(clock: Clock, packageNames
         isNegated -> NegatedStringFilter(value, field)
         isRegex -> RegexFilter(value, field)
         // TODO(aalbert): Consider adding a NegatedProjectAppFilter for "-package:mine"
-        key == "package" && value == "mine" -> ProjectAppFilter(packageNamesProvider)
+        key == "package" && value == "mine" && androidProjectDetector.isAndroidProject(project) -> ProjectAppFilter(packageNamesProvider)
         else -> StringFilter(value, field)
       }
     }
@@ -189,9 +272,10 @@ private fun LogcatFilterLiteralExpression.toKeyFilter(clock: Clock, packageNames
 }
 
 private fun PsiElement.asLogLevel(): LogLevel =
-  if (text.length == 1) LogLevel.getByLetter(text[0].toUpperCase())
-  else LogLevel.getByString(text.toLowerCase(Locale.ROOT))
-       ?: throw LogcatFilterParseException(PsiErrorElementImpl("Invalid Log Level: $text"))
+  LogLevel.getByString(text.lowercase())
+  ?: throw LogcatFilterParseException(PsiErrorElementImpl("Invalid Log Level: $text"))
+
+internal fun String.isValidLogLevel(): Boolean = LogLevel.getByString(lowercase()) != null
 
 private fun PsiElement.asDuration(): Duration {
   DURATION_RE.matchEntire(text) ?: throw LogcatFilterParseException(PsiErrorElementImpl("Invalid duration: $text"))
@@ -209,6 +293,17 @@ private fun PsiElement.asDuration(): Duration {
     else -> throw LogcatFilterParseException(PsiErrorElementImpl("Invalid duration: $text")) // should not happen
   }
   return Duration.ofSeconds(l)
+}
+
+internal fun String.isValidLogAge(): Boolean {
+  DURATION_RE.matchEntire(this) ?: return false
+  try {
+    substring(0, length - 1).toLong()
+  }
+  catch (e: NumberFormatException) {
+    return false
+  }
+  return true
 }
 
 private fun flattenOrExpression(expression: LogcatFilterExpression): List<LogcatFilterExpression> =
@@ -246,7 +341,7 @@ private fun LogcatFilter.getFieldForImplicitOr(index: Int): FilterType {
   return when {
     this is StringFilter && field != IMPLICIT_LINE -> FilterType(field)
     this is RegexFilter -> FilterType(field)
-    this is LevelFilter || this is FromLevelFilter || this is ToLevelFilter -> FilterType("level")
+    this is LevelFilter -> FilterType("level")
     this is AgeFilter -> FilterType("age")
     else -> FilterType(index)
   }

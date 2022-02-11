@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.explorer.adbimpl;
+package com.android.tools.idea.logcat.util
 
-import com.android.ddmlib.IDevice;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.facet.ProjectFacetManager
+import com.intellij.openapi.project.Project
+import org.jetbrains.android.facet.AndroidFacet
 
-final class DeviceUtil {
-  private DeviceUtil() {
-  }
-
-  @NotNull
-  static String toDebugString(@NotNull IDevice device) {
-    return device.getName() + " (" + device.getSerialNumber() + ") - " + device.getState();
-  }
+/**
+ * Production implementation of [AndroidProjectDetector]
+ */
+class AndroidProjectDetectorImpl : AndroidProjectDetector {
+  override fun isAndroidProject(project: Project): Boolean = ProjectFacetManager.getInstance(project).hasFacets(AndroidFacet.ID)
 }

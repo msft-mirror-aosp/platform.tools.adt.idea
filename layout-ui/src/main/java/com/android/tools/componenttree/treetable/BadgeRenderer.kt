@@ -17,31 +17,41 @@ package com.android.tools.componenttree.treetable
 
 import com.android.tools.adtui.common.ColoredIconGenerator
 import com.android.tools.componenttree.api.BadgeItem
-import com.intellij.ui.ColoredTableCellRenderer
-import com.intellij.util.ui.JBUI
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
+import java.awt.Component
+import javax.swing.Icon
+import javax.swing.JLabel
 import javax.swing.JTable
 import javax.swing.table.TableCellRenderer
 
 /**
  * Renderer used for each [BadgeItem] specified.
  */
-class BadgeRenderer(val badge: BadgeItem) : TableCellRenderer, ColoredTableCellRenderer() {
+class BadgeRenderer(val badge: BadgeItem, val emptyIcon: Icon) : TableCellRenderer, JBLabel() {
+  init {
+    horizontalAlignment = JLabel.CENTER
+    text = null
+    border = badge.createBorder()
+  }
 
-  override fun customizeCellRenderer(
+  override fun getTableCellRendererComponent(
     table: JTable,
-    value: Any?,
-    selected: Boolean,
+    value: Any,
+    isSelected: Boolean,
     hasFocus: Boolean,
     row: Int,
     column: Int
-  ) {
-    val focused = selected && table.hasFocus()
+  ): Component {
+    val focused = isSelected && table.hasFocus()
     val hoverCell = table.hoverCell
-    background = UIUtil.getTreeBackground(selected, focused)
-    val hoverIcon = if (value != null && hoverCell?.equalTo(row, column) == true) badge.getHoverIcon(value) else null
-    icon = (hoverIcon ?: value?.let{ badge.getIcon(it) })?.let { if (focused) ColoredIconGenerator.generateWhiteIcon(it) else it }
-    border = JBUI.Borders.empty(0, 1)
-    isTransparentIconBackground = true
+    background = UIUtil.getTreeBackground(isSelected, focused)
+    val hoverIcon = if (hoverCell?.equalTo(row, column) == true) badge.getHoverIcon(value) else null
+    icon = (hoverIcon ?: badge.getIcon(value))?.white(focused) ?: emptyIcon
+    toolTipText = badge.getTooltipText(value)
+    return this
   }
+
+  private fun Icon.white(focused: Boolean): Icon =
+    if (focused) ColoredIconGenerator.generateWhiteIcon(this) else this
 }
