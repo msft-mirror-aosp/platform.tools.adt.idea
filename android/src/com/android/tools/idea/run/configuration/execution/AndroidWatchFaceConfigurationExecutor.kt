@@ -29,7 +29,6 @@ import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
-import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
@@ -49,7 +48,7 @@ class AndroidWatchFaceConfigurationExecutor(environment: ExecutionEnvironment) :
     }
     val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
     Disposer.register(project, console)
-    val applicationInstaller = getApplicationInstaller()
+    val applicationInstaller = getApplicationInstaller(console)
     val mode = if (isDebug) AppComponent.Mode.DEBUG else AppComponent.Mode.RUN
     val processHandler = WatchFaceProcessHandler(console)
     devices.forEach { device ->
@@ -58,7 +57,7 @@ class AndroidWatchFaceConfigurationExecutor(environment: ExecutionEnvironment) :
       if (version < WATCH_FACE_MIN_DEBUG_SURFACE_VERSION) {
         throw SurfaceVersionException(WATCH_FACE_MIN_DEBUG_SURFACE_VERSION, version)
       }
-      val app = installWatchFace(device, applicationInstaller, console)
+      val app = installWatchFace(device, applicationInstaller)
       setWatchFace(app, mode)
       showWatchFace(device, console)
     }
@@ -66,14 +65,12 @@ class AndroidWatchFaceConfigurationExecutor(environment: ExecutionEnvironment) :
     return createRunContentDescriptor(devices, processHandler, console)
   }
 
-  private fun installWatchFace(device: IDevice, applicationInstaller: ApplicationInstaller, console: ConsoleView): App {
+  private fun installWatchFace(device: IDevice, applicationInstaller: ApplicationInstaller): App {
     ProgressIndicatorProvider.getGlobalProgressIndicator()?.apply {
       checkCanceled()
       text = "Installing the watch face"
     }
-    return applicationInstaller.installAppOnDevice(device, appId, getApkPaths(device), configuration.installFlags) {
-      console.print(it, ConsoleViewContentType.NORMAL_OUTPUT)
-    }
+    return applicationInstaller.installAppOnDevice(device, appId, getApkPaths(device), configuration.installFlags)
   }
 
   private fun setWatchFace(app: App, mode: AppComponent.Mode) {
@@ -86,8 +83,14 @@ class AndroidWatchFaceConfigurationExecutor(environment: ExecutionEnvironment) :
       app.activateComponent(configuration.componentType, configuration.componentName!!, mode, outputReceiver)
     }
     catch (ex: DeployerException) {
-      throw throw ExecutionException("Error while launching watch face, message: ${outputReceiver.getOutput()}", ex)
+      throw throw ExecutionException("Error while launching watch face, message: ${ex.details}", ex)
     }
+  }
+
+  override fun startDebugger(device: IDevice, processHandler: AndroidProcessHandlerForDevices, console: ConsoleView):
+    RunContentDescriptor {
+    checkAndroidVersionForWearDebugging(device.version, console)
+    return super.startDebugger(device, processHandler, console)
   }
 }
 

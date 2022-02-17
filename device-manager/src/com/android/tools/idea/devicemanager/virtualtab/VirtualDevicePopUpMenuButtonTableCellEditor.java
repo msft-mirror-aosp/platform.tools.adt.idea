@@ -18,9 +18,12 @@ package com.android.tools.idea.devicemanager.virtualtab;
 import com.android.tools.idea.avdmanager.AvdManagerConnection;
 import com.android.tools.idea.avdmanager.AvdWizardUtils;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
+import com.android.tools.idea.devicemanager.DeviceType;
 import com.android.tools.idea.devicemanager.MenuItems;
 import com.android.tools.idea.devicemanager.PopUpMenuButtonTableCellEditor;
 import com.android.tools.idea.devicemanager.legacy.LegacyAvdManagerUtils;
+import com.android.tools.idea.flags.StudioFlags;
+import com.android.tools.idea.wearpairing.AndroidWearPairingBundle;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Futures;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
@@ -31,6 +34,7 @@ import com.intellij.openapi.ui.JBMenuItem;
 import com.intellij.util.concurrency.EdtExecutorService;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.AbstractButton;
@@ -41,7 +45,6 @@ import org.jetbrains.annotations.NotNull;
 
 final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonTableCellEditor {
   private final @NotNull Emulator myEmulator;
-  private VirtualDevice myDevice;
 
   VirtualDevicePopUpMenuButtonTableCellEditor(@NotNull VirtualDevicePanel panel) {
     this(panel, new Emulator());
@@ -58,7 +61,7 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
   }
 
   @NotNull VirtualDevice getDevice() {
-    return myDevice;
+    return (VirtualDevice)myDevice;
   }
 
   @Override
@@ -71,7 +74,7 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
     items.add(newShowOnDiskItem());
     items.add(MenuItems.newViewDetailsItem(myPanel));
     items.add(new Separator());
-    newUnpairDeviceItem(myDevice.getKey(), EventKind.VIRTUAL_UNPAIR_DEVICE_ACTION).ifPresent(items::add);
+    addPairDeviceItems(items);
     items.add(new DeleteItem(this));
 
     return items;
@@ -89,7 +92,7 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
       DeviceManagerUsageTracker.log(deviceManagerEvent);
       VirtualDeviceTable table = getPanel().getTable();
 
-      if (AvdWizardUtils.createAvdWizardForDuplication(table, myPanel.getProject(), myDevice.getAvdInfo()).showAndGet()) {
+      if (AvdWizardUtils.createAvdWizardForDuplication(table, myPanel.getProject(), getDevice().getAvdInfo()).showAndGet()) {
         table.refreshAvds();
       }
     });
@@ -113,7 +116,7 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
       DeviceManagerUsageTracker.log(deviceManagerEvent);
       Project project = myPanel.getProject();
 
-      Futures.addCallback(AvdManagerConnection.getDefaultAvdManagerConnection().startAvdWithColdBoot(project, myDevice.getAvdInfo()),
+      Futures.addCallback(AvdManagerConnection.getDefaultAvdManagerConnection().startAvdWithColdBoot(project, getDevice().getAvdInfo()),
                           LegacyAvdManagerUtils.newCallback(project),
                           EdtExecutorService.getInstance());
     });
@@ -127,12 +130,55 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
 
     item.addActionListener(actionEvent -> {
       DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
-        .setKind(DeviceManagerEvent.EventKind.VIRTUAL_SHOW_ON_DISK_ACTION)
+        .setKind(EventKind.VIRTUAL_SHOW_ON_DISK_ACTION)
         .build();
 
       DeviceManagerUsageTracker.log(deviceManagerEvent);
-      RevealFileAction.openDirectory(myDevice.getAvdInfo().getDataFolderPath());
+      RevealFileAction.openDirectory(getDevice().getAvdInfo().getDataFolderPath());
     });
+
+    return item;
+  }
+
+  private void addPairDeviceItems(@NotNull Collection<@NotNull JComponent> items) {
+    if (!StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.get()) {
+      return;
+    }
+
+    switch (myDevice.getType()) {
+      case PHONE:
+      case WEAR_OS:
+        items.add(newPairDeviceItem());
+        newUnpairDeviceItem(EventKind.VIRTUAL_UNPAIR_DEVICE_ACTION).ifPresent(items::add);
+
+        break;
+      default:
+        break;
+    }
+  }
+
+  private @NotNull JComponent newPairDeviceItem() {
+    JComponent item = newPairDeviceItem(EventKind.VIRTUAL_PAIR_DEVICE_ACTION);
+
+    VirtualDevice device = getDevice();
+    boolean wearOs = device.getType().equals(DeviceType.WEAR_OS);
+
+    if (wearOs) {
+      item.setEnabled(true);
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.ok"));
+    }
+    else if (device.getAndroidVersion().getApiLevel() < 30) {
+      item.setEnabled(false);
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.requires.api"));
+    }
+    else if (!device.getAvdInfo().hasPlayStore()) {
+      item.setEnabled(false);
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.requires.play"));
+    }
+    else {
+      item.setEnabled(true);
+      item.setToolTipText(AndroidWearPairingBundle.message("wear.assistant.device.list.tooltip.ok"));
+    }
 
     return item;
   }

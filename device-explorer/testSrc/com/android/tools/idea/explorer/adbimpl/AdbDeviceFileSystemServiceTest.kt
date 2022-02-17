@@ -16,56 +16,62 @@
 package com.android.tools.idea.explorer.adbimpl
 
 import com.android.ddmlib.AndroidDebugBridge
+import com.android.ddmlib.testing.FakeAdbRule
 import com.android.testutils.MockitoKt.any
-import com.android.testutils.MockitoKt.mock
+import com.android.tools.idea.adb.AdbFileProvider
 import com.android.tools.idea.adb.AdbService
 import com.android.tools.idea.explorer.adbimpl.AdbDeviceFileSystemService.Companion.getInstance
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures.immediateFailedFuture
-import com.google.common.util.concurrent.Futures.immediateFuture
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.UsefulTestCase.assertThrows
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.android.sdk.AndroidSdkUtils
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import java.io.FileNotFoundException
-import java.util.function.Supplier
 
 class AdbDeviceFileSystemServiceTest {
 
   @get:Rule
   val androidProjectRule = AndroidProjectRule.withSdk()
 
+  @get:Rule
+  val adb = FakeAdbRule()
+
   private val project: Project
     get() = androidProjectRule.project
 
-  private val adbSupplier = Supplier { AndroidSdkUtils.getAdb(project) }
+  @Before
+  fun setUp() {
+    adb.attachDevice(
+      deviceId = "test_device_01", manufacturer = "Google", model = "Pixel 10", release = "8.0", sdk = "31",
+      hostConnectionType = com.android.fakeadbserver.DeviceState.HostConnectionType.USB)
+  }
 
   @Test
-  fun startService() = runBlocking {
+  fun initialDeviceList() = runBlocking {
     // Prepare
     val service = getInstance(project)
 
     // Act
-    service.start(adbSupplier)
+    service.start()
 
     // Assert
-    // Note: There is not much we can assert on, other than implicitly the fact we
-    // reached this statement.
-    assertNotNull(service.devices)
+    // We should see the connected device immediately after start returns.
+    // (FakeAdbRule waits for AndroidDebugBridge to be fully initialized.)
+    assertThat(service.devices).hasSize(1)
   }
 
   @Test
   fun debugBridgeListenersRemovedOnDispose() = runBlocking {
     // Prepare
     val service = getInstance(project)
-    service.start(adbSupplier)
+    service.start()
     assertEquals(1, AndroidDebugBridge.getDebugBridgeChangeListenerCount())
     assertEquals(1, AndroidDebugBridge.getDeviceChangeListenerCount())
 
@@ -83,74 +89,25 @@ class AdbDeviceFileSystemServiceTest {
     val service = getInstance(project)
 
     // Act
-    service.start(adbSupplier)
-    service.start(adbSupplier)
+    service.start()
+    service.start()
 
     // Assert
-    // Note: There is not much we can assert on, other than implicitly the fact we
-    // reached this statement.
-    assertNotNull(service.devices)
+    assertThat(service.devices).hasSize(1)
   }
 
   @Test
   fun startServiceFailsIfAdbIsNull() {
     // Prepare
+    AdbFileProvider { null }.storeInProject(project)
     val service = getInstance(project)
 
     // Act
     assertThrows(FileNotFoundException::class.java, "Android Debug Bridge not found.") {
       runBlocking {
-        service.start { null }
+        service.start()
       }
     }
-  }
-
-  @Test
-  fun restartService() = runBlocking {
-    // Prepare
-    val service = getInstance(project)
-    service.start(adbSupplier)
-
-    // Act
-    service.restart(adbSupplier)
-
-    // Assert
-    // Note: There is not much we can assert on, other than implicitly the fact we
-    // reached this statement.
-    assertNotNull(service.devices)
-  }
-
-  @Test
-  fun restartNonStartedService() = runBlocking {
-    // Prepare
-    val service = getInstance(project)
-
-    // Act
-    service.restart(adbSupplier)
-
-    // Assert
-    // Note: There is not much we can assert on, other than implicitly the fact we
-    // reached this statement.
-    assertNotNull(service.devices)
-  }
-
-  @Test
-  fun restartServiceCantTerminateDdmlib() = runBlocking {
-    // Prepare
-    val mockAdbService = androidProjectRule.mockService(AdbService::class.java)
-    `when`(mockAdbService.getDebugBridge(any())).thenReturn(immediateFuture(mock()))
-
-    Mockito.doThrow(RuntimeException()).`when`(mockAdbService).terminateDdmlib()
-    val service = getInstance(project)
-    service.start(adbSupplier)
-
-    // Act
-    try {
-      service.restart(adbSupplier)
-    } catch(e: RuntimeException) {
-      // expected
-    }
-    Mockito.doNothing().`when`(mockAdbService).terminateDdmlib()
   }
 
   @Test
@@ -161,7 +118,7 @@ class AdbDeviceFileSystemServiceTest {
     `when`(mockAdbService.getDebugBridge(any())).thenReturn(immediateFailedFuture(RuntimeException("test fail")))
 
     assertThrows(RuntimeException::class.java, "test fail") {
-      runBlocking { service.start(adbSupplier) }
+      runBlocking { service.start() }
     }
   }
 
@@ -174,7 +131,7 @@ class AdbDeviceFileSystemServiceTest {
 
     // Act
     assertThrows(RuntimeException::class.java) {
-      runBlocking { service.start(adbSupplier) }
+      runBlocking { service.start() }
     }
   }
 }

@@ -234,7 +234,7 @@ class DeviceExplorerControllerTest {
     // Prepare
     val setupErrorMessage = "<Unique error message>"
     val service = mock<DeviceFileSystemService<*>>()
-    `when`(service.start(any())).thenThrow(RuntimeException(setupErrorMessage))
+    `when`(service.start()).thenThrow(RuntimeException(setupErrorMessage))
     val controller = createController(service = service)
 
     // Act
@@ -250,7 +250,7 @@ class DeviceExplorerControllerTest {
   fun startControllerUnexpectedFailure() = runBlocking {
     // Prepare
     val service = mock<DeviceFileSystemService<*>>()
-    `when`(service.start(any())).thenThrow(RuntimeException())
+    `when`(service.start()).thenThrow(RuntimeException())
     val controller = createController(service = service)
 
     // Act
@@ -260,41 +260,6 @@ class DeviceExplorerControllerTest {
     // Assert
     checkNotNull(errorMessage)
     assertTrue(errorMessage.contains("Error initializing ADB"))
-  }
-
-  @Test
-  fun restartController() {
-    // Prepare
-    val controller = createController()
-    controller.setup()
-    pumpEventsAndWaitForFuture(myMockView.startRefreshTracker.consume())
-    checkMockViewInitialState(controller, myDevice1)
-
-    // Act
-    controller.restartService()
-    pumpEventsAndWaitForFuture(myMockView.allDevicesRemovedTracker.consume())
-
-    // Assert
-    checkMockViewInitialState(controller, myDevice1)
-  }
-
-  @Test
-  fun restartControllerFailure() = runBlocking  {
-    // Prepare
-    val setupErrorMessage = "<Unique error message>"
-    val service = mock<DeviceFileSystemService<*>>()
-    `when`(service.restart(any())).thenThrow(RuntimeException(setupErrorMessage))
-    `when`(service.devices).thenReturn(ArrayList())
-    val controller = createController(service = service)
-
-    // Act
-    controller.setup()
-    controller.restartService()
-    val errorMessage = pumpEventsAndWaitForFuture(myMockView.reportErrorRelatedToServiceTracker.consume())
-
-    // Assert
-    checkNotNull(errorMessage)
-    assertTrue(errorMessage.contains(setupErrorMessage))
   }
 
   @Test
@@ -1331,7 +1296,8 @@ class DeviceExplorerControllerTest {
       FileChooserFactory::class.java, factory, androidProjectRule.testRootDisposable)
 
     // Give ourselves time to cancel
-    myDevice1.uploadChunkIntervalMillis = 30_000
+    myDevice1.uploadChunkIntervalMillis = 1_000
+    myDevice1.uploadChunkSize = 100
 
     // Start the upload verify that a long-running operation is present
     myMockView.startTreeBusyIndicatorTacker.clear()

@@ -27,8 +27,8 @@ import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyImpl;
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl;
+import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyCoreImpl;
 import com.android.tools.idea.projectsystem.SourceProviders;
 import com.android.tools.idea.res.ResourceClassRegistry;
 import com.android.tools.idea.res.ResourceIdManager;
@@ -71,7 +71,7 @@ public class ModuleClassLoaderTest extends AndroidTestCase {
   @Override
   protected void tearDown() throws Exception {
     super.tearDown();
-    StudioFlags.COMPOSE_LIVE_EDIT_PREVIEW.clearOverride();
+    StudioFlags.COMPOSE_FAST_PREVIEW.clearOverride();
   }
 
   /**
@@ -247,7 +247,7 @@ public class ModuleClassLoaderTest extends AndroidTestCase {
   }
 
   public void testIsSourceModifiedWithOverlay() throws IOException, ClassNotFoundException {
-    StudioFlags.COMPOSE_LIVE_EDIT_PREVIEW.override(true);
+    StudioFlags.COMPOSE_FAST_PREVIEW.override(true);
     setupTestProjectFromAndroidModel(
       getProject(),
       new File(Objects.requireNonNull(getProject().getBasePath())),
@@ -411,11 +411,11 @@ public class ModuleClassLoaderTest extends AndroidTestCase {
     assertNull("Disposed ModuleClassLoaders can not be copied", copy);
   }
 
-  private static IdeAndroidLibraryDependencyImpl ideAndroidLibrary(File gradleCacheRoot,
-                                                                   @SuppressWarnings("SameParameterValue") String artifactAddress,
-                                                                   String folder,
-                                                                   String libJar) {
-    return new IdeAndroidLibraryDependencyImpl(
+  private static IdeAndroidLibraryDependencyCoreImpl ideAndroidLibrary(File gradleCacheRoot,
+                                                                       @SuppressWarnings("SameParameterValue") String artifactAddress,
+                                                                       String folder,
+                                                                       String libJar) {
+    return new IdeAndroidLibraryDependencyCoreImpl(
       IdeAndroidLibraryImpl.Companion.create(
         artifactAddress,
         artifactAddress,

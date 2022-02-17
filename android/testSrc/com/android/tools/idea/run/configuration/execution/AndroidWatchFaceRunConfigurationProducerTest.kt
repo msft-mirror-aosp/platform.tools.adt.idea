@@ -22,29 +22,24 @@ import com.android.tools.idea.run.configuration.AndroidWatchFaceRunConfiguration
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
 import org.jetbrains.android.AndroidTestCase
-import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
 
 class AndroidWatchFaceRunConfigurationProducerTest : AndroidTestCase() {
-  private lateinit var watchFaceFile: PsiFile
-
   override fun setUp() {
     super.setUp()
+
     StudioFlags.ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER.override(true)
+    myFixture.addWearDependenciesToProject()
+  }
 
-    myFixture.addFileToProject(
-      "src/android/support/wearable/watchface/WatchFaceService.kt",
-      // language=kotlin - Simulates that 'com.google.android.support:wearable:xxx' was added to `build.gradle`
-      """
-      package android.support.wearable.watchface
+  override fun tearDown() {
+    super.tearDown()
+    StudioFlags.ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER.clearOverride()
+  }
 
-      open class WatchFaceService
-      """.trimIndent())
-
-    watchFaceFile = myFixture.addFileToProject(
+  fun testSetupConfigurationFromContext() {
+    val watchFaceFile = myFixture.addFileToProject(
       "src/com/example/myapplication/MyTestWatchFace.kt",
-      // language=kotlin
       """
       package com.example.myapplication
 
@@ -56,33 +51,42 @@ class AndroidWatchFaceRunConfigurationProducerTest : AndroidTestCase() {
       class MyTestWatchFace : WatchFaceService() {
       }
       """.trimIndent())
-  }
 
-  override fun tearDown() {
-    super.tearDown()
-    StudioFlags.ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER.clearOverride()
-  }
-
-  fun testSetupConfigurationFromContext() {
-    val classElement = watchFaceFile.findDescendantOfType<PsiElement> { it.node.text == "class" }!!
+    val classElement = watchFaceFile.findElementByText("class")
     val configurationFromClass = createConfigurationFromElement(classElement)
-
-    println(configurationFromClass)
 
     assertEquals("MyTestWatchFace", configurationFromClass.name)
     assertEquals("com.example.myapplication.MyTestWatchFace", configurationFromClass.componentName)
     assertEquals(myModule, configurationFromClass.module)
   }
 
+  fun testJavaSetupConfigurationFromContext() {
+    val watchFaceFile = myFixture.addFileToProject(
+      "src/com/example/myapplication/MyWatchFaceService.java",
+      """
+      package com.example.myapplication;
+
+      import android.support.wearable.watchface.WatchFaceService;
+        
+      public class MyWatchFaceService extends WatchFaceService {
+      }
+      """.trimIndent())
+
+    val classElement = watchFaceFile.findElementByText("class")
+    val configurationFromClass = createConfigurationFromElement(classElement)
+
+    assertEquals("MyWatchFaceService", configurationFromClass.name)
+    assertEquals("com.example.myapplication.MyWatchFaceService", configurationFromClass.componentName)
+    assertEquals(myModule, configurationFromClass.module)
+  }
+
   private fun createConfigurationFromElement(element: PsiElement): AndroidWatchFaceConfiguration {
     val context = ConfigurationContext(element)
-    val runConfiguration = newAndroidWatchFaceConfiguration()
+    val runConfiguration =
+      AndroidWatchFaceConfigurationType().configurationFactories[0].createTemplateConfiguration(project) as AndroidWatchFaceConfiguration
     val producer = AndroidWatchFaceRunConfigurationProducer()
     producer.setupConfigurationFromContext(runConfiguration, context, Ref(context.psiLocation))
 
     return runConfiguration
   }
-
-  private fun newAndroidWatchFaceConfiguration(): AndroidWatchFaceConfiguration =
-    AndroidWatchFaceConfigurationType().configurationFactories[0].createTemplateConfiguration(project) as AndroidWatchFaceConfiguration
 }

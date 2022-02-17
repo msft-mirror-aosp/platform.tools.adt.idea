@@ -24,10 +24,15 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.ddms.DeviceContext
+import com.android.tools.idea.ddms.actions.DeviceScreenshotAction
+import com.android.tools.idea.ddms.actions.ScreenRecorderAction
+import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Custom
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Preset
 import com.android.tools.idea.logcat.actions.ClearLogcatAction
 import com.android.tools.idea.logcat.actions.LogcatFormatAction
+import com.android.tools.idea.logcat.actions.NextOccurrenceToolbarAction
+import com.android.tools.idea.logcat.actions.PreviousOccurrenceToolbarAction
 import com.android.tools.idea.logcat.filters.LogcatFilter
 import com.android.tools.idea.logcat.filters.LogcatFilterParser
 import com.android.tools.idea.logcat.folding.EditorFoldingDetector
@@ -41,14 +46,23 @@ import com.android.tools.idea.logcat.messages.LogcatColors
 import com.android.tools.idea.logcat.messages.MessageBacklog
 import com.android.tools.idea.logcat.messages.MessageFormatter
 import com.android.tools.idea.logcat.messages.MessageProcessor
+import com.android.tools.idea.logcat.messages.ProcessThreadFormat
 import com.android.tools.idea.logcat.messages.TextAccumulator
+import com.android.tools.idea.logcat.messages.TimestampFormat
 import com.android.tools.idea.logcat.settings.LogcatSettings
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
+import com.android.tools.idea.logcat.util.LogcatUsageTracker
 import com.android.tools.idea.logcat.util.MostRecentlyAddedSet
 import com.android.tools.idea.logcat.util.createLogcatEditor
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration.Preset.COMPACT
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration.Preset.STANDARD
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatPanelEvent
+import com.google.wireless.android.sdk.stats.LogcatUsageEvent.Type.PANEL_ADDED
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -126,6 +140,7 @@ internal class LogcatMainPanel(
   internal val messageBacklog = AtomicReference(MessageBacklog(logcatSettings.bufferSize))
   private val tags = MostRecentlyAddedSet<String>(MAX_TAGS)
   private val packages = MostRecentlyAddedSet<String>(MAX_PACKAGE_NAMES)
+
   @VisibleForTesting
   val headerPanel = LogcatHeaderPanel(
     project,
@@ -134,11 +149,13 @@ internal class LogcatMainPanel(
     state?.filter ?: if (androidProjectDetector.isAndroidProject(project)) DEFAULT_FILTER else "",
   )
 
+  private val logcatFilterParser = LogcatFilterParser(project, packageNamesProvider, androidProjectDetector)
+
   @VisibleForTesting
   internal val messageProcessor = MessageProcessor(
     this,
     ::formatMessages,
-    LogcatFilterParser(project, packageNamesProvider, androidProjectDetector).parse(headerPanel.getFilterText()))
+    logcatFilterParser.parse(headerPanel.getFilterText()))
   private var deviceManager: LogcatDeviceManager? = null
   private val toolbar = ActionManager.getInstance().createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
   private val hyperlinkDetector = hyperlinkDetector ?: EditorHyperlinkDetector(project, editor)
@@ -182,6 +199,15 @@ internal class LogcatMainPanel(
     }, this)
 
     initScrollToEndStateHandling()
+
+    LogcatUsageTracker.log(
+      LogcatUsageEvent.newBuilder()
+        .setType(PANEL_ADDED)
+        .setPanelAdded(
+          LogcatPanelEvent.newBuilder()
+            .setIsRestored(state != null)
+            .setFilter(logcatFilterParser.getUsageTrackingEvent(headerPanel.getFilterText()))
+            .setFormatConfiguration(state?.formattingConfig.toUsageTracking())))
   }
 
   /**
@@ -298,6 +324,10 @@ internal class LogcatMainPanel(
         override fun getEditor(e: AnActionEvent) = this@LogcatMainPanel.editor
       })
       add(LogcatFormatAction(project, this@LogcatMainPanel))
+      add(PreviousOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
+      add(NextOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
+      add(DeviceScreenshotAction(project, deviceContext))
+      add(ScreenRecorderAction(project, deviceContext))
     }
   }
 
@@ -338,3 +368,36 @@ private fun LogCatMessage.getPackageNameOrPid() = if (header.appName == "?") "pi
 
 private fun LogcatPanelConfig?.getFormattingOptions(): FormattingOptions =
   this?.formattingConfig?.toFormattingOptions() ?: AndroidLogcatFormattingOptions.getDefaultOptions()
+
+private fun FormattingConfig?.toUsageTracking(): LogcatFormatConfiguration {
+  val builder = LogcatFormatConfiguration.newBuilder()
+  val formattingOptions: FormattingOptions
+  when {
+    this == null -> {
+      val defaultFormatting = AndroidLogcatFormattingOptions.getInstance().defaultFormatting
+      builder.preset = defaultFormatting.toUsageTracking()
+      formattingOptions = defaultFormatting.formattingOptions
+    }
+    this is Preset -> {
+      builder.preset = style.toUsageTracking()
+      formattingOptions = style.formattingOptions
+    }
+    else -> {
+      formattingOptions = this.toFormattingOptions()
+    }
+  }
+  return builder
+    .setIsShowTimestamp(formattingOptions.timestampFormat.enabled)
+    .setIsShowDate(formattingOptions.timestampFormat.style == TimestampFormat.Style.DATETIME)
+    .setIsShowProcessId(formattingOptions.processThreadFormat.enabled)
+    .setIsShowThreadId(formattingOptions.processThreadFormat.style == ProcessThreadFormat.Style.BOTH)
+    .setIsShowTags(formattingOptions.tagFormat.enabled)
+    .setIsShowRepeatedTags(!formattingOptions.tagFormat.hideDuplicates)
+    .setTagWidth(formattingOptions.tagFormat.maxLength)
+    .setIsShowPackages(formattingOptions.appNameFormat.enabled)
+    .setIsShowRepeatedPackages(!formattingOptions.appNameFormat.hideDuplicates)
+    .setPackageWidth(formattingOptions.appNameFormat.maxLength)
+    .build()
+}
+
+private fun FormattingOptions.Style.toUsageTracking() = if (this == FormattingOptions.Style.STANDARD) STANDARD else COMPACT

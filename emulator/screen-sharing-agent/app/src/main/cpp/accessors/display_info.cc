@@ -16,7 +16,7 @@
 
 #include "display_info.h"
 
-#include "log.h"
+#include "string_printf.h"
 
 namespace screensharing {
 

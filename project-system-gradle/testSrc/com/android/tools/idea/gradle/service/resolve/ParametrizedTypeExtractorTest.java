@@ -18,9 +18,9 @@ package com.android.tools.idea.gradle.service.resolve;
 import junit.framework.TestCase;
 
 public class ParametrizedTypeExtractorTest extends TestCase {
-  public void testParametersWildcardNdo() {
+  public void testActionParametersWildcardNdo() {
     AndroidDslContributor.ParametrizedTypeExtractor extractor = new AndroidDslContributor.ParametrizedTypeExtractor(
-      "org.gradle.api.Action<? super org.gradle.api.NamedDomainObjectContainer<BuildType>>>");
+      "org.gradle.api.Action<? super org.gradle.api.NamedDomainObjectContainer<BuildType>>");
 
     assertTrue(extractor.isClosure());
     assertEquals("org.gradle.api.NamedDomainObjectContainer<BuildType>", extractor.getClosureType());
@@ -29,9 +29,9 @@ public class ParametrizedTypeExtractorTest extends TestCase {
     assertEquals("BuildType", extractor.getNamedDomainObject());
   }
 
-  public void testParametersNdo() {
+  public void testActionParametersNdo() {
     AndroidDslContributor.ParametrizedTypeExtractor extractor =
-      new AndroidDslContributor.ParametrizedTypeExtractor("org.gradle.api.Action<org.gradle.api.NamedDomainObjectContainer<Flavor>>>");
+      new AndroidDslContributor.ParametrizedTypeExtractor("org.gradle.api.Action<org.gradle.api.NamedDomainObjectContainer<Flavor>>");
 
     assertTrue(extractor.isClosure());
     assertEquals("org.gradle.api.NamedDomainObjectContainer<Flavor>", extractor.getClosureType());
@@ -40,9 +40,42 @@ public class ParametrizedTypeExtractorTest extends TestCase {
     assertEquals("Flavor", extractor.getNamedDomainObject());
   }
 
-  public void testParametersPrimitiveClosure() {
+  public void testActionParametersPrimitiveClosure() {
     AndroidDslContributor.ParametrizedTypeExtractor extractor =
       new AndroidDslContributor.ParametrizedTypeExtractor("org.gradle.api.Action<String>");
+
+    assertTrue(extractor.isClosure());
+    assertEquals("String", extractor.getClosureType());
+
+    assertFalse(extractor.hasNamedDomainObjectContainer());
+    assertNull(extractor.getNamedDomainObject());
+  }
+
+  public void testFunction1ParametersWildcardNdo() {
+    AndroidDslContributor.ParametrizedTypeExtractor extractor = new AndroidDslContributor.ParametrizedTypeExtractor(
+      "kotlin.jvm.functions.Function1<? super org.gradle.api.NamedDomainObjectContainer<BuildType>,kotlin.Unit>");
+
+    assertTrue(extractor.isClosure());
+    assertEquals("org.gradle.api.NamedDomainObjectContainer<BuildType>", extractor.getClosureType());
+
+    assertTrue(extractor.hasNamedDomainObjectContainer());
+    assertEquals("BuildType", extractor.getNamedDomainObject());
+  }
+
+  public void testFunction1ParametersNdo() {
+    AndroidDslContributor.ParametrizedTypeExtractor extractor =
+      new AndroidDslContributor.ParametrizedTypeExtractor("kotlin.jvm.functions.Function1<org.gradle.api.NamedDomainObjectContainer<Flavor>,kotlin.Unit>");
+
+    assertTrue(extractor.isClosure());
+    assertEquals("org.gradle.api.NamedDomainObjectContainer<Flavor>", extractor.getClosureType());
+
+    assertTrue(extractor.hasNamedDomainObjectContainer());
+    assertEquals("Flavor", extractor.getNamedDomainObject());
+  }
+
+  public void testFunction1ParametersPrimitiveClosure() {
+    AndroidDslContributor.ParametrizedTypeExtractor extractor =
+      new AndroidDslContributor.ParametrizedTypeExtractor("kotlin.jvm.functions.Function1<String,kotlin.Unit>");
 
     assertTrue(extractor.isClosure());
     assertEquals("String", extractor.getClosureType());

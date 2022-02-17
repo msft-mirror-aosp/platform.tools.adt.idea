@@ -21,6 +21,7 @@ import com.android.ddmlib.IShellOutputReceiver
 import com.android.ddmlib.MultiLineReceiver
 import com.android.ddmlib.MultiReceiver
 import com.android.ddmlib.NullOutputReceiver
+import com.android.sdklib.AndroidVersion
 import com.android.tools.deployer.model.component.WearComponent
 import com.android.tools.deployer.model.component.WearComponent.CommandResultReceiver
 import com.intellij.execution.ExecutionException
@@ -28,6 +29,7 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicatorProvider
+import org.jetbrains.android.util.AndroidBundle
 import java.util.concurrent.TimeUnit
 
 internal fun ConsoleView.printShellCommand(command: String) {
@@ -56,6 +58,7 @@ internal fun IDevice.getWearDebugSurfaceVersion(): Int {
     // Example of output: Broadcast completed: result=1, data="3"
     private val versionPattern = "data=\"(\\d+)\"".toRegex()
     var version = -1
+      private set
 
     override fun isCancelled() = isCancelledCheck()
 
@@ -77,13 +80,24 @@ internal fun IDevice.getWearDebugSurfaceVersion(): Int {
   val receiver = MultiReceiver(outputReceiver, resultReceiver, versionReceiver)
   executeShellCommand(WearComponent.ShellCommand.GET_WEAR_DEBUG_SURFACE_VERSION, receiver, 5, TimeUnit.SECONDS)
 
-  if (resultReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
-    throw ExecutionException("Error while checking version, message: ${outputReceiver.getOutput()}")
+  var inferredVersion = versionReceiver.version
+  if (resultReceiver.resultCode == CommandResultReceiver.INVALID_ARGUMENT_CODE) {
+    // The version operation was not available initially.
+    inferredVersion = 0
+  } else if (resultReceiver.resultCode != CommandResultReceiver.SUCCESS_CODE) {
+      throw ExecutionException("Error while checking version, message: ${outputReceiver.getOutput()}")
   }
+
   // 2 is the minimum for all surfaces. 2 means the watch supports both start and stop commands
-  if (versionReceiver.version < 2) {
+  if (inferredVersion < 2) {
     throw ExecutionException("Device software is out of date, message: ${outputReceiver.getOutput()}")
   }
 
-  return versionReceiver.version
+  return inferredVersion
+}
+
+internal fun checkAndroidVersionForWearDebugging(version: AndroidVersion, console: ConsoleView) {
+  if (version < AndroidVersion(28)) {
+    console.printError(AndroidBundle.message("android.run.configuration.wear.version.affects.debugging"))
+  }
 }

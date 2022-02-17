@@ -173,7 +173,6 @@ public class RenderTask {
   private boolean mySetTransparentBackground = false;
   private boolean myShowDecorations = true;
   private boolean myShadowEnabled = true;
-  private boolean myHighQualityShadow = true;
   private boolean myEnableLayoutScanner = false;
   private boolean myShowWithToolsVisibilityAndPosition = true;
   private AssetRepositoryImpl myAssetRepository;
@@ -535,28 +534,6 @@ public class RenderTask {
   }
 
   /**
-   * Sets the value of the {@link com.android.layoutlib.bridge.android.RenderParamsFlags#FLAG_ENABLE_SHADOW}
-   * which dictates if shadows will be rendered or not by layout lib.
-   * <p>
-   * Default is {@code true}.
-   */
-  public RenderTask setShadowEnabled(boolean shadowEnabled) {
-    myShadowEnabled = shadowEnabled;
-    return this;
-  }
-
-  /**
-   * Sets the value of the {@link com.android.layoutlib.bridge.android.RenderParamsFlags#FLAG_RENDER_HIGH_QUALITY_SHADOW}
-   * which dictates if shadows will be rendered using the high quality algorithm by layout lib.
-   * <p>
-   * Default is {@code true}.
-   */
-  public RenderTask setHighQualityShadows(boolean highQualityShadows) {
-    myHighQualityShadow = highQualityShadows;
-    return this;
-  }
-
-  /**
    * Sets the value of the  {@link com.android.layoutlib.bridge.android.RenderParamsFlags#FLAG_KEY_ENABLE_LAYOUT_VALIDATOR}
    * which enables layout validation during the render process. The validation includes accessibility checks (whether the layout properly
    * support accessibilty cases), and various other layout sanity checks.
@@ -648,12 +625,8 @@ public class RenderTask {
     params.setFlag(RenderParamsFlags.FLAG_KEY_DISABLE_BITMAP_CACHING, true);
     params.setFlag(RenderParamsFlags.FLAG_DO_NOT_RENDER_ON_CREATE, true);
     params.setFlag(RenderParamsFlags.FLAG_KEY_RESULT_IMAGE_AUTO_SCALE, true);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_ENABLE_SHADOW, myShadowEnabled);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_RENDER_HIGH_QUALITY_SHADOW, myHighQualityShadow);
     params.setFlag(RenderParamsFlags.FLAG_KEY_ENABLE_LAYOUT_SCANNER, myEnableLayoutScanner);
     params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_IMAGE_CHECK, myEnableLayoutScanner);
-    // TODO: Remove after ag/15997527
-    params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_OPTIMIZATION, myEnableLayoutScanner);
 
     // Request margin and baseline information.
     // TODO: Be smarter about setting this; start without it, and on the first request
@@ -1343,8 +1316,6 @@ public class RenderTask {
                                              context.getMinSdkVersion().getApiLevel(),
                                              context.getTargetSdkVersion().getApiLevel(),
                                              myLogger);
-    //noinspection deprecation We want to measure while creating the session. RenderSession.measure would require a second call.
-    params.setLayoutOnly();
     params.setForceNoDecor();
     params.setExtendedViewInfoMode(true);
     params.setLocale(myLocale.toLocaleId());

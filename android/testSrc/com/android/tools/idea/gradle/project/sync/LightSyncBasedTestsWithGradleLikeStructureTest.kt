@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
+import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyCoreImpl
 import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
 import com.android.tools.idea.testing.AndroidModuleDependency
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
@@ -52,7 +53,7 @@ class LightSyncBasedTestsWithGradleLikeStructureTest : SnapshotComparisonTest {
   @get:Rule
   var testName = TestName()
 
-  val projectRule = AndroidProjectRule.withAndroidModel(AndroidProjectBuilder())
+  val projectRule = AndroidProjectRule.withAndroidModel(AndroidProjectBuilder()).named(this::class.simpleName)
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
@@ -83,7 +84,7 @@ class LightSyncBasedTestsWithCMakeLikeStructureTest : SnapshotComparisonTest {
     AndroidProjectBuilder(
       ndkModel = { buildNdkModelStub() }
     )
-  )
+  ).named(this::class.simpleName)
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
@@ -105,7 +106,8 @@ class LightSyncBasedTestsWithDefaultTestProjectStructureTest : SnapshotCompariso
   @get:Rule
   var testName = TestName()
 
-  val projectRule = AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure())
+  val projectRule =
+    AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure()).named(this::class.simpleName)
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
@@ -127,7 +129,8 @@ class LightSyncBasedTestsWithMultipleModulesTestProjectStructureTest : SnapshotC
   @get:Rule
   var testName = TestName()
 
-  val projectRule = AndroidProjectRule.withAndroidModels(rootModuleBuilder, appModuleBuilder, libModuleBuilder)
+  val projectRule =
+    AndroidProjectRule.withAndroidModels(rootModuleBuilder, appModuleBuilder, libModuleBuilder).named(this::class.simpleName)
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
@@ -217,7 +220,7 @@ private fun libModuleBuilderWithLib(gradleCacheRoot: File) =
   )
 
 private fun ideAndroidLibrary(gradleCacheRoot: File, artifactAddress: String) =
-  IdeAndroidLibraryDependencyImpl(
+  IdeAndroidLibraryDependencyCoreImpl(
     IdeAndroidLibraryImpl.create(
       artifactAddress = artifactAddress,
       name = artifactAddress,

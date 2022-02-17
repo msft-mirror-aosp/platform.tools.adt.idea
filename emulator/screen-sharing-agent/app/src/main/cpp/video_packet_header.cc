@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
-#include "log.h"
+#include "string_printf.h"
 
 namespace screensharing {
 

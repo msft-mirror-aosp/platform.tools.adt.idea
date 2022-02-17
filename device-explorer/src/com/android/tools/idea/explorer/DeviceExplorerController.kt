@@ -135,7 +135,7 @@ class DeviceExplorerController(
       view.setup()
       view.startRefresh("Initializing ADB")
       try {
-        service.start { getAdbFile() }
+        service.start()
         setupJob.complete(Unit)
         refreshDeviceList(null)
       } catch (t: Throwable) {
@@ -145,26 +145,6 @@ class DeviceExplorerController(
         view.stopRefresh()
       }
     }
-  }
-
-  fun restartService() {
-    scope.launch {
-      view.startRefresh("Restarting ADB")
-      try {
-        service.restart { getAdbFile() }
-        // A successful restart invokes {@link ServiceListener#serviceRestarted()} which
-        // eventually refreshes the list of devices
-      } catch (t: Throwable) {
-        view.reportErrorRelatedToService(service, "Error restarting ADB", t)
-      } finally {
-        view.stopRefresh()
-      }
-    }
-  }
-
-  private fun getAdbFile(): File? {
-    val provider = fromProject(project)
-    return provider?.adbFile
   }
 
   fun reportErrorFindingDevice(message: String) {

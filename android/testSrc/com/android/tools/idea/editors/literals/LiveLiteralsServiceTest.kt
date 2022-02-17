@@ -15,6 +15,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiPackage
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ui.UIUtil
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,7 +30,7 @@ internal class LiveLiteralsServiceTest {
   val projectRule = AndroidProjectRule.inMemory()
 
   @get:Rule
-  val liveEditFlagRule = SetFlagRule(StudioFlags.COMPOSE_LIVE_EDIT_PREVIEW, false)
+  val liveEditFlagRule = SetFlagRule(StudioFlags.COMPOSE_FAST_PREVIEW, false)
   @get:Rule
   val liveLiteralsFlagRule = SetFlagRule(StudioFlags.COMPOSE_LIVE_LITERALS, true)
 
@@ -75,6 +76,11 @@ internal class LiveLiteralsServiceTest {
         val a = 3.0
       }
     """.trimIndent())
+  }
+
+  @After
+  fun tearDown() {
+    LiveLiteralsApplicationConfiguration.getInstance().resetDefault()
   }
 
   /**

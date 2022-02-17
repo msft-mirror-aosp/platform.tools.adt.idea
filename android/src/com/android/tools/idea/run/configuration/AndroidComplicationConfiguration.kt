@@ -17,12 +17,16 @@ package com.android.tools.idea.run.configuration
 
 import com.android.tools.deployer.model.component.Complication
 import com.android.tools.deployer.model.component.ComponentType
+import com.android.tools.idea.model.MergedManifestManager
 import com.android.tools.idea.run.configuration.editors.AndroidComplicationConfigurationEditor
 import com.android.tools.idea.run.configuration.execution.AndroidComplicationConfigurationExecutor
 import com.android.tools.idea.run.configuration.execution.AndroidConfigurationExecutorBase
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.ConfigurationTypeBase
+import com.intellij.execution.configurations.RuntimeConfigurationError
+import com.intellij.execution.configurations.RuntimeConfigurationException
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.annotations.Transient
 import icons.StudioIcons
@@ -34,7 +38,7 @@ class AndroidComplicationConfigurationType :
     AndroidBundle.message("android.complication.configuration.type.name"),
     AndroidBundle.message("android.run.configuration.type.description"),
     StudioIcons.Shell.Filetree.ANDROID_PROJECT
-  ) {
+  ), DumbAware {
   companion object {
     const val ID = "AndroidComplicationConfigurationType"
   }
@@ -52,6 +56,29 @@ class AndroidComplicationConfiguration(project: Project, factory: ConfigurationF
   data class ChosenSlot(var id: Int, var type: Complication.ComplicationType) {
     // We need parameterless constructor for correct work of XmlSerializer. See [AndroidWearConfiguration.readExternal]
     private constructor() : this(-1, Complication.ComplicationType.LONG_TEXT)
+  }
+
+  private fun verifyProviderTypes(supportedTypes: List<Complication.ComplicationType>) {
+    if (supportedTypes.isEmpty()) {
+      throw RuntimeConfigurationException(AndroidBundle.message("no.provider.type.error"))
+    }
+    if (chosenSlots.isEmpty()) {
+      throw RuntimeConfigurationError(AndroidBundle.message("provider.slots.empty.error"))
+    }
+    for (slot in chosenSlots) {
+      if (!supportedTypes.contains(slot.type)) {
+        throw RuntimeConfigurationException(AndroidBundle.message("provider.type.mismatch.error", slot.type))
+      }
+    }
+  }
+
+  override fun checkConfiguration() {
+    super.checkConfiguration()
+    val snapshotFuture = MergedManifestManager.getMergedManifestSupplier(configurationModule.module!!).get()
+    if (!snapshotFuture.isDone) {
+      return
+    }
+    verifyProviderTypes(extractComplicationSupportedTypes(snapshotFuture.get(), this.componentName))
   }
 
   var chosenSlots: List<ChosenSlot> = listOf()

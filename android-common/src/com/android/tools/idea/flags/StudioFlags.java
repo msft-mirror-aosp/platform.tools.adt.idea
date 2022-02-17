@@ -201,7 +201,7 @@ public final class StudioFlags {
     true);
   public static final Flag<Boolean> USE_COMPONENT_TREE_TABLE = Flag.create(
     DESIGN_TOOLS, "design.component.tree.table", "Enable TreeTable implementation of component tree",
-    "Use a TreeTable for displaying the component tree in the LayoutInspector and the Nav editor.", false);
+    "Use a TreeTable for displaying the component tree in the LayoutInspector and the Nav editor.", true);
 
   //region Layout Editor
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
@@ -628,7 +628,7 @@ public final class StudioFlags {
     "adblib.migration.device.explorer",
     "Use adblib in Device Explorer",
     "Use adblib instead of ddmlib for Device Explorer",
-    false);
+    true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_WIFI_PAIRING = Flag.create(
     RUNDEBUG,
@@ -681,6 +681,14 @@ public final class StudioFlags {
     "logcat.v2.enable",
     "Enable Logcat V2",
     "Enables version 2 of the Logcat tool window",
+    false
+  );
+
+  public static final Flag<Boolean> LOGCAT_V2_NAMED_FILTERS_ENABLE = Flag.create(
+    RUNDEBUG,
+    "logcat.v2.named.filters.enable",
+    "Enable Logcat named filters feature",
+    "Enables the named filters feature in the Logcat tool window",
     false
   );
   //endregion
@@ -759,7 +767,7 @@ public final class StudioFlags {
     "Enable saving and loading snapshots in the layout inspector.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.counts", "Enable recomposition counts",
-    "Enable gathering and display of recomposition counts in the layout inspector.", false);
+    "Enable gathering and display of recomposition counts in the layout inspector.", true);
   //endregion
 
   //region Embedded Emulator
@@ -1220,12 +1228,12 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_LIVE_EDIT_PREVIEW = Flag.create(
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
     COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
     "If enabled, the preview enabled the fast-reload feature.",
     false);
 
-  public static final Flag<Boolean> COMPOSE_LIVE_EDIT_DEBUG_DAEMON = Flag.create(
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = Flag.create(
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
     false);
@@ -1357,5 +1365,16 @@ public final class StudioFlags {
     true
   );
   // endregion SERVER_FLAGS
+
+  // region App Insights
+  private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
+  public static final Flag<Boolean> APP_INSIGHTS_ENABLED =
+    Flag.create(
+      APP_INSIGHTS,
+      "enabled",
+      "Enabled",
+      "Enable App Insights tool window and highlighting support.",
+      false);
+  // endregion App Insights
   private StudioFlags() { }
 }
