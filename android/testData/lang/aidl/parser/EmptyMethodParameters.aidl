@@ -1,3 +1,0 @@
-interface IAidlInterface {
-  int a();
-}
