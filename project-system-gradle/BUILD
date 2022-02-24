@@ -111,6 +111,7 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker[module, test]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy[test]",
+        "//tools/base/lint:studio.android.sdktools.lint-checks[module, test]",
     ],
 )
 
