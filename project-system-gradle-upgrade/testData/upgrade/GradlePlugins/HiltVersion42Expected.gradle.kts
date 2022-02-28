@@ -1,13 +1,12 @@
 buildscript {
-    val kotlin_version by extra("placeholder")
     repositories {
         jcenter()
         google()
     }
     dependencies {
+        val dagger_version = "2.32"
         classpath("com.android.tools.build:gradle:3.4.0")
-        classpath("androidx.navigation:navigation-safe-args-gradle-plugin:2.4.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+        classpath("com.google.dagger:hilt-android-gradle-plugin:${dagger_version}")
     }
 }
 
