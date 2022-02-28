@@ -360,7 +360,7 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.1.0-SNAPSHOT"],
+    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.2.0-SNAPSHOT"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     deps = [
         ":org.jetbrains.android",
@@ -553,9 +553,9 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Dolphin | {0}.{1}.{2} Canary {3}",
-    version_micro = 1,
-    version_patch = 4,
+    version_full = "dev build",
+    version_micro = 0,
+    version_patch = 0,
     visibility = ["//visibility:public"],
 )
 

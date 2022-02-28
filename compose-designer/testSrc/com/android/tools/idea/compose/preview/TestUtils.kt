@@ -19,6 +19,8 @@ import com.android.tools.idea.compose.preview.util.PreviewElement
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.projectsystem.BuildListener
+import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
+import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.setupBuildListener
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
@@ -50,6 +52,7 @@ internal enum class SimpleComposeAppPaths(val path: String) {
   APP_MAIN_ACTIVITY("app/src/main/java/google/simpleapplication/MainActivity.kt"),
   APP_OTHER_PREVIEWS("app/src/main/java/google/simpleapplication/OtherPreviews.kt"),
   APP_PARAMETRIZED_PREVIEWS("app/src/main/java/google/simpleapplication/ParametrizedPreviews.kt"),
+  APP_RENDER_ERROR("app/src/main/java/google/simpleapplication/RenderError.kt"),
   APP_PREVIEWS_ANDROID_TEST("app/src/androidTest/java/google/simpleapplication/AndroidPreviews.kt"),
   APP_PREVIEWS_UNIT_TEST("app/src/test/java/google/simpleapplication/UnitPreviews.kt"),
   APP_SIMPLE_APPLICATION_DIR("app/src/test/java/google/simpleapplication"),
@@ -119,6 +122,12 @@ internal fun runAndWaitForBuildToComplete(projectRule: AndroidGradleProjectRule,
   val buildComplete = CompletableDeferred<Unit>()
   val buildsStarted = AtomicInteger(0)
   val disposable = Disposer.newDisposable(projectRule.fixture.testRootDisposable, "Build Listener disposable")
+  // If the project has already an existing build, buildStarted and buildSucceeded/buildFailed will be called immediately when
+  // setupBuildListener is called. We keep this flag to correct the returned number to the number of builds triggered by whatever
+  // happened in [action] and not any existing builds.
+  val hasExistingBuild = projectRule.project.getProjectSystem().getBuildManager()
+    .getLastBuildResult()
+    .status != ProjectSystemBuildManager.BuildStatus.UNKNOWN
   try {
     setupBuildListener(projectRule.project, object : BuildListener {
       override fun buildStarted() {
@@ -139,7 +148,7 @@ internal fun runAndWaitForBuildToComplete(projectRule: AndroidGradleProjectRule,
   finally {
     Disposer.dispose(disposable)
   }
-  return@runBlocking buildsStarted.get()
+  return@runBlocking buildsStarted.get() - (if (hasExistingBuild) 1 else 0)
 }
 
 /**

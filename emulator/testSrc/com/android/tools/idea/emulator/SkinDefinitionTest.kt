@@ -179,6 +179,14 @@ class SkinDefinitionTest {
   }
 
   @Test
+  fun testTwoDisplays() {
+    val folder = TestUtils.resolveWorkspacePathUnchecked("${TEST_DATA_PATH}/skins/two_displays")
+    val skin = SkinDefinition.create(folder) ?: throw AssertionError("Expected non-null SkinDefinition")
+    // Check the skin layout.
+    assertThat(skin.getRotatedFrameSize(SkinRotation.PORTRAIT)).isEqualTo(Dimension(2348, 1080))
+  }
+
+  @Test
   fun testSkinConsistency() {
     // Old-style skins are not checked by this test. Please don't add any new skins to this list.
     val oldStyleSkins = listOf(
@@ -241,9 +249,9 @@ class SkinDefinitionTest {
   }
 
   private fun validateLayout(skinLayout: SkinLayout, skinFolder: Path): List<String> {
-    val backgroundImage: BufferedImage
-    try {
-      backgroundImage = readBackgroundImage(skinFolder) ?: return listOf("The skin doesn't define a background image")
+    val backgroundImageFile = getBackgroundImageFile(skinFolder) ?: return listOf("The skin doesn't define a background image")
+    val backgroundImage = try {
+      backgroundImageFile.readImage()
     }
     catch (e: NoSuchFileException) {
       return listOf("The background image \"${e.file}\" does not exist")
@@ -257,7 +265,7 @@ class SkinDefinitionTest {
     val problems = mutableListOf<String>()
     val image = skinLayout.draw()
     if (backgroundImage.width != image.width || backgroundImage.height != image.height) {
-      problems.add("The background image can be cropped without loosing any information")
+      problems.add("The ${backgroundImageFile.fileName} image can be cropped without loosing any information")
     }
 
     val transparentAreaBounds = findBoundsOfContiguousArea(image, center, image::isTransparent)
@@ -289,13 +297,12 @@ class SkinDefinitionTest {
     return problems
   }
 
-  private fun readBackgroundImage(skinFolder: Path): BufferedImage? {
+  private fun getBackgroundImageFile(skinFolder: Path): Path? {
     val layoutFile = skinFolder.resolve("layout")
     val contents = Files.readAllBytes(layoutFile).toString(StandardCharsets.UTF_8)
     val layoutDefinition = SkinLayoutDefinition.parseString(contents)
     val backgroundFileName = layoutDefinition.getValue("parts.portrait.background.image") ?: return null
-    val backgroundFile = skinFolder.resolve(backgroundFileName)
-    return backgroundFile.readImage()
+    return skinFolder.resolve(backgroundFileName)
   }
 
   private fun findBoundsOfContiguousArea(image: BufferedImage, start: Point, predicate: Predicate<Point>): Rectangle {
@@ -361,7 +368,7 @@ class SkinDefinitionTest {
   }
 
   private fun getGoldenFile(name: String): Path {
-    return TestUtils.resolveWorkspacePathUnchecked("${GOLDEN_FILE_PATH}/${name}.png")
+    return TestUtils.resolveWorkspacePathUnchecked("${TEST_DATA_PATH}/golden/${name}.png")
   }
 }
 
@@ -384,4 +391,4 @@ private val NEIGHBORS = listOf(Point(-1, -1), Point(-1, 0), Point(-1, 1), Point(
 
 private const val ALPHA_MASK = 0xFF shl 24
 
-private const val GOLDEN_FILE_PATH = "tools/adt/idea/emulator/testData/SkinDefinitionTest/golden"
+private const val TEST_DATA_PATH = "tools/adt/idea/emulator/testData/SkinDefinitionTest"

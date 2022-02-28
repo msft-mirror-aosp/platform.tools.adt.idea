@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.layoutinspector.tree
 
+import com.android.tools.adtui.FocusableIcon
 import com.android.tools.adtui.workbench.ToolContent
 import com.android.tools.adtui.workbench.ToolWindowCallback
 import com.android.tools.componenttree.api.ComponentTreeBuilder
@@ -51,7 +52,6 @@ import com.intellij.ui.TableActions
 import com.intellij.ui.TreeActions
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.treeStructure.Tree
-import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
@@ -60,14 +60,11 @@ import java.awt.Cursor
 import java.awt.event.ActionEvent
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import javax.swing.AbstractAction
 import javax.swing.Action
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.JTable
 import javax.swing.JTree
 import javax.swing.table.TableCellRenderer
 import kotlin.math.max
@@ -125,9 +122,9 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
       .withoutTreeSearch()
       .withHeaderRenderer(createTreeHeaderRenderer())
       .withColumn(createIntColumn<TreeViewNode>("Counts", { (it.view as? ComposeViewNode)?.recomposeCount }, leftDivider = true,
-                                                headerRenderer = createIconHeader(StudioIcons.Compose.Toolbar.RUN_CONFIGURATION)))
+                                                headerRenderer = createCountsHeader()))
       .withColumn(createIntColumn<TreeViewNode>("Skips", { (it.view as? ComposeViewNode)?.recomposeSkips }, foreground = JBColor.lightGray,
-                                                headerRenderer = createIconHeader(AllIcons.RunConfigurations.ToolbarSkipped)))
+                                                headerRenderer = createSkipsHeader()))
       .withInvokeLaterOption { ApplicationManager.getApplication().invokeLater(it) }
       .withHorizontalScrollBar()
       .withComponentName("inspectorComponentTree")
@@ -141,7 +138,6 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     componentTreeModel = result.model
     componentTreeSelectionModel = result.selectionModel
     interactions = result.interactions
-    createHeaderMouseListener()
     ActionManager.getInstance()?.getAction(IdeActions.ACTION_GOTO_DECLARATION)?.shortcutSet
       ?.let { GotoDeclarationAction.registerCustomShortcutSet(it, componentTreePanel, parentDisposable) }
     componentTreeSelectionModel.addSelectionListener {
@@ -174,81 +170,37 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   }
 
   private fun createTreeHeaderRenderer(): TableCellRenderer {
-    val panel = JPanel(BorderLayout())
-    val text = JBLabel("Composition counts")
-    val reset = JBLabel(AllIcons.Actions.Refresh)
-    text.border = JBUI.Borders.empty(ICON_BORDER, TEXT_HORIZONTAL_BORDER)
-    text.font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL)
-    reset.border = JBUI.Borders.empty(ICON_BORDER)
-    panel.background = UIUtil.TRANSPARENT_COLOR
-    panel.isOpaque = false
-    panel.add(text, BorderLayout.CENTER)
-    panel.add(reset, BorderLayout.EAST)
+    val text = JBLabel("Composition counts").apply {
+      border = JBUI.Borders.empty(ICON_BORDER, TEXT_HORIZONTAL_BORDER)
+      font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL)
+    }
+    val reset = FocusableIcon().apply {
+      border = JBUI.Borders.empty(ICON_BORDER)
+      icon = AllIcons.Actions.Refresh
+      onClick = ::resetRecompositionCounts
+      cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+      toolTipText = "Click to reset recomposition counts"
+    }
+    val panel = JPanel(BorderLayout()).apply {
+      background = UIUtil.TRANSPARENT_COLOR
+      isOpaque = false
+      add(text, BorderLayout.CENTER)
+      add(reset, BorderLayout.EAST)
+    }
     return TableCellRenderer { _, _, _, _, _, _ -> panel }
   }
 
-  private fun createIconHeader(icon: Icon) : TableCellRenderer {
+  private fun createCountsHeader() =
+    createIconHeader(StudioIcons.Compose.Toolbar.RUN_CONFIGURATION, "Number of times this composable has been recomposed")
+
+  private fun createSkipsHeader() =
+    createIconHeader(AllIcons.RunConfigurations.ToolbarSkipped, "Number of times recomposition for this component has been skipped")
+
+  private fun createIconHeader(icon: Icon, toolTipText: String? = null) : TableCellRenderer {
     val label = JBLabel(icon)
     label.border = JBUI.Borders.empty(ICON_BORDER, ICON_HORIZONTAL_PADDING)
+    label.toolTipText = toolTipText
     return TableCellRenderer { _, _, _, _, _, _ -> label }
-  }
-
-  private enum class HeaderLocation { NONE, TREE_HEADER, RESET_BUTTON, COUNTS, SKIPS}
-
-  private fun createHeaderMouseListener() {
-    val table = focusComponent as? JTable ?: return
-    val tableHeader = table.tableHeader
-    val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-
-    val listener = object : MouseAdapter() {
-      private var lastLocation = HeaderLocation.NONE
-
-      override fun mouseExited(event: MouseEvent) {
-        update(HeaderLocation.NONE)
-      }
-
-      override fun mouseEntered(event: MouseEvent) {
-        update(event.location)
-      }
-
-      override fun mouseMoved(event: MouseEvent) {
-        update(event.location)
-      }
-
-      override fun mouseClicked(event: MouseEvent) {
-        if (event.location == HeaderLocation.RESET_BUTTON) {
-          resetRecompositionCounts()
-        }
-      }
-
-      private fun update(location: HeaderLocation) {
-        if (location == lastLocation) {
-          return
-        }
-        lastLocation = location
-        tableHeader.cursor = if (location == HeaderLocation.RESET_BUTTON) handCursor else Cursor.getDefaultCursor()
-        tableHeader.toolTipText = when (location) {
-          HeaderLocation.RESET_BUTTON -> "Click to reset recomposition counts"
-          HeaderLocation.COUNTS -> "The number of times this composable has been recomposed"
-          HeaderLocation.SKIPS -> "The number of times recomposition for this component has been skipped"
-          else -> null
-        }
-      }
-
-      private val MouseEvent.location: HeaderLocation
-        get() {
-          val column = table.columnAtPoint(point)
-          return when {
-            column == 1 -> HeaderLocation.COUNTS
-            column == 2 -> HeaderLocation.SKIPS
-            column == 0 && x > table.columnModel.getColumn(0).width - EmptyIcon.ICON_16.iconWidth - 2 * ICON_BORDER
-            -> HeaderLocation.RESET_BUTTON
-            else -> HeaderLocation.TREE_HEADER
-          }
-        }
-    }
-    tableHeader.addMouseListener(listener)
-    tableHeader.addMouseMotionListener(listener)
   }
 
   private fun installKeyboardActions(focusedComponent: JComponent) {

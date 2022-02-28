@@ -19,9 +19,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService;
 import com.android.tools.idea.adb.wireless.WiFiPairingController;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowValue;
+import com.android.tools.idea.devicemanager.ConnectionType;
 import com.android.tools.idea.devicemanager.CountDownLatchAssert;
 import com.android.tools.idea.devicemanager.DetailsPanel;
 import com.android.tools.idea.devicemanager.PopUpMenuValue;
@@ -118,7 +120,7 @@ public final class PhysicalDevicePanelTest {
     CountDownLatchAssert.await(myLatch);
 
     Object data = Collections.singletonList(Arrays.asList(TestPhysicalDevices.ONLINE_GOOGLE_PIXEL_3,
-                                                          "31",
+                                                          new AndroidVersion(31),
                                                           ConnectionType.USB_SET,
                                                           ActivateDeviceFileExplorerWindowValue.INSTANCE,
                                                           RemoveValue.INSTANCE,
@@ -147,13 +149,13 @@ public final class PhysicalDevicePanelTest {
     CountDownLatchAssert.await(myLatch);
 
     Object data = Arrays.asList(Arrays.asList(TestPhysicalDevices.ONLINE_GOOGLE_PIXEL_3,
-                                              "31",
+                                              new AndroidVersion(31),
                                               ConnectionType.USB_SET,
                                               ActivateDeviceFileExplorerWindowValue.INSTANCE,
                                               RemoveValue.INSTANCE,
                                               PopUpMenuValue.INSTANCE),
                                 Arrays.asList(TestPhysicalDevices.GOOGLE_PIXEL_5,
-                                              "30",
+                                              new AndroidVersion(30),
                                               Collections.EMPTY_SET,
                                               ActivateDeviceFileExplorerWindowValue.INSTANCE,
                                               RemoveValue.INSTANCE,

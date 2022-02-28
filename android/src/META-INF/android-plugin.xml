@@ -264,7 +264,6 @@
     <fileBasedIndex implementation="com.android.tools.idea.model.AndroidManifestIndex"/>
     <projectOpenProcessor implementation="com.android.tools.idea.gradle.project.AndroidGradleProjectOpenProcessor" id="android-gradle" order="before gradle" />
     <projectViewPane implementation="com.android.tools.idea.navigator.AndroidProjectViewPane"/>
-    <debugger.positionManagerFactory implementation="com.android.tools.idea.debug.AndroidPositionManagerFactory"/>
     <applicationService serviceImplementation="com.android.tools.idea.imports.MavenClassRegistryManager" />
     <postStartupActivity implementation="com.android.tools.idea.imports.AutoRefresherForMavenClassRegistry"/>
     <postStartupActivity implementation="com.android.tools.idea.model.MergedManifestRefreshListener$SubscriptionStartupActivity"/>
@@ -318,7 +317,6 @@
     <applicationService serviceImplementation="com.android.tools.idea.run.DeploymentApplicationService" />
     <applicationService serviceImplementation="com.android.tools.idea.gradle.repositories.RepositoryUrlManager"/>
     <applicationService serviceImplementation="org.jetbrains.android.uipreview.AndroidEditorSettings"/>
-    <applicationService serviceImplementation="com.android.tools.idea.profiling.capture.CaptureTypeService"/>
     <applicationService serviceInterface="org.jetbrains.android.facet.AndroidFacetConfiguration$EditorTabProvider"
                         serviceImplementation="org.jetbrains.android.facet.AndroidFacetEditorTab$Provider"/>
     <applicationService serviceInterface="com.android.tools.idea.util.CommonAndroidUtil"
@@ -328,8 +326,6 @@
                         serviceImplementation="com.android.tools.idea.diagnostics.crash.ExceptionDataConfigurationImpl"/>
     <applicationService serviceInterface="com.android.tools.idea.serverflags.ServerFlagService"
                         serviceImplementation="com.android.tools.idea.serverflags.ServerFlagServiceImpl"/>
-
-    <fileEditorProvider implementation="com.android.tools.idea.profiling.capture.CaptureEditorProvider" />
 
     <projectConfigurable groupId="build" id="gradle.compiler"
                          provider="com.android.tools.idea.gradle.project.build.compiler.GradleCompilerSettingsConfigurableProvider"/>
@@ -356,7 +352,6 @@
     <applicationService serviceImplementation="com.android.tools.idea.diagnostics.crash.StudioCrashReporter" />
     <applicationService serviceInterface="com.android.tools.idea.fonts.DownloadableFontCacheService"
                         serviceImplementation="com.android.tools.idea.fonts.DownloadableFontCacheServiceImpl" />
-    <applicationService serviceImplementation="com.android.tools.idea.material.icons.metadata.MaterialIconsMetadataDownloadCacheService"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder"/>
 
     <applicationService serviceImplementation="com.android.tools.idea.ddms.screenrecord.ScreenRecorderPersistentOptions"/>
@@ -546,9 +541,6 @@
     <projectService serviceImplementation="com.android.tools.idea.configurations.ConfigurationStateManager"/>
 
     <projectService serviceImplementation="org.jetbrains.android.exportSignedPackage.GenerateSignedApkSettings"/>
-    <projectService serviceImplementation="com.android.tools.idea.profiling.capture.CaptureService"/>
-    <projectService serviceInterface="com.android.tools.idea.debug.ResourceIdResolver"
-                    serviceImplementation="com.android.tools.idea.debug.ProjectResourceIdResolver"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.dependencies.GradleDependencyManager"/>
     <projectService serviceImplementation="com.android.tools.idea.res.AndroidProjectRootListener"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceFolderRegistry"/>
@@ -664,14 +656,6 @@
     <spellchecker.support language="Shell Script" implementationClass="org.jetbrains.android.spellchecker.AndroidShellSpellcheckingStrategy" order="first"/>
     <deadCode implementation="org.jetbrains.android.inspections.AndroidComponentEntryPoint"/>
 
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.BitmapRenderer" />
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.BitmapDrawableRenderer" />
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidTypedIntegerRenderer" />
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.ArrayMapRenderer" />
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.SupportArrayMapRenderer" />
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidxSupportArrayMapRenderer" />-
-    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.MeasureSpecRenderer" />
-
     <xdebugger.configurableProvider implementation="com.android.tools.idea.logcat.output.LogcatOutputConfigurableProvider" />
     <applicationService serviceImplementation="com.android.tools.idea.logcat.output.LogcatOutputSettings" />
 
@@ -751,7 +735,6 @@
                     interface="com.android.tools.idea.gradle.project.sync.setup.post.ProjectSetupStep"/>
     <extensionPoint qualifiedName="com.android.gradle.sync.postSyncProjectCleanupStep"
                     interface="com.android.tools.idea.gradle.project.sync.setup.post.ProjectCleanupStep"/>
-    <extensionPoint qualifiedName="com.android.captureType" interface="com.android.tools.idea.profiling.capture.CaptureType"/>
     <extensionPoint qualifiedName="com.android.ide.sdkEventListener"
                     interface="com.android.tools.idea.sdk.IdeSdks$AndroidSdkEventListener"/>
     <extensionPoint qualifiedName="com.android.run.deployTargetProvider" interface="com.android.tools.idea.run.editor.DeployTargetProvider" />

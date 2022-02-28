@@ -26,9 +26,11 @@ import com.android.tools.idea.compose.preview.util.SinglePreviewElementInstance
 import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.moveCaret
+import com.android.tools.idea.testing.replaceText
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteActionAndWait
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.guessProjectDir
@@ -43,6 +45,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.io.File
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -50,12 +54,21 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
+@RunWith(Parameterized::class)
+class FastPreviewManagerTest(useEmbeddedCompiler: Boolean) {
+  companion object {
+    @Suppress("unused") // Used by JUnit via reflection
+    @JvmStatic
+    @get:Parameterized.Parameters(name = "useEmbeddedCompiler = {0}")
+    val useEmbeddedCompilerValues = listOf(true, false)
+  }
 
-class FastPreviewManagerTest {
   @get:Rule
   val projectRule = ComposeGradleProjectRule(SIMPLE_COMPOSE_PROJECT_PATH)
   @get:Rule
   val fastPreviewFlagRule = SetFlagRule(StudioFlags.COMPOSE_FAST_PREVIEW, true)
+  @get:Rule
+  val useInProcessCompilerFlagRule = SetFlagRule(StudioFlags.COMPOSE_FAST_PREVIEW_USE_IN_PROCESS_DAEMON, useEmbeddedCompiler)
   lateinit var psiMainFile: PsiFile
   lateinit var fastPreviewManager: FastPreviewManager
 
@@ -70,6 +83,11 @@ class FastPreviewManagerTest {
     }
     runWriteActionAndWait {
       projectRule.fixture.openFileInEditor(mainFile)
+      WriteCommandAction.runWriteCommandAction(projectRule.project) {
+        // Delete the reference to PreviewInOtherFile since it's a top level function not supported
+        // by the embedded compiler (b/201728545) and it's not used by the tests.
+        projectRule.fixture.editor.replaceText("PreviewInOtherFile()", "")
+      }
       projectRule.fixture.moveCaret("Text(\"Hello 2\")|")
       projectRule.fixture.type("\n")
     }
@@ -134,7 +152,6 @@ class FastPreviewManagerTest {
     val finalState = renderPreviewElement(projectRule.androidFacet(":app"), previewElement).get()!!
     assertTrue(
       "Resulting image is expected to be at least 20% higher since a new text line was added",
-
       finalState.height > initialState.height * 1.20)
   }
 

@@ -133,10 +133,12 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
   override fun canGoBack(): Boolean = false
 
   override fun dispose() {
-    runningJob?.cancel(null)
-    backgroundJob?.cancel(null)
-    deviceStateListener.releaseAll()
-    bindings.releaseAll()
+    synchronized(this) { // Dispose can be called from the UI thread or from coroutines
+      runningJob?.cancel(null)
+      backgroundJob?.cancel(null)
+      deviceStateListener.releaseAll()
+      bindings.releaseAll()
+    }
   }
 
   private fun startStepFlow() {
@@ -199,7 +201,7 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
     val companionAppId = wearDevice.getCompanionAppIdForWatch()
     if (phoneDevice.isCompanionAppInstalled(companionAppId)) {
       // Companion App already installed, go to the next step
-      goToNextStep(phoneDevice, wearDevice)
+      goToNextStep()
     }
     else if (companionAppId == OEM_COMPANION_FALLBACK_APP_ID) {
       // Wear 2.x companion app
@@ -367,8 +369,13 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
       if (isColdBoot || iDevice.retrieveUpTime() < 200.0) {
         // Give some time for Node/Cloud ID to load, but not too long, as it may just mean it never paired before
         showUiWaitingDeviceStatus()
-        waitForCondition(50_000) { iDevice.loadNodeID().isNotEmpty() }
-        waitForCondition(10_000) { iDevice.loadCloudNetworkID(ignoreNullOutput = false).isNotEmpty() }
+        if (iDevice.hasPairingFeature(PairingFeature.GET_PAIRING_STATUS)) {
+          waitForCondition(50_000) { iDevice.isPairingStatusAvailable() }
+        }
+        else {
+          waitForCondition(50_000) { iDevice.loadNodeID().isNotEmpty() }
+          waitForCondition(10_000) { iDevice.loadCloudNetworkID(ignoreNullOutput = false).isNotEmpty() }
+        }
       }
 
       return iDevice
@@ -526,7 +533,7 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
       scanningListener = {
         check(runningJob?.isActive != true) // This is a manual retry. No job should be running at this point.
         runningJob = coroutineScope.launch(ioThread) {
-          goToNextStep(phoneDevice, wearDevice)
+          goToNextStep()
         }
       },
       wearDevice = wearDevice
@@ -778,22 +785,20 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
     )
   }
 
-  private suspend fun goToNextStep(phoneDevice: IDevice, wearDevice: IDevice) {
+  private fun goToNextStep() {
     // The "Next" button changes asynchronously. Create a temporary property that will change state at the same time.
     val doGoForward = BoolValueProperty()
     bindings.bind(doGoForward, canGoForward)
-    deviceStateListener.listen(doGoForward) {
-      ApplicationManager.getApplication().invokeLater {
-        wizardFacade.goForward()
+    deviceStateListener.listenAndFire(doGoForward) {
+      if (canGoForward.get()) {
         dispose()
+        ApplicationManager.getApplication().invokeLater {
+          wizardFacade.goForward()
+        }
       }
     }
 
     canGoForward.set(true)
-
-    delay(100) // Backup, in case "go next" fails
-    showUiInstallCompanionAppSuccess(phoneDevice, wearDevice)
-    wizardFacade.goForward()
   }
 
   private fun showEmbeddedEmulator(device: IDevice) {
@@ -837,6 +842,14 @@ private suspend fun waitForCondition(timeMillis: Long, condition: suspend () -> 
 }
 
 private suspend fun checkWearMayNeedFactoryReset(phoneDevice: IDevice, wearDevice: IDevice): Boolean {
+  if (wearDevice.hasPairingFeature(PairingFeature.GET_PAIRING_STATUS)) {
+    val (wearNodeId, wearPairingStatus) = wearDevice.getPairingStatus()
+    if (wearNodeId != null) {
+      // Only need factory reset if the watch thinks it's paired with another phone
+      return wearPairingStatus.isNotEmpty() && !wearPairingStatus[0].nodeId.isNullOrEmpty() &&
+             !wearPairingStatus[0].nodeId.equals(phoneDevice.loadNodeID(), ignoreCase = true)
+    }
+  }
   val phoneCloudID = phoneDevice.loadCloudNetworkID()
   val wearCloudID = wearDevice.loadCloudNetworkID()
 

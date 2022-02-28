@@ -759,12 +759,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.devbuild.skia", "Use the locally-built skia rendering server",
     "If enabled and this is a locally-built studio instance, use the locally-built skia server instead of one from the SDK.", false);
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_SHOW_SEMANTICS = Flag.create(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.show.semantics", "Show semantics",
-    "If enabled, display semantic information found in the agent.", true);
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_SNAPSHOTS = Flag.create(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.snapshots", "Enable snapshots",
-    "Enable saving and loading snapshots in the layout inspector.", true);
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.counts", "Enable recomposition counts",
     "Enable gathering and display of recomposition counts in the layout inspector.", true);
@@ -1228,6 +1222,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION = Flag.create(
+    COMPOSE, "preview.animation.coordination",
+    "Enable animation coordination in Animation Inspector",
+    "If enabled, animation coordination will be available in Animation Inspector timeline.",
+    false
+  );
+
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
     COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
     "If enabled, the preview enabled the fast-reload feature.",
@@ -1237,6 +1238,11 @@ public final class StudioFlags {
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
     false);
+
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_USE_IN_PROCESS_DAEMON = Flag.create(
+    COMPOSE, "preview.fast.reload.in.process.enabled", "Enable the Compose fast-reload in-process compiler",
+    "If enabled, the preview will use the in-process compiler for compiling.",
+    true);
   //endregion
 
   // region App Inspection

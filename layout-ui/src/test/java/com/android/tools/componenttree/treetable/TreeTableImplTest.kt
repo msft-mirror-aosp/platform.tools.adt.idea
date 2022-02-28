@@ -57,6 +57,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import java.awt.Color
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -282,6 +283,30 @@ class TreeTableImplTest {
 
   @RunsInEdt
   @Test
+  fun testExpandKeys() {
+    val table = createTreeTable()
+    table.tree.showsRootHandles = true
+    setScrollPaneSize(table, 400, 700)
+    table.tree.expandRow(0)
+    table.tree.expandRow(1)
+    table.setRowSelectionInterval(1, 1)
+    val ui = FakeUi(table)
+    ui.keyboard.setFocus(table)
+
+    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
+    assertThat(table.tree.isExpanded(1)).isFalse()
+    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
+    assertThat(table.tree.isExpanded(1)).isTrue()
+
+    table.setRowSelectionInterval(0, 0)
+    ui.keyboard.pressAndRelease(KeyEvent.VK_SPACE)
+    assertThat(table.tree.isExpanded(0)).isFalse()
+    ui.keyboard.pressAndRelease(KeyEvent.VK_SPACE)
+    assertThat(table.tree.isExpanded(0)).isTrue()
+  }
+
+  @RunsInEdt
+  @Test
   fun testHiddenRootIsExpanded() {
     val table = createTreeTable()
     table.tree.isRootVisible = false
@@ -375,8 +400,19 @@ class TreeTableImplTest {
     result.interactions.setHeaderVisibility(true)
     assertThat(table.tableHeader.isShowing).isTrue()
 
+    // Simulate minimize and restore of the component tree
+    table.removeNotify()
+    table.addNotify()
+    assertThat(table.tableHeader.isShowing).isTrue()
+
+
     // hide the header
     result.interactions.setHeaderVisibility(false)
+    assertThat(table.tableHeader.isShowing).isFalse()
+
+    // Simulate minimize and restore of the component tree
+    table.removeNotify()
+    table.addNotify()
     assertThat(table.tableHeader.isShowing).isFalse()
   }
 

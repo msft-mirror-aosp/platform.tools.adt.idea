@@ -22,23 +22,33 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.mock.MockPsiFile
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.psi.PsiFile
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.test.assertNotNull
 
 private val TEST_VERSION = GradleVersion.parse("0.0.1-test")
 
 private object NopCompilerDaemonClient : CompilerDaemonClient {
   override val isRunning: Boolean = true
-  override suspend fun compileRequest(args: List<String>): CompilationResult = CompilationResult.Success
+  override suspend fun compileRequest(files: Collection<PsiFile>,
+                                      module: Module,
+                                      outputDirectory: Path,
+                                      indicator: ProgressIndicator): CompilationResult = CompilationResult.Success
   override fun dispose() {}
 }
 
@@ -196,14 +206,24 @@ internal class FastPreviewManagerTest {
       fun empty() {}
     """.trimIndent())
     val compilationRequests = mutableListOf<List<String>>()
-    val manager = FastPreviewManager.getTestInstance(project, {
-      object : CompilerDaemonClient by NopCompilerDaemonClient {
-        override suspend fun compileRequest(args: List<String>): CompilationResult {
-          compilationRequests.add(args)
-          return CompilationResult.Success
+    val manager = FastPreviewManager.getTestInstance(
+      project,
+      daemonFactory = {
+        object : CompilerDaemonClient by NopCompilerDaemonClient {
+          override suspend fun compileRequest(files: Collection<PsiFile>,
+                                              module: Module,
+                                              outputDirectory: Path,
+                                              indicator: ProgressIndicator): CompilationResult {
+            compilationRequests.add(files.map { it.virtualFile.path }.toList()
+                                    + module.name
+                                    + listOf(outputDirectory.toString()))
+            return CompilationResult.Success
+          }
         }
-      }
-    }, moduleClassPathLocator = { listOf("A.jar", "b/c/Test.class") }, moduleRuntimeVersionLocator = { TEST_VERSION }).also {
+      },
+      moduleClassPathLocator = { listOf("b/c/Test.class") },
+      moduleDependenciesClassPathLocator = { listOf("A.jar") },
+      moduleRuntimeVersionLocator = { TEST_VERSION }).also {
       Disposer.register(projectRule.testRootDisposable, it)
     }
     assertTrue(compilationRequests.isEmpty())
@@ -212,20 +232,9 @@ internal class FastPreviewManagerTest {
       val requestParameters = compilationRequests.single().joinToString("\n")
         .replace(Regex("/.*/overlay\\d+"), "/tmp/overlay0") // Overlay directories are random
       assertEquals("""
-      -verbose
-      -version
-      -no-stdlib
-      -no-reflect
-      -Xdisable-default-scripting-plugin
-      -jvm-target
-      1.8
-      -P
-      plugin:androidx.compose.compiler.plugins.kotlin:liveLiterals=true
-      -cp
-      A.jar:b/c/Test.class
-      -d
-      /tmp/overlay0
       /src/test.kt
+      light_idea_test_case
+      /tmp/overlay0
     """.trimIndent(), requestParameters)
     }
 
@@ -241,18 +250,9 @@ internal class FastPreviewManagerTest {
         val requestParameters = compilationRequests.single().joinToString("\n")
           .replace(Regex("/.*/overlay\\d+"), "/tmp/overlay0") // Overlay directories are random
         assertEquals("""
-        -verbose
-        -version
-        -no-stdlib
-        -no-reflect
-        -Xdisable-default-scripting-plugin
-        -jvm-target
-        1.8
-        -cp
-        A.jar:b/c/Test.class
-        -d
-        /tmp/overlay0
         /src/testB.kt
+        light_idea_test_case
+        /tmp/overlay0
       """.trimIndent(), requestParameters)
       }
       finally {
@@ -269,21 +269,10 @@ internal class FastPreviewManagerTest {
       val requestParameters = compilationRequests.single().joinToString("\n")
         .replace(Regex("/.*/overlay\\d+"), "/tmp/overlay0") // Overlay directories are random
       assertEquals("""
-      -verbose
-      -version
-      -no-stdlib
-      -no-reflect
-      -Xdisable-default-scripting-plugin
-      -jvm-target
-      1.8
-      -P
-      plugin:androidx.compose.compiler.plugins.kotlin:liveLiterals=true
-      -cp
-      A.jar:b/c/Test.class
-      -d
-      /tmp/overlay0
       /src/test.kt
       /src/testC.kt
+      light_idea_test_case
+      /tmp/overlay0
     """.trimIndent(), requestParameters)
     }
   }
@@ -293,9 +282,14 @@ internal class FastPreviewManagerTest {
     val file = projectRule.fixture.addFileToProject("test.kt", """
       fun empty() {}
     """.trimIndent())
-    val manager = FastPreviewManager.getTestInstance(project, {
-      throw IllegalStateException("Unable to start compiler")
-    }, moduleClassPathLocator = { listOf("A.jar", "b/c/Test.class") }, moduleRuntimeVersionLocator = { TEST_VERSION }).also {
+    val manager = FastPreviewManager.getTestInstance(
+      project,
+      daemonFactory = {
+        throw IllegalStateException("Unable to start compiler")
+      },
+      moduleClassPathLocator = { listOf("b/c/Test.class") },
+      moduleDependenciesClassPathLocator = { listOf("A.jar") },
+      moduleRuntimeVersionLocator = { TEST_VERSION }).also {
       Disposer.register(projectRule.testRootDisposable, it)
     }
     val result = manager.compileRequest(file, projectRule.module).first
@@ -307,16 +301,91 @@ internal class FastPreviewManagerTest {
     val file = projectRule.fixture.addFileToProject("test.kt", """
       fun empty() {}
     """.trimIndent())
-    val manager = FastPreviewManager.getTestInstance(project, {
-      object : CompilerDaemonClient by NopCompilerDaemonClient {
-        override suspend fun compileRequest(args: List<String>): CompilationResult {
-          throw IllegalStateException("Unable to process request")
+    val manager = FastPreviewManager.getTestInstance(
+      project,
+      daemonFactory = {
+        object : CompilerDaemonClient by NopCompilerDaemonClient {
+          override suspend fun compileRequest(files: Collection<PsiFile>,
+                                              module: Module,
+                                              outputDirectory: Path,
+                                              indicator: ProgressIndicator): CompilationResult {
+            throw IllegalStateException("Unable to process request")
+          }
         }
-      }
-    }, moduleClassPathLocator = { listOf("A.jar", "b/c/Test.class") }, moduleRuntimeVersionLocator = { TEST_VERSION }).also {
+      },
+      moduleClassPathLocator = { listOf("b/c/Test.class") },
+      moduleDependenciesClassPathLocator = { listOf("A.jar") },
+      moduleRuntimeVersionLocator = { TEST_VERSION }).also {
       Disposer.register(projectRule.testRootDisposable, it)
     }
     val result = manager.compileRequest(file, projectRule.module).first
     assertTrue(result.toString(), result is CompilationResult.RequestException)
+  }
+
+  @Test
+  fun `handle compile failure`() = runBlocking {
+    val file = projectRule.fixture.addFileToProject("test.kt", """
+      fun empty() {}
+    """.trimIndent())
+    val manager = FastPreviewManager.getTestInstance(
+      project,
+      daemonFactory = {
+        object : CompilerDaemonClient by NopCompilerDaemonClient {
+          override suspend fun compileRequest(files: Collection<PsiFile>,
+                                              module: Module,
+                                              outputDirectory: Path,
+                                              indicator: ProgressIndicator): CompilationResult = CompilationResult.DaemonError(-1)
+        }
+      },
+      moduleClassPathLocator = { listOf("b/c/Test.class") },
+      moduleDependenciesClassPathLocator = { listOf("A.jar") },
+      moduleRuntimeVersionLocator = { TEST_VERSION }).also {
+      Disposer.register(projectRule.testRootDisposable, it)
+    }
+    val result = manager.compileRequest(file, projectRule.module).first
+    assertTrue(result.toString(), result is CompilationResult.DaemonError)
+  }
+
+  @Test
+  fun `auto disable on failure`(): Unit = runBlocking {
+    val file = projectRule.fixture.addFileToProject("test.kt", """
+      fun empty() {}
+    """.trimIndent())
+    val manager = FastPreviewManager.getTestInstance(
+      project,
+      daemonFactory = {
+        object : CompilerDaemonClient by NopCompilerDaemonClient {
+          override suspend fun compileRequest(files: Collection<PsiFile>,
+                                              module: Module,
+                                              outputDirectory: Path,
+                                              indicator: ProgressIndicator): CompilationResult {
+            throw IllegalStateException("Unable to process request")
+          }
+        }
+      },
+      moduleClassPathLocator = { listOf("b/c/Test.class") },
+      moduleDependenciesClassPathLocator = { listOf("A.jar") },
+      moduleRuntimeVersionLocator = { TEST_VERSION }).also {
+      Disposer.register(projectRule.testRootDisposable, it)
+    }
+    assertNull(manager.disableReason)
+    assertTrue(manager.isEnabled)
+    manager.compileRequest(file, projectRule.module).first.also { result ->
+      assertTrue(result.toString(), result is CompilationResult.RequestException)
+      assertFalse("FastPreviewManager should have been disable after a failure", manager.isEnabled)
+      assertEquals(
+        "DisableReason(title=Unable to compile using Fast Preview, description=Unable to process request, throwable=java.lang.IllegalStateException: Unable to process request)",
+        manager.disableReason.toString())
+      manager.enable()
+      assertNull(manager.disableReason)
+    }
+
+    manager.allowAutoDisable = false
+    // Repeat the failure but set autoDisable to false
+    manager.compileRequest(file, projectRule.module).first.also { result ->
+      assertTrue(result.toString(), result is CompilationResult.RequestException)
+      assertTrue(manager.isEnabled)
+      assertNull(manager.disableReason)
+    }
   }
 }
