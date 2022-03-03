@@ -681,7 +681,7 @@ public final class StudioFlags {
     "logcat.v2.enable",
     "Enable Logcat V2",
     "Enables version 2 of the Logcat tool window",
-    false
+    true
   );
 
   public static final Flag<Boolean> LOGCAT_V2_NAMED_FILTERS_ENABLE = Flag.create(
@@ -876,6 +876,13 @@ public final class StudioFlags {
     "If enabled, XML code completion doesn't include resources from the android namespace. Instead a fake completion item " +
     "is used to offer just the namespace prefix.", true);
 
+  public static final Flag<Boolean> AGSL_LANGUAGE_SUPPORT = Flag.create(
+    EDITOR, "agsl.support.enabled",
+    "Enable editor support for AGSL (Android Graphics Shading Language)",
+    "If enabled, it offers basic editor support (syntax highlighting and basic validation) for AGSL",
+    true
+  );
+
   public static final Flag<Boolean> ADVANCED_JNI_ASSISTANCE = Flag.create(
     EDITOR, "advanced.jni.assistance",
     "Enable advanced JNI assistance",
@@ -890,15 +897,6 @@ public final class StudioFlags {
     "If enabled, our custom UI for creating a new Java class is used. Otherwise the platform default is used.",
     false
   );
-
-
-  public static final Flag<Boolean> INCREMENTAL_RESOURCE_REPOSITORIES = Flag.create(
-    EDITOR, "incremental.resource.repositories",
-    "Handle PSI events incrementally in ResourceFolderRepository",
-    "If enabled, ResourceFolderRepository will handle PSI events synchronously, rather than rescanning the whole file.",
-    true
-  );
-
 
   public static final Flag<Boolean> TWEAK_COLOR_SCHEME = Flag.create(
     EDITOR, "tweak.color.scheme",
@@ -985,6 +983,7 @@ public final class StudioFlags {
     SYSTEM_HEALTH, "antivirus.check.registry", "Use registry instead of PowerShell for checking antivirus status",
     "If enabled, the antivirus status checker will use the Windows registry instead of PowerShell commands",
     true);
+
   //endregion
 
   //region Compose
@@ -1243,6 +1242,11 @@ public final class StudioFlags {
     COMPOSE, "preview.fast.reload.in.process.enabled", "Enable the Compose fast-reload in-process compiler",
     "If enabled, the preview will use the in-process compiler for compiling.",
     true);
+
+  public static final Flag<Boolean> COMPOSE_MULTIPREVIEW = Flag.create(
+    COMPOSE, "preview.multipreview.enabled", "Enable Compose Multipreview",
+    "If enabled, annotation classes annotated with Preview, and its usages, will be considered when finding Previews in a file",
+    false);
   //endregion
 
   // region App Inspection

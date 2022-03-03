@@ -44,7 +44,7 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
   private val addTile = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'add-tile' --ecn component com.example.app/com.example.app.Component"
   private val showTile = "am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-tile --ei index 101"
   private val setDebugAppAm = "am set-debug-app -w 'com.example.app'"
-  private val setDebugAppBroadcast = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-debug-app --ecn component 'com.example.app'"
+  private val setDebugAppBroadcast = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-debug-app --es package 'com.example.app'"
   private val removeTile = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation remove-tile --ecn component com.example.app/com.example.app.Component"
 
   private fun getExecutionEnvironment(executorInstance: Executor): ExecutionEnvironment {
@@ -133,7 +133,7 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
     // Executor we test.
     val executor = Mockito.spy(AndroidTileConfigurationExecutor(env))
 
-    val runnableClient = RunnableClient(appId, testRootDisposable)
+    val runnableClientsService = RunnableClientsService(testRootDisposable)
 
     val commandHandlers = mapOf(
       checkVersion to "Broadcast completed: result=1, data=\"3\"",
@@ -142,12 +142,12 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
     ).toCommandHandlers()
 
     val addTileCommandHandler: CommandHandler = { device, receiver ->
-      runnableClient.startClient(device)
+      runnableClientsService.startClient(device, appId)
       receiver.addOutput("Broadcast completed: result=1, Index=[101]")
     }
 
     val removeTileCommandHandler: CommandHandler = { device, receiver ->
-      runnableClient.stopClient()
+      runnableClientsService.stopClient(device, appId)
       receiver.addOutput("Broadcast completed: result=1")
     }
 

@@ -57,6 +57,7 @@ import com.android.tools.idea.logcat.util.MostRecentlyAddedSet
 import com.android.tools.idea.logcat.util.createLogcatEditor
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
+import com.android.tools.idea.run.ClearLogcatListener
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration.Preset.COMPACT
@@ -126,7 +127,8 @@ internal class LogcatMainPanel(
   internal val editor: EditorEx = createLogcatEditor(project)
   private val document = editor.document
   private val documentAppender = DocumentAppender(project, document, logcatSettings.bufferSize)
-  private val deviceContext = DeviceContext()
+  @VisibleForTesting
+  val deviceContext = DeviceContext()
 
   override var formattingOptions: FormattingOptions = state.getFormattingOptions()
     set(value) {
@@ -208,6 +210,12 @@ internal class LogcatMainPanel(
             .setIsRestored(state != null)
             .setFilter(logcatFilterParser.getUsageTrackingEvent(headerPanel.getFilterText()))
             .setFormatConfiguration(state?.formattingConfig.toUsageTracking())))
+
+    project.messageBus.connect(this).subscribe(ClearLogcatListener.TOPIC, ClearLogcatListener {
+      if (deviceManager?.device == it) {
+        clearMessageView()
+      }
+    })
   }
 
   /**
@@ -307,7 +315,11 @@ internal class LogcatMainPanel(
     }
   }
 
-  override fun isAttachedToDevice() = deviceManager != null
+  override fun getConnectedDevice() = deviceManager?.device
+
+  override fun selectDevice(device: IDevice) {
+    headerPanel.selectDevice(device)
+  }
 
   override fun getTags(): Set<String> = tags
 

@@ -192,6 +192,16 @@
     <fileType name="MultiDexKeep" implementationClass="com.android.tools.idea.lang.multiDexKeep.MultiDexKeepFileType"
               fileNames="multidex-config.txt" language="MultiDexKeep" fieldName="INSTANCE"/>
     <lang.parserDefinition language="MultiDexKeep" implementationClass="com.android.tools.idea.lang.multiDexKeep.MultiDexKeepParserDefinition"/>
+
+    <!-- AGSL (Android Graphics Shading Language) support -->
+    <fileType name="AGSL" implementationClass="com.android.tools.idea.lang.agsl.AgslFileType"
+              extensions="agsl" language="AGSL" fieldName="INSTANCE"/>
+    <lang.parserDefinition language="AGSL" implementationClass="com.android.tools.idea.lang.agsl.AgslParserDefinition"/>
+    <lang.syntaxHighlighter language="AGSL"
+                            implementationClass="com.android.tools.idea.lang.agsl.AgslSyntaxHighlighter"/>
+    <annotator language="AGSL" implementationClass="com.android.tools.idea.lang.agsl.AgslAnnotator" order="first"/>
+    <lang.braceMatcher language="AGSL" implementationClass="com.android.tools.idea.lang.agsl.AgslPairMatcher"/>
+    <lang.commenter language="AGSL" implementationClass="com.android.tools.idea.lang.agsl.AgslCommenter"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.android.tools.idea.lang.androidSql">

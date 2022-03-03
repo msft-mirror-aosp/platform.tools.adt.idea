@@ -852,6 +852,7 @@ fun AndroidProjectStubBuilder.buildVariantStubs(): List<IdeVariantCoreImpl> {
                                              ) +
                                              defaultConfig.productFlavor.applicationIdSuffix.orEmpty() +
                                              buildType.applicationIdSuffix.orEmpty(),
+          desugaredMethodsFiles = listOf(),
         )
       }
   }
@@ -1372,7 +1373,8 @@ fun GradleIntegrationTest.prepareGradleProject(
   name: String,
   gradleVersion: String? = null,
   gradlePluginVersion: String? = null,
-  kotlinVersion: String? = null
+  kotlinVersion: String? = null,
+  ndkVersion: String? = null
 ): File {
   if (name == this.getName()) throw IllegalArgumentException("Additional projects cannot be opened under the test name: $name")
   val srcPath = resolveTestDataPath(testProjectPath)
@@ -1383,6 +1385,7 @@ fun GradleIntegrationTest.prepareGradleProject(
     ThrowableConsumer<File, IOException> { projectRoot ->
       AndroidGradleTests.defaultPatchPreparedProject(projectRoot, gradleVersion, gradlePluginVersion,
                                                      kotlinVersion,
+                                                     ndkVersion,
                                                      *getAdditionalRepos().toTypedArray())
     })
   if (System.getenv("SYNC_BASED_TESTS_DEBUG_OUTPUT")?.toLowerCase() == "y") {
@@ -1672,6 +1675,13 @@ fun updatePluginsResolutionManagement(origContent: String, pluginDefinitions: St
     ?.replace(" apply false", "")?.replace("'", "")
     ?.substringAfterLast(" ")
 
+  fun pluginIdResolutionText(pluginId: String, resolution: String): String =
+    """
+          if (requested.id.id == "$pluginId") {
+              useModule("$resolution:${'$'}{requested.version}")
+          }
+    """
+
   val pluginsResolutionStrategy = findPluginVersion("com.android.application")?.let { agpVersion ->
     """
       resolutionStrategy {
@@ -1679,15 +1689,14 @@ fun updatePluginsResolutionManagement(origContent: String, pluginDefinitions: St
           if (requested.id.namespace == "com.android") {
               useModule("com.android.tools.build:gradle:$agpVersion")
           }
-          if (requested.id.id == "com.google.android.libraries.mapsplatform.secrets-gradle-plugin") {
-              useModule("com.google.android.libraries.mapsplatform.secrets-gradle-plugin:secrets-gradle-plugin:${findPluginVersion("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")}")
-          }
-          if (requested.id.id == "org.jetbrains.kotlin.android") {
-              useModule("org.jetbrains.kotlin:kotlin-gradle-plugin:${findPluginVersion("org.jetbrains.kotlin.android")}")
-          }
+    """.trimEnd() +
+    pluginIdResolutionText("com.google.android.libraries.mapsplatform.secrets-gradle-plugin",
+                           "com.google.android.libraries.mapsplatform.secrets-gradle-plugin:secrets-gradle-plugin") +
+    pluginIdResolutionText("org.jetbrains.kotlin.android", "org.jetbrains.kotlin:kotlin-gradle-plugin") +
+    """
         }
       }
-      """
+    """
   } ?: ""
 
   return origContent.replace("pluginManagement {", "pluginManagement { $pluginsResolutionStrategy")

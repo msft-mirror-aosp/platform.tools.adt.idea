@@ -18,13 +18,19 @@ package com.android.tools.idea.run.configuration.execution
 
 import com.android.ddmlib.IShellOutputReceiver
 import com.android.testutils.MockitoKt.any
+import com.android.testutils.TestResources
 import com.android.tools.deployer.model.component.AppComponent
-import com.android.tools.deployer.model.component.Complication
+import com.android.tools.deployer.model.component.Complication.ComplicationType.RANGED_VALUE
+import com.android.tools.deployer.model.component.Complication.ComplicationType.SHORT_TEXT
+import com.android.tools.deployer.model.component.Complication.ComplicationType.LONG_TEXT
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.android.tools.idea.run.configuration.AndroidComplicationConfigurationType
 import com.android.tools.idea.run.configuration.AndroidConfigurationProgramRunner
 import com.android.tools.idea.run.configuration.ComplicationSlot
 import com.android.tools.idea.run.configuration.ComplicationWatchFaceInfo
+import com.android.tools.deployer.model.component.Complication
+import com.android.tools.idea.run.ApkInfo
+import com.android.tools.idea.run.configuration.getComplicationSourceTypes
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -64,7 +70,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
                              " --ecn component com.example.watchface/com.example.watchface.MyWatchFace"
   private val showWatchFace = "am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface"
   private val setDebugAppAm = "am set-debug-app -w 'com.example.app'"
-  private val setDebugAppBroadcast = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-debug-app --ecn component 'com.example.app'"
+  private val setDebugAppBroadcast = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-debug-app --es package 'com.example.app'"
   private val unsetComplication = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation unset-complication --ecn component com.example.app/com.example.app.Component"
   private val unsetWatchFace = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation unset-watchface"
 
@@ -104,6 +110,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
       )
     )
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
+
+    // Mock the binary xml extraction.
+    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
 
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(1000)!!
 
@@ -162,15 +171,15 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
       setDebugAppBroadcast to "Broadcast completed: result=1"
     ).toCommandHandlers()
 
-    val runnableClient = RunnableClient(appId, testRootDisposable)
+    val runnableClientsService = RunnableClientsService(testRootDisposable)
 
     val setWatchFaceCommandHandler: CommandHandler = { device, receiver ->
-      runnableClient.startClient(device)
+      runnableClientsService.startClient(device, appId)
       receiver.addOutput("Broadcast completed: result=1")
     }
 
-    val unsetWatchFaceCommandHandler: CommandHandler = { _, receiver ->
-      runnableClient.stopClient()
+    val unsetWatchFaceCommandHandler: CommandHandler = { device, receiver ->
+      runnableClientsService.stopClient(device, appId)
       receiver.addOutput("Broadcast completed: result=1")
     }
 
@@ -194,6 +203,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
       )
     )
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
+
+    // Mock the binary xml extraction.
+    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
 
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(1000)
     assertThat(runContentDescriptor!!.processHandler).isNotNull()
@@ -271,6 +283,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     )
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
 
+    // Mock the binary xml extraction.
+    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
+
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(1000)!!
 
     // Verify that a warning was raised in console.
@@ -313,5 +328,12 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     assertThat(commands[0]).isEqualTo(unsetComplication)
     // Unset debug watchFace
     assertThat(commands[1]).isEqualTo(unsetWatchFace)
+  }
+
+  fun testGetComplicationSourceTypes() {
+    val types = getComplicationSourceTypes(
+      listOf(ApkInfo(TestResources.getFile("/WearableTestApk.apk"), "com.example.android.wearable.watchface")),
+      "com.example.android.wearable.watchface.provider.IncrementingNumberComplicationProviderService")
+    assertThat(types).isEqualTo(listOf(SHORT_TEXT, LONG_TEXT))
   }
 }

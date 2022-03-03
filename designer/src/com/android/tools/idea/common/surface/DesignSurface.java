@@ -250,7 +250,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
   @NotNull
   private final List<CompletableFuture<Void>> myRenderFutures = new ArrayList<>();
 
-  protected final IssueModel myIssueModel = new IssueModel();
+  protected final IssueModel myIssueModel;
   private final IssuePanel myIssuePanel;
   private final Object myErrorQueueLock = new Object();
   private MergingUpdateQueue myErrorQueue;
@@ -311,10 +311,10 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
     super(new BorderLayout());
 
     Disposer.register(parentDisposable, this);
-    Disposer.register(this, myIssueModel);
     myProject = project;
     mySelectionModel = selectionModel;
     myZoomControlsPolicy = zoomControlsPolicy;
+    myIssueModel = new IssueModel(this, myProject);
 
     boolean hasZoomControls = myZoomControlsPolicy != ZoomControlsPolicy.HIDDEN;
 
@@ -387,7 +387,6 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
     myLayeredPane.add(myMouseClickDisplayPanel, LAYER_MOUSE_CLICK);
 
     myIssuePanel = new IssuePanel(myIssueModel, new DesignSurfaceIssueListenerImpl(this));
-    Disposer.register(this, myIssuePanel);
 
     add(myLayeredPane);
 
@@ -516,6 +515,13 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
 
   @NotNull
   public abstract ItemTransferable getSelectionAsTransferable();
+
+  /**
+   * Returns whether render error panels should be rendered when {@link SceneView}s in this surface have render errors.
+   */
+  public boolean shouldRenderErrorsPanel() {
+    return false;
+  }
 
   /**
    * @return the primary (first) {@link NlModel} if exist. null otherwise.
@@ -1387,6 +1393,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
       }
     }
     myIsActive = true;
+    myIssueModel.activate();
   }
 
   public void deactivate() {
@@ -1397,6 +1404,7 @@ public abstract class DesignSurface extends EditorDesignSurface implements Dispo
       }
     }
     myIsActive = false;
+    myIssueModel.deactivate();
 
     myInteractionManager.cancelInteraction();
   }

@@ -22,11 +22,14 @@ import com.google.common.collect.ImmutableList;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.util.ModalityUiUtil;
 import icons.StudioIcons;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 import javax.swing.Icon;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -37,12 +40,13 @@ import org.jetbrains.annotations.Nullable;
 public class IssueModel implements Disposable {
   private static final int MAX_ISSUE_NUMBER_LIMIT = 200;
 
+  @NotNull private final Project myProject;
   /**
    * Maximum number of issues allowed by this model. This allows to limit how many issues will be handled
    * by this model.
    */
   private final int myIssueNumberLimit;
-  private ImmutableList<Issue> myIssues = ImmutableList.of();
+  @NotNull private ImmutableList<Issue> myIssues = ImmutableList.of();
   private final ListenerCollection<IssueModelListener> myListeners;
   protected int myWarningCount;
   protected int myErrorCount;
@@ -58,18 +62,20 @@ public class IssueModel implements Disposable {
    *                         truncated to <code>issueNumberLimit</code> and a new {@link TooManyIssuesIssue} added.
    */
   @VisibleForTesting
-  IssueModel(@NotNull Executor listenerExecutor, int issueNumberLimit) {
+  IssueModel(@NotNull Disposable parentDisposable, @NotNull Project project, @NotNull Executor listenerExecutor, int issueNumberLimit) {
+    Disposer.register(parentDisposable, this);
+    myProject = project;
     myListeners = ListenerCollection.createWithExecutor(listenerExecutor);
     myIssueNumberLimit = issueNumberLimit;
   }
 
   @VisibleForTesting
-  IssueModel(@NotNull Executor listenerExecutor) {
-    this(listenerExecutor, MAX_ISSUE_NUMBER_LIMIT);
+  IssueModel(@NotNull Disposable parentDisposable, @NotNull Project project, @NotNull Executor listenerExecutor) {
+    this(parentDisposable, project, listenerExecutor, MAX_ISSUE_NUMBER_LIMIT);
   }
 
-  public IssueModel() {
-    this(command -> ModalityUiUtil.invokeLaterIfNeeded(ModalityState.defaultModalityState(), command));
+  public IssueModel(@NotNull Disposable parentDisposable, @NotNull Project project) {
+    this(parentDisposable, project, command -> ModalityUiUtil.invokeLaterIfNeeded(ModalityState.defaultModalityState(), command));
   }
 
   @Nullable
@@ -135,9 +141,11 @@ public class IssueModel implements Disposable {
         .build();
     }
     newIssueList.forEach(issue -> updateIssuesCounts(issue));
+    List<Issue> oldIssues = myIssues;
     myIssues = newIssueList;
     // Run listeners on the UI thread
     myListeners.forEach(IssueModelListener::errorModelChanged);
+    myProject.getMessageBus().syncPublisher(IssueProviderListener.TOPIC).issueUpdated(oldIssues, newIssueList);
   }
 
   private void updateIssuesCounts(@NotNull Issue issue) {
@@ -203,6 +211,14 @@ public class IssueModel implements Disposable {
 
   public boolean hasIssues() {
     return !myIssues.isEmpty();
+  }
+
+  public void activate() {
+    myProject.getMessageBus().syncPublisher(IssueProviderListener.TOPIC).issueUpdated(ImmutableList.of(), myIssues);
+  }
+
+  public void deactivate() {
+    myProject.getMessageBus().syncPublisher(IssueProviderListener.TOPIC).issueUpdated(myIssues, ImmutableList.of());
   }
 
   public interface IssueModelListener {

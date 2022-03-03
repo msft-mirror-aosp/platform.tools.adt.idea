@@ -124,6 +124,9 @@ iml_module(
     exec_properties = LARGE_MACHINE,
     iml_files = ["intellij.android.core.tests.iml"],
     split_test_targets = {
+        "modularize": {
+            "test_filter": "com.android.tools.idea.refactoring.modularize",
+        },
         "gradle": {
             "shard_count": 6,
             "data": ["//prebuilts/studio/sdk:ndk"],
@@ -444,7 +447,7 @@ maven_repository(
         "@maven//:androidx.annotation.annotation_1.2.0-beta01",
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
-        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.0.0",
+        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.0-beta04",
         "@maven//:androidx.compose.ui.ui-tooling_1.1.0-rc01",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.0.4",
@@ -573,6 +576,9 @@ iml_module(
     name = "intellij.android.core.agp-integration-tests",
     iml_files = ["intellij.android.core.agp-integration-tests.iml"],
     split_test_targets = {
+        "modularize": {
+            "test_filter": "com.android.tools.idea.refactoring.modularize",
+        },
         "UnusedResourcesGradleTest": {
             # The testKotlin test case takes 3 minutes (linux) or 5 minutes (windows).
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well

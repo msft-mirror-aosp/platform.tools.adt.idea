@@ -21,8 +21,8 @@ import org.jetbrains.android.dom.Styleable;
 import java.util.List;
 
 @DefinesXml
-@Styleable("AdaptiveIconDrawableLayer")
 public interface AdaptiveIcon extends DrawableDomElement {
-  LayerListItem getBackground();
-  LayerListItem getForeground();
+  AdaptiveIconDrawableLayer getBackground();
+  AdaptiveIconDrawableLayer getForeground();
+  AdaptiveIconDrawableLayer getMonochrome();
 }

@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.common.error
 
+import com.android.tools.idea.actions.DESIGN_SURFACE
+import com.android.tools.idea.common.error.IssuePanelService.Companion.SELECTED_ISSUES
+import com.android.tools.idea.uibuilder.visual.VisualizationToolWindowFactory
+import com.intellij.ide.DataManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
@@ -24,21 +28,25 @@ import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.border.CustomLineBorder
 import com.intellij.ui.tree.AsyncTreeModel
+import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.EditSourceOnDoubleClickHandler
 import com.intellij.util.EditSourceOnEnterKeyHandler
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
+import org.jdesktop.swingx.calendar.DateSelectionModel
 import java.awt.BorderLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.tree.TreePath
+import javax.swing.tree.TreeSelectionModel
 
 private const val TOOLBAR_ACTIONS_ID = "Android.Designer.IssuePanel.ToolbarActions"
 /**
@@ -50,7 +58,8 @@ private val KEY_DETAIL_VISIBLE = DesignerCommonIssuePanel::class.java.name + "_d
 /**
  * The issue panel to load the issues from Layout Editor and Layout Validation Tool.
  */
-class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project: Project) : Disposable {
+class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project: Project,
+                               val issueProvider: DesignerCommonIssueProvider<Any?>) : Disposable {
 
   var sidePanelVisible = PropertiesComponent.getInstance(project).getBoolean(KEY_DETAIL_VISIBLE)
     set(value) {
@@ -65,14 +74,19 @@ class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project
       if (CommonDataKeys.NAVIGATABLE.`is`(dataId)) {
         return node.getNavigatable()
       }
-      if (CommonDataKeys.NAVIGATABLE_ARRAY.`is`(dataId)) {
-        return arrayOf(node.getNavigatable())
-      }
       if (PlatformDataKeys.SELECTED_ITEM.`is`(dataId)) {
         return node
       }
       if (PlatformDataKeys.VIRTUAL_FILE.`is`(dataId)) {
         return node.getVirtualFile()
+      }
+      if (SELECTED_ISSUES.`is`(dataId)) {
+        return when (node) {
+          is IssuedFileNode -> node.issues
+          is NoFileNode -> node.issues
+          is IssueNode -> listOf(node.issue)
+          else -> emptyList()
+        }
       }
       return null
     }
@@ -87,11 +101,16 @@ class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project
     Disposer.register(parentDisposable, this)
 
     treeModel = DesignerCommonIssueModel(this)
-    treeModel.root = DesignerCommonIssueRoot(project)
+    treeModel.root = DesignerCommonIssueRoot(project, issueProvider)
+    issueProvider.registerUpdateListener {
+      updateTree()
+    }
     tree = Tree(AsyncTreeModel(treeModel, this))
+    tree.emptyText.text = "No design issue is found"
     PopupHandler.installPopupMenu(tree, POPUP_HANDLER_ACTION_ID, "Android.Designer.IssuePanel.TreePopup")
 
     tree.isRootVisible = false
+    tree.selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
 
     EditSourceOnDoubleClickHandler.install(tree)
     EditSourceOnEnterKeyHandler.install(tree)
@@ -115,56 +134,34 @@ class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project
         splitter.secondComponent = sidePanel
         splitter.revalidate()
       }
+      // TODO(b/222110455): Can we have better way to trigger the refreshing of Layout Validation or other design tools?
+      //                    Refactor to remove the dependency of VisualizationToolWindowFactory.
+      val window = ToolWindowManager.getInstance(project).getToolWindow(VisualizationToolWindowFactory.TOOL_WINDOW_ID)
+      if (window != null) {
+        DataManager.getInstance().getDataContext(window.component).getData(DESIGN_SURFACE)?.let { surface ->
+          surface.revalidateScrollArea()
+          surface.repaint()
+        }
+      }
     }
   }
 
   fun getComponent(): JComponent = rootPanel
 
-  fun getIssueProvider(): DesignerCommonIssueProvider<out Any?>? {
-    val root = treeModel.root as? DesignerCommonIssueRoot ?: return null
-    return root.issueProvider
-  }
-
-  fun setIssueProvider(issueProvider: DesignerCommonIssueProvider<out Any?>) {
-    val root = treeModel.root as? DesignerCommonIssueRoot ?: return
-    if (root.issueProvider == issueProvider) {
-      return
-    }
-    val oldProvider = root.issueProvider
-    val filter = if (oldProvider != null) {
-      oldProvider.onRemoved()
-      oldProvider.filter
-    }
-    else {
-      { true }
-    }
-    root.issueProvider = issueProvider
-    issueProvider.filter = filter
+  private fun updateTree() {
     treeModel.structureChanged(null)
+    val promise = TreeUtil.promiseExpand(tree, IssueNodeFileFinder())
     if (sidePanelVisible) {
-      splitter.secondComponent = createSidePanel(tree.lastSelectedPathComponent as? DesignerCommonIssueNode)
-    }
-  }
-
-  fun updateTree(file: VirtualFile?, issueModel: IssueModel) {
-    treeModel.structureChanged(null)
-    if (file != null) {
-      val filedData = IssuedFileData(file, issueModel)
-      // Expand the new attached issue model.
-      // TODO: Use different TreeVisitor for different node.
-      val promise = TreeUtil.promiseExpand(tree, LayoutFileIssueFileFinder(filedData))
-      if (sidePanelVisible) {
-        promise.onSuccess {
-          splitter.secondComponent = createSidePanel(it.lastPathComponent as? DesignerCommonIssueNode)
-          splitter.revalidate()
-        }
+      promise.onSuccess {
+        splitter.secondComponent = createSidePanel(it.lastPathComponent as? DesignerCommonIssueNode)
+        splitter.revalidate()
       }
     }
   }
 
   fun setHiddenSeverities(hiddenSeverities: Set<Int>) {
     val wasEmpty = treeModel.root?.getChildren()?.isEmpty() ?: true
-    getIssueProvider()?.filter = { issue ->
+    issueProvider.filter = { issue ->
       !hiddenSeverities.contains(issue.severity.myVal)
     }
     treeModel.structureChanged(null)
@@ -188,7 +185,7 @@ class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project
   }
 
   private fun createSidePanel(node: DesignerCommonIssueNode?): JComponent? {
-    val issueNode = node as? LayoutFileIssueNode ?: return null
+    val issueNode = node as? IssueNode ?: return null
 
     val sidePanel = DesignerCommonIssueSidePanel(project, issueNode.issue, issueNode.getVirtualFile())
     val previewEditor = sidePanel.editor
@@ -201,4 +198,16 @@ class DesignerCommonIssuePanel(parentDisposable: Disposable, private val project
   }
 
   override fun dispose() = Unit
+}
+
+/**
+ * Used to find the target [IssuedFileNode] in the [com.intellij.ui.treeStructure.Tree].
+ */
+class IssueNodeFileFinder : TreeVisitor {
+  override fun visit(path: TreePath) = when (TreeUtil.getLastUserObject(path)) {
+    is DesignerCommonIssueRoot -> TreeVisitor.Action.CONTINUE
+    is IssuedFileNode, is NoFileNode -> TreeVisitor.Action.CONTINUE
+    is IssueNode -> TreeVisitor.Action.SKIP_CHILDREN
+    else -> TreeVisitor.Action.SKIP_CHILDREN
+  }
 }
