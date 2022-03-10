@@ -15,22 +15,30 @@
  */
 package com.android.tools.compose.code.completion.constraintlayout
 
+import com.android.tools.compose.code.completion.constraintlayout.provider.AnchorablesProvider
+import com.android.tools.compose.code.completion.constraintlayout.provider.ConstraintIdsProvider
 import com.android.tools.compose.code.completion.constraintlayout.provider.ConstraintSetFieldsProvider
 import com.android.tools.compose.code.completion.constraintlayout.provider.ConstraintSetNamesProvider
+import com.android.tools.compose.code.completion.constraintlayout.provider.ConstraintsProvider
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.json.JsonElementTypes
 import com.intellij.json.JsonLanguage
-import com.intellij.json.psi.JsonProperty
-import com.intellij.json.psi.JsonReferenceExpression
 import com.intellij.json.psi.JsonStringLiteral
-import com.intellij.patterns.PlatformPatterns
-import com.intellij.patterns.PsiElementPattern
-import com.intellij.psi.PsiElement
+
+internal const val BASE_DEPTH_FOR_LITERAL_IN_PROPERTY = 2
+
+/** Depth for a literal of a property of the list of ConstraintSets. With respect to the ConstraintSets root element. */
+private const val CONSTRAINT_SET_LIST_PROPERTY_DEPTH = BASE_DEPTH_FOR_LITERAL_IN_PROPERTY + BASE_DEPTH_FOR_LITERAL_IN_PROPERTY
+
+/** Depth for a literal of a property of a ConstraintSet. With respect to the ConstraintSets root element. */
+private const val CONSTRAINT_SET_PROPERTY_DEPTH = CONSTRAINT_SET_LIST_PROPERTY_DEPTH + BASE_DEPTH_FOR_LITERAL_IN_PROPERTY
+
+/** Depth for a literal of a property of a Constraints block. With respect to the ConstraintSets root element. */
+internal const val CONSTRAINT_BLOCK_PROPERTY_DEPTH = CONSTRAINT_SET_PROPERTY_DEPTH + BASE_DEPTH_FOR_LITERAL_IN_PROPERTY
 
 /**
  * [CompletionContributor] for the JSON5 format supported in ConstraintLayout-Compose (and MotionLayout).
@@ -43,15 +51,39 @@ class ConstraintLayoutJsonCompletionContributor : CompletionContributor() {
     extend(
       CompletionType.BASIC,
       // Complete field names in ConstraintSets
-      jsonPropertyName().withConstraintSetsParentAtLevel(6),
+      jsonPropertyName().withConstraintSetsParentAtLevel(CONSTRAINT_SET_PROPERTY_DEPTH),
       ConstraintSetFieldsProvider
     )
     extend(
       CompletionType.BASIC,
+      // Complete constraints field names (width, height, start, end, etc.)
+      jsonPropertyName().withConstraintSetsParentAtLevel(CONSTRAINT_BLOCK_PROPERTY_DEPTH),
+      ConstraintsProvider
+    )
+    extend(
+      CompletionType.BASIC,
       // Complete ConstraintSet names in Extends keyword
-      jsonPropertyStringValue()
+      jsonStringValue()
         .withPropertyParentAtLevel(2, KeyWords.Extends),
       ConstraintSetNamesProvider
+    )
+    extend(
+      CompletionType.BASIC,
+      // Complete IDs in the constraint array (first position)
+      jsonStringValue()
+        // First element in the array, ie: there is no PsiElement preceding the desired one at this level
+        .withParent(psiElement<JsonStringLiteral>().atIndexOfJsonArray(0))
+        .insideConstraintArray(),
+      ConstraintIdsProvider
+    )
+    extend(
+      CompletionType.BASIC,
+      // Complete anchors in the constraint array (second position)
+      jsonStringValue()
+        // Second element in the array, ie: there is one PsiElement preceding the desired one at this level
+        .withParent(psiElement<JsonStringLiteral>().atIndexOfJsonArray(1))
+        .insideConstraintArray(),
+      AnchorablesProvider
     )
   }
 
@@ -65,21 +97,3 @@ class ConstraintLayoutJsonCompletionContributor : CompletionContributor() {
     super.fillCompletionVariants(parameters, result)
   }
 }
-
-// region ConstraintLayout Pattern Helpers
-private fun jsonPropertyName() = PlatformPatterns.psiElement(JsonElementTypes.IDENTIFIER)
-
-private fun jsonPropertyStringValue() =
-  PlatformPatterns.psiElement(JsonElementTypes.SINGLE_QUOTED_STRING).withParent<JsonStringLiteral>()
-
-private fun PsiElementPattern<*, *>.withConstraintSetsParentAtLevel(level: Int) = withPropertyParentAtLevel(level, KeyWords.ConstraintSets)
-// endregion
-
-// region Kotlin Syntax Helpers
-private inline fun <reified T : PsiElement> psiElement() = PlatformPatterns.psiElement(T::class.java)
-
-private inline fun <reified T : PsiElement> PsiElementPattern<*, *>.withParent() = this.withParent(T::class.java)
-
-private fun PsiElementPattern<*, *>.withPropertyParentAtLevel(level: Int, name: String) =
-  this.withSuperParent(level, psiElement<JsonProperty>().withChild(psiElement<JsonReferenceExpression>().withText(name)).save(name))
-// endregion

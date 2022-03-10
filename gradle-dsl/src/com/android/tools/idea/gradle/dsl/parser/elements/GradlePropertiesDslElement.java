@@ -142,6 +142,10 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
     return oldState;
   }
 
+  private ElementState hidePropertyInternal(@NotNull GradleDslElement element) {
+    return myProperties.hide(element);
+  }
+
   public void addAppliedModelProperties(@NotNull GradleDslFile file) {
     // Here we need to merge the properties into from the applied file into this element.
     mergePropertiesFrom(file);
@@ -728,6 +732,19 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
     }
   }
 
+  public void hideProperty(@NotNull GradleDslElement element) {
+    hidePropertyInternal(element);
+    for (GradlePropertiesDslElement holder : element.getHolders()) {
+      if (this != holder) {
+        holder.removePropertyInternal(element);
+      }
+    }
+    GradleDslElement parent = element.getParent();
+    if (this != parent && parent instanceof GradlePropertiesDslElement) {
+      ((GradlePropertiesDslElement)parent).hidePropertyInternal(element);
+    }
+  }
+
   @Override
   @Nullable
   public GradleDslElement requestAnchor(@NotNull GradleDslElement element) {
@@ -739,7 +756,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
         return lastElement;
       }
 
-      if (Arrays.asList(EXISTING, TO_BE_ADDED, MOVED).contains(item.myElementState)) {
+      if (item.myElementState.isPhysicalInFile()) {
         GradleDslElement currentElement = item.myElement;
         // Don't count empty ProjectPropertiesModel, this can cause the properties to be added at the top of the file where
         // we require that they be below other properties (e.g project(':lib')... should be after include: 'lib').
@@ -819,8 +836,8 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   protected boolean isStructurallyModified() {
-    Predicate<ElementList.ElementItem> predicate = e -> Arrays.asList(APPLIED, EXISTING, DEFAULT).contains(e.myElementState);
-    return !myProperties.myElements.stream().allMatch(predicate);
+    Predicate<ElementList.ElementItem> predicate = e -> e.myElementState.isStructuralChange();
+    return myProperties.myElements.stream().anyMatch(predicate);
   }
 
   @Override
@@ -960,7 +977,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
 
     @NotNull
     private List<GradleDslElement> getElementsWhere(@NotNull Predicate<ElementItem> predicate) {
-      return myElements.stream().filter(e -> e.myElementState != TO_BE_REMOVED)
+      return myElements.stream().filter(e -> e.myElementState.isSemanticallyRelevant())
                        .filter(predicate).map(e -> e.myElement).collect(Collectors.toList());
     }
 
@@ -969,7 +986,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
       // We reduce to get the last element stored, this will be the one we want as it was added last and therefore must appear
       // later on in the file.
       GradleDslElement last = myElements.stream()
-        .filter(e -> e.myElementState != TO_BE_REMOVED)
+        .filter(e -> e.myElementState.isSemanticallyRelevant())
         .filter(predicate).map(e -> e.myElement).reduce((first, second) -> second).orElse(null);
       if (last != null) {
         ModelEffectDescription effect = last.getModelEffect();
@@ -992,8 +1009,8 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
       //  methods or, if we implement .clear(), RESET) are not correctly modelled.
       GradleDslElement lastElement = null;
       for (ElementItem i : myElements) {
-        // Skip removed elements.
-        if (i.myElementState == TO_BE_REMOVED) {
+        // Skip removed or hidden elements.
+        if (!i.myElementState.isSemanticallyRelevant()) {
           continue;
         }
 
@@ -1050,8 +1067,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
           return i;
         }
         ElementItem item = myElements.get(i);
-        if (item.myElementState != TO_BE_REMOVED &&
-            item.myElementState != APPLIED) {
+        if (item.myElementState.isPhysicalInFile()) {
           index--;
         }
       }
@@ -1069,6 +1085,16 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
       return oldState;
     }
 
+    private @Nullable ElementState hide(@NotNull GradleDslElement element) {
+      ElementItem item = myElements.stream().filter(e -> element == e.myElement).findFirst().orElse(null);
+      if (item == null) {
+        return null;
+      }
+      ElementState oldState = item.myElementState;
+      item.myElementState = HIDDEN;
+      return oldState;
+    }
+
     @Nullable
     private ElementState replaceElement(@Nullable GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
       for (int i = 0; i < myElements.size(); i++) {
@@ -1077,7 +1103,7 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
           ElementState oldState = item.myElementState;
           item.myElementState = TO_BE_REMOVED;
           ElementState newState = TO_BE_ADDED;
-          if (oldState == APPLIED) {
+          if (Arrays.asList(APPLIED, HIDDEN).contains(oldState)) {
             newState = oldState;
           }
           myElements.add(i, new ElementItem(newElement, newState, false));

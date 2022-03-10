@@ -40,15 +40,16 @@ class DeviceArtScreenshotPostprocessor : ScreenshotPostprocessor {
     return ImageUtils.cropBlank(framedImage, null) ?: throw IllegalArgumentException("The screenshot is completely transparent")
   }
 
+  @Suppress("UndesirableClassUsage")
   private fun circularClip(image: BufferedImage): BufferedImage {
-    val mask = ImageUtils.createDipImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
+    val mask = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
     mask.createGraphics().apply {
       applyQualityRenderingHints(this)
       val diameter = max(image.width, image.height).toDouble()
       fill(Area(Ellipse2D.Double(0.0, 0.0, diameter, diameter)))
       dispose()
     }
-    val shapedImage = ImageUtils.createDipImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
+    val shapedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
     shapedImage.createGraphics().apply {
       applyQualityRenderingHints(this)
       drawImage(image, 0, 0, null)

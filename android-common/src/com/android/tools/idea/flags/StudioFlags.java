@@ -277,10 +277,6 @@ public final class StudioFlags {
 
 
   private static final FlagGroup ASSISTANT = new FlagGroup(FLAGS, "assistant", "Assistants");
-  public static final Flag<Boolean> CONNECTION_ASSISTANT_ENABLED = Flag.create(
-    ASSISTANT, "connection.enabled", "Enable the connection assistant",
-    "If enabled, user can access the Connection Assistant under \"Tools\" and \"Deploy Target Dialog\"",
-    true);
 
   public static final Flag<Boolean> NELE_CONSTRAINT_LAYOUT_ASSISTANT = Flag.create(
     ASSISTANT, "layout.editor.help.constraintlayout", "Display Help for Constraint Layout",
@@ -1225,7 +1221,7 @@ public final class StudioFlags {
     COMPOSE, "preview.animation.coordination",
     "Enable animation coordination in Animation Inspector",
     "If enabled, animation coordination will be available in Animation Inspector timeline.",
-    false
+    true
   );
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
@@ -1318,16 +1314,6 @@ public final class StudioFlags {
 
   //region Device Manager
   private static final FlagGroup DEVICE_MANAGER = new FlagGroup(FLAGS, "device.manager", "Device Manager");
-  public static final Flag<Boolean> ENABLE_NEW_DEVICE_MANAGER_PANEL = Flag.create(
-    DEVICE_MANAGER, "enable.device.manager", "Enable new Device Manager panel",
-    "Enables the new Device Manager panel. It replaces AVD Manager with additional functionality.",
-    true
-  );
-  public static final Flag<Boolean> ENABLE_DEVICE_MANAGER_HALF_BAKED_FEATURES = Flag.create(
-    DEVICE_MANAGER, "enable.device.manager.half.baked.features", "Enable half baked Device Manager features",
-    "Enables some features that could be unpolished or unready in the new Device Manager",
-    false
-  );
 
   public static final Flag<Boolean> WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED = Flag.create(
     DEVICE_MANAGER,

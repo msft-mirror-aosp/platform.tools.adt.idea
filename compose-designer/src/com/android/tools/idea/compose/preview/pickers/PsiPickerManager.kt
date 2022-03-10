@@ -18,16 +18,13 @@ package com.android.tools.idea.compose.preview.pickers
 import com.android.tools.adtui.LightCalloutPopup
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.stdui.registerActionKey
-import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.pickers.properties.PsiPropertyItem
 import com.android.tools.idea.compose.preview.pickers.properties.PsiPropertyModel
 import com.android.tools.idea.compose.preview.pickers.properties.PsiPropertyView
-import com.android.tools.idea.compose.preview.pickers.properties.enumsupport.EnumSupportValuesProvider
 import com.android.tools.property.panel.api.PropertiesPanel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.popup.Balloon
-import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.ComponentUtil
 import com.intellij.util.ui.JBUI
@@ -42,6 +39,7 @@ import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.JSeparator
 import javax.swing.LayoutFocusTraversalPolicy
 
@@ -49,8 +47,12 @@ internal object PsiPickerManager {
 
   /**
    * Shows a picker for editing a [PsiPropertyModel]s. The user can modify the model using this dialog.
+   *
+   * @param location the location on screen from which the Picker popup will be shown
+   * @param displayTitle Title displayed at the top of the Picker popup
+   * @param model model used to drive the picker, defines how properties are edited and how the UI is built
    */
-  fun show(location: Point, model: PsiPropertyModel, valuesProvider: EnumSupportValuesProvider) {
+  fun show(location: Point, displayTitle: String, model: PsiPropertyModel) {
     val tracker = model.tracker
     val disposable = Disposer.newDisposable()
     var popup: LightCalloutPopup? = null
@@ -63,11 +65,11 @@ internal object PsiPickerManager {
       ApplicationManager.getApplication().executeOnPooledThread(tracker::logUsageData)
     }
     popup = LightCalloutPopup(closedCallback = onClosedOrCancelled, cancelCallBack = onClosedOrCancelled)
-    val previewPickerPanel = createPreviewPickerPanel(disposable, popup::close, model, valuesProvider)
+    val pickerPanel = createPickerPanel(disposable, popup::close, displayTitle, model)
 
     tracker.pickerShown()
     popup.show(
-      content = previewPickerPanel,
+      content = pickerPanel,
       parentComponent = null,
       location = location,
       position = Balloon.Position.below,
@@ -76,19 +78,21 @@ internal object PsiPickerManager {
   }
 }
 
-private fun createPreviewPickerPanel(
+private fun createPickerPanel(
   disposable: Disposable,
   closePopupCallBack: () -> Unit,
-  model: PsiPropertyModel,
-  valuesProvider: EnumSupportValuesProvider
+  displayTitle: String,
+  model: PsiPropertyModel
 ): JPanel {
-  val propertiesPanel = PropertiesPanel<PsiPropertyItem>(disposable).also { it.addView(PsiPropertyView(model, valuesProvider)) }
+  val propertiesPanel = PropertiesPanel<PsiPropertyItem>(disposable).also {
+    it.addView(PsiPropertyView(model))
+  }
 
   return JPanel().apply {
     layout = BoxLayout(this, BoxLayout.Y_AXIS)
     isOpaque = false
     border = JBUI.Borders.empty(0, 4)
-    add(JLabel(message("picker.preview.title")).apply {
+    add(JLabel(displayTitle).apply {
       border = JBUI.Borders.empty(8, 0)
     })
     add(JSeparator())
@@ -111,11 +115,8 @@ private class PopupCloseHandler(private val ownerWindow: Window, private val clo
     if (event is MouseEvent) {
       if (event.id != MouseEvent.MOUSE_PRESSED) return
 
-      val inBalloon = JBPopupFactory.getInstance().getParentBalloonFor(event.component) != null
-      if (!inBalloon) {
-        if (!isWithinOriginalWindow(event)) {
-          closePopupCallback()
-        }
+      if (!inPopupOrBalloon(event.component) && !isWithinOriginalWindow(event)) {
+        closePopupCallback()
       }
     }
   }
@@ -130,6 +131,18 @@ private class PopupCloseHandler(private val ownerWindow: Window, private val clo
         }
         child = child.parent
       }
+    }
+    return false
+  }
+
+  private fun inPopupOrBalloon(component: Component): Boolean {
+    // inclusive parent
+    var parent = component
+    while (parent is JComponent) {
+      if (parent is JPopupMenu || parent.getClientProperty(Balloon.KEY) is Balloon) {
+        return true
+      }
+      parent = parent.parent
     }
     return false
   }

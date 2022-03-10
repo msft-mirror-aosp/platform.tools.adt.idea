@@ -67,12 +67,12 @@ class AnimationCard(previewState: AnimationPreviewState,
   var openInTabListeners: MutableList<() -> Unit> = mutableListOf()
   var expandedSize = InspectorLayout.TIMELINE_LINE_ROW_HEIGHT
 
-  private val firstRow = JPanel(TabularLayout("Fit,*,Fit")).apply {
-    border = JBUI.Borders.empty(0, 0, 0, 15)
+  private val firstRow = JPanel(TabularLayout("30px,*,Fit")).apply {
+    border = JBUI.Borders.empty(0, 0, 0, 8)
   }
 
-  private val secondRow = JPanel(TabularLayout("30px,*")).apply {
-    border = JBUI.Borders.empty(0, 15, 0, 15)
+  private val secondRow = JPanel(TabularLayout("30px,*,Fit")).apply {
+    border = JBUI.Borders.empty(0, 25, 0, 8)
   }
 
   fun getCurrentHeight() =
@@ -91,7 +91,7 @@ class AnimationCard(previewState: AnimationPreviewState,
   }
 
   fun addStateComponent(component: JComponent) {
-    secondRow.add(component, TabularLayout.Constraint(0, 1))
+    secondRow.add(component, TabularLayout.Constraint(0, 2))
 
   }
 
@@ -105,7 +105,7 @@ class AnimationCard(previewState: AnimationPreviewState,
     add(firstRow, TabularLayout.Constraint(0, 0))
     add(secondRow, TabularLayout.Constraint(1, 0))
     OpenInNewTab().installOn(this)
-    border = MatteBorder(1, 0, 0, 1, JBColor.border())
+    border = MatteBorder(1, 0, 0, 0, JBColor.border())
   }
 
   private inner class OpenInNewTab : DoubleClickListener() {

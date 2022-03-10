@@ -15,13 +15,26 @@
  */
 package com.android.tools.compose.code.completion.constraintlayout.provider
 
+import com.android.tools.compose.code.completion.constraintlayout.ConstrainAnchorTemplate
+import com.android.tools.compose.code.completion.constraintlayout.ConstraintLayoutKeyWord
+import com.android.tools.compose.code.completion.constraintlayout.Dimension
 import com.android.tools.compose.code.completion.constraintlayout.InsertionFormat
-import com.android.tools.compose.code.completion.constraintlayout.InsertionFormatHandler
 import com.android.tools.compose.code.completion.constraintlayout.JsonNewObjectTemplate
+import com.android.tools.compose.code.completion.constraintlayout.JsonNumericValueTemplate
 import com.android.tools.compose.code.completion.constraintlayout.JsonStringValueTemplate
 import com.android.tools.compose.code.completion.constraintlayout.KeyWords
+import com.android.tools.compose.code.completion.constraintlayout.LiteralNewLineFormat
+import com.android.tools.compose.code.completion.constraintlayout.LiteralWithCaretFormat
+import com.android.tools.compose.code.completion.constraintlayout.LiveTemplateFormat
+import com.android.tools.compose.code.completion.constraintlayout.RenderTransform
+import com.android.tools.compose.code.completion.constraintlayout.SpecialAnchor
+import com.android.tools.compose.code.completion.constraintlayout.StandardAnchor
+import com.android.tools.compose.code.completion.constraintlayout.inserthandler.FormatWithCaretInsertHandler
+import com.android.tools.compose.code.completion.constraintlayout.inserthandler.FormatWithLiveTemplateInsertHandler
+import com.android.tools.compose.code.completion.constraintlayout.inserthandler.FormatWithNewLineInsertHandler
 import com.android.tools.compose.code.completion.constraintlayout.provider.model.ConstraintSetModel
 import com.android.tools.compose.code.completion.constraintlayout.provider.model.ConstraintSetsPropertyModel
+import com.android.tools.compose.code.completion.constraintlayout.provider.model.ConstraintsModel
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
@@ -120,16 +133,122 @@ internal object ConstraintSetNamesProvider : BaseConstraintSetsCompletionProvide
   }
 }
 
+/**
+ * Autocomplete options used to define the constraints of a widget (defined by the ID) within a ConstraintSet
+ */
+internal object ConstraintsProvider : BaseConstraintSetsCompletionProvider() {
+  override fun addCompletions(
+    constraintSetsPropertyModel: ConstraintSetsPropertyModel,
+    parameters: CompletionParameters,
+    result: CompletionResultSet
+  ) {
+    val currentConstraintsModel = getJsonPropertyParent(parameters)?.let { ConstraintsModel(it) }
+    val existingFields = currentConstraintsModel?.declaredFieldNames?.toHashSet() ?: emptySet<String>()
+    StandardAnchor.values().forEach {
+      if (!existingFields.contains(it.keyWord)) {
+        result.addLookupElement(name = it.keyWord, tailText = " [...]", format = ConstrainAnchorTemplate)
+      }
+    }
+    result.addStringValueCompletions<SpecialAnchor>(existingFields)
+    result.addNumericValueCompletions<Dimension>(existingFields)
+    result.addNumericValueCompletions<RenderTransform>(existingFields)
+  }
+}
+
+/**
+ * Provides IDs when autocompleting a constraint array.
+ *
+ * The ID may be either 'parent' or any of the declared IDs in all ConstraintSets, except the ID of the constraints block from which this
+ * provider was invoked.
+ */
+internal object ConstraintIdsProvider : BaseConstraintSetsCompletionProvider() {
+  override fun addCompletions(
+    constraintSetsPropertyModel: ConstraintSetsPropertyModel,
+    parameters: CompletionParameters,
+    result: CompletionResultSet
+  ) {
+    val possibleIds = constraintSetsPropertyModel.constraintSets.flatMap { it.declaredIds }.toCollection(HashSet())
+    // Parent ID should always be present
+    possibleIds.add(KeyWords.ParentId)
+    // Remove the current ID
+    getJsonPropertyParent(parameters)?.name?.let(possibleIds::remove)
+
+    possibleIds.forEach { id ->
+      result.addLookupElement(id)
+    }
+  }
+}
+
+/**
+ * Provides the appropriate anchors when completing a constraint array.
+ *
+ * [StandardAnchor.verticalAnchors] can only be constrained to other vertical anchors. Same logic for [StandardAnchor.horizontalAnchors].
+ */
+internal object AnchorablesProvider : BaseConstraintSetsCompletionProvider() {
+  override fun addCompletions(
+    constraintSetsPropertyModel: ConstraintSetsPropertyModel,
+    parameters: CompletionParameters,
+    result: CompletionResultSet
+  ) {
+    val currentAnchorKeyWord = parameters.position.parentOfType<JsonProperty>(withSelf = true)?.name ?: return
+
+    val possibleAnchors = when {
+      StandardAnchor.isVertical(currentAnchorKeyWord) -> StandardAnchor.verticalAnchors
+      StandardAnchor.isHorizontal(currentAnchorKeyWord) -> StandardAnchor.horizontalAnchors
+      else -> emptyList()
+    }
+    possibleAnchors.forEach { result.addLookupElement(name = it.keyWord) }
+  }
+}
+
 private fun CompletionResultSet.addLookupElement(name: String, tailText: String? = null, format: InsertionFormat? = null) {
   var lookupBuilder = if (format == null) {
     LookupElementBuilder.create(name)
   }
   else {
-    LookupElementBuilder.create(format, name).withInsertHandler(InsertionFormatHandler)
+    val insertionHandler = when (format) {
+      is LiteralWithCaretFormat -> FormatWithCaretInsertHandler(format)
+      is LiteralNewLineFormat -> FormatWithNewLineInsertHandler(format)
+      is LiveTemplateFormat -> FormatWithLiveTemplateInsertHandler(format)
+    }
+    LookupElementBuilder.create(name).withInsertHandler(insertionHandler)
   }
   lookupBuilder = lookupBuilder.withCaseSensitivity(false)
   if (tailText != null) {
     lookupBuilder = lookupBuilder.withTailText(tailText, true)
   }
   addElement(lookupBuilder)
+}
+
+/**
+ * Add the [ConstraintLayoutKeyWord.keyWord] of the enum constants as a completion result that takes a string for its value.
+ */
+private inline fun <reified E> CompletionResultSet.addStringValueCompletions(
+  existing: Set<String>
+) where E : Enum<E>, E : ConstraintLayoutKeyWord {
+  addCompletions<E>(this, existing, JsonStringValueTemplate)
+}
+
+/**
+ * Add the [ConstraintLayoutKeyWord.keyWord] of the enum constants as a completion result that takes a number for its value.
+ */
+private inline fun <reified E> CompletionResultSet.addNumericValueCompletions(
+  existing: Set<String>
+) where E : Enum<E>, E : ConstraintLayoutKeyWord {
+  addCompletions<E>(this, existing, JsonNumericValueTemplate)
+}
+
+/**
+ * Helper function to simplify adding enum constant members to the completion result.
+ */
+private inline fun <reified E> addCompletions(
+  result: CompletionResultSet,
+  existing: Set<String>,
+  format: InsertionFormat
+) where E : Enum<E>, E : ConstraintLayoutKeyWord {
+  E::class.java.enumConstants.forEach { constant ->
+    if (!existing.contains(constant.keyWord)) {
+      result.addLookupElement(name = constant.keyWord, format = format)
+    }
+  }
 }

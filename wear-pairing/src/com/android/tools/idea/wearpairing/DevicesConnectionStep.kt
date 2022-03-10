@@ -49,7 +49,6 @@ import com.intellij.util.IconUtil
 import com.intellij.util.SVGLoader
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBFont
-import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.JBUI.Borders.empty
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
@@ -157,6 +156,8 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
         wearIDevice = model.selectedWearDevice.launchDeviceIfNeeded() ?: return@launch
         secondStageStep!!.phoneIDevice = phoneIDevice
         secondStageStep.wearIDevice = wearIDevice
+
+        waitForDevicePairingStatus(phoneIDevice, wearIDevice)
         LOG.warn("Devices are online")
       }
 
@@ -355,27 +356,13 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
     try {
       showUiLaunchingDevice(value.displayName)
 
-      var isColdBoot = false
       val iDevice = value.launch(project).await()
       value.launch = { Futures.immediateFuture(iDevice) }  // We can only launch AVDs once!
 
       // If it was not launched by us, it may still be booting. Wait for "boot complete".
       while (!iDevice.arePropertiesSet() || iDevice.getProperty("dev.bootcomplete") == null) {
         LOG.warn("${iDevice.name} not ready yet")
-        isColdBoot = true
         delay(2000)
-      }
-
-      if (isColdBoot || iDevice.retrieveUpTime() < 200.0) {
-        // Give some time for Node/Cloud ID to load, but not too long, as it may just mean it never paired before
-        showUiWaitingDeviceStatus()
-        if (iDevice.hasPairingFeature(PairingFeature.GET_PAIRING_STATUS)) {
-          waitForCondition(50_000) { iDevice.isPairingStatusAvailable() }
-        }
-        else {
-          waitForCondition(50_000) { iDevice.loadNodeID().isNotEmpty() }
-          waitForCondition(10_000) { iDevice.loadCloudNetworkID(ignoreNullOutput = false).isNotEmpty() }
-        }
       }
 
       return iDevice
@@ -388,6 +375,28 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
       LOG.warn("Failed to launch device", ex)
       return null
     }
+  }
+
+  private suspend fun IDevice.waitForPairingStatus() {
+    if (hasPairingFeature(PairingFeature.GET_PAIRING_STATUS)) {
+      waitForCondition(50_000) { isPairingStatusAvailable() }
+    }
+    else {
+      // Give some time for Node/Cloud ID to load, but not too long, as it may just mean it never paired before
+      waitForCondition(50_000) { loadNodeID().isNotEmpty() }
+      waitForCondition(10_000) { loadCloudNetworkID(ignoreNullOutput = false).isNotEmpty() }
+    }
+  }
+
+  private suspend fun waitForDevicePairingStatus(phoneDevice: IDevice, wearDevice: IDevice) {
+    showUiWaitingDeviceStatus()
+
+    val companionAppId = wearDevice.getCompanionAppIdForWatch()
+    if (phoneDevice.isCompanionAppInstalled(companionAppId)) { // No need to wait, if Companion App is not installed
+      phoneDevice.waitForPairingStatus()
+    }
+
+    wearDevice.waitForPairingStatus()
   }
 
   private suspend fun showUI(
@@ -666,8 +675,7 @@ class DevicesConnectionStep(model: WearDevicePairingModel,
     // Load svg image offline
     check(!EventQueue.isDispatchThread())
     val svgUrl = (StudioIcons.Common.SUCCESS as IconLoader.CachedImageIcon).url!!
-    val imgSize = JBUI.size(150, 150)
-    val svgImg = SVGLoader.load(svgUrl, svgUrl.openStream(), ScaleContext.create(mainPanel), imgSize.getWidth(), imgSize.getHeight())
+    val svgImg = SVGLoader.load(svgUrl, svgUrl.openStream(), ScaleContext.create(mainPanel), 150.0, 150.0)
     val successLabel = message(if (tapAndFinishWarning) { "wear.assistant.device.connection.pairing.success.skipandfinish" }
                                else { "wear.assistant.device.connection.pairing.success.subtitle" }, phoneName, watchName)
     val svgLabel = JBLabel(successLabel).apply {

@@ -88,7 +88,6 @@ Agent::Agent(const vector<string>& args)
 }
 
 Agent::~Agent() {
-  Log::I("Screen sharing agent is stopping");
   delete controller_;
   delete display_streamer_;
 }

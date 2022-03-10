@@ -117,10 +117,6 @@
       <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="CompileProject"/>
     </action>
 
-    <action id="WelcomeScreen.RunAndroidAvdManager" class="com.android.tools.idea.devicemanager.legacy.actions.RunAndroidAvdManagerAction"
-            icon="StudioIcons.Shell.Menu.AVD_MANAGER">
-      <add-to-group group-id="WelcomeScreen.QuickStart" relative-to-action="WelcomeScreen.RunAndroidSdkManager" anchor="after"/>
-    </action>
     <action id="WelcomeScreen.RunDeviceManager"
             text="Virtual Device Manager"
             class="com.android.tools.idea.devicemanager.DeviceManagerWelcomeScreenAction"
@@ -130,7 +126,7 @@
 
     <group id="Android.NavBarToolBar">
       <reference id="Android.SyncProject" />
-      <reference id="Android.RunAndroidAvdManager" />
+      <reference id="Android.DeviceManager" />
       <separator/>
       <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="SearchEverywhere" />
     </group>

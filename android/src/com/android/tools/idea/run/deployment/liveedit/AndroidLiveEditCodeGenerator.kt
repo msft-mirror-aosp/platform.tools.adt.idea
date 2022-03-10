@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fileClasses.javaFileFacadeFqName
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
@@ -236,7 +237,10 @@ class AndroidLiveEditCodeGenerator(val project: Project){
     var targetFunction = input.function
     val compilerOutput = generationState.factory.asList()
     var bindingContext = generationState.bindingContext
-    val methodSignature = remapFunctionSignatureIfNeeded(targetFunction, bindingContext, generationState.typeMapper)
+    val desc = bindingContext[BindingContext.FUNCTION, targetFunction]!!
+
+    val methodSignature = remapFunctionSignatureIfNeeded(desc, generationState.typeMapper)
+    val isCompose = desc.hasComposableAnnotation()
 
     var elem: PsiElement = targetFunction
     while (elem.getKotlinFqName() == null || elem !is KtNamedFunction) {
@@ -302,9 +306,9 @@ class AndroidLiveEditCodeGenerator(val project: Project){
     val idx = methodSignature.indexOf('(')
     val methodName = methodSignature.substring(0, idx);
     val methodDesc = methodSignature.substring(idx)
+    val functionType = if (isCompose) FunctionType.COMPOSABLE else FunctionType.KOTLIN
 
-    // TODO: Check if function is composable.
-    return CodeGeneratorOutput(internalClassName, methodName, methodDesc, primaryClass, FunctionType.KOTLIN,
+    return CodeGeneratorOutput(internalClassName, methodName, methodDesc, primaryClass, functionType,
                                input.state.initialOffsetOf(function)!!, supportClasses)
   }
 
@@ -330,6 +334,7 @@ class AndroidLiveEditCodeGenerator(val project: Project){
 
       var message = cause.message!!
       if (message.contains("Unhandled intrinsic in ExpressionCodegen")) {
+        // This bug should be fixed as of Dolphin C5. We should leave it in in case of regression / other scenerios that triggers it again.
         var nameStart = message.indexOf("name:") + "name:".length
         var nameEnd = message.indexOf(' ', nameStart)
         var name = message.substring(nameStart, nameEnd)
@@ -337,13 +342,22 @@ class AndroidLiveEditCodeGenerator(val project: Project){
         throw LiveEditUpdateException.knownIssue(201728545,
                                                  "unable to compile a file that reference a top level function in another source file.\n" +
                                                  "For now work around this by moving function $name inside the class.")
+      } else if (message.contains("Back-end (JVM) Internal error: Couldn't inline method call")) {
+        // We currently don't support inline function calls to another source code file.
+
+        var nameStart = message.indexOf("Couldn't inline method call: CALL '") + "Couldn't inline method call: CALL '".length
+        var nameEnd = message.indexOf("'", nameStart)
+        var name = message.substring(nameStart, nameEnd)
+
+        throw LiveEditUpdateException.knownIssue(223485031,
+                                                 "Unable to update function that references" +
+                                                 " an inline function from another source file: $name")
       }
     }
     throw LiveEditUpdateException.compilationError(e.message?:"No error message", e)
   }
 
-  fun remapFunctionSignatureIfNeeded(function : KtFunction, context: BindingContext, mapper: KotlinTypeMapper) : String {
-    val desc = context[BindingContext.FUNCTION, function]!!
+  fun remapFunctionSignatureIfNeeded(desc: SimpleFunctionDescriptor, mapper: KotlinTypeMapper) : String {
     var target = "${desc.name}("
     for (param in desc.valueParameters) {
       target += remapComposableFunctionType(param.type, mapper)

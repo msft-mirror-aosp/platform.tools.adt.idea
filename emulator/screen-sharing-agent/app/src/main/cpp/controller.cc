@@ -16,6 +16,8 @@
 
 #include "controller.h"
 
+#include <unistd.h>
+
 #include <thread>
 
 #include "accessors/motion_event.h"
@@ -40,6 +42,7 @@ constexpr int BATTERY_PLUGGED_USB = 2;
 constexpr int BATTERY_PLUGGED_WIRELESS = 4;
 
 constexpr int BUFFER_SIZE = 4096;
+constexpr int UTF8_MAX_BYTES_PER_CHARACTER = 4;
 
 int64_t UptimeMillis() {
   timespec t = { 0, 0 };
@@ -47,28 +50,48 @@ int64_t UptimeMillis() {
   return static_cast<int64_t>(t.tv_sec) * 1000LL + t.tv_nsec / 1000000;
 }
 
+// Returns the number of Unicode code points contained in the given UTF-8 string.
+int Utf8CharacterCount(const string& str) {
+  int count = 0;
+  for (auto c : str) {
+    if ((c & 0xC0) != 0x80) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 }  // namespace
 
 Controller::Controller(int socket_fd)
-    : input_stream_(socket_fd, BUFFER_SIZE),
+    : socket_fd_(socket_fd),
+      input_stream_(socket_fd, BUFFER_SIZE),
+      output_stream_(socket_fd, BUFFER_SIZE),
       thread_(),
       input_manager_(),
       pointer_helper_(),
       motion_event_start_time_(0),
       key_character_map_(),
       stay_on_(Settings::Table::GLOBAL, "stay_on_while_plugged_in"),
-      accelerometer_rotation_(Settings::Table::SYSTEM, "accelerometer_rotation") {
+      accelerometer_rotation_(Settings::Table::SYSTEM, "accelerometer_rotation"),
+      clipboard_listener_(this),
+      clipboard_manager_(),  // Assigned on first use.
+      max_synced_clipboard_length_(0),
+      setting_clipboard_(false) {
   assert(socket_fd > 0);
 }
 
 Controller::~Controller() {
   input_stream_.Close();
+  StopClipboardSync();
+  clipboard_manager_->RemoveClipboardListener(&clipboard_listener_);
   if (thread_.joinable()) {
     thread_.join();
   }
   delete input_manager_;
   delete pointer_helper_;
   delete key_character_map_;
+  close(socket_fd_);
 }
 
 void Controller::Start() {
@@ -84,6 +107,8 @@ void Controller::Start() {
 
 void Controller::Shutdown() {
   input_stream_.Close();
+  StopClipboardSync();
+  output_stream_.Close();
 }
 
 void Controller::Initialize() {
@@ -117,9 +142,10 @@ void Controller::Run() {
       unique_ptr<ControlMessage> message = ControlMessage::Deserialize(input_stream_);
       ProcessMessage(*message);
     }
+  } catch (StreamClosedException& e) {
+    Log::D("Controller::Run: Command stream closed");
   } catch (EndOfFile& e) {
     Log::D("Controller::Run: End of command stream");
-    // Returning from the Run method.
   } catch (IoException& e) {
     Log::Fatal("%s", e.GetMessage().c_str());
   }
@@ -145,6 +171,14 @@ void Controller::ProcessMessage(const ControlMessage& message) {
 
     case SetMaxVideoResolutionMessage::TYPE:
       ProcessSetMaxVideoResolution((const SetMaxVideoResolutionMessage&) message);
+      break;
+
+    case StartClipboardSyncMessage::TYPE:
+      StartClipboardSync((const StartClipboardSyncMessage&) message);
+      break;
+
+    case StopClipboardSyncMessage::TYPE:
+      StopClipboardSync();
       break;
 
     default:
@@ -264,6 +298,47 @@ void Controller::ProcessSetMaxVideoResolution(const SetMaxVideoResolutionMessage
   }
   Size max_size(message.get_width(), message.get_height());
   Agent::OnMaxVideoResolutionChanged(max_size);
+}
+
+void Controller::StartClipboardSync(const StartClipboardSyncMessage& message) {
+  int old_synced_clipboard_length = max_synced_clipboard_length_.exchange(message.get_max_synced_length());
+  clipboard_manager_ = ClipboardManager::GetInstance(jni_);
+  setting_clipboard_ = true;
+  clipboard_manager_->SetText(jni_, message.get_text());
+  if (old_synced_clipboard_length == 0) {
+    clipboard_manager_->AddClipboardListener(&clipboard_listener_);
+  }
+  setting_clipboard_ = false;
+}
+
+void Controller::StopClipboardSync() {
+  max_synced_clipboard_length_ = 0;
+}
+
+void Controller::OnPrimaryClipChanged() {
+  if (setting_clipboard_) {
+    return;
+  }
+  // Can't use jni_ because this method may be called on an arbitrary thread.
+  auto text = clipboard_manager_->GetText(Jvm::GetJni());
+  int max_length = max_synced_clipboard_length_;
+  if (!text.empty() && text.size() <= max_length * UTF8_MAX_BYTES_PER_CHARACTER && Utf8CharacterCount(text) <= max_length) {
+    ClipboardChangedMessage message(move(text));
+    try {
+      message.Serialize(output_stream_);
+      output_stream_.Flush();
+    } catch (StreamClosedException& e) {
+      // The stream has been closed - ignore.
+    } catch (EndOfFile& e) {
+      // The socket has been closed - ignore.
+    }
+  }
+}
+
+Controller::ClipboardListener::~ClipboardListener() = default;
+
+void Controller::ClipboardListener::OnPrimaryClipChanged() {
+  controller_->OnPrimaryClipChanged();
 }
 
 }  // namespace screensharing

@@ -26,11 +26,14 @@ import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.ApplicationIdProvider
-import com.android.tools.idea.run.ValidationError
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.collect.ImmutableList
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.Project
 import com.intellij.testFramework.replaceService
-import org.jetbrains.android.AndroidTestCase
+import org.junit.Before
+import org.junit.Rule
 import org.mockito.Mockito
 import java.io.File
 
@@ -44,12 +47,21 @@ fun Map<Command, String>.toCommandHandlers(): MutableMap<Command, CommandHandler
   }.toMutableMap()
 }
 
-abstract class AndroidConfigurationExecutorBaseTest : AndroidTestCase() {
+abstract class AndroidConfigurationExecutorBaseTest {
   protected val appId = "com.example.app"
   protected val componentName = "com.example.app.Component"
 
-  override fun setUp() {
-    super.setUp()
+  @get:Rule
+  val projectRule = AndroidProjectRule.onDisk()
+  val project: Project
+    get() = projectRule.project
+  val testRootDisposable: Disposable
+    get() = projectRule.testRootDisposable
+  val myModule: com.intellij.openapi.module.Module
+    get() = projectRule.module
+
+  @Before
+  fun setUp() {
     val projectSystemMock = createProjectSystemMock()
     Mockito.`when`(projectSystemMock.getApkProvider(MockitoKt.any(RunConfiguration::class.java))).thenReturn(TestApksProvider(appId))
     Mockito.`when`(projectSystemMock.getApplicationIdProvider(
@@ -77,6 +89,7 @@ abstract class AndroidConfigurationExecutorBaseTest : AndroidTestCase() {
       val handler = commandHandlers[command]
       handler?.invoke(device, receiver)
     }
+    Mockito.`when`(device.isOnline).thenReturn(true)
     return device
   }
 
@@ -91,10 +104,6 @@ abstract class AndroidConfigurationExecutorBaseTest : AndroidTestCase() {
     @Throws(ApkProvisionException::class)
     override fun getApks(device: IDevice): Collection<ApkInfo> {
       return listOf(ApkInfo(File("file"), appId))
-    }
-
-    override fun validate(): List<ValidationError> {
-      return ArrayList()
     }
   }
 

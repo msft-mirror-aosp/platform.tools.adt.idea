@@ -50,13 +50,16 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
       this.border = MatteBorder(InspectorLayout.TIMELINE_TOP_OFFSET, 0, 0, 0, InspectorColors.TIMELINE_BACKGROUND_COLOR)
     }
     // Timeline
-    secondComponent = JPanel(BorderLayout())
+    secondComponent = JPanel(BorderLayout()).apply {
+      this.border = MatteBorder(0, 1, 0, 0, JBColor.border())
+    }
     dividerWidth = 1
   }
 
   private fun updateDimension() {
-    splitter.firstComponent.preferredSize =
-      Dimension(width, InspectorLayout.TIMELINE_TOP_OFFSET + cards.sumOf { it.getCurrentHeight() })
+    val preferredHeight = InspectorLayout.TIMELINE_TOP_OFFSET + cards.sumOf { it.getCurrentHeight() }
+    splitter.firstComponent.preferredSize = Dimension(splitter.firstComponent.width, preferredHeight)
+    splitter.secondComponent.preferredSize = Dimension(splitter.secondComponent.width, preferredHeight)
   }
 
   private val cardsLayout

@@ -18,4 +18,73 @@ package com.android.tools.compose.code.completion.constraintlayout
 internal object KeyWords {
   const val ConstraintSets = "ConstraintSets"
   const val Extends = "Extends"
+  const val ParentId = "parent"
 }
+
+/**
+ * Common interface to simplify handling multiple enum Classes.
+ *
+ * [keyWord] is the case-sensitive string used in the syntax.
+ */
+internal interface ConstraintLayoutKeyWord {
+  val keyWord: String
+}
+
+//region Constrain KeyWords
+/**
+ * The classic anchors used to constrain a widget.
+ */
+internal enum class StandardAnchor(override val keyWord: String) : ConstraintLayoutKeyWord {
+  Start("start"),
+  Left("left"),
+  End("end"),
+  Right("right"),
+  Top("top"),
+  Bottom("bottom"),
+  Baseline("baseline");
+
+  companion object {
+    fun isVertical(keyWord: String) = verticalAnchors.any { it.keyWord == keyWord }
+
+    fun isHorizontal(keyWord: String) = horizontalAnchors.any { it.keyWord == keyWord }
+
+    val horizontalAnchors: List<StandardAnchor> = listOf(Start, End, Left, Right)
+
+    val verticalAnchors: List<StandardAnchor> = listOf(Top, Bottom, Baseline)
+  }
+}
+
+/**
+ * Non-typical anchors.
+ *
+ * These implicitly apply multiple [StandardAnchor]s.
+ */
+internal enum class SpecialAnchor(override val keyWord: String) : ConstraintLayoutKeyWord {
+  Center("center"),
+  CenterH("centerHorizontally"),
+  CenterV("centerVertically")
+}
+
+/**
+ * Supported keywords to define the dimension of a widget.
+ */
+internal enum class Dimension(override val keyWord: String) : ConstraintLayoutKeyWord {
+  Width("width"),
+  Height("height")
+}
+
+/**
+ * Keywords to apply rendering time transformations to a widget.
+ */
+internal enum class RenderTransform(override val keyWord: String) : ConstraintLayoutKeyWord {
+  Alpha("alpha"),
+  ScaleX("scaleX"),
+  ScaleY("scaleY"),
+  RotationX("rotationX"),
+  RotationY("rotationY"),
+  RotationZ("rotationZ"),
+  TranslationX("translationX"),
+  TranslationY("translationY"),
+  TranslationZ("translationZ"),
+}
+//endregion

@@ -27,6 +27,7 @@ import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
+import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
 import java.util.concurrent.CountDownLatch
@@ -39,6 +40,8 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
   private val showWatchFace = "am broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface"
   private val unsetWatchFace = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation unset-watchface"
   private val setDebugAppAm = "am set-debug-app -w 'com.example.app'"
+  private val clearDebugAppAm = "am clear-debug-app"
+  private val clearDebugAppBroadcast = "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation 'clear-debug-app'"
 
   private fun getExecutionEnvironment(executorInstance: Executor): ExecutionEnvironment {
     val configSettings = RunManager.getInstance(project).createConfiguration(
@@ -50,6 +53,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     return ExecutionEnvironment(executorInstance, AndroidConfigurationProgramRunner(), configSettings, project)
   }
 
+  @Test
   fun testRun() {
     // Use DefaultRunExecutor, equivalent of pressing run button.
     val env = getExecutionEnvironment(DefaultRunExecutor.getRunExecutorInstance())
@@ -91,6 +95,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     assertThat(commands[2]).isEqualTo(showWatchFace)
   }
 
+  @Test
   fun testDebug() {
     // Use DefaultRunExecutor, equivalent of pressing debug button.
     val env = getExecutionEnvironment(DefaultDebugExecutor.getDebugExecutorInstance())
@@ -102,6 +107,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
       checkVersion to
         "Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }\n" +
         "Broadcast completed: result=1, data=\"3\"",
+      clearDebugAppBroadcast to ""
     ).toCommandHandlers()
 
     val runnableClientsService = RunnableClientsService(testRootDisposable)
@@ -117,10 +123,17 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
       receiver.addOutput("Broadcast completed: result=1")
     }
 
+    val processTerminatedLatch = CountDownLatch(1)
+    val clearDebugAppAmCommandHandler: CommandHandler = { device, receiver ->
+      receiver.addOutput("")
+      processTerminatedLatch.countDown()
+    }
+
     val device = getMockDevice(
       commandHandlers +
       (setWatchFace to setWatchFaceCommandHandler) +
-      (unsetWatchFace to unsetWatchFaceCommandHandler)
+      (unsetWatchFace to unsetWatchFaceCommandHandler) +
+      (clearDebugAppAm to clearDebugAppAmCommandHandler)
     )
 
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
@@ -128,16 +141,19 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     // Mock app installation.
     Mockito.doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
 
-    val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(1000)
+    val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(10, TimeUnit.SECONDS)
     assertThat(runContentDescriptor!!.processHandler).isNotNull()
+
+    // Verify previous app instance is terminated.
+    Mockito.verify(executor, Mockito.times(1)).terminatePreviousAppInstance(any())
 
     // Stop configuration.
     runContentDescriptor.processHandler!!.destroyProcess()
-    runContentDescriptor.processHandler!!.waitFor()
+    processTerminatedLatch.await(1, TimeUnit.SECONDS)
 
     // Verify commands sent to device.
     val commandsCaptor = ArgumentCaptor.forClass(String::class.java)
-    Mockito.verify(device, Mockito.times(5)).executeShellCommand(
+    Mockito.verify(device, Mockito.times(7)).executeShellCommand(
       commandsCaptor.capture(),
       any(IShellOutputReceiver::class.java),
       any(),
@@ -155,10 +171,14 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     assertThat(commands[3]).isEqualTo(showWatchFace)
     // Unset watch face
     assertThat(commands[4]).isEqualTo(unsetWatchFace)
+    // Clear debug app
+    assertThat(commands[5]).isEqualTo(clearDebugAppBroadcast)
+    assertThat(commands[6]).isEqualTo(clearDebugAppAm)
   }
 
+  @Test
   fun testWatchFaceProcessHandler() {
-    val processHandler = WatchFaceProcessHandler(Mockito.mock(ConsoleView::class.java))
+    val processHandler = WatchFaceProcessHandler(Mockito.mock(ConsoleView::class.java), false)
     val countDownLatch = CountDownLatch(1)
     val device = getMockDevice(mapOf(
       unsetWatchFace to { _, _ -> countDownLatch.countDown() }
