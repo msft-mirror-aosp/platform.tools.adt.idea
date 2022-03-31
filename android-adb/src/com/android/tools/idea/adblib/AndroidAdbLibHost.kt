@@ -16,11 +16,8 @@
 package com.android.tools.idea.adblib
 
 import com.android.adblib.AdbLibHost
-import com.android.adblib.AdbLogger
 import com.android.adblib.AdbLoggerFactory
 import com.android.tools.idea.concurrency.AndroidDispatchers
-import com.intellij.openapi.diagnostic.Logger
-import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Implementation of [AdbLibHost] that integrates with the IntelliJ/Android Studio platform.
@@ -31,9 +28,6 @@ internal class AndroidAdbLibHost : AdbLibHost() {
   override val loggerFactory: AdbLoggerFactory by lazy {
     AndroidAdbLoggerFactory()
   }
-
-  override val ioDispatcher: CoroutineDispatcher
-    get() = AndroidDispatchers.ioThread
 
   override fun close() {
     // Nothing to do

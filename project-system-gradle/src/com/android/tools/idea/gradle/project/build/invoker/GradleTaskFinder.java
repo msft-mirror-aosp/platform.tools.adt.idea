@@ -21,8 +21,11 @@ import static com.android.tools.idea.gradle.util.GradleBuilds.BUILD_SRC_FOLDER_N
 import static com.android.tools.idea.gradle.util.GradleBuilds.CLEAN_TASK_NAME;
 import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.createFullTaskName;
 import static com.android.tools.idea.gradle.util.GradleUtil.findModuleByGradlePath;
+import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getBuildRootDir;
+import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getGradleProjectPathCore;
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
+import static com.intellij.util.PathUtil.toSystemIndependentName;
 import static java.util.Arrays.stream;
 import static java.util.stream.Stream.concat;
 
@@ -39,6 +42,7 @@ import com.android.tools.idea.gradle.util.BuildMode;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.gradle.util.GradleProjects;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPathCore;
 import com.android.utils.Pair;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.LinkedHashMultimap;
@@ -128,8 +132,8 @@ public class GradleTaskFinder {
     }
 
     for (Module module : allModules) {
-      String modulePath = ExternalSystemModulePropertyManager.getInstance(module).getLinkedProjectId();
-      if (modulePath != null && modulePath.endsWith(":" + BUILD_SRC_FOLDER_NAME)) {
+      String moduleFilePath = ExternalSystemModulePropertyManager.getInstance(module).getLinkedProjectPath();
+      if (moduleFilePath != null && (toSystemIndependentName(moduleFilePath).endsWith("/" + BUILD_SRC_FOLDER_NAME))) {
         // "buildSrc" is a special case handled automatically by Gradle.
         continue;
       }
@@ -140,7 +144,9 @@ public class GradleTaskFinder {
         module = moduleAndGradleProjectPath.getFirst();
         String gradlePath = moduleAndGradleProjectPath.getSecond();
         findAndAddGradleBuildTasks(module, gradlePath, buildMode, moduleTasks, testCompileType);
-        Path keyPath = ProjectStructure.getInstance(module.getProject()).getModuleFinder().getRootProjectPath(module);
+        GradleProjectPathCore gradleProjectPathCore = getGradleProjectPathCore(module, false);
+        if (gradleProjectPathCore == null) continue;
+        Path keyPath = getBuildRootDir(gradleProjectPathCore).toPath();
         if (buildMode == REBUILD && !moduleTasks.isEmpty()) {
           // Clean only if other tasks are needed
           cleanTasks.put(keyPath, createFullTaskName(gradlePath, CLEAN_TASK_NAME));
@@ -172,20 +178,16 @@ public class GradleTaskFinder {
     GradleFacet gradleFacet = GradleFacet.getInstance(module);
     // TODO(b/203237539)
     if (gradleFacet == null) {
-      if (ModuleUtil.isModulePerSourceSetEnabled(module.getProject())) {
-        int lastIndexOfDot = module.getName().lastIndexOf(".");
-        if (lastIndexOfDot > 0) {
-          String parentModuleName = module.getName().substring(0, lastIndexOfDot);
-          Module parentModule = ModuleManager.getInstance(module.getProject()).findModuleByName(parentModuleName);
-          if (parentModule != null) {
-            gradleFacet = GradleFacet.getInstance(parentModule);
-            module = parentModule;
-          }
+      int lastIndexOfDot = module.getName().lastIndexOf(".");
+      if (lastIndexOfDot > 0) {
+        String parentModuleName = module.getName().substring(0, lastIndexOfDot);
+        Module parentModule = ModuleManager.getInstance(module.getProject()).findModuleByName(parentModuleName);
+        if (parentModule != null) {
+          gradleFacet = GradleFacet.getInstance(parentModule);
+          module = parentModule;
         }
-        if (gradleFacet == null) {
-          return null;
-        }
-      } else {
+      }
+      if (gradleFacet == null) {
         return null;
       }
     }

@@ -190,13 +190,15 @@ class MakeBeforeRunTaskProvider(private val project: Project) : BeforeRunTaskPro
       val ndkModel = get(module!!)
       val androidModel = GradleAndroidModel.get(module)
       if (ndkModel != null && androidModel != null) {
-        val selectedVariantName = androidModel.selectedVariant.name
-        val availableAbis = ndkModel.syncedVariantAbis
-          .filter { it.variant == selectedVariantName }
-          .map { it.abi }
-          .toSet()
-        if (!availableAbis.containsAll(abis!!)) {
-          return SyncNeeded.NATIVE_VARIANTS_SYNC_NEEDED
+        if (ndkModel.ndkModel.needsAbiSyncBeforeRun) {
+          val selectedVariantName = androidModel.selectedVariant.name
+          val availableAbis = ndkModel.syncedVariantAbis
+            .filter { it.variant == selectedVariantName }
+            .map { it.abi }
+            .toSet()
+          if (!availableAbis.containsAll(abis!!)) {
+            return SyncNeeded.NATIVE_VARIANTS_SYNC_NEEDED
+          }
         }
       }
     }
@@ -398,8 +400,9 @@ class MakeBeforeRunTaskProvider(private val project: Project) : BeforeRunTaskPro
         arguments.add(AndroidGradleSettings.createJvmArg("android.profiler.properties", propertiesFile.absolutePath))
       }
       // Append PROFILING_MODE if set by profilers.
-      if (StudioFlags.PROFILEABLE_BUILDS.get() && configuration.profilingMode != ProfilerState.ProfilingMode.NOT_SET) {
-        arguments.add(AndroidGradleSettings.createProjectProperty(ProfilerState.PROFILING_MODE_PROPERTY_NAME, configuration.profilingMode.value))
+      if (StudioFlags.PROFILEABLE_BUILDS.get() && configuration.profilingMode.shouldInjectProjectProperty()) {
+        arguments.add(
+          AndroidGradleSettings.createProjectProperty(ProfilerState.PROFILING_MODE_PROPERTY_NAME, configuration.profilingMode.value))
       }
       return arguments
     }

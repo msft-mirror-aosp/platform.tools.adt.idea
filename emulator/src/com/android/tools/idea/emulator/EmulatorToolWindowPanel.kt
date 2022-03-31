@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.emulator
 
+import com.android.annotations.concurrency.AnyThread
 import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.ExtendedControlsStatus
@@ -175,7 +176,7 @@ class EmulatorToolWindowPanel(
     displayPanels[primaryDisplayPanel.displayId] = primaryDisplayPanel
     val emulatorView = primaryDisplayPanel.displayView
     primaryEmulatorView = emulatorView
-    mainToolbar.setTargetComponent(emulatorView)
+    mainToolbar.targetComponent = emulatorView
     emulatorView.addPropertyChangeListener(DISPLAY_MODE_PROPERTY) {
       mainToolbar.updateActionsImmediately()
     }
@@ -253,7 +254,7 @@ class EmulatorToolWindowPanel(
     centerPanel.removeAll()
     displayPanels.clear()
     primaryEmulatorView = null
-    mainToolbar.setTargetComponent(this)
+    mainToolbar.targetComponent = this
     clipboardSynchronizer = null
     lastUiState = uiState
     return uiState
@@ -274,7 +275,7 @@ class EmulatorToolWindowPanel(
     val toolbar = ActionManager.getInstance().createActionToolbar(toolbarId, DefaultActionGroup(actions), horizontal)
     toolbar.layoutPolicy = ActionToolbar.AUTO_LAYOUT_POLICY
     makeToolbarNavigable(toolbar)
-    toolbar.setTargetComponent(this)
+    toolbar.targetComponent = this
     return toolbar
   }
 
@@ -282,10 +283,12 @@ class EmulatorToolWindowPanel(
 
     var displayDescriptors = emptyList<DisplayDescriptor>()
 
+    @AnyThread
     override fun displayConfigurationChanged() {
       refreshDisplayConfiguration()
     }
 
+    @AnyThread
     fun refreshDisplayConfiguration() {
       emulator.getDisplayConfigurations(object : EmptyStreamObserver<DisplayConfigurations>() {
         override fun onNext(response: DisplayConfigurations) {
@@ -317,6 +320,7 @@ class EmulatorToolWindowPanel(
       val rootPanel = buildLayout(layoutRoot, newDisplays)
       displayDescriptors = newDisplays
       setRootPanel(rootPanel)
+      mainToolbar.updateActionsImmediately()
     }
 
     fun buildLayout(multiDisplayState: MultiDisplayState) {

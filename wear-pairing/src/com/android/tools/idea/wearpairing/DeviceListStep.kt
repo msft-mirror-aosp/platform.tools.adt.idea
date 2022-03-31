@@ -20,7 +20,7 @@ import com.android.tools.adtui.HtmlLabel
 import com.android.tools.adtui.common.ColoredIconGenerator.generateWhiteIcon
 import com.android.tools.adtui.util.HelpTooltipForList
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
+import com.android.tools.idea.concurrency.AndroidDispatchers.diskIoThread
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.observable.ListenerManager
 import com.android.tools.idea.observable.core.BoolValueProperty
@@ -340,7 +340,7 @@ class DeviceListStep(model: WearDevicePairingModel, private val project: Project
             val item = JBMenuItem(message("wear.assistant.device.list.forget.connection", peerDevice.displayName))
             item.addActionListener {
               val process = Runnable {
-                val cloudSyncIsEnabled = runBlocking(context = ioThread) {
+                val cloudSyncIsEnabled = runBlocking(context = diskIoThread) {
                   withTimeoutOrNull(5_000) {
                     WearPairingManager.checkCloudSyncIsEnabled(phoneWearPair.phone)
                   }
@@ -348,7 +348,7 @@ class DeviceListStep(model: WearDevicePairingModel, private val project: Project
                 if (cloudSyncIsEnabled == true) {
                   ApplicationManager.getApplication().invokeLater({ showCloudSyncDialog(phoneWearPair.phone) }, ModalityState.any())
                 }
-                AndroidCoroutineScope(this@DeviceListStep).launch(ioThread) {
+                AndroidCoroutineScope(this@DeviceListStep).launch(diskIoThread) {
                   WearPairingManager.removeAllPairedDevices(listDevice.deviceID)
                   // Update pairing icon
                   ApplicationManager.getApplication().invokeLater(
@@ -419,6 +419,7 @@ class DeviceListStep(model: WearDevicePairingModel, private val project: Project
 
 private fun PairingDevice.isDisabled(): Boolean {
   return state == ConnectionState.DISCONNECTED || isEmulator && !isWearDevice && (apiLevel < 30 || !hasPlayStore)
+         || isEmulator && isWearDevice && apiLevel < 28
 }
 
 private fun PairingDevice.getTooltip(): String? {
@@ -429,7 +430,8 @@ private fun PairingDevice.getTooltip(): String? {
   }
 
   return when {
-    isEmulator && !isWearDevice && apiLevel < 30 -> message("wear.assistant.device.list.tooltip.requires.api")
+    isEmulator && isWearDevice && apiLevel < 28 -> message("wear.assistant.device.list.tooltip.requires.api", 28)
+    isEmulator && !isWearDevice && apiLevel < 30 -> message("wear.assistant.device.list.tooltip.requires.api", 30)
     isEmulator && !isWearDevice && !hasPlayStore -> message("wear.assistant.device.list.tooltip.requires.play")
     else -> null
   }

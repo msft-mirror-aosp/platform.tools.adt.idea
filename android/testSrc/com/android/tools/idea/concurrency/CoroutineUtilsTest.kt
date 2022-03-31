@@ -64,6 +64,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+import kotlin.time.Duration
 
 const val UI_THREAD = "UI thread"
 const val WORKER_THREAD = "Worker thread"
@@ -95,14 +96,15 @@ class CoroutineUtilsTest {
     workerExecutor = createExecutor(WORKER_THREAD)
     ioExecutor = createExecutor(IO_THREAD)
     testExecutors = AndroidExecutors({ _, code -> uiExecutor.execute(code) }, workerExecutor, ioExecutor)
-    ApplicationManager.getApplication().replaceService(AndroidExecutors::class.java, testExecutors, projectRule.project)
+    ApplicationManager.getApplication().replaceService(AndroidExecutors::class.java, testExecutors, projectRule.testRootDisposable)
   }
 
   @After
   fun tearDown() {
-    uiExecutor.shutdown()
-    workerExecutor.shutdown()
-    ioExecutor.shutdown()
+    listOf(uiExecutor, workerExecutor, ioExecutor).forEach {
+      it.shutdown()
+      it.awaitTermination(5, TimeUnit.SECONDS)
+    }
   }
 
   @Test
@@ -602,9 +604,14 @@ class CoroutineUtilsTest {
     val connected = CompletableDeferred<Unit>()
     val smartModeFlow = smartModeFlow(project, disposable, null) { connected.complete(Unit) }
 
+    val expectedModeChanges = 2
     val flowReceiverCount = AtomicInteger(0)
+    val countDownLatch = CountDownLatch(expectedModeChanges)
     val job = GlobalScope.launch(workerThread) {
-      smartModeFlow.collect { flowReceiverCount.incrementAndGet() }
+      smartModeFlow.collect {
+        flowReceiverCount.incrementAndGet()
+        countDownLatch.countDown()
+      }
     }
 
     runBlocking { connected.await() }
@@ -613,14 +620,16 @@ class CoroutineUtilsTest {
     val dumbService = DumbServiceImpl.getInstance(project)
     isDumb.forEach {
       runInEdtAndWait { dumbService.isDumb = it }
-      while (dumbService.isDumb != it) Thread.sleep(250)
     }
+
+    // Wait for the changes to be processed.
+    countDownLatch.await()
 
     // We should see two switches to smart mode.
     runBlocking {
-      job.cancel()
+      job.cancel() // Stop the channel
       job.join()
-      assertEquals(2, flowReceiverCount.get())
+      assertEquals(expectedModeChanges, flowReceiverCount.get()) // ensure that no more of expectedModeChanges have been received
     }
   }
 }

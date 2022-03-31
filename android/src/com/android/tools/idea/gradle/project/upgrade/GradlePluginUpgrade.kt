@@ -30,7 +30,10 @@ import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.sync.hyperlink.SearchInBuildFilesHyperlink
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages
 import com.android.tools.idea.gradle.project.sync.setup.post.TimeBasedReminder
-import com.android.tools.idea.gradle.project.upgrade.ForcePluginUpgradeReason.NO_FORCE
+import com.android.tools.idea.gradle.project.upgrade.AndroidGradlePluginCompatibility.AFTER_MAXIMUM
+import com.android.tools.idea.gradle.project.upgrade.AndroidGradlePluginCompatibility.BEFORE_MINIMUM
+import com.android.tools.idea.gradle.project.upgrade.AndroidGradlePluginCompatibility.COMPATIBLE
+import com.android.tools.idea.gradle.project.upgrade.AndroidGradlePluginCompatibility.DIFFERENT_PREVIEW
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.FORCE
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.NO_UPGRADE
 import com.android.tools.idea.gradle.project.upgrade.GradlePluginUpgradeState.Importance.RECOMMEND
@@ -187,7 +190,7 @@ fun performRecommendedPluginUpgrade(
 //  - gradle-wrapper.properties
 //  - gradle properties files
 //  - build-adjacent files (e.g. proguard files, AndroidManifest.xml for the change namespacing R classes)
-internal fun isCleanEnoughProject(project: Project): Boolean {
+fun isCleanEnoughProject(project: Project): Boolean {
   ModuleManager.getInstance(project).modules.forEach { module ->
     val gradleFacet = GradleFacet.getInstance(module) ?: return@forEach
     val buildFile = gradleFacet.gradleModuleModel?.buildFile ?: return@forEach
@@ -224,15 +227,17 @@ fun expireProjectUpgradeNotifications(project: Project?) {
 // **************************************************************************
 
 /**
- * Returns whether, given the [current] version of AGP and the [latestKnown] version to upgrade to (which should be the
- * version returned by [LatestKnownPluginVersionProvider] except for tests), we should force a plugin upgrade to that
- * recommended version.
+ * Returns whether, given the [current] version of AGP and the [latestKnown] version to Studio (which should be the
+ * version returned by [LatestKnownPluginVersionProvider] except for tests), we should consider the AGP version
+ * compatible with the running IDE.  If the versions are incompatible, we will have caused sync to fail; in most cases we
+ * will attempt to offer an upgrade, but some cases (e.g. a newer [current] than [latestKnown]) the user will be responsible
+ * for action to get the project to a working state.
  */
-fun versionsShouldForcePluginUpgrade(
+fun versionsAreIncompatible(
   current: GradleVersion,
   latestKnown: GradleVersion
 ) : Boolean {
-  return computeForcePluginUpgradeReason(current, latestKnown) != NO_FORCE
+  return computeAndroidGradlePluginCompatibility(current, latestKnown) != COMPATIBLE
 }
 
 /**
@@ -305,8 +310,8 @@ fun computeGradlePluginUpgradeState(
   latestKnown: GradleVersion,
   published: Set<GradleVersion>
 ): GradlePluginUpgradeState {
-  when (computeForcePluginUpgradeReason(current, latestKnown)) {
-    ForcePluginUpgradeReason.MINIMUM -> {
+  when (computeAndroidGradlePluginCompatibility(current, latestKnown)) {
+    BEFORE_MINIMUM -> {
       val minimum = GradleVersion.parse(SdkConstants.GRADLE_PLUGIN_MINIMUM_VERSION)
       val earliestStable = published
         .filter { !it.isPreview }
@@ -318,7 +323,7 @@ fun computeGradlePluginUpgradeState(
         ?.maxOrNull()
       return GradlePluginUpgradeState(FORCE, earliestStable ?: latestKnown)
     }
-    ForcePluginUpgradeReason.PREVIEW -> {
+    DIFFERENT_PREVIEW -> {
       val seriesAcceptableStable = published
         .filter { !it.isPreview }
         .filter { GradleVersion(it.major, it.minor) == GradleVersion(current.major, current.minor) }
@@ -330,7 +335,8 @@ fun computeGradlePluginUpgradeState(
       // X are released.)
       return GradlePluginUpgradeState(FORCE, seriesAcceptableStable ?: latestKnown)
     }
-    NO_FORCE -> Unit
+    AFTER_MAXIMUM -> return GradlePluginUpgradeState(FORCE, latestKnown)
+    COMPATIBLE -> Unit
   }
 
   if (current >= latestKnown) return GradlePluginUpgradeState(NO_UPGRADE, current)

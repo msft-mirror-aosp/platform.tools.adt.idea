@@ -24,7 +24,6 @@ import com.android.tools.idea.wearpairing.WearPairingManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBLabel;
@@ -98,34 +97,31 @@ final class PhysicalDeviceDetailsPanel extends DetailsPanel {
   }
 
   PhysicalDeviceDetailsPanel(@NotNull PhysicalDevice device, @Nullable Project project) {
-    this(device, new AsyncDetailsBuilder(project, device).buildAsync(), true);
+    this(device, new AsyncDetailsBuilder(project, device));
+  }
+
+  @VisibleForTesting
+  PhysicalDeviceDetailsPanel(@NotNull PhysicalDevice device, @NotNull AsyncDetailsBuilder builder) {
+    this(device, builder, SummarySectionCallback::new, WearPairingManager.INSTANCE);
   }
 
   @VisibleForTesting
   PhysicalDeviceDetailsPanel(@NotNull PhysicalDevice device,
-                             @NotNull ListenableFuture<@NotNull PhysicalDevice> future,
-                             boolean addPairedDevices) {
-    this(device, future, SummarySectionCallback::new, WearPairingManager.INSTANCE, addPairedDevices);
-  }
-
-  @VisibleForTesting
-  PhysicalDeviceDetailsPanel(@NotNull PhysicalDevice device,
-                             @NotNull ListenableFuture<@NotNull PhysicalDevice> future,
+                             @NotNull AsyncDetailsBuilder builder,
                              @NotNull NewInfoSectionCallback<@NotNull SummarySection> newSummarySectionCallback,
-                             @NotNull WearPairingManager manager,
-                             boolean addPairedDevices) {
+                             @NotNull WearPairingManager manager) {
     super(device.getName());
     myOnline = device.isOnline();
 
     if (myOnline) {
       mySummarySection = new SummarySection();
-      Futures.addCallback(future, newSummarySectionCallback.apply(mySummarySection), EdtExecutorService.getInstance());
+      Futures.addCallback(builder.buildAsync(), newSummarySectionCallback.apply(mySummarySection), EdtExecutorService.getInstance());
 
       myInfoSections.add(mySummarySection);
       InfoSection.newPairedDeviceSection(device, manager).ifPresent(myInfoSections::add);
 
-      if (addPairedDevices && StudioFlags.PAIRED_DEVICES_TAB_ENABLED.get() && device.getType().equals(DeviceType.PHONE)) {
-        myPairedDevicesPanel = new PairedDevicesPanel(device.getKey(), this);
+      if (StudioFlags.PAIRED_DEVICES_TAB_ENABLED.get() && device.getType().equals(DeviceType.PHONE)) {
+        myPairedDevicesPanel = new PairedDevicesPanel(device.getKey(), this, builder.getProject());
       }
     }
     else {

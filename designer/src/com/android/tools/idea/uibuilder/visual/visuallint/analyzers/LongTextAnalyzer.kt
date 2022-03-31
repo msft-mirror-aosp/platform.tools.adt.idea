@@ -19,9 +19,11 @@ import android.widget.TextView
 import com.android.ide.common.rendering.api.ViewInfo
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.rendering.RenderResult
+import com.android.tools.idea.uibuilder.lint.createDefaultHyperLinkListener
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintAnalyzer
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType
 import com.android.utils.HtmlBuilder
+import javax.swing.event.HyperlinkListener
 
 /**
  * Maximum length of a line of text, according to Material Design guidelines.
@@ -60,13 +62,14 @@ object LongTextAnalyzer : VisualLintAnalyzer() {
     return false
   }
 
+  override fun getHyperlinkListener() = createDefaultHyperLinkListener()
+
   private fun createIssueContent(view: ViewInfo): VisualLintIssueContent {
-    val viewName = simpleName(view)
-    val summary = "$viewName has lines containing more than 120 characters"
+    val summary = "${nameWithId(view)} has lines containing more than 120 characters"
     val url = "https://material.io/design/layout/responsive-layout-grid.html#breakpoints"
     val provider = { count: Int ->
       HtmlBuilder()
-        .add("$viewName has lines containing more than 120 characters in ${previewConfigurations(count)}.")
+        .add("${simpleName(view)} has lines containing more than 120 characters in ${previewConfigurations(count)}.")
         .newline()
         .add("Material Design recommends reducing the width of TextView or switching to a ")
         .addLink("multi-column layout", url)

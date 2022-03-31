@@ -28,6 +28,7 @@ import com.android.tools.idea.devicemanager.CountDownLatchAssert;
 import com.android.tools.idea.devicemanager.CountDownLatchFutureCallback;
 import com.android.tools.idea.devicemanager.DetailsPanel;
 import com.android.tools.idea.devicemanager.PopUpMenuValue;
+import com.android.tools.idea.devicemanager.TestTables;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDevicePanel.SetDevices;
 import com.android.tools.idea.devicemanager.physicaltab.PhysicalDeviceTableModel.RemoveValue;
 import com.google.common.util.concurrent.FutureCallback;
@@ -127,7 +128,7 @@ public final class PhysicalDevicePanelTest {
                                                           RemoveValue.INSTANCE,
                                                           PopUpMenuValue.INSTANCE));
 
-    assertEquals(data, myPanel.getTable().getData());
+    assertEquals(data, TestTables.getData(myPanel.getTable()));
   }
 
   @Test
@@ -162,7 +163,7 @@ public final class PhysicalDevicePanelTest {
                                               RemoveValue.INSTANCE,
                                               PopUpMenuValue.INSTANCE));
 
-    assertEquals(data, myPanel.getTable().getData());
+    assertEquals(data, TestTables.getData(myPanel.getTable()));
   }
 
   private @NotNull FutureCallback<@Nullable List<@NotNull PhysicalDevice>> newSetDevices(@NotNull PhysicalDevicePanel panel) {
@@ -263,6 +264,9 @@ public final class PhysicalDevicePanelTest {
   }
 
   private static @NotNull DetailsPanel newPhysicalDeviceDetailsPanel(@NotNull PhysicalDevice device) {
-    return new PhysicalDeviceDetailsPanel(device, Futures.immediateFuture(TestPhysicalDevices.GOOGLE_PIXEL_3), false);
+    AsyncDetailsBuilder builder = Mockito.mock(AsyncDetailsBuilder.class);
+    Mockito.when(builder.buildAsync()).thenReturn(Futures.immediateFuture(TestPhysicalDevices.GOOGLE_PIXEL_3));
+
+    return new PhysicalDeviceDetailsPanel(device, builder);
   }
 }

@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.gradle.model
 
-sealed interface IdeDependency<T: IdeLibrary>
+import java.io.Serializable
+
+sealed interface IdeDependency<T>
 
 sealed interface IdeArtifactDependency<T: IdeArtifactLibrary> : IdeDependency<T> {
   val target: T
@@ -26,15 +28,29 @@ sealed interface IdeArtifactDependency<T: IdeArtifactLibrary> : IdeDependency<T>
   val isProvided: Boolean
 }
 
+interface IdeDependencyCore {
+  val target: LibraryReference
+  /**
+   * Returns whether the dependency is on the compile class path but is not on the runtime class
+   * path.
+   */
+
+  /**
+   * This property does apply to dependencies that resolve into modules. This will become irrelevant when the compile and runtime class
+   * paths are separated.
+   */
+  val isProvided: Boolean
+}
+
 interface IdeAndroidLibraryDependency: IdeArtifactDependency<IdeAndroidLibrary>
 interface IdeJavaLibraryDependency: IdeArtifactDependency<IdeJavaLibrary>
 
-interface IdeAndroidLibraryDependencyCore: IdeArtifactDependency<IdeAndroidLibrary>
-interface IdeJavaLibraryDependencyCore: IdeArtifactDependency<IdeJavaLibrary>
+data class LibraryReference(val libraryIndex: Int): Serializable
 
 interface IdeLibraryModelResolver {
-  fun resolveAndroidLibrary(unresolved: IdeAndroidLibraryDependencyCore): IdeAndroidLibraryDependency
-  fun resolveJavaLibrary(unresolved: IdeJavaLibraryDependencyCore): IdeJavaLibraryDependency
+  fun resolveAndroidLibrary(unresolved: IdeDependencyCore): IdeAndroidLibraryDependency?
+  fun resolveJavaLibrary(unresolved: IdeDependencyCore): IdeJavaLibraryDependency?
+  fun resolveModule(unresolved: IdeDependencyCore): IdeModuleDependency?
 }
 
 interface IdeModuleDependency: IdeDependency<IdeModuleLibrary> {

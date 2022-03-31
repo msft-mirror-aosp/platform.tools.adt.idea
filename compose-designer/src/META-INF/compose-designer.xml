@@ -110,6 +110,18 @@
                      key="inspection.unit.test.files"
                      level="ERROR"/>
 
+    <fileType name="DeviceSpecFile"
+              language="DeviceSpec"
+              implementationClass="com.android.tools.idea.compose.preview.util.device.DeviceSpecFileType"
+              fieldName="INSTANCE"
+              extensions="pro"/>
+    <lang.parserDefinition language="DeviceSpec"
+                           implementationClass="com.android.tools.idea.compose.preview.util.device.parser.DeviceSpecParserDefinition"/>
+    <languageInjector implementation="com.android.tools.idea.compose.preview.util.device.DeviceSpecInjector"/>
+    <completion.contributor language="DeviceSpec"
+                            id="DeviceSpecContributor"
+                            implementationClass="com.android.tools.idea.compose.preview.util.device.DeviceSpecCompletionContributor"/>
+
     <deadCode implementation="com.android.tools.idea.compose.preview.PreviewEntryPoint" />
 
     <postStartupActivity implementation="com.android.tools.idea.compose.preview.runconfiguration.ComposePreviewRunConfigurationStartupActivity" />
@@ -122,6 +134,9 @@
     <codeInsight.lineMarkerProvider
         language="kotlin"
         implementationClass="com.android.tools.idea.compose.annotator.PreviewPickerLineMarkerProvider"/>
+    <codeInsight.lineMarkerProvider
+        language="kotlin"
+        implementationClass="com.android.tools.idea.compose.annotator.SpringPickerLineMarkerProvider"/>
 
     <notificationGroup id="Compose Preview Notification" displayType="NONE"/>
   </extensions>

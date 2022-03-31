@@ -16,12 +16,17 @@
 package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.SdkConstants.FN_SETTINGS_GRADLE
+import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates
+import com.android.tools.idea.testing.AndroidModuleDependency
+import com.android.tools.idea.testing.AndroidModuleModelBuilder
+import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.FileSubject.file
 import com.android.tools.idea.testing.GradleIntegrationTest
+import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.SnapshotComparisonTest
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.API_DEPENDENCY
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.APP_WITH_BUILDSRC
@@ -34,11 +39,13 @@ import com.android.tools.idea.testing.TestProjectToSnapshotPaths.COMPOSITE_BUILD
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_GRADLE_DSL
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_KAPT
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM
+import com.android.tools.idea.testing.TestProjectToSnapshotPaths.LIGHT_SYNC_REFERENCE
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.MAIN_IN_ROOT
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.MULTI_FLAVOR
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NESTED_MODULE
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NEW_SYNC_KOTLIN_TEST
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SETS
+import com.android.tools.idea.testing.TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PSD_DEPENDENCY
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PSD_SAMPLE_GROOVY
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.PSD_SAMPLE_REPO
@@ -51,6 +58,7 @@ import com.android.tools.idea.testing.TestProjectToSnapshotPaths.TWO_JARS
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths.WITH_GRADLE_METADATA
 import com.android.tools.idea.testing.assertAreEqualToSnapshots
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
+import com.android.tools.idea.testing.getAndMaybeUpdateSnapshot
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.prepareGradleProject
@@ -69,6 +77,7 @@ import com.intellij.openapi.projectRoots.impl.SdkConfigurationUtil
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtil.join
 import com.intellij.openapi.util.io.FileUtil.writeToFile
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.PathUtil.toSystemDependentName
 import com.intellij.util.indexing.IndexableSetContributor
@@ -79,6 +88,7 @@ import org.jetbrains.kotlin.idea.core.script.dependencies.KotlinScriptDependenci
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.rules.TestName
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -206,6 +216,12 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
         )
         assertIsEqualToSnapshot(text)
       }
+    }
+
+    @Test // TODO(b/227469255): Uncomment dependencies in the test project when module dependency resolution is fixed.
+    fun testNonStandardSourceSetDependencies() {
+      val text = importSyncAndDumpProject(NON_STANDARD_SOURCE_SET_DEPENDENCIES)
+      assertIsEqualToSnapshot(text)
     }
 
     // See https://code.google.com/p/android/issues/detail?id=74259
@@ -341,6 +357,12 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
       val text = importSyncAndDumpProject(projectDir = API_DEPENDENCY)
       assertIsEqualToSnapshot(text)
     }
+
+    @Test
+    fun testLightSyncReference() {
+      val text = importSyncAndDumpProject(projectDir = LIGHT_SYNC_REFERENCE)
+      assertIsEqualToSnapshot(text)
+    }
   }
 
   override val snapshotDirectoryWorkspaceRelativePath: String = "tools/adt/idea/android/testData/snapshots/syncedProjects"
@@ -409,3 +431,92 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
   override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
 }
+
+@RunsInEdt
+class LightSyncReferenceTest : SnapshotComparisonTest, GradleIntegrationTest {
+  @get:Rule
+  var testName = TestName()
+
+  val projectRule = AndroidProjectRule.withAndroidModels(
+    prepareProjectSources = fun (root: File) {
+      prepareGradleProject(resolveTestDataPath(LIGHT_SYNC_REFERENCE), root, {})
+      root.resolve(".gradle").mkdir()
+    },
+    JavaModuleModelBuilder.rootModuleBuilder.copy(
+      groupId = "",
+      version = "unspecified",
+    ),
+    AndroidModuleModelBuilder(
+      gradlePath = ":app",
+      groupId = "reference",
+      version = "unspecified",
+      selectedBuildVariant = "debug",
+      projectBuilder = AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":androidlibrary", "debug")) }).build(),
+    ),
+    AndroidModuleModelBuilder(
+      gradlePath = ":androidlibrary",
+      groupId = "reference",
+      version = "unspecified",
+      selectedBuildVariant = "debug",
+      projectBuilder = AndroidProjectBuilder(
+        projectType = { IdeAndroidProjectType.PROJECT_TYPE_LIBRARY },
+        androidModuleDependencyList = { listOf(AndroidModuleDependency(":javalib", null)) }
+      ).build()
+    ),
+    JavaModuleModelBuilder(
+      ":javalib",
+      groupId = "reference",
+      version = "unspecified",
+    )
+  ).named("reference")
+
+  @get:Rule
+  val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
+
+  override fun getName(): String = testName.methodName
+  override val snapshotDirectoryWorkspaceRelativePath: String = "tools/adt/idea/android/testData/snapshots/syncedProjects"
+  override fun getTestDataDirectoryWorkspaceRelativePath(): @SystemIndependent String = "tools/adt/idea/android/testData/snapshots"
+  override fun getAdditionalRepos(): Collection<File> = emptyList()
+  override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
+
+  @Test
+  fun testLightSyncActual() {
+    val dump = projectRule.project.saveAndDump()
+    assertIsEqualToSnapshot(dump)
+  }
+
+  @Test
+  fun compareResults() {
+    val expectedSnapshot = object : SnapshotComparisonTest by this {
+      override fun getName(): String = "testLightSyncReference"
+    }
+    val (_, expectedSnapshotTest) = expectedSnapshot.getAndMaybeUpdateSnapshot("", "", doNotUpdate = true)
+
+    val actualSnapshot = object : SnapshotComparisonTest by this {
+      override fun getName(): String = "testLightSyncActual"
+    }
+    val (_, actualSnapshotTest) = actualSnapshot.getAndMaybeUpdateSnapshot("", "", doNotUpdate = true)
+
+    assertThat(actualSnapshotTest.filterOutProperties()).isEqualTo(expectedSnapshotTest.filterOutProperties())
+  }
+}
+private fun String.filterOutProperties(): String =
+  this
+    .splitToSequence('\n')
+    .nameProperties()
+    .filter { (property, line) ->
+      !PROPERTIES_TO_SKIP_BY_PREFIXES.any { property.startsWith(it) }
+    }
+    .map { it.first + " >> " + it.second }
+    .joinToString(separator = "\n")
+
+private fun Sequence<String>.nameProperties() = com.android.tools.idea.testing.nameProperties(this)
+
+private val PROPERTIES_TO_SKIP_BY_PREFIXES = setOf(
+  "PROJECT/LIBRARY_TABLE",
+  "PROJECT/MODULE/Classes",
+  "PROJECT/MODULE/COMPILER_MODULE_EXTENSION",
+  "PROJECT/MODULE/LIBRARY",
+  "PROJECT/MODULE/TEST_MODULE_PROPERTIES",
+  "PROJECT/RUN_CONFIGURATION",
+)

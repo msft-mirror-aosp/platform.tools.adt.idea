@@ -31,9 +31,12 @@ import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.ide.common.repository.GradleVersion
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeLibrary
+import com.android.tools.idea.gradle.model.LibraryReference
 import com.android.tools.idea.gradle.model.impl.BuildFolderPaths
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantAbiImpl
@@ -45,6 +48,8 @@ import org.jetbrains.annotations.SystemIndependent
 import java.io.File
 
 interface ModelCache {
+  val libraryResolver: (LibraryReference) -> IdeLibrary
+  fun createLibraryTable(): IdeLibraryTableImpl
 
   interface V1 : ModelCache {
     fun variantFrom(
@@ -98,25 +103,28 @@ interface ModelCache {
 
     @JvmStatic
     fun create(useV2BuilderModels: Boolean, buildFolderPaths: BuildFolderPaths): ModelCache {
+      val internedModels = InternedModels(buildFolderPaths.buildRootDirectory)
       if (useV2BuilderModels) {
-        return modelCacheV2Impl(buildFolderPaths.buildRootDirectory)
+        return modelCacheV2Impl(internedModels)
       }
-      return modelCacheV1Impl(buildFolderPaths)
+      return modelCacheV1Impl(internedModels, buildFolderPaths)
     }
 
     @JvmStatic
     fun create(useV2BuilderModels: Boolean): ModelCache {
+      val internedModels = InternedModels(null)
       return if (useV2BuilderModels) {
-        modelCacheV2Impl(null)
+        modelCacheV2Impl(internedModels)
       }
       else {
-        modelCacheV1Impl(BuildFolderPaths())
+        modelCacheV1Impl(internedModels, BuildFolderPaths())
       }
     }
 
     @JvmStatic
     fun create(): ModelCache.V1 {
-      return modelCacheV1Impl(BuildFolderPaths())
+      val internedModels = InternedModels(null)
+      return modelCacheV1Impl(internedModels, BuildFolderPaths())
     }
   }
 }
@@ -158,7 +166,7 @@ internal fun convertArtifactName(name: String): IdeArtifactName = when (name) {
 /**
  * Converts the artifact address into a name that will be used by the IDE to represent the library.
  */
-internal fun convertToLibraryName(libraryArtifactAddress: String, projectBasePath: File): String {
+internal fun convertToLibraryName(libraryArtifactAddress: String, projectBasePath: File?): String {
   if (libraryArtifactAddress.startsWith("${ModelCache.LOCAL_AARS}:")) {
     return adjustLocalLibraryName(
       File(libraryArtifactAddress.removePrefix("${ModelCache.LOCAL_AARS}:").substringBefore(":")),
@@ -189,8 +197,8 @@ private fun convertMavenCoordinateStringToIdeLibraryName(mavenCoordinate: String
  * Name shortening is required because the maximum allowed file name length is 256 characters and .jar files located in deep
  * directories in CI environments may exceed this limit.
  */
-private fun adjustLocalLibraryName(artifactFile: File, projectBasePath: File): @SystemIndependent String {
-  val maybeRelative = artifactFile.relativeToOrSelf(projectBasePath)
+private fun adjustLocalLibraryName(artifactFile: File, projectBasePath: File?): @SystemIndependent String {
+  val maybeRelative = if (projectBasePath != null) artifactFile.relativeToOrSelf(projectBasePath) else artifactFile
   if (!FileUtil.filesEqual(maybeRelative, artifactFile)) {
     return FileUtil.toSystemIndependentName(File(".${File.separator}${maybeRelative}").path)
   }

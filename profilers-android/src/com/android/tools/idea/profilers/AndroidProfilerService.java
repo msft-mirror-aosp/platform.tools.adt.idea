@@ -126,8 +126,9 @@ public class AndroidProfilerService implements TransportDeviceManager.TransportD
   @Override
   public void customizeAgentConfig(@NotNull Agent.AgentConfig.Builder configBuilder,
                                    @Nullable AndroidRunConfigurationBase runConfig) {
-    // Disable live allocation tracking by default
-    final int liveAllocationSamplingRate = MainMemoryProfilerStage.LiveAllocationSamplingMode.NONE.getValue();
+    // The first live allocation tracking during the lifetime of the JVMTI agent starts with full
+    // tracking mode by default.
+    final int liveAllocationSamplingRate = MainMemoryProfilerStage.LiveAllocationSamplingMode.FULL.getValue();
     configBuilder
       .setCommon(
         configBuilder.getCommonBuilder()
@@ -137,7 +138,7 @@ public class AndroidProfilerService implements TransportDeviceManager.TransportD
       .setMem(
         Agent.AgentConfig.MemoryConfig.newBuilder()
           .setMaxStackDepth(LIVE_ALLOCATION_STACK_DEPTH)
-          .setTrackGlobalJniRefs(StudioFlags.PROFILER_TRACK_JNI_REFS.get())
+          .setTrackGlobalJniRefs(true)
           .setSamplingRate(
             Memory.MemoryAllocSamplingData.newBuilder().setSamplingNumInterval(liveAllocationSamplingRate).build())
           .build())

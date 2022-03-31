@@ -17,6 +17,7 @@ PluginInfo = provider(
         "files_mac": "",
         "files_mac_arm": "",
         "files_win": "",
+        "overwrite_plugin_version": "whether to stamp version metadata into plugin.xml",
     },
 )
 
@@ -225,6 +226,7 @@ def _studio_plugin_impl(ctx):
             module_deps = depset(ctx.attr.modules),
             lib_deps = depset(ctx.attr.libs),
             licenses = depset(ctx.files.licenses),
+            overwrite_plugin_version = True,
         ),
     ]
 
@@ -452,12 +454,10 @@ def _stamp_platform(ctx, platform, zip, out):
     args = ["--stamp_platform", out.path]
     _stamp(ctx, platform, zip, args, [], out)
 
-def _stamp_platform_plugin(ctx, platform, zip, src, dst):
-    args = ["--stamp_platform_plugin", src.path, dst.path]
-    _stamp(ctx, platform, zip, args, [src], dst)
-
-def _stamp_plugin(ctx, platform, zip, src, dst):
+def _stamp_plugin(ctx, platform, zip, src, dst, overwrite_plugin_version):
     args = ["--stamp_plugin", src.path, dst.path]
+    if overwrite_plugin_version:
+        args.append("--overwrite_plugin_version")
     _stamp(ctx, platform, zip, args, [src], dst)
 
 def _zip_merger(ctx, zips, overrides, out):
@@ -527,7 +527,7 @@ def _android_studio_os(ctx, platform, out):
     overrides += [(platform_prefix, platform_stamp)]
     for plugin in platform_plugins:
         stamp = ctx.actions.declare_file(ctx.attr.name + ".stamp.%s.%s" % (plugin.basename, platform.name))
-        _stamp_platform_plugin(ctx, platform, platform_zip, plugin, stamp)
+        _stamp_plugin(ctx, platform, platform_zip, plugin, stamp, overwrite_plugin_version = False)
         overrides += [(platform_prefix, stamp)]
 
     dev01 = ctx.actions.declare_file(ctx.attr.name + ".dev01." + platform.name)
@@ -540,10 +540,13 @@ def _android_studio_os(ctx, platform, out):
     overrides += [(platform_prefix, so_extras)]
 
     licenses = []
-    for p in ctx.attr.plugins:
-        plugin_zip = platform.get(p[PluginInfo])[0]
-        stamp = ctx.actions.declare_file(ctx.attr.name + ".stamp.%s" % plugin_zip.basename)
-        _stamp_plugin(ctx, platform, platform_zip, plugin_zip, stamp)
+    for p in ctx.attr.plugins + ctx.attr.platform.extra_plugins:
+        plugin_zips = platform.get(p[PluginInfo])
+        if len(plugin_zips) != 1:
+            fail("Expected exactly one plugin zip; instead found: " + str(plugin_zips))
+        plugin_zip = plugin_zips[0]
+        stamp = ctx.actions.declare_file(ctx.attr.name + ".stamp.%s.%s.zip" % (p[PluginInfo].directory, platform.name))
+        _stamp_plugin(ctx, platform, platform_zip, plugin_zip, stamp, p[PluginInfo].overwrite_plugin_version)
         overrides += [(platform_prefix + platform.base_path, stamp)]
         zips += [(platform_prefix + platform.base_path, plugin_zip)]
         licenses += [p[PluginInfo].licenses]
@@ -672,38 +675,77 @@ def android_studio(
         **kwargs
     )
 
-def _intellij_plugin_impl(ctx):
-    infos = [export[JavaInfo] for export in ctx.attr.exports]
-    java_info = java_common.merge(infos)
-    jar_files = java_info.runtime_output_jars
-    plugin_metadata = _check_plugin(ctx, jar_files)
+def _intellij_plugin_import_impl(ctx):
+    plugin_zips = []
+
+    # Note: platform plugins will have no files because they are already in intellij-sdk.
+    if ctx.attr.files:
+        plugin_dir = "plugins/" + ctx.attr.target_dir
+        zip_spec = []
+        for f in ctx.files.files:
+            if not f.short_path.startswith(ctx.attr.strip_prefix):
+                fail("File " + f.short_path + " does not start with prefix " + ctx.attr.strip_prefix)
+            relpath = f.short_path[len(ctx.attr.strip_prefix):]
+            zip_spec.append((plugin_dir + "/" + relpath, f))
+        plugin_zip = ctx.actions.declare_file(ctx.label.name + ".zip")
+        _zipper(ctx, ctx.attr.name, zip_spec, plugin_zip)
+        plugin_zips.append(plugin_zip)
+
+    java_info = java_common.merge([export[JavaInfo] for export in ctx.attr.exports])
+    jars = java_info.runtime_output_jars
+    plugin_metadata = _check_plugin(ctx, jars)
+
     return [
         java_info,
+        DefaultInfo(runfiles = ctx.runfiles(files = ctx.files.files)),
         PluginInfo(
-            directory = None,  # This plugin is already part of intellij-sdk.
-            files = depset(),
+            directory = ctx.attr.target_dir,
+            files = depset(plugin_zips),
             files_linux = depset(),
             files_mac = depset(),
             files_mac_arm = depset(),
             files_win = depset(),
             plugin_metadata = plugin_metadata,
             module_deps = depset(),
-            lib_deps = depset(),
+            lib_deps = depset(ctx.attr.exports),
             licenses = depset(),
+            overwrite_plugin_version = False,
         ),
     ]
 
-_intellij_plugin = rule(
+_intellij_plugin_import = rule(
     attrs = {
-        "exports": attr.label_list(providers = [JavaInfo]),
+        # Note: platform plugins will have no files because they are already in intellij-sdk.
+        "files": attr.label_list(allow_files = True),
+        "strip_prefix": attr.string(),
+        "target_dir": attr.string(),
+        "exports": attr.label_list(providers = [JavaInfo], mandatory = True),
+        "compress": attr.bool(),
         "_check_plugin": attr.label(
             default = Label("//tools/adt/idea/studio:check_plugin"),
             cfg = "host",
             executable = True,
         ),
+        "_zipper": attr.label(
+            default = Label("@bazel_tools//tools/zip:zipper"),
+            cfg = "host",
+            executable = True,
+        ),
     },
-    implementation = _intellij_plugin_impl,
+    implementation = _intellij_plugin_import_impl,
 )
+
+def intellij_plugin_import(name, files_root_dir, target_dir, exports, **kwargs):
+    """This macro is for prebuilt IntelliJ plugins that are not already part of intellij-sdk."""
+    _intellij_plugin_import(
+        name = name,
+        files = native.glob([files_root_dir + "/**"]),
+        strip_prefix = native.package_name() + "/" + files_root_dir + "/",
+        target_dir = target_dir,
+        exports = exports,
+        compress = is_release(),
+        **kwargs
+    )
 
 def _intellij_platform_impl_os(ctx, platform, data):
     files = platform.get(data)
@@ -762,6 +804,7 @@ def _intellij_platform_impl(ctx):
             files_win = depset(plugins_win),
             mappings = {},
         ),
+        extra_plugins = ctx.attr.extra_plugins,
         platform_info = struct(
             mac_bundle_name = ctx.attr.mac_bundle_name,
         ),
@@ -770,6 +813,7 @@ def _intellij_platform_impl(ctx):
 _intellij_platform = rule(
     attrs = {
         "exports": attr.label_list(providers = [JavaInfo]),
+        "extra_plugins": attr.label_list(providers = [PluginInfo]),
         "data": attr.label_list(allow_files = True),
         "studio_data": attr.label(),
         "compress": attr.bool(),
@@ -787,6 +831,7 @@ def intellij_platform(
         name,
         src,
         spec,
+        extra_plugins,
         **kwargs):
     jvm_import(
         name = name + "_jars",
@@ -800,6 +845,7 @@ def intellij_platform(
     _intellij_platform(
         name = name,
         exports = [":" + name + "_jars"],
+        extra_plugins = extra_plugins,
         compress = is_release(),
         mac_bundle_name = spec.mac_bundle_name,
         studio_data = name + ".data",
@@ -867,7 +913,7 @@ def intellij_platform(
     for plugin, jars in spec.plugin_jars.items():
         jars_target_name = "%s-plugin-%s_jars" % (name, plugin)
         _gen_plugin_jars_import_target(jars_target_name, src, spec, plugin, jars)
-        _intellij_plugin(
+        _intellij_plugin_import(
             name = name + "-plugin-%s" % plugin,
             exports = [":" + jars_target_name],
             visibility = ["//visibility:public"],

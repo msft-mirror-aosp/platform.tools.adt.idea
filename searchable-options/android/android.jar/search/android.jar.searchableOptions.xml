@@ -98,6 +98,8 @@
     <option name="build" path="ActionManager" hit="Build Bundle(s) / APK(s)" />
     <option name="bundle" path="ActionManager" hit="Build Bundle(s) / APK(s)" />
     <option name="s" path="ActionManager" hit="Build Bundle(s) / APK(s)" />
+    <option name="button" path="ActionManager" hit="Button 1" />
+    <option name="button" path="ActionManager" hit="Button 2" />
     <option name="a" path="ActionManager" hit="Change display size to match a typical desktop" />
     <option name="change" path="ActionManager" hit="Change display size to match a typical desktop" />
     <option name="desktop" path="ActionManager" hit="Change display size to match a typical desktop" />
@@ -232,7 +234,6 @@
     <option name="or" path="ActionManager" hit="Extracts one or more views into a separate layout" />
     <option name="separate" path="ActionManager" hit="Extracts one or more views into a separate layout" />
     <option name="views" path="ActionManager" hit="Extracts one or more views into a separate layout" />
-    <option name="first" path="ActionManager" hit="First" />
     <option name="fold" path="ActionManager" hit="Fold/Unfold" />
     <option name="unfold" path="ActionManager" hit="Fold/Unfold" />
     <option name="apk" path="ActionManager" hit="Generate Signed Bundle / APK…" />
@@ -544,7 +545,6 @@
     <option name="running" path="ActionManager" hit="Running devices" />
     <option name="manager" path="ActionManager" hit="SDK Manager" />
     <option name="sdk" path="ActionManager" hit="SDK Manager" />
-    <option name="second" path="ActionManager" hit="Second" />
     <option name="build" path="ActionManager" hit="Select Build Variant..." />
     <option name="select" path="ActionManager" hit="Select Build Variant..." />
     <option name="variant" path="ActionManager" hit="Select Build Variant..." />
@@ -613,6 +613,9 @@
     <option name="literals" path="ActionManager" hit="Toggle literals decorations in the editor" />
     <option name="the" path="ActionManager" hit="Toggle literals decorations in the editor" />
     <option name="toggle" path="ActionManager" hit="Toggle literals decorations in the editor" />
+    <option name="resource" path="ActionManager" hit="Trace Resource Updates" />
+    <option name="trace" path="ActionManager" hit="Trace Resource Updates" />
+    <option name="updates" path="ActionManager" hit="Trace Resource Updates" />
     <option name="connections" path="ActionManager" hit="Troubleshoot Device Connections" />
     <option name="device" path="ActionManager" hit="Troubleshoot Device Connections" />
     <option name="troubleshoot" path="ActionManager" hit="Troubleshoot Device Connections" />
@@ -752,6 +755,17 @@
     <option name="launch" hit="Launch in a tool window" />
     <option name="tool" hit="Launch in a tool window" />
     <option name="window" hit="Launch in a tool window" />
+    <option name="camera" hit="Velocity control keys for virtual scene camera:" />
+    <option name="control" hit="Velocity control keys for virtual scene camera:" />
+    <option name="for" hit="Velocity control keys for virtual scene camera:" />
+    <option name="keys" hit="Velocity control keys for virtual scene camera:" />
+    <option name="scene" hit="Velocity control keys for virtual scene camera:" />
+    <option name="velocity" hit="Velocity control keys for virtual scene camera:" />
+    <option name="virtual" hit="Velocity control keys for virtual scene camera:" />
+    <option name="for" hit="WASDQE (for QWERTY keyboard)" />
+    <option name="keyboard" hit="WASDQE (for QWERTY keyboard)" />
+    <option name="qwerty" hit="WASDQE (for QWERTY keyboard)" />
+    <option name="wasdqe" hit="WASDQE (for QWERTY keyboard)" />
     <option name="configuration" hit="When encountering snapshots incompatible with the current configuration:" />
     <option name="current" hit="When encountering snapshots incompatible with the current configuration:" />
     <option name="encountering" hit="When encountering snapshots incompatible with the current configuration:" />
@@ -760,6 +774,10 @@
     <option name="the" hit="When encountering snapshots incompatible with the current configuration:" />
     <option name="when" hit="When encountering snapshots incompatible with the current configuration:" />
     <option name="with" hit="When encountering snapshots incompatible with the current configuration:" />
+    <option name="azerty" hit="ZQSDAE (for AZERTY keyboard)" />
+    <option name="for" hit="ZQSDAE (for AZERTY keyboard)" />
+    <option name="keyboard" hit="ZQSDAE (for AZERTY keyboard)" />
+    <option name="zqsdae" hit="ZQSDAE (for AZERTY keyboard)" />
   </configurable>
   <configurable id="database.inspector" configurable_name="Database Inspector">
     <option name="database" hit="Database Inspector" />
@@ -1193,20 +1211,6 @@
     <option name="settings" hit=" Note: These settings are for features that are considered experimental." />
     <option name="that" hit=" Note: These settings are for features that are considered experimental." />
     <option name="these" hit=" Note: These settings are for features that are considered experimental." />
-    <option name="build" hit="Build preview on save" />
-    <option name="on" hit="Build preview on save" />
-    <option name="preview" hit="Build preview on save" />
-    <option name="save" hit="Build preview on save" />
-    <option name="allow" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="builds" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="faster" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="for" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="on" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="preview" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="refresh" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="save" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="the" hit="Builds the preview on save to allow for faster preview refresh" />
-    <option name="to" hit="Builds the preview on save to allow for faster preview refresh" />
     <option name="default" hit="Default profile" />
     <option name="profile" hit="Default profile" />
     <option name="build" hit="Do not build Gradle task list during Gradle sync" />
@@ -1220,9 +1224,30 @@
     <option name="enable" hit="Enable @Preview picker" />
     <option name="picker" hit="Enable @Preview picker" />
     <option name="preview" hit="Enable @Preview picker" />
+    <option name="edit" hit="Enable Live Edit for Preview" />
+    <option name="enable" hit="Enable Live Edit for Preview" />
+    <option name="for" hit="Enable Live Edit for Preview" />
+    <option name="live" hit="Enable Live Edit for Preview" />
+    <option name="preview" hit="Enable Live Edit for Preview" />
     <option name="animation" hit="Enable animation preview" />
     <option name="enable" hit="Enable animation preview" />
     <option name="preview" hit="Enable animation preview" />
+    <option name="enable" hit="Enable new Logcat tool window" />
+    <option name="logcat" hit="Enable new Logcat tool window" />
+    <option name="new" hit="Enable new Logcat tool window" />
+    <option name="tool" hit="Enable new Logcat tool window" />
+    <option name="window" hit="Enable new Logcat tool window" />
+    <option name="after" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="automatically" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="changing" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="edit" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="enables" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="files" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="for" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="live" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="preview" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="refreshing" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
+    <option name="the" hit="Enables the Live Edit for Preview automatically refreshing after changing the preview files" />
     <option name="experimental" hit="Experimental" />
     <option name="animation" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
     <option name="animations" hit="Frame-by-frame inspection of animations defined using the Compose animation framework" />
@@ -1240,6 +1265,9 @@
     <option name="jetpack" hit="Jetpack Compose" />
     <option name="editor" hit="Layout Editor" />
     <option name="layout" hit="Layout Editor" />
+    <option name="learn" hit="Learn more" />
+    <option name="more" hit="Learn more" />
+    <option name="logcat" hit="Logcat" />
     <option name="annotation" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editing" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editor" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />

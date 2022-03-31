@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.project.sync.PROJECT_SYNC_REQUEST
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.linkAndroidModuleGroup
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.unlinkAndroidModuleGroup
 import com.android.tools.idea.gradle.project.sync.idea.computeSdkReloadingAsNeeded
+import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys.ANDROID_MODEL
 import com.android.tools.idea.gradle.project.sync.idea.data.service.ModuleModelDataService
 import com.android.tools.idea.gradle.project.sync.setup.Facets.removeAllFacets
@@ -53,6 +54,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.Key
 import com.intellij.openapi.externalSystem.model.ProjectKeys
+import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.IdeModelsProvider
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider
@@ -89,19 +91,21 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
    *
    * It also sets up the SDKs and language levels for all modules that stem from an [GradleAndroidModel]
    */
-  public override fun importData(toImport: Collection<DataNode<GradleAndroidModel>>,
-                                 project: Project,
-                                 modelsProvider: IdeModifiableModelsProvider,
-                                 modelsByModuleName: Map<String, DataNode<GradleAndroidModel>>) {
+  public override fun importData(
+    toImport: Collection<DataNode<GradleAndroidModel>>,
+    project: Project,
+    modelsProvider: IdeModifiableModelsProvider,
+    modelsByModuleName: Map<String, DataNode<GradleAndroidModel>>
+  ) {
     val moduleValidator = myModuleValidatorFactory.create(project)
-    val libraryResolver = IdeLibraryModelResolverImpl()
-    for (nodeToImport in toImport) {
-      val mainModuleDataNode = ExternalSystemApiUtil.findParent(
-        nodeToImport,
-        ProjectKeys.MODULE
-      ) ?: continue
+
+    fun importAndroidModel(
+      nodeToImport: DataNode<GradleAndroidModel>,
+      mainModuleDataNode: DataNode<ModuleData>,
+      libraryResolver: IdeLibraryModelResolverImpl
+    ) {
       val mainModuleData = mainModuleDataNode.data
-      val mainIdeModule = modelsProvider.findIdeModule(mainModuleData) ?: continue
+      val mainIdeModule = modelsProvider.findIdeModule(mainModuleData) ?: return
 
       val androidModel = nodeToImport.data
       androidModel.setModuleAndResolver(mainIdeModule, libraryResolver)
@@ -113,7 +117,7 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
         val facetModel = modelsProvider.getModifiableFacetModel(module)
 
         val androidFacet = modelsProvider.getModifiableFacetModel(module).getFacetByType(AndroidFacet.ID)
-                           ?: createAndroidFacet(module, facetModel)
+          ?: createAndroidFacet(module, facetModel)
         // Configure that Android facet from the information in the AndroidModuleModel.
         configureFacet(androidFacet, androidModel)
 
@@ -121,6 +125,27 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
       }
     }
 
+    toImport
+      .mapNotNull { modelNode ->
+        val moduleNode = ExternalSystemApiUtil.findParent(
+          modelNode,
+          ProjectKeys.MODULE
+        ) ?: return@mapNotNull null
+
+        val projectNode = ExternalSystemApiUtil.findParent(
+          moduleNode,
+          ProjectKeys.PROJECT
+        ) ?: return@mapNotNull null
+
+        Triple(projectNode, moduleNode, modelNode)
+      }
+      .groupBy { it.first }
+      .forEach { (projectNode, nodes) ->
+        val libraryResolver = createLibraryResolverFor(projectNode)
+        nodes.forEach { (_, moduleNode, modelNode) ->
+          importAndroidModel(modelNode, moduleNode, libraryResolver)
+        }
+      }
     if (modelsByModuleName.isNotEmpty()) {
       moduleValidator.fixAndReportFoundIssues()
     }
@@ -129,22 +154,26 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
   private fun Module.setupSdkAndLanguageLevel(
     modelsProvider: IdeModifiableModelsProvider,
     languageLevel: LanguageLevel?,
-    sdkToUse: Sdk?) {
+    sdkToUse: Sdk?
+  ) {
     val rootModel = modelsProvider.getModifiableRootModel(this)
     if (languageLevel != null) {
       rootModel.getModuleExtension(
-        LanguageLevelModuleExtension::class.java).languageLevel = languageLevel
+        LanguageLevelModuleExtension::class.java
+      ).languageLevel = languageLevel
     }
     if (sdkToUse != null) {
       rootModel.sdk = sdkToUse
     }
   }
 
-  override fun removeData(toRemoveComputable: Computable<out Collection<Module>>,
-                          toIgnore: Collection<DataNode<GradleAndroidModel>>,
-                          projectData: ProjectData,
-                          project: Project,
-                          modelsProvider: IdeModifiableModelsProvider) {
+  override fun removeData(
+    toRemoveComputable: Computable<out Collection<Module>>,
+    toIgnore: Collection<DataNode<GradleAndroidModel>>,
+    projectData: ProjectData,
+    project: Project,
+    modelsProvider: IdeModifiableModelsProvider
+  ) {
     for (module in toRemoveComputable.get()) {
       val facetModel = modelsProvider.getModifiableFacetModel(module)
       removeAllFacets(facetModel, AndroidFacet.ID)
@@ -155,10 +184,12 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
   /**
    * This may be called from either the EDT or a background thread depending on if the project import is being run synchronously.
    */
-  override fun onSuccessImport(imported: Collection<DataNode<GradleAndroidModel>>,
-                               projectData: ProjectData?,
-                               project: Project,
-                               modelsProvider: IdeModelsProvider) {
+  override fun onSuccessImport(
+    imported: Collection<DataNode<GradleAndroidModel>>,
+    projectData: ProjectData?,
+    project: Project,
+    modelsProvider: IdeModelsProvider
+  ) {
     GradleProjectInfo.getInstance(project).isNewProject = false
     GradleProjectInfo.getInstance(project).isImportedProject = false
 
@@ -190,10 +221,12 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
     ProjectStructure.getInstance(project).analyzeProjectStructure()
   }
 
-  override fun postProcess(toImport: Collection<DataNode<GradleAndroidModel>>,
-                           projectData: ProjectData?,
-                           project: Project,
-                           modelsProvider: IdeModifiableModelsProvider) {
+  override fun postProcess(
+    toImport: Collection<DataNode<GradleAndroidModel>>,
+    projectData: ProjectData?,
+    project: Project,
+    modelsProvider: IdeModifiableModelsProvider
+  ) {
     super.postProcess(toImport, projectData, project, modelsProvider)
     // We need to set the SDK in postProcess since we need to ensure that this is run after the code in
     // KotlinGradleAndroidModuleModelProjectDataService.
@@ -257,7 +290,7 @@ private fun configureFacet(androidFacet: AndroidFacet, androidModuleModel: Gradl
   @Suppress("DEPRECATION") // One of the legitimate assignments to the property.
   androidFacet.properties.ALLOW_USER_CONFIGURATION = false
   @Suppress("DEPRECATION")
-  androidFacet.properties.PROJECT_TYPE = when(androidModuleModel.androidProject.projectType) {
+  androidFacet.properties.PROJECT_TYPE = when (androidModuleModel.androidProject.projectType) {
     IdeAndroidProjectType.PROJECT_TYPE_ATOM -> AndroidProjectTypes.PROJECT_TYPE_ATOM
     IdeAndroidProjectType.PROJECT_TYPE_APP -> AndroidProjectTypes.PROJECT_TYPE_APP
     IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE -> AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE
@@ -314,4 +347,10 @@ fun syncSelectedVariant(facet: AndroidFacet, variant: IdeVariant) {
   state.AFTER_SYNC_TASK_NAMES = HashSet(mainArtifact.ideSetupTaskNames)
   state.ASSEMBLE_TEST_TASK_NAME = ""
   state.COMPILE_JAVA_TEST_TASK_NAME = ""
+}
+
+private fun createLibraryResolverFor(projectNode: DataNode<ProjectData>): IdeLibraryModelResolverImpl {
+  val libraryTable = ExternalSystemApiUtil.find(projectNode, AndroidProjectKeys.IDE_LIBRARY_TABLE)?.data
+    ?: error("IDE library table node not found")
+  return IdeLibraryModelResolverImpl { libraryTable.libraries[it.libraryIndex] }
 }

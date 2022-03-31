@@ -60,7 +60,7 @@ private val LOG = Logger.getInstance(AnimationPreview::class.java)
  * therefore allows a detailed inspection of Compose animations.
  */
 class AnimationPreview(override val surface: DesignSurface) : JPanel(
-  TabularLayout("Fit,*", "Fit,*,Fit")), ComposeAnimationPreview {
+  TabularLayout("Fit,*", "Fit,*,30px")), ComposeAnimationPreview {
 
   private val tracker: (ComposeAnimationToolingEvent.ComposeAnimationToolingEventType) -> Unit = { type: ComposeAnimationToolingEvent.ComposeAnimationToolingEventType ->
     AnimationToolingUsageTracker.getInstance(surface).logEvent(AnimationToolingEvent(type))
@@ -69,6 +69,8 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
   private val previewState = object : AnimationPreviewState {
     override fun isCoordinationAvailable(): Boolean =
       animationClock?.coordinationIsSupported() == true
+
+    override fun isCoordinationPanelOpened(): Boolean = selectedAnimation == null
   }
 
   /**
@@ -134,13 +136,19 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
     }
     addResetListener {
       timeline.sliderUI.elements.forEach { it.reset() }
-      animations.forEach { it.elementState.valueOffset = 0 }
+      if (previewState.isCoordinationPanelOpened()) {
+        animations.forEach { it.elementState.valueOffset = 0 }
+      }
+      else {
+        selectedAnimation?.elementState?.valueOffset = 0
+      }
       updateTimelineMaximum()
       timeline.repaint()
     }
   }
 
-  private val coordinationTab = AllTabPanel().apply {
+  @VisibleForTesting
+  val coordinationTab = AllTabPanel().apply {
     addPlayback(playbackControls.createToolbar())
   }
 
@@ -163,7 +171,7 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
   /** Create list of [TimelineElement] for selected [AnimationManager]s. */
   private fun createTimelineElements(tabs: Collection<AnimationManager>) {
     executeOnRenderThread(false) {
-      var minY = InspectorLayout.TIMELINE_TOP_OFFSET
+      var minY = InspectorLayout.timelineHeaderHeightScaled()
       // Call once to update all sizes as all curves / lines required it.
       timeline.revalidate()
       invokeLater {
@@ -187,7 +195,7 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
               curve
             }
             else TimelineLine(tab.elementState, tab.currentTransition, minY, timeline.sliderUI.positionProxy)
-            minY += line.height
+            minY += line.heightScaled()
             tab.card.setDuration(tab.currentTransition.duration)
             line
           }.toMutableList()
@@ -395,11 +403,11 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
 
   /** Remove all tabs from [tabbedPane], replace it with [noAnimationsPanel], and clears the cached animations.*/
   override fun invalidatePanel() {
-    tabbedPane.removeAllTabs()
-    animationsMap.clear()
-    animations.clear()
+    val allAnimations = animations.map { it.animation }
+    // Calling removeTab for all animations will properly remove the cards from AllTabPanel, animations from the animations list and
+    // animationsMap, and tabs from tabbedPane. It will also show the noAnimationsPanel when removing all tabs.
+    allAnimations.forEach { removeTab(it) }
     tabNames.clear()
-    showNoAnimationsPanel()
   }
 
   override fun dispose() {
@@ -478,7 +486,7 @@ class AnimationPreview(override val surface: DesignSurface) : JPanel(
     /** [Timeline] parent when animation in new tab is selected. */
     private val tabTimelineParent = JPanel(BorderLayout())
 
-    val tabComponent = JPanel(TabularLayout("Fit,*,Fit", "Fit,*")).apply {
+    val tabComponent = JPanel(TabularLayout("Fit,*,Fit", "30px,*")).apply {
       add(stateComboBoxInTab.component, TabularLayout.Constraint(0, 2))
       add(tabScrollPane, TabularLayout.Constraint(1, 0, 3))
       tabScrollPane.setViewportView(tabTimelineParent)

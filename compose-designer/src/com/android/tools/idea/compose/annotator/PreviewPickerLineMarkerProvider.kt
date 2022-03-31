@@ -20,7 +20,7 @@ import com.android.tools.idea.compose.preview.isPreviewAnnotation
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.pickers.PsiPickerManager
 import com.android.tools.idea.compose.preview.pickers.properties.PreviewPickerPropertyModel
-import com.android.tools.idea.compose.preview.pickers.tracking.NoOpTracker
+import com.android.tools.idea.compose.preview.pickers.tracking.PreviewPickerTracker
 import com.android.tools.idea.compose.preview.util.toSmartPsiPointer
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -62,7 +62,7 @@ class PreviewPickerLineMarkerProvider : LineMarkerProviderDescriptor() {
     if (element !is LeafPsiElement) return null
     if (element.tokenType != KtTokens.IDENTIFIER) return null
     if (!element.isValid) return null
-    if (element.getModuleSystem()?.isPickerEnabled() != true) return null
+    if (element.getModuleSystem()?.isPreviewPickerEnabled() != true) return null
     if (element.text != COMPOSE_PREVIEW_ANNOTATION_NAME) return null
 
     val annotationEntry = element.parentOfType<KtAnnotationEntry>() ?: return null
@@ -101,8 +101,7 @@ class PreviewPickerLineMarkerProvider : LineMarkerProviderDescriptor() {
       AllIcons.Actions.InlayGear,
       { message("picker.preview.annotator.tooltip") },
       { mouseEvent, _ ->
-        // TODO(b/205184728): Replace tracker instance when implementation is ready
-        val model = PreviewPickerPropertyModel.fromPreviewElement(project, module, previewElementDefinitionPsi, NoOpTracker)
+        val model = PreviewPickerPropertyModel.fromPreviewElement(project, module, previewElementDefinitionPsi, PreviewPickerTracker())
         PsiPickerManager.show(
           location = RelativePoint(mouseEvent.component, mouseEvent.point).screenPoint,
           displayTitle = message("picker.preview.title"),

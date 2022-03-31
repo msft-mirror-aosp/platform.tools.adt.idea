@@ -19,12 +19,12 @@ import com.android.sdklib.internal.avd.AvdInfo;
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus;
 import com.android.sdklib.internal.avd.AvdManager;
 import com.android.tools.idea.devicemanager.DetailsPanel;
-import com.android.tools.idea.devicemanager.DeviceType;
 import com.android.tools.idea.devicemanager.InfoSection;
 import com.android.tools.idea.devicemanager.PairedDevicesPanel;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.wearpairing.WearPairingManager;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.project.Project;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JLabel;
@@ -54,12 +54,7 @@ final class VirtualDeviceDetailsPanel extends DetailsPanel {
     }
   }
 
-  VirtualDeviceDetailsPanel(@NotNull VirtualDevice device) {
-    this(device, WearPairingManager.INSTANCE, true);
-  }
-
-  @VisibleForTesting
-  VirtualDeviceDetailsPanel(@NotNull VirtualDevice device, @NotNull WearPairingManager manager, boolean addPairedDevices) {
+  VirtualDeviceDetailsPanel(@NotNull VirtualDevice device, @Nullable Project project) {
     super(device.getName());
     myDevice = device;
 
@@ -67,13 +62,10 @@ final class VirtualDeviceDetailsPanel extends DetailsPanel {
     initPropertiesSection();
 
     myInfoSections.add(mySummarySection);
-    InfoSection.newPairedDeviceSection(device, manager).ifPresent(myInfoSections::add);
+    InfoSection.newPairedDeviceSection(device, WearPairingManager.INSTANCE).ifPresent(myInfoSections::add);
 
-    if (addPairedDevices && StudioFlags.PAIRED_DEVICES_TAB_ENABLED.get()) {
-      if ((device.getType() == DeviceType.PHONE && device.getAndroidVersion().getApiLevel() >= 30 && device.getAvdInfo().hasPlayStore())
-          || device.getType() == DeviceType.WEAR_OS) {
-        myPairedDevicesPanel = new PairedDevicesPanel(myDevice.getKey(), this);
-      }
+    if (StudioFlags.PAIRED_DEVICES_TAB_ENABLED.get() && device.isPairable()) {
+      myPairedDevicesPanel = new PairedDevicesPanel(myDevice.getKey(), this, project);
     }
 
     if (myPropertiesSection != null) {

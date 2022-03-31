@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.tests.gui.kotlin;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.jetbrains.kotlin.idea.versions.KotlinRuntimeLibraryUtilKt.bundledRuntimeVersion;
 
 import com.android.tools.idea.tests.gui.framework.GuiTestRule;
@@ -29,6 +30,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import org.fest.swing.timing.Wait;
 import org.jetbrains.annotations.NotNull;
 
 public class ConversionTestUtil {
@@ -62,7 +64,7 @@ public class ConversionTestUtil {
     // TODO: the following is a hack. See http://b/217805224 for removal of the hack
 
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
-    ideFrameFixture.getEditor().open("app/build.gradle").getCurrentFileContents().contains("compileSdk");
+    assertThat(ideFrameFixture.getEditor().open("app/build.gradle").getCurrentFileContents()).contains("compileSdk");
 
 
     String buildGradleContents = ideFrameFixture.getEditor()
@@ -104,7 +106,7 @@ public class ConversionTestUtil {
   }
 
   @NotNull
-  protected static void convertJavaToKotlin(@NotNull GuiTestRule guiTest){
+  protected static void convertJavaToKotlin(@NotNull GuiTestRule guiTest) throws Exception {
     IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
 
     ideFrameFixture.waitAndInvokeMenuPath("Code", "Convert Java File to Kotlin File");
@@ -120,5 +122,54 @@ public class ConversionTestUtil {
     ConfigureKotlinDialogFixture.find(ideFrameFixture.robot())
       .clickOkAndWaitDialogDisappear();
 
+    changeKotlinVersion(guiTest);
+  }
+
+  @NotNull
+  protected static void changeKotlinVersion(@NotNull GuiTestRule guiTest) throws Exception {
+    IdeFrameFixture ideFrameFixture = guiTest.ideFrame();
+
+    // TODO: the following is a hack. See http://b/79752752 for removal of the hack
+    // The Kotlin plugin version chosen is done with a network request. This does not work
+    // in an environment where network access is unavailable. We need to handle setting
+    // the Kotlin plugin version ourselves temporarily.
+    Wait.seconds(15)
+      .expecting("Gradle project sync in progress...")
+      .until(() ->
+               ideFrameFixture.getEditor().open("build.gradle").getCurrentFileContents().contains("kotlin")
+      );
+
+    String buildGradleContents = ideFrameFixture.getEditor()
+      .open("build.gradle")
+      .getCurrentFileContents();
+
+    //String kotlinVersion = kotlinCompilerVersionShort();
+    String newBuildGradleContents = buildGradleContents.replaceAll(
+        "id 'org.jetbrains.kotlin.android' version '1.0.0' apply false",
+        "id 'org.jetbrains.kotlin.android' version '1.6.10' apply false"
+      );
+
+    OutputStream buildGradleOutput = ideFrameFixture.getEditor()
+      .open("build.gradle")
+      .getCurrentFile()
+      .getOutputStream(null);
+    Ref<IOException> ioErrors = new Ref<>();
+    ApplicationManager.getApplication().invokeAndWait(() -> {
+      ApplicationManager.getApplication().runWriteAction(() -> {
+        try (
+          Writer buildGradleWriter = new OutputStreamWriter(buildGradleOutput, StandardCharsets.UTF_8)
+        ) {
+          buildGradleWriter.write(newBuildGradleContents);
+        } catch (IOException writeError) {
+          ioErrors.set(writeError);
+        }
+      });
+    });
+    IOException ioError = ioErrors.get();
+    if (ioError != null) {
+      throw new Exception("Unable to modify build.gradle file", ioError);
+    }
+    guiTest.waitForBackgroundTasks();
+    // TODO End hack
   }
 }

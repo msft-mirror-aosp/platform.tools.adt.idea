@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.sync.idea.data.service;
 import static com.intellij.openapi.externalSystem.model.ProjectKeys.LIBRARY_DEPENDENCY;
 
 import com.android.tools.idea.gradle.model.IdeSyncIssue;
+import com.android.tools.idea.gradle.model.impl.IdeLibraryTableImpl;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.AndroidModuleModel;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
@@ -26,6 +27,7 @@ import com.android.tools.idea.gradle.project.model.JavaModuleModel;
 import com.android.tools.idea.gradle.project.model.NdkModuleModel;
 import com.android.tools.idea.gradle.project.sync.idea.IdeAndroidNativeVariantsModelsWrapper;
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectCleanupModel;
+import com.android.tools.idea.projectsystem.gradle.sync.AndroidModuleDataService;
 import com.intellij.openapi.externalSystem.model.Key;
 import org.jetbrains.annotations.NotNull;
 
@@ -34,8 +36,7 @@ import org.jetbrains.annotations.NotNull;
  * <ol>
  * <li>{@link GradleModuleModelDataService}</li>
  * <li>{@link NdkModuleModelDataService}</li>
- * <li>{@link AndroidModuleDataService}</li>
- * <li>{@link JavaModuleModelDataService}</li>
+ * <li>{@link AndroidModuleDataService} or {@link JavaModuleModelDataService} (mutually exclusive)</li>
  * <li>{@link ProjectCleanupDataService}</li>
  * </ol>
  * <br/>
@@ -69,7 +70,11 @@ public final class AndroidProjectKeys {
   public static final Key<JavaModuleModel> JAVA_MODULE_MODEL = Key.create(JavaModuleModel.class, NDK_MODEL.getProcessingWeight() + 10);
 
   @NotNull
-  public static final Key<IdeSyncIssue> SYNC_ISSUE = Key.create(IdeSyncIssue.class, JAVA_MODULE_MODEL.getProcessingWeight() + 10);
+  public static final Key<IdeLibraryTableImpl> IDE_LIBRARY_TABLE =
+    Key.create(IdeLibraryTableImpl.class, JAVA_MODULE_MODEL.getProcessingWeight() + 10);
+
+  @NotNull
+  public static final Key<IdeSyncIssue> SYNC_ISSUE = Key.create(IdeSyncIssue.class, IDE_LIBRARY_TABLE.getProcessingWeight() + 10);
 
   @NotNull
   public static final Key<IdeAndroidNativeVariantsModelsWrapper> NATIVE_VARIANTS =

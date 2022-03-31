@@ -52,10 +52,11 @@ import com.android.resources.aar.AarResourceRepository;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.editors.theme.ResolutionUtils;
-import com.android.tools.idea.editors.theme.ThemeEditorUtils;
 import com.android.tools.idea.projectsystem.FilenameConstants;
 import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider;
 import com.android.tools.idea.projectsystem.SourceProviders;
+import com.android.tools.idea.rendering.RenderLogger;
+import com.android.tools.idea.rendering.RenderService;
 import com.android.tools.idea.rendering.RenderTask;
 import com.android.tools.idea.res.AndroidDependenciesCache;
 import com.android.tools.idea.res.IdeResourcesUtil;
@@ -97,6 +98,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -303,7 +305,6 @@ public class AndroidJavaDocRenderer {
       LocalResourceRepository resources = getAppResources();
 
       List<AndroidFacet> dependencies =  AndroidDependenciesCache.getAllAndroidDependencies(myModule, true);
-      boolean hasGradleModel = false;
       int rank = 0;
 
       for (AndroidFacet reachableFacet : Iterables.concat(ImmutableList.of(facet), dependencies)) {
@@ -520,9 +521,7 @@ public class AndroidJavaDocRenderer {
       if (myResourceResolver == null && createIfNecessary) {
         if (myConfiguration != null) {
           myResourceResolver = myConfiguration.getResourceResolver();
-          if (myResourceResolver != null) {
-            return myResourceResolver;
-          }
+          return myResourceResolver;
         }
 
         AndroidFacet facet = AndroidFacet.getInstance(myModule);
@@ -599,7 +598,7 @@ public class AndroidJavaDocRenderer {
             ResourceValue v = new ResourceValueImpl(urlToReference(url), null);
             v.setValue(url.toString());
             ResourceValue resourceValue = resolver.resolveResValue(v);
-            if (resourceValue != null && resourceValue.getValue() != null) {
+            if (resourceValue.getValue() != null) {
               return resourceValue.getValue();
             }
           }
@@ -608,7 +607,7 @@ public class AndroidJavaDocRenderer {
           ResourceValue v = new ResourceValueImpl(urlToReference(url), null);
           v.setValue(url.toString());
           ResourceValue resourceValue = resolver.resolveResValue(v);
-          if (resourceValue != null && resourceValue.getValue() != null) {
+          if (resourceValue.getValue() != null) {
             return resourceValue.getValue();
           } else if (resourceValue instanceof StyleResourceValue) {
             return resourceValue.getResourceUrl().toString();
@@ -1048,31 +1047,40 @@ public class AndroidJavaDocRenderer {
       }
       else {
         if (myConfiguration != null) {
-          RenderTask renderTask = ThemeEditorUtils.configureRenderTask(myModule, myConfiguration);
-
-          // Find intrinsic size.
-          int width = 100;
-          int height = 100;
-          if (isWebP) {
-            Dimension size = getSize(virtualFile);
-            if (size != null) {
-              width = size.width;
-              height = size.height;
+          AndroidFacet facet = AndroidFacet.getInstance(myModule);
+          assert facet != null;
+          final RenderService service = RenderService.getInstance(myModule.getProject());
+          RenderLogger logger = new RenderLogger("AndroidJavaDocRendererLogger", null);
+          CompletableFuture<RenderTask> renderTaskFuture = service.taskBuilder(facet, myConfiguration)
+            .withLogger(logger)
+            .build();
+          CompletableFuture<BufferedImage> future = renderTaskFuture.thenCompose(renderTask -> {
+            if (renderTask == null) {
+              return CompletableFuture.completedFuture(null);
             }
-          }
+            renderTask.getLayoutlibCallback().setLogger(logger);
 
-          renderTask.setOverrideRenderSize(width, height);
+            // Find intrinsic size.
+            int width = 100;
+            int height = 100;
+            if (isWebP) {
+              Dimension size = getSize(virtualFile);
+              if (size != null) {
+                width = size.width;
+                height = size.height;
+              }
+            }
+
+            renderTask.setOverrideRenderSize(width, height);
+            return renderTask.renderDrawable(resolvedValue).whenComplete((image, ex) -> renderTask.dispose());
+          });
           BufferedImage image;
           try {
-            CompletableFuture<BufferedImage> future = renderTask.renderDrawable(resolvedValue);
             image = waitInterruptibly(future);
           }
           catch (InterruptedException | ExecutionException e) {
             renderError(builder, e.toString());
             return;
-          }
-          finally {
-            renderTask.dispose();
           }
           if (image != null) {
             // Need to write it somewhere.
@@ -1359,11 +1367,9 @@ public class AndroidJavaDocRenderer {
 
       if (rank != itemInfo.rank) return false;
       if (!configuration.equals(itemInfo.configuration)) return false;
-      if (flavor != null ? !flavor.equals(itemInfo.flavor) : itemInfo.flavor != null) return false;
+      if (!Objects.equals(flavor, itemInfo.flavor)) return false;
       if (!folder.equals(itemInfo.folder)) return false;
-      if (value != null ? !value.equals(itemInfo.value) : itemInfo.value != null) return false;
-
-      return true;
+      return Objects.equals(value, itemInfo.value);
     }
 
     @Override

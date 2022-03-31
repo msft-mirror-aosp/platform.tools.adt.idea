@@ -480,7 +480,7 @@ android-studio/lib/asm-commons-7.1.jar
 android-studio/lib/asm-tree-7.1.jar
 android-studio/lib/asm-util-7.1.jar
 android-studio/lib/bootstrap.jar
-android-studio/lib/build-marker-AI-213.6777.52.2113.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-213.7172.25.2113.__BUILD_NUMBER__
 android-studio/lib/byte-buddy-agent.jar
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/classpath.txt
@@ -1930,6 +1930,7 @@ android-studio/plugins/android/lib/explainer.jar
 android-studio/plugins/android/lib/ffmpeg-5.0-1.5.7-linux-x86_64.jar
 android-studio/plugins/android/lib/ffmpeg-5.0-1.5.7.jar
 android-studio/plugins/android/lib/ffmpeg-platform-5.0-1.5.7.jar
+android-studio/plugins/android/lib/firebase_java_proto.jar
 android-studio/plugins/android/lib/flatbuffers-java-1.12.0.jar
 android-studio/plugins/android/lib/game-tools-protos.jar
 android-studio/plugins/android/lib/game-tools.jar
@@ -1943,7 +1944,7 @@ android-studio/plugins/android/lib/javacpp-1.5.7.jar
 android-studio/plugins/android/lib/javacpp-platform-1.5.7.jar
 android-studio/plugins/android/lib/javapoet-1.10.0.jar
 android-studio/plugins/android/lib/javax.inject-1.jar
-android-studio/plugins/android/lib/jetifier-core-1.0.0-beta09.jar
+android-studio/plugins/android/lib/jetifier-core-1.0.0-beta10.jar
 android-studio/plugins/android/lib/juniversalchardet-1.0.3.jar
 android-studio/plugins/android/lib/kotlinx-coroutines-guava-1.5.0.jar
 android-studio/plugins/android/lib/kxml2-2.3.0.jar
@@ -1958,7 +1959,6 @@ android-studio/plugins/android/lib/libandroid-core-proto.jar
 android-studio/plugins/android/lib/libapp-processes-proto.jar
 android-studio/plugins/android/lib/libjava_sites.jar
 android-studio/plugins/android/lib/libjava_version.jar
-android-studio/plugins/android/lib/liblint-checks-proto.lib.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-host-device-info-proto.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-host-retention-proto.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-result-listener-gradle-proto.jar
@@ -2171,6 +2171,9 @@ android-studio/plugins/android/resources/device-art-resources/pixel_5/mask.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_6/back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_6/layout
 android-studio/plugins/android/resources/device-art-resources/pixel_6/mask.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_6_pro/back.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_6_pro/layout
+android-studio/plugins/android/resources/device-art-resources/pixel_6_pro/mask.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_fore.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_shadow.webp
@@ -2346,7 +2349,6 @@ android-studio/plugins/coverage/lib/coverage_rt.jar
 android-studio/plugins/coverage/lib/jacoco.jar
 android-studio/plugins/design-tools/lib/design-tools.jar
 android-studio/plugins/design-tools/lib/layoutlib.jar
-android-studio/plugins/design-tools/resources/kotlin-compiler-daemon-1.1.0-fallback.jar
 android-studio/plugins/design-tools/resources/layoutlib/build.prop
 android-studio/plugins/design-tools/resources/layoutlib/data/fonts/AndroidClock.ttf
 android-studio/plugins/design-tools/resources/layoutlib/data/fonts/CarroisGothicSC-Regular.ttf

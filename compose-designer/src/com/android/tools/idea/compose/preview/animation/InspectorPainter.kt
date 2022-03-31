@@ -20,6 +20,7 @@ import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.compose.preview.message
 import com.google.wireless.android.sdk.stats.ComposeAnimationToolingEvent
+import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -49,13 +50,22 @@ import javax.swing.JPanel
 import javax.swing.JSlider
 
 /** [ActionToolbarImpl] with enabled navigation. */
-class DefaultToolbarImpl(surface: DesignSurface, place: String, action: AnAction) : ActionToolbarImpl(place, DefaultActionGroup(action),
-                                                                                                      true) {
+open class DefaultToolbarImpl(surface: DesignSurface, place: String, action: AnAction)
+  : ActionToolbarImpl(place, DefaultActionGroup(action), true) {
   init {
     targetComponent = surface
     ActionToolbarUtil.makeToolbarNavigable(this)
+    layoutPolicy = ActionToolbar.NOWRAP_LAYOUT_POLICY
+    setMinimumButtonSize(ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
   }
 }
+
+internal class SingleButtonToolbar(surface: DesignSurface, place: String, action: AnAction) : DefaultToolbarImpl(surface, place, action) {
+  // From ActionToolbar#setMinimumButtonSize, all the toolbar buttons have 25x25 pixels by default. Set the preferred size of the
+  // toolbar to be 5 pixels more in both height and width, so it fits exactly one button plus a margin
+  override fun getPreferredSize() = JBUI.size(30, 30)
+}
+
 
 /**
  * Graphics elements corresponding to painting the inspector in [AnimationInspectorPanel].
@@ -124,8 +134,8 @@ object InspectorPainter {
     g.drawLine(curveInfo.minX, curveInfo.y, curveInfo.maxX, curveInfo.y)
     if (curveInfo.linkedToNextCurve) {
       g.stroke = DASHED_STROKE
-      g.drawLine(curveInfo.minX, curveInfo.y, curveInfo.minX, curveInfo.y + rowHeight - Diamond.DIAMOND_SIZE)
-      g.drawLine(curveInfo.maxX, curveInfo.y, curveInfo.maxX, curveInfo.y + rowHeight - Diamond.DIAMOND_SIZE)
+      g.drawLine(curveInfo.minX, curveInfo.y, curveInfo.minX, curveInfo.y + rowHeight - Diamond.diamondSize())
+      g.drawLine(curveInfo.maxX, curveInfo.y, curveInfo.maxX, curveInfo.y + rowHeight - Diamond.diamondSize())
       g.stroke = SIMPLE_STROKE
     }
     g.color = GRAPH_COLORS_WITH_ALPHA[colorIndex % GRAPH_COLORS.size]
@@ -249,7 +259,7 @@ object InspectorPainter {
     fun paintThumbForHorizSlider(g: Graphics2D, x: Int, y: Int, height: Int) {
       g.color = THUMB_COLOR
       g.stroke = SIMPLE_STROKE
-      g.drawLine(x, y, x, y + height);
+      g.drawLine(x, y, x, y + height)
       // The scrubber handle should have the following shape:
       //         ___
       //        |   |
@@ -296,12 +306,12 @@ object InspectorPainter {
     // where (x, y) is the center of the diamond
     private fun xArray(size: Int) = intArrayOf(x, x + size, x, x - size)
     private fun yArray(size: Int) = intArrayOf(y - size, y, y + size, y)
-    private val diamond = Polygon(xArray(DIAMOND_SIZE), yArray(DIAMOND_SIZE), 4)
-    private val diamondOutline = Polygon(xArray(DIAMOND_SIZE + 1), yArray(DIAMOND_SIZE + 1), 4)
+    private val diamond = Polygon(xArray(diamondSize()), yArray(diamondSize()), 4)
+    private val diamondOutline = Polygon(xArray(diamondSize() + 1), yArray(diamondSize() + 1), 4)
 
     companion object {
       /** Size of the diamond shape used as the graph size limiter. */
-      const val DIAMOND_SIZE = 6
+      fun diamondSize() = JBUI.scale(6)
     }
 
     /**
@@ -348,6 +358,14 @@ object InspectorPainter {
 
     /** Create models for comboBoxes in this component. */
     fun createModels(states: Set<Any>): List<DefaultComboBoxModel<Any>>
+
+    /** Update the given combo box width to be as wide as the longest model value that can be set. */
+    fun updatePreferredWidth(comboBox: ComboBox<Any>, model: DefaultComboBoxModel<Any>) {
+      val longestTextWidth = (0 until model.size).maxOfOrNull {
+        comboBox.getFontMetrics(component.font).stringWidth(model.getElementAt(it).toString())
+      } ?: return
+      comboBox.setMinimumAndPreferredWidth(JBUI.scale(longestTextWidth + 35)) // longest width + margin (that includes the dropdown arrow)
+    }
   }
 
   /** Wrapper around multiple StateComboBox with shared state. */
@@ -401,13 +419,14 @@ object InspectorPainter {
         arrayOf(message("animation.inspector.animated.visibility.combobox.placeholder.message"))
       )
     }
-
     override fun updateStates(states: Set<Any>) {
       model = DefaultComboBoxModel(states.toTypedArray())
     }
 
     override fun setModels(models: List<DefaultComboBoxModel<Any>>) {
-      model = models.first()
+      val onlyModel = models.single()
+      model = onlyModel
+      updatePreferredWidth(this, onlyModel)
     }
 
     override fun createModels(states: Set<Any>): List<DefaultComboBoxModel<Any>> =
@@ -445,7 +464,7 @@ object InspectorPainter {
   (private val surface: DesignSurface,
    private val logger: (type: ComposeAnimationToolingEvent.ComposeAnimationToolingEventType) -> Unit,
    private val callback: (stateComboBox: StateComboBox) -> Unit) :
-    StateComboBox, JPanel(TabularLayout("Fit,Fit,Fit,Fit")) {
+    StateComboBox, JPanel(TabularLayout("Fit,Fit-,Fit,Fit-")) {
     //  StartEndComboBox component displays:
     //
     //   Swap button to switch states.
@@ -474,14 +493,7 @@ object InspectorPainter {
       startStateComboBox.model = DefaultComboBoxModel(states)
       endStateComboBox.model = DefaultComboBoxModel(states)
 
-      val swapStatesActionToolbar = object : ActionToolbarImpl("Swap States", DefaultActionGroup(SwapStartEndStatesAction()), true) {
-        // From ActionToolbar#setMinimumButtonSize, all the toolbar buttons have 25x25 pixels by default. Set the preferred size of the
-        // toolbar to be 5 pixels more in both height and width, so it fits exactly one button plus a margin
-        override fun getPreferredSize() = JBUI.size(30, 30)
-      }.apply {
-        targetComponent = surface
-        ActionToolbarUtil.makeToolbarNavigable(this)
-      }
+      val swapStatesActionToolbar = SingleButtonToolbar(surface, "Swap States", SwapStartEndStatesAction())
       add(swapStatesActionToolbar, TabularLayout.Constraint(0, 0))
       add(startStateComboBox, TabularLayout.Constraint(0, 1))
       add(JBLabel(message("animation.inspector.state.to.label")), TabularLayout.Constraint(0, 2))
@@ -512,7 +524,9 @@ object InspectorPainter {
 
     override fun setModels(models: List<DefaultComboBoxModel<Any>>) {
       startStateComboBox.model = models[0]
+      updatePreferredWidth(startStateComboBox, models[0])
       endStateComboBox.model = models[1]
+      updatePreferredWidth(endStateComboBox, models[1])
     }
 
     override fun createModels(states: Set<Any>): List<DefaultComboBoxModel<Any>> =

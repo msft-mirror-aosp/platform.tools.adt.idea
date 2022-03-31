@@ -21,6 +21,7 @@ import com.android.ddmlib.Log.LogLevel.INFO
 import com.android.ddmlib.Log.LogLevel.WARN
 import com.android.ddmlib.logcat.LogCatHeader
 import com.android.ddmlib.logcat.LogCatMessage
+import com.android.sdklib.AndroidVersion
 import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.adtui.swing.FakeUi
@@ -28,6 +29,7 @@ import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.FakeAndroidProjectDetector
 import com.android.tools.idea.concurrency.AndroidExecutors
+import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.filters.LogcatFilterField.IMPLICIT_LINE
 import com.android.tools.idea.logcat.filters.LogcatFilterField.LINE
@@ -41,7 +43,9 @@ import com.android.tools.idea.logcat.messages.FormattingOptions.Style.COMPACT
 import com.android.tools.idea.logcat.messages.LogcatColors
 import com.android.tools.idea.logcat.messages.TagFormat
 import com.android.tools.idea.logcat.settings.AndroidLogcatSettings
+import com.android.tools.idea.logcat.util.AdbAdapter
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
+import com.android.tools.idea.logcat.util.FakeAdbAdapter
 import com.android.tools.idea.logcat.util.LogcatFilterLanguageRule
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.logcatEvents
@@ -59,6 +63,7 @@ import com.intellij.openapi.actionSystem.ActionGroup.EMPTY_GROUP
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.impl.DocumentImpl
@@ -89,7 +94,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.JPopupMenu
 
 /**
@@ -99,14 +104,15 @@ class LogcatMainPanelTest {
   private val projectRule = ProjectRule()
   private val executor = Executors.newCachedThreadPool()
   private val popupRule = PopupRule()
-  private val androidExecutorsRule = AndroidExecutorsRule(workerThreadExecutor = executor, ioThreadExecutor = executor)
+  private val androidExecutorsRule = AndroidExecutorsRule(workerThreadExecutor = executor)
   private val usageTrackerRule = UsageTrackerRule()
 
   @get:Rule
   val rule = RuleChain(projectRule, EdtRule(), androidExecutorsRule, popupRule, LogcatFilterLanguageRule(), usageTrackerRule)
 
-  private val myMockHyperlinkDetector = mock<HyperlinkDetector>()
+  private val mockHyperlinkDetector = mock<HyperlinkDetector>()
   private val mockFoldingDetector = mock<FoldingDetector>()
+  private val fakeAdbAdapter = FakeAdbAdapter()
   private val androidLogcatFormattingOptions = AndroidLogcatFormattingOptions()
 
   @Before
@@ -129,16 +135,19 @@ class LogcatMainPanelTest {
     assertThat(borderLayout.getLayoutComponent(CENTER)).isSameAs(logcatMainPanel.editor.component)
     assertThat(borderLayout.getLayoutComponent(WEST)).isInstanceOf(ActionToolbar::class.java)
     val toolbar = borderLayout.getLayoutComponent(WEST) as ActionToolbar
-    assertThat(toolbar.actions.mapNotNull { it.templatePresentation.text }).containsExactly(
+    assertThat(toolbar.actions.map { if (it is Separator) "-" else it.templatePresentation.text }).containsExactly(
       "Clear Logcat",
       "Scroll to the End (clicking on a particular line stops scrolling and keeps that line visible)",
-      "Soft-Wrap",
-      "Configure Logcat Formatting Options",
       "Previous Occurrence",
       "Next Occurrence",
+      "Soft-Wrap",
+      "-",
+      "Configure Logcat Formatting Options",
+      "-",
       "Screen Capture",
       "Screen Record",
-    )
+      "-", // ActionManager.createActionToolbar() seems to add a separator at the end
+    ).inOrder()
     toolbar.actions.forEach {
       assertThat(it).isInstanceOf(DumbAware::class.java)
     }
@@ -193,7 +202,7 @@ class LogcatMainPanelTest {
       logcatMainPanel.applyFilter(StringFilter("tag1", LINE))
     }
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     logcatMainPanel.messageProcessor.onIdle {
       assertThat(logcatMainPanel.editor.document.text).isEqualTo("""
         1970-01-01 04:00:01.000     1-2     tag1                    app1                                 W  message1
@@ -279,7 +288,7 @@ class LogcatMainPanelTest {
   @Test
   fun isMessageViewEmpty_notEmptyLogcat() = runBlocking {
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(hyperlinkDetector = myMockHyperlinkDetector)
+      logcatMainPanel(hyperlinkDetector = mockHyperlinkDetector)
     }
 
     logcatMainPanel.processMessages(listOf(logCatMessage()))
@@ -297,7 +306,7 @@ class LogcatMainPanelTest {
 
     logcatMainPanel.clearMessageView()
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().ioThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEmpty()
     assertThat(logcatMainPanel.messageBacklog.get().messages).isEmpty()
@@ -307,16 +316,18 @@ class LogcatMainPanelTest {
   @Test
   fun clearMessageView_bySubscriptionToClearLogcatListener() {
     val device = mockDevice("device1")
+    fakeAdbAdapter.mutableDevices.add(device)
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel().also {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter).also {
         it.deviceContext.fireDeviceSelected(device)
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
     }
 
     projectRule.project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().ioThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEmpty()
   }
@@ -325,16 +336,19 @@ class LogcatMainPanelTest {
   fun clearMessageView_bySubscriptionToClearLogcatListener_otherDevice() {
     val device1 = mockDevice("device1")
     val device2 = mockDevice("device2")
+    fakeAdbAdapter.mutableDevices.add(device1)
+    fakeAdbAdapter.mutableDevices.add(device2)
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel().also {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter).also {
         it.deviceContext.fireDeviceSelected(device1)
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
     }
 
     projectRule.project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device2)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().ioThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEqualTo("not-empty")
   }
@@ -346,7 +360,7 @@ class LogcatMainPanelTest {
   @Test
   fun hyperlinks_range() = runBlocking {
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(hyperlinkDetector = myMockHyperlinkDetector)
+      logcatMainPanel(hyperlinkDetector = mockHyperlinkDetector)
     }
 
     logcatMainPanel.messageProcessor.appendMessages(listOf(logCatMessage()))
@@ -354,8 +368,8 @@ class LogcatMainPanelTest {
     logcatMainPanel.messageProcessor.appendMessages(listOf(logCatMessage()))
 
     logcatMainPanel.messageProcessor.onIdle {
-      verify(myMockHyperlinkDetector).detectHyperlinks(eq(0), eq(1))
-      verify(myMockHyperlinkDetector).detectHyperlinks(eq(1), eq(2))
+      verify(mockHyperlinkDetector).detectHyperlinks(eq(0), eq(1))
+      verify(mockHyperlinkDetector).detectHyperlinks(eq(1), eq(2))
     }
   }
 
@@ -366,7 +380,7 @@ class LogcatMainPanelTest {
   @Test
   fun hyperlinks_rangeWithCyclicBuffer() = runBlocking {
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(hyperlinkDetector = myMockHyperlinkDetector, logcatSettings = AndroidLogcatSettings(bufferSize = 1024))
+      logcatMainPanel(hyperlinkDetector = mockHyperlinkDetector, logcatSettings = AndroidLogcatSettings(bufferSize = 1024))
     }
     val longMessage = "message".padStart(1000, '-')
 
@@ -375,7 +389,7 @@ class LogcatMainPanelTest {
     logcatMainPanel.messageProcessor.appendMessages(listOf(logCatMessage(message = longMessage)))
 
     logcatMainPanel.messageProcessor.onIdle {
-      verify(myMockHyperlinkDetector, times(2)).detectHyperlinks(eq(0), eq(1))
+      verify(mockHyperlinkDetector, times(2)).detectHyperlinks(eq(0), eq(1))
     }
   }
 
@@ -433,12 +447,17 @@ class LogcatMainPanelTest {
   @Test
   fun appliesState() {
     val logcatMainPanel = logcatMainPanel(
-      state = LogcatPanelConfig(device = null, FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(17))), "filter"))
+      state = LogcatPanelConfig(
+        device = null,
+        FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(17))),
+        "filter",
+        isSoftWrap = true))
 
     // TODO(aalbert) : Also assert on device field when the combo is rewritten to allow testing.
     assertThat(logcatMainPanel.formattingOptions.tagFormat.maxLength).isEqualTo(17)
     assertThat(logcatMainPanel.messageProcessor.logcatFilter).isEqualTo(StringFilter("filter", IMPLICIT_LINE))
     assertThat(logcatMainPanel.headerPanel.getFilterText()).isEqualTo("filter")
+    assertThat(logcatMainPanel.editor.settings.isUseSoftWraps).isTrue()
   }
 
   @RunsInEdt
@@ -449,6 +468,7 @@ class LogcatMainPanelTest {
     assertThat(logcatMainPanel.formattingOptions).isEqualTo(FormattingOptions())
     assertThat(logcatMainPanel.messageProcessor.logcatFilter).isInstanceOf(ProjectAppFilter::class.java)
     assertThat(logcatMainPanel.headerPanel.getFilterText()).isEqualTo("package:mine")
+    assertThat(logcatMainPanel.editor.settings.isUseSoftWraps).isFalse()
   }
 
   @RunsInEdt
@@ -471,7 +491,7 @@ class LogcatMainPanelTest {
 
     runInEdtAndWait(logcatMainPanel::reloadMessages)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
 
     logcatMainPanel.messageProcessor.onIdle {
       assertThat(logcatMainPanel.editor.document.text)
@@ -548,7 +568,7 @@ class LogcatMainPanelTest {
       logcatMainPanel.formattingOptions = COMPACT.formattingOptions
     }
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     logcatMainPanel.messageProcessor.onIdle {
       assertThat(logcatMainPanel.editor.document.text.trim()).isEqualTo("04:00:01.000  W  message1")
     }
@@ -621,7 +641,8 @@ class LogcatMainPanelTest {
     logcatMainPanel(state = LogcatPanelConfig(
       device = null,
       formattingConfig = FormattingConfig.Preset(COMPACT),
-      "foo"))
+      "filter",
+      isSoftWrap = false))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -654,7 +675,8 @@ class LogcatMainPanelTest {
     logcatMainPanel(state = LogcatPanelConfig(
       device = null,
       formattingConfig = FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(20, hideDuplicates = false, enabled = true))),
-      "foo"))
+      "filter",
+      isSoftWrap = false))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -689,6 +711,7 @@ class LogcatMainPanelTest {
     hyperlinkDetector: HyperlinkDetector? = null,
     foldingDetector: FoldingDetector? = null,
     packageNamesProvider: PackageNamesProvider = FakePackageNamesProvider(),
+    adbAdapter: AdbAdapter = FakeAdbAdapter(),
     zoneId: ZoneId = ZoneId.of("Asia/Yerevan"),
   ): LogcatMainPanel =
     LogcatMainPanel(
@@ -701,10 +724,20 @@ class LogcatMainPanelTest {
       hyperlinkDetector,
       foldingDetector,
       packageNamesProvider,
-      zoneId
+      adbAdapter,
+      { logcatPresenter, iDevice -> FakeLogcatDeviceManager(iDevice, logcatPresenter, packageNamesProvider) },
+      zoneId,
     ).also {
       Disposer.register(projectRule.project, it)
     }
+
+  private class FakeLogcatDeviceManager(
+    device: IDevice,
+    logcatPresenter: LogcatPresenter,
+    packageNamesProvider: PackageNamesProvider,
+  ) : LogcatDeviceManager(device, logcatPresenter, packageNamesProvider) {
+    override fun clearLogcat() {}
+  }
 }
 
 private fun LogCatMessage.length() = FormattingOptions().getHeaderWidth() + message.length
@@ -717,5 +750,6 @@ private fun mockDevice(serialNumber: String): IDevice {
     `when`(it.state).thenReturn(ONLINE)
     `when`(it.clients).thenReturn(emptyArray())
     `when`(it.serialNumber).thenReturn(serialNumber)
+    `when`(it.version).thenReturn(AndroidVersion(30))
   }
 }

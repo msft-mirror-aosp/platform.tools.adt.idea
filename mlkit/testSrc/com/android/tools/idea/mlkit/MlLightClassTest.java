@@ -16,6 +16,7 @@
 package com.android.tools.idea.mlkit;
 
 import static com.android.tools.idea.mlkit.MlProjectTestUtil.setupTestMlProject;
+import static com.android.tools.idea.projectsystem.ModuleSystemUtil.getMainModule;
 import static com.google.common.truth.Truth.assertThat;
 import static com.intellij.util.containers.ContainerUtil.map;
 
@@ -57,6 +58,9 @@ import org.jetbrains.annotations.NotNull;
 
 public class MlLightClassTest extends AndroidTestCase {
 
+  private final static String AGP_VERSION_SUPPORTING_ML = "4.2.0-alpha8";
+  private final static String AGP_VERSION_NOT_SUPPORTING_ML = "4.2.0-alpha7";
+
   @Override
   public void setUp() throws Exception {
     super.setUp();
@@ -79,7 +83,6 @@ public class MlLightClassTest extends AndroidTestCase {
                                "package org.tensorflow.lite.support.model; public class Model { public static class Options {} }");
     myFixture.addFileToProject("src/org/tensorflow/lite/support/label/Category.java",
                                "package org.tensorflow.lite.support.label; public class Category {}");
-    setupProject("4.2.0-alpha8");
   }
 
   private void setupProject(String version) {
@@ -100,6 +103,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_java() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/mobilenet_model.tflite");
     myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/sub/mobilenet_model.tflite");
     myFixture.copyFileToProject("style_transfer_quant_metadata.tflite", "ml/style_transfer_model.tflite");
@@ -192,7 +196,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_newAPINotExistInLowAGP_java() {
-    setupProject("4.2.0-alpha7");
+    setupProject(AGP_VERSION_NOT_SUPPORTING_ML);
     VirtualFile ssdModelFile = myFixture.copyFileToProject("ssd_mobilenet_odt_metadata_v1.2.tflite", "ml/ssd_model_v2.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -242,6 +246,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_modelWithoutMetadata_java() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_no_metadata.tflite", "ml/my_plain_model.tflite");
     PsiFile activityFile = myFixture.addFileToProject(
       "/src/p1/p2/MainActivity.java",
@@ -279,6 +284,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_modelWithV2Metadata_java() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata_v2.tflite", "ml/my_model_v2.tflite");
     PsiFile activityFile = myFixture.addFileToProject(
       "/src/p1/p2/MainActivity.java",
@@ -311,6 +317,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_invokeConstructorThrowError_java() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_no_metadata.tflite", "ml/my_plain_model.tflite");
     PsiFile activityFile = myFixture.addFileToProject(
       "/src/p1/p2/MainActivity.java",
@@ -344,6 +351,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_invokeConstructorWithContextThrowError_java() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_no_metadata.tflite", "ml/my_plain_model.tflite");
     PsiFile activityFile = myFixture.addFileToProject(
       "/src/p1/p2/MainActivity.java",
@@ -377,6 +385,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_kotlin() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/mobilenet_model.tflite");
     myFixture.copyFileToProject("style_transfer_quant_metadata.tflite", "ml/style_transfer_model.tflite");
     myFixture.copyFileToProject("ssd_mobilenet_odt_metadata_v1.2.tflite", "ml/ssd_model_v2.tflite");
@@ -454,6 +463,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_modelWithoutMetadata_kotlin() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_no_metadata.tflite", "ml/my_plain_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -484,6 +494,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testHighlighting_modelFileOverwriting() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     String targetModelFilePath = "ml/my_model.tflite";
     VirtualFile modelFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", targetModelFilePath);
 
@@ -556,6 +567,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testLightModelClassNavigation() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     // Below is the workaround to make MockFileDocumentManagerImpl#getDocument return a non-null value for a model file, so the non-null
@@ -593,6 +605,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testCompleteProcessMethod() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -634,6 +647,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testCompleteNewInstanceMethod() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -673,6 +687,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testCompleteInnerClass() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -718,6 +733,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testCompleteInnerInputClassWithoutOuterClass() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -770,6 +786,7 @@ public class MlLightClassTest extends AndroidTestCase {
 
 
   public void testCompleteModelClass() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
     PsiFile activityFile = myFixture.addFileToProject(
@@ -813,20 +830,22 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testModuleService() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
     myFixture.copyFileToProject("mobilenet_quant_no_metadata.tflite", "ml/my_plain_model.tflite");
 
-    MlModuleService mlkitService = MlModuleService.getInstance(myModule);
+    MlModuleService mlkitService = MlModuleService.getInstance(getMainModule(myModule));
     List<LightModelClass> lightClasses = mlkitService.getLightModelClassList();
     List<String> classNameList = map(lightClasses, psiClass -> psiClass.getName());
     assertThat(classNameList).containsExactly("MyModel", "MyPlainModel");
-    assertThat(ModuleUtilCore.findModuleForPsiElement(lightClasses.get(0))).isEqualTo(myModule);
+    assertThat(ModuleUtilCore.findModuleForPsiElement(lightClasses.get(0))).isEqualTo(getMainModule(myModule));
   }
 
   public void testFallbackApisAreDeprecated() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
 
-    MlModuleService mlkitService = MlModuleService.getInstance(myModule);
+    MlModuleService mlkitService = MlModuleService.getInstance(getMainModule(myModule));
     List<LightModelClass> lightClasses = mlkitService.getLightModelClassList();
     assertThat(lightClasses).hasSize(1);
 
@@ -842,6 +861,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testBrokenFiles() {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     VirtualFile modelVirtualFile = myFixture.copyFileToProject("mobilenet_quant_metadata.tflite", "ml/my_model.tflite");
     VfsTestUtil.createFile(ProjectUtil.guessModuleDir(myModule), "ml/broken.tflite", new byte[]{1, 2, 3});
 
@@ -855,6 +875,7 @@ public class MlLightClassTest extends AndroidTestCase {
   }
 
   public void testModelApiGenEventIsLogged() throws Exception {
+    setupProject(AGP_VERSION_SUPPORTING_ML);
     TestUsageTracker usageTracker = new TestUsageTracker(new VirtualTimeScheduler());
     UsageTracker.setWriterForTest(usageTracker);
 

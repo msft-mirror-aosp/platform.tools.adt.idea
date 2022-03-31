@@ -16,9 +16,12 @@
 package com.android.tools.idea.compose.preview.animation
 
 import com.android.tools.adtui.TabularLayout
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.ui.JBColor
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.scale.JBUIScale
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JComponent
@@ -29,7 +32,7 @@ import javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
 import javax.swing.border.MatteBorder
 
 /** Component and its layout for `All animations` tab. */
-class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
+class AllTabPanel : JPanel(TabularLayout("2px,*", "31px,*")) {
 
   //   ________________________________________________
   //   | [Playback control]                            |
@@ -47,7 +50,7 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
   private val splitter = JBSplitter(0.4f).apply {
     // Cards
     firstComponent = JPanel(TabularLayout("*")).apply {
-      this.border = MatteBorder(InspectorLayout.TIMELINE_TOP_OFFSET, 0, 0, 0, InspectorColors.TIMELINE_BACKGROUND_COLOR)
+      this.border = getCardsBorder()
     }
     // Timeline
     secondComponent = JPanel(BorderLayout()).apply {
@@ -57,7 +60,7 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
   }
 
   private fun updateDimension() {
-    val preferredHeight = InspectorLayout.TIMELINE_TOP_OFFSET + cards.sumOf { it.getCurrentHeight() }
+    val preferredHeight = InspectorLayout.timelineHeaderHeightScaled() + JBUI.scale(cards.sumOf { it.getCurrentHeight() })
     splitter.firstComponent.preferredSize = Dimension(splitter.firstComponent.width, preferredHeight)
     splitter.secondComponent.preferredSize = Dimension(splitter.secondComponent.width, preferredHeight)
   }
@@ -69,7 +72,8 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
     this.setViewportView(splitter)
   }
 
-  private val cards = mutableListOf<AnimationCard>()
+  @VisibleForTesting
+  val cards = mutableListOf<AnimationCard>()
 
   fun addTimeline(timeline: JComponent) {
     splitter.secondComponent.add(timeline, BorderLayout.CENTER)
@@ -79,7 +83,7 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
 
   fun addPlayback(playback: JComponent) {
     add(playback.apply { border = MatteBorder(0, 0, 1, 0, JBColor.border()) },
-        TabularLayout.Constraint(0, 0))
+        TabularLayout.Constraint(0, 1))
   }
 
   fun addCard(card: AnimationCard) {
@@ -104,9 +108,14 @@ class AllTabPanel : JPanel(TabularLayout("*", "Fit,*")) {
     splitter.firstComponent.revalidate()
   }
 
+  private fun getCardsBorder() = JBUI.Borders.emptyTop(InspectorLayout.timelineHeaderHeightScaled())
+
   init {
-    add(scrollPane, TabularLayout.Constraint(1, 0))
+    add(scrollPane, TabularLayout.Constraint(1, 0, 2))
     isFocusable = false
     focusTraversalPolicy = LayoutFocusTraversalPolicy()
+    JBUIScale.addUserScaleChangeListener {
+      splitter.firstComponent.border = getCardsBorder()
+    }
   }
 }

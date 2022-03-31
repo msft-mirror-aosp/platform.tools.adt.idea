@@ -16,6 +16,7 @@
 package com.android.tools.idea.layoutinspector.tree
 
 import com.android.tools.adtui.stdui.CommonHyperLinkLabel
+import com.android.tools.adtui.stdui.SmallTextLabel
 import com.android.tools.adtui.workbench.ToolContent
 import com.android.tools.adtui.workbench.ToolWindowCallback
 import com.android.tools.componenttree.api.ComponentTreeBuilder
@@ -45,6 +46,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.ui.Gray
 import com.intellij.ui.JBColor
 import com.intellij.ui.SpeedSearchComparator
 import com.intellij.ui.TableActions
@@ -73,8 +75,8 @@ fun AnActionEvent.treePanel(): LayoutInspectorTreePanel? =
 
 fun AnActionEvent.tree(): Tree? = treePanel()?.tree
 
-private const val ICON_BORDER = 10
-private const val ICON_HORIZONTAL_PADDING = 10
+private const val ICON_VERTICAL_BORDER = 5
+private const val ICON_HORIZONTAL_BORDER = 10
 private const val TEXT_HORIZONTAL_BORDER = 5
 
 class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<LayoutInspector> {
@@ -124,17 +126,17 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
       .withHeaderRenderer(createTreeHeaderRenderer())
       .withColumn(createIntColumn<TreeViewNode>(
         "Counts",
-        { (it.view as? ComposeViewNode)?.recomposeCount },
+        { (it.view as? ComposeViewNode)?.recompositions?.count },
         leftDivider = true,
-        maxInt = { inspectorModel?.maxRecompositionCount ?: 0 },
+        maxInt = { inspectorModel?.maxRecomposition?.count ?: 0 },
         minInt = { 0 },
         headerRenderer = createCountsHeader())
       )
       .withColumn(createIntColumn<TreeViewNode>(
         "Skips",
-        { (it.view as? ComposeViewNode)?.recomposeSkips },
-        foreground = JBColor.lightGray,
-        maxInt = { inspectorModel?.maxRecompositionSkips ?: 0 },
+        { (it.view as? ComposeViewNode)?.recompositions?.skips },
+        foreground = JBColor(Gray._192, Gray._128),
+        maxInt = { inspectorModel?.maxRecomposition?.skips ?: 0 },
         minInt = { 0 },
         headerRenderer = createSkipsHeader())
       )
@@ -163,7 +165,7 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     inspectorModel?.modificationListeners?.add { _, _, _ -> componentTreePanel.repaint() }
     focusComponent.addKeyListener(object : KeyAdapter() {
       override fun keyTyped(event: KeyEvent) {
-        if (Character.isAlphabetic(event.keyChar.toInt())) {
+        if (Character.isAlphabetic(event.keyChar.code)) {
           toolWindowCallback?.startFiltering(event.keyChar.toString())
         }
       }
@@ -183,13 +185,12 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   }
 
   private fun createTreeHeaderRenderer(): TableCellRenderer {
-    val header = JBLabel("Recomposition counts").apply {
-      border = JBUI.Borders.empty(ICON_BORDER, TEXT_HORIZONTAL_BORDER)
-      font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL)
+    val header = SmallTextLabel("Recomposition counts").apply {
+      border = JBUI.Borders.empty(ICON_VERTICAL_BORDER, TEXT_HORIZONTAL_BORDER)
     }
     val reset = CommonHyperLinkLabel().apply {
       text = "Reset"
-      border = JBUI.Borders.empty(ICON_BORDER)
+      border = JBUI.Borders.empty(ICON_VERTICAL_BORDER, ICON_HORIZONTAL_BORDER)
       hyperLinkListeners.add(::resetRecompositionCounts)
       cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
       toolTipText = "Click to reset recomposition counts"
@@ -204,14 +205,14 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   }
 
   private fun createCountsHeader() =
-    createIconHeader(StudioIcons.LayoutEditor.Palette.STACK_VIEW, "Number of times this composable has been recomposed")
+    createIconHeader(StudioIcons.LayoutInspector.RECOMPOSITION_COUNT, "Number of times this composable has been recomposed")
 
   private fun createSkipsHeader() =
-    createIconHeader(StudioIcons.LayoutEditor.Properties.GONE, "Number of times recomposition for this component has been skipped")
+    createIconHeader(StudioIcons.LayoutInspector.RECOMPOSITION_SKIPPED, "Number of times recomposition for this component has been skipped")
 
   private fun createIconHeader(icon: Icon, toolTipText: String? = null) : TableCellRenderer {
     val label = JBLabel(icon)
-    label.border = JBUI.Borders.empty(ICON_BORDER, ICON_HORIZONTAL_PADDING)
+    label.border = JBUI.Borders.empty(ICON_VERTICAL_BORDER, ICON_HORIZONTAL_BORDER)
     label.toolTipText = toolTipText
     return TableCellRenderer { _, _, _, _, _, _ -> label }
   }

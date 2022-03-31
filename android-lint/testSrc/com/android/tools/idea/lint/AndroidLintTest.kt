@@ -57,6 +57,7 @@ import com.android.tools.idea.lint.inspections.AndroidLintExifInterfaceInspectio
 import com.android.tools.idea.lint.inspections.AndroidLintExportedContentProviderInspection
 import com.android.tools.idea.lint.inspections.AndroidLintExportedReceiverInspection
 import com.android.tools.idea.lint.inspections.AndroidLintExportedServiceInspection
+import com.android.tools.idea.lint.inspections.AndroidLintExtraTextInspection
 import com.android.tools.idea.lint.inspections.AndroidLintGradleDeprecatedInspection
 import com.android.tools.idea.lint.inspections.AndroidLintGridLayoutInspection
 import com.android.tools.idea.lint.inspections.AndroidLintHardcodedTextInspection
@@ -161,6 +162,7 @@ import com.intellij.codeInsight.daemon.impl.ShowIntentionsPass
 import com.intellij.codeInsight.daemon.impl.ShowIntentionsPass.IntentionsInfo
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.codeInspection.CommonProblemDescriptor
+import com.intellij.codeInspection.GlobalInspectionTool
 import com.intellij.codeInspection.QuickFix
 import com.intellij.codeInspection.reference.RefEntity
 import com.intellij.codeInspection.ui.util.SynchronizedBidiMultiMap
@@ -244,6 +246,11 @@ class AndroidLintTest : AndroidTestCase() {
       sb.append(action.text).append("\n")
     }
     return sb.toString()
+  }
+
+  fun testExtraText() {
+    deleteManifest()
+    doTestHighlighting(AndroidLintExtraTextInspection(), "AndroidManifest.xml", "xml")
   }
 
   fun testHardcodedString() {
@@ -1529,12 +1536,12 @@ class AndroidLintTest : AndroidTestCase() {
     myFixture.checkResultByFile("res/xml/$sceneFile", "$BASE_PATH/$sceneFile", false)
   }
 
-  private fun doGlobalInspectionTest(inspection: AndroidLintInspectionBase): SynchronizedBidiMultiMap<RefEntity, CommonProblemDescriptor> {
+  private fun doGlobalInspectionTest(inspection: GlobalInspectionTool): SynchronizedBidiMultiMap<RefEntity, CommonProblemDescriptor> {
     myFixture.enableInspections(inspection)
     return doGlobalInspectionTest(inspection, globalTestDir, AnalysisScope(myModule))
   }
 
-  private fun doGlobalInspectionWithFix(inspection: AndroidLintInspectionBase, actionLabel: String) {
+  private fun doGlobalInspectionWithFix(inspection: GlobalInspectionTool, actionLabel: String) {
     val map = doGlobalInspectionTest(inspection)
     // Ensure family names are unique; if not quickfixes get collapsed. Set.add only returns true if it wasn't already in the set.
     for (refEntity in map.keys()) {

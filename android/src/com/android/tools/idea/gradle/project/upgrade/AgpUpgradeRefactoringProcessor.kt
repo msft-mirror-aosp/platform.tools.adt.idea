@@ -19,6 +19,7 @@ import com.android.ide.common.repository.GradleVersion
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
+import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.LIST_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.OBJECT_TYPE
@@ -26,6 +27,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.REFERENCE_T
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.util.DeletablePsiElementHolder
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
+import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.*
@@ -93,6 +95,7 @@ import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import com.intellij.usages.rules.PsiElementUsage
 import com.intellij.util.Processor
+import com.intellij.util.ThreeState
 import com.intellij.util.containers.toArray
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet
 import org.jetbrains.android.util.AndroidBundle
@@ -765,7 +768,7 @@ abstract class AgpUpgradeComponentRefactoringProcessor: GradleBuildModelRefactor
   abstract fun necessity(): AgpUpgradeComponentNecessity
 
   private var _cachedUsages = listOf<UsageInfo>()
-  internal val cachedUsages
+  val cachedUsages
     get() = _cachedUsages
 
   public final override fun findUsages(): Array<out UsageInfo> {
@@ -1005,6 +1008,27 @@ class AgpComponentUsageTypeProvider : UsageTypeProvider {
   override fun getUsageType(element: PsiElement): UsageType? = (element as? WrappedPsiElement)?.usageType
 }
 
+internal fun isUpdatablePluginDependency(toVersion: GradleVersion, model: ArtifactDependencyModel): ThreeState {
+  val artifactId = model.name().forceString()
+  val groupId = model.group().toString()
+  if (!AndroidPluginInfo.isAndroidPlugin(artifactId, groupId)) {
+    return ThreeState.UNSURE
+  }
+  val versionValue = model.version().toString()
+  return if (StringUtil.isEmpty(versionValue) || toVersion.compareTo(versionValue) != 0) ThreeState.YES else ThreeState.NO
+}
+
+internal fun isUpdatablePluginRelatedDependency(toVersion: GradleVersion, model: ArtifactDependencyModel): ThreeState {
+  val artifactId = model.name().forceString()
+  val groupId = model.group().toString()
+  if (!AndroidPluginInfo.isAndroidPluginOrApi(artifactId, groupId)) {
+    return ThreeState.UNSURE
+  }
+
+  val versionValue = model.version().toString()
+  return if (StringUtil.isEmpty(versionValue) || toVersion.compareTo(versionValue) != 0) ThreeState.YES else ThreeState.NO
+}
+
 /**
  * Helper functions for metrics, placed out of the way of the main logic, which are responsible for building and logging
  * AndroidStudioEvent messages at various stages:
@@ -1014,7 +1038,7 @@ class AgpComponentUsageTypeProvider : UsageTypeProvider {
  * Currently, the difference between these messages is simply that the Processor reports on the state of all its
  * Components, while each Component reports only on itself.
  */
-internal fun AgpUpgradeRefactoringProcessor.trackProcessorUsage(
+fun AgpUpgradeRefactoringProcessor.trackProcessorUsage(
   kind: UpgradeAssistantEventKind,
   usages: Int? = null,
   files: Int? = null,

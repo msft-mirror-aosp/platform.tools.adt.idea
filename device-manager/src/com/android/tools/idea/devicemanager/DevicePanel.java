@@ -19,6 +19,9 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBPanel;
+import com.intellij.ui.components.JBScrollPane;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import javax.swing.JComponent;
 import javax.swing.JTable;
 import org.jetbrains.annotations.NotNull;
@@ -28,8 +31,9 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
   protected final @Nullable Project myProject;
 
   protected JTable myTable;
-  protected JComponent myScrollPane;
+  private JComponent myScrollPane;
   protected DetailsPanelPanel myDetailsPanelPanel;
+  private boolean isDisposed;
 
   protected DevicePanel(@Nullable Project project) {
     super(null);
@@ -43,6 +47,21 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
 
   protected abstract @NotNull JTable newTable();
 
+  protected final void initScrollPane() {
+    myScrollPane = new JBScrollPane(myTable);
+
+    myScrollPane.addComponentListener(new ComponentAdapter() {
+      @Override
+      public void componentResized(@NotNull ComponentEvent event) {
+        int viewRowIndex = myTable.getSelectedRow();
+
+        if (viewRowIndex != -1) {
+          myTable.scrollRectToVisible(myTable.getCellRect(viewRowIndex, 0, true));
+        }
+      }
+    });
+  }
+
   protected final void initDetailsPanelPanel() {
     myDetailsPanelPanel = new DetailsPanelPanel(myScrollPane);
     Disposer.register(this, myDetailsPanelPanel);
@@ -50,6 +69,11 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
 
   @Override
   public final void dispose() {
+    isDisposed = true;
+  }
+
+  public boolean isDisposed() {
+    return isDisposed;
   }
 
   public final @Nullable Project getProject() {

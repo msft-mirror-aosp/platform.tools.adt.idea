@@ -28,11 +28,11 @@ import com.android.tools.idea.compose.preview.actions.UnpinAllPreviewElementsAct
 import com.android.tools.idea.compose.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
-import com.android.tools.idea.compose.preview.literals.LiveLiteralsPsiFileSnapshotFilter
 import com.android.tools.idea.compose.preview.fast.CompilationResult
 import com.android.tools.idea.compose.preview.fast.FastPreviewManager
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
 import com.android.tools.idea.compose.preview.fast.fastCompileAsync
+import com.android.tools.idea.compose.preview.literals.LiveLiteralsPsiFileSnapshotFilter
 import com.android.tools.idea.compose.preview.navigation.PreviewNavigationHandler
 import com.android.tools.idea.compose.preview.util.CodeOutOfDateTracker
 import com.android.tools.idea.compose.preview.util.FpsCalculator
@@ -64,7 +64,6 @@ import com.android.tools.idea.rendering.classloading.CooperativeInterruptTransfo
 import com.android.tools.idea.rendering.classloading.HasLiveLiteralsTransform
 import com.android.tools.idea.rendering.classloading.LiveLiteralsTransform
 import com.android.tools.idea.rendering.classloading.toClassTransform
-import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
@@ -73,7 +72,6 @@ import com.android.tools.idea.uibuilder.handlers.motion.editor.adapters.MEUI
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.executeCallbacks
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.util.androidFacet
 import com.android.tools.idea.util.runWhenSmartAndSyncedOnEdt
 import com.intellij.ide.ActivityTracker
 import com.intellij.ide.PowerSaveMode
@@ -100,8 +98,10 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -278,6 +278,13 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     })
   }
 
+  /**
+   * Whether the preview needs a full refresh or not.
+   */
+  private val invalidated = AtomicBoolean(true)
+
+  private val refreshFlow: MutableSharedFlow<RefreshRequest> = MutableSharedFlow(replay = 1)
+
   private val previewFreshnessTracker = CodeOutOfDateTracker.create(module, this) {
     invalidate()
     requestRefresh()
@@ -338,7 +345,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     previewElementProvider.instanceFilter = element
     composeWorkBench.hasComponentsOverlay = false
     val startUpStart = System.currentTimeMillis()
-    forceRefresh(quickRefresh).invokeOnCompletion {
+    forceRefresh(quickRefresh)?.invokeOnCompletion {
       surface.layoutlibSceneManagers.forEach { it.resetTouchEventsCounter() }
       if (!isFromAnimationInspection) { // Currently it will re-create classloader and will be slower that switch from static
         InteractivePreviewUsageTracker.getInstance(surface).logStartupTime(
@@ -365,7 +372,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     onInteractivePreviewStop()
     EditorNotifications.getInstance(project).updateNotifications(psiFilePointer.virtualFile!!)
     onStaticPreviewStart()
-    forceRefresh().invokeOnCompletion {
+    forceRefresh()?.invokeOnCompletion {
       interactiveMode = ComposePreviewManager.InteractiveMode.DISABLED
     }
   }
@@ -423,7 +430,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
           onAnimationInspectionStop()
           onStaticPreviewStart()
         }
-        forceRefresh().invokeOnCompletion {
+        forceRefresh()?.invokeOnCompletion {
           interactiveMode = ComposePreviewManager.InteractiveMode.DISABLED
           ActivityTracker.getInstance().inc()
         }
@@ -508,11 +515,6 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
   private var renderedElements: List<PreviewElement> = emptyList()
 
   /**
-   * Whether the preview needs a full refresh or not.
-   */
-  private val invalidated = AtomicBoolean(true)
-
-  /**
    * Counts the current number of simultaneous executions of [refresh] method. Being inside the [refresh] indicates that the this preview
    * is being refreshed. Even though [requestRefresh] guarantees that only at most a single refresh happens at any point in time,
    * there might be several simultaneous calls to [refresh] method and therefore we need a counter instead of boolean flag.
@@ -538,8 +540,6 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
                                               surface.layoutlibSceneManagers.firstOrNull()?.executeCallbacksAndRequestRender(null)
                                             }
                                           }, Duration.ofMillis(5))
-
-  private val refreshFlow: MutableSharedFlow<RefreshRequest> = MutableSharedFlow(replay = 1)
 
   // region Lifecycle handling
 
@@ -716,7 +716,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
       launch(workerThread) {
         refreshFlow.collectLatest {
           refreshFlow.resetReplayCache() // Do not keep re-playing after we have received the element.
-          refresh(it).join()
+          refresh(it)?.join()
         }
       }
 
@@ -776,7 +776,10 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
           setupChangeListener(project, psiFile, { trySend(Unit) }, disposable)
         }.collectLatest {
           if (FastPreviewManager.getInstance(project).isAvailable) {
-            if (requestFastPreviewRefresh()) return@collectLatest
+            requestFastPreviewRefreshAsync()?.let {
+              it.await() // Wait for this compilation to complete before processing any new ones
+              return@collectLatest
+            }
           }
 
           if (!PreviewPowerSaveManager.isInPowerSaveMode && interactiveMode.isStoppingOrDisabled() && !animationInspection.get()) requestRefresh()
@@ -830,6 +833,8 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
         pauseInteractivePreview()
       }
       isActive.set(false)
+      // The editor is scheduled to be deactivated, deactivate its issue model to avoid updating publish the issue update event.
+      surface.deactivateIssueModel()
 
       if  (PreviewPowerSaveManager.isInPowerSaveMode) {
         // When on power saving mode, deactivate immediately to free resources.
@@ -1035,7 +1040,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
    * Requests a refresh the preview surfaces. This will retrieve all the Preview annotations and render those elements.
    * The refresh will only happen if the Preview elements have changed from the last render.
    */
-  private fun refresh(refreshRequest: RefreshRequest): Job {
+  private fun refresh(refreshRequest: RefreshRequest): Job? {
     val requestLogger = LoggerWithFixedInfo(LOG, mapOf("requestId" to refreshRequest.requestId))
     requestLogger.debug("Refresh triggered. quickRefresh: ${refreshRequest.quickRefresh}")
     val refreshTrigger: Throwable? = if (LOG.isDebugEnabled) Throwable() else null
@@ -1048,7 +1053,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
       "",
       true
     )
-    Disposer.register(this, refreshProgressIndicator)
+    if (!Disposer.tryRegister(this, refreshProgressIndicator)) return null
     // This is not launched in the activation scope to avoid cancelling the refresh mid-way when the user changes tabs.
     val refreshJob = launchWithProgress(refreshProgressIndicator, uiThread) {
       requestLogger.debug("Refresh triggered (inside launchWithProgress scope)", refreshTrigger)
@@ -1187,7 +1192,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
     invalidated.set(true)
   }
 
-  internal fun forceRefresh(quickRefresh: Boolean = false): Job {
+  internal fun forceRefresh(quickRefresh: Boolean = false): Job? {
     invalidate()
     return refresh(RefreshRequest(quickRefresh))
   }
@@ -1203,17 +1208,21 @@ class ComposePreviewRepresentation(psiFile: PsiFile,
   private fun shouldQuickRefresh() =
     !isLiveLiteralsEnabled && StudioFlags.COMPOSE_QUICK_ANIMATED_PREVIEW.get() && renderedElements.count() == 1
 
-  override fun requestFastPreviewRefresh(): Boolean {
+  override fun requestFastPreviewRefreshAsync(): Deferred<CompilationResult>? {
     val currentStatus = status()
     if (!currentStatus.hasSyntaxErrors && !currentStatus.isRefreshing && currentStatus.isOutOfDate) {
       psiFilePointer.element?.let {
-        fastCompileAsync(this@ComposePreviewRepresentation, it) {
-          forceRefresh()
+        return@requestFastPreviewRefreshAsync activationScope?.async {
+          val result = fastCompileAsync(this@ComposePreviewRepresentation, it).await()
+          if (result is CompilationResult.Success) {
+            forceRefresh()
+          }
+
+          return@async result
         }
-        return true
       }
     }
 
-    return false
+    return null
   }
 }

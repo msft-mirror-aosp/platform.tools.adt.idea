@@ -115,12 +115,58 @@ internal class ConstraintLayoutJsonCompletionContributorTest {
     myFixture.configureByText("myscene.json", content)
     myFixture.completeBasic()
     val lookupElements = myFixture.lookupElementStrings!!
-    assertThat(lookupElements).hasSize(18)
+    assertThat(lookupElements).hasSize(19)
     assertThat(lookupElements).containsNoDuplicates()
 
     assertThat(lookupElements).doesNotContain("start")
     assertThat(lookupElements).doesNotContain("left")
     assertThat(lookupElements).doesNotContain("right")
+  }
+
+  @Test
+  fun completeDimensionBehaviors() {
+    @Language("JSON5")
+    val content =
+      """
+      {
+        ConstraintSets: {
+          start: {
+            id1: {
+              width: '$caret'
+            }
+          }
+        }
+      }
+    """.trimIndent()
+    myFixture.configureByText("myscene.json", content)
+    myFixture.completeBasic()
+    val lookupElements = myFixture.lookupElementStrings!!
+
+    assertThat(lookupElements).hasSize(4)
+    assertThat(lookupElements).containsExactly("spread", "wrap", "preferWrap", "parent")
+  }
+
+  @Test
+  fun completeVisibilityModes() {
+    @Language("JSON5")
+    val content =
+      """
+      {
+        ConstraintSets: {
+          start: {
+            id1: {
+              visibility: '$caret'
+            }
+          }
+        }
+      }
+    """.trimIndent()
+    myFixture.configureByText("myscene.json", content)
+    myFixture.completeBasic()
+    val lookupElements = myFixture.lookupElementStrings!!
+
+    assertThat(lookupElements).hasSize(3)
+    assertThat(lookupElements).containsExactly("visible", "invisible", "gone")
   }
 
   @Test
@@ -133,6 +179,31 @@ internal class ConstraintLayoutJsonCompletionContributorTest {
           start: {
             id1: {
               start: ['$caret', 'start', 0]
+            },
+            id2: {},
+            id3: {}
+          }
+        }
+      }
+    """.trimIndent()
+    myFixture.configureByText("myscene.json", content)
+    myFixture.completeBasic()
+    val lookupElements = myFixture.lookupElementStrings!!
+
+    assertThat(lookupElements).hasSize(3)
+    assertThat(lookupElements).containsExactly("id2", "id3", "parent")
+  }
+
+  @Test
+  fun completeConstraintIdsInSpecialAnchors() {
+    @Language("JSON5")
+    val content =
+      """
+      {
+        ConstraintSets: {
+          start: {
+            id1: {
+              center: '$caret'
             },
             id2: {},
             id3: {}

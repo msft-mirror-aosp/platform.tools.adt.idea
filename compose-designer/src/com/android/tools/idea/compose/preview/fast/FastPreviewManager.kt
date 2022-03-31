@@ -16,8 +16,11 @@
 package com.android.tools.idea.compose.preview.fast
 
 import com.android.ide.common.repository.GradleVersion
+import com.android.tools.idea.compose.preview.PREVIEW_NOTIFICATION_GROUP_ID
 import com.android.tools.idea.compose.preview.PreviewPowerSaveManager
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.compose.preview.util.toDisplayString
+import com.android.tools.idea.compose.preview.util.toLogString
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.editors.literals.FastPreviewApplicationConfiguration
@@ -25,9 +28,12 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.GoogleMavenArtifactId
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleClassFinderUtil
+import com.android.tools.idea.rendering.classloading.ProjectConstantRemapper
 import com.android.tools.idea.util.StudioPathManager
 import com.google.common.cache.CacheBuilder
 import com.google.common.hash.Hashing
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
@@ -62,7 +68,23 @@ import kotlin.streams.toList
 /** Default version of the runtime to use if the dependency resolution fails when looking for the daemon. */
 private val DEFAULT_RUNTIME_VERSION = GradleVersion.parse("1.1.0-alpha02")
 
-data class DisableReason(val title: String, val description: String? = null, val throwable: Throwable? = null)
+data class DisableReason(val title: String, val description: String? = null, val throwable: Throwable? = null) {
+  /**
+   * True if a long description is available by calling [longDescriptionString].
+   */
+  val hasLongDescription: Boolean
+    get() = description != null || throwable != null
+
+  /**
+   * Returns the `description` and the full `throwable` if available.
+   */
+  fun longDescriptionString() = (description?.let { "$it\n" } ?: "") + throwable?.toLogString()
+}
+
+/**
+ * A [DisableReason] to be used when calling [FastPreviewManager.disable] if it was disabled by the user.
+ */
+val ManualDisabledReason = DisableReason("User disabled")
 
 /**
  * Class responsible to managing the existing daemons and avoid multiple daemons for the same version being started.
@@ -87,7 +109,8 @@ private class DaemonRegistry(
     AppExecutorUtil.getAppExecutorService().execute {
       try {
         pendingDaemon.complete(daemonFactory(version))
-      } catch (t: Throwable) {
+      }
+      catch (t: Throwable) {
         pendingDaemon.completeExceptionally(t)
       }
     }
@@ -124,7 +147,8 @@ private class DaemonRegistry(
               }
             }
             pending.complete(newDaemon)
-          } catch (t: Throwable) {
+          }
+          catch (t: Throwable) {
             // Failed to instantiate the daemon, notify the failure to listeners.
             synchronized(daemons) {
               startingDaemons.remove(version)
@@ -159,10 +183,10 @@ private class DaemonRegistry(
  * Default class path locator that returns the classpath for the module source code (excluding dependencies).
  */
 private fun defaultModuleCompileClassPathLocator(module: Module): List<String> =
-    GradleClassFinderUtil.getModuleCompileOutputs(module, true)
-      .filter { it.exists() }
-      .map { it.absolutePath.toString() }
-      .toList()
+  GradleClassFinderUtil.getModuleCompileOutputs(module, true)
+    .filter { it.exists() }
+    .map { it.absolutePath.toString() }
+    .toList()
 
 /**
  * Default class path locator that returns the classpath containing the dependencies of [module] to pass to the compiler.
@@ -321,10 +345,16 @@ class FastPreviewManager private constructor(
   private val compilingMutex = Mutex(false)
 
   /**
+   * If true, it means that Fast Preview is disabled only for this session. If Studio is restarted, we will use the persisted configuration
+   * valid in [FastPreviewApplicationConfiguration].
+   */
+  private var disableForThisSession = false
+
+  /**
    * Returns true when the feature is enabled
    */
   val isEnabled: Boolean
-    get() = FastPreviewApplicationConfiguration.getInstance().isEnabled
+    get() = !disableForThisSession && FastPreviewApplicationConfiguration.getInstance().isEnabled
 
   /**
    * Returns the reason why the Fast Preview was disabled, if available.
@@ -343,7 +373,13 @@ class FastPreviewManager private constructor(
    * or fast preview is disabled.
    */
   val isAvailable: Boolean
-    get() = isEnabled && !PreviewPowerSaveManager.isInPowerSaveMode && !compilingMutex.isLocked
+    get() = isEnabled && !PreviewPowerSaveManager.isInPowerSaveMode
+
+  /**
+   * Returns true while there is a compilation request running of this project.
+   */
+  val isCompiling: Boolean
+    get() = compilingMutex.isLocked
 
   /**
    * Stops all the daemons managed by this [FastPreviewManager].
@@ -372,72 +408,90 @@ class FastPreviewManager private constructor(
   suspend fun compileRequest(files: Collection<PsiFile>,
                              module: Module,
                              indicator: ProgressIndicator = EmptyProgressIndicator()): Pair<CompilationResult, String> = compilingMutex.withLock {
-      val startTime = System.currentTimeMillis()
-      val requestId = createCompileRequestId(files, module)
-      val (isRunning: Boolean, pendingRequest: CompletableDeferred<Pair<CompilationResult, String>>) = synchronized(requestTracker) {
-        var isRunning = true
-        val request = requestTracker.get(requestId) {
-          log.debug("New request with id=$requestId")
-          isRunning = false
-          CompletableDeferred()
-        }
-        isRunning to request
+    val startTime = System.currentTimeMillis()
+    val requestId = createCompileRequestId(files, module)
+    val (isRunning: Boolean, pendingRequest: CompletableDeferred<Pair<CompilationResult, String>>) = synchronized(requestTracker) {
+      var isRunning = true
+      val request = requestTracker.get(requestId) {
+        log.debug("New request with id=$requestId")
+        isRunning = false
+        CompletableDeferred()
       }
-      // If the request is already running, we wait for the result of that one instead.
-      if (isRunning) {
-        log.debug("Waiting for request id=$requestId")
-        return@withLock pendingRequest.await()
+      isRunning to request
+    }
+    // If the request is already running, we wait for the result of that one instead.
+    if (isRunning) {
+      log.debug("Waiting for request id=$requestId")
+      return@withLock pendingRequest.await()
+    }
+
+    val outputDir = Files.createTempDirectory("overlay")
+    log.debug("Compiling $outputDir (id=$requestId)")
+    indicator.text = "Looking for compiler daemon"
+    val runtimeVersion = moduleRuntimeVersionLocator(module).toString()
+
+    val result = try {
+      val daemon = daemonRegistry.getOrCreateDaemon(runtimeVersion)
+
+      try {
+        project.messageBus.syncPublisher(FAST_PREVIEW_MANAGER_TOPIC).onCompilationStarted(files)
       }
-
-      val outputDir = Files.createTempDirectory("overlay")
-      log.debug("Compiling $outputDir (id=$requestId)")
-      indicator.text = "Looking for compiler daemon"
-      val runtimeVersion = moduleRuntimeVersionLocator(module).toString()
-
-      val result = try {
-        val daemon = daemonRegistry.getOrCreateDaemon(runtimeVersion)
-
-        try {
-          project.messageBus.syncPublisher(FAST_PREVIEW_MANAGER_TOPIC).onCompilationStarted(files)
-        }
-        catch (_: Throwable) {
-        }
-        indicator.text = "Compiling"
-        try {
-          daemon.compileRequest(files, module, outputDir, indicator)
-        }
-        catch (t: Throwable) {
-          CompilationResult.RequestException(t)
-        }
+      catch (_: Throwable) {
+      }
+      indicator.text = "Compiling"
+      try {
+        daemon.compileRequest(files, module, outputDir, indicator)
       }
       catch (t: Throwable) {
-        CompilationResult.DaemonStartFailure(t)
+        CompilationResult.RequestException(t)
       }
-      log.info("Compiled in ${System.currentTimeMillis() - startTime}ms (result=$result, id=$requestId)")
-      if (result != CompilationResult.Success && allowAutoDisable) {
-        val reason = when (result) {
-          is CompilationResult.RequestException -> DisableReason(title = message("fast.preview.disabled.reason.unable.compile"),
-                                                                 description = result.e?.message,
+    }
+    catch (t: Throwable) {
+      CompilationResult.DaemonStartFailure(t)
+    }
+    val durationString = Duration.ofMillis(System.currentTimeMillis() - startTime).toDisplayString()
+    log.info("Compiled in $durationString (result=$result, id=$requestId)")
+    if (result.isError && allowAutoDisable) {
+      val reason = when (result) {
+        is CompilationResult.RequestException -> DisableReason(title = message("fast.preview.disabled.reason.unable.compile"),
+                                                               description = result.e?.message,
+                                                               throwable = result.e)
+        is CompilationResult.DaemonStartFailure -> DisableReason(title = message("fast.preview.disabled.reason.unable.start"),
                                                                  throwable = result.e)
-          is CompilationResult.DaemonStartFailure -> DisableReason(title = message("fast.preview.disabled.reason.unable.start"),
-                                                                   throwable = result.e)
-          is CompilationResult.DaemonError -> DisableReason(
-            title = message("fast.preview.disabled.reason.unable.compile.compiler.error"),
-            description = message("fast.preview.disabled.reason.unable.compile.compiler.error.description"))
-          else -> null
-        }
-        disable(reason)
+        is CompilationResult.DaemonError -> DisableReason(
+          title = message("fast.preview.disabled.reason.unable.compile.compiler.error"),
+          description = message("fast.preview.disabled.reason.unable.compile.compiler.error.description"))
+        is CompilationResult.CompilationAborted -> null
+        is CompilationResult.Success -> throw IllegalStateException("Result is not an error, no disable reason")
       }
-      return@withLock Pair(result, outputDir.toAbsolutePath().toString()).also {
-        synchronized(requestTracker) {
-          pendingRequest.complete(it)
-        }
-        try {
-          project.messageBus.syncPublisher(FAST_PREVIEW_MANAGER_TOPIC).onCompilationComplete(result, files)
-        }
-        catch (_: Throwable) {
-        }
+      if (reason != null) disable(reason)
+    }
+
+    // Notify any error/success into the event log
+    val buildMessage = if (result.isSuccess)
+      message("event.log.fast.preview.build.successful", durationString)
+    else
+      message("event.log.fast.preview.build.failed", durationString)
+    Notification(PREVIEW_NOTIFICATION_GROUP_ID,
+                 buildMessage,
+                 if (result.isSuccess) NotificationType.INFORMATION else NotificationType.WARNING)
+      .notify(project)
+
+    if (result.isSuccess) {
+      // The project has built successfully so we can drop the constants that we were keeping.
+      ProjectConstantRemapper.getInstance(project).clearConstants(null)
+    }
+
+    return@withLock Pair(result, outputDir.toAbsolutePath().toString()).also {
+      synchronized(requestTracker) {
+        pendingRequest.complete(it)
       }
+      try {
+        project.messageBus.syncPublisher(FAST_PREVIEW_MANAGER_TOPIC).onCompilationComplete(result, files)
+      }
+      catch (_: Throwable) {
+      }
+    }
   }
 
   /**
@@ -463,14 +517,26 @@ class FastPreviewManager private constructor(
   /**
    * Disables the Fast Preview. Optionally, receive a reason to be disabled that might be displayed to the user.
    */
-  fun disable(reason: DisableReason? = null) {
+  fun disable(reason: DisableReason) {
+    val newReason = disableReason != reason
     disableReason = reason
-    FastPreviewApplicationConfiguration.getInstance().isEnabled = false
+
+    if (newReason && reason != ManualDisabledReason && reason.hasLongDescription) {
+      // Log long description to the event log.
+      Notification(PREVIEW_NOTIFICATION_GROUP_ID,
+                   message("fast.preview.disabled.reason.unable.compile.compiler.error"),
+                   reason.longDescriptionString(),
+                   NotificationType.WARNING)
+        .notify(project)
+      disableForThisSession = true
+    }
+    else FastPreviewApplicationConfiguration.getInstance().isEnabled = false
   }
 
   /** Enables the Fast Preview. */
   fun enable() {
     disableReason = null
+    disableForThisSession = false
     FastPreviewApplicationConfiguration.getInstance().isEnabled = StudioFlags.COMPOSE_FAST_PREVIEW.get()
   }
 

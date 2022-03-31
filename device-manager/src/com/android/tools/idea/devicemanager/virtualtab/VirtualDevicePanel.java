@@ -18,19 +18,14 @@ package com.android.tools.idea.devicemanager.virtualtab;
 import com.android.tools.adtui.stdui.CommonButton;
 import com.android.tools.idea.devicemanager.DetailsPanel;
 import com.android.tools.idea.devicemanager.DevicePanel;
-import com.android.tools.idea.devicemanager.legacy.AvdUiAction.AvdInfoProvider;
-import com.android.tools.idea.devicemanager.legacy.CreateAvdAction;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.ui.JBDimension;
 import java.awt.Dimension;
-import java.awt.event.ActionListener;
-import java.util.function.Function;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.GroupLayout.Group;
@@ -40,27 +35,25 @@ import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
 
 public final class VirtualDevicePanel extends DevicePanel {
+  private final @Nullable Project myProject;
+
   private final @NotNull JButton myCreateButton;
   private final @NotNull JSeparator mySeparator;
   private final @NotNull JButton myHelpButton;
 
   public VirtualDevicePanel(@Nullable Project project, @NotNull Disposable parent) {
-    this(project, parent, CreateAvdAction::new);
-  }
-
-  @VisibleForTesting
-  VirtualDevicePanel(@Nullable Project project,
-                     @NotNull Disposable parent,
-                     @NotNull Function<@NotNull AvdInfoProvider, @NotNull ActionListener> createAvdActionProvider) {
     super(project);
+    myProject = project;
+
     initTable();
-    myScrollPane = new JBScrollPane(myTable);
+    initScrollPane();
 
     myCreateButton = new JButton("Create device");
-    myCreateButton.addActionListener(createAvdActionProvider.apply((AvdInfoProvider)myTable));
+    myCreateButton.addActionListener(new BuildVirtualDeviceConfigurationWizardActionListener(myCreateButton,
+                                                                                             project,
+                                                                                             (VirtualDeviceTable)myTable));
 
     Dimension separatorSize = new JBDimension(3, 20);
     mySeparator = new JSeparator(SwingConstants.VERTICAL);
@@ -78,17 +71,15 @@ public final class VirtualDevicePanel extends DevicePanel {
 
   @Override
   protected @NotNull JTable newTable() {
-    return new VirtualDeviceTable(this);
+    VirtualDeviceTable table = new VirtualDeviceTable(this);
+    Disposer.register(this, table);
+
+    return table;
   }
 
   @Override
   protected @NotNull DetailsPanel newDetailsPanel() {
-    return new VirtualDeviceDetailsPanel(((VirtualDeviceTable)myTable).getSelectedDevice().orElseThrow(AssertionError::new));
-  }
-
-  @VisibleForTesting
-  @NotNull JButton getCreateButton() {
-    return myCreateButton;
+    return new VirtualDeviceDetailsPanel(((VirtualDeviceTable)myTable).getSelectedDevice().orElseThrow(AssertionError::new), myProject);
   }
 
   @NotNull VirtualDeviceTable getTable() {

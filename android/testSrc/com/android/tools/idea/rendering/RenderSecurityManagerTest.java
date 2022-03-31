@@ -16,9 +16,14 @@
 package com.android.tools.idea.rendering;
 
 import com.android.ide.common.resources.RecordingLogger;
+import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.utils.SdkUtils;
 import com.google.common.io.Files;
+import java.io.IOException;
+import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.android.AndroidTestBase;
+import org.junit.Rule;
 import org.junit.Test;
 
 import javax.imageio.ImageIO;
@@ -43,10 +48,12 @@ import static java.io.File.separator;
 import static org.junit.Assert.*;
 
 public class RenderSecurityManagerTest {
-  private Object myCredential = new Object();
+  @Rule
+  public AndroidProjectRule myProjectRule = AndroidProjectRule.inMemory();
+  private final Object myCredential = new Object();
 
   @Test
-  public void testExec() throws Exception {
+  public void testExec() throws IOException {
     assertNull(RenderSecurityManager.getCurrent());
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     RecordingLogger logger = new RecordingLogger();
@@ -64,7 +71,6 @@ public class RenderSecurityManagerTest {
       fail("Should have thrown security exception");
     }
     catch (SecurityException exception) {
-      //noinspection ConstantConditions
       assertEquals(RenderSecurityManager.RESTRICT_READS
                           ? "Read access not allowed during rendering (/bin/ls)"
                           : "Exec access not allowed during rendering (/bin/ls)", exception.toString());
@@ -79,7 +85,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testSetSecurityManager() throws Exception {
+  public void testSetSecurityManager() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -96,7 +102,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testReadWrite() throws Exception {
+  public void testReadWrite() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -113,7 +119,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testExecute() throws Exception {
+  public void testExecute() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -130,7 +136,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testDelete() throws Exception {
+  public void testDelete() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -147,7 +153,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testLoadLibrary() throws Exception {
+  public void testLoadLibrary() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -168,7 +174,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testAllowedLoadLibrary() throws Exception {
+  public void testAllowedLoadLibrary() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -185,7 +191,7 @@ public class RenderSecurityManagerTest {
 
   @SuppressWarnings("CheckReturnValue")
   @Test
-  public void testInvalidRead() throws Exception {
+  public void testInvalidRead() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -221,7 +227,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testInvalidPropertyWrite() throws Exception {
+  public void testInvalidPropertyWrite() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -243,7 +249,7 @@ public class RenderSecurityManagerTest {
 
   @SuppressWarnings("CheckReturnValue")
   @Test
-  public void testReadOk() throws Exception {
+  public void testReadOk() throws IOException {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -254,7 +260,7 @@ public class RenderSecurityManagerTest {
       if (files != null) {
         for (File file : files) {
           if (file.isFile()) {
-            //noinspection ResultOfMethodCallIgnored
+            // noinspection UnstableApiUsage
             Files.toByteArray(file);
           }
         }
@@ -266,11 +272,12 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testProperties() throws Exception {
+  public void testProperties() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
 
+      //noinspection ResultOfMethodCallIgnored
       System.getProperties();
 
       fail("Should have thrown security exception");
@@ -285,7 +292,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testExit() throws Exception {
+  public void testExit() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -304,13 +311,14 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testThread() throws Exception {
+  public void testThread() throws InterruptedException {
     final AtomicBoolean failedUnexpectedly = new AtomicBoolean(false);
     Thread otherThread = new Thread("other") {
       @Override
       public void run() {
         try {
           assertNull(RenderSecurityManager.getCurrent());
+          //noinspection ResultOfMethodCallIgnored
           System.getProperties();
         }
         catch (SecurityException e) {
@@ -328,6 +336,7 @@ public class RenderSecurityManagerTest {
         @Override
         public void run() {
           try {
+            //noinspection ResultOfMethodCallIgnored
             System.getProperties();
           }
           catch (SecurityException e) {
@@ -348,12 +357,13 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testActive() throws Exception {
+  public void testActive() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
 
       try {
+        //noinspection ResultOfMethodCallIgnored
         System.getProperties();
         fail("Should have thrown security exception");
       }
@@ -364,6 +374,7 @@ public class RenderSecurityManagerTest {
       manager.setActive(false, myCredential);
 
       try {
+        //noinspection ResultOfMethodCallIgnored
         System.getProperties();
       }
       catch (SecurityException exception) {
@@ -373,6 +384,7 @@ public class RenderSecurityManagerTest {
       manager.setActive(true, myCredential);
 
       try {
+        //noinspection ResultOfMethodCallIgnored
         System.getProperties();
         fail("Should have thrown security exception");
       }
@@ -386,8 +398,8 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testThread2() throws Exception {
-    final List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>());
+  public void testThread2() throws InterruptedException {
+    final List<Thread> threads = Collections.synchronizedList(new ArrayList<>());
     // Check that when a new thread is created simultaneously from an unrelated
     // thread during rendering, that new thread does not pick up the security manager.
     //
@@ -420,38 +432,34 @@ public class RenderSecurityManagerTest {
 
           barrier2.await();
 
-          Thread thread4 = new Thread() {
-            @Override
-            public void run() {
+          Thread thread4 = new Thread(() -> {
+            try {
+              barrier3.await();
+
               try {
-                barrier3.await();
+                //noinspection ResultOfMethodCallIgnored
+                System.getProperties();
+                fail("Should have thrown security exception");
+              }
+              catch (SecurityException e) {
+                // pass
+              }
 
-                try {
-                  System.getProperties();
-                  fail("Should have thrown security exception");
-                }
-                catch (SecurityException e) {
-                  // pass
-                }
-
-                barrier4.await();
-                barrier5.await();
-                assertNull(RenderSecurityManager.getCurrent());
-                assertNull(System.getSecurityManager());
-                barrier6.await();
-              }
-              catch (InterruptedException e) {
-                fail(e.toString());
-              }
-              catch (BrokenBarrierException e) {
-                fail(e.toString());
-              }
+              barrier4.await();
+              barrier5.await();
+              assertNull(RenderSecurityManager.getCurrent());
+              assertNull(System.getSecurityManager());
+              barrier6.await();
             }
-          };
+            catch (InterruptedException | BrokenBarrierException e) {
+              fail(e.toString());
+            }
+          });
           thread4.start();
           threads.add(thread4);
 
           try {
+            //noinspection ResultOfMethodCallIgnored
             System.getProperties();
             fail("Should have thrown security exception");
           }
@@ -470,13 +478,9 @@ public class RenderSecurityManagerTest {
           barrier6.await();
 
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | BrokenBarrierException e) {
           fail(e.toString());
         }
-        catch (BrokenBarrierException e) {
-          fail(e.toString());
-        }
-
       }
     };
 
@@ -491,40 +495,36 @@ public class RenderSecurityManagerTest {
           assertNotNull(System.getSecurityManager());
 
           try {
+            //noinspection ResultOfMethodCallIgnored
             System.getProperties();
           }
           catch (SecurityException e) {
             fail("Should not have been affected by security manager");
           }
 
-          Thread thread3 = new Thread() {
-            @Override
-            public void run() {
+          Thread thread3 = new Thread(() -> {
+            try {
+              barrier3.await();
+
               try {
-                barrier3.await();
-
-                try {
-                  System.getProperties();
-                }
-                catch (SecurityException e) {
-                  fail("Should not have been affected by security manager");
-                }
-
-                barrier4.await();
-                barrier5.await();
-                assertNull(RenderSecurityManager.getCurrent());
-                assertNull(System.getSecurityManager());
-                barrier6.await();
-
+                //noinspection ResultOfMethodCallIgnored
+                System.getProperties();
               }
-              catch (InterruptedException e) {
-                fail(e.toString());
+              catch (SecurityException e) {
+                fail("Should not have been affected by security manager");
               }
-              catch (BrokenBarrierException e) {
-                fail(e.toString());
-              }
+
+              barrier4.await();
+              barrier5.await();
+              assertNull(RenderSecurityManager.getCurrent());
+              assertNull(System.getSecurityManager());
+              barrier6.await();
+
             }
-          };
+            catch (InterruptedException | BrokenBarrierException e) {
+              fail(e.toString());
+            }
+          });
           thread3.start();
           threads.add(thread3);
 
@@ -536,13 +536,9 @@ public class RenderSecurityManagerTest {
           barrier6.await();
 
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | BrokenBarrierException e) {
           fail(e.toString());
         }
-        catch (BrokenBarrierException e) {
-          fail(e.toString());
-        }
-
       }
     };
 
@@ -556,7 +552,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testDisabled() throws Exception {
+  public void testDisabled() {
     assertNull(RenderSecurityManager.getCurrent());
 
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
@@ -572,7 +568,7 @@ public class RenderSecurityManagerTest {
         manager.checkExec("/bin/ls");
       }
     }
-    catch (SecurityException exception) {
+    catch (SecurityException | IOException exception) {
       fail("Should have been disabled");
     }
     finally {
@@ -584,44 +580,38 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testLogger() throws Exception {
+  public void testLogger() throws InterruptedException {
     assertNull(RenderSecurityManager.getCurrent());
 
     final CyclicBarrier barrier1 = new CyclicBarrier(2);
     final CyclicBarrier barrier2 = new CyclicBarrier(2);
     final CyclicBarrier barrier3 = new CyclicBarrier(2);
 
-    Thread thread = new Thread() {
-      @Override
-      public void run() {
-        try {
-          barrier1.await();
-          barrier2.await();
+    Thread thread = new Thread(() -> {
+      try {
+        barrier1.await();
+        barrier2.await();
 
-          System.setSecurityManager(new SecurityManager() {
-            @Override
-            public String toString() {
-              return "MyTestSecurityManager";
-            }
+        System.setSecurityManager(new SecurityManager() {
+          @Override
+          public String toString() {
+            return "MyTestSecurityManager";
+          }
 
-            @Override
-            public void checkPermission(Permission permission) {
-            }
-          });
+          @Override
+          public void checkPermission(Permission permission) {
+          }
+        });
 
-          barrier3.await();
-          assertNull(RenderSecurityManager.getCurrent());
-          assertNotNull(System.getSecurityManager());
-          assertEquals("MyTestSecurityManager", System.getSecurityManager().toString());
-        }
-        catch (InterruptedException e) {
-          fail(e.toString());
-        }
-        catch (BrokenBarrierException e) {
-          fail(e.toString());
-        }
+        barrier3.await();
+        assertNull(RenderSecurityManager.getCurrent());
+        assertNotNull(System.getSecurityManager());
+        assertEquals("MyTestSecurityManager", System.getSecurityManager().toString());
       }
-    };
+      catch (InterruptedException | BrokenBarrierException e) {
+        fail(e.toString());
+      }
+    });
     thread.start();
 
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
@@ -641,10 +631,7 @@ public class RenderSecurityManagerTest {
 
       assertEquals(Collections.singletonList("RenderSecurityManager being replaced by another thread"), logger.getWarningMsgs());
     }
-    catch (InterruptedException e) {
-      fail(e.toString());
-    }
-    catch (BrokenBarrierException e) {
+    catch (InterruptedException | BrokenBarrierException e) {
       fail(e.toString());
     }
     finally {
@@ -715,6 +702,7 @@ public class RenderSecurityManagerTest {
 
       // Try looking up the secret
       try {
+        //noinspection JavaReflectionMemberAccess
         Field field = RenderSecurityManager.class.getField("sCredential");
         field.setAccessible(true);
         Object secret = field.get(null);
@@ -740,9 +728,7 @@ public class RenderSecurityManagerTest {
 
       // Correct call with the right credential
       try {
-        RenderSecurityManager.runInSafeRegion(credential, () -> {
-          manager.checkPermission(new FilePermission("/foo", "execute"));
-        });
+        RenderSecurityManager.runInSafeRegion(credential, () -> manager.checkPermission(new FilePermission("/foo", "execute")));
         assertEquals(123L, (long)RenderSecurityManager.runInSafeRegion(credential, () -> {
           manager.checkPermission(new FilePermission("/foo", "execute"));
           return 123L;
@@ -755,9 +741,7 @@ public class RenderSecurityManagerTest {
       // Wrong credential
       Object wrongCredential = new Object();
       try {
-         RenderSecurityManager.runInSafeRegion(wrongCredential, () -> {
-          manager.checkPermission(new FilePermission("/foo", "execute"));
-        });
+         RenderSecurityManager.runInSafeRegion(wrongCredential, () -> manager.checkPermission(new FilePermission("/foo", "execute")));
         fail("Should have thrown exception");
       }
       catch (SecurityException e) {
@@ -780,8 +764,9 @@ public class RenderSecurityManagerTest {
     }
   }
 
+  @SuppressWarnings("UnstableApiUsage")
   @Test
-  public void testImageIo() throws Exception {
+  public void testImageIo() throws IOException, InterruptedException {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -800,24 +785,21 @@ public class RenderSecurityManagerTest {
       assertNull(ImageIO.getCacheDirectory());
 
       // Also run in non AWT thread to test ImageIO thread locals cache dir behavior
-      Thread thread = new Thread() {
-        @Override
-        public void run() {
-          try {
-            assertFalse(SwingUtilities.isEventDispatchThread());
-            final byte[] buf = Files.toByteArray(icon);
-            InputStream stream = new ByteArrayInputStream(buf);
-            assertNotNull(stream);
-            BufferedImage image = ImageIO.read(stream);
-            assertNotNull(image);
-            assertNull(ImageIO.getCacheDirectory());
-          }
-          catch (Throwable t) {
-            t.printStackTrace();
-            fail(t.toString());
-          }
+      Thread thread = new Thread(() -> {
+        try {
+          assertFalse(SwingUtilities.isEventDispatchThread());
+          final byte[] buf1 = Files.toByteArray(icon);
+          InputStream stream1 = new ByteArrayInputStream(buf1);
+          assertNotNull(stream1);
+          BufferedImage image1 = ImageIO.read(stream1);
+          assertNotNull(image1);
+          assertNull(ImageIO.getCacheDirectory());
         }
-      };
+        catch (Throwable t) {
+          t.printStackTrace();
+          fail(t.toString());
+        }
+      });
 
       thread.start();
       thread.join();
@@ -828,7 +810,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testTempDir() throws Exception {
+  public void testTempDir() throws IOException {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -849,7 +831,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testAppTempDir() throws Exception {
+  public void testAppTempDir() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setAppTempDir("/random/path/");
@@ -862,7 +844,7 @@ public class RenderSecurityManagerTest {
   }
 
   @Test
-  public void testSetTimeZone() throws Exception {
+  public void testSetTimeZone() {
     RenderSecurityManager manager = new RenderSecurityManager(null, null);
     try {
       manager.setActive(true, myCredential);
@@ -889,5 +871,72 @@ public class RenderSecurityManagerTest {
     }
   }
 
+  /**
+   * Regression test for b/223219330.
+   */
+  @Test
+  public void testLogDir() {
+    RenderSecurityManager manager = new RenderSecurityManager(null, null);
+    try {
+      manager.setActive(true, myCredential);
 
+      String logPath = PathManager.getLogPath();
+      assertNotNull(logPath);
+
+      manager.checkPermission(new FilePermission(logPath, "read,write"));
+      manager.checkPermission(new FilePermission(logPath + separator, "read,write"));
+      manager.checkPermission(new FilePermission(logPath + separator + "fake.log", "read,write"));
+
+    }
+    finally {
+      manager.dispose(myCredential);
+    }
+  }
+  @Test
+  public void testLogException() {
+    RenderSecurityManager manager = new RenderSecurityManager(null, null);
+    try {
+      manager.setActive(true, myCredential);
+
+      String logPath = PathManager.getLogPath();
+      assertNotNull(logPath);
+
+      Logger.Factory oldFactory = Logger.getFactory();
+      try {
+        TestLoggerWithPropertyAccess loggerWithPropertyAccess = new TestLoggerWithPropertyAccess(Logger.getInstance(RenderSecurityManager.class));
+        Logger.setFactory(category -> loggerWithPropertyAccess);
+        Logger.getInstance(RenderSecurityManagerTest.class).error("test", new TestException());
+      } catch (Throwable t) {
+        // We expect the actual cause to be the TestException if the sandboxing is working correctly. If not, it will throw a security
+        // exception.
+        assertTrue("Unexpected exception " + t, t.getCause() instanceof TestException);
+      } finally {
+        Logger.setFactory(oldFactory);
+      }
+    }
+    finally {
+      manager.dispose(myCredential);
+    }
+  }
+
+  @Test
+  public void testSystemPropertiesAccess() {
+    RenderSecurityManager manager = new RenderSecurityManager(null, null);
+    try {
+      manager.setActive(true, myCredential);
+
+      try {
+        //noinspection ResultOfMethodCallIgnored
+        System.getProperties();
+        fail("Expected to throw RenderSecurityException");
+      } catch (RenderSecurityException ignore) {
+        // Expected to throw a security exception.
+      }
+    }
+    finally {
+      manager.dispose(myCredential);
+    }
+  }
+
+  private static class TestException extends Throwable { }
 }

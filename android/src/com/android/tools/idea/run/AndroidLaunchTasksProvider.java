@@ -21,15 +21,16 @@ import static com.android.tools.idea.run.AndroidRunConfiguration.LAUNCH_DEEP_LIN
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.deploy.DeploymentConfiguration;
+import com.android.tools.idea.editors.literals.LiveEditService;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
 import com.android.tools.idea.run.activity.launch.DeepLinkLaunch;
-import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditDeployMonitor;
 import com.android.tools.idea.run.editor.AndroidDebugger;
 import com.android.tools.idea.run.editor.AndroidDebuggerContext;
 import com.android.tools.idea.run.editor.AndroidDebuggerState;
 import com.android.tools.idea.run.tasks.AppLaunchTask;
 import com.android.tools.idea.run.tasks.ApplyChangesTask;
 import com.android.tools.idea.run.tasks.ApplyCodeChangesTask;
+import com.android.tools.idea.run.tasks.ClearAppStorageTask;
 import com.android.tools.idea.run.tasks.ClearLogcatTask;
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask;
 import com.android.tools.idea.run.tasks.DeployTask;
@@ -161,13 +162,18 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
     }
 
     List<LaunchTask> tasks = new ArrayList<>();
+    DeployType deployType = getDeployType();
+
     List<String> disabledFeatures = myLaunchOptions.getDisabledDynamicFeatures();
     // Add packages to the deployment, filtering out any dynamic features that are disabled.
     List<ApkInfo> packages = myApkProvider.getApks(device).stream()
       .map(apkInfo -> filterDisabledFeatures(apkInfo, disabledFeatures))
       .collect(Collectors.toList());
-    switch (getDeployType()) {
+    switch (deployType) {
       case RUN_INSTANT_APP:
+        if (myLaunchOptions.isClearAppStorage()) {
+          tasks.add(new ClearAppStorageTask(packageName));
+        }
         AndroidRunConfiguration runConfig = (AndroidRunConfiguration)myRunConfig;
         DeepLinkLaunch.State state = (DeepLinkLaunch.State)runConfig.getLaunchOptionState(LAUNCH_DEEP_LINK);
         assert state != null;
@@ -180,7 +186,7 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
           isApplyChangesFallbackToRun(),
           myLaunchOptions.getAlwaysInstallWithPm()));
         tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveLiteralDeployMonitor.getCallback(myProject, packageName, device)));
-        tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveEditDeployMonitor.getCallback(myProject, packageName, device)));
+        tasks.add(new StartLiveUpdateMonitoringTask(LiveEditService.getInstance(myProject).getCallback(packageName, device)));
 
         break;
       case APPLY_CODE_CHANGES:
@@ -190,9 +196,12 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
           isApplyCodeChangesFallbackToRun(),
           myLaunchOptions.getAlwaysInstallWithPm()));
         tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveLiteralDeployMonitor.getCallback(myProject, packageName, device)));
-        tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveEditDeployMonitor.getCallback(myProject, packageName, device)));
+        tasks.add(new StartLiveUpdateMonitoringTask(LiveEditService.getInstance(myProject).getCallback(packageName, device)));
         break;
       case DEPLOY:
+        if (myLaunchOptions.isClearAppStorage()) {
+          tasks.add(new ClearAppStorageTask(packageName));
+        }
         tasks.add(new DeployTask(
           myProject,
           packages,
@@ -200,7 +209,7 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
           myLaunchOptions.getInstallOnAllUsers(),
           myLaunchOptions.getAlwaysInstallWithPm()));
         tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveLiteralDeployMonitor.getCallback(myProject, packageName, device)));
-        tasks.add(new StartLiveUpdateMonitoringTask(AndroidLiveEditDeployMonitor.getCallback(myProject, packageName, device)));
+        tasks.add(new StartLiveUpdateMonitoringTask(LiveEditService.getInstance(myProject).getCallback(packageName, device)));
         break;
       default: throw new IllegalStateException("Unhandled Deploy Type");
     }
@@ -265,6 +274,7 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
                                              androidDebuggerState);
     }
 
+    logger.warn("No debugger state present and cannot get debugger task");
     return null;
   }
 

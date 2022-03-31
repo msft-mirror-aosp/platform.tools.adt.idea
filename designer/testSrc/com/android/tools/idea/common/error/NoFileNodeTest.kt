@@ -31,8 +31,8 @@ class NoFileNodeTest {
 
     val expected = PresentationData()
     expected.addText(NO_FILE_NODE_NAME, SimpleTextAttributes.REGULAR_ATTRIBUTES)
-    expected.addText("  There is no issue", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    expected.setIcon(AllIcons.Nodes.Folder)
+    expected.addText("  There is no problem", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+    expected.setIcon(AllIcons.FileTypes.Xml)
 
     Assert.assertEquals(expected, node.presentation)
   }
@@ -45,8 +45,8 @@ class NoFileNodeTest {
 
     val expected = PresentationData()
     expected.addText(NO_FILE_NODE_NAME, SimpleTextAttributes.REGULAR_ATTRIBUTES)
-    expected.addText("  Has 1 issue", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    expected.setIcon(AllIcons.Nodes.Folder)
+    expected.addText("  Has 1 problem", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+    expected.setIcon(AllIcons.FileTypes.Xml)
 
     Assert.assertEquals(expected, node.presentation)
   }
@@ -59,8 +59,8 @@ class NoFileNodeTest {
 
     val expected = PresentationData()
     expected.addText(NO_FILE_NODE_NAME, SimpleTextAttributes.REGULAR_ATTRIBUTES)
-    expected.addText("  Has 2 issues", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    expected.setIcon(AllIcons.Nodes.Folder)
+    expected.addText("  Has 2 problems", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+    expected.setIcon(AllIcons.FileTypes.Xml)
 
     Assert.assertEquals(expected, node.presentation)
   }

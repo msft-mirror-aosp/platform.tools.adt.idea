@@ -15,97 +15,85 @@
  */
 package com.android.tools.idea.compose.preview.fast
 
-import com.android.tools.idea.editors.liveedit.LiveEditConfig
-import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditJvmIrCodegenFactory
 import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditLanguageVersionSettings
-import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
+import com.android.tools.idea.run.deployment.liveedit.analyze
+import com.android.tools.idea.run.deployment.liveedit.backendCodeGen
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.util.ProgressWrapper
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.util.io.createFile
-import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
-import org.jetbrains.kotlin.backend.jvm.FacadeClassSourceShimForFragmentCompilation
-import org.jetbrains.kotlin.backend.jvm.JvmGeneratorExtensionsImpl
-import org.jetbrains.kotlin.backend.jvm.jvmPhases
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
-import org.jetbrains.kotlin.codegen.ClassBuilderFactories
-import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
-import org.jetbrains.kotlin.codegen.state.GenerationState
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.JVMConfigurationKeys
-import org.jetbrains.kotlin.config.LanguageVersionSettings
-import org.jetbrains.kotlin.config.languageVersionSettings
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
-import org.jetbrains.kotlin.idea.project.platform
-import org.jetbrains.kotlin.idea.resolve.ResolutionFacade
-import org.jetbrains.kotlin.idea.util.application.runReadAction
-import org.jetbrains.kotlin.load.kotlin.toSourceElement
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.resolve.source.PsiSourceFile
-import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedContainerSource
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicBoolean
+
+private val defaultRetryTimes = Integer.getInteger("fast.preview.224875189.retries", 3)
+
+/**
+ * Retries the [retryBlock] [retryTimes] or until it does not throw an exception.
+ *
+ * Every retry will wait 50ms * number of retries with a maximum of 200ms per retry.
+ */
+@VisibleForTesting
+fun <T> retry(retryTimes: Int = defaultRetryTimes, retryBlock: () -> T): T {
+  var lastException: Throwable? = null
+  repeat(retryTimes) {
+    ProgressManager.checkCanceled()
+    try {
+      return retryBlock()
+    }
+    catch (t: ProcessCanceledException) {
+      throw t // Immediately exit, no more retries
+    }
+    catch (t: Throwable) {
+      Logger.getInstance(EmbeddedCompilerClientImpl::class.java).warn("Retrying after error (retry $it)", t)
+      lastException = t
+    }
+    ProgressManager.checkCanceled()
+    Thread.sleep((50 * it).coerceAtMost(200).toLong())
+  }
+  lastException?.let { throw it } ?: throw IllegalStateException()
+}
 
 /**
  * Implementation of the [CompilerDaemonClient] that uses the embedded compiler in Android Studio. This allows
  * to compile fragments of code in-process similar to how Live Edit does for the emulator.
  */
 class EmbeddedCompilerClientImpl(private val project: Project, private val log: Logger) : CompilerDaemonClient {
-  private val _isRunning = AtomicBoolean(false)
+  private val daemonLock = Mutex()
   override val isRunning: Boolean
-    get() = _isRunning.get()
-
-  /**
-   * Compute the BindingContext of the input file that can be used for code generation.
-   *
-   * This function needs to be done in a read action.
-   */
-  private fun analyze(input: List<KtFile>, resolution: ResolutionFacade): BindingContext {
-    log.debug("analyze")
-    var exception: LiveEditUpdateException? = null
-    val analysisResult = resolution.analyzeWithAllCompilerChecks(input) {
-      if (it.severity == Severity.ERROR) {
-        exception = LiveEditUpdateException.analysisError("Analyze Error. $it")
-      }
-    }
-    if (exception != null) {
-      throw exception!!
-    }
-
-    if (analysisResult.isError()) {
-      throw LiveEditUpdateException.analysisError(analysisResult.error.message ?: "No Error message")
-    }
-
-    for (diagnostic in analysisResult.bindingContext.diagnostics) {
-      if (diagnostic.severity == Severity.ERROR) {
-        throw LiveEditUpdateException.analysisError("Binding Context Error. $diagnostic")
-      }
-    }
-
-    log.debug("analyze result $analysisResult")
-    return analysisResult.bindingContext
-  }
+    get() = daemonLock.holdsLock(this)
 
   private fun compileKtFiles(inputs: List<KtFile>, outputDirectory: Path) {
     log.debug("compileKtFile($inputs, $outputDirectory)")
-    val resolution = runReadAction {
-      log.debug("fetchResolution")
-      KotlinCacheService.getInstance(project).getResolutionFacade(inputs)
-    }
-    val bindingContext = runReadAction { analyze(inputs, resolution) }
 
+    ProgressManager.checkCanceled()
+    log.debug("fetchResolution")
+    val resolution = KotlinCacheService.getInstance(project).getResolutionFacade(inputs)
     val languageVersionSettings = inputs.first().languageVersionSettings
-    val generationState = runReadAction {
-      backendCodeGen(resolution, bindingContext, inputs, AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
+
+    ProgressManager.checkCanceled()
+
+    // Retry is a temporary workaround for b/224875189
+    val generationState = retry {
+      log.debug("analyze")
+      val bindingContext = analyze(inputs, resolution)
+      ProgressManager.checkCanceled()
+      log.debug("backCodeGen")
+      backendCodeGen(project, resolution, bindingContext, inputs,
+                     AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
     }
+
     generationState.factory.asList().forEach {
       val path = outputDirectory.resolve(it.relativePath)
       path.createFile()
@@ -113,111 +101,43 @@ class EmbeddedCompilerClientImpl(private val project: Project, private val log: 
     }
   }
 
-  /**
-   * Invoke the Kotlin compiler that is part of the plugin. The compose plugin is also attached by the
-   * the extension point to generate code for @composable functions.
-   */
-  private fun backendCodeGen(resolution: ResolutionFacade, bindingContext: BindingContext,
-                             input: List<KtFile>, langVersion: LanguageVersionSettings): GenerationState {
-    val compilerConfiguration = CompilerConfiguration()
-    compilerConfiguration.languageVersionSettings = langVersion
-
-    // TODO: Resolve this using the project itself, somehow.
-    compilerConfiguration.put(CommonConfigurationKeys.MODULE_NAME, "app_debug")
-
-    val useComposeIR = LiveEditConfig.getInstance().useEmbeddedCompiler
-    if (useComposeIR) {
-      // Not 100% sure what causes the issue but not setting this in the IR backend causes exceptions.
-      compilerConfiguration.put(JVMConfigurationKeys.DO_NOT_CLEAR_BINDING_CONTEXT, true)
-    }
-
-    val generationStateBuilder = GenerationState.Builder(project,
-                                                         ClassBuilderFactories.BINARIES,
-                                                         resolution.moduleDescriptor,
-                                                         bindingContext,
-                                                         input,
-                                                         compilerConfiguration);
-
-    if (useComposeIR) {
-      generationStateBuilder.codegenFactory(AndroidLiveEditJvmIrCodegenFactory(
-        compilerConfiguration,
-        PhaseConfig(jvmPhases),
-        jvmGeneratorExtensions = object : JvmGeneratorExtensionsImpl(compilerConfiguration) {
-          override fun getContainerSource(descriptor: DeclarationDescriptor): DeserializedContainerSource? {
-            val psiSourceFile =
-              descriptor.toSourceElement.containingFile as? PsiSourceFile ?: return super.getContainerSource(descriptor)
-            return FacadeClassSourceShimForFragmentCompilation(psiSourceFile)
-          }
-        }
-      ))
-    }
-
-    val generationState = generationStateBuilder.build();
-
-    try {
-      KotlinCodegenFacade.compileCorrectFiles(generationState)
-    }
-    catch (e: Throwable) {
-      handleCompilerErrors(e) // handleCompilerErrors() always throws.
-    }
-
-    return generationState
-  }
-
-  private fun handleCompilerErrors(e: Throwable) {
-    // These should be rethrown as per the javadoc for ProcessCanceledException. This allows the
-    // internal IDE code for handling read/write actions to function as expected.
-    if (e is ProcessCanceledException) {
-      throw e
-    }
-
-    // Given that the IDE already provide enough information about compilation errors, there is no
-    // real need to surface any compilation exception. We will just print the true cause for the
-    // exception for our own debugging purpose only.
-    var cause = e;
-    while (cause.cause != null) {
-      cause = cause.cause!!
-
-      // The Kotlin compiler probably shouldn't be swallowing these, but since we can't change that,
-      // detect and re-throw them here as the proper exception type.
-      if (cause is ProcessCanceledException) {
-        throw cause
-      }
-
-      val message = cause.message!!
-      if (message.contains("Unhandled intrinsic in ExpressionCodegen")) {
-        val nameStart = message.indexOf("name:") + "name:".length
-        val nameEnd = message.indexOf(' ', nameStart)
-        val name = message.substring(nameStart, nameEnd)
-
-        log.warn("Compilation error", e)
-        throw LiveEditUpdateException.knownIssue(201728545,
-                                                 "unable to compile a file that reference a top level function in another source file.\n" +
-                                                 "For now work around this by moving function $name inside the class.")
-      }
-    }
-    log.warn("Compilation error", e)
-    throw LiveEditUpdateException.compilationError(e.message ?: "No error message", e)
-  }
-
   override suspend fun compileRequest(
     files: Collection<PsiFile>,
     module: Module,
     outputDirectory: Path,
     indicator: ProgressIndicator): CompilationResult {
-    _isRunning.set(true)
+    daemonLock.lock(this)
     return try {
       val inputs = files.filterIsInstance<KtFile>().toList()
-      try {
-        compileKtFiles(inputs, outputDirectory = outputDirectory)
-        CompilationResult.Success
-      }
-      catch (t: Throwable) {
-        return CompilationResult.RequestException(t)
-      }
+      val result = CompletableDeferred<CompilationResult>()
+      val initialRetries = 3
+      var retries = initialRetries
+      var readActionExecuted: Boolean
+
+      // This code will retry the execute action 3 times. The compile action can be cancelled if any write action happens during the
+      // compilation.
+      do {
+        if (retries != initialRetries) delay((initialRetries - retries) * 50L)
+        readActionExecuted = ProgressManager.getInstance().runInReadActionWithWriteActionPriority(
+          {
+            try {
+              compileKtFiles(inputs, outputDirectory = outputDirectory)
+              result.complete(CompilationResult.Success)
+            }
+            catch (t: Throwable) {
+              result.complete(CompilationResult.RequestException(t))
+            }
+          },
+          ProgressWrapper.wrap(indicator)
+        )
+      } while (!readActionExecuted && retries-- > 0)
+
+      if (readActionExecuted)
+        result.await()
+      else CompilationResult.CompilationAborted(Throwable("Unable to start read action"))
     }
     finally {
-      _isRunning.set(false)
+      daemonLock.unlock(this)
     }
   }
 

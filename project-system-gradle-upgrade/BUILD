@@ -65,8 +65,14 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/adt/idea/android:intellij.android.core[module]",
+        "//tools/adt/idea/observable:intellij.android.observable[module]",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module]",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module]",
+        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
     ],
 )
 
@@ -265,7 +271,6 @@ old_agp_test(
     maven_deps = [
         ":test_deps",
         "//tools/base/build-system:studio_repo",
-        "//tools/base/build-system/previous-versions:kgp1.3.72",
     ],
     tags = [
         "block-network",

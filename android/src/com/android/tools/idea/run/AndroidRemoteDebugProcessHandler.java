@@ -16,7 +16,6 @@
 package com.android.tools.idea.run;
 
 import com.android.ddmlib.Client;
-import com.android.ddmlib.IDevice;
 import com.android.tools.idea.run.deployable.SwappableProcessHandler;
 import com.android.tools.idea.run.deployment.AndroidExecutionTarget;
 import com.intellij.debugger.DebuggerManager;
@@ -28,10 +27,13 @@ import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.io.OutputStream;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,12 +53,12 @@ final public class AndroidRemoteDebugProcessHandler extends ProcessHandler imple
   private final Project myProject;
   private final Client myClient;
   private final boolean myDetachIsDefault;
-  private final @Nullable Consumer<Client> myFinishAndroidProcessCallback;
+  private final Function1<? super Client, Unit> myFinishAndroidProcessCallback;
 
   public AndroidRemoteDebugProcessHandler(Project project,
                                           Client client,
                                           boolean detachIsDefault,
-                                          @Nullable Consumer<Client> finishAndroidProcessCallback) {
+                                          Function1<? super Client, Unit> finishAndroidProcessCallback) {
     myProject = project;
     myClient = client;
     myDetachIsDefault = detachIsDefault;
@@ -80,7 +82,9 @@ final public class AndroidRemoteDebugProcessHandler extends ProcessHandler imple
         // Delay notifying process detached by 1 second to avoid race condition with ITestRunListener#testRunEnded.
         // If you debug android instrumentation test process, the test process may terminate before Ddmlib calls
         // testRunEnded callback. This results in "test framework quits unexpected" error. b/150001290.
-        AppExecutorUtil.getAppScheduledExecutorService().schedule(() -> notifyProcessDetached(), 1, TimeUnit.SECONDS);
+        ScheduledFuture<?> future =
+          AppExecutorUtil.getAppScheduledExecutorService().schedule(() -> notifyProcessDetached(), 1, TimeUnit.SECONDS);
+        Disposer.register(myProject, () -> future.cancel(false));
       }
     };
     debugProcess.addDebugProcessListener(listener);
@@ -99,27 +103,8 @@ final public class AndroidRemoteDebugProcessHandler extends ProcessHandler imple
    * Terminates the process when ProcessHandler is stopped via {@link ProcessHandler#destroyProcess()} instead of shutting down target vm.
    */
   private void terminateAndroidProcess() {
-    ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      String processName = myClient.getClientData().getClientDescription();
-
-      if (processName == null) {
-        return;
-      }
-      IDevice device = myClient.getDevice();
-
-      Client currentClient = device.getClient(processName);
-      if (currentClient != null && currentClient.getClientData().getPid() != myClient.getClientData().getPid()) {
-        // a new process has been launched for the same package name, we aren't interested in killing this
-        return;
-      }
-
-      if (myFinishAndroidProcessCallback != null) {
-        myFinishAndroidProcessCallback.accept(myClient);
-      }
-      else {
-        new ApplicationTerminator(device, processName).killApp();
-      }
-    });
+    ApplicationManager.getApplication()
+      .executeOnPooledThread(() -> TerminateAndroidProcessKt.terminateAndroidProcess(myClient, myFinishAndroidProcessCallback));
   }
 
   @Override
@@ -153,7 +138,7 @@ final public class AndroidRemoteDebugProcessHandler extends ProcessHandler imple
   }
 
   @Override
-  final public boolean detachIsDefault() {
+  public boolean detachIsDefault() {
     return myDetachIsDefault;
   }
 

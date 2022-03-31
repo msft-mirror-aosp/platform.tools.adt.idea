@@ -89,7 +89,7 @@ class EndToEndIntegrationTest : LightPlatform4TestCase() {
       }
     }
 
-    val wearPropertiesMap = mapOf(AvdManager.AVD_INI_TAG_ID to "android-wear")
+    val wearPropertiesMap = mapOf(AvdManager.AVD_INI_TAG_ID to "android-wear", AvdManager.AVD_INI_ANDROID_API to "28")
     val avdWearInfo = AvdInfo("My Wear", Paths.get("ini"), Paths.get("folder"), Mockito.mock(ISystemImage::class.java), wearPropertiesMap)
 
     val wearIDevice = Mockito.mock(IDevice::class.java).apply {
@@ -99,6 +99,7 @@ class EndToEndIntegrationTest : LightPlatform4TestCase() {
       Mockito.`when`(name).thenReturn(avdWearInfo.name)
       Mockito.`when`(serialNumber).thenReturn("serialNumber")
       Mockito.`when`(state).thenReturn(IDevice.DeviceState.ONLINE)
+      Mockito.`when`(version).thenReturn(AndroidVersion(28, null))
       Mockito.`when`(getProperty("dev.bootcomplete")).thenReturn("1")
       Mockito.`when`(getSystemProperty("ro.oem.companion_package")).thenReturn(Futures.immediateFuture(""))
       addExecuteShellCommandReply { request ->
@@ -120,8 +121,6 @@ class EndToEndIntegrationTest : LightPlatform4TestCase() {
       FakeUi(it.contentPane).apply {
         waitLabelText(message("wear.assistant.device.list.title"))
         clickButton("Next")
-        waitLabelText(message("wear.assistant.device.connection.start.device.title"))
-        waitLabelText(message("wear.assistant.device.connection.connecting.device.top.label"))
         waitLabelText(message("wear.assistant.device.connection.pairing.success.title"))
         clickButton("Finish")
       }

@@ -25,7 +25,8 @@
   <depends>org.jetbrains.kotlin</depends>
   <depends>org.toml.lang</depends>
 
-  <depends optional="true" config-file="androidstudio.xml">com.intellij.modules.androidstudio</depends>
+  <depends optional="true" config-file="android-plugin-androidstudio.xml">com.intellij.modules.androidstudio</depends>
+  <depends optional="true" config-file="android-plugin-idea.xml">com.intellij.modules.idea</depends>
   <depends optional="true" config-file="database-support.xml">com.intellij.database</depends>
 
   <xi:include href="android-kotlin.xml" xpointer="xpointer(/idea-plugin/*)"/>
@@ -136,6 +137,7 @@
     </group>
     <group id="Android.Diagnostics">
       <separator/>
+      <action class="com.android.tools.idea.res.ToggleResourceTraceAction"/>
       <action class="com.android.tools.idea.res.DumpResourceTraceAction"/>
       <add-to-group group-id="HelpDiagnosticTools" anchor="last"/>
     </group>
@@ -253,7 +255,6 @@
     <projectService serviceImplementation="com.android.tools.idea.res.AndroidFileChangeListener" />
     <postStartupActivity implementation="com.android.tools.idea.res.AndroidFileChangeListener$MyStartupActivity"/>
     <projectService serviceImplementation="com.android.tools.idea.ddms.screenshot.ScreenshotViewer$PersistentState" />
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.AndroidGradleProjectService" />
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceNotificationManager" />
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceClassRegistry" />
     <projectService serviceImplementation="org.jetbrains.android.AndroidPropertyFilesUpdater" />
@@ -288,6 +289,7 @@
     <actionConfigurationCustomizer implementation="org.jetbrains.android.AndroidPlugin$ActionCustomizer"/>
     <applicationService serviceImplementation="org.jetbrains.android.AndroidPlugin" preload="true"/>
     <applicationService serviceImplementation="com.android.tools.idea.emulator.EmulatorSettings"/>
+    <applicationService serviceImplementation="com.android.tools.idea.res.ResourceUpdateTraceSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData" />
     <applicationService serviceImplementation="com.android.tools.idea.ui.GuiTestingService"/>
     <applicationService serviceImplementation="com.android.tools.idea.ui.designer.overlays.OverlayPersistentStateService"/>
@@ -361,6 +363,8 @@
 
     <applicationService serviceInterface="com.android.tools.idea.run.NonGradleAndroidArtifactResolver"
                         serviceImplementation="com.android.tools.idea.run.JpsAndroidArtifactResolver"/>
+
+    <applicationService serviceImplementation="com.android.tools.idea.logcat.LogcatExperimentalSettings"/>
 
     <fileType name="Android 9-Patch"
               implementationClass="com.android.tools.idea.fileTypes.AndroidNinePatchFileType"
@@ -514,14 +518,12 @@
                       anchor="bottom"
                       icon="StudioIcons.Shell.ToolWindows.LOGCAT"
                       factoryClass="com.android.tools.idea.logcat.AndroidLogcatToolWindowFactory"/>
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.AndroidPluginVersionUpdater"/>
     <projectService serviceInterface="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker"
                     serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvokerImpl"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleVersionCatalogDetector"/>
     <projectService serviceImplementation="com.android.tools.idea.apk.debugging.DexSourceFiles"/>
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.ProjectStructure"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.projectsystem.GradleSyncResultPublisher"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.build.GradleBuildState"/>
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidNotification"/>
@@ -570,6 +572,7 @@
     <sdkType implementation="org.jetbrains.android.sdk.AndroidSdkType"/>
     <gotoDeclarationHandler implementation="org.jetbrains.android.AndroidGotoDeclarationHandler"/>
     <gotoSymbolContributor implementation="com.android.tools.idea.res.psi.GoToAndroidResourceContributor"/>
+    <definitionsScopedSearch implementation="com.android.tools.idea.res.psi.ResourceDefinitionSearch" order="first"/>
     <moduleRendererFactory implementation="com.android.tools.idea.res.psi.ResourceModuleRendererFactory" order="first"/>
     <importFilter implementation="com.android.tools.idea.editors.AndroidImportFilter" />
     <overrideImplementsAnnotationsHandler implementation="com.android.tools.idea.editors.AndroidOverrideAnnotationsHandler" />
@@ -717,10 +720,10 @@
     <usageTypeProvider implementation="com.android.tools.idea.gradle.project.upgrade.AgpComponentUsageTypeProvider"
                        order="first, before org.jetbrains.android.refactoring.GradleUsageTypeProvider"/>
     <usageGroupingRuleProvider implementation="com.android.tools.idea.gradle.project.upgrade.ComponentGroupingRuleProvider"/>
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.AssistantInvoker"/>
-    <projectService serviceImplementation="com.android.tools.idea.gradle.project.upgrade.ContentManager"/>
     <applicationInitializedListener implementation="com.intellij.internal.statistic.updater.StatisticsStateCollectorsScheduler"/>
     <statistics.projectUsagesCollector implementation="com.intellij.internal.statistic.collectors.fus.fileTypes.FileTypeUsagesCollector"/>
+
+    <iw.actionProvider implementation="com.android.tools.idea.editors.liveedit.ui.LiveEditActionProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij.properties">

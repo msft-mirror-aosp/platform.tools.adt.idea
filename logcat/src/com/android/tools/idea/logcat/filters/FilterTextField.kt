@@ -40,7 +40,6 @@ import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.rd.util.withUiContext
 import com.intellij.openapi.ui.popup.PopupChooserBuilder
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.ScalableIcon
@@ -52,6 +51,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import icons.StudioIcons
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.awt.Component
 import java.awt.Font
@@ -139,7 +139,13 @@ internal class FilterTextField(
 
     addToLeft(historyButton)
     addToCenter(textField)
-    addToRight(InlinePanel(clearButton, JSeparator(VERTICAL), favoriteButton))
+    val buttonPanel = InlinePanel(clearButton, JSeparator(VERTICAL), favoriteButton)
+    addToRight(buttonPanel)
+
+    if (initialText.isEmpty()) {
+      buttonPanel.isVisible = false
+    }
+
 
     // Set a border around the text field and buttons.
     // Using FilterTextFieldBorder (which is just a DarculaTextBorder) alone doesn't seem to work. It seems to need CompoundBorder.
@@ -164,6 +170,7 @@ internal class FilterTextField(
               listener.documentChanged(event)
             }
           }
+          buttonPanel.isVisible = textField.text.isNotEmpty()
         }
       })
       addKeyListener(object : KeyAdapter() {
@@ -181,6 +188,8 @@ internal class FilterTextField(
       })
       // The text field needs to be moved an extra pixel down to appear correctly.
       border = JBUI.Borders.customLine(background, 1, 0, 0, 0)
+      textField.setPlaceholder(LogcatBundle.message("logcat.filter.hint"))
+      textField.setShowPlaceholderWhenFocused(true)
     }
 
     clearButton.apply {
@@ -349,7 +358,7 @@ internal class FilterTextField(
             launch {
               val count = application.runReadAction<Int> { logcatPresenter.countFilterMatches(item.filter) }
               // Replacing an item in the model will remove the selection. Save the selected index, so we can restore it after.
-              withUiContext {
+              withContext(uiThread) {
                 val selected = selectedIndex
                 listModel.setElementAt(Item(item.filter, item.isFavorite, count), index)
                 if (selected >= 0) {

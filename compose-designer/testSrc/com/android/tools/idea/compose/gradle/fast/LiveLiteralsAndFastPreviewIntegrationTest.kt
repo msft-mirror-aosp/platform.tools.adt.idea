@@ -21,28 +21,31 @@ import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.fast.CompilationResult
 import com.android.tools.idea.compose.preview.fast.FastPreviewManager
+import com.android.tools.idea.compose.preview.fast.isError
+import com.android.tools.idea.compose.preview.fast.isSuccess
+import com.android.tools.idea.compose.preview.toFileNameSet
 import com.android.tools.idea.concurrency.AndroidDispatchers
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.editors.literals.LiteralUsageReference
 import com.android.tools.idea.editors.literals.LiveLiteralsApplicationConfiguration
 import com.android.tools.idea.editors.literals.LiveLiteralsMonitorHandler
 import com.android.tools.idea.editors.literals.LiveLiteralsService
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.rendering.classloading.ProjectConstantRemapper
 import com.android.tools.idea.testing.moveCaret
-import com.android.tools.idea.testing.replaceText
-import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteActionAndWait
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
+import org.jetbrains.kotlin.name.FqName
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,11 +55,6 @@ import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
-import java.nio.file.FileVisitResult
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -116,18 +114,11 @@ class LiveLiteralsAndFastPreviewIntegrationTest {
     val module = ModuleUtilCore.findModuleForPsiElement(psiMainFile)!!
     fastPreviewManager.compileRequest(psiMainFile, module).let { (result, outputPath) ->
       assertEquals(CompilationResult.Success, result)
+      assertTrue(result.isSuccess)
+      assertFalse(result.isError)
       ModuleClassLoaderOverlays.getInstance(module).overlayPath = File(outputPath).toPath()
 
-      val generatedFilesSet = mutableSetOf<String>()
-      @Suppress("BlockingMethodInNonBlockingContext")
-      Files.walkFileTree(File(outputPath).toPath(), object : SimpleFileVisitor<Path>() {
-        override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
-          file?.let { generatedFilesSet.add(it.fileName.toString()) }
-          @Suppress("BlockingMethodInNonBlockingContext")
-          return super.visitFile(file, attrs)
-        }
-      })
-      result to generatedFilesSet
+      result to File(outputPath).toPath().toFileNameSet()
     }
   }
 
@@ -164,6 +155,17 @@ class LiveLiteralsAndFastPreviewIntegrationTest {
   fun `disabled live literals does not generate LiveLiterals classes`() = runBlocking {
     LiveLiteralsApplicationConfiguration.getInstance().isEnabled = false
     val (_, outputFiles) = compileAndListOutputFiles()
-    assertTrue(outputFiles.isNotEmpty() && outputFiles.none { it.contains("LiveLiterals") })
+    assertTrue(outputFiles.isNotEmpty() && outputFiles.none { it.endsWith(".class") && it.contains("LiveLiterals") })
+  }
+
+  @Test
+  fun `verify live literals constants are cleared`() = runBlocking {
+    ProjectConstantRemapper.getInstance(projectRule.project).addConstant(
+      null, LiteralUsageReference(FqName("test.constant"), "filename.kt", TextRange(1, 10), 10), 0, 0)
+    assertTrue(ProjectConstantRemapper.getInstance(projectRule.project).hasConstants())
+    val (result, outputFiles) = compileAndListOutputFiles()
+    assertTrue(result == CompilationResult.Success)
+    assertFalse("Constants should have been cleared after a successful build",
+                ProjectConstantRemapper.getInstance(projectRule.project).hasConstants())
   }
 }

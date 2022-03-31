@@ -23,8 +23,8 @@ import com.intellij.openapi.application.ModalityState
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.spy
+import org.mockito.Mockito.`when`
 import java.util.concurrent.Executor
 
 /**
@@ -36,7 +36,7 @@ import java.util.concurrent.Executor
  */
 class AndroidExecutorsRule(
   private val workerThreadExecutor: Executor? = null,
-  private val ioThreadExecutor: Executor? = null,
+  private val diskIoThreadExecutor: Executor? = null,
   private val uiThreadExecutor: ((ModalityState, Runnable) -> Unit)? = null,
 ) : TestRule {
   override fun apply(base: Statement, description: Description): Statement {
@@ -49,8 +49,8 @@ class AndroidExecutorsRule(
           if (workerThreadExecutor != null) {
             `when`(androidExecutors.workerThreadExecutor).thenReturn(workerThreadExecutor)
           }
-          if (ioThreadExecutor != null) {
-            `when`(androidExecutors.ioThreadExecutor).thenReturn(ioThreadExecutor)
+          if (diskIoThreadExecutor != null) {
+            `when`(androidExecutors.diskIoThreadExecutor).thenReturn(diskIoThreadExecutor)
           }
           if (uiThreadExecutor != null) {
             `when`(androidExecutors.uiThreadExecutor).thenReturn(uiThreadExecutor)

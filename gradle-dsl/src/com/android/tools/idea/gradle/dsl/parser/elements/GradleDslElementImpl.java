@@ -182,6 +182,11 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
   }
 
   @Override
+  public void setNameElement(@NotNull GradleNameElement name) {
+    myName = name;
+  }
+
+  @Override
   public void rename(@NotNull String newName) {
     rename(Arrays.asList(newName));
   }
@@ -499,6 +504,11 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
         toBeInjected.unregisterDependent(e);
       }
     });
+  }
+
+  @Override
+  public void addDependency(@NotNull GradleReferenceInjection injection) {
+    myDependencies.add(injection);
   }
 
   @Override

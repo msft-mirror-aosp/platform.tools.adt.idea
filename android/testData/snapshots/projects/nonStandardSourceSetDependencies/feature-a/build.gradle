@@ -1,0 +1,13 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+android {
+    compileSdkVersion 30
+}
+
+dependencies {
+// TODO(b/208357458):    implementation project(':network-kmm')
+
+    implementation 'androidx.appcompat:appcompat:+'
+}

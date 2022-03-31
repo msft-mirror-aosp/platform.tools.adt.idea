@@ -107,31 +107,15 @@ public final class StudioFlags {
     PROFILER, "energy", "Enable Energy profiling",
     "Enable the new energy profiler. It monitors battery usage of the selected app.", true);
 
-  public static final Flag<Boolean> PROFILER_STARTUP_CPU_PROFILING = Flag.create(
-    PROFILER, "startup.cpu.profiling", "Enable startup CPU Profiling",
-    "Record a method trace on startup by enabling it in the Profiler tab of Run/Debug configuration.",
-    true);
-
   public static final Flag<Boolean> PROFILER_MEMORY_CSV_EXPORT = Flag.create(
     PROFILER, "memory.csv", "Allow exporting entries in memory profiler",
     "Allow exporting entries in the views for heap dump and native/JVM recordings in CSV format.",
     false);
 
-  public static final Flag<Boolean> PROFILER_TRACK_JNI_REFS = Flag.create(
-    PROFILER, "jni", "Enable JVMTI-based JNI reference tracking.",
-    "For Android O or newer, JNI references are tracked in Memory Profiler and shown in JNI heap.",
-    true);
-
   public static final Flag<Boolean> PROFILER_PERFORMANCE_MONITORING = Flag.create(
     PROFILER, "performance.monitoring", "Enable Profiler Performance Monitoring Options",
     "Toggles if profiler performance metrics options are enabled.",
     false
-  );
-
-  public static final Flag<Boolean> PROFILER_CPU_NEW_RECORDING_WORKFLOW = Flag.create(
-    PROFILER, "cpu.new.recording.workflow", "Enable new CPU recording workflow",
-    "Shows recording options and status of the ongoing recording in the method trace pane.",
-    true
   );
 
   public static final Flag<Boolean> PROFILER_JANK_DETECTION_UI = Flag.create(
@@ -144,11 +128,6 @@ public final class StudioFlags {
     PROFILER, "custom.event.visualization", "Enable Profiler Custom Event Visualization",
     "When enabled, profiler will track and display events defined through developer APIs",
     false);
-
-  public static final Flag<Boolean> PROFILER_USE_TRACEPROCESSOR = Flag.create(
-    PROFILER, "perfetto.traceprocessor", "Enable TraceProcessorDaemon",
-    "Use TraceProcessor to parse Perfetto captures instead of Trebuchet/Atrace backend.",
-    true);
 
   public static final Flag<Boolean> PROFILEABLE = Flag.create(
     PROFILER, "profileable", "Support profileable processes on S+",
@@ -220,6 +199,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_MOTION_AREA_GRAPH = Flag.create(
     NELE, "motion.area.graph", "Show area graph in Timeline panel",
     "Show area graph in Timeline panel for Motion Editor.",
+    true);
+  public static final Flag<Boolean> NELE_MOTION_SAVE_GIF = Flag.create(
+    NELE, "motion.save.gif", "Enable save GIF feature",
+    "Enable save a selected transition as a GIF file in Motion Editor.",
     true);
   public static final Flag<Boolean> NELE_MOTION_HORIZONTAL = Flag.create(
     NELE, "animated.motion.horizontal", "Display motion editor horizontally",
@@ -369,7 +352,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS = Flag.create(
     NELE, "use.shared.issue.panel.for.design.tools", "Enabled shared issue panels",
     "Use a shared issue panel to display the issue for all design tools",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL = Flag.create(
     NELE, "show.issue.in.common.panel", "Enable showing issues in common problems panel.",
@@ -473,16 +456,10 @@ public final class StudioFlags {
 
   //region Resource Repository
   private static final FlagGroup RESOURCE_REPOSITORY = new FlagGroup(FLAGS, "resource.repository", "Resource Repository");
-  public static final Flag<Boolean> RESOURCE_REPOSITORY_TRACE_UPDATES = Flag.create(
-    RESOURCE_REPOSITORY, "trace.updates", "Enable Tracing of Resource Repository Updates",
-    "Enables tracing of resource repository updates",
-    false);
   public static final Flag<Integer> RESOURCE_REPOSITORY_TRACE_SIZE = Flag.create(
     RESOURCE_REPOSITORY, "trace.size", "Maximum Size of Resource Repository Update Trace",
     "Size of the in-memory cyclic buffer used for tracing of resource repository updates",
     10000);
-  //endregion
-
   //endregion
 
   //region Run/Debug
@@ -530,7 +507,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NEW_EXECUTION_FLOW_FOR_JAVA_DEBUGGER = Flag.create(
     RUNDEBUG, "android.new.execution.flow.for.java.debugger.enabled", "Enable new Execution flow for debuggers",
     "If enabled, AS executes Run Java debugger via com.android.tools.idea.run.debug.StartJavaDebuggerKt.attachJavaDebuggerToClient",
-    false);
+    true);
 
   public static final Flag<Boolean> ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER = Flag.create(
     RUNDEBUG, "run.wear.configuration.gutter.enabled", "Run Wear Configurations from gutter",
@@ -672,19 +649,27 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> LOGCAT_V2_ENABLE = Flag.create(
-    RUNDEBUG,
-    "logcat.v2.enable",
-    "Enable Logcat V2",
-    "Enables version 2 of the Logcat tool window",
-    true
-  );
-
   public static final Flag<Boolean> LOGCAT_V2_NAMED_FILTERS_ENABLE = Flag.create(
     RUNDEBUG,
     "logcat.v2.named.filters.enable",
     "Enable Logcat named filters feature",
     "Enables the named filters feature in the Logcat tool window",
+    false
+  );
+
+  public static final Flag<Boolean> DDMLIB_ABB_EXEC_INSTALL_ENABLE = Flag.create(
+    RUNDEBUG,
+    "ddmlib.abb.exec.install.enable",
+    "Allow DDMLib to use ABB_EXEC on install when device supports it.",
+    "Allow DDMLib to use ABB_EXEC on install instead of the 'legacy' EXEC/CMD or EXEC/PM combos. This only occurs if device and adb support abb_exec",
+    true
+  );
+
+  public static final Flag<Boolean> LOGCAT_V2_CUSTOM_FORMAT_ACTION = Flag.create(
+    RUNDEBUG,
+    "logcat.v2.custom.format.action",
+    "Enable Logcat custom format action",
+    "Enables the custom format action in the Logcat tool window action bar",
     false
   );
   //endregion
@@ -706,9 +691,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DISABLE_FORCED_UPGRADES = Flag.create(
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
     "This option is only respected when running Android Studio internally.", false);
-  public static final Flag<Boolean> USE_MODULE_PER_SOURCE_SET = Flag.create(
-    GRADLE_IDE, "module.per.source.set", "Enables creating multiple modules per Gradle project",
-    "This allows the IDE to more closely represent how the project is configured in Gradle.", true);
 
   public static final Flag<Boolean> GRADLE_SYNC_PARALLEL_SYNC_ENABLED = Flag.create(
     GRADLE_IDE, "gradle.sync.parallel.sync.enabled", "Enables parallel sync",
@@ -734,7 +716,10 @@ public final class StudioFlags {
     GRADLE_IDE, "gradle.sync.recreate.jdk", "Recreate JDK on sync", "Recreate Gradle JDK when syncing if there are changed roots.", true);
 
   public static final Flag<Boolean> GRADLE_DSL_TOML_SUPPORT = Flag.create(
-    GRADLE_IDE, "gradle.dsl.toml", "Parse TOML files", "Parse TOML files to support use of Version Catalogs.", false);
+    GRADLE_IDE, "gradle.dsl.toml", "Parse TOML files", "Parse TOML files to support use of Version Catalogs.", true);
+
+  public static final Flag<Boolean> GRADLE_DSL_TOML_WRITE_SUPPORT = Flag.create(
+    GRADLE_IDE, "gradle.dsl.toml.write", "Write TOML files", "Write changes to TOML Version Catalog files.", false);
 
   //endregion
 
@@ -758,6 +743,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.counts", "Enable recomposition counts",
     "Enable gathering and display of recomposition counts in the layout inspector.", true);
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_HIGHLIGHTS = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.highlights", "Enable recomposition highlights",
+    "Enable recomposition highlights on the image in the layout inspector.", false);
   //endregion
 
   //region Embedded Emulator
@@ -801,6 +789,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_STANDALONE_EMULATORS = Flag.create(
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring",
+    false);
+  public static final Flag<Boolean> DEVICE_CLIPBOARD_SYNCHRONIZATION_ENABLED = Flag.create(
+    DEVICE_MIRRORING, "clipboard.synchronization.enabled", "Enable Clipboard Syncronization with Mirrored Physical Devices",
+    "Synchronizes clipboard contents between the host computer and the mirrored physical devices",
     false);
   //endregion
 
@@ -1147,6 +1139,20 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_DEVICESPEC_INJECTOR = Flag.create(
+    COMPOSE, "preview.element.injector.enable",
+    "Enable injecting DeviceSpec Language",
+    "If enabled, the DeviceSpec Language will be injected in @Preview.device string values",
+    false
+  );
+
+  public static final Flag<Boolean> COMPOSE_SPRING_PICKER = Flag.create(
+    COMPOSE, "preview.spring.picker",
+    "Enable the SpringSpec picker",
+    "If enabled, a picker will be available in SpringSpec calls on the Editor gutter",
+    false
+  );
+
   public static final Flag<Boolean> COMPOSE_BLUEPRINT_MODE = Flag.create(
     COMPOSE, "preview.blueprint",
     "Enable the blueprint mode for Compose previews",
@@ -1222,6 +1228,13 @@ public final class StudioFlags {
     "Enable animation coordination in Animation Inspector",
     "If enabled, animation coordination will be available in Animation Inspector timeline.",
     true
+  );
+
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG = Flag.create(
+    COMPOSE, "preview.animation.coordination.drag",
+    "Enable animation dragging in timeline for Animation Inspector",
+    "If enabled, animation dragging will be available in Animation Inspector timeline.",
+    false
   );
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
@@ -1372,30 +1385,5 @@ public final class StudioFlags {
       "Enable App Insights tool window and highlighting support.",
       false);
   // endregion App Insights
-
-  // region GOOGLE_PLAY_SDK_INDEX
-  private static final FlagGroup GOOGLE_PLAY_SDK_INDEX = new FlagGroup(FLAGS, "google.play.sdk.index", "Google Play SDK Index");
-  public static final Flag<Boolean> SHOW_SDK_INDEX_MESSAGES = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.messages", "Show SDK Index messages",
-    "Show messages related to Google Play SDK Index",
-    true
-  );
-  public static final Flag<Boolean> INCLUDE_LINKS_TO_SDK_INDEX = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "include.links.to.sdk.index", "Include links to SDK Index",
-    "Whether or not links to Google Play SDK Index should be included in the SDK Index messages",
-    false
-  );
-  public static final Flag<Boolean> SHOW_SDK_INDEX_CRITICAL_ISSUES = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.critical.issues", "Show SDK Index critical issues",
-    "Whether or not critical issues from library authors should be shown",
-    false
-  );
-  public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
-    "Whether or not show issues when libraries are not policy complaint",
-    false
-  );
-  // endregion GOOGLE_PLAY_SDK_INDEX
-
   private StudioFlags() { }
 }

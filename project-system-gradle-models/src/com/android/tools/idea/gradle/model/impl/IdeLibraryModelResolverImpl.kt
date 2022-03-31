@@ -15,28 +15,32 @@
  */
 package com.android.tools.idea.gradle.model.impl
 
+import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
+import com.android.tools.idea.gradle.model.IdeDependencyCore
+import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency
+import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
-import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependencyCore
-import com.android.tools.idea.gradle.model.IdeJavaLibraryDependencyCore
-import java.util.concurrent.ConcurrentHashMap
+import com.android.tools.idea.gradle.model.IdeModuleDependency
+import com.android.tools.idea.gradle.model.IdeModuleLibrary
+import com.android.tools.idea.gradle.model.LibraryReference
+import java.io.Serializable
 
-class IdeLibraryModelResolverImpl: IdeLibraryModelResolver {
-  private val androidLibraries: ConcurrentHashMap<Identity<IdeAndroidLibraryDependencyCore>, IdeAndroidLibraryDependency> = ConcurrentHashMap()
-  private val javaLibraries: ConcurrentHashMap<Identity<IdeJavaLibraryDependencyCore>, IdeJavaLibraryDependency> = ConcurrentHashMap()
-
-  override fun resolveAndroidLibrary(core: IdeAndroidLibraryDependencyCore): IdeAndroidLibraryDependency {
-    return androidLibraries.getOrElse(Identity(core)) { IdeAndroidLibraryDependencyImpl(core.target, core.isProvided) }
+class IdeLibraryModelResolverImpl(private val libraryTable: (LibraryReference) -> IdeLibrary) : IdeLibraryModelResolver {
+  override fun resolveAndroidLibrary(unresolved: IdeDependencyCore): IdeAndroidLibraryDependency? {
+    return IdeAndroidLibraryDependencyImpl(libraryTable(unresolved.target) as? IdeAndroidLibrary ?: return null, unresolved.isProvided)
   }
 
-  override fun resolveJavaLibrary(core: IdeJavaLibraryDependencyCore): IdeJavaLibraryDependency {
-    return javaLibraries.getOrElse(Identity(core)) { IdeJavaLibraryDependencyImpl(core.target, core.isProvided) }
+  override fun resolveJavaLibrary(unresolved: IdeDependencyCore): IdeJavaLibraryDependency? {
+    return IdeJavaLibraryDependencyImpl(libraryTable(unresolved.target) as? IdeJavaLibrary ?: return null, unresolved.isProvided)
+  }
+
+  override fun resolveModule(unresolved: IdeDependencyCore): IdeModuleDependency? {
+    return IdeModuleDependencyImpl(libraryTable(unresolved.target) as? IdeModuleLibrary ?: return null)
   }
 }
 
-private class Identity<T>(val core: T) {
-  override fun equals(other: Any?): Boolean = other is Identity<*> && core === other.core
-  override fun hashCode(): Int = System.identityHashCode(core)
-}
-
+data class IdeLibraryTableImpl(
+  val libraries: List<IdeLibrary>
+): Serializable

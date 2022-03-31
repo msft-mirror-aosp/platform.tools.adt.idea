@@ -20,11 +20,9 @@ package com.android.tools.profilers;
  * to allow the IDE to communicate to the profilers that a feature should be on or off.
  */
 public interface FeatureConfig {
-  boolean isCpuNewRecordingWorkflowEnabled();
   boolean isCustomEventVisualizationEnabled();
   boolean isEnergyProfilerEnabled();
   boolean isJankDetectionUiEnabled();
-  boolean isJniReferenceTrackingEnabled();
   boolean isMemoryCSVExportEnabled();
   boolean isPerformanceMonitoringEnabled();
   boolean isProfileableEnabled();
@@ -32,9 +30,7 @@ public interface FeatureConfig {
 
   boolean isProfileableBuildsEnabled();
 
-  boolean isStartupCpuProfilingEnabled();
   boolean isUnifiedPipelineEnabled();
-  boolean isUseTraceProcessor();
   // Add new features alphabetically instead of at the end of the list
   // This reduces the chance of having to deal with an annoying merge conflict.
 }

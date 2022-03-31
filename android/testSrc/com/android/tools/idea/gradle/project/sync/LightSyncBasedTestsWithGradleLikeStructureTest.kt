@@ -15,10 +15,9 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryDependencyCoreImpl
 import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
+import com.android.tools.idea.testing.AndroidLibraryDependency
 import com.android.tools.idea.testing.AndroidModuleDependency
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
@@ -33,7 +32,6 @@ import com.android.tools.idea.testing.saveAndDump
 import com.android.tools.idea.testing.setupTestProjectFromAndroidModel
 import com.android.tools.idea.testing.updateTestProjectFromAndroidModel
 import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.android.AndroidTestCase
@@ -64,7 +62,6 @@ class LightSyncBasedTestsWithGradleLikeStructureTest : SnapshotComparisonTest {
 
   @Test
   fun testLightTestsWithGradleLikeStructure() {
-    assertThat(ModuleManager.getInstance(projectRule.project).modules).asList().containsExactly(projectRule.module)
     val dump = projectRule.project.saveAndDump()
     assertIsEqualToSnapshot(dump)
   }
@@ -95,7 +92,6 @@ class LightSyncBasedTestsWithCMakeLikeStructureTest : SnapshotComparisonTest {
 
   @Test
   fun testLightTestsWithCMakeLikeStructure() {
-    assertThat(ModuleManager.getInstance(projectRule.project).modules).asList().containsExactly(projectRule.module)
     val dump = projectRule.project.saveAndDump()
     assertIsEqualToSnapshot(dump)
   }
@@ -118,7 +114,6 @@ class LightSyncBasedTestsWithDefaultTestProjectStructureTest : SnapshotCompariso
 
   @Test
   fun testLightTestsWithDefaultTestProjectStructure() {
-    assertThat(ModuleManager.getInstance(projectRule.project).modules).asList().containsExactly(projectRule.module)
     val dump = projectRule.project.saveAndDump()
     assertIsEqualToSnapshot(dump)
   }
@@ -141,8 +136,6 @@ class LightSyncBasedTestsWithMultipleModulesTestProjectStructureTest : SnapshotC
 
   @Test
   fun testLightTestsWithMultipleModulesTestProjectStructure() {
-    assertThat(ModuleManager.getInstance(projectRule.project).modules).asList().contains(projectRule.module)
-    assertThat(ModuleManager.getInstance(projectRule.project).modules).asList().hasSize(3)
     val dump = projectRule.project.saveAndDump()
     assertIsEqualToSnapshot(dump)
   }
@@ -158,8 +151,6 @@ class LightSyncForAndroidTestCaseTest : AndroidTestCase(), SnapshotComparisonTes
       File(myFixture.tempDirPath),
       AndroidModuleModelBuilder(":", "debug", createAndroidProjectBuilderForDefaultTestProjectStructure())
     )
-    assertThat(ModuleManager.getInstance(project).modules).asList().hasSize(1)
-    assertThat(ModuleManager.getInstance(project).modules).asList().contains(myModule)
     val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)))
     assertIsEqualToSnapshot(dump)
   }
@@ -168,8 +159,6 @@ class LightSyncForAndroidTestCaseTest : AndroidTestCase(), SnapshotComparisonTes
   fun testLightTestsWithMultipleModulesTestProjectStructureInAndroidTestCase() {
     setupTestProjectFromAndroidModel(
       project, File(myFixture.tempDirPath), rootModuleBuilder, appModuleBuilder, libModuleBuilder)
-    assertThat(ModuleManager.getInstance(project).modules).asList().hasSize(3)
-    assertThat(ModuleManager.getInstance(project).modules).asList().contains(myModule)
     val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)))
     assertIsEqualToSnapshot(dump)
   }
@@ -220,10 +209,10 @@ private fun libModuleBuilderWithLib(gradleCacheRoot: File) =
   )
 
 private fun ideAndroidLibrary(gradleCacheRoot: File, artifactAddress: String) =
-  IdeAndroidLibraryDependencyCoreImpl(
+  AndroidLibraryDependency(
     IdeAndroidLibraryImpl.create(
       artifactAddress = artifactAddress,
-      name = artifactAddress,
+      name = "",
       folder = gradleCacheRoot.resolve(File("libraryFolder")),
       manifest = "manifest.xml",
       compileJarFiles = listOf("api.jar"),

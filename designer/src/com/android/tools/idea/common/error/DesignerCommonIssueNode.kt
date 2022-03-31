@@ -150,26 +150,20 @@ class IssuedFileNode(val file: VirtualFile, val issues: List<Issue>, parent: Des
     val url = virtualFile.parent?.presentableUrl ?: return
     presentation.addText("  ${FileUtil.getLocationRelativeToUserHome(url)}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
     val count = issues.size
-    if (count > 0) {
-      val text = "  Has $count issue${if (count == 1) "" else "s"}"
-      presentation.addText(text, SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    }
-    else {
-      presentation.addText("  There is no issue", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    }
+    presentation.addText("  ${createIssueCountText(count)}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
   }
 
   override fun getChildren(): Collection<DesignerCommonIssueNode> {
     return issues.map { IssueNode(file, it, this@IssuedFileNode) }
   }
 
-  override fun hashCode() = Objects.hash(parentDescriptor, file, *(issues.toTypedArray()))
+  override fun hashCode() = Objects.hash(parentDescriptor?.element, file, *(issues.toTypedArray()))
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (this.javaClass != other?.javaClass) return false
     val that = other as? IssuedFileNode ?: return false
-    return that.parentDescriptor == parentDescriptor && that.file == file && that.issues == issues
+    return that.parentDescriptor?.element == parentDescriptor?.element && that.file == file && that.issues == issues
   }
 }
 
@@ -193,28 +187,22 @@ class NoFileNode(val issues: List<Issue>, parent: DesignerCommonIssueNode?) : De
 
   override fun updatePresentation(presentation: PresentationData) {
     presentation.addText(name, SimpleTextAttributes.REGULAR_ATTRIBUTES)
-    presentation.setIcon(AllIcons.Nodes.Folder)
+    presentation.setIcon(AllIcons.FileTypes.Xml)
     val count = issues.size
-    if (count > 0) {
-      val text = "  Has $count issue${if (count == 1) "" else "s"}"
-      presentation.addText(text, SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    }
-    else {
-      presentation.addText("  There is no issue", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-    }
+    presentation.addText("  ${createIssueCountText(count)}", SimpleTextAttributes.GRAYED_ATTRIBUTES)
   }
 
   override fun getChildren(): Collection<DesignerCommonIssueNode> {
     return issues.map { IssueNode(null, it, this@NoFileNode) }
   }
 
-  override fun hashCode() = Objects.hash(parentDescriptor, *(issues.toTypedArray()))
+  override fun hashCode() = Objects.hash(parentDescriptor?.element, *(issues.toTypedArray()))
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (this.javaClass != other?.javaClass) return false
     val that = other as? NoFileNode ?: return false
-    return that.parentDescriptor == parentDescriptor && that.issues == issues
+    return that.parentDescriptor?.element == parentDescriptor?.element && that.issues == issues
   }
 }
 
@@ -260,12 +248,20 @@ class IssueNode(val file: VirtualFile?, val issue: Issue, parent: DesignerCommon
     presentation.addText(nodeDisplayText, SimpleTextAttributes.REGULAR_ATTRIBUTES)
   }
 
-  override fun hashCode() = Objects.hash(parentDescriptor, file, issue)
+  override fun hashCode() = Objects.hash(parentDescriptor?.element, file, issue)
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (this.javaClass != other?.javaClass) return false
     val that = other as? IssueNode ?: return false
-    return that.parentDescriptor == parentDescriptor && that.file == file && that.issue == issue
+    return that.parentDescriptor?.element == parentDescriptor?.element && that.issue == issue
+  }
+}
+
+private fun createIssueCountText(issueCount: Int): String {
+  return when (issueCount) {
+    0 -> "There is no problem"
+    1 -> "Has 1 problem"
+    else -> "Has $issueCount problems"
   }
 }

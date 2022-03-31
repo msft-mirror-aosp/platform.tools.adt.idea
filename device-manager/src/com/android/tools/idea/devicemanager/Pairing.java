@@ -56,6 +56,8 @@ final class Pairing {
 
   @NotNull String getStatus() {
     switch (myPair.getPairingStatus()) {
+      case UNKNOWN:
+        return "Unknown";
       case OFFLINE:
         return "Offline";
       case CONNECTING:

@@ -50,7 +50,7 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public final class FakeIdeProfilerServices implements IdeProfilerServices {
+public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public static final String FAKE_ART_SAMPLED_NAME = "Sampled";
 
@@ -100,11 +100,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myIsJankDetectionUiEnabled = true;
 
   /**
-   * JNI references alloc/dealloc events are tracked and shown.
-   */
-  private boolean myIsJniReferenceTrackingEnabled = false;
-
-  /**
    * Whether a native CPU profiling configuration is preferred over a Java one.
    */
   private boolean myNativeProfilingConfigurationPreferred = false;
@@ -115,29 +110,14 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myShouldProceedYesNoDialog = false;
 
   /**
-   * Can toggle for tests via {@link #enableStartupCpuProfiling(boolean)}, but each test starts with this defaulted to false.
-   */
-  private boolean myStartupCpuProfilingEnabled = false;
-
-  /**
    * Whether the new pipeline is used or the old one for devices / processes / sessions.
    */
   private boolean myEventsPipelineEnabled = false;
 
   /**
-   * Toggle for faking {@link FeatureConfig#isCpuNewRecordingWorkflowEnabled()} in tests.
-   */
-  private boolean myCpuNewRecordingWorkflowEnabled = false;
-
-  /**
    * Whether custom event visualization should be visible
    */
   private boolean myCustomEventVisualizationEnabled = false;
-
-  /**
-   * Whether we use TraceProcessor to parse Perfetto traces.
-   */
-  private boolean myUseTraceProcessor = true;
 
   /**
    * Whether we support profileable processes
@@ -248,11 +228,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
   public FeatureConfig getFeatureConfig() {
     return new FeatureConfig() {
       @Override
-      public boolean isCpuNewRecordingWorkflowEnabled() {
-        return myCpuNewRecordingWorkflowEnabled;
-      }
-
-      @Override
       public boolean isEnergyProfilerEnabled() {
         return myEnergyProfilerEnabled;
       }
@@ -261,9 +236,6 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       public boolean isJankDetectionUiEnabled() {
         return myIsJankDetectionUiEnabled;
       }
-
-      @Override
-      public boolean isJniReferenceTrackingEnabled() { return myIsJniReferenceTrackingEnabled; }
 
       @Override
       public boolean isMemoryCSVExportEnabled() {
@@ -296,18 +268,8 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
-      public boolean isStartupCpuProfilingEnabled() {
-        return myStartupCpuProfilingEnabled;
-      }
-
-      @Override
       public boolean isUnifiedPipelineEnabled() {
         return myEventsPipelineEnabled;
-      }
-
-      @Override
-      public boolean isUseTraceProcessor() {
-        return myUseTraceProcessor;
       }
     };
   }
@@ -473,25 +435,11 @@ public final class FakeIdeProfilerServices implements IdeProfilerServices {
     myIsJankDetectionUiEnabled = enabled;
   }
 
-  public void enableJniReferenceTracking(boolean enabled) { myIsJniReferenceTrackingEnabled = enabled; }
-
-  public void enableStartupCpuProfiling(boolean enabled) {
-    myStartupCpuProfilingEnabled = enabled;
-  }
-
   public void enableEventsPipeline(boolean enabled) {
     myEventsPipelineEnabled = enabled;
   }
 
-  public void enableCpuNewRecordingWorkflow(boolean enabled) {
-    myCpuNewRecordingWorkflowEnabled = enabled;
-  }
-
   public void enableCustomEventVisualization(boolean enabled) { myCustomEventVisualizationEnabled = enabled; }
-
-  public void enableUseTraceProcessor(boolean enabled) {
-    myUseTraceProcessor = enabled;
-  }
 
   public void enableProfileable(boolean enabled) {
     myProfileableEnabled = enabled;

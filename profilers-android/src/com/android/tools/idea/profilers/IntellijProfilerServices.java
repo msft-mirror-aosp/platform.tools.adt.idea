@@ -374,11 +374,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @VisibleForTesting
   public static class FeatureConfigProd implements FeatureConfig {
     @Override
-    public boolean isCpuNewRecordingWorkflowEnabled() {
-      return StudioFlags.PROFILER_CPU_NEW_RECORDING_WORKFLOW.get();
-    }
-
-    @Override
     public boolean isEnergyProfilerEnabled() {
       return StudioFlags.PROFILER_ENERGY_PROFILER_ENABLED.get();
     }
@@ -386,11 +381,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     @Override
     public boolean isJankDetectionUiEnabled() {
       return StudioFlags.PROFILER_JANK_DETECTION_UI.get();
-    }
-
-    @Override
-    public boolean isJniReferenceTrackingEnabled() {
-      return StudioFlags.PROFILER_TRACK_JNI_REFS.get();
     }
 
     @Override
@@ -419,18 +409,8 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
-    public boolean isStartupCpuProfilingEnabled() {
-      return StudioFlags.PROFILER_STARTUP_CPU_PROFILING.get();
-    }
-
-    @Override
     public boolean isUnifiedPipelineEnabled() {
       return StudioFlags.PROFILER_UNIFIED_PIPELINE.get();
-    }
-
-    @Override
-    public boolean isUseTraceProcessor() {
-      return StudioFlags.PROFILER_USE_TRACEPROCESSOR.get();
     }
 
     @Override

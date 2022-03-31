@@ -16,6 +16,8 @@
 
 package com.android.tools.idea.editors.literals
 
+import com.android.ddmlib.IDevice
+import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditDeployMonitor
 import com.android.tools.idea.util.ListenerCollection
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
@@ -24,21 +26,26 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeEvent
 import com.intellij.psi.PsiTreeChangeListener
-import com.intellij.refactoring.suggested.endOffset
-import com.intellij.refactoring.suggested.startOffset
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.kotlin.psi.KtBlockExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import java.util.HashMap
+import java.util.concurrent.Callable
 import java.util.concurrent.Executor
 
-data class EditEvent(val file: PsiFile, val function: KtNamedFunction?) {
-  // start and end offset can be changed by the editor so we need to record these
-  // information on the first read event available. That's why it needs to be
-  // done here.
-  var functionStartOffSet = function?.let {it.startOffset}
-  var functionEndOffSet = function?.let {it.endOffset}
+data class EditEvent(val file: PsiFile,
+                     val namedFunction: KtNamedFunction?,
+                     val function: KtFunction?,
+                     val functionState: FunctionState) {
   fun isWithinFunction() = function != null
 }
+
+enum class EditState {
+  ERROR, PAUSED, IN_PROGRESS, UP_TO_DATE, DISABLED
+}
+
+data class EditStatus(val editState: EditState, val message: String)
 
 /**
  * Allows any component to listen to all method body edits of a project.
@@ -46,29 +53,68 @@ data class EditEvent(val file: PsiFile, val function: KtNamedFunction?) {
 @Service
 class LiveEditService private constructor(project: Project, var listenerExecutor: Executor) : Disposable {
 
+  // A map of live edited files and their corresponding state information.
+  private val functionStateMap: HashMap<PsiFile, FunctionState> = HashMap()
+
   constructor(project: Project) : this(project,
                                        AppExecutorUtil.createBoundedApplicationPoolExecutor(
                                          "Document changed listeners executor", 1))
+
+  fun clearFunctionState() = functionStateMap.clear()
 
   fun interface EditListener {
     operator fun invoke(method: EditEvent)
   }
 
+  fun interface EditStatusProvider {
+    operator fun invoke() : EditStatus
+  }
+
   private val onEditListeners = ListenerCollection.createWithExecutor<EditListener>(listenerExecutor)
+
+  private val deployMonitor: AndroidLiveEditDeployMonitor
+
+  private val editStatusProviders = mutableListOf<EditStatusProvider>()
 
   fun addOnEditListener(listener: EditListener) {
     onEditListeners.add(listener)
+  }
+
+  fun addEditStatusProvider(provider: EditStatusProvider) {
+    editStatusProviders.add(provider)
   }
 
   init {
     // TODO: Deactivate this when not needed.
     val listener = MyPsiListener(::onMethodBodyUpdated)
     PsiManager.getInstance(project).addPsiTreeChangeListener(listener, this)
+    deployMonitor = AndroidLiveEditDeployMonitor(this, project)
   }
 
   companion object {
     @JvmStatic
     fun getInstance(project: Project): LiveEditService = project.getService(LiveEditService::class.java)
+
+    @JvmField
+    val DISABLED_STATUS = EditStatus(EditState.DISABLED, "")
+    @JvmField
+    val UP_TO_DATE_STATUS = EditStatus(EditState.UP_TO_DATE, "All changes applied.")
+  }
+
+  fun editStatus(): EditStatus {
+    var editStatus = DISABLED_STATUS
+    for (provider in editStatusProviders) {
+      val nextStatus = provider.invoke()
+      // TODO make this state transition more robust/centralized
+      if (nextStatus.editState.ordinal < editStatus.editState.ordinal) {
+        editStatus = nextStatus
+      }
+    }
+    return editStatus
+  }
+
+  fun getCallback(packageName: String, device: IDevice) : Callable<*>? {
+    return deployMonitor.getCallback(packageName, device)
   }
 
   @com.android.annotations.Trace
@@ -78,7 +124,7 @@ class LiveEditService private constructor(project: Project, var listenerExecutor
     }
   }
 
-  private class MyPsiListener(private val editListener: EditListener) : PsiTreeChangeListener {
+  private inner class MyPsiListener(private val editListener: EditListener) : PsiTreeChangeListener {
     @com.android.annotations.Trace
     private fun handleChangeEvent(event: PsiTreeChangeEvent) {
       // THIS CODE IS EXTREMELY FRAGILE AT THE MOMENT.
@@ -92,12 +138,22 @@ class LiveEditService private constructor(project: Project, var listenerExecutor
 
       // The code might not be valid at this point, so we should not be making any
       // assumption based on the Kotlin language structure.
+
+      // unnamed function should be any function that is defined without a "fun" keyword.
+      var unNamedFunction : KtFunction? = null
       while (parent != null) {
         when (parent) {
           is KtNamedFunction -> {
-            val event = EditEvent(event.file!!, parent)
+            if (unNamedFunction == null) {
+              unNamedFunction = parent
+            }
+            val event = EditEvent(event.file!!, parent, unNamedFunction,
+                                  functionStateMap.computeIfAbsent(event.file!!) { it -> FunctionState(it as KtFile) })
             editListener(event)
             break;
+          }
+          is KtFunction -> {
+            unNamedFunction = parent
           }
         }
         parent = parent.parent

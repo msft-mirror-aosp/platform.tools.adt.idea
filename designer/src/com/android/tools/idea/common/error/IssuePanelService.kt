@@ -20,6 +20,7 @@ import com.android.tools.idea.common.editor.DesignToolsSplitEditor
 import com.android.tools.idea.common.editor.SplitEditor
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.common.type.DesignerEditorFileType
 import com.android.tools.idea.common.type.typeOf
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -31,6 +32,7 @@ import com.android.tools.idea.uibuilder.type.PreferenceScreenFileType
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
@@ -107,7 +109,11 @@ class IssuePanelService(private val project: Project) {
 
     // The shared issue panel for all design tools.
     if (StudioFlags.NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS.get()) {
-      val issuePanel = DesignerCommonIssuePanel(project, project, DesignToolsIssueProvider(project))
+      val issueProvider = DesignToolsIssueProvider(project)
+      val issuePanel = DesignerCommonIssuePanel(project, project, issueProvider)
+      issueProvider.registerUpdateListener {
+        updateSharedIssuePanelTabName()
+      }
 
       sharedIssuePanel = issuePanel
       contentFactory.createContent(issuePanel.getComponent(), "Design Issue", true).apply {
@@ -131,7 +137,7 @@ class IssuePanelService(private val project: Project) {
           setSharedIssuePanelVisibility(false)
           return
         }
-        if (isComposeFile(newFile)) {
+        if (isComposeFile(newFile) || isSupportedDesignerFileType(newFile)) {
           addSharedIssueTabToProblemsPanel()
           updateSharedIssuePanelTabName()
           selectSharedIssuePanelTab()
@@ -139,8 +145,8 @@ class IssuePanelService(private val project: Project) {
         }
         val surface = getDesignSurface(event.newEditor)
         if (surface != null) {
-          val psiFile = newFile.toPsiFile(project)?.typeOf()
-          if (psiFile is DrawableFileType) {
+          val psiFileType = newFile.toPsiFile(project)?.typeOf()
+          if (psiFileType is DrawableFileType) {
             // We don't support Shared issue panel for Drawable files.
             removeSharedIssueTabFromProblemsPanel()
           }
@@ -159,10 +165,20 @@ class IssuePanelService(private val project: Project) {
     if (StudioFlags.NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS.get()) {
       // If the shared issue panel is initialized after opening editor, the message bus misses the file editor event.
       // This may happen when opening a project. Make sure the initial status is correct here.
-      val visibleAfterInit = FileEditorManager.getInstance(project).selectedEditors.any {
-        isDesignEditor(it) || (it.file?.let { file -> isComposeFile(file) } ?: false)
+      val isDesignFile = FileEditorManager.getInstance(project).selectedEditors.any { isDesignEditor(it) }
+      if (isDesignFile) {
+        // If the selected file is not a design file, just keeps the default status of problems pane.
+        // Otherwise we need to make it selected the issue panel tab, no matter if the problems pane is open or not.
+        if (problemsViewWindow.isVisible) {
+          setSharedIssuePanelVisibility(true)
+        }
+        else {
+          problemsViewWindow.hide {
+            updateSharedIssuePanelTabName()
+            selectSharedIssuePanelTab()
+          }
+        }
       }
-      setSharedIssuePanelVisibility(visibleAfterInit)
     }
   }
 
@@ -189,10 +205,11 @@ class IssuePanelService(private val project: Project) {
   private fun addSharedIssueTabToProblemsPanel(): Boolean {
     val tab = sharedIssueTab ?: return false
     val toolWindow = ProblemsView.getToolWindow(project) ?: return false
-    if (toolWindow.contentManager.contents.contains(tab)) {
+    val contentManager = toolWindow.contentManager
+    if (contentManager.contents.contains(tab)) {
       return false
     }
-    toolWindow.contentManager.addContent(tab, 2)
+    contentManager.addContent(tab, contentManager.contentCount)
     return true
   }
 
@@ -232,7 +249,8 @@ class IssuePanelService(private val project: Project) {
   private fun updateSharedIssuePanelTabName() {
     val tab = sharedIssueTab ?: return
     val count = sharedIssuePanel?.issueProvider?.getFilteredIssues()?.distinct()?.size
-    tab.displayName = createTabName(getSharedIssuePanelTabTitle(), count)
+    // This change the ui text, run it in the UI thread.
+    runInEdt { tab.displayName = createTabName(getSharedIssuePanelTabTitle(), count) }
   }
 
   /**
@@ -248,16 +266,15 @@ class IssuePanelService(private val project: Project) {
     if (isComposeFile(file)) {
       return "Compose"
     }
+    val name = getTabNameOfSupportedDesignerFile(file)
+    if (name != null) {
+      return name
+    }
     val surface = getDesignSurface(editors[0]) ?: return DEFAULT_SHARED_ISSUE_PANEL_TAB_NAME
     if (surface.name != null) {
       return surface.name
     }
-    return when (file.toPsiFile(project)?.typeOf()) {
-      is LayoutFileType -> "Layout and Qualifiers"
-      is PreferenceScreenFileType -> "Preference"
-      is MenuFileType -> "Menu"
-      else -> DEFAULT_SHARED_ISSUE_PANEL_TAB_NAME
-    }
+    return DEFAULT_SHARED_ISSUE_PANEL_TAB_NAME
   }
 
   /**
@@ -265,7 +282,7 @@ class IssuePanelService(private val project: Project) {
    */
   private fun isDesignEditor(editor: FileEditor): Boolean {
     val virtualFile = editor.file ?: return false
-    return isComposeFile(virtualFile) || getDesignSurface(editor) != null
+    return isComposeFile(virtualFile) || isSupportedDesignerFileType(virtualFile) || getDesignSurface(editor) != null
   }
 
   private fun isComposeFile(file: VirtualFile): Boolean {
@@ -275,6 +292,23 @@ class IssuePanelService(private val project: Project) {
     return extension == KotlinFileType.INSTANCE.defaultExtension &&
            fileType == KotlinFileType.INSTANCE &&
            psiFile?.getModuleSystem()?.usesCompose == true
+  }
+
+  private fun isSupportedDesignerFileType(file: VirtualFile): Boolean {
+    return getTabNameOfSupportedDesignerFile(file) != null
+  }
+
+  /**
+   * Returns null if the given file is not the supported [DesignerEditorFileType].
+   */
+  private fun getTabNameOfSupportedDesignerFile(file: VirtualFile): String? {
+    val psiFile = file.toPsiFile(project) ?: return null
+    return when {
+      LayoutFileType.isResourceTypeOf(psiFile) -> "Layout and Qualifiers"
+      PreferenceScreenFileType.isResourceTypeOf(psiFile) -> "Preference"
+      MenuFileType.isResourceTypeOf(psiFile) -> "Menu"
+      else -> null
+    }
   }
 
   private fun getDesignSurface(editor: FileEditor?): DesignSurface? {
@@ -340,16 +374,6 @@ class IssuePanelService(private val project: Project) {
     return tab.isSelected
   }
 
-  /**
-   * Get the issue panel for the given [DesignSurface], if any.
-   */
-  fun getIssuePanel(surface: DesignSurface): IssuePanel? {
-    if (!StudioFlags.NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS.get()) {
-      return surface.issuePanel
-    }
-    return null
-  }
-
   fun getSelectedSharedIssuePanel(): DesignerCommonIssuePanel? {
     return if (sharedIssueTab?.isSelected == true) sharedIssuePanel else null
   }
@@ -395,7 +419,7 @@ private fun createTabName(title: String, issueCount: Int?): String {
   }
   return HtmlBuilder()
     .append(title)
-    .append(" ").append(HtmlChunk.tag("font").attr("color", toHtmlColor(UIUtil.getInactiveTextColor())).addText(issueCount.toString()))
+    .append(" ").append(HtmlChunk.tag("font").attr("color", toHtmlColor(UIUtil.getInactiveTextColor())).addText("$issueCount"))
     .wrapWithHtmlBody()
     .toString()
 }

@@ -16,6 +16,9 @@
 
 package com.android.tools.idea.run.tasks;
 
+import static com.android.tools.idea.run.tasks.LaunchResult.Result.ERROR;
+
+import com.android.ddmlib.AdbHelper;
 import com.android.ddmlib.IDevice;
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.deploy.proto.Deploy;
@@ -133,6 +136,8 @@ public abstract class AbstractDeployTask implements LaunchTask {
     Executor executor = launchContext.getExecutor();
     ConsolePrinter printer = launchContext.getConsolePrinter();
     AdbClient adb = new AdbClient(device, logger);
+
+    AdbHelper.setAbbExecAllowed(StudioFlags.DDMLIB_ABB_EXEC_INSTALL_ENABLE.get());
 
     AdbInstaller.Mode adbInstallerMode = AdbInstaller.Mode.DAEMON;
     if (!StudioFlags.APPLY_CHANGES_KEEP_CONNECTION_ALIVE.get()) {
@@ -289,7 +294,7 @@ public abstract class AbstractDeployTask implements LaunchTask {
 
   public LaunchResult toLaunchResult(@NotNull Executor executor, @NotNull DeployerException e, @NotNull ConsolePrinter printer) {
     LaunchResult result = new LaunchResult();
-    result.setSuccess(false);
+    result.setResult(ERROR);
 
     StringBuilder bubbleError = new StringBuilder(getFailureTitle());
     bubbleError.append("\n");
@@ -312,8 +317,8 @@ public abstract class AbstractDeployTask implements LaunchTask {
       }
     }
 
-    result.setError(bubbleError.toString());
-    result.setConsoleError(getFailureTitle() + "\n" + e.getMessage() + "\n" + e.getDetails());
+    result.setMessage(bubbleError.toString());
+    result.setConsoleMessage(getFailureTitle() + "\n" + e.getMessage() + "\n" + e.getDetails());
     result.setErrorId(e.getId());
 
     DeploymentHyperlinkInfo hyperlinkInfo = new DeploymentHyperlinkInfo(executor, resolutionAction, printer);

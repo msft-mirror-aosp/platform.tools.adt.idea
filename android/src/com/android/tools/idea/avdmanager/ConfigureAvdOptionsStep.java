@@ -1250,6 +1250,12 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     }
   }
 
+  private void toggleOrientationPanel() {
+    AvdDeviceData deviceData = getModel().getAvdDeviceData();
+    boolean showOrientation = deviceData.supportsPortrait().get() && deviceData.supportsLandscape().get();
+    myOrientationPanel.setVisible(showOrientation);
+  }
+
   private void toggleSystemOptionals(boolean useQemu2Changed) {
     boolean showMultiCoreOption = isAdvancedPanel() && doesSystemImageSupportQemu2();
     myQemu2Panel.setVisible(showMultiCoreOption);
@@ -1284,10 +1290,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     Dimension dimension = getModel().getAvdDeviceData().getDeviceScreenDimension();
     String dimensionString = String.format(Locale.getDefault(), "%dx%d", dimension.width, dimension.height);
     AvdDeviceData deviceData = getModel().getAvdDeviceData();
-    String densityString = AvdScreenData.getScreenDensity(deviceData.deviceId().get(),
-                                                          deviceData.isTv().get(),
-                                                          deviceData.screenDpi().get(),
-                                                          dimension.height).getResourceValue();
+    String densityString = deviceData.density().get().getResourceValue();
     String result = Joiner.on(' ')
       .join(getModel().device().getValue().getDefaultHardware().getScreen().getDiagonalLength(), dimensionString, densityString);
     myDeviceDetails.setText(result);
@@ -1371,6 +1374,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       myOrientationToggle.setSelectedElement(orientation);
     }
 
+    toggleOrientationPanel();
     File customSkin = getModel().getAvdDeviceData().customSkinFile().getValueOrNull();
     File backupSkin = getModel().backupSkinFile().getValueOrNull();
     // If there is a backup skin but no normal skin, the "use device frame" checkbox should be unchecked.

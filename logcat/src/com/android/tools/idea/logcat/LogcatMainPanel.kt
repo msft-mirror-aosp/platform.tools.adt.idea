@@ -24,7 +24,6 @@ import com.android.ddmlib.IDevice.PROP_DEVICE_MODEL
 import com.android.ddmlib.logcat.LogCatMessage
 import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsStateProvider
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.AndroidDispatchers.ioThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.ddms.DeviceContext
@@ -35,6 +34,7 @@ import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Custom
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Preset
 import com.android.tools.idea.logcat.actions.ClearLogcatAction
 import com.android.tools.idea.logcat.actions.LogcatFormatAction
+import com.android.tools.idea.logcat.actions.LogcatToggleUseSoftWrapsToolbarAction
 import com.android.tools.idea.logcat.actions.NextOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.PreviousOccurrenceToolbarAction
 import com.android.tools.idea.logcat.filters.LogcatFilter
@@ -55,11 +55,14 @@ import com.android.tools.idea.logcat.messages.ProcessThreadFormat
 import com.android.tools.idea.logcat.messages.TextAccumulator
 import com.android.tools.idea.logcat.messages.TimestampFormat
 import com.android.tools.idea.logcat.settings.AndroidLogcatSettings
+import com.android.tools.idea.logcat.util.AdbAdapter
+import com.android.tools.idea.logcat.util.AdbAdapterImpl
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
 import com.android.tools.idea.logcat.util.LogcatUsageTracker
 import com.android.tools.idea.logcat.util.MostRecentlyAddedSet
 import com.android.tools.idea.logcat.util.createLogcatEditor
+import com.android.tools.idea.logcat.util.getDeviceId
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
 import com.android.tools.idea.run.ClearLogcatListener
@@ -72,21 +75,20 @@ import com.google.wireless.android.sdk.stats.LogcatUsageEvent.Type.PANEL_ADDED
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.actions.ScrollToTheEndToolbarAction
-import com.intellij.openapi.editor.actions.ToggleUseSoftWrapsToolbarAction
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.util.EditorUtil
 import com.intellij.openapi.editor.impl.ContextMenuPopupHandler
-import com.intellij.openapi.editor.impl.softwrap.SoftWrapAppliancePlaces
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.tools.SimpleActionGroup
 import com.intellij.util.ui.components.BorderLayoutPanel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,6 +127,8 @@ internal class LogcatMainPanel(
   hyperlinkDetector: HyperlinkDetector? = null,
   foldingDetector: FoldingDetector? = null,
   packageNamesProvider: PackageNamesProvider = ProjectPackageNamesProvider(project),
+  adbAdapter: AdbAdapter = AdbAdapterImpl(project),
+  deviceManagerFactory: (LogcatPresenter, IDevice) -> LogcatDeviceManager = LogcatDeviceManager.getFactory(project, packageNamesProvider),
   zoneId: ZoneId = ZoneId.systemDefault()
 ) : BorderLayoutPanel(), LogcatPresenter, SplittingTabsStateProvider, Disposable {
 
@@ -132,6 +136,7 @@ internal class LogcatMainPanel(
   internal val editor: EditorEx = createLogcatEditor(project)
   private val document = editor.document
   private val documentAppender = DocumentAppender(project, document, logcatSettings.bufferSize)
+  private val coroutineScope = AndroidCoroutineScope(this)
 
   @VisibleForTesting
   val deviceContext = DeviceContext()
@@ -165,16 +170,21 @@ internal class LogcatMainPanel(
     this,
     ::formatMessages,
     logcatFilterParser.parse(headerPanel.getFilterText()))
-  private var deviceManager: LogcatDeviceManager? = null
+  @VisibleForTesting
+  internal var deviceManager: LogcatDeviceManager? = null
   private val toolbar = ActionManager.getInstance().createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
   private val hyperlinkDetector = hyperlinkDetector ?: EditorHyperlinkDetector(project, editor)
   private val foldingDetector = foldingDetector ?: EditorFoldingDetector(project, editor)
   private var ignoreCaretAtBottom = false // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
 
   init {
-    editor.installPopupHandler(object : ContextMenuPopupHandler() {
-      override fun getActionGroup(event: EditorMouseEvent): ActionGroup = popupActionGroup
-    })
+    editor.apply {
+      installPopupHandler(object : ContextMenuPopupHandler() {
+        override fun getActionGroup(event: EditorMouseEvent): ActionGroup = popupActionGroup
+      })
+      gutterComponentEx.isVisible = false
+      settings.isUseSoftWraps = state?.isSoftWrap ?: false
+    }
 
     toolbar.targetComponent = this
 
@@ -191,11 +201,21 @@ internal class LogcatMainPanel(
     deviceContext.addListener(object : DeviceConnectionListener() {
       @UiThread
       override fun onDeviceConnected(device: IDevice) {
-        deviceManager?.let {
-          Disposer.dispose(it)
+        // We have the IDevice already but when moving to AdbLib DeviceComboBox, we will only have the serial number, so we need to find
+        // the IDevice corresponding to that serial using AndroidDebugBridge.
+        coroutineScope.launch(Dispatchers.IO) {
+          val iDevice = adbAdapter.getDevice(device.getDeviceId())
+          deviceManager?.let {
+            Disposer.dispose(it)
+            deviceManager = null
+          }
+          if (iDevice != null) {
+            withContext(uiThread) {
+              document.setText("")
+              deviceManager = deviceManagerFactory(this@LogcatMainPanel, iDevice)
+            }
+          }
         }
-        document.setText("")
-        deviceManager = LogcatDeviceManager.create(project, device, this@LogcatMainPanel, packageNamesProvider)
       }
 
       @UiThread
@@ -271,7 +291,8 @@ internal class LogcatMainPanel(
       LogcatPanelConfig(
         deviceContext.selectedDevice?.toSavedDevice(),
         if (formattingOptionsStyle == null) Custom(formattingOptions) else Preset(formattingOptionsStyle),
-        headerPanel.getFilterText()))
+        headerPanel.getFilterText(),
+        editor.settings.isUseSoftWraps))
   }
 
   override suspend fun appendMessages(textAccumulator: TextAccumulator) = withContext(uiThread(ModalityState.any())) {
@@ -317,7 +338,7 @@ internal class LogcatMainPanel(
   @UiThread
   override fun reloadMessages() {
     document.setText("")
-    AndroidCoroutineScope(this, workerThread).launch {
+    coroutineScope.launch(workerThread) {
       messageProcessor.appendMessages(messageBacklog.get().messages)
     }
   }
@@ -343,12 +364,12 @@ internal class LogcatMainPanel(
         @Suppress("DialogTitleCapitalization")
         templatePresentation.text = LogcatBundle.message("logcat.scroll.to.end.action.text")
       })
-      add(object : ToggleUseSoftWrapsToolbarAction(SoftWrapAppliancePlaces.CONSOLE) {
-        override fun getEditor(e: AnActionEvent) = this@LogcatMainPanel.editor
-      })
-      add(LogcatFormatAction(project, this@LogcatMainPanel))
       add(PreviousOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
       add(NextOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
+      add(LogcatToggleUseSoftWrapsToolbarAction(editor))
+      add(Separator.create())
+      add(LogcatFormatAction(project, this@LogcatMainPanel))
+      add(Separator.create())
       add(DeviceScreenshotAction(project, deviceContext))
       add(ScreenRecorderAction(project, deviceContext))
     }
@@ -356,11 +377,27 @@ internal class LogcatMainPanel(
 
   @UiThread
   override fun clearMessageView() {
-    AndroidCoroutineScope(this, ioThread).launch {
-      deviceManager?.clearLogcat()
+    coroutineScope.launch(workerThread) {
+      deviceManager?.let {
+        if (it.device.version.apiLevel != 26) {
+          // See http://b/issues/37109298#comment9.
+          // TL/DR:
+          // On API 26, "logcat -c" will hand for a couple of seconds and then crash any running logcat processes.
+          //
+          // Theoretically, we could stop the running logcat here before sending "logcat -c" to the device but this is not trivial. And we
+          // have to do this for all active Logcat panels listening on this device, not only in the current project but across all projects.
+          // A much easier and safer workaround is to not send a "logcat -c" command on this particular API level.
+          it.clearLogcat()
+        }
+      }
       messageBacklog.set(MessageBacklog(logcatSettings.bufferSize))
       withContext(uiThread) {
         document.setText("")
+        if (deviceManager?.device?.version?.apiLevel == 26) {
+          processMessages(listOf(LogCatMessage(
+            SYSTEM_HEADER,
+            "WARNING: Logcat was not cleared on the device itself because of a bug in Android 8.0 (Oreo).")))
+        }
       }
     }
   }

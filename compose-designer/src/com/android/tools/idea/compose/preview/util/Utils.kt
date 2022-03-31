@@ -28,6 +28,8 @@ import org.apache.commons.lang.time.DurationFormatUtils
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.uast.UElement
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.Duration
 
 fun UElement?.toSmartPsiPointer(): SmartPsiElementPointer<PsiElement>? {
@@ -119,22 +121,6 @@ fun Segment?.containsOffset(offset: Int) = this?.let {
 } ?: false
 
 /**
- * Returns an [Enum] that matches [value] from the given class [E]. If no existing Enum, returns [default] instead.
- */
-internal inline fun <reified E: Enum<E>> enumValueOfOrDefault(value: String, default: E): E = enumValueOfOrNull<E>(value) ?: default
-
-/**
- * Returns an [Enum] that matches [value] from the given class [E]. Null if no Enum matches [value].
- */
-internal inline fun <reified E: Enum<E>> enumValueOfOrNull(value: String): E? {
-  return try {
-    enumValueOf<E>(value)
-  }catch (_: Exception) {
-    null
-  }
-}
-
-/**
  * Converts the given duration to a display string that contains minutes (if the duration is greater than 60s), seconds and
  * milliseconds.
  */
@@ -142,4 +128,14 @@ internal fun Duration.toDisplayString(): String {
   val durationMs = toMillis()
   val durationFormat = if (durationMs >= 60_000) "mm 'm' ss 's' SSS 'ms'" else "ss 's' SSS 'ms'"
   return DurationFormatUtils.formatDuration(durationMs, durationFormat, false)
+}
+
+/**
+ * Converts the [Throwable] stacktrace to a string.
+ */
+internal fun Throwable.toLogString(): String {
+  val exceptionStackWriter = StringWriter()
+  printStackTrace(PrintWriter(exceptionStackWriter))
+
+  return exceptionStackWriter.toString()
 }

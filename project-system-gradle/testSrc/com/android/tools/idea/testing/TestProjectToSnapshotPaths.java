@@ -18,6 +18,7 @@ public final class TestProjectToSnapshotPaths {
   public static final String KOTLIN_GRADLE_DSL = "projects/kotlinGradleDsl";
   public static final String KOTLIN_KAPT = "projects/kotlinKapt";
   public static final String KOTLIN_MULTIPLATFORM = "projects/kotlinMultiplatform";
+  public static final String LIGHT_SYNC_REFERENCE = "projects/lightSyncReference";
   public static final String LINKED = "projects/linked";
   public static final String LINT_CUSTOM_CHECKS = "projects/lintCustomChecks";
   public static final String LOCAL_AARS_AS_MODULES = "projects/localAarsAsModules";
@@ -30,6 +31,7 @@ public final class TestProjectToSnapshotPaths {
   public static final String INCLUDE_FROM_LIB = "projects/includeFromLib";
   public static final String NESTED_MODULE = "projects/nestedModule";
   public static final String NEW_SYNC_KOTLIN_TEST = "projects/newSyncKotlinTest";
+  public static final String NON_STANDARD_SOURCE_SET_DEPENDENCIES = "projects/nonStandardSourceSetDependencies";
   public static final String NON_STANDARD_SOURCE_SETS = "projects/nonStandardSourceSets";
   public static final String PSD_DEPENDENCY = "projects/psdDependency";
   public static final String PSD_SAMPLE_GROOVY = "projects/psdSample/Groovy";

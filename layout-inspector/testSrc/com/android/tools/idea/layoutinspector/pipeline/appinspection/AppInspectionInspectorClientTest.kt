@@ -571,8 +571,8 @@ class AppInspectionInspectorClientTest {
       assertThat(composeView.qualifiedName).isEqualTo("androidx.compose.ui.platform.ComposeView")
       val surface = composeView.children.single() as ComposeViewNode
       assertThat(surface.qualifiedName).isEqualTo("Surface")
-      assertThat(surface.recomposeCount).isEqualTo(7)
-      assertThat(surface.recomposeSkips).isEqualTo(14)
+      assertThat(surface.recompositions.count).isEqualTo(7)
+      assertThat(surface.recompositions.skips).isEqualTo(14)
     }
   }
 
@@ -719,6 +719,47 @@ class AppInspectionInspectorClientTest {
 
     assertThat(inspectorRule.inspectorModel.resourceLookup.dpi).isEqualTo(Density.HIGH.dpiValue)
     assertThat(inspectorRule.inspectorModel.resourceLookup.fontScale).isEqualTo(1.5f)
+  }
+
+  @Test
+  fun testResetOnPendingCommand() {
+    val commandLatch = CommandLatch(TIMEOUT, TIMEOUT_UNIT)
+    val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    inspectorState.createFakeViewTree()
+    inspectorState.createFakeComposeTree(withSemantics = true, latch = commandLatch)
+
+    var modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.modificationListeners.add { _, _, _ ->
+      modelUpdatedLatch.countDown()
+    }
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
+
+    var node = inspectorRule.inspectorModel[-2] as ComposeViewNode
+    assertThat(node.recompositions.count).isEqualTo(7)
+    assertThat(node.recompositions.skips).isEqualTo(14)
+
+    // Enable the latch such that the GetComposables response is delayed below.
+    commandLatch.enabled = true
+
+    // Trigger a GetComposables command to be sent.
+    modelUpdatedLatch = ReportingCountDownLatch(1)
+    inspectorState.triggerLayoutCapture(rootId = 1)
+
+    // While waiting for the GetComposables response: send a reset recompose counts command
+    commandLatch.waitForCommand {
+      val client = inspectorRule.inspectorClient as AppInspectionInspectorClient
+      client.updateRecompositionCountSettings()
+    }
+
+    // Wait to receive the composables from the command sent before the reset
+    modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
+
+    // The recomposition counts should be 0 even if the counts were read as non-zero.
+    node = inspectorRule.inspectorModel[-2] as ComposeViewNode
+    assertThat(node.recompositions.count).isEqualTo(0)
+    assertThat(node.recompositions.skips).isEqualTo(0)
   }
 
   private fun setUpRunConfiguration(enableInspectionWithoutRestart: Boolean = false) {

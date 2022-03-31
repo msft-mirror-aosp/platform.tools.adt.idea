@@ -113,7 +113,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
     fakeUi.waitForHeader("Install Wear OS Companion Application")
-    waitForCondition(5, TimeUnit.SECONDS) { getWearPairingTrackingEvents().isNotEmpty() }
+    waitForCondition(fakeUi, 5) { getWearPairingTrackingEvents().isNotEmpty() }
     assertThat(getWearPairingTrackingEvents().last().studioEvent.wearPairingEvent.kind).isEqualTo(WearPairingEvent.EventKind.SHOW_INSTALL_WEAR_OS_COMPANION)
   }
 
@@ -125,7 +125,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       fakeUi.findComponent<LinkLabel<Any>> { it.text == "Retry" } != null
     }
   }
@@ -140,8 +140,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     assertThat(wizard.canGoForward().get()).isFalse()
 
-    fakeUi.waitForHeader("Starting devices")
-    waitForCondition(5, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 5) {
       invokeStrategy.updateAllSteps()
       wizard.canGoForward().get()
     }
@@ -155,7 +154,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       invokeStrategy.updateAllSteps()
       fakeUi.findComponent<JBLabel> { it.text == "Successful pairing" } != null
     }
@@ -174,7 +173,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
     val wizardAction = WizardActionTest()
     val (fakeUi, _) = createDeviceConnectionStepUi(wizardAction)
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       fakeUi.findComponent<JLabel> { it.text == "My Phone didn't start" } != null
     }
 
@@ -195,7 +194,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       fakeUi.findComponent<JLabel> { it.text == "Restart pairing" } != null
     }
   }
@@ -209,7 +208,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       invokeStrategy.updateAllSteps()
       fakeUi.findComponent<JBLabel> { it.text == "Error occurred connecting devices" } != null
     }
@@ -230,7 +229,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       invokeStrategy.updateAllSteps()
       fakeUi.findComponent<JLabel> { it.text == "Factory reset Wear OS emulator" } != null
     }
@@ -261,7 +260,7 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
 
     val (fakeUi, _) = createDeviceConnectionStepUi()
 
-    waitForCondition(15, TimeUnit.SECONDS) {
+    waitForCondition(fakeUi, 15) {
       invokeStrategy.updateAllSteps()
       fakeUi.findComponent<JLabel> { it.text == "Factory reset Wear OS emulator" } != null
     }
@@ -280,8 +279,18 @@ class DevicesConnectionStepTest : LightPlatform4TestCase() {
     return Pair(FakeUi(modelWizard.contentPanel), modelWizard)
   }
 
+  private fun waitForCondition(fakeUi: FakeUi, timeout: Long, condition: () -> Boolean) {
+    try {
+      waitForCondition(timeout, TimeUnit.SECONDS, condition)
+    }
+    catch (ex: Throwable) {
+      fakeUi.dump()
+      throw ex
+    }
+  }
+
   // The UI loads on asynchronous coroutine, we need to wait
-  private fun FakeUi.waitForHeader(text: String) = waitForCondition(5, TimeUnit.SECONDS) {
+  private fun FakeUi.waitForHeader(text: String) = waitForCondition(this, 5) {
     findComponent<JBLabel> { it.name == "header" && it.text == text } != null
   }
 

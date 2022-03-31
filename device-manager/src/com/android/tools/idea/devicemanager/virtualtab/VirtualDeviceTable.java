@@ -15,8 +15,9 @@
  */
 package com.android.tools.idea.devicemanager.virtualtab;
 
+import com.android.ddmlib.AndroidDebugBridge;
+import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.sdklib.AndroidVersion;
-import com.android.sdklib.internal.avd.AvdInfo;
 import com.android.tools.idea.concurrency.FutureUtils;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowButtonTableCellEditor;
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowButtonTableCellRenderer;
@@ -29,8 +30,6 @@ import com.android.tools.idea.devicemanager.IconButtonTableCellRenderer;
 import com.android.tools.idea.devicemanager.MergedTableColumn;
 import com.android.tools.idea.devicemanager.PopUpMenuValue;
 import com.android.tools.idea.devicemanager.Tables;
-import com.android.tools.idea.devicemanager.legacy.AvdUiAction.AvdInfoProvider;
-import com.android.tools.idea.devicemanager.legacy.CreateAvdAction;
 import com.android.tools.idea.devicemanager.virtualtab.VirtualDeviceTableModel.EditValue;
 import com.android.tools.idea.devicemanager.virtualtab.VirtualDeviceTableModel.LaunchInEmulatorValue;
 import com.google.common.annotations.VisibleForTesting;
@@ -38,11 +37,14 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.concurrency.EdtExecutorService;
+import java.awt.Component;
+import java.awt.event.ActionListener;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,13 +52,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.DefaultRowSorter;
-import javax.swing.JComponent;
 import javax.swing.ListSelectionModel;
 import javax.swing.RowSorter;
 import javax.swing.RowSorter.SortKey;
-import javax.swing.SortOrder;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
@@ -64,11 +65,10 @@ import javax.swing.table.TableRowSorter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-// TODO Stop implementing AvdInfoProvider
-public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> implements AvdInfoProvider {
-  private final @NotNull VirtualDevicePanel myPanel;
+public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> implements Disposable {
   private final @NotNull VirtualDeviceAsyncSupplier myAsyncSupplier;
   private final @NotNull NewSetDevices myNewSetDevices;
+  private @Nullable IDeviceChangeListener myListener;
 
   @VisibleForTesting
   static final class SetDevices implements FutureCallback<List<VirtualDevice>> {
@@ -113,9 +113,9 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
                      @NotNull NewSetDevices newSetDevices) {
     super(new VirtualDeviceTableModel(), VirtualDevice.class, VirtualDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX);
 
-    myPanel = panel;
     myAsyncSupplier = asyncSupplier;
     myNewSetDevices = newSetDevices;
+    initListener();
 
     dataModel.addTableModelListener(event -> sizeWidthsToFit());
 
@@ -146,13 +146,20 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     setShowGrid(false);
 
+    ActionListener listener = new BuildVirtualDeviceConfigurationWizardActionListener(this, project, this);
+
     // noinspection DialogTitleCapitalization
     getEmptyText()
       .appendLine("No virtual devices added. Create a virtual device to test")
       .appendLine("applications without owning a physical device.")
-      .appendLine("Create virtual device", SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES, new CreateAvdAction(this));
+      .appendLine("Create virtual device", SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES, listener);
 
     refreshAvds();
+  }
+
+  private void initListener() {
+    myListener = new VirtualDeviceChangeListener();
+    AndroidDebugBridge.addDeviceChangeListener(myListener);
   }
 
   private void sizeWidthsToFit() {
@@ -189,19 +196,28 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     sorter.setSortable(VirtualDeviceTableModel.ACTIVATE_DEVICE_FILE_EXPLORER_WINDOW_MODEL_COLUMN_INDEX, false);
     sorter.setSortable(VirtualDeviceTableModel.EDIT_MODEL_COLUMN_INDEX, false);
     sorter.setSortable(VirtualDeviceTableModel.POP_UP_MENU_MODEL_COLUMN_INDEX, false);
-    sorter.setSortKeys(Collections.singletonList(new SortKey(VirtualDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX, SortOrder.ASCENDING)));
+    VirtualTabState tabState = VirtualTabPersistentStateComponent.getInstance().getState();
+    sorter.setSortKeys(Collections.singletonList(new SortKey(tabState.getSortColumn(), tabState.getSortOrder())));
+
+    sorter.addRowSorterListener(event -> {
+      List<? extends SortKey> keys = sorter.getSortKeys();
+      if (!keys.isEmpty()) {
+        SortKey key = keys.get(0);
+        VirtualTabPersistentStateComponent.getInstance().loadState(new VirtualTabState(key.getColumn(), key.getSortOrder()));
+      }
+    });
 
     return sorter;
   }
 
   @Override
-  public @NotNull VirtualDeviceTableModel getModel() {
-    return (VirtualDeviceTableModel)dataModel;
+  public void dispose() {
+    AndroidDebugBridge.removeDeviceChangeListener(myListener);
   }
 
   @Override
-  public @Nullable AvdInfo getAvdInfo() {
-    return getSelectedDevice().map(VirtualDevice::getAvdInfo).orElse(null);
+  public @NotNull VirtualDeviceTableModel getModel() {
+    return (VirtualDeviceTableModel)dataModel;
   }
 
   @NotNull Optional<@NotNull VirtualDevice> getSelectedDevice() {
@@ -244,7 +260,7 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     return convertColumnIndexToView(VirtualDeviceTableModel.API_MODEL_COLUMN_INDEX);
   }
 
-  int sizeOnDiskViewColumnIndex() {
+  private int sizeOnDiskViewColumnIndex() {
     return convertColumnIndexToView(VirtualDeviceTableModel.SIZE_ON_DISK_MODEL_COLUMN_INDEX);
   }
 
@@ -264,23 +280,19 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
     return convertColumnIndexToView(VirtualDeviceTableModel.POP_UP_MENU_MODEL_COLUMN_INDEX);
   }
 
-  @Override
-  public void refreshAvds() {
+  void refreshAvds() {
     FutureUtils.addCallback(myAsyncSupplier.get(), EdtExecutorService.getInstance(), myNewSetDevices.apply(getModel()));
   }
 
-  @Override
-  public void refreshAvdsAndSelect(@Nullable AvdInfo device) {
-    refreshAvds();
-  }
-
-  @Override
-  public @Nullable Project getProject() {
-    return myPanel.getProject();
-  }
-
-  @Override
-  public @NotNull JComponent getAvdProviderComponent() {
-    return this;
+  // TODO: Remove together with the icon update side effect in getTableCellEditorComponent
+  //       when the update is changed to be triggered by a device state change event.
+  public Component getEditorComponent() {
+    TableCellEditor cellEditor = getCellEditor();
+    if (cellEditor instanceof LaunchInEmulatorButtonTableCellEditor) {
+      // Trigger icon update that is a side effect of calling getTableCellEditorComponent.
+      LaunchInEmulatorButtonTableCellEditor editor = (LaunchInEmulatorButtonTableCellEditor)cellEditor;
+      editor.getTableCellEditorComponent(this, LaunchInEmulatorValue.INSTANCE, true, getEditingRow(), getEditingColumn());
+    }
+    return super.getEditorComponent();
   }
 }

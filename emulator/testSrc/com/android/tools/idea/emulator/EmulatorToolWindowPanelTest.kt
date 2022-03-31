@@ -63,9 +63,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.MouseInfo
@@ -146,7 +146,7 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 363 height: 520")
-    assertAppearance(ui, "AppearanceAndToolbarActions1", 0.08)
+    assertAppearance(ui, "AppearanceAndToolbarActions1", maxPercentDifferent = 0.08)
 
     // Check EmulatorPowerButtonAction.
     var button = ui.getComponent<ActionButton> { it.action.templateText == "Power" }
@@ -224,17 +224,17 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 320 height: 320")
-    assertAppearance(ui, "WearToolbarActions1", 0.08)
+    assertAppearance(ui, "WearToolbarActions1", maxPercentDifferent = 0.16)
 
     // Check Wear1ButtonAction.
-    var button = ui.getComponent<ActionButton> { it.action.templateText == "First" }
+    var button = ui.getComponent<ActionButton> { it.action.templateText == "Button 1" }
     ui.mouseClickOn(button)
     var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
     assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "Home"""")
 
     // Check Wear2ButtonAction.
-    button = ui.getComponent { it.action.templateText == "Second" }
+    button = ui.getComponent { it.action.templateText == "Button 2" }
     ui.mousePressOn(button)
     call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
@@ -286,8 +286,8 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
 
     // Check toolbar buttons.
-    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "First" }).isNotNull()
-    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Second" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Button 1" }).isNotNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Button 2" }).isNull()
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Palm" }).isNotNull()
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Tilt" }).isNotNull()
 
@@ -320,8 +320,8 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
 
     // Check that the buttons specific to Wear OS 3 are hidden.
-    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "First" }).isNull()
-    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Second" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Button 1" }).isNull()
+    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Button 2" }).isNull()
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Palm" }).isNull()
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Tilt" }).isNull()
 
@@ -360,7 +360,7 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     var streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 400 height: 571")
-    assertAppearance(ui, "ChangeDisplayMode1", 0.08)
+    assertAppearance(ui, "ChangeDisplayMode1", maxPercentDifferent = 0.08)
 
     // Set the tablet display mode.
     executeEmulatorAction("android.emulator.display.mode.tablet", emulatorView, project)
@@ -368,7 +368,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(setDisplayModeCall.methodName).isEqualTo("android.emulation.control.EmulatorController/setDisplayMode")
     assertThat(shortDebugString(setDisplayModeCall.request)).isEqualTo("value: TABLET")
     panel.waitForFrame(++frameNumber, 2, TimeUnit.SECONDS)
-    assertAppearance(ui, "ChangeDisplayMode2", 0.08)
+    assertAppearance(ui, "ChangeDisplayMode2", maxPercentDifferent = 0.08)
 
     panel.size = Dimension(500, 600)
     ui.layoutAndDispatchEvents()
@@ -444,7 +444,7 @@ class EmulatorToolWindowPanelTest {
     waitForCondition(2, TimeUnit.SECONDS) { ui.findAllComponents<EmulatorView>().size == 3 }
     ui.layoutAndDispatchEvents()
     waitForNextFrameInAllDisplays(ui, frameNumbers)
-    assertAppearance(ui, "MultipleDisplays1", 0.25)
+    assertAppearance(ui, "MultipleDisplays1", maxPercentDifferent = 0.25)
 
     // Resize emulator display panels.
     ui.findAllComponents<EmulatorSplitPanel>().forEach { it.proportion /= 2 }
@@ -523,12 +523,12 @@ class EmulatorToolWindowPanelTest {
     val callFilter = FakeEmulator.defaultCallFilter.or("android.emulation.control.EmulatorController/streamClipboard",
                                                        "android.emulation.control.EmulatorController/streamScreenshot")
     for ((key, expected) in velocityExpectations) {
-      ui.keyboard.press(key.toInt())
+      ui.keyboard.press(key.code)
 
       var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS, callFilter)
       assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setVirtualSceneCameraVelocity")
       assertThat(shortDebugString(call.request)).isEqualTo(expected)
-      ui.keyboard.release(key.toInt())
+      ui.keyboard.release(key.code)
       call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS, callFilter)
       assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setVirtualSceneCameraVelocity")
       assertThat(shortDebugString(call.request)).isEqualTo("")
@@ -650,7 +650,7 @@ class EmulatorToolWindowPanelTest {
     val mockAdb = mock<AndroidDebugBridge>()
     `when`(mockAdb.devices).thenReturn(arrayOf(device))
     val mockAdbService = mock<AdbService>()
-    `when`(mockAdbService.getDebugBridge(any())).thenReturn(immediateFuture(mockAdb))
+    `when`(mockAdbService.getDebugBridge(any(File::class.java))).thenReturn(immediateFuture(mockAdb))
     ApplicationManager.getApplication().registerServiceInstance(AdbService::class.java, mockAdbService, testRootDisposable)
     return device
   }
