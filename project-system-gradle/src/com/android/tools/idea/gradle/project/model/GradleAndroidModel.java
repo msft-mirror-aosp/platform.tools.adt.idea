@@ -32,6 +32,7 @@ import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.devices.Abi;
 import com.android.tools.idea.gradle.model.IdeAaptOptions;
 import com.android.tools.idea.gradle.model.IdeAndroidArtifact;
+import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore;
 import com.android.tools.idea.gradle.model.IdeAndroidProject;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
 import com.android.tools.idea.gradle.model.IdeApiVersion;
@@ -147,29 +148,13 @@ public class GradleAndroidModel implements AndroidModuleModel {
                                           @NotNull File rootDirPath,
                                           @NotNull IdeAndroidProject androidProject,
                                           @NotNull Collection<IdeVariantCoreImpl> cachedVariants,
-                                          @NotNull IdeLibraryModelResolver libraryModelResolver,
                                           @NotNull String variantName) {
     return new GradleAndroidModel(ourAndroidSyncVersion,
                                   moduleName,
                                   rootDirPath,
                                   androidProject,
                                   cachedVariants.stream().collect(toMap(IdeVariantCoreImpl::getName, it -> it)),
-                                  libraryModelResolver,
                                   variantName);
-  }
-
-  @VisibleForTesting
-  GradleAndroidModel(@NotNull String androidSyncVersion,
-                     @NotNull String moduleName,
-                     @NotNull File rootDirPath,
-                     @NotNull IdeAndroidProject androidProject,
-                     @NotNull Map<String, IdeVariantCoreImpl> cachedVariantsByName,
-                     @NotNull IdeLibraryModelResolver ideLibraryModelResolver,
-                     @NotNull String variantName) {
-    this(androidSyncVersion, moduleName, rootDirPath, androidProject, cachedVariantsByName, variantName);
-    myIdeLibraryModelResolver = ideLibraryModelResolver;
-    updateResolvedVariants();
-    setSelectedVariantName(variantName);
   }
 
   @PropertyMapping({"myAndroidSyncVersion", "myModuleName", "myRootDirPath", "myAndroidProject", "myCachedVariantsByName",
@@ -208,12 +193,15 @@ public class GradleAndroidModel implements AndroidModuleModel {
    */
   public void setModuleAndResolver(@NotNull Module module, @NotNull IdeLibraryModelResolver resolver) {
     myModule = module;
-    myIdeLibraryModelResolver = resolver;
-    updateResolvedVariants();
+    setResolver(resolver);
   }
 
-  private void updateResolvedVariants() {
-    myCachedResolvedVariantsByName = MapsKt.mapValues(myCachedVariantsByName, it -> new IdeVariantImpl(it.getValue(), myIdeLibraryModelResolver));
+  /**
+   * Sets the IDE module this model is for, this should always be set on creation or re-attachement of the module to the project.
+   */
+  public void setResolver(@NotNull IdeLibraryModelResolver resolver) {
+    myIdeLibraryModelResolver = resolver;
+    myCachedResolvedVariantsByName = MapsKt.mapValues(myCachedVariantsByName, it -> new IdeVariantImpl(it.getValue(), resolver));
   }
 
   /**
@@ -255,37 +243,42 @@ public class GradleAndroidModel implements AndroidModuleModel {
   }
 
   @NotNull
+  public IdeAndroidArtifactCore getMainArtifactCore() {
+    return getSelectedVariantCore().getMainArtifact();
+  }
+
+  @NotNull
   public IdeSourceProvider getDefaultSourceProvider() {
     return getAndroidProject().getDefaultConfig().getSourceProvider();
   }
 
   @NotNull
   public List<IdeSourceProvider> getActiveSourceProviders() {
-    return AndroidModelSourceProviderUtils.collectMainSourceProviders(this, getSelectedVariant());
+    return AndroidModelSourceProviderUtils.collectMainSourceProviders(this, getSelectedVariantCore());
   }
 
   @NotNull
   public List<IdeSourceProvider> getUnitTestSourceProviders() {
-    return AndroidModelSourceProviderUtils.collectUnitTestSourceProviders(this, getSelectedVariant());
+    return AndroidModelSourceProviderUtils.collectUnitTestSourceProviders(this, getSelectedVariantCore());
   }
 
   @NotNull
   public List<IdeSourceProvider> getAndroidTestSourceProviders() {
-    return AndroidModelSourceProviderUtils.collectAndroidTestSourceProviders(this, getSelectedVariant());
+    return AndroidModelSourceProviderUtils.collectAndroidTestSourceProviders(this, getSelectedVariantCore());
   }
 
   @NotNull
   public List<IdeSourceProvider> getTestFixturesSourceProviders() {
-    return AndroidModelSourceProviderUtils.collectTestFixturesSourceProviders(this, getSelectedVariant());
+    return AndroidModelSourceProviderUtils.collectTestFixturesSourceProviders(this, getSelectedVariantCore());
   }
 
   @NotNull
   public List<IdeSourceProvider> getTestSourceProviders(@NotNull IdeArtifactName artifactName) {
     switch (artifactName) {
       case ANDROID_TEST:
-        return AndroidModelSourceProviderUtils.collectAndroidTestSourceProviders(this, getSelectedVariant());
+        return AndroidModelSourceProviderUtils.collectAndroidTestSourceProviders(this, getSelectedVariantCore());
       case UNIT_TEST:
-        return AndroidModelSourceProviderUtils.collectUnitTestSourceProviders(this, getSelectedVariant());
+        return AndroidModelSourceProviderUtils.collectUnitTestSourceProviders(this, getSelectedVariantCore());
     }
     return ImmutableList.of();
   }
@@ -467,6 +460,7 @@ public class GradleAndroidModel implements AndroidModuleModel {
    */
   @NotNull
   public IdeVariant getSelectedVariant() {
+    if (myCachedResolvedVariantsByName == null) throw new IllegalStateException("Module dependencies are not yet resolved.");
     IdeVariant selected = myCachedResolvedVariantsByName.get(mySelectedVariantName);
     assert selected != null;
     return selected;
@@ -494,12 +488,19 @@ public class GradleAndroidModel implements AndroidModuleModel {
    */
   @NotNull
   public ImmutableList<IdeVariant> getVariants() {
+    if (myCachedResolvedVariantsByName == null) throw new IllegalStateException("Module dependencies are not yet resolved.");
     return ImmutableList.copyOf(myCachedResolvedVariantsByName.values());
   }
 
   @Nullable
   public IdeVariant findVariantByName(@NotNull String variantName) {
+    if (myCachedResolvedVariantsByName == null) throw new IllegalStateException("Module dependencies are not yet resolved.");
     return myCachedResolvedVariantsByName.get(variantName);
+  }
+
+  @Nullable
+  public IdeVariantCore findVariantCoreByName(@NotNull String variantName) {
+    return myCachedVariantsByName.get(variantName);
   }
 
   /**

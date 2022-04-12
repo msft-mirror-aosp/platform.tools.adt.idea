@@ -24,11 +24,11 @@ internal sealed class DeviceMonitorEvent {
   /**
    * Sent when a device is [com.android.ddmlib.IDevice.DeviceState.ONLINE] and ready to accept ADB request
    */
-  class Online(val device: IDevice) : DeviceMonitorEvent()
+  data class Online(val device: IDevice) : DeviceMonitorEvent()
 
   /**
    * Sent when a device is disconnected. Note that there is no guarantee this is invoked in all cases. Also note this can be invoked even
    * if a [Online] was never sent.
    */
-  class Disconnected(val device: IDevice) : DeviceMonitorEvent()
+  data class Disconnected(val device: IDevice) : DeviceMonitorEvent()
 }

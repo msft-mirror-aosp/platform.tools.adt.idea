@@ -80,10 +80,12 @@ interface ModelCache {
      * Supplements an incomplete instance of [IdeVariantImpl] with dependency information from a [VariantDependencies] model.
      */
     fun variantFrom(
+      ownerBuildId: BuildId,
+      ownerProjectPath: String,
       variant: IdeVariantCoreImpl,
       variantDependencies: VariantDependencies,
-      variantNameResolvers: (buildId: File, projectPath: String) -> VariantNameResolver,
-      buildNameMap: Map<String, File>
+      androidProjectPathResolver: AndroidProjectPathResolver,
+      buildNameMap: Map<String, BuildId>
     ): IdeVariantCoreImpl
 
     fun androidProjectFrom(

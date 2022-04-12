@@ -16,12 +16,14 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
-import com.android.tools.idea.gradle.model.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.LibraryReference
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaLibraryImpl
-import com.android.tools.idea.gradle.model.impl.IdeModuleLibraryImpl
-import org.junit.Assert.*
+import com.android.tools.idea.gradle.model.impl.IdePreResolvedModuleLibraryImpl
+import com.android.tools.idea.gradle.model.impl.IdeUnresolvedModuleLibraryImpl
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -105,12 +107,31 @@ class InternedModelsTest {
 
   @Test
   fun `get module library`() {
-    val module = IdeModuleLibraryImpl(
+    val module = IdePreResolvedModuleLibraryImpl(
       buildId = "/tmp/build",
       projectPath = ":app",
       variant = "debug",
       lintJar = null,
-      sourceSet = IdeModuleSourceSet.MAIN
+      sourceSet = IdeModuleWellKnownSourceSet.MAIN
+    )
+
+    val copy = module.copy()
+    val module1 = internedModels.getOrCreate(module)
+    val module2 = internedModels.getOrCreate(copy)
+
+    assertTrue(module !== copy)
+    assertTrue(module == copy)
+    assertTrue(module1 === module2)
+  }
+
+  @Test
+  fun `get unresolved module library`() {
+    val module = IdeUnresolvedModuleLibraryImpl(
+      buildId = "/tmp/build",
+      projectPath = ":app",
+      variant = "debug",
+      lintJar = null,
+      artifact = File("/tmp/a.jar")
     )
 
     val copy = module.copy()

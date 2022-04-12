@@ -84,7 +84,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
-        "@maven//:androidx.constraintlayout.constraintlayout_2.0.4",
+        "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.core.core-ktx_1.0.1",
         "@maven//:androidx.core.core-ktx_1.2.0",
         "@maven//:androidx.core.core-ktx_1.6.0",
@@ -176,7 +176,6 @@ local_old_agp_test(
     shard_count = 4,
     tags = [
         "block-network",
-        "manual",  # TODO(b/203803107): Re-enable this test when fixed.
         "no_test_mac",
         "no_test_windows",
     ],

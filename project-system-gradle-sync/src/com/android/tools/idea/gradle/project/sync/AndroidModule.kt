@@ -48,7 +48,7 @@ import java.io.File
 
 typealias IdeVariantFetcher = (
   controller: BuildController,
-  variantNameResolvers: (buildId: File, projectPath: String) -> VariantNameResolver,
+  androidProjectPathResolver: AndroidProjectPathResolver,
   module: AndroidModule,
   configuration: ModuleConfiguration
 ) -> IdeVariantCoreImpl?
@@ -76,7 +76,6 @@ class GradleProject(
 }
 
 sealed class GradleModule(val gradleProject: BasicGradleProject) : GradleModelCollection {
-  abstract val variantNameResolver: VariantNameResolver
   val findModelRoot: Model get() = gradleProject
   val id = createUniqueModuleId(gradleProject)
 
@@ -125,8 +124,6 @@ class JavaModule(
       kaptGradleModel?.deliver()
     }
   }
-
-  override val variantNameResolver: VariantNameResolver = fun(_: String?, _: (dimension: String) -> String): String? = null
 }
 
 /**
@@ -136,7 +133,7 @@ class JavaModule(
 sealed class AndroidModule constructor(
   val agpVersion: GradleVersion?,
   val buildName: String?,
-  val buildNameMap: Map<String, File>?,
+  val buildNameMap: Map<String, BuildId>?,
   gradleProject: BasicGradleProject,
   val androidProject: IdeAndroidProjectImpl,
   /** All configured variant names if supported by the AGP version. */
@@ -144,7 +141,7 @@ sealed class AndroidModule constructor(
   val defaultVariantName: String?,
   val variantFetcher: IdeVariantFetcher,
   /** Old V1 model. It's only set if [nativeModule] is not set. */
-  override val variantNameResolver: VariantNameResolver,
+  val androidVariantResolver: AndroidVariantResolver,
   private val nativeAndroidProject: IdeNativeAndroidProject?,
   /** New V2 model. It's only set if [nativeAndroidProject] is not set. */
   private val nativeModule: IdeNativeModule?
@@ -214,14 +211,13 @@ sealed class AndroidModule constructor(
   class V1(
     agpVersion: GradleVersion?,
     buildName: String?,
-    buildNameMap: Map<String, File>?,
+    buildNameMap: Map<String, BuildId>?,
     gradleProject: BasicGradleProject,
     androidProject: IdeAndroidProjectImpl,
     /** All configured variant names if supported by the AGP version. */
     allVariantNames: Set<String>?,
     defaultVariantName: String?,
     variantFetcher: IdeVariantFetcher,
-    variantNameResolver: VariantNameResolver,
     /** Old V1 native model. It's only set if [nativeModule] is not set. */
     nativeAndroidProject: IdeNativeAndroidProject?,
     /** New V2 native model. It's only set if [nativeAndroidProject] is not set. */
@@ -236,7 +232,7 @@ sealed class AndroidModule constructor(
     allVariantNames = allVariantNames,
     defaultVariantName = defaultVariantName,
     variantFetcher = variantFetcher,
-    variantNameResolver = variantNameResolver,
+    androidVariantResolver = AndroidVariantResolver.NONE,
     /** Old V1 model. It's only set if [nativeModule] is not set. */
     nativeAndroidProject = nativeAndroidProject,
     /** New V2 model. It's only set if [nativeAndroidProject] is not set. */
@@ -246,13 +242,13 @@ sealed class AndroidModule constructor(
   class V2(
     agpVersion: GradleVersion?,
     buildName: String?,
-    buildNameMap: Map<String, File>?,
+    buildNameMap: Map<String, BuildId>?,
     gradleProject: BasicGradleProject,
     androidProject: IdeAndroidProjectImpl,
     allVariantNames: Set<String>,
     defaultVariantName: String?,
     variantFetcher: IdeVariantFetcher,
-    variantNameResolver: VariantNameResolver,
+    androidVariantResolver: AndroidVariantResolver,
     nativeModule: IdeNativeModule?
   ) : AndroidModule(
     agpVersion = agpVersion,
@@ -263,7 +259,7 @@ sealed class AndroidModule constructor(
     allVariantNames = allVariantNames,
     defaultVariantName = defaultVariantName,
     variantFetcher = variantFetcher,
-    variantNameResolver = variantNameResolver,
+    androidVariantResolver = androidVariantResolver,
     /** Old V1 model. Not used with V2. */
     nativeAndroidProject = null,
     nativeModule = nativeModule
@@ -316,8 +312,6 @@ class NativeVariantsAndroidModule private constructor(
       IdeAndroidNativeVariantsModels(nativeVariants, projectSyncIssues.orEmpty()).deliver()
     }
   }
-
-  override val variantNameResolver: VariantNameResolver = fun(_: String?, _: (String) -> String?): String? = null
 }
 
 fun Collection<String>.getDefaultOrFirstItem(defaultValue: String): String? =

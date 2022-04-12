@@ -29,6 +29,7 @@ import com.android.tools.idea.projectsystem.GoogleMavenArtifactId
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleClassFinderUtil
 import com.android.tools.idea.rendering.classloading.ProjectConstantRemapper
+import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
 import com.android.tools.idea.util.StudioPathManager
 import com.google.common.cache.CacheBuilder
 import com.google.common.hash.Hashing
@@ -85,6 +86,16 @@ data class DisableReason(val title: String, val description: String? = null, val
  * A [DisableReason] to be used when calling [FastPreviewManager.disable] if it was disabled by the user.
  */
 val ManualDisabledReason = DisableReason("User disabled")
+
+private fun Throwable?.isSyntaxError(): Boolean =
+  this is LiveEditUpdateException
+  && error == LiveEditUpdateException.Error.ANALYSIS_ERROR
+  && (message?.startsWith("Analyze Error.") ?: false)
+
+/**
+ * Returns true if the [CompilationResult.RequestException] is from a syntax error.
+ */
+private fun CompilationResult.RequestException.isSyntaxError(): Boolean = e.isSyntaxError() || e?.cause.isSyntaxError()
 
 /**
  * Class responsible to managing the existing daemons and avoid multiple daemons for the same version being started.
@@ -453,9 +464,14 @@ class FastPreviewManager private constructor(
     log.info("Compiled in $durationString (result=$result, id=$requestId)")
     if (result.isError && allowAutoDisable) {
       val reason = when (result) {
-        is CompilationResult.RequestException -> DisableReason(title = message("fast.preview.disabled.reason.unable.compile"),
-                                                               description = result.e?.message,
-                                                               throwable = result.e)
+        // Handle RequestException but do not disable the compilation if it's because of a syntax error. This might be caused by the
+        // user still typing.
+        is CompilationResult.RequestException ->
+          if (!result.isSyntaxError())
+            DisableReason(title = message("fast.preview.disabled.reason.unable.compile"),
+                          description = result.e?.message,
+                          throwable = result.e)
+          else null
         is CompilationResult.DaemonStartFailure -> DisableReason(title = message("fast.preview.disabled.reason.unable.start"),
                                                                  throwable = result.e)
         is CompilationResult.DaemonError -> DisableReason(
@@ -468,14 +484,16 @@ class FastPreviewManager private constructor(
     }
 
     // Notify any error/success into the event log
-    val buildMessage = if (result.isSuccess)
-      message("event.log.fast.preview.build.successful", durationString)
-    else
-      message("event.log.fast.preview.build.failed", durationString)
-    Notification(PREVIEW_NOTIFICATION_GROUP_ID,
-                 buildMessage,
-                 if (result.isSuccess) NotificationType.INFORMATION else NotificationType.WARNING)
-      .notify(project)
+    if (result !is CompilationResult.CompilationAborted) {
+      val buildMessage = if (result.isSuccess)
+        message("event.log.fast.preview.build.successful", durationString)
+      else
+        message("event.log.fast.preview.build.failed", durationString)
+      Notification(PREVIEW_NOTIFICATION_GROUP_ID,
+                   buildMessage,
+                   if (result.isSuccess) NotificationType.INFORMATION else NotificationType.WARNING)
+        .notify(project)
+    }
 
     if (result.isSuccess) {
       // The project has built successfully so we can drop the constants that we were keeping.
@@ -542,6 +560,13 @@ class FastPreviewManager private constructor(
 
   override fun dispose() {
     _isDisposed.set(true)
+  }
+
+  @TestOnly
+  fun invalidateRequestsCache() {
+    synchronized(requestTracker) {
+      requestTracker.invalidateAll()
+    }
   }
 
   companion object {

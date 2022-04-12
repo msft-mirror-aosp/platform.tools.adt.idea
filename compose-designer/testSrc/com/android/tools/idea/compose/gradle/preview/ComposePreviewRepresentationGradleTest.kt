@@ -59,6 +59,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.BorderLayout
@@ -317,7 +318,9 @@ class ComposePreviewRepresentationGradleTest {
     refreshJob = runBlocking { composePreviewRepresentation.forceRefresh(true) }
     assertNull(refreshJob)
   }
+
   @Test
+  @Ignore("b/227498081")
   fun `fast preview request`() {
     StudioFlags.COMPOSE_FAST_PREVIEW.override(true)
     runWriteActionAndWait {
@@ -328,7 +331,7 @@ class ComposePreviewRepresentationGradleTest {
       FileDocumentManager.getInstance().saveAllDocuments()
     }
     runBlocking {
-      val result = composePreviewRepresentation.requestFastPreviewRefreshAsync()?.await()
+      val result = composePreviewRepresentation.requestFastPreviewRefreshAsync().await()
       ?: fail("fast preview refresh request was rejected")
 
       assertTrue(result is CompilationResult.Success)

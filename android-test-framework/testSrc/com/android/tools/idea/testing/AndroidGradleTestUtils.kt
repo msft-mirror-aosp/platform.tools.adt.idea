@@ -32,11 +32,10 @@ import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifact
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
-import com.android.tools.idea.gradle.model.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
-import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl
@@ -45,6 +44,7 @@ import com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
@@ -65,13 +65,11 @@ import com.android.tools.idea.gradle.model.ndk.v2.NativeBuildSystem
 import com.android.tools.idea.gradle.plugin.LatestKnownPluginVersionProvider
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
-import com.android.tools.idea.gradle.project.facet.java.JavaFacet
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
 import com.android.tools.idea.gradle.project.importing.withAfterCreate
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
-import com.android.tools.idea.gradle.project.model.JavaModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
 import com.android.tools.idea.gradle.project.model.V2NdkModel
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -102,8 +100,8 @@ import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.projectsystem.TestProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.getHolderModule
 import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
+import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.util.runWhenSmartAndSynced
 import com.android.utils.FileUtils
@@ -124,6 +122,7 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ProjectKeys
+import com.intellij.openapi.externalSystem.model.internal.InternalExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.project.ContentRootData
 import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType
 import com.intellij.openapi.externalSystem.model.project.ModuleData
@@ -134,6 +133,8 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListenerAdapter
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManager
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
@@ -165,11 +166,16 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.firstNotNullResult
 import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
+import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
+import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
 import org.jetbrains.plugins.gradle.model.ExternalProject
 import org.jetbrains.plugins.gradle.model.ExternalSourceSet
 import org.jetbrains.plugins.gradle.model.ExternalTask
+import org.jetbrains.plugins.gradle.model.GradleExtensions
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
+import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
+import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -751,11 +757,11 @@ fun AndroidProjectStubBuilder.buildAndroidTestArtifactStub(
         IdeDependencyCoreImpl(
           internedModels.getOrCreate(
             IdeModuleLibraryImpl(
-              buildId,
-              gradleProjectPath,
-              variant,
-              null,
-              IdeModuleSourceSet.MAIN
+              buildId = buildId,
+              projectPath = gradleProjectPath,
+              variant = variant,
+              lintJar = null,
+              sourceSet = IdeModuleWellKnownSourceSet.MAIN
             )
           ),
           isProvided = false
@@ -813,11 +819,11 @@ fun AndroidProjectStubBuilder.buildUnitTestArtifactStub(
         IdeDependencyCoreImpl(
           internedModels.getOrCreate(
             IdeModuleLibraryImpl(
-              buildId,
-              gradleProjectPath,
-              variant,
-              null,
-              IdeModuleSourceSet.MAIN
+              buildId = buildId,
+              projectPath = gradleProjectPath,
+              variant = variant,
+              lintJar = null,
+              sourceSet = IdeModuleWellKnownSourceSet.MAIN
             )
           ),
           isProvided = false
@@ -853,7 +859,7 @@ private fun AndroidProjectStubBuilder.toIdeModuleDependencies(androidModuleDepen
           buildId = this.buildId,
           variant = it.variant,
           lintJar = null,
-          sourceSet = IdeModuleSourceSet.MAIN
+          sourceSet = IdeModuleWellKnownSourceSet.MAIN
         )
       ),
       isProvided = false
@@ -868,11 +874,11 @@ fun AndroidProjectStubBuilder.buildTestFixturesArtifactStub(
       IdeDependencyCoreImpl(
         internedModels.getOrCreate(
           IdeModuleLibraryImpl(
-            buildId,
-            gradleProjectPath,
-            variant,
-            null,
-            IdeModuleSourceSet.MAIN
+            buildId = buildId,
+            projectPath = gradleProjectPath,
+            variant = variant,
+            lintJar = null,
+            sourceSet = IdeModuleWellKnownSourceSet.MAIN
           )
         ),
         isProvided = false
@@ -1314,6 +1320,9 @@ private fun setupTestProjectFromAndroidModelCore(
   mergeContentRoots(projectDataNode)
   PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
 
+  val externalProjectData = InternalExternalProjectInfo(GradleConstants.SYSTEM_ID, rootProjectBasePath.path, projectDataNode)
+  (ExternalProjectsManager.getInstance(project) as ExternalProjectsManagerImpl).updateExternalProjectData(externalProjectData)
+
   ProjectDataManager.getInstance().importData(projectDataNode, project, true)
   PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
 
@@ -1382,9 +1391,10 @@ private fun createAndroidModuleDataNode(
     moduleBasePath,
     androidProject,
     variants,
-    libraryResolver,
     selectedVariantName
   )
+
+  gradleAndroidModel.setResolver(libraryResolver);
 
   moduleDataNode.addChild(
     DataNode<GradleAndroidModel>(
@@ -1416,7 +1426,7 @@ private fun createAndroidModuleDataNode(
   }
 
   fun IdeBaseArtifact.setup() {
-    val sourceSetModuleName = ModuleUtil.getModuleName(this)
+    val sourceSetModuleName = ModuleUtil.getModuleName(this.name)
     moduleDataNode.addChild(
       DataNode<GradleSourceSetData>(
         GradleSourceSetData.KEY,
@@ -1515,6 +1525,16 @@ private fun createJavaModuleDataNode(
   if (buildable) {
     setupSourceSet("main", isTest = false)
     setupSourceSet("test", isTest = true)
+
+    val gradleExtensions = DefaultGradleExtensions()
+    gradleExtensions.extensions.add(DefaultGradleExtension("java", "org.gradle.api.plugins.internal.DefaultJavaPluginExtension"));
+    moduleDataNode.addChild(
+      DataNode<GradleExtensions>(
+        GradleExtensionsDataService.KEY,
+        gradleExtensions,
+        null
+      )
+    )
   }
 
   if (buildable || gradlePath != ":") {
@@ -1535,24 +1555,6 @@ private fun createJavaModuleDataNode(
       )
     )
   }
-
-  moduleDataNode.addChild(
-    DataNode<JavaModuleModel>(
-      AndroidProjectKeys.JAVA_MODULE_MODEL,
-      JavaModuleModel.create(
-        qualifiedModuleName,
-        emptyList(),
-        emptyList(),
-        emptyList(),
-        emptyMap(),
-        null,
-        null,
-        null,
-        buildable
-      ),
-      null
-    )
-  )
 
   return moduleDataNode
 }
@@ -1875,10 +1877,6 @@ inline fun <reified F, reified M> Module.verifyModel(getFacet: Module.() -> F?, 
 private fun Project.verifyModelsAttached() {
   ModuleManager.getInstance(this).modules.forEach { module ->
     module.verifyModel(GradleFacet::getInstance, GradleFacet::getGradleModuleModel)
-    if (GradleFacet.getInstance(module) != null) {
-      // Java facets are not created for modules without GradleFacet even if there is a JavaModuleModel.
-      module.verifyModel(JavaFacet::getInstance, JavaFacet::getJavaModuleModel)
-    }
     module.verifyModel(AndroidFacet::getInstance, GradleAndroidModel::get)
     module.verifyModel({ NdkFacet.getInstance(this) }, { ndkModuleModel })
   }
@@ -1893,7 +1891,7 @@ fun Project.requestSyncAndWait() {
  */
 private fun setupDataNodesForSelectedVariant(
   project: Project,
-  buildId: String,
+  buildId: @SystemIndependent String,
   androidModuleModels: List<GradleAndroidModel>,
   projectDataNode: DataNode<ProjectData>
 ) {
@@ -1910,7 +1908,7 @@ private fun setupDataNodesForSelectedVariant(
     moduleNode.setupCompilerOutputPaths(newVariant)
     // Then patch in any Kapt generated sources that we need
     val libraryFilePaths = LibraryFilePaths.getInstance(project)
-    moduleNode.setupAndroidDependenciesForMpss({ path: GradleProjectPath -> moduleIdToDataMap[path] }, { id ->
+    moduleNode.setupAndroidDependenciesForMpss({ path: GradleSourceSetProjectPath -> moduleIdToDataMap[path] }, { id ->
       AdditionalArtifactsPaths(
         libraryFilePaths.getCachedPathsForArtifact(id)?.sources,
         libraryFilePaths.getCachedPathsForArtifact(id)?.javaDoc,
@@ -1922,16 +1920,16 @@ private fun setupDataNodesForSelectedVariant(
 }
 
 private fun createGradleProjectPathToModuleDataMap(
-  buildId: String,
+  buildId: @SystemIndependent String,
   moduleNodes: Collection<DataNode<ModuleData>>
-): Map<GradleProjectPath, ModuleData> {
+): Map<GradleSourceSetProjectPath, ModuleData> {
   return moduleNodes
     .flatMap { moduleDataNode ->
       ExternalSystemApiUtil.findAll(moduleDataNode, GradleSourceSetData.KEY)
         .mapNotNull {
           it.data.getIdeModuleSourceSet()
-            ?.let { sourceSet ->
-              GradleProjectPath(
+            .let { sourceSet ->
+              GradleSourceSetProjectPath(
                 buildId,
                 if (toSystemIndependentName(moduleDataNode.data.linkedExternalProjectPath) == buildId) ":"
                 else moduleDataNode.data.id,

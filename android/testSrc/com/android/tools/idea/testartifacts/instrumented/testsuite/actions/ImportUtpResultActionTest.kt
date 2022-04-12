@@ -24,7 +24,6 @@ import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.wm.ToolWindowManager
@@ -33,14 +32,12 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.writeChild
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import java.io.File
 
 @RunWith(JUnit4::class)
 @RunsInEdt
@@ -57,36 +54,38 @@ class ImportUtpResultActionTest {
     .around(temporaryFolder)
     .around(RestoreFlagRule(StudioFlags.UTP_TEST_RESULT_SUPPORT))
 
-  private val importUtpResultAction = ImportUtpResultAction()
-  private lateinit var utpProtoFile: File
-
-  @Before
-  fun setUp() {
-    utpProtoFile = temporaryFolder.newFile()
-  }
-
   @Test
   fun importUtpResults() {
-    importUtpResultAction.parseResultsAndDisplay(utpProtoFile, disposableRule.disposable, projectRule.project)
+    val importUtpResultAction = ImportUtpResultAction()
+
+    importUtpResultAction.parseResultsAndDisplay(temporaryFolder.newFile(), disposableRule.disposable, projectRule.project)
+
     val toolWindow = importUtpResultAction.getToolWindow(projectRule.project)
-    assertThat(toolWindow.contentManager.contents).isNotEmpty()
+    assertThat(toolWindow.contentManager.contents).hasLength(1)
+    assertThat(toolWindow.contentManager.contents[0].displayName).isEqualTo("Imported Android Test Results")
   }
-  
+
   @Test
   fun importUtpResultPreCreateContentManager() {
     RunContentManager.getInstance(projectRule.project)
     val toolWindow = ToolWindowManager.getInstance(projectRule.project)
       .getToolWindow(ImportUtpResultAction.IMPORTED_TEST_WINDOW_ID)
+
     assertThat(toolWindow).isNull()
-    importUtpResultAction.parseResultsAndDisplay(utpProtoFile, disposableRule.disposable, projectRule.project)
+
+    val importUtpResultAction = ImportUtpResultAction()
+
+    importUtpResultAction.parseResultsAndDisplay(temporaryFolder.newFile(), disposableRule.disposable, projectRule.project)
     val newToolWindow = importUtpResultAction.getToolWindow(projectRule.project)
-    assertThat(newToolWindow.contentManager.contents).isNotEmpty()
+
+    assertThat(newToolWindow.contentManager.contents).hasLength(1)
+    assertThat(newToolWindow.contentManager.contents[0].displayName).isEqualTo("Imported Android Test Results")
   }
 
   @Test
   fun enableUtpResultSupport() {
     StudioFlags.UTP_TEST_RESULT_SUPPORT.override(true)
-    val anActionEvent = AnActionEvent(null, DataContext{ projectRule.project },
+    val anActionEvent = AnActionEvent(null, { projectRule.project },
                                       ActionPlaces.UNKNOWN, Presentation(),
                                       ActionManager.getInstance(), 0)
     ImportUtpResultAction().update(anActionEvent)
@@ -104,7 +103,8 @@ class ImportUtpResultActionTest {
     val importActions = createImportUtpResultActionFromAndroidGradlePluginOutput(projectRule.project)
 
     assertThat(importActions).hasSize(1)
-    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest")
+    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest - connected")
+    assertThat(importActions[0].action.toolWindowDisplayName).contains("ExampleInstrumentedTest - connected")
   }
 
   @Test
@@ -128,7 +128,7 @@ class ImportUtpResultActionTest {
     val importActions = createImportUtpResultActionFromAndroidGradlePluginOutput(projectRule.project)
 
     assertThat(importActions).hasSize(1)
-    assertThat(importActions[0].action.templateText).contains("MergedResult")
+    assertThat(importActions[0].action.templateText).contains("MergedResult - connected")
   }
 
   @Test
@@ -147,9 +147,24 @@ class ImportUtpResultActionTest {
     val importActions = createImportUtpResultActionFromAndroidGradlePluginOutput(projectRule.project)
 
     assertThat(importActions).hasSize(2)
-    assertThat(importActions[0].action.templateText).contains("Device1Result")
-    assertThat(importActions[1].action.templateText).contains("Device2Result")
+    assertThat(importActions[0].action.templateText).contains("Device1Result - connected")
+    assertThat(importActions[1].action.templateText).contains("Device2Result - connected")
   }
+
+  @Test
+  fun createImportUtpResultActionWithFlavor() {
+    projectRule.module.rootManager.contentRoots[0]
+      .writeChild(
+        "build/outputs/androidTest-results/connected/flavors/demo/test-result.pb",
+        createTestResultsProto().toByteArray()
+      )
+
+    val importActions = createImportUtpResultActionFromAndroidGradlePluginOutput(projectRule.project)
+
+    assertThat(importActions).hasSize(1)
+    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest - demo - connected")
+  }
+
 
   @Test
   fun createImportGradleManagedDeviceUtpResultAction() {
@@ -162,7 +177,21 @@ class ImportUtpResultActionTest {
     val importActions = createImportGradleManagedDeviceUtpResults(projectRule.project)
 
     assertThat(importActions).hasSize(1)
-    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest")
+    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest - managed")
+  }
+
+  @Test
+  fun createImportGradleManagedDeviceUtpResultActionWithFlavor() {
+    projectRule.module.rootManager.contentRoots[0]
+      .writeChild(
+        "build/outputs/androidTest-results/managedDevice/flavors/demo/test-result.pb",
+        createTestResultsProto().toByteArray()
+      )
+
+    val importActions = createImportGradleManagedDeviceUtpResults(projectRule.project)
+
+    assertThat(importActions).hasSize(1)
+    assertThat(importActions[0].action.templateText).contains("ExampleInstrumentedTest - demo - managed")
   }
 
   private fun createTestResultsProto(

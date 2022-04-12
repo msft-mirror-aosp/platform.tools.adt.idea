@@ -16,8 +16,9 @@
 package com.android.tools.idea.gradle.project.sync.idea
 
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeBaseArtifact
 import com.android.tools.idea.gradle.model.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.getModuleName
 import com.android.tools.idea.util.CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP
 import com.android.tools.idea.util.LinkedAndroidModuleGroup
@@ -32,15 +33,12 @@ import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 
 object ModuleUtil {
   @JvmStatic
-  fun getModuleName(artifact: IdeBaseArtifact): String = getModuleName(artifact.name)
-
-  @JvmStatic
   fun getModuleName(artifactName: IdeArtifactName): String {
     return when (artifactName) {
-      IdeArtifactName.MAIN -> IdeModuleSourceSet.MAIN.sourceSetName
-      IdeArtifactName.UNIT_TEST -> IdeModuleSourceSet.UNIT_TEST.sourceSetName
-      IdeArtifactName.ANDROID_TEST -> IdeModuleSourceSet.ANDROID_TEST.sourceSetName
-      IdeArtifactName.TEST_FIXTURES -> IdeModuleSourceSet.TEST_FIXTURES.sourceSetName
+      IdeArtifactName.MAIN -> IdeModuleWellKnownSourceSet.MAIN.sourceSetName
+      IdeArtifactName.UNIT_TEST -> IdeModuleWellKnownSourceSet.UNIT_TEST.sourceSetName
+      IdeArtifactName.ANDROID_TEST -> IdeModuleWellKnownSourceSet.ANDROID_TEST.sourceSetName
+      IdeArtifactName.TEST_FIXTURES -> IdeModuleWellKnownSourceSet.TEST_FIXTURES.sourceSetName
     }
   }
 
@@ -91,8 +89,7 @@ object ModuleUtil {
   }
 
   @JvmStatic
-  fun GradleSourceSetData.getIdeModuleSourceSet() =
-    IdeModuleSourceSet.values().firstOrNull { sourceSetEnum -> sourceSetEnum.sourceSetName == moduleName }
+  fun GradleSourceSetData.getIdeModuleSourceSet(): IdeModuleSourceSet = IdeModuleSourceSetImpl.wellKnownOrCreate(moduleName)
 }
 
 fun String.removeSourceSetSuffixFromExternalProjectID() : String = removeSourceSetSuffix(":")

@@ -15,11 +15,13 @@
  */
 package com.android.tools.idea.compose.preview.fast
 
+import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditLanguageVersionSettings
-import com.android.tools.idea.run.deployment.liveedit.analyze
-import com.android.tools.idea.run.deployment.liveedit.backendCodeGen
+import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -28,10 +30,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.util.io.createFile
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
@@ -40,29 +42,41 @@ import java.nio.file.Path
 private val defaultRetryTimes = Integer.getInteger("fast.preview.224875189.retries", 3)
 
 /**
- * Retries the [retryBlock] [retryTimes] or until it does not throw an exception.
+ * Retries the [retryBlock] [retryTimes] or until it does not throw an exception. The block will be executed in a
+ * read action with write priority.
+ *
+ * This method will also check [ProgressManager.checkCanceled] in between retries.
  *
  * Every retry will wait 50ms * number of retries with a maximum of 200ms per retry.
  */
 @VisibleForTesting
-fun <T> retry(retryTimes: Int = defaultRetryTimes, retryBlock: () -> T): T {
+fun <T> retryInNonBlockingReadAction(retryTimes: Int = defaultRetryTimes,
+                                     indicator: ProgressIndicator = EmptyProgressIndicator(),
+                                     retryBlock: () -> T): T {
   var lastException: Throwable? = null
+  val result: CompletableDeferred<T> = CompletableDeferred()
   repeat(retryTimes) {
-    ProgressManager.checkCanceled()
+    indicator.checkCanceled()
     try {
-      return retryBlock()
+      ReadAction.nonBlocking {
+        result.complete(retryBlock())
+      }
+        .wrapProgress(indicator)
+        .submit(AndroidExecutors.getInstance().workerThreadExecutor).get()
     }
     catch (t: ProcessCanceledException) {
-      throw t // Immediately exit, no more retries
+      // ProcessCanceledException can not be logged
+      lastException = t
     }
     catch (t: Throwable) {
       Logger.getInstance(EmbeddedCompilerClientImpl::class.java).warn("Retrying after error (retry $it)", t)
       lastException = t
     }
-    ProgressManager.checkCanceled()
+    if (result.isCompleted) return result.getCompleted()
+    indicator.checkCanceled()
     Thread.sleep((50 * it).coerceAtMost(200).toLong())
   }
-  lastException?.let { throw it } ?: throw IllegalStateException()
+  lastException?.let { throw it } ?: throw ProcessCanceledException()
 }
 
 /**
@@ -74,24 +88,24 @@ class EmbeddedCompilerClientImpl(private val project: Project, private val log: 
   override val isRunning: Boolean
     get() = daemonLock.holdsLock(this)
 
-  private fun compileKtFiles(inputs: List<KtFile>, outputDirectory: Path) {
+
+  private fun compileKtFiles(inputs: List<KtFile>, outputDirectory: Path, indicator: ProgressIndicator) {
     log.debug("compileKtFile($inputs, $outputDirectory)")
 
-    ProgressManager.checkCanceled()
-    log.debug("fetchResolution")
-    val resolution = KotlinCacheService.getInstance(project).getResolutionFacade(inputs)
-    val languageVersionSettings = inputs.first().languageVersionSettings
-
-    ProgressManager.checkCanceled()
-
     // Retry is a temporary workaround for b/224875189
-    val generationState = retry {
-      log.debug("analyze")
-      val bindingContext = analyze(inputs, resolution)
-      ProgressManager.checkCanceled()
-      log.debug("backCodeGen")
-      backendCodeGen(project, resolution, bindingContext, inputs,
-                     AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
+    val generationState = retryInNonBlockingReadAction(indicator = indicator) {
+      runWithCompileLock {
+        log.debug("fetchResolution")
+        val resolution = fetchResolution(project, inputs)
+        ProgressManager.checkCanceled()
+        val languageVersionSettings = inputs.first().languageVersionSettings
+        log.debug("analyze")
+        val bindingContext = analyze(inputs, resolution)
+        ProgressManager.checkCanceled()
+        log.debug("backCodeGen")
+        backendCodeGen(project, resolution, bindingContext, inputs,
+                       AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
+      }
     }
 
     generationState.factory.asList().forEach {
@@ -105,36 +119,38 @@ class EmbeddedCompilerClientImpl(private val project: Project, private val log: 
     files: Collection<PsiFile>,
     module: Module,
     outputDirectory: Path,
-    indicator: ProgressIndicator): CompilationResult {
+    indicator: ProgressIndicator): CompilationResult = coroutineScope {
     daemonLock.lock(this)
-    return try {
+    return@coroutineScope try {
       val inputs = files.filterIsInstance<KtFile>().toList()
       val result = CompletableDeferred<CompilationResult>()
-      val initialRetries = 3
-      var retries = initialRetries
-      var readActionExecuted: Boolean
+      val compilationIndicator = ProgressWrapper.wrap(indicator)
 
-      // This code will retry the execute action 3 times. The compile action can be cancelled if any write action happens during the
-      // compilation.
-      do {
-        if (retries != initialRetries) delay((initialRetries - retries) * 50L)
-        readActionExecuted = ProgressManager.getInstance().runInReadActionWithWriteActionPriority(
-          {
-            try {
-              compileKtFiles(inputs, outputDirectory = outputDirectory)
-              result.complete(CompilationResult.Success)
-            }
-            catch (t: Throwable) {
-              result.complete(CompilationResult.RequestException(t))
-            }
-          },
-          ProgressWrapper.wrap(indicator)
-        )
-      } while (!readActionExecuted && retries-- > 0)
+      // When the coroutine completes, make sure we also stop or cancel the indicator
+      // depending on what happened with the co-routine.
+      coroutineContext.job.invokeOnCompletion {
+        try {
+          if (compilationIndicator.isRunning) {
+            if (coroutineContext.job.isCancelled) compilationIndicator.cancel() else compilationIndicator.stop()
+          }
+        } catch (t: Throwable) {
+          // stop might throw if the indicator is already stopped
+          log.warn(t)
+        }
+      }
 
-      if (readActionExecuted)
-        result.await()
-      else CompilationResult.CompilationAborted(Throwable("Unable to start read action"))
+      try {
+        compileKtFiles(inputs, outputDirectory = outputDirectory, compilationIndicator)
+        result.complete(CompilationResult.Success)
+      }
+      catch (t: ProcessCanceledException) {
+        result.complete(CompilationResult.CompilationAborted())
+      }
+      catch (t: Throwable) {
+        result.complete(CompilationResult.RequestException(t))
+      }
+
+      result.await()
     }
     finally {
       daemonLock.unlock(this)

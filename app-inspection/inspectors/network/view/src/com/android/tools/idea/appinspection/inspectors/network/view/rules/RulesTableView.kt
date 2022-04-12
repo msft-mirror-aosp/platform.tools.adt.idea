@@ -15,14 +15,25 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.view.rules
 
+import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.rules.RulesTableModel
+import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.table.TableView
 import javax.swing.JComponent
+import javax.swing.ListSelectionModel
 
-class RulesTableView {
+class RulesTableView(private val model: NetworkInspectorModel) {
   val component: JComponent
-  private val tableModel = RulesTableModel()
 
   init {
-    component = DecoratedTable(tableModel).component
+    val tableModel = RulesTableModel()
+    val table = TableView(tableModel)
+    val decorator = ToolbarDecorator.createDecorator(table)
+    component = createDecoratedTable(table, decorator)
+    table.selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
+    table.selectionModel.addListSelectionListener {
+      val row = table.selectedObject ?: return@addListSelectionListener
+      model.setSelectedRule(row)
+    }
   }
 }

@@ -19,7 +19,6 @@ import com.android.tools.idea.compose.preview.toFileNameSet
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.EmptyProgressIndicator
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.util.io.delete
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -113,7 +112,7 @@ internal class EmbeddedCompilerClientImplTest {
   fun `test retry`() {
     val attempts = 20
     var executedRetries = 0
-    val result = retry(attempts) {
+    val result = retryInNonBlockingReadAction(attempts) {
       executedRetries++
       // Throw in all but the last one
       if (executedRetries < attempts - 1) throw IllegalStateException()
@@ -121,19 +120,5 @@ internal class EmbeddedCompilerClientImplTest {
     }
     assertEquals(230L, result)
     assertEquals(attempts - 1, executedRetries)
-
-    // Check that ProcessCanceledException is not retried
-    executedRetries = 0
-    try {
-      retry(attempts) {
-        executedRetries++
-        // Throw in all but the last one
-        if (executedRetries < attempts - 1) throw ProcessCanceledException()
-        230L
-      }
-    }
-    catch (_: ProcessCanceledException) {
-    }
-    assertEquals(1, executedRetries)
   }
 }

@@ -15,10 +15,8 @@
  */
 package com.android.tools.idea.gradle.structure
 
-import com.android.tools.idea.gradle.project.model.AndroidModuleModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
-import com.android.tools.idea.gradle.project.model.JavaModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
 import com.android.tools.idea.gradle.project.sync.GradleModuleModels
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -57,7 +55,9 @@ class GradleResolver {
 
 private fun findModel(module: GradleModuleModels): PsResolvedModuleModel? {
   val gradleModuleModel = module.findModel(GradleModuleModel::class.java) ?: return null
-  val gradlePath = gradleModuleModel.gradlePath
+  // TODO(b/149203281): Verify support for composite builds if needed here.
+  val externalProject = module.findModel(ExternalProject::class.java) ?: return null
+  val gradlePath = externalProject.qName
 
   fun tryAndroidModels(): PsResolvedModuleModel.PsAndroidModuleResolvedModel? {
     val androidModel = module.findModel(GradleAndroidModel::class.java) ?: return null

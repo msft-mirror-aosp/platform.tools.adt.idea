@@ -26,6 +26,7 @@ import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.model.IdeAndroidProject;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
 import com.android.tools.idea.gradle.model.IdeBaseArtifact;
+import com.android.tools.idea.gradle.model.IdeBaseArtifactCore;
 import com.android.tools.idea.gradle.project.ProjectStructure;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
@@ -33,6 +34,8 @@ import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.projectsystem.AndroidModuleSystem;
 import com.android.tools.idea.projectsystem.FilenameConstants;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt;
 import com.android.utils.FileUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -56,6 +59,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil;
 
 public class GradleProjectSystemUtil {
   /**
@@ -109,7 +113,7 @@ public class GradleProjectSystemUtil {
    * Wrapper around {@link IdeBaseArtifact#getGeneratedSourceFolders()} that skips the aapt sources folder when light classes are used by the
    * IDE.
    */
-  public static Collection<File> getGeneratedSourceFoldersToUse(@NotNull IdeBaseArtifact artifact, @NotNull GradleAndroidModel model) {
+  public static Collection<File> getGeneratedSourceFoldersToUse(@NotNull IdeBaseArtifactCore artifact, @NotNull GradleAndroidModel model) {
     File buildFolder = model.getAndroidProject().getBuildFolder();
     return artifact.getGeneratedSourceFolders()
       .stream()
@@ -241,32 +245,15 @@ public class GradleProjectSystemUtil {
         if (type != AndroidModuleSystem.Type.TYPE_DYNAMIC_FEATURE) {
           return null;
         }
-        String gradlePath = getGradlePath(facet.getHolderModule());
+        // TODO(b/149203281): Fix support for composite builds.
+        GradleProjectPath gradlePath = GradleProjectPathKt.getGradleProjectPath(facet.getHolderModule());
         if (gradlePath == null) {
           return null;
         }
-        return Pair.create(gradlePath, facet.getHolderModule());
+        return Pair.create(gradlePath.getPath(), facet.getHolderModule());
       })
       .filter(Objects::nonNull)
       .collect(Collectors.toMap(p -> p.first, p -> p.second, GradleProjectSystemUtil::handleModuleAmbiguity));
-  }
-
-  /**
-   * Find the gradle path of the module
-   *
-   * @return The path of the specified module, or null if it can't retrieve it.
-   */
-  @Nullable
-  static String getGradlePath(@NotNull Module module) {
-    GradleFacet facet = GradleFacet.getInstance(module);
-    if (facet == null) {
-      return null;
-    }
-    GradleModuleModel gradleModel = facet.getGradleModuleModel();
-    if (gradleModel == null) {
-      return null;
-    }
-    return gradleModel.getGradlePath();
   }
 
   @NotNull

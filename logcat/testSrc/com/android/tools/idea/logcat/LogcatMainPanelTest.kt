@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.logcat
 
+import com.android.adblib.AdbLibSession
+import com.android.adblib.DeviceState
+import com.android.adblib.testing.FakeAdbLibSession
+import com.android.ddmlib.AvdData
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.IDevice.DeviceState.ONLINE
 import com.android.ddmlib.Log.LogLevel.INFO
@@ -40,9 +44,13 @@ import com.android.tools.idea.logcat.hyperlinks.HyperlinkDetector
 import com.android.tools.idea.logcat.messages.AndroidLogcatFormattingOptions
 import com.android.tools.idea.logcat.messages.FormattingOptions
 import com.android.tools.idea.logcat.messages.FormattingOptions.Style.COMPACT
+import com.android.tools.idea.logcat.messages.FormattingOptions.Style.STANDARD
 import com.android.tools.idea.logcat.messages.LogcatColors
 import com.android.tools.idea.logcat.messages.TagFormat
 import com.android.tools.idea.logcat.settings.AndroidLogcatSettings
+import com.android.tools.idea.logcat.testing.TestDevice
+import com.android.tools.idea.logcat.testing.setDevices
+import com.android.tools.idea.logcat.testing.setupCommandsForDevice
 import com.android.tools.idea.logcat.util.AdbAdapter
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.logcat.util.FakeAdbAdapter
@@ -52,6 +60,7 @@ import com.android.tools.idea.logcat.util.logcatEvents
 import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.Futures.immediateFuture
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFormatConfiguration
@@ -113,6 +122,7 @@ class LogcatMainPanelTest {
   private val mockHyperlinkDetector = mock<HyperlinkDetector>()
   private val mockFoldingDetector = mock<FoldingDetector>()
   private val fakeAdbAdapter = FakeAdbAdapter()
+  private val fakeAdbLibSession = FakeAdbLibSession()
   private val androidLogcatFormattingOptions = AndroidLogcatFormattingOptions()
 
   @Before
@@ -269,7 +279,12 @@ class LogcatMainPanelTest {
     fakeUi.rightClickOn(logcatMainPanel)
 
     val popupMenu = popupRule.popupContents as JPopupMenu
-    assertThat(popupMenu.components.map { (it as ActionMenuItem).anAction }).containsExactlyElementsIn(popupActionGroup.getChildren(null))
+
+    assertThat(popupMenu.components.map { if (it is JPopupMenu.Separator) "-" else (it as ActionMenuItem).text }).containsExactly(
+      "An Action",
+      "-",
+      "Clear Logcat",
+    )
     verify(popupRule.mockPopup).show()
     // JBPopupMenu has a Timer that is stopped when made invisible. If not stopped, checkJavaSwingTimersAreDisposed() will throw in some
     // other test.
@@ -316,10 +331,12 @@ class LogcatMainPanelTest {
   @Test
   fun clearMessageView_bySubscriptionToClearLogcatListener() {
     val device = mockDevice("device1")
+    val testDevice = TestDevice(device.serialNumber, DeviceState.ONLINE, "11", "30", "Google", "Pixel", "")
     fakeAdbAdapter.mutableDevices.add(device)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice)
+    fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(adbAdapter = fakeAdbAdapter).also {
-        it.deviceContext.fireDeviceSelected(device)
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
         waitForCondition(1, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
@@ -336,11 +353,15 @@ class LogcatMainPanelTest {
   fun clearMessageView_bySubscriptionToClearLogcatListener_otherDevice() {
     val device1 = mockDevice("device1")
     val device2 = mockDevice("device2")
-    fakeAdbAdapter.mutableDevices.add(device1)
-    fakeAdbAdapter.mutableDevices.add(device2)
+    val testDevice1 = TestDevice(device1.serialNumber, DeviceState.ONLINE, "11", "30", "Google", "Pixel", "")
+    val testDevice2 = TestDevice(device2.serialNumber, DeviceState.ONLINE, "11", "30", "Google", "Pixel", "")
+    fakeAdbAdapter.mutableDevices.addAll(listOf(device1, device2))
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice1)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice2)
+    fakeAdbLibSession.hostServices.setDevices(testDevice1, testDevice2)
+
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(adbAdapter = fakeAdbAdapter).also {
-        it.deviceContext.fireDeviceSelected(device1)
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
         waitForCondition(1, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
@@ -351,6 +372,66 @@ class LogcatMainPanelTest {
     ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEqualTo("not-empty")
+  }
+
+  @Test
+  fun identifiesIDeviceFromDevice() {
+    val device = mockDevice("device1")
+    val testDevice = TestDevice(device.serialNumber, DeviceState.ONLINE, "11", "30", "Google", "Pixel", "")
+    fakeAdbAdapter.mutableDevices.add(device)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice)
+    fakeAdbLibSession.hostServices.setDevices(testDevice)
+    val logcatMainPanel = runInEdtAndGet {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
+      }
+    }
+    assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
+  }
+
+  @Test
+  fun identifiesIDeviceFromDevice_emulator() {
+    val device = mockDevice("emulator-1", "avd1")
+    val testDevice = TestDevice(device.serialNumber, DeviceState.ONLINE, "11", "30", "", "", avdName = "avd1")
+    fakeAdbAdapter.mutableDevices.add(device)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice)
+    fakeAdbLibSession.hostServices.setDevices(testDevice)
+    val logcatMainPanel = runInEdtAndGet {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
+      }
+    }
+    assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
+  }
+
+  @Test
+  fun identifiesIDeviceFromDevice_emulatorWithLegacyAvdName() {
+    val device = mockDevice("emulator-1", "avd1")
+    val testDevice = TestDevice(device.serialNumber, DeviceState.ONLINE, "11", "30", "", "", avdName = "", avdNamePre31 = "avd1")
+    fakeAdbAdapter.mutableDevices.add(device)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice)
+    fakeAdbLibSession.hostServices.setDevices(testDevice)
+    val logcatMainPanel = runInEdtAndGet {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
+      }
+    }
+    assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
+  }
+
+  @Test
+  fun identifiesIDeviceFromDevice_emulatorWithoutAvdName() {
+    val device = mockDevice("emulator-1", "avd1")
+    val testDevice = TestDevice(device.serialNumber, DeviceState.ONLINE, "11", "30", "", "", avdName = "", avdNamePre31 = "")
+    fakeAdbAdapter.mutableDevices.add(device)
+    fakeAdbLibSession.deviceServices.setupCommandsForDevice(testDevice)
+    fakeAdbLibSession.hostServices.setDevices(testDevice)
+    val logcatMainPanel = runInEdtAndGet {
+      logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
+        waitForCondition(1, SECONDS) { it.deviceManager != null }
+      }
+    }
+    assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
   }
 
   /**
@@ -705,15 +786,16 @@ class LogcatMainPanelTest {
   private fun logcatMainPanel(
     popupActionGroup: ActionGroup = EMPTY_GROUP,
     logcatColors: LogcatColors = LogcatColors(),
-    state: LogcatPanelConfig? = null,
+    state: LogcatPanelConfig? = LogcatPanelConfig(device = null, FormattingConfig.Preset(STANDARD), filter = "", isSoftWrap = false),
     logcatSettings: AndroidLogcatSettings = AndroidLogcatSettings(),
     androidProjectDetector: AndroidProjectDetector = FakeAndroidProjectDetector(true),
     hyperlinkDetector: HyperlinkDetector? = null,
     foldingDetector: FoldingDetector? = null,
     packageNamesProvider: PackageNamesProvider = FakePackageNamesProvider(),
     adbAdapter: AdbAdapter = FakeAdbAdapter(),
+    adbSession: AdbLibSession = FakeAdbLibSession(),
     zoneId: ZoneId = ZoneId.of("Asia/Yerevan"),
-  ): LogcatMainPanel =
+  ) =
     LogcatMainPanel(
       projectRule.project,
       popupActionGroup,
@@ -726,6 +808,7 @@ class LogcatMainPanelTest {
       packageNamesProvider,
       adbAdapter,
       { logcatPresenter, iDevice -> FakeLogcatDeviceManager(iDevice, logcatPresenter, packageNamesProvider) },
+      adbSession,
       zoneId,
     ).also {
       Disposer.register(projectRule.project, it)
@@ -742,7 +825,7 @@ class LogcatMainPanelTest {
 
 private fun LogCatMessage.length() = FormattingOptions().getHeaderWidth() + message.length
 
-private fun mockDevice(serialNumber: String): IDevice {
+private fun mockDevice(serialNumber: String, avdName: String = ""): IDevice {
   return mock<IDevice>().also {
     // Set up a mock device with just enough information to get the test to work. We still get a bunch of errors in the log.
     // TODO(aalbert): Extract an interface from LogcatDeviceManager so we can pass a factory into LogcatMainPanel to make it easier to
@@ -751,5 +834,6 @@ private fun mockDevice(serialNumber: String): IDevice {
     `when`(it.clients).thenReturn(emptyArray())
     `when`(it.serialNumber).thenReturn(serialNumber)
     `when`(it.version).thenReturn(AndroidVersion(30))
+    `when`(it.avdData).thenReturn(immediateFuture(AvdData(avdName, avdName)))
   }
 }

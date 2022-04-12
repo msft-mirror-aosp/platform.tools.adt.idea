@@ -777,9 +777,9 @@ android-studio/plugins/Kotlin/lib/javaslang-match-2.0.6.jar
 android-studio/plugins/Kotlin/lib/javax.inject-1.jar
 android-studio/plugins/Kotlin/lib/jps/kotlin-jps-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlin-common.jar
-android-studio/plugins/Kotlin/lib/kotlin-compiler-common-for-ide-1.6.20-M1-release-for-android-studio.jar
-android-studio/plugins/Kotlin/lib/kotlin-compiler-fe10-for-ide-1.6.20-M1-release-for-android-studio.jar
-android-studio/plugins/Kotlin/lib/kotlin-compiler-ir-for-ide-1.6.20-M1-release-for-android-studio.jar
+android-studio/plugins/Kotlin/lib/kotlin-compiler-common-for-ide-1.6.20-release-for-android-studio.jar
+android-studio/plugins/Kotlin/lib/kotlin-compiler-fe10-for-ide-1.6.20-release-for-android-studio.jar
+android-studio/plugins/Kotlin/lib/kotlin-compiler-ir-for-ide-1.6.20-release-for-android-studio.jar
 android-studio/plugins/Kotlin/lib/kotlin-jps-common.jar
 android-studio/plugins/Kotlin/lib/kotlin-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc_kotlin-reflect.jar
@@ -1397,7 +1397,6 @@ android-studio/plugins/android/lib/libandroid-core-proto.jar
 android-studio/plugins/android/lib/libapp-processes-proto.jar
 android-studio/plugins/android/lib/libjava_sites.jar
 android-studio/plugins/android/lib/libjava_version.jar
-android-studio/plugins/android/lib/liblint-checks-proto.lib.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-host-device-info-proto.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-host-retention-proto.jar
 android-studio/plugins/android/lib/libstudio.android-test-plugin-result-listener-gradle-proto.jar

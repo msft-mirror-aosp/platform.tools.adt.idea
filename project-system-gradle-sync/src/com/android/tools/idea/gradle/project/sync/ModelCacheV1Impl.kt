@@ -70,13 +70,12 @@ import com.android.tools.idea.gradle.model.IdeBuildType
 import com.android.tools.idea.gradle.model.IdeBuildTypeContainer
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeDependenciesInfo
-import com.android.tools.idea.gradle.model.IdeDependency
 import com.android.tools.idea.gradle.model.IdeDependencyCore
 import com.android.tools.idea.gradle.model.IdeFilterData
 import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.IdeLintOptions
 import com.android.tools.idea.gradle.model.IdeMavenCoordinates
-import com.android.tools.idea.gradle.model.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.IdeProductFlavor
 import com.android.tools.idea.gradle.model.IdeProductFlavorContainer
 import com.android.tools.idea.gradle.model.IdeSigningConfig
@@ -107,7 +106,7 @@ import com.android.tools.idea.gradle.model.impl.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeMavenCoordinatesImpl
-import com.android.tools.idea.gradle.model.impl.IdeModuleLibraryImpl
+import com.android.tools.idea.gradle.model.impl.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl
@@ -294,23 +293,23 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
   }
 
   fun createIdeModuleLibrary(library: AndroidLibrary, projectPath: String): LibraryReference {
-    val moduleLibrary = IdeModuleLibraryImpl(
+    val moduleLibrary = IdePreResolvedModuleLibraryImpl(
       buildId = copyNewProperty(library::getBuildId) ?: buildFolderPaths.rootBuildId!!,
       projectPath = projectPath,
       variant = copyNewProperty(library::getProjectVariant),
       lintJar = copyNewProperty(library::getLintJar)?.path?.let(::File),
-      sourceSet = IdeModuleSourceSet.MAIN
+      sourceSet = IdeModuleWellKnownSourceSet.MAIN
     )
     return internedModels.getOrCreate(moduleLibrary)
   }
 
   fun createIdeModuleLibrary(library: JavaLibrary, projectPath: String): LibraryReference {
-    val moduleLibrary = IdeModuleLibraryImpl(
+    val moduleLibrary = IdePreResolvedModuleLibraryImpl(
       buildId = copyNewProperty(library::getBuildId) ?: buildFolderPaths.rootBuildId!!,
       projectPath = projectPath,
       variant = null,
       lintJar = null,
-      sourceSet = IdeModuleSourceSet.MAIN
+      sourceSet = IdeModuleWellKnownSourceSet.MAIN
     )
     return internedModels.getOrCreate(moduleLibrary)
   }
@@ -476,12 +475,12 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
   }
 
   fun libraryFrom(projectPath: String, buildId: String, variantName: String?): IdeDependencyCoreImpl {
-    val core = IdeModuleLibraryImpl(
+    val core = IdePreResolvedModuleLibraryImpl(
       buildId = buildId,
       projectPath = projectPath,
       variant = variantName,
       lintJar = null,
-      sourceSet = IdeModuleSourceSet.MAIN
+      sourceSet = IdeModuleWellKnownSourceSet.MAIN
     )
     return IdeDependencyCoreImpl(internedModels.getOrCreate(core), isProvided = false)
   }

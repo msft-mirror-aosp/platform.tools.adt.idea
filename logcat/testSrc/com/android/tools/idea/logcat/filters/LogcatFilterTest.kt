@@ -16,6 +16,8 @@
 package com.android.tools.idea.logcat.filters
 
 import com.android.ddmlib.Log.LogLevel
+import com.android.ddmlib.Log.LogLevel.ASSERT
+import com.android.ddmlib.Log.LogLevel.ERROR
 import com.android.ddmlib.Log.LogLevel.INFO
 import com.android.ddmlib.Log.LogLevel.WARN
 import com.android.ddmlib.logcat.LogCatMessage
@@ -191,26 +193,22 @@ class LogcatFilterTest {
   }
 
   @Test
-  fun appFilter_emptyMatchesAll() {
+  fun appFilter_emptyMatchesNone() {
     val message1 = logCatMessage(appName = "foo")
     val message2 = logCatMessage(appName = "bar")
     val message3 = logCatMessage(appName = "foobar")
 
-    assertThat(ProjectAppFilter(FakePackageNamesProvider()).filter(listOf(message1, message2, message3)))
-      .containsExactly(
-        message1,
-        message2,
-        message3
-      ).inOrder()
+    assertThat(ProjectAppFilter(FakePackageNamesProvider()).filter(listOf(message1, message2, message3))).isEmpty()
   }
 
   @Test
-  fun appFilter_matechedMessageText() {
-    val message1 = logCatMessage(message = "Message from com.app1")
-    val message2 = logCatMessage(message = "Message from com.app2")
-    val message3 = logCatMessage(message = "Message from com.app3")
+  fun appFilter_matchedMessageText() {
+    val message1 = logCatMessage(logLevel = ASSERT, message = "Assert message from com.app1")
+    val message2 = logCatMessage(logLevel = ERROR, message = "Error message from com.app2")
+    val message3 = logCatMessage(logLevel = WARN, message = "Warning message from com.app2")
+    val message4 = logCatMessage(logLevel = ERROR, message = "Error message from com.app3")
 
-    assertThat(ProjectAppFilter(FakePackageNamesProvider("app1", "app2")).filter(listOf(message1, message2, message3)))
+    assertThat(ProjectAppFilter(FakePackageNamesProvider("app1", "app2")).filter(listOf(message1, message2, message3, message4)))
       .containsExactly(
         message1,
         message2,

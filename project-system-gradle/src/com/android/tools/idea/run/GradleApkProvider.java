@@ -19,8 +19,8 @@ import static com.android.AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE;
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP;
 import static com.android.tools.idea.gradle.util.BuildOutputUtil.getOutputFilesFromListingFile;
 import static com.android.tools.idea.gradle.util.BuildOutputUtil.getOutputListingFile;
-import static com.android.tools.idea.gradle.util.GradleUtil.findModuleByGradlePath;
-import static com.android.tools.idea.gradle.util.GradleUtil.getGradlePath;
+import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getGradleProjectPath;
+import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.resolveIn;
 import static java.util.Collections.emptyList;
 
 import com.android.builder.model.AppBundleProjectBuildOutput;
@@ -59,6 +59,8 @@ import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.projectsystem.AndroidProjectSettingsService;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath;
 import com.android.tools.idea.run.editor.ProfilerState;
 import com.android.tools.idea.sdk.AndroidSdks;
 import com.google.common.annotations.VisibleForTesting;
@@ -383,7 +385,8 @@ public final class GradleApkProvider implements ApkProvider {
 
     ModelCache.V1 modelCache = ModelCache.create();
     if (facet.getConfiguration().getProjectType() == PROJECT_TYPE_INSTANTAPP) {
-      InstantAppProjectBuildOutput outputModel = outputModels.findInstantAppProjectBuildOutput(getGradlePath(facet.getModule()));
+      InstantAppProjectBuildOutput outputModel =
+        outputModels.findInstantAppProjectBuildOutput(getGradlePathAsStringForPostBuildModels(facet.getModule()));
       if (outputModel == null) {
         throw new ApkProvisionException(
           "Couldn't get post build model for Instant Apps. Please, make sure to use plugin 3.0.0-alpha10 or later.");
@@ -397,7 +400,8 @@ public final class GradleApkProvider implements ApkProvider {
     }
     else {
       @SuppressWarnings("deprecation")
-      ProjectBuildOutput outputModel = outputModels.findProjectBuildOutput(getGradlePath(facet.getModule()));
+      ProjectBuildOutput outputModel =
+        outputModels.findProjectBuildOutput(getGradlePathAsStringForPostBuildModels(facet.getModule()));
       if (outputModel == null) {
         throw new ApkProvisionException(
           String.format("Couldn't get post build model. Module: %s Variant: %s", facet.getModule().getName(), variantName));
@@ -452,7 +456,10 @@ public final class GradleApkProvider implements ApkProvider {
       Module targetModule = ApplicationManager.getApplication().runReadAction(
         (Computable<Module>)() -> {
           Project project = myFacet.getModule().getProject();
-          return findModuleByGradlePath(project, targetGradlePath);
+          GradleProjectPath projectPath = getGradleProjectPath(myFacet.getHolderModule());
+          if (projectPath == null) return null;
+          GradleProjectPath targetProjectPath = new GradleHolderProjectPath(projectPath.getBuildRoot(), targetGradlePath);
+          return resolveIn(targetProjectPath, project);
         });
 
       if (targetModule == null) {
@@ -573,7 +580,7 @@ public final class GradleApkProvider implements ApkProvider {
     }
     else {
       apkFiles = collectApkFilesFromPostBuildModel(outputModelProvider,
-                                                   getGradlePath(module),
+                                                   getGradlePathAsStringForPostBuildModels(module),
                                                    androidModel.getSelectedVariant().getName());
     }
 
@@ -691,5 +698,11 @@ public final class GradleApkProvider implements ApkProvider {
                                              Joiner.on(", ").join(abis));
       throw new ApkProvisionException(message);
     }
+  }
+
+  @Nullable
+  private static String getGradlePathAsStringForPostBuildModels(@NotNull Module module) {
+    GradleProjectPath gradleProjectPath = getGradleProjectPath(module);
+    return gradleProjectPath != null ? gradleProjectPath.getPath() : null;
   }
 }
