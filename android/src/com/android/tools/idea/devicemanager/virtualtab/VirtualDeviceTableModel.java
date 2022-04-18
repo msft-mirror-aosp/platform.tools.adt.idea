@@ -18,10 +18,15 @@ package com.android.tools.idea.devicemanager.virtualtab;
 import com.android.annotations.concurrency.UiThread;
 import com.android.sdklib.internal.avd.AvdInfo;
 import com.android.tools.idea.devicemanager.Device;
+import com.android.tools.idea.devicemanager.physicaltab.Key;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.stream.IntStream;
 import javax.swing.table.AbstractTableModel;
 import org.jetbrains.annotations.NotNull;
 
@@ -33,6 +38,7 @@ final class VirtualDeviceTableModel extends AbstractTableModel {
   static final int ACTIONS_MODEL_COLUMN_INDEX = 3;
 
   private @NotNull List<@NotNull AvdInfo> myDevices = Collections.emptyList();
+  private final @NotNull Collection<@NotNull Key> myOnlineDevices = new HashSet<>();
   private final @NotNull Map<@NotNull AvdInfo, @NotNull SizeOnDisk> myDeviceToSizeOnDiskMap = new HashMap<>();
 
   static final class Actions {
@@ -50,6 +56,31 @@ final class VirtualDeviceTableModel extends AbstractTableModel {
   void setDevices(@NotNull List<@NotNull AvdInfo> devices) {
     myDevices = devices;
     fireTableDataChanged();
+  }
+
+  boolean isOnline(@NotNull Key key) {
+    return myOnlineDevices.contains(key);
+  }
+
+  void setOnline(@NotNull Key key, boolean online) {
+    if (isOnline(key) == online) {
+      return;
+    }
+
+    if (online) {
+      myOnlineDevices.add(key);
+    }
+    else {
+      myOnlineDevices.remove(key);
+    }
+
+    Object string = key.toString();
+
+    OptionalInt optionalModelRowIndex = IntStream.range(0, myDevices.size())
+      .filter(modelRowIndex -> myDevices.get(modelRowIndex).getName().equals(string))
+      .findFirst();
+
+    optionalModelRowIndex.ifPresent(modelRowIndex -> fireTableCellUpdated(modelRowIndex, DEVICE_MODEL_COLUMN_INDEX));
   }
 
   @Override
@@ -104,7 +135,7 @@ final class VirtualDeviceTableModel extends AbstractTableModel {
       case DEVICE_MODEL_COLUMN_INDEX:
         return myDevices.get(modelRowIndex);
       case API_MODEL_COLUMN_INDEX:
-        return VirtualDevices.build(myDevices.get(modelRowIndex)).getApi();
+        return VirtualDevices.build(myDevices.get(modelRowIndex), false).getApi();
       case SIZE_ON_DISK_MODEL_COLUMN_INDEX:
         return myDeviceToSizeOnDiskMap.computeIfAbsent(myDevices.get(modelRowIndex), device -> new SizeOnDisk(device, this));
       case ACTIONS_MODEL_COLUMN_INDEX:

@@ -119,7 +119,7 @@ public class DeviceTableCellRenderer<D extends Device> implements TableCellRende
     myNameLabel.setText(getName(device));
 
     myOnlineLabel.setForeground(foreground);
-    setIcon(myOnlineLabel, device.isOnline() ? StudioIcons.Avd.STATUS_DECORATOR_ONLINE : null, selected);
+    setIcon(myOnlineLabel, isOnline(device, table) ? StudioIcons.Avd.STATUS_DECORATOR_ONLINE : null, selected);
 
     myLine2Label.setFont(UIUtil.getLabelFont(FontSize.SMALL));
     myLine2Label.setForeground(brighten(foreground));
@@ -154,6 +154,10 @@ public class DeviceTableCellRenderer<D extends Device> implements TableCellRende
 
   protected @NotNull String getName(@NotNull D device) {
     return device.getName();
+  }
+
+  protected boolean isOnline(@NotNull D device, @NotNull @SuppressWarnings("unused") JTable table) {
+    return device.isOnline();
   }
 
   protected @NotNull String getLine2(@NotNull D device) {
