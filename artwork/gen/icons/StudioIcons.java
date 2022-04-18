@@ -16,6 +16,15 @@ public class StudioIcons {
     return IconLoader.getIcon(path, StudioIcons.class);
   }
 
+  public static class AppQualityInsights {
+    public static final Icon ANR_INLINE = load("/studio/icons/app-quality insights/anr-inline.svg"); // 16x16
+    public static final Icon ANR = load("/studio/icons/app-quality insights/anr.svg"); // 16x16
+    public static final Icon FATAL_INLINE = load("/studio/icons/app-quality insights/fatal-inline.svg"); // 16x16
+    public static final Icon FATAL = load("/studio/icons/app-quality insights/fatal.svg"); // 16x16
+    public static final Icon NON_FATAL_INLINE = load("/studio/icons/app-quality insights/non-fatal-inline.svg"); // 16x16
+    public static final Icon NON_FATAL = load("/studio/icons/app-quality insights/non-fatal.svg"); // 16x16
+  }
+
   public static class Avd {
     public static final Icon CONNECTION_USB = load("/studio/icons/avd/connection-usb.svg"); // 16x16
     public static final Icon CONNECTION_WIFI = load("/studio/icons/avd/connection-wifi.svg"); // 16x16
@@ -647,6 +656,8 @@ public class StudioIcons {
 
   public static class Logcat {
     public static class Toolbar {
+      public static final Icon FAVORITE_FILLED = load("/studio/icons/logcat/toolbar/favorite-filled.svg"); // 16x16
+      public static final Icon FAVORITE_OUTLINE = load("/studio/icons/logcat/toolbar/favorite-outline.svg"); // 16x16
       public static final Icon FILTER_HISTORY = load("/studio/icons/logcat/toolbar/filter-history.svg"); // 16x16
       public static final Icon SETTINGS = load("/studio/icons/logcat/toolbar/settings.svg"); // 16x16
       public static final Icon SNAPSHOT = load("/studio/icons/logcat/toolbar/snapshot.svg"); // 16x16
@@ -831,6 +842,7 @@ public class StudioIcons {
       public static final Icon ANDROID_MODEL = load("/studio/icons/shell/tool-windows/android-model.svg"); // 13x13
       public static final Icon ANDROID_PREVIEW = load("/studio/icons/shell/tool-windows/android-preview.svg"); // 13x13
       public static final Icon ANDROID_PROFILER = load("/studio/icons/shell/tool-windows/android-profiler.svg"); // 13x13
+      public static final Icon APP_QUALITY_INSIGHTS = load("/studio/icons/shell/tool-windows/app-quality-insights.svg"); // 13x13
       public static final Icon ASSISTANT = load("/studio/icons/shell/tool-windows/assistant.svg"); // 13x13
       public static final Icon ATTRIBUTES = load("/studio/icons/shell/tool-windows/attributes.svg"); // 13x13
       public static final Icon BUILD_VARIANTS = load("/studio/icons/shell/tool-windows/build-variants.svg"); // 13x13

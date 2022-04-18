@@ -119,7 +119,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -142,7 +142,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -285,6 +285,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
             Scope                         : Test
         ORDER_ENTRY                   : kotlinMultiPlatform.app.main
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
         ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
         Classes
             -                             : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.app.androidTest
@@ -315,7 +316,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -338,7 +339,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -432,6 +433,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
         ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
         Classes
             -                             : file://<PROJECT>/build/classes/production/kotlinMultiPlatform.app.main
@@ -464,7 +466,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -487,7 +489,7 @@ PROJECT                       : kotlinMultiPlatform
                 languageVersion               : 1.6
                 - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
@@ -609,6 +611,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
             Scope                         : Test
         ORDER_ENTRY                   : kotlinMultiPlatform.app.main
+        ORDER_ENTRY                   : kotlinMultiPlatform.module2.commonMain
         ORDER_ENTRY                   : kotlinMultiPlatform.module2.main
         Classes
             -                             : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.app.unitTest
@@ -870,7 +873,7 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (1.8)/JS/Native (general)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/commonMain [-]
+        CONENT_ENTRY                  : file://<PROJECT>/module2/src/commonMain
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/commonMain/resources [-]
         JDK                           : <NAME_CUT> KotlinSDK
         *isInherited                  : false

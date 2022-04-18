@@ -630,7 +630,7 @@ public final class StudioFlags {
     "coroutine.debugger.enable",
     "Enable Coroutine Debugger",
     "Enables the Coroutine Debugger, that shows up as a panel in the debugger when debugging an app that uses coroutines",
-    true
+    false
   );
 
   public static final Flag<Boolean> LOGCAT_EXPRESSION_FILTER_ENABLE = Flag.create(
@@ -1255,7 +1255,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_MULTIPREVIEW = Flag.create(
     COMPOSE, "preview.multipreview.enabled", "Enable Compose Multipreview",
     "If enabled, annotation classes annotated with Preview, and its usages, will be considered when finding Previews in a file",
-    false);
+    true);
   //endregion
 
   // region App Inspection

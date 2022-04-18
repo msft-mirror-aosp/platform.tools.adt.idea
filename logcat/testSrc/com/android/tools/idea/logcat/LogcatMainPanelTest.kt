@@ -35,6 +35,7 @@ import com.android.tools.idea.FakeAndroidProjectDetector
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
+import com.android.tools.idea.logcat.filters.AndroidLogcatFilterHistory
 import com.android.tools.idea.logcat.filters.LogcatFilterField.IMPLICIT_LINE
 import com.android.tools.idea.logcat.filters.LogcatFilterField.LINE
 import com.android.tools.idea.logcat.filters.ProjectAppFilter
@@ -273,6 +274,7 @@ class LogcatMainPanelTest {
     }
     val logcatMainPanel = logcatMainPanel(popupActionGroup = popupActionGroup).apply {
       size = Dimension(100, 100)
+      editor.document.setText("foo") // put some text so 'Fold Lines Like This' is enabled
     }
     val fakeUi = FakeUi(logcatMainPanel, createFakeWindow = true)
 
@@ -281,6 +283,8 @@ class LogcatMainPanelTest {
     val popupMenu = popupRule.popupContents as JPopupMenu
 
     assertThat(popupMenu.components.map { if (it is JPopupMenu.Separator) "-" else (it as ActionMenuItem).text }).containsExactly(
+      "Fold Lines Like This",
+      "-",
       "An Action",
       "-",
       "Clear Logcat",
@@ -321,7 +325,7 @@ class LogcatMainPanelTest {
 
     logcatMainPanel.clearMessageView()
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, TIMEOUT_SEC, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEmpty()
     assertThat(logcatMainPanel.messageBacklog.get().messages).isEmpty()
@@ -337,14 +341,14 @@ class LogcatMainPanelTest {
     fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
     }
 
     projectRule.project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, TIMEOUT_SEC, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEmpty()
   }
@@ -362,14 +366,14 @@ class LogcatMainPanelTest {
 
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
         it.editor.document.setText("not-empty")
       }
     }
 
     projectRule.project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device2)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, TIMEOUT_SEC, SECONDS)
     runInEdtAndWait { }
     assertThat(logcatMainPanel.editor.document.text).isEqualTo("not-empty")
   }
@@ -383,7 +387,7 @@ class LogcatMainPanelTest {
     fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
       }
     }
     assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
@@ -398,7 +402,7 @@ class LogcatMainPanelTest {
     fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
       }
     }
     assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
@@ -413,7 +417,7 @@ class LogcatMainPanelTest {
     fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
       }
     }
     assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
@@ -428,7 +432,7 @@ class LogcatMainPanelTest {
     fakeAdbLibSession.hostServices.setDevices(testDevice)
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(adbAdapter = fakeAdbAdapter, adbSession = fakeAdbLibSession).also {
-        waitForCondition(1, SECONDS) { it.deviceManager != null }
+        waitForCondition(TIMEOUT_SEC, SECONDS) { it.deviceManager != null }
       }
     }
     assertThat(logcatMainPanel.deviceManager?.device).isEqualTo(device)
@@ -554,6 +558,29 @@ class LogcatMainPanelTest {
 
   @RunsInEdt
   @Test
+  fun defaultFilter() {
+    AndroidLogcatSettings.getInstance().defaultFilter = "foo"
+
+    val logcatMainPanel = logcatMainPanel(state = null)
+
+    assertThat(logcatMainPanel.headerPanel.getFilterText()).isEqualTo("foo")
+  }
+
+  @RunsInEdt
+  @Test
+  fun defaultFilter_mostRecentlyUsed() {
+    val androidLogcatSettings = AndroidLogcatSettings.getInstance()
+    androidLogcatSettings.defaultFilter = "foo"
+    androidLogcatSettings.mostRecentlyUsedFilterIsDefault = true
+    AndroidLogcatFilterHistory.getInstance().mostRecentlyUsed = "bar"
+
+    val logcatMainPanel = logcatMainPanel(state = null)
+
+    assertThat(logcatMainPanel.headerPanel.getFilterText()).isEqualTo("bar")
+  }
+
+  @RunsInEdt
+  @Test
   fun appliesState_noState_nonAndroidProject() {
     val logcatMainPanel = logcatMainPanel(state = null, androidProjectDetector = FakeAndroidProjectDetector(false))
 
@@ -572,7 +599,7 @@ class LogcatMainPanelTest {
 
     runInEdtAndWait(logcatMainPanel::reloadMessages)
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, TIMEOUT_SEC, SECONDS)
 
     logcatMainPanel.messageProcessor.onIdle {
       assertThat(logcatMainPanel.editor.document.text)
@@ -649,7 +676,7 @@ class LogcatMainPanelTest {
       logcatMainPanel.formattingOptions = COMPACT.formattingOptions
     }
 
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, TIMEOUT_SEC, SECONDS)
     logcatMainPanel.messageProcessor.onIdle {
       assertThat(logcatMainPanel.editor.document.text.trim()).isEqualTo("04:00:01.000  W  message1")
     }

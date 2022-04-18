@@ -1302,115 +1302,78 @@ MODULE                        : My_First_App.app
                 Level2Dependencies
                     dependencies                  : IdeDependenciesImpl
                         - androidLibraries            : androidx.appcompat:appcompat:1.0.2@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.appcompat:appcompat:1.0.2@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.arch.core:core-runtime:2.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.arch.core:core-runtime:2.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.constraintlayout:constraintlayout:1.1.3@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.constraintlayout:constraintlayout:1.1.3@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.coordinatorlayout:coordinatorlayout:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.coordinatorlayout:coordinatorlayout:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.core:core:1.0.1@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.core:core:1.0.1@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.cursoradapter:cursoradapter:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.cursoradapter:cursoradapter:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.customview:customview:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.customview:customview:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.documentfile:documentfile:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.documentfile:documentfile:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.drawerlayout:drawerlayout:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.drawerlayout:drawerlayout:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.fragment:fragment:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.fragment:fragment:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.interpolator:interpolator:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.interpolator:interpolator:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.legacy:legacy-support-core-ui:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.legacy:legacy-support-core-ui:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.legacy:legacy-support-core-utils:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.legacy:legacy-support-core-utils:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.lifecycle:lifecycle-livedata:2.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.lifecycle:lifecycle-livedata:2.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.lifecycle:lifecycle-runtime:2.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.lifecycle:lifecycle-runtime:2.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.loader:loader:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.loader:loader:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.print:print:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.print:print:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.slidingpanelayout:slidingpanelayout:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.slidingpanelayout:slidingpanelayout:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.swiperefreshlayout:swiperefreshlayout:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.swiperefreshlayout:swiperefreshlayout:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.vectordrawable:vectordrawable:1.0.1@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.vectordrawable:vectordrawable:1.0.1@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.versionedparcelable:versionedparcelable:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.versionedparcelable:versionedparcelable:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - androidLibraries            : androidx.viewpager:viewpager:1.0.0@aar (IdeAndroidLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.viewpager:viewpager:1.0.0@aar (IdeAndroidLibraryImpl) (*seen*)
                         - javaLibraries               : androidx.annotation:annotation:1.0.0 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.annotation:annotation:1.0.0 (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : androidx.arch.core:core-common:2.0.0 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.arch.core:core-common:2.0.0 (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : androidx.collection:collection:1.0.0 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.collection:collection:1.0.0 (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : androidx.constraintlayout:constraintlayout-solver:1.1.3 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.constraintlayout:constraintlayout-solver:1.1.3 (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : androidx.lifecycle:lifecycle-common:2.0.0 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : androidx.lifecycle:lifecycle-common:2.0.0 (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : org.jetbrains.kotlin:kotlin-android-extensions-runtime:<KOTLIN_VERSION> (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : org.jetbrains.kotlin:kotlin-android-extensions-runtime:<KOTLIN_VERSION> (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : org.jetbrains.kotlin:kotlin-stdlib-common:<KOTLIN_VERSION> (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : org.jetbrains.kotlin:kotlin-stdlib-common:<KOTLIN_VERSION> (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION> (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION> (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> (IdeJavaLibraryImpl) (*seen*)
                         - javaLibraries               : org.jetbrains:annotations:13.0 (IdeJavaLibraryDependencyImpl)
-                            isProvided                    : true
                             target                        : org.jetbrains:annotations:13.0 (IdeJavaLibraryImpl) (*seen*)
                         - moduleDependencies          : IdeModuleDependencyImpl
                             target                        : <ROOT>/firstapp::app@debug (IdeModuleLibraryImpl)
@@ -1425,6 +1388,44 @@ MODULE                        : My_First_App.app
                                 projectPath                   : :app:mysharedlibrary
                                 sourceSet                     : MAIN
                                 variant                       : debug
+                ProvidedDependencies
+                    - provided                    : androidx.annotation:annotation:1.0.0
+                    - provided                    : androidx.appcompat:appcompat:1.0.2@aar
+                    - provided                    : androidx.arch.core:core-common:2.0.0
+                    - provided                    : androidx.arch.core:core-runtime:2.0.0@aar
+                    - provided                    : androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar
+                    - provided                    : androidx.collection:collection:1.0.0
+                    - provided                    : androidx.constraintlayout:constraintlayout-solver:1.1.3
+                    - provided                    : androidx.constraintlayout:constraintlayout:1.1.3@aar
+                    - provided                    : androidx.coordinatorlayout:coordinatorlayout:1.0.0@aar
+                    - provided                    : androidx.core:core:1.0.1@aar
+                    - provided                    : androidx.cursoradapter:cursoradapter:1.0.0@aar
+                    - provided                    : androidx.customview:customview:1.0.0@aar
+                    - provided                    : androidx.documentfile:documentfile:1.0.0@aar
+                    - provided                    : androidx.drawerlayout:drawerlayout:1.0.0@aar
+                    - provided                    : androidx.fragment:fragment:1.0.0@aar
+                    - provided                    : androidx.interpolator:interpolator:1.0.0@aar
+                    - provided                    : androidx.legacy:legacy-support-core-ui:1.0.0@aar
+                    - provided                    : androidx.legacy:legacy-support-core-utils:1.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.0.0
+                    - provided                    : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-runtime:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
+                    - provided                    : androidx.loader:loader:1.0.0@aar
+                    - provided                    : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar
+                    - provided                    : androidx.print:print:1.0.0@aar
+                    - provided                    : androidx.slidingpanelayout:slidingpanelayout:1.0.0@aar
+                    - provided                    : androidx.swiperefreshlayout:swiperefreshlayout:1.0.0@aar
+                    - provided                    : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar
+                    - provided                    : androidx.vectordrawable:vectordrawable:1.0.1@aar
+                    - provided                    : androidx.versionedparcelable:versionedparcelable:1.0.0@aar
+                    - provided                    : androidx.viewpager:viewpager:1.0.0@aar
+                    - provided                    : org.jetbrains.kotlin:kotlin-android-extensions-runtime:1.6.20
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib-common:1.6.20
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.20
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib:1.6.20
+                    - provided                    : org.jetbrains:annotations:13.0
                 SigningConfigName             : debug
                 IsSigned                      : true
                 CodeShrinker                  : null
@@ -1550,8 +1551,8 @@ MODULE                        : My_First_App.app
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-android-extensions-runtime-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/fragment-1.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/vectordrawable-animated-1.0.0-api.jar
@@ -1603,10 +1604,10 @@ MODULE                        : My_First_App.app
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -1646,8 +1647,8 @@ MODULE                        : My_First_App.app
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/interpolator-1.0.0-api.jar
                     - classpath                   : <M2>/androidx/annotation/annotation/1.0.0/annotation-1.0.0.jar
                     - classpath                   : <M2>/androidx/constraintlayout/constraintlayout-solver/1.1.3/constraintlayout-solver-1.1.3.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugAndroidTest
                     - friendPaths                 : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debug [-]
@@ -1670,10 +1671,10 @@ MODULE                        : My_First_App.app
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -1683,8 +1684,8 @@ MODULE                        : My_First_App.app
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-android-extensions-runtime-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/fragment-1.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/vectordrawable-animated-1.0.0-api.jar
@@ -1739,26 +1740,26 @@ MODULE                        : My_First_App.app
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debugUnitTest/kotlin [-]
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : My_First_App.app.androidTest
@@ -2304,8 +2305,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-android-extensions-runtime-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/fragment-1.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/vectordrawable-animated-1.0.0-api.jar
@@ -2355,10 +2356,10 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -2366,8 +2367,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-android-extensions-runtime-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/fragment-1.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/vectordrawable-animated-1.0.0-api.jar
@@ -2420,10 +2421,10 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -2433,8 +2434,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-android-extensions-runtime-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/annotations-13.0.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/fragment-1.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/vectordrawable-animated-1.0.0-api.jar
@@ -2487,26 +2488,26 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-daemon-embeddable/<KOTLIN_VERSION>/kotlin-daemon-embeddable-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20181211/trove4j-1.0.20181211.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.10
+                pluginVersion                 : 1.6.20
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debugUnitTest/kotlin [-]
     externalProject               : :app:mysharedlibrary (DefaultExternalProject) (*seen*)
 MODULE                        : My_First_App.app.mysharedlibrary.androidTest

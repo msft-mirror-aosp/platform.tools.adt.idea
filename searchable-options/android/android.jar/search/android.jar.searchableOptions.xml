@@ -715,13 +715,6 @@
     <option name="run" hit="Show application logcat messages in Run Console" />
     <option name="show" hit="Show application logcat messages in Run Console" />
   </configurable>
-  <configurable id="project.propDebugger" configurable_name="Debugger">
-    <option name="coroutine" hit="Coroutine Debugger" />
-    <option name="debugger" hit="Coroutine Debugger" />
-    <option name="coroutine" hit="Enable coroutine debugger" />
-    <option name="debugger" hit="Enable coroutine debugger" />
-    <option name="enable" hit="Enable coroutine debugger" />
-  </configurable>
   <configurable id="emulator" configurable_name="Emulator">
     <option name="" hit=" Enabling this setting will cause Android Emulator to launch in a tool window. Otherwise Android Emulator will launch as a standalone application." />
     <option name="a" hit=" Enabling this setting will cause Android Emulator to launch in a tool window. Otherwise Android Emulator will launch as a standalone application." />
@@ -1027,11 +1020,25 @@
   <configurable id="com.android.tools.idea.logcat.settings.LogcatApplicationSettingsConfigurableProvider" configurable_name="Logcat">
     <option name="" hit=" KB" />
     <option name="kb" hit=" KB" />
+    <option name="default" hit="Default filter for new Logcat windows:" />
+    <option name="filter" hit="Default filter for new Logcat windows:" />
+    <option name="for" hit="Default filter for new Logcat windows:" />
+    <option name="logcat" hit="Default filter for new Logcat windows:" />
+    <option name="new" hit="Default filter for new Logcat windows:" />
+    <option name="windows" hit="Default filter for new Logcat windows:" />
     <option name="logcat" hit="Logcat" />
     <option name="buffer" hit="Logcat cycle buffer size:" />
     <option name="cycle" hit="Logcat cycle buffer size:" />
     <option name="logcat" hit="Logcat cycle buffer size:" />
     <option name="size" hit="Logcat cycle buffer size:" />
+    <option name="as" hit="Use most-recently-used filter as the default" />
+    <option name="default" hit="Use most-recently-used filter as the default" />
+    <option name="filter" hit="Use most-recently-used filter as the default" />
+    <option name="most" hit="Use most-recently-used filter as the default" />
+    <option name="recently" hit="Use most-recently-used filter as the default" />
+    <option name="the" hit="Use most-recently-used filter as the default" />
+    <option name="use" hit="Use most-recently-used filter as the default" />
+    <option name="used" hit="Use most-recently-used filter as the default" />
   </configurable>
   <configurable id="device.file.explorer" configurable_name="Device File Explorer">
     <option name="device" hit="Device File Explorer" />

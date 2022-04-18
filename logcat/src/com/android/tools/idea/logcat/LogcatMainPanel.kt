@@ -31,11 +31,13 @@ import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Custom
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Preset
 import com.android.tools.idea.logcat.actions.ClearLogcatAction
+import com.android.tools.idea.logcat.actions.LogcatFoldLinesLikeThisAction
 import com.android.tools.idea.logcat.actions.LogcatFormatAction
 import com.android.tools.idea.logcat.actions.LogcatToggleUseSoftWrapsToolbarAction
 import com.android.tools.idea.logcat.actions.NextOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.PreviousOccurrenceToolbarAction
 import com.android.tools.idea.logcat.devices.Device
+import com.android.tools.idea.logcat.filters.AndroidLogcatFilterHistory
 import com.android.tools.idea.logcat.filters.LogcatFilter
 import com.android.tools.idea.logcat.filters.LogcatFilterParser
 import com.android.tools.idea.logcat.filters.LogcatMasterFilter
@@ -79,7 +81,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.actions.ScrollToTheEndToolbarAction
-import com.intellij.openapi.editor.actions.SplitLineAction
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.util.EditorUtil
@@ -87,7 +88,6 @@ import com.intellij.openapi.editor.impl.ContextMenuPopupHandler
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.tools.SimpleActionGroup
-import com.intellij.util.alsoIfNull
 import com.intellij.util.ui.components.BorderLayoutPanel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
@@ -106,8 +106,6 @@ import kotlin.math.max
 // This is probably a massive overkill as we do not expect this many tags/packages in a real Logcat
 private const val MAX_TAGS = 1000
 private const val MAX_PACKAGE_NAMES = 1000
-
-private const val DEFAULT_FILTER = "package:mine"
 
 /**
  * The top level Logcat panel.
@@ -164,7 +162,7 @@ internal class LogcatMainPanel(
     project,
     logcatPresenter = this,
     packageNamesProvider,
-    state?.filter ?: if (androidProjectDetector.isAndroidProject(project)) DEFAULT_FILTER else "",
+    state?.filter ?: getDefaultFilter(project, androidProjectDetector),
     state?.device,
     adbSession,
   )
@@ -189,7 +187,6 @@ internal class LogcatMainPanel(
       installPopupHandler(object : ContextMenuPopupHandler() {
         override fun getActionGroup(event: EditorMouseEvent): ActionGroup = getPopupActionGroup(popupActionGroup.getChildren(null))
       })
-      gutterComponentEx.isVisible = false
       settings.isUseSoftWraps = state?.isSoftWrap ?: false
     }
 
@@ -229,10 +226,16 @@ internal class LogcatMainPanel(
 
   private fun getPopupActionGroup(actions: Array<AnAction>): ActionGroup {
     return SimpleActionGroup().apply {
+      add(LogcatFoldLinesLikeThisAction(editor))
+      add(Separator.create())
       actions.forEach { add(it) }
       add(Separator.create())
       add(ClearLogcatAction(this@LogcatMainPanel))
     }
+  }
+
+  override fun foldImmediately() {
+    foldingDetector.detectFoldings(0, editor.document.lineCount - 1)
   }
 
   /**
@@ -489,3 +492,12 @@ private fun FormattingConfig?.toUsageTracking(): LogcatFormatConfiguration {
 }
 
 private fun FormattingOptions.Style.toUsageTracking() = if (this == FormattingOptions.Style.STANDARD) STANDARD else COMPACT
+
+private fun getDefaultFilter(project: Project, androidProjectDetector: AndroidProjectDetector): String {
+  val logcatSettings = AndroidLogcatSettings.getInstance()
+  val filter = when {
+    logcatSettings.mostRecentlyUsedFilterIsDefault -> AndroidLogcatFilterHistory.getInstance().mostRecentlyUsed
+    else -> logcatSettings.defaultFilter
+  }
+  return if (!androidProjectDetector.isAndroidProject(project) && filter.contains("package:mine")) "" else filter
+}

@@ -24,6 +24,7 @@ import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowButt
 import com.android.tools.idea.devicemanager.ActivateDeviceFileExplorerWindowValue;
 import com.android.tools.idea.devicemanager.ApiTableCellRenderer;
 import com.android.tools.idea.devicemanager.Device;
+import com.android.tools.idea.devicemanager.DeviceManagerFutureCallback;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
 import com.android.tools.idea.devicemanager.DeviceTable;
 import com.android.tools.idea.devicemanager.Devices;
@@ -40,12 +41,10 @@ import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.concurrency.EdtExecutorService;
-import java.awt.Component;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,7 +58,6 @@ import javax.swing.RowSorter;
 import javax.swing.RowSorter.SortKey;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.JTableHeader;
-import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
@@ -73,12 +71,14 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   private @Nullable IDeviceChangeListener myListener;
 
   @VisibleForTesting
-  static final class SetDevices implements FutureCallback<List<VirtualDevice>> {
+  static final class SetDevices extends DeviceManagerFutureCallback<List<VirtualDevice>> {
     private final @NotNull VirtualDeviceTable myTable;
     private final @Nullable Key myKey;
 
     @VisibleForTesting
     SetDevices(@NotNull VirtualDeviceTable table, @Nullable Key key) {
+      super(VirtualDeviceTable.class);
+
       myTable = table;
       myKey = key;
     }
@@ -99,11 +99,6 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
 
       DeviceManagerUsageTracker.log(event);
     }
-
-    @Override
-    public void onFailure(@NotNull Throwable throwable) {
-      Logger.getInstance(VirtualDeviceTable.class).warn(throwable);
-    }
   }
 
   @VisibleForTesting
@@ -112,6 +107,7 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   }
 
   VirtualDeviceTable(@NotNull VirtualDevicePanel panel) {
+    // noinspection ConstantConditions
     this(panel, new VirtualDeviceAsyncSupplier(), SetDevices::new);
   }
 
@@ -166,7 +162,7 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   }
 
   private void initListener() {
-    myListener = new VirtualDeviceChangeListener();
+    myListener = new VirtualDeviceChangeListener(getModel());
     AndroidDebugBridge.addDeviceChangeListener(myListener);
   }
 
@@ -307,17 +303,5 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
 
   void refreshAvdsAndSelect(@Nullable Key key) {
     FutureUtils.addCallback(myAsyncSupplier.get(), EdtExecutorService.getInstance(), myNewSetDevices.apply(this, key));
-  }
-
-  // TODO: Remove together with the icon update side effect in getTableCellEditorComponent
-  //       when the update is changed to be triggered by a device state change event.
-  public Component getEditorComponent() {
-    TableCellEditor cellEditor = getCellEditor();
-    if (cellEditor instanceof LaunchInEmulatorButtonTableCellEditor) {
-      // Trigger icon update that is a side effect of calling getTableCellEditorComponent.
-      LaunchInEmulatorButtonTableCellEditor editor = (LaunchInEmulatorButtonTableCellEditor)cellEditor;
-      editor.getTableCellEditorComponent(this, LaunchInEmulatorValue.INSTANCE, true, getEditingRow(), getEditingColumn());
-    }
-    return super.getEditorComponent();
   }
 }

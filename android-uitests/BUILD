@@ -198,6 +198,7 @@ maven_repository(
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.5.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.6.20",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.5.21",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.6.10",
@@ -1823,9 +1824,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.AndroidVectorDrawableToolTest"],
     tags = COMMON_TAGS + [
-        "qa_fast",
-        "qa_unreliable",  # b/115539594
-        "qa_fast_unreliable",  # b/115539594
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
