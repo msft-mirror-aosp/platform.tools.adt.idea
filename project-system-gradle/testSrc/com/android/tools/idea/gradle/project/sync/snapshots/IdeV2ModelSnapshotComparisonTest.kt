@@ -29,6 +29,7 @@ import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.saveAndDump
 import com.google.common.truth.Truth
+import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.PathUtil
 import org.jetbrains.android.AndroidTestBase
@@ -59,7 +60,8 @@ class IdeV2ModelSnapshotComparisonTest : GradleIntegrationTest, SnapshotComparis
     val template: String,
     val pathToOpen: String = "",
     val skipV1toV2Comparison: Boolean = false,
-    val v1toV2PropertiesToSkip: Set<String> = emptySet()
+    val v1toV2PropertiesToSkip: Set<String> = emptySet(),
+    val patch: (projectRoot: File) -> Unit = {}
   ) {
     override fun toString(): String = "${template.removePrefix("projects/")}$pathToOpen"
   }
@@ -75,7 +77,9 @@ class IdeV2ModelSnapshotComparisonTest : GradleIntegrationTest, SnapshotComparis
       TestProject(TestProjectToSnapshotPaths.WITH_GRADLE_METADATA),
       TestProject(TestProjectToSnapshotPaths.BASIC_CMAKE_APP),
       TestProject(TestProjectToSnapshotPaths.PSD_SAMPLE_GROOVY),
-      TestProject(TestProjectToSnapshotPaths.COMPOSITE_BUILD),
+      TestProject(TestProjectToSnapshotPaths.COMPOSITE_BUILD) { projectRoot ->
+        truncateForV2(projectRoot.resolve("settings.gradle"))
+      },
       TestProject(TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SETS, "/application"),
       TestProject(TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES, skipV1toV2Comparison = true),
       TestProject(TestProjectToSnapshotPaths.LINKED, "/firstapp"),
@@ -87,6 +91,7 @@ class IdeV2ModelSnapshotComparisonTest : GradleIntegrationTest, SnapshotComparis
         TestProjectToSnapshotPaths.TEST_ONLY_MODULE,
         v1toV2PropertiesToSkip =
         setOf(
+          "moduleDependencies",
           "moduleDependencies/target",
           "moduleDependencies/target/buildId",
           "moduleDependencies/target/projectPath",
@@ -122,6 +127,7 @@ class IdeV2ModelSnapshotComparisonTest : GradleIntegrationTest, SnapshotComparis
       projectName.template,
       "project"
     )
+    projectName.patch(root)
     CapturePlatformModelsProjectResolverExtension.registerTestHelperProjectResolver(projectRule.fixture.testRootDisposable)
     openPreparedProject("project${testProjectName?.pathToOpen}") { project ->
       val dump = project.saveAndDump(mapOf("ROOT" to root)) { project, projectDumper ->
@@ -164,10 +170,11 @@ class IdeV2ModelSnapshotComparisonTest : GradleIntegrationTest, SnapshotComparis
       .nameProperties()
       .filter { (property, line) ->
         !PROPERTIES_TO_SKIP.any { property.endsWith(it) } &&
+        !ENTITIES_TO_SKIP.any { property.contains(it) } &&
         !testProjectName!!.v1toV2PropertiesToSkip.any { property.endsWith(it) }
       }
       .filter { (property, line) -> !VALUES_TO_SUPPRESS.any { property.endsWith(it.key) and it.value.any { value -> line.contains(value) } } }
-      .map { it.second }
+      .map { it.first + " <> " + it.second }
       .joinToString(separator = "\n")
 
 }
@@ -178,15 +185,17 @@ private fun Sequence<String>.nameProperties() = nameProperties(this)
  * we skip:
  * [IdeAndroidLibrary.lintJar] because in V2 we do check that the jar exists before populating the property.
  * [ModelSyncFile] as these are not present in V1.
+ * [runetimeClasspath] as it is not available in V1.
  *
  */
 private val PROPERTIES_TO_SKIP = setOf(
-  "/Level2Dependencies/dependencies/androidLibraries/target/lintJar",
-  "/Level2Dependencies/dependencies/moduleDependencies/target/artifact",
-  "/ModelSyncFile",
-  "/ModelSyncFile/Type",
-  "/ModelSyncFile/TaskName",
-  "/ModelSyncFile/File",
+  "/Dependencies/compileClasspath/androidLibraries/target/lintJar",
+)
+
+private val ENTITIES_TO_SKIP = setOf(
+  "/Dependencies/compileClasspath/moduleDependencies/target",
+  "/Dependencies/runtimeClasspath",
+  "/MainArtifact/ModelSyncFile",
 )
 
 /**
@@ -197,7 +206,13 @@ private val PROPERTIES_TO_SKIP = setOf(
  * AndroidLibrary.ArtifactAddress: the same rules from above apply to ArtifactAddress as well, plus the distinction of local aars paths.
  */
 private val VALUES_TO_SUPPRESS = mapOf(
-  "/Level2Dependencies/dependencies/androidLibraries" to listOf("__wrapped_aars__", "artifacts"),
-  "/Level2Dependencies/dependencies/androidLibraries/target" to listOf("__wrapped_aars__", "artifacts"),
-  "/Level2Dependencies/dependencies/androidLibraries/target/artifactAddress" to listOf("__local_aars__", "__wrapped_aars__", "artifacts")
+  "/Dependencies/compileClasspath/androidLibraries" to listOf("__wrapped_aars__", "artifacts"),
+  "/Dependencies/compileClasspath/androidLibraries/target" to listOf("__wrapped_aars__", "artifacts"),
+  "/Dependencies/compileClasspath/androidLibraries/target/artifactAddress" to listOf("__local_aars__", "__wrapped_aars__", "artifacts")
 )
+
+private fun truncateForV2(settingsFile: File) {
+  val patchedText = settingsFile.readLines().takeWhile { !it.contains("//-v2:truncate-from-here") }.joinToString("\n")
+  assertThat(patchedText.trim()).isNotEqualTo(settingsFile.readText().trim())
+  settingsFile.writeText(patchedText)
+}

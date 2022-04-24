@@ -16,13 +16,17 @@
 package com.android.tools.idea.adb.processnamemonitor
 
 import com.android.ddmlib.IDevice
+import com.android.tools.idea.concurrency.waitForCondition
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import kotlinx.coroutines.test.TestCoroutineScope
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.TimeUnit.SECONDS
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Tests for [ProcessNameClientMonitor]
@@ -49,8 +53,8 @@ class ProcessNameClientMonitorTest {
 
       flows.sendClientEvents(
         device.serialNumber,
-        addedEvent(process1, process2),
-        addedEvent(process3),
+        clientsAddedEvent(process1, process2),
+        clientsAddedEvent(process3),
       )
 
       advanceUntilIdle()
@@ -67,8 +71,8 @@ class ProcessNameClientMonitorTest {
 
       flows.sendClientEvents(
         device.serialNumber,
-        addedEvent(process1, process2, process3),
-        removedEvent(1, 2, 3),
+        clientsAddedEvent(process1, process2, process3),
+        clientsRemovedEvent(1, 2, 3),
       )
 
       advanceUntilIdle()
@@ -85,7 +89,7 @@ class ProcessNameClientMonitorTest {
 
       flows.sendClientEvents(
         device.serialNumber,
-        addedEvent(process1, process2, process3),
+        clientsAddedEvent(process1, process2, process3),
         clientMonitorEvent(listOf(process4, process5), listOf(1, 2, 3)),
       )
 
@@ -106,7 +110,7 @@ class ProcessNameClientMonitorTest {
       val newProcess1 = ProcessInfo(process1.pid, "newPackage1", "newProcess1")
       flows.sendClientEvents(
         device.serialNumber,
-        addedEvent(process1, process2, process3),
+        clientsAddedEvent(process1, process2, process3),
         clientMonitorEvent(listOf(process4, newProcess1), listOf(1, 2, 3)),
       )
 
@@ -126,9 +130,9 @@ class ProcessNameClientMonitorTest {
       val newProcess1 = ProcessInfo(process1.pid, "newPackage1", "newProcess1")
       flows.sendClientEvents(
         device.serialNumber,
-        addedEvent(process1, process2, process3),
-        removedEvent(1, 2, 3),
-        addedEvent(process4, newProcess1),
+        clientsAddedEvent(process1, process2, process3),
+        clientsRemovedEvent(1, 2, 3),
+        clientsAddedEvent(process4, newProcess1),
       )
 
       advanceUntilIdle()
@@ -139,10 +143,20 @@ class ProcessNameClientMonitorTest {
     }
   }
 
+  @Test
+  fun dispose_closesFlow() {
+    val flows = TerminationTrackingProcessNameMonitorFlows()
+    val monitor = ProcessNameClientMonitor(projectRule.project, device, flows).apply { start() }
+    waitForCondition(5, SECONDS) {flows.isClientFlowStarted(device.serialNumber)}
+    Disposer.dispose(monitor)
+
+    waitForCondition(5, SECONDS) { flows.isClientFlowTerminated(device.serialNumber) }
+  }
 
   private fun TestCoroutineScope.processNameClientMonitor(
     device: IDevice = this@ProcessNameClientMonitorTest.device,
     flows: ProcessNameMonitorFlows = FakeProcessNameMonitorFlows(),
+    coroutineContext: CoroutineContext = this.coroutineContext,
     maxPids: Int = 10
   ): ProcessNameClientMonitor {
     return ProcessNameClientMonitor(
@@ -154,30 +168,3 @@ class ProcessNameClientMonitorTest {
       .apply { start() }
   }
 }
-
-private data class ProcessInfo(val pid: Int, val packageName: String, val processName: String) {
-  val names = ProcessNames(packageName, processName)
-  val asMapEntry = pid to names
-}
-
-/**
- * Convenience ClientMonitorEvent creation with just added processes
- */
-private fun addedEvent(vararg added: ProcessInfo): ClientMonitorEvent {
-  return ClientMonitorEvent(added.associate { it.asMapEntry }, emptyList())
-}
-
-/**
- * Convenience ClientMonitorEvent creation with just removed processes
- */
-private fun removedEvent(vararg removed: Int): ClientMonitorEvent {
-  return ClientMonitorEvent(emptyMap(), removed.asList())
-}
-
-/**
- * Convenience ClientMonitorEvent creation
- */
-private fun clientMonitorEvent(added: List<ProcessInfo>, removed: List<Int>): ClientMonitorEvent {
-  return ClientMonitorEvent(added.associate { it.asMapEntry }, removed)
-}
-

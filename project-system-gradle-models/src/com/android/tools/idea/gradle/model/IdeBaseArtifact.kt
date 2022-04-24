@@ -82,5 +82,6 @@ interface IdeBaseArtifactCore : Serializable {
 }
 
 interface IdeBaseArtifact: IdeBaseArtifactCore {
-  val level2Dependencies: IdeDependencies
+  val compileClasspath: IdeDependencies
+  val runtimeClasspath: IdeDependencies
 }

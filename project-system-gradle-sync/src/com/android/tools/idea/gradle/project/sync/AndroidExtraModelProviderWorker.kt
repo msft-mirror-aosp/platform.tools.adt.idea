@@ -54,7 +54,6 @@ import org.gradle.tooling.model.idea.IdeaProject
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradleModel
 import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
-import java.io.File
 import java.util.LinkedList
 import com.android.builder.model.v2.ide.Variant as V2Variant
 import com.android.builder.model.v2.models.AndroidProject as V2AndroidProject
@@ -184,8 +183,8 @@ internal class AndroidExtraModelProviderWorker(
       // Requesting ProjectSyncIssues must be performed "last" since all other model requests may produces additional issues.
       // Note that "last" here means last among Android models since many non-Android models are requested after this point.
       populateProjectSyncIssues(androidModules, canFetchV2Models)
-
-      return modules + GradleProject(buildModel, modelCache.createLibraryTable())
+      modelCache.prepare()
+      return modules.map { it.prepare() } + GradleProject(buildModel, modelCache.createLibraryTable())
     }
 
     private fun fetchGradleModulesAction(
@@ -439,8 +438,9 @@ internal class AndroidExtraModelProviderWorker(
       return ActionToRun(fun(controller: BuildController): SyncVariantResultCore {
         val abiToRequest: String?
         val nativeVariantAbi: NativeVariantAbiResult?
-        val ideVariant: IdeVariantCoreImpl = module.variantFetcher(controller, androidProjectPathResolver, module, moduleConfiguration)
-                                             ?: error("Resolved variant '${moduleConfiguration.variant}' does not exist.")
+        val ideVariant: IdeVariantWithPostProcessor =
+          module.variantFetcher(controller, androidProjectPathResolver, module, moduleConfiguration)
+            ?: error("Resolved variant '${moduleConfiguration.variant}' does not exist.")
         val variantName = ideVariant.name
 
         abiToRequest = chooseAbiToRequest(module, variantName, moduleConfiguration.abi)
@@ -474,7 +474,7 @@ internal class AndroidExtraModelProviderWorker(
     // NativeVariantsSyncAction is only used with AGPs not supporting v2 models and thus not supporting parallel sync.
     private val actionRunner = safeActionRunner
 
-    fun fetchNativeVariantsAndroidModels(): List<GradleModule> {
+    fun fetchNativeVariantsAndroidModels(): List<GradleModelCollection> {
       val modelCache = ModelCache.create(false)
       val nativeModules = actionRunner.runActions(
         buildModels.projects.map { gradleProject ->
@@ -514,7 +514,7 @@ internal class AndroidExtraModelProviderWorker(
 
       populateProjectSyncIssues(nativeModules)
 
-      return nativeModules
+      return nativeModules.map { it.prepare() }
     }
   }
 
@@ -725,7 +725,7 @@ internal class AndroidExtraModelProviderWorker(
   private class SyncVariantResultCore(
     val moduleConfiguration: ModuleConfiguration,
     val module: AndroidModule,
-    val ideVariant: IdeVariantCoreImpl,
+    val ideVariant: IdeVariantWithPostProcessor,
     val nativeVariantAbi: NativeVariantAbiResult,
     val unresolvedDependencies: List<IdeUnresolvedDependency>
   )
@@ -736,7 +736,7 @@ internal class AndroidExtraModelProviderWorker(
   ) {
     val moduleConfiguration: ModuleConfiguration get() = core.moduleConfiguration
     val module: AndroidModule get() = core.module
-    val ideVariant: IdeVariantCoreImpl get() = core.ideVariant
+    val ideVariant: IdeVariantWithPostProcessor get() = core.ideVariant
     val nativeVariantAbi: NativeVariantAbiResult get() = core.nativeVariantAbi
     val unresolvedDependencies: List<IdeUnresolvedDependency> get() = core.unresolvedDependencies
   }
@@ -751,7 +751,7 @@ internal class AndroidExtraModelProviderWorker(
     // when intermediate modules do not have native code.
     val abiToPropagate = nativeVariantAbi.abi ?: moduleConfiguration.abi
 
-    val newlySelectedVariantDetails = createVariantDetailsFrom(module.androidProject.flavorDimensions, ideVariant, nativeVariantAbi.abi)
+    val newlySelectedVariantDetails = createVariantDetailsFrom(module.androidProject.flavorDimensions, ideVariant.variant, nativeVariantAbi.abi)
     val variantDiffChange =
       VariantSelectionChange.extractVariantSelectionChange(from = newlySelectedVariantDetails, base = selectedVariantDetails)
 
@@ -773,10 +773,10 @@ internal class AndroidExtraModelProviderWorker(
     }
 
     fun generateDirectModuleDependencies(libraryResolver: (LibraryReference) -> IdeLibrary): List<ModuleConfiguration> {
-      return (ideVariant.mainArtifact.dependencyCores.dependencies
-              + ideVariant.unitTestArtifact?.ideDependenciesCore?.dependencies.orEmpty()
-              + ideVariant.androidTestArtifact?.dependencyCores?.dependencies.orEmpty()
-              + ideVariant.testFixturesArtifact?.dependencyCores?.dependencies.orEmpty()
+      return (ideVariant.mainArtifact.compileClasspath.dependencies
+              + ideVariant.unitTestArtifact?.compileClasspath?.dependencies.orEmpty()
+              + ideVariant.androidTestArtifact?.compileClasspath?.dependencies.orEmpty()
+              + ideVariant.testFixturesArtifact?.compileClasspath?.dependencies.orEmpty()
              )
         .distinct()
         .mapNotNull{ libraryResolver(it.target) as? IdePreResolvedModuleLibrary }
@@ -965,7 +965,7 @@ fun v1VariantFetcher(modelCache: ModelCache.V1): IdeVariantFetcher {
     androidProjectPathResolver: AndroidProjectPathResolver,
     module: AndroidModule,
     configuration: ModuleConfiguration
-  ): IdeVariantCoreImpl? {
+  ): IdeVariantWithPostProcessor? {
     val androidModuleId = ModuleId(module.gradleProject.path, module.gradleProject.projectIdentifier.buildIdentifier.rootDir.path)
     val adjustedVariantName = module.adjustForTestFixturesSuffix(configuration.variant)
     val variant = controller.findVariantModel(module, adjustedVariantName) ?: return null
@@ -980,7 +980,7 @@ fun v2VariantFetcher(modelCache: ModelCache.V2, v2Variants: List<IdeVariantCoreI
     androidProjectPathResolver: AndroidProjectPathResolver,
     module: AndroidModule,
     configuration: ModuleConfiguration
-  ): IdeVariantCoreImpl? {
+  ): IdeVariantWithPostProcessor? {
     // In V2, we get the variants from AndroidModule.v2Variants.
     val variant = v2Variants.firstOrNull { it.name == configuration.variant }
                   ?: error("Resolved variant '${configuration.variant}' does not exist.")

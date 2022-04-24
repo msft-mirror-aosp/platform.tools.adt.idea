@@ -208,9 +208,15 @@ public class GradleAndroidModel implements AndroidModuleModel {
    * @return Instance of {@link IdeDependencies} from main artifact.
    */
   @NotNull
-  public IdeDependencies getSelectedMainCompileLevel2Dependencies() {
+  public IdeDependencies getSelectedMainCompileDependencies() {
     IdeAndroidArtifact mainArtifact = getMainArtifact();
-    return mainArtifact.getLevel2Dependencies();
+    return mainArtifact.getCompileClasspath();
+  }
+
+  @NotNull
+  public IdeDependencies getSelectedMainRuntimeDependencies() {
+    IdeAndroidArtifact mainArtifact = getMainArtifact();
+    return mainArtifact.getRuntimeClasspath();
   }
 
   /**
@@ -223,7 +229,7 @@ public class GradleAndroidModel implements AndroidModuleModel {
       // Only variants in the debug build type have an androidTest artifact.
       return null;
     }
-    return androidTestArtifact.getLevel2Dependencies();
+    return androidTestArtifact.getCompileClasspath();
   }
 
   @NotNull

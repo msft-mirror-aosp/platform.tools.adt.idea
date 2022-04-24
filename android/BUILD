@@ -1,7 +1,6 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
-load("@exec_properties//:constants.bzl", "LARGE_MACHINE")
 load("//tools/adt/idea/android-test-framework:check_tests.bzl", "check_tests")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 load("//tools/base/bazel:proto.bzl", "android_java_proto_library", "java_proto_library")
@@ -23,6 +22,14 @@ iml_module(
     name = "intellij.android.core",
     srcs = ["src"],
     iml_files = ["intellij.android.core.iml"],
+    javacopts_from_jps = [
+        "--add-exports",
+        "java.desktop/sun.swing=ALL-UNNAMED",
+        "--add-exports",
+        "java.desktop/sun.awt.image=ALL-UNNAMED",
+        "--add-exports",
+        "jdk.attach/sun.tools.attach=ALL-UNNAMED",
+    ],
     lint_baseline = "lint_baseline.xml",
     lint_timeout = "long",
     resources = ["resources"],
@@ -41,6 +48,7 @@ iml_module(
         "//tools/analytics-library/publisher:analytics-publisher[module]",
         "//tools/adt/idea/build-common:intellij.android.buildCommon[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
+        "//tools/adt/idea/jps-model:intellij.android.jps.model[module]",
         "//tools/adt/idea/rt:intellij.android.rt[module]",
         "//tools/base/draw9patch:studio.android.sdktools.draw9patch[module]",
         "//tools/base/build-system:studio.android.sdktools.manifest-merger[module]",
@@ -121,7 +129,6 @@ iml_module(
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.core.tests",
-    exec_properties = LARGE_MACHINE,
     iml_files = ["intellij.android.core.tests.iml"],
     split_test_targets = {
         "modularize": {
@@ -152,13 +159,13 @@ iml_module(
             "test_filter": "com.android.tools.idea.gradle.structure.configurables.dependencies.treeview",
         },
         "gradle.structure.model.android": {
-            "shard_count": 4,
+            "shard_count": 6,
             # Timeout waiting to lock Artifact transforms cache (b/152652501)
             "tags": ["no_windows"],
             "test_filter": "com.android.tools.idea.gradle.structure.model.android",
         },
         "gradle.project.sync": {
-            "shard_count": 2,
+            "shard_count": 4,
             "data": [
                 "//prebuilts/studio/sdk:ndk",
                 "//tools/data-binding:data_binding_runtime.zip",
@@ -280,6 +287,7 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
+        "//tools/adt/idea/jps-model:intellij.android.jps.model[module, test]",
         "//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer[module, test]",
         "//tools/adt/idea/.idea/libraries:sqlite[test]",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",

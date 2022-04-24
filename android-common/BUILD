@@ -30,5 +30,6 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
         "//tools/adt/idea/server-flags:intellij.android.server-flags[module]",
+        "//tools/adt/idea/jps-model:intellij.android.jps.model[module]",
     ],
 )

@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.project.sync.internal
 import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidArtifact
 import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
-import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeApiVersion
 import com.android.tools.idea.gradle.model.IdeBaseArtifact
@@ -29,7 +28,6 @@ import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeDependenciesInfo
 import com.android.tools.idea.gradle.model.IdeJavaArtifact
 import com.android.tools.idea.gradle.model.IdeJavaCompileOptions
-import com.android.tools.idea.gradle.model.IdeJavaLibraryDependency
 import com.android.tools.idea.gradle.model.IdeLintOptions
 import com.android.tools.idea.gradle.model.IdeModelSyncFile
 import com.android.tools.idea.gradle.model.IdeProductFlavor
@@ -161,10 +159,7 @@ private val jbModelDumpers = listOf(
   },
   SpecializedDumper(property = IdeDependencies::moduleDependencies) {
     prop(propertyName, it.asUnordered())
-  },
-  SpecializedDumper(property = IdeDependencies::runtimeOnlyClasses) {},
-  SpecializedDumper(property = IdeAndroidLibraryDependency::isProvided) {},
-  SpecializedDumper(property = IdeJavaLibraryDependency::isProvided) {},
+  }
 )
 
 private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
@@ -332,24 +327,39 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
         head("MultiFlavorSourceProvider")
         nest { dump(it) }
       }
-      head("Level2Dependencies")
+      head("Dependencies")
       nest {
-        modelDumper.dumpModel(this@with, "dependencies", ideBaseArtifact.level2Dependencies)
+        modelDumper.dumpModel(this@with, "compileClasspath", ideBaseArtifact.compileClasspath)
+        modelDumper.dumpModel(this@with, "runtimeClasspath", ideBaseArtifact.runtimeClasspath)
       }
+      val runtimeNames =
+        (ideBaseArtifact.runtimeClasspath.androidLibraries + ideBaseArtifact.runtimeClasspath.javaLibraries).map { it.target.name }.toSet()
+      val compileTimeNames =
+        (ideBaseArtifact.compileClasspath.androidLibraries + ideBaseArtifact.compileClasspath.javaLibraries).map { it.target.name }.toSet()
       val providedDependencies =
-        (ideBaseArtifact.level2Dependencies.androidLibraries + ideBaseArtifact.level2Dependencies.javaLibraries)
-          .filter { it.isProvided }
+        (ideBaseArtifact.compileClasspath.androidLibraries + ideBaseArtifact.compileClasspath.javaLibraries)
+          .filter { it.target.name !in runtimeNames }
       if (providedDependencies.isNotEmpty()) {
         head("ProvidedDependencies")
         nest {
           providedDependencies
             .sortedBy { it.target.name }
             .forEach {
-              prop("- provided") { it.target.name }
+              prop("- provided") { it.target.name.replaceKnownPatterns().replaceKnownPaths() }
             }
         }
       }
-      val runtimeOnlyClasses = ideBaseArtifact.level2Dependencies.runtimeOnlyClasses
+      val runtimeOnlyClasses =
+        (
+          ideBaseArtifact.runtimeClasspath.androidLibraries
+            .filter { it.target.name !in compileTimeNames }
+            .flatMap { it.target.runtimeJarFiles } +
+
+            ideBaseArtifact.runtimeClasspath.javaLibraries
+              .filter { it.target.name !in compileTimeNames }
+              .map { it.target.artifact }
+          ).distinct()
+
       if (runtimeOnlyClasses.isNotEmpty()) {
         head("RuntimeOnlyClasses")
         nest {

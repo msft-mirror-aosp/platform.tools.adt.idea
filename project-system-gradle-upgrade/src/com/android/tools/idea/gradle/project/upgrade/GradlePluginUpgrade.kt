@@ -234,15 +234,19 @@ fun versionsAreIncompatible(
 fun performForcedPluginUpgrade(
   project: Project,
   currentPluginVersion: GradleVersion,
-  newPluginVersion: GradleVersion = GradleVersion.parse(LatestKnownPluginVersionProvider.INSTANCE.get())
+  newPluginVersion: GradleVersion = computeGradlePluginUpgradeState(
+    currentPluginVersion,
+    GradleVersion.parse(LatestKnownPluginVersionProvider.INSTANCE.get()),
+    IdeGoogleMavenRepository.getVersions("com.android.tools.build", "gradle")
+  ).target
 ) : Boolean {
   val upgradeAccepted = invokeAndWaitIfNeeded(NON_MODAL) {
-    ForcedPluginPreviewVersionUpgradeDialog(project, currentPluginVersion).showAndGet()
+    ForcedPluginPreviewVersionUpgradeDialog(project, currentPluginVersion, newPluginVersion).showAndGet()
   }
 
   if (upgradeAccepted) {
     // The user accepted the upgrade
-    // Note: we retrieve an AssistantInvokerImpl as a project service for the convenience of tests.
+    // Note: we retrieve a RefactoringProcessorInstantiator as a project service for the convenience of tests.
     val refactoringProcessorInstantiator = project.getService(RefactoringProcessorInstantiator::class.java)
     val processor = refactoringProcessorInstantiator.createProcessor(project, currentPluginVersion, newPluginVersion)
     val runProcessor = refactoringProcessorInstantiator.showAndGetAgpUpgradeDialog(processor)

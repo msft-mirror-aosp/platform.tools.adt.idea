@@ -22,11 +22,7 @@ import java.awt.Component;
 import javax.swing.JTable;
 import org.jetbrains.annotations.NotNull;
 
-final class LaunchInEmulatorButtonTableCellRenderer extends IconButtonTableCellRenderer {
-  LaunchInEmulatorButtonTableCellRenderer() {
-    super(StudioIcons.Avd.RUN, "Launch this AVD in the emulator");
-  }
-
+final class LaunchOrStopButtonTableCellRenderer extends IconButtonTableCellRenderer {
   @Override
   public @NotNull Component getTableCellRendererComponent(@NotNull JTable table,
                                                           @NotNull Object value,

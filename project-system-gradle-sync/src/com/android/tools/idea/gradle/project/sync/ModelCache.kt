@@ -34,13 +34,17 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.LibraryReference
 import com.android.tools.idea.gradle.model.impl.BuildFolderPaths
+import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantAbiImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
+import com.android.tools.idea.gradle.project.sync.ModelCache.Companion.LOCAL_AARS
+import com.android.tools.idea.gradle.project.sync.ModelCache.Companion.LOCAL_JARS
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ImmutableSortedSet
 import com.intellij.openapi.util.io.FileUtil
@@ -57,7 +61,7 @@ interface ModelCache {
       variant: Variant,
       modelVersion: GradleVersion?,
       androidModuleId: ModuleId
-    ): IdeVariantCoreImpl
+    ): IdeVariantWithPostProcessor
 
     fun androidProjectFrom(project: AndroidProject): IdeAndroidProjectImpl
 
@@ -86,7 +90,7 @@ interface ModelCache {
       variantDependencies: VariantDependencies,
       androidProjectPathResolver: AndroidProjectPathResolver,
       buildNameMap: Map<String, BuildId>
-    ): IdeVariantCoreImpl
+    ): IdeVariantWithPostProcessor
 
     fun androidProjectFrom(
       basicProject: com.android.builder.model.v2.models.BasicAndroidProject,
@@ -100,8 +104,14 @@ interface ModelCache {
   fun nativeVariantAbiFrom(variantAbi: NativeVariantAbi): IdeNativeVariantAbiImpl
   fun nativeAndroidProjectFrom(project: NativeAndroidProject, ndkVersion: String?): IdeNativeAndroidProjectImpl
 
+  /**
+   * Prepares [ModelCache] for running any post-processors previously returned in [IdeModelWithPostProcessor] instances.
+   */
+  fun prepare()
+
   companion object {
     const val LOCAL_AARS = "__local_aars__"
+    const val LOCAL_JARS = "__local_jars__"
 
     @JvmStatic
     fun create(useV2BuilderModels: Boolean, buildFolderPaths: BuildFolderPaths): ModelCache {
@@ -133,6 +143,28 @@ interface ModelCache {
 
 data class ModuleId(val gradlePath: String, val buildId: String)
 
+/**
+ * A [model] wrapper that knows how to post-process it once all models are fetched. [postProcess] method is expected to be invoked when the
+ * cache is populated with all models and the returned value is supposed to be used instead the original [model].
+ *
+ * These wrappers are needed when data for an IDE model are scattered across multiple source models and might not yet be available at the
+ * time when [model] is instantiated.
+ */
+class IdeModelWithPostProcessor<T>(
+  val model: T,
+  private val postProcessor: () -> T = { model }
+) {
+  fun postProcess(): T = postProcessor()
+}
+
+typealias IdeVariantWithPostProcessor = IdeModelWithPostProcessor<IdeVariantCoreImpl>
+
+val IdeVariantWithPostProcessor.variant: IdeVariantCoreImpl get() = model
+val IdeVariantWithPostProcessor.name: String get() = variant.name
+val IdeVariantWithPostProcessor.mainArtifact: IdeAndroidArtifactCoreImpl get() = variant.mainArtifact
+val IdeVariantWithPostProcessor.unitTestArtifact: IdeJavaArtifactCoreImpl? get() = variant.unitTestArtifact
+val IdeVariantWithPostProcessor.androidTestArtifact: IdeAndroidArtifactCoreImpl? get() = variant.androidTestArtifact
+val IdeVariantWithPostProcessor.testFixturesArtifact: IdeAndroidArtifactCoreImpl? get() = variant.testFixturesArtifact
 
 @VisibleForTesting
   /** For older AGP versions pick a variant name based on a heuristic  */
@@ -169,9 +201,13 @@ internal fun convertArtifactName(name: String): IdeArtifactName = when (name) {
  * Converts the artifact address into a name that will be used by the IDE to represent the library.
  */
 internal fun convertToLibraryName(libraryArtifactAddress: String, projectBasePath: File?): String {
-  if (libraryArtifactAddress.startsWith("${ModelCache.LOCAL_AARS}:")) {
+  when {
+    libraryArtifactAddress.startsWith("$LOCAL_AARS:") -> libraryArtifactAddress.removePrefix("$LOCAL_AARS:")
+    libraryArtifactAddress.startsWith("$LOCAL_JARS:") -> libraryArtifactAddress.removePrefix("$LOCAL_JARS:")
+    else -> null
+  }?.let { addressWithoutPrefix ->
     return adjustLocalLibraryName(
-      File(libraryArtifactAddress.removePrefix("${ModelCache.LOCAL_AARS}:").substringBefore(":")),
+      File(addressWithoutPrefix.substringBefore(":")),
       projectBasePath
     )
   }
@@ -200,7 +236,8 @@ private fun convertMavenCoordinateStringToIdeLibraryName(mavenCoordinate: String
  * directories in CI environments may exceed this limit.
  */
 private fun adjustLocalLibraryName(artifactFile: File, projectBasePath: File?): @SystemIndependent String {
-  val maybeRelative = if (projectBasePath != null) artifactFile.relativeToOrSelf(projectBasePath) else artifactFile
+  val maybeRelative =
+    if (projectBasePath != null && artifactFile.startsWith(projectBasePath)) artifactFile.relativeToOrSelf(projectBasePath) else artifactFile
   if (!FileUtil.filesEqual(maybeRelative, artifactFile)) {
     return FileUtil.toSystemIndependentName(File(".${File.separator}${maybeRelative}").path)
   }

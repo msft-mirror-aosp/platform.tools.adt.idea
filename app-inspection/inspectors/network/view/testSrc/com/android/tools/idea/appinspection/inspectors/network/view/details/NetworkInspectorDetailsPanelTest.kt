@@ -26,7 +26,7 @@ import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInsp
 import com.android.tools.idea.appinspection.inspectors.network.model.TestNetworkInspectorServices
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpDataModel
-import com.android.tools.idea.appinspection.inspectors.network.model.rules.RulesTableModel
+import com.android.tools.idea.appinspection.inspectors.network.model.rules.RuleData
 import com.android.tools.idea.appinspection.inspectors.network.view.FakeUiComponentsProvider
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkInspectorView
 import com.android.tools.idea.flags.StudioFlags
@@ -44,28 +44,26 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.RuleChain
+import studio.network.inspection.NetworkInspectorProtocol.InterceptCommand
 import javax.swing.JPanel
 
 @RunsInEdt
 class NetworkInspectorDetailsPanelTest {
 
   private class TestNetworkInspectorClient : NetworkInspectorClient {
-    private var lastInterceptedUrl: String? = null
-    private var lastInterceptedBody: String? = null
-
     override suspend fun getStartTimeStampNs() = 0L
 
-    override suspend fun interceptResponse(url: String, body: String) {
-      lastInterceptedUrl = url
-      lastInterceptedBody = body
-    }
+    override suspend fun interceptResponse(command: InterceptCommand) = Unit
   }
 
-  private val setFlagRule = SetFlagRule(StudioFlags.ENABLE_NETWORK_INTERCEPTION, true)
+  @get:Rule
+  val setFlagRule = SetFlagRule(StudioFlags.ENABLE_NETWORK_INTERCEPTION, true)
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(ProjectRule()).around(EdtRule()).around(setFlagRule)!!
+  val projectRule = ProjectRule()
+
+  @get:Rule
+  val edtRule = EdtRule()
 
   private lateinit var client: TestNetworkInspectorClient
   private lateinit var services: TestNetworkInspectorServices
@@ -116,7 +114,7 @@ class NetworkInspectorDetailsPanelTest {
     model.setSelectedConnection(null)
     assertThat(detailsPanel.isVisible).isFalse()
 
-    model.setSelectedRule(RulesTableModel.RuleInfo())
+    model.setSelectedRule(RuleData(1, "NewRule", true))
     assertThat(detailsPanel.isVisible).isTrue()
     assertThat(detailsPanel.ruleDetailsView.isVisible).isTrue()
     assertThat(detailsPanel.connectionDetailsView.isVisible).isFalse()

@@ -6,16 +6,15 @@ iml_module(
     name = "intellij.android.projectSystem.gradle.sync",
     srcs = ["src"],
     iml_files = ["intellij.android.projectSystem.gradle.sync.iml"],
+    jvm_target = "8",
     lint_baseline = "//tools/base/lint:studio-checks/empty_baseline.xml",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "//prebuilts/studio/intellij-sdk:studio-sdk",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
-        "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-junit",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-        "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api[module]",
         "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl[module]",
         "//tools/base/build-system/builder-model:studio.android.sdktools.builder-model[module]",

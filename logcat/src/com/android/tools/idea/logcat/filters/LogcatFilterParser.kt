@@ -16,6 +16,7 @@
 package com.android.tools.idea.logcat.filters
 
 import com.android.ddmlib.Log.LogLevel
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.logcat.PackageNamesProvider
 import com.android.tools.idea.logcat.filters.LogcatFilterField.APP
 import com.android.tools.idea.logcat.filters.LogcatFilterField.IMPLICIT_LINE
@@ -81,22 +82,36 @@ internal class LogcatFilterParser(
    * @return A [LogcatFilter] representing the provided string or null if the filter is empty.
    */
   fun parse(filterString: String): LogcatFilter? {
+    return try {
+      parseInternal(filterString)
+    }
+    catch (e: LogcatFilterParseException) {
+      // Any error in parsing results in a filter that matches the raw string with the entire line.
+      StringFilter(filterString, IMPLICIT_LINE)
+    }
+  }
+
+  fun isValid(filterString: String): Boolean {
+    return try {
+      parseInternal(filterString)
+      true
+    }
+    catch (e: LogcatFilterParseException) {
+      false
+    }
+  }
+
+  private fun parseInternal(filterString: String): LogcatFilter? {
     return when {
       filterString.isEmpty() -> null
       filterString.isBlank() -> StringFilter(filterString, IMPLICIT_LINE)
       else -> {
-        try {
-          val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
-          if (PsiTreeUtil.hasErrorElements(psi)) {
-            val errorElement = PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java) as PsiErrorElement
-            throw LogcatFilterParseException(errorElement)
-          }
-          psi.toFilter()
+        val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+        if (PsiTreeUtil.hasErrorElements(psi)) {
+          val errorElement = PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java) as PsiErrorElement
+          throw LogcatFilterParseException(errorElement)
         }
-        catch (e: LogcatFilterParseException) {
-          // Any error in parsing results in a filter that matches the raw string with the entire line.
-          StringFilter(filterString, IMPLICIT_LINE)
-        }
+        psi.toFilter()
       }
     }
   }
@@ -244,6 +259,7 @@ private fun LogcatFilterLiteralExpression.toKeyFilter(
   return when (val key = firstChild.text.trim(':', '-', '~')) {
     "level" -> LevelFilter(lastChild.asLogLevel())
     "age" -> AgeFilter(lastChild.asDuration(), clock)
+    "is" -> createIsFilter(lastChild.text)
     else -> {
       val value = lastChild.toText()
       val isNegated = firstChild.text.startsWith('-')
@@ -271,11 +287,21 @@ private fun LogcatFilterLiteralExpression.toKeyFilter(
   }
 }
 
+private fun createIsFilter(text: String): LogcatFilter {
+  return when {
+    !StudioFlags.LOGCAT_IS_FILTER.get() -> throw LogcatFilterParseException(PsiErrorElementImpl("Invalid key: is"))
+    text == "crash" -> CrashFilter
+    text == "stacktrace" -> StackTraceFilter
+    else -> throw LogcatFilterParseException(PsiErrorElementImpl("Invalid filter: is:$text"))
+  }
+}
+
 private fun PsiElement.asLogLevel(): LogLevel =
   LogLevel.getByString(text.lowercase())
   ?: throw LogcatFilterParseException(PsiErrorElementImpl("Invalid Log Level: $text"))
 
 internal fun String.isValidLogLevel(): Boolean = LogLevel.getByString(lowercase()) != null
+internal fun String.isValidIsFilter(): Boolean = this == "crash" || this == "stacktrace"
 
 private fun PsiElement.asDuration(): Duration {
   DURATION_RE.matchEntire(text) ?: throw LogcatFilterParseException(PsiErrorElementImpl("Invalid duration: $text"))
@@ -343,6 +369,8 @@ private fun LogcatFilter.getFieldForImplicitOr(index: Int): FilterType {
     this is RegexFilter -> FilterType(field)
     this is LevelFilter -> FilterType("level")
     this is AgeFilter -> FilterType("age")
+    this == CrashFilter -> FilterType("is")
+    this == StackTraceFilter -> FilterType("is")
     else -> FilterType(index)
   }
 }

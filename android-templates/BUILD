@@ -1,6 +1,5 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
-load("@exec_properties//:constants.bzl", "LARGE_MACHINE")
 
 # managed by go/iml_to_build
 iml_module(
@@ -17,17 +16,18 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
+        "//tools/adt/idea/jps-model:intellij.android.jps.model[module]",
         "//tools/base/wizard/template-plugin:studio.intellij.android.wizardTemplate.plugin[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/base/resource-repository:studio.android.sdktools.resource-repository[module]",
+        "//tools/base/build-system:studio.android.sdktools.manifest-merger[module]",
     ],
 )
 
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.templates.tests",
-    exec_properties = LARGE_MACHINE,
     iml_files = ["intellij.android.templates.tests.iml"],
     split_test_targets = {
         "TemplateTest": {
