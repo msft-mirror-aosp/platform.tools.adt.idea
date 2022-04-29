@@ -59,6 +59,7 @@
       <module name="db-compilationTests" target="8" />
       <module name="db-compiler" target="8" />
       <module name="db-compilerCommon" target="8" />
+      <module name="dynamic-layout-inspector.common" target="8" />
       <module name="intellij.android.buildCommon" target="8" />
       <module name="intellij.android.gradle-tooling.api" target="8" />
       <module name="intellij.android.gradle-tooling.impl" target="8" />
