@@ -554,7 +554,7 @@ android_studio(
         ":com.google.urlassistant",
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
-    version_eap = True,
+    version_eap = False,
     version_full = "Dolphin | {0}.{1}.{2}",
     version_micro = 1,
     version_patch = 16,
