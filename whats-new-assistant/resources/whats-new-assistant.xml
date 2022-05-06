@@ -19,14 +19,14 @@
     resourceRoot="/"
     stepByStep="false"
     hideStepIndex="true"
-    version="2021.2.02">
+    version="2021.2.1.1">
   <feature
-      name="What's New in 2021.2.01">
+      name="What's New in Chipmunk">
     <tutorial
         key="whats-new"
-        label=" What's New in 2021.2.01"
-        icon="preview/whats_new_icon.png"
-        remoteLink="https://developer.android.com/studio/preview/features"
+        label=" What's New in Chipmunk"
+        icon="stable/whats_new_icon.png"
+        remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/stable-release-notes"
         remoteLinkLabel="Read in a browser">
       <description>
         <![CDATA[
@@ -37,11 +37,96 @@
           from the main menu.
           ]]>
       </description>
+      <step label="Animation Preview supports animatedVisibility">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            Inspect and debug composable animations created with the animatedVisibility API in
+            Animation Preview. Animation Preview allows you to see each animated value at a given
+            time and ensure that your animation is choreographed properly.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/compose/animatedvisibility">Learn more</a>
+            <br>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Deploy previews from library modules">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            You can now deploy composable previews from library modules to an emulator or physical
+            device. Composable previews allow you to view your UI within Android Studio without
+            having to run your app on a configured test device.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/compose/deploy-previews">Learn more</a>
+            <br>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Detect jank on Android 12 and higher">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            Identify sources of slow UI rendering by using the <b>Janky Frames</b> track in the
+            CPU Profiler tool. The <b>Janky Frames</b> track by default shows only janky frames as
+            candidates for investigation, so you can quickly hone in where the problem is.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/profilers/detect-jank">Learn more</a>
+            <br>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Jetifier warning and check in Build Analyzer">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            To speed up builds, Build Analyzer now displays a warning if your project's
+            gradle.properties file includes android.enableJetifier=true. If you see this warning,
+            you can run a check within Build Analyzer to confirm if the flag can be removed, for
+            improved performance.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/agp/jetifier-check">Learn more</a>
+            <br>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Support for test fixtures">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            Android Studio now supports both Android and Java test fixtures, so you can run tests in
+            a consistent and efficient manner.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/agp/test-fixtures">Learn more</a>
+            <br>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
       <footerStep label="">
         <stepElement>
           <section>
             <![CDATA[
-              <br><em>Last updated 04/20/2022</em><br><br>
+              <br><em>Last updated 5/9/2022</em><br><br>
             ]]>
           </section>
         </stepElement>
