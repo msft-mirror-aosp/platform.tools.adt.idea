@@ -1,8 +1,0 @@
-android {
-  buildTypes {
-    debug {
-      minifyEnabled false
-      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules-debug.txt'
-    }
-  }
-}

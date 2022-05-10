@@ -1,1 +1,0 @@
-float f = getResources().getDimension(R.dimen.hello);
