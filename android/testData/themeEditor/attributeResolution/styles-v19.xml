@@ -1,5 +1,0 @@
-<resources>
-  <style name="V19OnlyTheme" parent="@android:style/Theme">
-    <item name="myAttribute">V19</item>
-  </style>
-</resources>

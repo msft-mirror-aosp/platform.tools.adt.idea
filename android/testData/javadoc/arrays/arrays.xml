@@ -1,8 +1,0 @@
-<resources>
-    <string-array name="colors">
-        <item>red</item>
-        <item>orange</item>
-        <item>yellow</item>
-        <item>green</item>
-    </string-array>
-</resources>
