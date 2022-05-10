@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,6 +64,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
+@Ignore("LiveEdit is disabled in Android Studio Dolphin")
 @RunWith(Parameterized::class)
 class FastPreviewManagerGradleTest(private val useEmbeddedCompiler: Boolean) {
   companion object {

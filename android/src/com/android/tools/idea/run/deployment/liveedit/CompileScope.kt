@@ -190,6 +190,9 @@ private object CompileScopeImpl : CompileScope {
                                                          compilerConfiguration);
 
     if (useComposeIR) {
+      // AndroidLiveEditJvmIrCodegenFactory is deleted in Android Studio Dolphin in order to simplify
+      // compatibility with Kotlin IDE plugin updates. This is safe because LiveEdit is disabled in Dolphin.
+      /*
       generationStateBuilder.codegenFactory(AndroidLiveEditJvmIrCodegenFactory(
         compilerConfiguration,
         PhaseConfig(org.jetbrains.kotlin.backend.jvm.jvmPhases),
@@ -201,6 +204,7 @@ private object CompileScopeImpl : CompileScope {
           }
         }
       ))
+      */
     }
 
     val generationState = generationStateBuilder.build();
