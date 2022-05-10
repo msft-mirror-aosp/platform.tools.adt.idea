@@ -37,7 +37,7 @@ class AndroidManifestPackageToNamespaceRefactoringProcessor : AgpUpgradeComponen
   constructor(processor: AgpUpgradeRefactoringProcessor): super(processor)
 
   override fun necessity() =
-    standardRegionNecessity(current, new, GradleVersion.parse("4.2.0-beta03"), GradleVersion.parse("8.0.0-alpha01"))
+    standardRegionNecessity(current, new, GradleVersion.parse("7.3.0-alpha01"), GradleVersion.parse("8.0.0-alpha01"))
 
   override fun findComponentUsages(): Array<UsageInfo> {
     val usages = ArrayList<UsageInfo>()
