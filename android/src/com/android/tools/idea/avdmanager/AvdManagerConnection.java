@@ -438,8 +438,18 @@ public class AvdManagerConnection {
 
   @Slow
   public boolean isAvdRunning(@NotNull AvdInfo info) {
+    if (!initIfNecessary()) {
+      return false;
+    }
+
     assert myAvdManager != null;
     return myAvdManager.isAvdRunning(info, SDK_LOG);
+  }
+
+  public @NotNull ListenableFuture<@NotNull Boolean> isAvdRunningAsync(@NotNull AvdInfo info) {
+    ListeningExecutorService service = MoreExecutors.listeningDecorator(AppExecutorUtil.getAppExecutorService());
+
+    return service.submit(() -> isAvdRunning(info));
   }
 
   @NotNull ListenableFuture<@NotNull Boolean> isAvdRunning(@NotNull AvdInfoProvider provider) {

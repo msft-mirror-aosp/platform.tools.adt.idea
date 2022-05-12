@@ -73,9 +73,11 @@ import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Futures;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
@@ -916,7 +918,8 @@ public class RenderTask {
               myModuleClassLoader.getStats()));
         }
         else {
-          if (xmlFile.isValid()) {
+          boolean isValid = ApplicationManager.getApplication().runReadAction((Computable<Boolean>)xmlFile::isValid);
+          if (isValid) {
             return RenderResult.createRenderTaskErrorResult(xmlFile, ex);
           }
           else {
