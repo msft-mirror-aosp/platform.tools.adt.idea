@@ -76,6 +76,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -382,7 +383,7 @@ public class GradleAndroidModel implements AndroidModuleModel {
   @Override
   public @NotNull EnumSet<Abi> getSupportedAbis() {
     return getSelectedVariant().getMainArtifact().getAbiFilters()
-      .stream().map(Abi::getEnum).collect(Collectors.toCollection(() -> EnumSet.noneOf(Abi.class)));
+      .stream().map(Abi::getEnum).filter(Objects::nonNull).collect(Collectors.toCollection(() -> EnumSet.noneOf(Abi.class)));
   }
 
   /**

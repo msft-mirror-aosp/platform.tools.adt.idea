@@ -48,10 +48,10 @@ class AndroidManifestPackageToNamespaceRefactoringProcessorTest : UpgradeGradleF
   @Test
   fun testNecessities() {
     val expectedNecessitiesMap = mapOf(
-      ("4.0.0" to "4.1.0") to IRRELEVANT_FUTURE,
-      ("4.1.0" to "4.2.0") to OPTIONAL_CODEPENDENT,
-      ("7.0.0" to "7.1.0") to OPTIONAL_INDEPENDENT,
-      ("4.2.0" to "8.0.0") to MANDATORY_INDEPENDENT,
+      ("4.0.0" to "7.2.0") to IRRELEVANT_FUTURE,
+      ("4.1.0" to "7.3.0") to OPTIONAL_CODEPENDENT,
+      ("7.3.0" to "7.4.0") to OPTIONAL_INDEPENDENT,
+      ("7.3.0" to "8.0.0") to MANDATORY_INDEPENDENT,
       ("4.1.0" to "8.0.0") to MANDATORY_CODEPENDENT,
       ("8.0.0" to "8.1.0") to IRRELEVANT_PAST
     )
@@ -65,7 +65,7 @@ class AndroidManifestPackageToNamespaceRefactoringProcessorTest : UpgradeGradleF
   fun testPackageToNamespace() {
     writeToBuildFile(TestFileName("AndroidManifestPackageToNamespace/PackageToNamespace"))
     writeToManifestFile(TestFileName("AndroidManifestPackageToNamespace/ManifestWithPackage"))
-    val processor = AndroidManifestPackageToNamespaceRefactoringProcessor(project, GradleVersion.parse("4.0.0"), GradleVersion.parse("7.0.0"))
+    val processor = AndroidManifestPackageToNamespaceRefactoringProcessor(project, GradleVersion.parse("4.0.0"), GradleVersion.parse("7.3.0"))
     processor.run()
 
     verifyFileContents(buildFile, TestFileName("AndroidManifestPackageToNamespace/PackageToNamespaceExpected"))
@@ -78,7 +78,7 @@ class AndroidManifestPackageToNamespaceRefactoringProcessorTest : UpgradeGradleF
   fun testPackageToConflictingNamespace() {
     writeToBuildFile(TestFileName("AndroidManifestPackageToNamespace/PackageToConflictingNamespace"))
     writeToManifestFile(TestFileName("AndroidManifestPackageToNamespace/ManifestWithPackage"))
-    val processor = AndroidManifestPackageToNamespaceRefactoringProcessor(project, GradleVersion.parse("4.0.0"), GradleVersion.parse("7.0.0"))
+    val processor = AndroidManifestPackageToNamespaceRefactoringProcessor(project, GradleVersion.parse("4.0.0"), GradleVersion.parse("7.3.0"))
     processor.run()
 
     verifyFileContents(buildFile, TestFileName("AndroidManifestPackageToNamespace/PackageToConflictingNamespaceExpected"))

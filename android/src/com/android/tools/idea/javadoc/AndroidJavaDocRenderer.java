@@ -22,6 +22,7 @@ import static com.android.SdkConstants.DOT_WEBP;
 import static com.android.SdkConstants.PREFIX_ANDROID;
 import static com.android.ide.common.resources.ResourceResolver.MAX_RESOURCE_INDIRECTION;
 import static com.android.tools.idea.util.FileExtensions.toVirtualFile;
+import static com.android.tools.idea.util.NonBlockingReadActionUtilKt.waitInterruptibly;
 import static com.android.utils.SdkUtils.hasImageExtension;
 import static com.intellij.codeInsight.documentation.DocumentationComponent.COLOR_KEY;
 import static com.intellij.openapi.util.io.FileUtilRt.copy;
@@ -104,6 +105,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -1120,7 +1122,8 @@ public class AndroidJavaDocRenderer {
           renderTask.setOverrideRenderSize(width, height);
           BufferedImage image;
           try {
-            image = renderTask.renderDrawable(resolvedValue).get();
+            CompletableFuture<BufferedImage> future = renderTask.renderDrawable(resolvedValue);
+            image = waitInterruptibly(future);
           }
           catch (InterruptedException | ExecutionException e) {
             renderError(builder, e.toString());
