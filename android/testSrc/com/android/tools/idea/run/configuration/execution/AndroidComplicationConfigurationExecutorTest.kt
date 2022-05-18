@@ -20,9 +20,6 @@ import com.android.ddmlib.IShellOutputReceiver
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.TestResources
 import com.android.tools.deployer.model.component.Complication
-import com.android.tools.deployer.model.component.Complication.ComplicationType.LONG_TEXT
-import com.android.tools.deployer.model.component.Complication.ComplicationType.RANGED_VALUE
-import com.android.tools.deployer.model.component.Complication.ComplicationType.SHORT_TEXT
 import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.android.tools.idea.run.configuration.AndroidComplicationConfigurationType
@@ -37,6 +34,7 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.application.runInEdt
 import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
@@ -112,7 +110,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
 
     // Mock the binary xml extraction.
-    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
+    doReturn(listOf("RANGED_VALUE", "SHORT_TEXT", "ICON")).`when`(executor).getComplicationSourceTypes(any())
 
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(10, TimeUnit.SECONDS)!!
 
@@ -215,7 +213,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
 
     // Mock the binary xml extraction.
-    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
+    doReturn(listOf("RANGED_VALUE", "SHORT_TEXT", "ICON")).`when`(executor).getComplicationSourceTypes(any())
 
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(10, TimeUnit.SECONDS)
     assertThat(runContentDescriptor!!.processHandler).isNotNull()
@@ -299,7 +297,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     doReturn(appInstaller).`when`(executor).getApplicationInstaller(any())
 
     // Mock the binary xml extraction.
-    doReturn(listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT)).`when`(executor).getComplicationSourceTypes(any())
+    doReturn(listOf("RANGED_VALUE", "SHORT_TEXT", "ICON")).`when`(executor).getComplicationSourceTypes(any())
 
     val runContentDescriptor = executor.doOnDevices(listOf(device)).blockingGet(10, TimeUnit.SECONDS)!!
 
@@ -307,12 +305,13 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     val consoleViewImpl = runContentDescriptor.executionConsole as ConsoleViewImpl
     // Print differed test
     val consoleOutputPromise = CompletableFuture<String>()
-    invokeLater {
+    runInEdt {
+      // Initialize editor.
       consoleViewImpl.getComponent()
       consoleViewImpl.flushDeferredText()
       consoleOutputPromise.complete(consoleViewImpl.editor.document.text)
     }
-    val consoleOutput = consoleOutputPromise.get(2, TimeUnit.SECONDS)
+    val consoleOutput = consoleOutputPromise.get(10, TimeUnit.SECONDS)
     assertThat(consoleOutput)
       .contains("Warning: Launch was successful, but you may need to bring up the watch face manually")
   }
@@ -322,6 +321,6 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     val types = getComplicationSourceTypes(
       listOf(ApkInfo(TestResources.getFile("/WearableTestApk.apk"), "com.example.android.wearable.watchface")),
       "com.example.android.wearable.watchface.provider.IncrementingNumberComplicationProviderService")
-    assertThat(types).isEqualTo(listOf(SHORT_TEXT, LONG_TEXT))
+    assertThat(types).isEqualTo(listOf("SHORT_TEXT", "LONG_TEXT"))
   }
 }

@@ -20,14 +20,14 @@ import com.android.tools.deployer.model.component.Complication.ComplicationType.
 import com.android.tools.deployer.model.component.Complication.ComplicationType.SHORT_TEXT
 import com.android.tools.idea.model.MergedManifestManager
 import com.android.tools.idea.model.MergedManifestSnapshot
-import com.intellij.execution.configurations.RuntimeConfigurationException
+import com.intellij.execution.configurations.RuntimeConfigurationWarning
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.vfs.VirtualFile
 import junit.framework.TestCase
 import org.jetbrains.android.AndroidTestCase
 import java.io.IOException
 
-class AndroidComplicationConfigurationTest : AndroidTestCase() {
+class ComplicationTypeUtilsTest : AndroidTestCase() {
   private val manifestString = """
         <manifest package="com.example.android.wearable.watchface"
           xmlns:android="http://schemas.android.com/apk/res/android">
@@ -54,20 +54,28 @@ class AndroidComplicationConfigurationTest : AndroidTestCase() {
         </manifest>
 """
 
-  fun testExtractSupportedTypes() {
-    val mergedManifest: MergedManifestSnapshot = getMergedManifest(String.format(manifestString, "RANGED_VALUE,SHORT_TEXT,LONG_TEXT"))!!
+  fun testExtractSupportedComplicationTypes() {
+    val mergedManifest: MergedManifestSnapshot =
+      getMergedManifest(String.format(manifestString, "RANGED_VALUE,, , INVALID, SHORT_TEXT, LONG_TEXT"))!!
     assertEquals(
-      listOf(RANGED_VALUE, SHORT_TEXT, LONG_TEXT),
-      extractComplicationSupportedTypes(mergedManifest,
+      listOf(RANGED_VALUE.toString(), "", "", "INVALID", SHORT_TEXT.toString(), LONG_TEXT.toString()),
+      extractSupportedComplicationTypes(mergedManifest,
                                         "com.example.android.wearable.watchface.provider.IncrementingNumberComplicationProviderService")
     )
   }
 
-  fun testInvalidType() {
-    val mergedManifest: MergedManifestSnapshot = getMergedManifest(String.format(manifestString, "RANGED_VALUE,INVALID,LONG_TEXT"))!!
-    assertThrows(RuntimeConfigurationException::class.java) {
-      extractComplicationSupportedTypes(mergedManifest,
-                                        "com.example.android.wearable.watchface.provider.IncrementingNumberComplicationProviderService")
+  fun testParseComplicationTypes() {
+    val typesStr = listOf("RANGED_VALUE", "INVALID", "LONG_TEXT")
+    assertEquals(
+      listOf(RANGED_VALUE, LONG_TEXT),
+      parseRawComplicationTypes(typesStr)
+    )
+  }
+
+  fun testParseComplicationTypesWarning() {
+    val typesStr = listOf("RANGED_VALUE", "INVALID", "LONG_TEXT")
+    assertThrows(RuntimeConfigurationWarning::class.java) {
+      checkRawComplicationTypes(typesStr)
     }
   }
 
