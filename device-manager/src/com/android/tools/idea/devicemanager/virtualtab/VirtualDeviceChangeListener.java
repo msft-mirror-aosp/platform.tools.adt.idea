@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.devicemanager.virtualtab;
 
-import com.android.annotations.Nullable;
 import com.android.annotations.concurrency.UiThread;
 import com.android.annotations.concurrency.WorkerThread;
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
@@ -31,6 +30,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.concurrency.EdtExecutorService;
 import java.util.concurrent.Executor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 final class VirtualDeviceChangeListener implements IDeviceChangeListener {
   private final @NotNull VirtualDeviceTableModel myModel;
@@ -38,7 +38,7 @@ final class VirtualDeviceChangeListener implements IDeviceChangeListener {
 
   @VisibleForTesting
   interface NewSetOnline {
-    @NotNull FutureCallback<@NotNull Key> apply(@NotNull VirtualDeviceTableModel model, boolean online);
+    @NotNull FutureCallback<@Nullable Key> apply(@NotNull VirtualDeviceTableModel model, boolean online);
   }
 
   @UiThread
@@ -57,15 +57,15 @@ final class VirtualDeviceChangeListener implements IDeviceChangeListener {
    */
   @WorkerThread
   @VisibleForTesting
-  static @NotNull FutureCallback<@NotNull Key> newSetOnline(@NotNull VirtualDeviceTableModel model, boolean online) {
-    return new DeviceManagerFutureCallback<Key>(VirtualDeviceChangeListener.class) {
-      @UiThread
-      @Override
-      public void onSuccess(@Nullable Key key) {
-        assert key != null;
+  static @NotNull FutureCallback<@Nullable Key> newSetOnline(@NotNull VirtualDeviceTableModel model, boolean online) {
+    return new DeviceManagerFutureCallback<>(VirtualDeviceChangeListener.class, key -> {
+      if (key == null) {
+        model.setAllOnline();
+      }
+      else {
         model.setOnline(key, online);
       }
-    };
+    });
   }
 
   /**
@@ -136,8 +136,22 @@ final class VirtualDeviceChangeListener implements IDeviceChangeListener {
 
     // noinspection UnstableApiUsage
     FluentFuture.from(device.getAvdData())
-      .transform(AvdData::getName, executor)
-      .transform(VirtualDeviceName::new, executor)
+      .transform(VirtualDeviceChangeListener::getKey, executor)
       .addCallback(myNewSetOnline.apply(myModel, online), executor);
+  }
+
+  @UiThread
+  private static @Nullable Key getKey(@Nullable AvdData avd) {
+    if (avd == null) {
+      return null;
+    }
+
+    String name = avd.getName();
+
+    if (name == null) {
+      return null;
+    }
+
+    return new VirtualDeviceName(name);
   }
 }
