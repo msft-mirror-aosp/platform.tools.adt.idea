@@ -555,7 +555,7 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_eap = True,
-    version_full = "Dolphin | {0}.{1}.{2} Beta 1",
+    version_full = "Dolphin | {0}.{1}.{2} Beta 2",
     version_micro = 1,
     version_patch = 11,
     visibility = ["//visibility:public"],
