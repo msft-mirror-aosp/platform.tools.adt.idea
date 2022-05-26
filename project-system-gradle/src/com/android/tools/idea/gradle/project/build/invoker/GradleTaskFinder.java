@@ -275,10 +275,9 @@ public class GradleTaskFinder {
       String taskName = getGradleTaskName(buildMode);
       if (taskName != null) {
           tasks.add(createFullTaskName(gradlePath, taskName));
-
-        if (TestCompileType.UNIT_TESTS.equals(testCompileType) || TestCompileType.ALL.equals(testCompileType)) {
-            tasks.add(createFullTaskName(gradlePath, JavaPlugin.TEST_CLASSES_TASK_NAME));
-          }
+      }
+      if (TestCompileType.UNIT_TESTS.equals(testCompileType) || TestCompileType.ALL.equals(testCompileType)) {
+        tasks.add(createFullTaskName(gradlePath, JavaPlugin.TEST_CLASSES_TASK_NAME));
       }
     }
   }
