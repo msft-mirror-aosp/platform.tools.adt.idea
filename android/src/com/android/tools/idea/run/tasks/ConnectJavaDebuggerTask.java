@@ -98,7 +98,8 @@ public class ConnectJavaDebuggerTask extends ConnectDebuggerTaskBase {
           return Unit.INSTANCE;
         }
       ).onSuccess(session -> {
-        processHandler.copyUserDataTo(session.getDebugProcess().getProcessHandler());
+        ProcessHandler debugProcessHandler = session.getDebugProcess().getProcessHandler();
+        captureLogcatOutput(client, debugProcessHandler);
         session.showSessionTab();
       });
       return null;
