@@ -83,6 +83,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.SlowOperations;
@@ -1165,8 +1166,13 @@ public class LayoutlibSceneManager extends SceneManager {
               updateRenderTask(newTask);
             }
           })
-            .handle((result, exception) ->
-                      result != null ? result : RenderResult.createRenderTaskErrorResult(getModel().getFile(), exception));
+            .handle((result, exception) -> {
+              if (result != null) {
+                return result;
+              }
+              return ApplicationManager.getApplication()
+                .runReadAction((Computable<RenderResult>)RenderResult.createRenderTaskErrorResult(getModel().getFile(), exception));
+            });
         }
         else {
           updateRenderTask(null);

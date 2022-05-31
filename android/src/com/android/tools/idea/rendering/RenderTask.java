@@ -1078,7 +1078,9 @@ public class RenderTask {
           message = e.toString();
         }
         myLogger.addMessage(RenderProblem.createPlain(ERROR, message, myLogger.getProject(), myLogger.getLinkManager(), e));
-        return CompletableFuture.completedFuture(RenderResult.createRenderTaskErrorResult(psiFile, e));
+        RenderResult result = ApplicationManager.getApplication()
+          .runReadAction((Computable<RenderResult>)() -> RenderResult.createRenderTaskErrorResult(psiFile, e));
+        return CompletableFuture.completedFuture(result);
       }
     });
   }
