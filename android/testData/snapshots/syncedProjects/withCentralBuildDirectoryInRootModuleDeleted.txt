@@ -20,6 +20,11 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
+        BUILD_TASKS
+            TEST_COMPILE_MODE             : All
+            TEST_COMPILE_MODE             : Android tests
+            TEST_COMPILE_MODE             : Unit tests
+            TEST_COMPILE_MODE             : None
     MODULE                        : testWithCentralBuildDirectoryInRootModuleDeleted.app
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testWithCentralBuildDirectoryInRootModuleDeleted.app
@@ -42,9 +47,6 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
             TypeId                        : android
             ExternalSource                : GRADLE
             SelectedBuildVariant          : debug
-            AssembleTaskName              : assembleDebug
-            CompileJavaTaskName           : compileDebugSources
-            - AfterSyncTask               : generateDebugSources
             AllowUserConfiguration        : false
             GenFolderRelativePathApt      : /gen
             GenFolderRelativePathAidl     : /gen
@@ -60,20 +62,11 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
             - TestResFoldersRelativePath  : file://<PROJECT>/central/build/generated/res/resValues/androidTest/debug [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
-            UseCustomApkResourceFolder    : false
             ProjectType                   : 0
-            RunProcessResourcesMavenTask  : true
             PackTestCode                  : false
             RunProguard                   : false
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
-            EnableManifestMerging         : false
-            EnablePreDexing               : true
-            CompileCustomGeneratedSources : true
-            EnableSourcesAutogeneration   : true
-            EnableMultiDex                : false
-            MinimalMainDex                : false
-            IncludeAssetsFromLibraries    : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
@@ -87,6 +80,39 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
             HomePath                      : <ANDROID_SDK>
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
+        BUILD_TASKS
+            TEST_COMPILE_MODE             : All
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources, :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Android tests
+                CLEAN                         : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugAndroidTest
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Unit tests
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugUnitTest
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : None
+                CLEAN                         : :app:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
     MODULE                        : testWithCentralBuildDirectoryInRootModuleDeleted.app.androidTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testWithCentralBuildDirectoryInRootModuleDeleted.app
@@ -152,6 +178,39 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
         ORDER_ENTRY                   : testWithCentralBuildDirectoryInRootModuleDeleted.app.main
         Classes
             -                             : file://<PROJECT>/build/classes/test/testWithCentralBuildDirectoryInRootModuleDeleted.app.androidTest
+        BUILD_TASKS
+            TEST_COMPILE_MODE             : All
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources, :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Android tests
+                CLEAN                         : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugAndroidTest
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Unit tests
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugUnitTest
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : None
+                CLEAN                         : :app:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
     MODULE                        : testWithCentralBuildDirectoryInRootModuleDeleted.app.main
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testWithCentralBuildDirectoryInRootModuleDeleted.app
@@ -214,6 +273,39 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
         ORDER_ENTRY                   : <Module source>
         Classes
             -                             : file://<PROJECT>/build/classes/production/testWithCentralBuildDirectoryInRootModuleDeleted.app.main
+        BUILD_TASKS
+            TEST_COMPILE_MODE             : All
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources, :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Android tests
+                CLEAN                         : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugAndroidTest
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Unit tests
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugUnitTest
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : None
+                CLEAN                         : :app:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
     MODULE                        : testWithCentralBuildDirectoryInRootModuleDeleted.app.unitTest
         LINKED_ANDROID_MODULE_GROUP
             holder                        : testWithCentralBuildDirectoryInRootModuleDeleted.app
@@ -262,7 +354,73 @@ PROJECT                       : testWithCentralBuildDirectoryInRootModuleDeleted
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : testWithCentralBuildDirectoryInRootModuleDeleted.app.main
+        BUILD_TASKS
+            TEST_COMPILE_MODE             : All
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources, :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Android tests
+                CLEAN                         : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugAndroidTest
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:generateDebugAndroidTestSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : Unit tests
+                CLEAN                         : :app:generateDebugSources, :app:createMockableJar
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
+                REBUILD                       : :app:clean, :app:assembleDebug, :app:assembleDebugUnitTest
+                COMPILE_JAVA                  : :app:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:generateDebugSources, :app:createMockableJar
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
+            TEST_COMPILE_MODE             : None
+                CLEAN                         : :app:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug
+                REBUILD                       : :app:clean, :app:assembleDebug
+                COMPILE_JAVA                  : :app:compileDebugSources
+                SOURCE_GEN                    : :app:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
         ModuleName                    : testWithCentralBuildDirectoryInRootModuleDeleted.app.main
         Module                        : testWithCentralBuildDirectoryInRootModuleDeleted.app.main
+    BUILD_TASKS
+        TEST_COMPILE_MODE             : All
+            CLEAN                         : <PROJECT>::app:generateDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugAndroidTestSources
+            ASSEMBLE                      : :app:assembleDebug
+            REBUILD                       : <PROJECT>::app:clean, <PROJECT>::app:assembleDebug
+            COMPILE_JAVA                  : <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources
+            SOURCE_GEN                    : <PROJECT>::app:generateDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugAndroidTestSources
+            BUNDLE                        : :app:bundleDebug
+            APK_FROM_BUNDLE               : :app:extractApksForDebug
+        TEST_COMPILE_MODE             : Android tests
+            CLEAN                         : <PROJECT>::app:generateDebugSources, <PROJECT>::app:generateDebugAndroidTestSources
+            ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
+            REBUILD                       : <PROJECT>::app:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest
+            COMPILE_JAVA                  : <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources
+            SOURCE_GEN                    : <PROJECT>::app:generateDebugSources, <PROJECT>::app:generateDebugAndroidTestSources
+            BUNDLE                        : :app:bundleDebug
+            APK_FROM_BUNDLE               : :app:extractApksForDebug
+        TEST_COMPILE_MODE             : Unit tests
+            CLEAN                         : <PROJECT>::app:generateDebugSources, <PROJECT>::app:createMockableJar
+            ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
+            REBUILD                       : <PROJECT>::app:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugUnitTest
+            COMPILE_JAVA                  : <PROJECT>::app:compileDebugUnitTestSources
+            SOURCE_GEN                    : <PROJECT>::app:generateDebugSources, <PROJECT>::app:createMockableJar
+            BUNDLE                        : :app:bundleDebug
+            APK_FROM_BUNDLE               : :app:extractApksForDebug
+        TEST_COMPILE_MODE             : None
+            CLEAN                         : <PROJECT>::app:generateDebugSources
+            ASSEMBLE                      : :app:assembleDebug
+            REBUILD                       : <PROJECT>::app:clean, <PROJECT>::app:assembleDebug
+            COMPILE_JAVA                  : <PROJECT>::app:compileDebugSources
+            SOURCE_GEN                    : <PROJECT>::app:generateDebugSources
+            BUNDLE                        : :app:bundleDebug
+            APK_FROM_BUNDLE               : :app:extractApksForDebug
