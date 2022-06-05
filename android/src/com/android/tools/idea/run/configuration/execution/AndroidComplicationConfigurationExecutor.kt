@@ -28,6 +28,7 @@ import com.android.tools.idea.run.AndroidProcessHandler
 import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.android.tools.idea.run.configuration.getComplicationSourceTypes
+import com.android.tools.idea.run.configuration.parseRawComplicationTypes
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -77,7 +78,7 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
       if (provider == null) {
         Logger.getInstance(this::class.java).warn("Apk could not be retrieved.")
       } else {
-        configuration.verifyProviderTypes(getComplicationSourceTypes(provider.getApks(device)))
+        configuration.verifyProviderTypes(parseRawComplicationTypes(getComplicationSourceTypes(provider.getApks(device))))
       }
       indicator?.checkCanceled()
       installWatchApp(device, console)
@@ -91,6 +92,9 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
             .then { it.runContentDescriptor }.processed(promise)
         }
         configuration.chosenSlots.forEach { slot ->
+          if (slot.type == null) {
+            throw ExecutionException("Slot type is not specified for slot(id: ${slot.id}).")
+          }
           app.activateComponent(configuration.componentType, configuration.componentName!!, "$watchFaceInfo ${slot.id} ${slot.type}", mode,
                                 receiver)
         }
@@ -107,7 +111,7 @@ class AndroidComplicationConfigurationExecutor(environment: ExecutionEnvironment
     return createRunContentDescriptor(processHandler, console, environment)
   }
 
-  internal fun getComplicationSourceTypes(apks: Collection<ApkInfo>): List<Complication.ComplicationType>{
+  internal fun getComplicationSourceTypes(apks: Collection<ApkInfo>): List<String>{
     return try {
       getComplicationSourceTypes(apks, configuration.componentName!!)
     } catch (exception: Exception) {
