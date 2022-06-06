@@ -557,7 +557,7 @@ android_studio(
     version_eap = True,
     version_full = "Dolphin | {0}.{1}.{2} Beta 3",
     version_micro = 1,
-    version_patch = 11,
+    version_patch = 12,
     visibility = ["//visibility:public"],
 )
 
