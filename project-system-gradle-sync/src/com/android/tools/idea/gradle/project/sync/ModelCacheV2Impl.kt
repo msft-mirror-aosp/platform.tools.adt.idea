@@ -381,14 +381,14 @@ internal fun modelCacheV2Impl(internedModels: InternedModels): ModelCache {
     )
   }
 
-  fun buildTypeContainerFrom(buildType: BuildType, container: SourceSetContainer): IdeBuildTypeContainerImpl {
+  fun buildTypeContainerFrom(buildType: BuildType, container: SourceSetContainer?): IdeBuildTypeContainerImpl {
     return IdeBuildTypeContainerImpl(
       buildType = buildTypeFrom(buildType),
-      sourceProvider = sourceProviderFrom(container.sourceProvider),
+      sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it) },
       extraSourceProviders = listOfNotNull(
-        container.androidTestSourceProvider?.let { sourceProviderContainerFrom(it) },
-        container.unitTestSourceProvider?.let { sourceProviderContainerFrom(it) },
-        container.testFixturesSourceProvider?.let { sourceProviderContainerFrom(it) }
+        container?.androidTestSourceProvider?.let { sourceProviderContainerFrom(it) },
+        container?.unitTestSourceProvider?.let { sourceProviderContainerFrom(it) },
+        container?.testFixturesSourceProvider?.let { sourceProviderContainerFrom(it) }
       )
     )
   }
@@ -1170,11 +1170,21 @@ internal fun modelCacheV2Impl(internedModels: InternedModels): ModelCache {
     androidDsl: AndroidDsl
   ): IdeAndroidProjectImpl {
     val parsedModelVersion = GradleVersion.tryParse(modelsVersions.agp)
-    val defaultConfigCopy: IdeProductFlavorContainer = productFlavorContainerFrom(androidDsl.defaultConfig, basicProject.mainSourceSet)
-    val buildTypesCopy: Collection<IdeBuildTypeContainer> = zip(androidDsl.buildTypes, basicProject.buildTypeSourceSets,
-                                                                ::buildTypeContainerFrom)
-    val productFlavorCopy: Collection<IdeProductFlavorContainer> = zip(androidDsl.productFlavors, basicProject.productFlavorSourceSets,
-                                                                       ::productFlavorContainerFrom)
+    val defaultConfigCopy: IdeProductFlavorContainerImpl = productFlavorContainerFrom(androidDsl.defaultConfig, basicProject.mainSourceSet)
+    val buildTypesCopy: Collection<IdeBuildTypeContainerImpl> = zip(
+      androidDsl.buildTypes,
+      basicProject.buildTypeSourceSets,
+      { it.name },
+      { it.sourceProvider.name },
+      ::buildTypeContainerFrom
+    )
+    val productFlavorCopy: Collection<IdeProductFlavorContainerImpl> = zip(
+      androidDsl.productFlavors,
+      basicProject.productFlavorSourceSets,
+      { it.name },
+      { it.sourceProvider.name },
+      ::productFlavorContainerFrom
+    )
     val variantNamesCopy: Collection<String> = project.variants.map { it.name }
     val flavorDimensionCopy: Collection<String> = androidDsl.flavorDimensions.deduplicateStrings()
     val bootClasspathCopy: Collection<String> = ImmutableList.copyOf(basicProject.bootClasspath.map { it.absolutePath })
@@ -1267,8 +1277,15 @@ internal fun modelCacheV2Impl(internedModels: InternedModels): ModelCache {
   }
 }
 
-private inline fun <K, R, V> zip(original1: Collection<K>, original2: Collection<R>, mapper: (K, R) -> V): List<V> {
-  return original1.zip(original2).toMap().map { (k, v) -> mapper(k, v) }
+private inline fun <K, V, W, R> zip(
+  original1: Collection<V>,
+  original2: Collection<W>,
+  key1: (V) -> K,
+  key2: (W) -> K,
+  mapper: (V, W?) -> R
+): List<R> {
+  val original2Keyed = original2.associateBy { key2(it) }
+  return original1.map { mapper(it, original2Keyed[key1(it)]) }
 }
 
 private data class LibraryIdentity(
