@@ -168,8 +168,22 @@ class GradleTaskFinderTest : PlatformTestCase() {
     assertThat(getNotification(prefix = "Unable to find Gradle tasks")).isNull()
   }
 
+  fun testFindTasksToExecuteForRebuildingNonAndroidModule() {
+    setupTestProjectFromAndroidModel(project, projectDir, rootModule(), androidModule(":app"), javaModule(":libs"))
+    val tasksPerProject = taskFinder.findTasksToExecute(
+      modules.filter { it.name.contains("libs") }.toTypedArray(),
+      BuildMode.REBUILD,
+      TestCompileType.ALL
+    )
+    assertThat(tasksPerProject.forTest()).containsExactly(projectDir, listOf(
+      ":libs:clean",
+      ":libs:testClasses"
+    )).inOrder()
+    assertThat(getNotification("Unable to find Gradle tasks")).isNull()
+  }
+
   fun testFindTasksToExecuteForRebuildingAndroidProject_nonRootModule() {
-    setupTestProjectFromAndroidModel(project, projectDir, rootModule(), androidModule(":app"))
+    setupTestProjectFromAndroidModel(project, projectDir, rootModule(), androidModule(":app"), javaModule(":libs"))
     val tasksPerProject = taskFinder.findTasksToExecute(modules, BuildMode.REBUILD, TestCompileType.NONE)
     assertThat(tasksPerProject.forTest()).containsExactly(projectDir, listOf(
       ":app:clean", // Note that the comparison is order sensitive and the clean task goes first. (b/78443416)
