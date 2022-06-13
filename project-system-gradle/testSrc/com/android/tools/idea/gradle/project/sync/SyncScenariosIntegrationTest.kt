@@ -24,7 +24,6 @@ import com.android.tools.idea.projectsystem.getMainModule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.GradleIntegrationTest
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths
-import com.android.tools.idea.testing.assertAreEqualToSnapshots
 import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.openPreparedProject
@@ -32,7 +31,6 @@ import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.tools.idea.testing.saveAndDump
 import com.google.common.truth.Expect
-import com.google.common.truth.Truth
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
@@ -136,6 +134,22 @@ class SyncScenariosIntegrationTest : GradleIntegrationTest {
     }
   }
 
+  @Test
+  fun testFilteredOutProductFlavors() {
+    val projectRoot = prepareGradleProject(TestProjectToSnapshotPaths.MULTI_FLAVOR, "project")
+    projectRoot.resolve("app").resolve("build.gradle").replaceContent { content ->
+      content
+        .replace(" implementation", "// implementation")
+        .replace(" androidTestImplementation", "// androidTestImplementation") +
+        """
+              android.variantFilter { variant ->
+                  variant.setIgnore(!variant.name.startsWith("firstAbcSecondAbc"))
+              }
+        """
+    }
+    openPreparedProject("project") { }
+  }
+
   override fun getName(): String = testName.methodName
   override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"
@@ -151,3 +165,13 @@ private fun Project.dumpModule(moduleName: String, sourcesetModule: Module.() ->
       }
 
 private fun <T : Any> T.asParsed() = ParsedValue.Set.Parsed(this, DslText.Literal)
+
+private fun File.replaceContent(change: (String) -> String) {
+  writeText(
+    readText().let {
+      val result = change(it)
+      if (it == result) error("No replacements made")
+      result
+    }
+  )
+}

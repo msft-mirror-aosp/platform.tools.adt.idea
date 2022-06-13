@@ -58,6 +58,7 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@Ignore("LiveEdit is disabled in Android Studio Dolphin")
 class LiveLiteralsAndFastPreviewIntegrationTest {
   @get:Rule
   val projectRule = ComposeGradleProjectRule(SIMPLE_COMPOSE_PROJECT_PATH)
