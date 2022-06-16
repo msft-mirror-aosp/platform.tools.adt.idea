@@ -89,7 +89,7 @@ PROJECT                       : AS36
                 COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
                 SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 BUNDLE                        : :app:bundleDebug
-                APK_FROM_BUNDLE               : :app:extractApksForDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -177,7 +177,9 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.libs.android_library.main
+            Scope                         : Test
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.0.0 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.appcompat:appcompat:1.0.2@aar [=]
@@ -280,7 +282,7 @@ PROJECT                       : AS36
                 COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
                 SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 BUNDLE                        : :app:bundleDebug
-                APK_FROM_BUNDLE               : :app:extractApksForDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -408,7 +410,7 @@ PROJECT                       : AS36
                 COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
                 SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 BUNDLE                        : :app:bundleDebug
-                APK_FROM_BUNDLE               : :app:extractApksForDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -481,7 +483,9 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.libs.android_library.main
+            Scope                         : Test
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.0.0 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.appcompat:appcompat:1.0.2@aar [=]
@@ -560,7 +564,7 @@ PROJECT                       : AS36
                 COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
                 SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 BUNDLE                        : :app:bundleDebug
-                APK_FROM_BUNDLE               : :app:extractApksForDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -671,11 +675,13 @@ PROJECT                       : AS36
         ORDER_ENTRY                   : <Module source>
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
-                COMPILE_JAVA                  : :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -759,14 +765,18 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.features.dynamicfeature.main
+            Scope                         : Test
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
-                COMPILE_JAVA                  : :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -850,11 +860,13 @@ PROJECT                       : AS36
         ORDER_ENTRY                   : AS36.app.main
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
-                COMPILE_JAVA                  : :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -923,14 +935,18 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.features.dynamicfeature.main
+            Scope                         : Test
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
-                COMPILE_JAVA                  : :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugUnitTest, :features:dynamicfeature:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature:compileDebugAndroidTestSources, :features:dynamicfeature:compileDebugSources, :features:dynamicfeature:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:createMockableJar, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature:generateDebugAndroidTestSources, :features:dynamicfeature:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebug, :features:dynamicfeature:assembleDebugAndroidTest
@@ -1009,11 +1025,13 @@ PROJECT                       : AS36
         ORDER_ENTRY                   : <Module source>
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
-                COMPILE_JAVA                  : :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest
@@ -1097,14 +1115,18 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.features.dynamicfeature2.main
+            Scope                         : Test
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
-                COMPILE_JAVA                  : :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest
@@ -1188,11 +1210,13 @@ PROJECT                       : AS36
         ORDER_ENTRY                   : AS36.app.main
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
-                COMPILE_JAVA                  : :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest
@@ -1261,14 +1285,18 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.app.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.features.dynamicfeature2.main
+            Scope                         : Test
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                CLEAN                         : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
-                ASSEMBLE                      : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
-                REBUILD                       : :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
-                COMPILE_JAVA                  : :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
-                SOURCE_GEN                    : :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                CLEAN                         : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest
+                REBUILD                       : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest, :app:clean, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebugUnitTest, :features:dynamicfeature2:clean
+                COMPILE_JAVA                  : :app:compileDebugAndroidTestSources, :app:compileDebugSources, :app:compileDebugUnitTestSources, :features:dynamicfeature2:compileDebugAndroidTestSources, :features:dynamicfeature2:compileDebugSources, :features:dynamicfeature2:compileDebugUnitTestSources
+                SOURCE_GEN                    : :app:createMockableJar, :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:createMockableJar, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
+                BUNDLE                        : :app:bundleDebug
+                APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest
             TEST_COMPILE_MODE             : Android tests
                 CLEAN                         : :app:generateDebugAndroidTestSources, :app:generateDebugSources, :features:dynamicfeature2:generateDebugAndroidTestSources, :features:dynamicfeature2:generateDebugSources
                 ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :features:dynamicfeature2:assembleDebug, :features:dynamicfeature2:assembleDebugAndroidTest
@@ -1461,7 +1489,9 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.libs.android_library.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.libs.java_lib.main
+            Scope                         : Test
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.0.0 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.appcompat:appcompat:1.0.2@aar [=]
@@ -1749,7 +1779,9 @@ PROJECT                       : AS36
             VersionString                 : JetBrains Runtime version <JDK_VERSION>
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : AS36.libs.android_library.main
+            Scope                         : Test
         ORDER_ENTRY                   : AS36.libs.java_lib.main
+            Scope                         : Test
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.0.0 [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.appcompat:appcompat:1.0.2@aar [=]
@@ -2111,7 +2143,7 @@ PROJECT                       : AS36
             COMPILE_JAVA                  : <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources, <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::features:dynamicfeature2:compileDebugAndroidTestSources, <PROJECT>::features:dynamicfeature2:compileDebugSources, <PROJECT>::features:dynamicfeature2:compileDebugUnitTestSources, <PROJECT>::features:dynamicfeature:compileDebugAndroidTestSources, <PROJECT>::features:dynamicfeature:compileDebugSources, <PROJECT>::features:dynamicfeature:compileDebugUnitTestSources, <PROJECT>::libs:android_library:compileDebugAndroidTestSources, <PROJECT>::libs:android_library:compileDebugSources, <PROJECT>::libs:android_library:compileDebugUnitTestSources, <PROJECT>::libs:java_lib:compileJava, <PROJECT>::libs:java_lib:testClasses
             SOURCE_GEN                    : <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources, <PROJECT>::features:dynamicfeature2:createMockableJar, <PROJECT>::features:dynamicfeature2:generateDebugAndroidTestSources, <PROJECT>::features:dynamicfeature2:generateDebugSources, <PROJECT>::features:dynamicfeature:createMockableJar, <PROJECT>::features:dynamicfeature:generateDebugAndroidTestSources, <PROJECT>::features:dynamicfeature:generateDebugSources, <PROJECT>::libs:android_library:createMockableJar, <PROJECT>::libs:android_library:generateDebugAndroidTestSources, <PROJECT>::libs:android_library:generateDebugSources
             BUNDLE                        : :app:bundleDebug
-            APK_FROM_BUNDLE               : :app:extractApksForDebug
+            APK_FROM_BUNDLE               : :app:extractApksForDebug, :features:dynamicfeature2:assembleDebugAndroidTest, :features:dynamicfeature:assembleDebugAndroidTest
         TEST_COMPILE_MODE             : Android tests
             CLEAN                         : <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources, <PROJECT>::features:dynamicfeature2:generateDebugAndroidTestSources, <PROJECT>::features:dynamicfeature2:generateDebugSources, <PROJECT>::features:dynamicfeature:generateDebugAndroidTestSources, <PROJECT>::features:dynamicfeature:generateDebugSources, <PROJECT>::libs:android_library:generateDebugAndroidTestSources, <PROJECT>::libs:android_library:generateDebugSources
             ASSEMBLE                      : <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest, <PROJECT>::features:dynamicfeature2:assembleDebug, <PROJECT>::features:dynamicfeature2:assembleDebugAndroidTest, <PROJECT>::features:dynamicfeature:assembleDebug, <PROJECT>::features:dynamicfeature:assembleDebugAndroidTest
