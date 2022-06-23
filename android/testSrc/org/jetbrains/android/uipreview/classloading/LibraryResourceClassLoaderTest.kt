@@ -106,14 +106,4 @@ class LibraryResourceClassLoaderTest {
       .sorted()
       .joinToString())
   }
-
-  // Regression test for b/233862429
-  @Test
-  fun `library R class is not found if final IDs are used`() {
-    resourceIdManger.setFinalIdsUsed(true)
-    val classLoader = LibraryResourceClassLoader(null, androidProjectRule.module)
-    // When final IDs are used, we should load the R classes from the compiled R classes, not the light classes created by this class loader
-    assertThrowsClassNotFoundException { classLoader.loadClass("com.example.mylibrary.R") }
-    assertThrowsClassNotFoundException { classLoader.loadClass("com.example.mylibrary.R${'$'}layout") }
-  }
 }
