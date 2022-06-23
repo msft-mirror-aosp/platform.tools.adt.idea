@@ -15,6 +15,17 @@ MODULE                        : TestCompositeLib1
                 projectDir                    : <ROOT>/TestCompositeLib1/app
                 buildDir                      : <ROOT>/TestCompositeLib1/app/build [-]
                 buildFile                     : <ROOT>/TestCompositeLib1/app/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :app:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :app:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -199,6 +210,17 @@ MODULE                        : TestCompositeLib1
                 projectDir                    : <ROOT>/TestCompositeLib1/lib
                 buildDir                      : <ROOT>/TestCompositeLib1/lib/build [-]
                 buildFile                     : <ROOT>/TestCompositeLib1/lib/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -1942,16 +1964,16 @@ MODULE                        : TestCompositeLib1.app
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/app/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/app/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/app/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/app/src/debugUnitTest/kotlin [-]
     externalProject               : TestCompositeLib1:app (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib1.app.androidTest
@@ -2974,16 +2996,16 @@ MODULE                        : TestCompositeLib1.lib
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/lib/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/lib/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/lib/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib1/lib/src/debugUnitTest/kotlin [-]
     externalProject               : TestCompositeLib1:lib (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib1.lib.androidTest
@@ -3005,6 +3027,17 @@ MODULE                        : TestCompositeLib3
                 projectDir                    : <ROOT>/TestCompositeLib3/app
                 buildDir                      : <ROOT>/TestCompositeLib3/app/build [-]
                 buildFile                     : <ROOT>/TestCompositeLib3/app/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :app:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :app:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -3189,6 +3222,17 @@ MODULE                        : TestCompositeLib3
                 projectDir                    : <ROOT>/TestCompositeLib3/lib
                 buildDir                      : <ROOT>/TestCompositeLib3/lib/build [-]
                 buildFile                     : <ROOT>/TestCompositeLib3/lib/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -4317,16 +4361,16 @@ MODULE                        : TestCompositeLib3.app
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib3/app/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib3/app/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib3/app/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/TestCompositeLib3/app/src/debugUnitTest/kotlin [-]
     externalProject               : TestCompositeLib3:app (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib3.app.androidTest
@@ -5082,6 +5126,12 @@ MODULE                        : com.test.compositeNest3.compositeNest
         projectDir                    : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3
         buildDir                      : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3/build
         buildFile                     : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3/build.gradle
+        tasks
+            test                          : test (DefaultExternalTask)
+                qName                         : :test
+                description                   : Runs the unit tests.
+                group                         : verification
+                type                          : org.gradle.api.tasks.testing.Test
         sourceSets
             main                          : main (DefaultExternalSourceSet)
                 sources
@@ -5170,6 +5220,12 @@ MODULE                        : composite2
         projectDir                    : <ROOT>/TestCompositeLib2
         buildDir                      : <ROOT>/TestCompositeLib2/build
         buildFile                     : <ROOT>/TestCompositeLib2/build.gradle
+        tasks
+            test                          : test (DefaultExternalTask)
+                qName                         : :test
+                description                   : Runs the unit tests.
+                group                         : verification
+                type                          : org.gradle.api.tasks.testing.Test
         sourceSets
             main                          : main (DefaultExternalSourceSet)
                 sources
@@ -5258,6 +5314,12 @@ MODULE                        : composite4
         projectDir                    : <ROOT>/TestCompositeLib4
         buildDir                      : <ROOT>/TestCompositeLib4/build
         buildFile                     : <ROOT>/TestCompositeLib4/build.gradle
+        tasks
+            test                          : test (DefaultExternalTask)
+                qName                         : :test
+                description                   : Runs the unit tests.
+                group                         : verification
+                type                          : org.gradle.api.tasks.testing.Test
         sourceSets
             main                          : main (DefaultExternalSourceSet)
                 sources
@@ -5346,6 +5408,12 @@ MODULE                        : compositeNest
         projectDir                    : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1
         buildDir                      : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1/build
         buildFile                     : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1/build.gradle
+        tasks
+            test                          : test (DefaultExternalTask)
+                qName                         : :test
+                description                   : Runs the unit tests.
+                group                         : verification
+                type                          : org.gradle.api.tasks.testing.Test
         sourceSets
             main                          : main (DefaultExternalSourceSet)
                 sources
@@ -5424,6 +5492,17 @@ MODULE                        : project
                 projectDir                    : <ROOT>/app
                 buildDir                      : <ROOT>/app/build [-]
                 buildFile                     : <ROOT>/app/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :app:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :app:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -5611,6 +5690,17 @@ MODULE                        : project
                 projectDir                    : <ROOT>/lib
                 buildDir                      : <ROOT>/lib/build [-]
                 buildFile                     : <ROOT>/lib/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :lib:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -6872,16 +6962,16 @@ MODULE                        : project.app
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/app/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/app/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/app/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/app/src/debugUnitTest/kotlin [-]
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : project.app.androidTest
@@ -7865,16 +7955,16 @@ MODULE                        : project.lib
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/lib/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/lib/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/lib/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/lib/src/debugUnitTest/kotlin [-]
     externalProject               : :lib (DefaultExternalProject) (*seen*)
 MODULE                        : project.lib.androidTest

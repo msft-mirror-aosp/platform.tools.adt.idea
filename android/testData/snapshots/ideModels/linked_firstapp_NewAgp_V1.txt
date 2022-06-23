@@ -22,6 +22,17 @@ MODULE                        : My_First_App
                         projectDir                    : <ROOT>/shared/mysharedlibrary
                         buildDir                      : <ROOT>/shared/mysharedlibrary/build [-]
                         buildFile                     : <ROOT>/shared/mysharedlibrary/build.gradle
+                        tasks
+                            testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                                qName                         : :app:mysharedlibrary:testDebugUnitTest
+                                description                   : Run unit tests for the debug build.
+                                group                         : verification
+                                type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                            testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                                qName                         : :app:mysharedlibrary:testReleaseUnitTest
+                                description                   : Run unit tests for the release build.
+                                group                         : verification
+                                type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                         externalSystemId              : GRADLE
                         artifactsByConfiguration
                             androidApis                   : <empty>
@@ -240,6 +251,17 @@ MODULE                        : My_First_App
                 projectDir                    : <ROOT>/firstapp/app
                 buildDir                      : <ROOT>/firstapp/app/build [-]
                 buildFile                     : <ROOT>/firstapp/app/build.gradle
+                tasks
+                    testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
+                        qName                         : :app:testDebugUnitTest
+                        description                   : Run unit tests for the debug build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
+                    testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
+                        qName                         : :app:testReleaseUnitTest
+                        description                   : Run unit tests for the release build.
+                        group                         : verification
+                        type                          : com.android.build.gradle.tasks.factory.AndroidUnitTest
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
@@ -1943,16 +1965,16 @@ MODULE                        : My_First_App.app
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/firstapp/app/src/debugUnitTest/kotlin [-]
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : My_First_App.app.androidTest
@@ -2933,16 +2955,16 @@ MODULE                        : My_First_App.app.mysharedlibrary
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debug/kotlin [-]
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
-                pluginVersion                 : 1.6.20
+                pluginVersion                 : <CUT>
                 - pureKotlinSourceFolders     : <ROOT>/shared/mysharedlibrary/src/debugUnitTest/kotlin [-]
     externalProject               : :app:mysharedlibrary (DefaultExternalProject) (*seen*)
 MODULE                        : My_First_App.app.mysharedlibrary.androidTest
