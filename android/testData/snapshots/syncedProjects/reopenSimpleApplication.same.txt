@@ -455,8 +455,8 @@ PROJECT                       : project
         ORDER_ENTRY                   : project.app.main
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : project.app
-        Module                        : project.app
+        ModuleName                    : project.app.main
+        Module                        : project.app.main
     LIBRARY_TABLE
         LIBRARY                       : Gradle: android.arch.core:common:<VERSION>
             *CLASSES                      : jar://<M2>/android/arch/core/common/1.1.1/common-<VERSION>.jar!/

@@ -1247,8 +1247,8 @@ PROJECT                       : testSwitchingVariants_variantSpecificDependencie
         ORDER_ENTRY                   : testSwitchingVariants_variantSpecificDependencies.moduleB.main
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : testSwitchingVariants_variantSpecificDependencies.app
-        Module                        : testSwitchingVariants_variantSpecificDependencies.app
+        ModuleName                    : testSwitchingVariants_variantSpecificDependencies.app.main
+        Module                        : testSwitchingVariants_variantSpecificDependencies.app.main
     LIBRARY_TABLE
         LIBRARY                       : Gradle: android.arch.core:common:<VERSION>
             *CLASSES                      : jar://<M2>/android/arch/core/common/1.1.1/common-<VERSION>.jar!/

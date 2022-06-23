@@ -26,6 +26,8 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
 import com.android.tools.idea.common.type.DesignerTypeRegistrar;
+import com.android.tools.idea.uibuilder.type.AnimatedStateListFileType;
+import com.android.tools.idea.uibuilder.type.AnimatedStateListTempFileType;
 import com.google.common.collect.ImmutableList;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.editor.CaretModel;
@@ -102,6 +104,10 @@ public abstract class DesignerEditorProvider implements FileEditorProvider, Quic
         }
 
         NlModel model = sceneView.getSceneManager().getModel();
+        PsiFile file = model.getFile();
+        if (AnimatedStateListFileType.INSTANCE.isResourceTypeOf(file) || AnimatedStateListTempFileType.INSTANCE.isResourceTypeOf(file)) {
+          return;
+        }
         ImmutableList<NlComponent> views = model.findByOffset(offset);
         if (views.isEmpty()) {
           views = model.getComponents();

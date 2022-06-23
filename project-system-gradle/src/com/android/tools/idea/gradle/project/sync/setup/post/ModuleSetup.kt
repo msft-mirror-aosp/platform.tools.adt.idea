@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.idea.configuration.sourceSetName
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
 
 fun setUpModules(project: Project) {
-  project.fixRunConfigurations()
   GradleTestArtifactSearchScopes.initializeScopes(project)
   ModuleManager.getInstance(project).modules.forEach { module ->
     recordLastAgpVersion(module)

@@ -885,8 +885,8 @@ PROJECT                       : testTestFixturesWithModulePerSourceSetEnabled
         ORDER_ENTRY                   : testTestFixturesWithModulePerSourceSetEnabled.lib.testFixtures
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : testTestFixturesWithModulePerSourceSetEnabled.app
-        Module                        : testTestFixturesWithModulePerSourceSetEnabled.app
+        ModuleName                    : testTestFixturesWithModulePerSourceSetEnabled.app.main
+        Module                        : testTestFixturesWithModulePerSourceSetEnabled.app.main
     LIBRARY_TABLE
         LIBRARY                       : Gradle: android.arch.core:common:<VERSION>
             *CLASSES                      : jar://<M2>/android/arch/core/common/1.1.1/common-<VERSION>.jar!/

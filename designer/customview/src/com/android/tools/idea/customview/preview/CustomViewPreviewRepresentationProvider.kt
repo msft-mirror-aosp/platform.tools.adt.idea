@@ -19,7 +19,7 @@ import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationProvider
-import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.hasSourceFileExtension
+import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.isSourceFileType
 import com.android.tools.idea.uibuilder.type.LayoutEditorFileType
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -53,7 +53,7 @@ class CustomViewPreviewRepresentationProvider : PreviewRepresentationProvider {
    */
   override fun accept(project: Project, psiFile: PsiFile): Boolean {
     val virtualFile = psiFile.virtualFile
-    if (!virtualFile.hasSourceFileExtension()) {
+    if (!virtualFile.isSourceFileType()) {
       return false
     }
 

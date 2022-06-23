@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.project.sync
 typealias VariantNameResolver = (buildType: String?, productFlavors: (dimension: String) ->  String) -> String?
 
 fun AndroidModule.buildVariantNameResolver(): VariantNameResolver {
-  val moduleName = androidProject.name
   val availableDimensions = androidProject.productFlavors.mapNotNull { it.productFlavor.dimension }.toSet()
   val dimensions = androidProject.flavorDimensions.filter { availableDimensions.contains(it) }
   val map = v2Variants.orEmpty()
@@ -26,11 +25,9 @@ fun AndroidModule.buildVariantNameResolver(): VariantNameResolver {
       variant.productFlavors.toList() + listOfNotNull(variant.buildType) to variant.name
     }
 
-  return fun(buildType: String?, productFlavors: (dimension: String) ->  String): String {
+  return fun(buildType: String?, productFlavors: (dimension: String) ->  String): String? {
     val flavors = dimensions.map(productFlavors)
     val key = flavors + listOfNotNull(buildType)
-    return map
-      .getOrElse(key) { error("Cannot find a variant matching build type '$buildType' and product flavors '$flavors' in $moduleName") }
-
+    return map[key]
   }
 }

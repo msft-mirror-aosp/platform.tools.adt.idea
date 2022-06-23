@@ -2534,8 +2534,8 @@ PROJECT                       : testPsdSampleRenamingModule
         ORDER_ENTRY                   : testPsdSampleRenamingModule.nested2.main
     RUN_CONFIGURATION             : app
         *class*                       : AndroidRunConfiguration
-        ModuleName                    : testPsdSampleRenamingModule.app
-        Module                        : testPsdSampleRenamingModule.app
+        ModuleName                    : testPsdSampleRenamingModule.app.main
+        Module                        : testPsdSampleRenamingModule.app.main
     LIBRARY_TABLE
         LIBRARY                       : Gradle: ./app/libs/lib1-1.0.aar
             *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lib1-1.0/AndroidManifest.xml
