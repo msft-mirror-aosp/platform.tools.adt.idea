@@ -211,8 +211,10 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
       val projectRootPath = prepareGradleProject(NON_STANDARD_SOURCE_SETS, "project")
       openPreparedProject("project/application") { project ->
         val text = project.saveAndDump(
-          mapOf("EXTERNAL_SOURCE_SET" to File(projectRootPath, "externalRoot"),
-                "EXTERNAL_MANIFEST" to File(projectRootPath, "externalManifest"))
+          mapOf(
+            "EXTERNAL_SOURCE_SET" to File(projectRootPath, "externalRoot"),
+            "EXTERNAL_MANIFEST" to File(projectRootPath, "externalManifest")
+          )
         )
         assertIsEqualToSnapshot(text)
       }
@@ -221,6 +223,13 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
     @Test
     fun testNonStandardSourceSetDependencies() {
       val text = importSyncAndDumpProject(NON_STANDARD_SOURCE_SET_DEPENDENCIES)
+      assertIsEqualToSnapshot(text)
+    }
+
+    @Test
+    fun testNonStandardSourceSetDependencies_hierarchical() {
+      val text =
+        importSyncAndDumpProject(NON_STANDARD_SOURCE_SET_DEPENDENCIES, patch = { patchMppProject(it, enableHierarchicalSupport = true) })
       assertIsEqualToSnapshot(text)
     }
 
@@ -251,7 +260,7 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
     @Test
     fun testPsdDependencyDeleteModule() {
-      importSyncAndDumpProject(PSD_DEPENDENCY) { project ->
+      importSyncProject(PSD_DEPENDENCY) { project ->
         val beforeDelete = project.saveAndDump()
         PsProjectImpl(project).let { projectModel ->
           projectModel.removeModule(":moduleB")
@@ -268,7 +277,7 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
     @Test
     fun testPsdDependencyAndroidToJavaModuleAndBack() {
-      importSyncAndDumpProject(PSD_DEPENDENCY) { project ->
+      importSyncProject(PSD_DEPENDENCY) { project ->
         val beforeAndroidToJava = project.saveAndDump()
         val oldModuleCContent = WriteAction.compute<ByteArray, Throwable> {
           val jModuleMFile = project.guessProjectDir()?.findFileByRelativePath("jModuleM/build.gradle")!!
@@ -329,6 +338,28 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
     }
 
     @Test
+    fun testKmp_hierarchical() {
+      val text = this.importSyncAndDumpProject(KOTLIN_MULTIPLATFORM, patch = { patchMppProject(it, enableHierarchicalSupport = true) })
+      assertIsEqualToSnapshot(text)
+    }
+
+    @Test
+    fun testKmp_hierarchical_jvm() {
+      val text = this.importSyncAndDumpProject(
+        KOTLIN_MULTIPLATFORM,
+        patch = { patchMppProject(it, enableHierarchicalSupport = true, addJvmTo = "module2") })
+      assertIsEqualToSnapshot(text)
+    }
+
+    @Test
+    fun testKmp_jvm() {
+      val text = this.importSyncAndDumpProject(
+        KOTLIN_MULTIPLATFORM,
+        patch = { patchMppProject(it, enableHierarchicalSupport = false, addJvmTo = "module2") })
+      assertIsEqualToSnapshot(text)
+    }
+
+    @Test
     fun testKapt() {
       val text = importSyncAndDumpProject(KOTLIN_KAPT)
       assertIsEqualToSnapshot(text)
@@ -372,7 +403,7 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
 
   override fun getTestDataDirectoryWorkspaceRelativePath(): @SystemIndependent String = "tools/adt/idea/android/testData/snapshots"
 
-  protected fun <T> importSyncAndDumpProject(
+  protected fun <T> importSyncProject(
     projectDir: String,
     patch: ((projectRootPath: File) -> Unit)? = null,
     body: (Project) -> T
@@ -385,8 +416,13 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
     }
   }
 
-  protected fun importSyncAndDumpProject(projectDir: String): String =
-    importSyncAndDumpProject(projectDir) { it.saveAndDump() }
+  protected fun importSyncAndDumpProject(
+    projectDir: String,
+    patch: ((projectRootPath: File) -> Unit)? = null,
+    body: (Project) -> String = { it.saveAndDump() }
+  ): String {
+    return importSyncProject(projectDir, patch = patch, body = body)
+  }
 
   protected fun Project.syncAndDumpProject(): String {
     requestSyncAndWait()
@@ -398,18 +434,18 @@ open class GradleSyncProjectComparisonTest : GradleIntegrationTest, SnapshotComp
   protected fun <T> withJdkNamed18(body: () -> T): T {
     val newJdk = if (ProjectJdkTable.getInstance().findJdk("1.8") == null) {
       val anyJdk = IdeSdks.getInstance().jdk!!
-      val newJdk = SdkConfigurationUtil.setupSdk(ProjectJdkTable.getInstance().allJdks, anyJdk.homeDirectory!!, JavaSdk.getInstance(),
-                                                 true, null, "1.8")!!
+      val newJdk = SdkConfigurationUtil.setupSdk(
+        ProjectJdkTable.getInstance().allJdks, anyJdk.homeDirectory!!, JavaSdk.getInstance(),
+        true, null, "1.8"
+      )!!
       ApplicationManager.getApplication().runWriteAction { ProjectJdkTable.getInstance().addJdk(newJdk) }
       newJdk
-    }
-    else {
+    } else {
       null
     }
     try {
       return body()
-    }
-    finally {
+    } finally {
       if (newJdk != null) {
         ApplicationManager.getApplication().runWriteAction { ProjectJdkTable.getInstance().removeJdk(newJdk) }
       }
@@ -436,7 +472,7 @@ class LightSyncReferenceTest : SnapshotComparisonTest, GradleIntegrationTest {
   var testName = TestName()
 
   val projectRule = AndroidProjectRule.withAndroidModels(
-    prepareProjectSources = fun (root: File) {
+    prepareProjectSources = fun(root: File) {
       prepareGradleProject(resolveTestDataPath(LIGHT_SYNC_REFERENCE), root, {})
       root.resolve(".gradle").mkdir()
     },
@@ -449,7 +485,14 @@ class LightSyncReferenceTest : SnapshotComparisonTest, GradleIntegrationTest {
       groupId = "reference",
       version = "unspecified",
       selectedBuildVariant = "debug",
-      projectBuilder = AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":androidlibrary", "debug")) }).build(),
+      projectBuilder = AndroidProjectBuilder(androidModuleDependencyList = {
+        listOf(
+          AndroidModuleDependency(
+            ":androidlibrary",
+            "debug"
+          )
+        )
+      }).build(),
     ),
     AndroidModuleModelBuilder(
       gradlePath = ":androidlibrary",
@@ -498,6 +541,7 @@ class LightSyncReferenceTest : SnapshotComparisonTest, GradleIntegrationTest {
     assertThat(actualSnapshotTest.filterOutProperties()).isEqualTo(expectedSnapshotTest.filterOutProperties())
   }
 }
+
 private fun String.filterOutProperties(): String =
   this
     .splitToSequence('\n')
@@ -518,3 +562,27 @@ private val PROPERTIES_TO_SKIP_BY_PREFIXES = setOf(
   "PROJECT/MODULE/TEST_MODULE_PROPERTIES",
   "PROJECT/RUN_CONFIGURATION",
 )
+
+private fun patchMppProject(projectRoot: File, enableHierarchicalSupport: Boolean, addJvmTo: String? = null) {
+  if (enableHierarchicalSupport) {
+    replaceInFile(
+      projectRoot.resolve("gradle.properties"),
+      "kotlin.mpp.hierarchicalStructureSupport=false",
+      "kotlin.mpp.hierarchicalStructureSupport=true"
+    )
+  }
+  if (addJvmTo != null) {
+    replaceInFile(
+      projectRoot.resolve(addJvmTo).resolve("build.gradle"),
+      "android()",
+      "android()\njvm()"
+    )
+  }
+}
+
+private fun replaceInFile(file: File, oldValue: String, newValue: String) {
+  val content = file.readText()
+  val newContent = content.replace(oldValue, newValue)
+  if (content == newContent) error("Failed to update $file")
+  file.writeText(newContent)
+}

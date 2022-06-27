@@ -107,6 +107,10 @@ open class FakeJBPopup<T>(
     showArgs = listOf(project)
   }
 
+  override fun isFocused(): Boolean {
+    return true
+  }
+
   override fun getBestPositionFor(dataContext: DataContext): Point {
     TODO("Not yet implemented")
   }
@@ -172,10 +176,6 @@ open class FakeJBPopup<T>(
   }
 
   override fun <T : Any?> getUserData(userDataClass: Class<T>): T? {
-    TODO("Not yet implemented")
-  }
-
-  override fun isFocused(): Boolean {
     TODO("Not yet implemented")
   }
 

@@ -23,7 +23,9 @@ import com.android.tools.idea.run.AndroidSessionInfo
 import com.intellij.debugger.DebuggerManagerEx
 import com.intellij.debugger.engine.JavaDebugProcess
 import com.intellij.execution.ExecutionException
+import com.intellij.execution.ExecutionTargetManager
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ProgramRunner
 import com.intellij.execution.ui.ConsoleView
@@ -110,7 +112,15 @@ fun attachJavaDebuggerToClientAndShowTab(
       val promise = AsyncPromise<XDebugSession>()
       runInEdt {
         promise.catchError {
-          promise.setResult(XDebuggerManager.getInstance(project).startSessionAndShowTab(sessionName, ANDROID_HEAD, null, false, starter))
+          val session = XDebuggerManager.getInstance(project).startSessionAndShowTab(sessionName, ANDROID_HEAD, null, false, starter)
+          val debugProcessHandler = session.debugProcess.processHandler
+          AndroidSessionInfo.create(debugProcessHandler,
+                                    session.runContentDescriptor,
+                                    null,
+                                    DefaultDebugExecutor.getDebugExecutorInstance().id,
+                                    DefaultDebugExecutor.getDebugExecutorInstance().actionName,
+                                    ExecutionTargetManager.getActiveTarget(project))
+          promise.setResult(session)
         }
       }
       promise
