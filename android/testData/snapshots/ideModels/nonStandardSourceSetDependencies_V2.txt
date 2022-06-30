@@ -1102,8 +1102,8 @@ MODULE                        : NonStandardSourceSetDependencies.app
         TransitiveRClasses            : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
-    VariantNames                  : debug
-    VariantNames                  : release
+    - basicVariant:               : debug
+    - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -2331,8 +2331,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
         TransitiveRClasses            : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
-    VariantNames                  : debug
-    VariantNames                  : release
+    - basicVariant:               : debug
+    - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -3407,8 +3407,8 @@ MODULE                        : NonStandardSourceSetDependencies.lib
         TransitiveRClasses            : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
-    VariantNames                  : debug
-    VariantNames                  : release
+    - basicVariant:               : debug
+    - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -4257,7 +4257,7 @@ MODULE                        : NonStandardSourceSetDependencies.network-kmm
                     - dependencies                : 3
                     - dependencies                : 4
                     - dependencies                : 5
-                    isTestModule                  : true
+                    isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4302,7 +4302,7 @@ MODULE                        : NonStandardSourceSetDependencies.network-kmm
                     - dependencies                : 14
                     - dependencies                : 15
                     - dependencies                : 16
-                    isTestModule                  : true
+                    isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4388,7 +4388,7 @@ MODULE                        : NonStandardSourceSetDependencies.network-kmm
                 - dependencies                : 3
                 - dependencies                : 4
                 disambiguationClassifier      : jvm
-                isTestModule                  : true
+                isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
