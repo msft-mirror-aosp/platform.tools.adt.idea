@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent.EventKind;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.EdtExecutorService;
 import icons.StudioIcons;
@@ -57,7 +58,7 @@ final class LaunchOrStopButtonTableCellEditor extends IconButtonTableCellEditor 
   LaunchOrStopButtonTableCellEditor(@Nullable Project project,
                                     @NotNull Supplier<@NotNull AvdManagerConnection> getDefaultAvdManagerConnection,
                                     @NotNull NewSetEnabled newSetEnabled) {
-    super(LaunchOrStopValue.INSTANCE);
+    super(LaunchOrStopValue.INSTANCE, StudioIcons.Avd.RUN, "Launch this AVD in the emulator");
 
     myProject = project;
     myGetDefaultAvdManagerConnection = getDefaultAvdManagerConnection;
@@ -65,7 +66,8 @@ final class LaunchOrStopButtonTableCellEditor extends IconButtonTableCellEditor 
 
     myButton.addActionListener(actionEvent -> {
       if (myDevice.isOnline()) {
-        stop();
+        // stop();
+        Logger.getInstance(LaunchOrStopButtonTableCellEditor.class).warn("Expected the button to be disabled for online " + myDevice);
       }
       else {
         launch(project);
@@ -128,17 +130,7 @@ final class LaunchOrStopButtonTableCellEditor extends IconButtonTableCellEditor 
                                                         int viewRowIndex,
                                                         int viewColumnIndex) {
     myDevice = ((VirtualDeviceTable)table).getDeviceAt(viewRowIndex);
-
-    if (myDevice.isOnline()) {
-      myButton.setDefaultIcon(StudioIcons.Avd.STOP);
-      myButton.setEnabled(true);
-      myButton.setToolTipText("Stop the emulator running this AVD");
-    }
-    else {
-      myButton.setDefaultIcon(StudioIcons.Avd.RUN);
-      myButton.setEnabled(myDevice.getAvdInfo().getStatus().equals(AvdStatus.OK));
-      myButton.setToolTipText("Launch this AVD in the emulator");
-    }
+    myButton.setEnabled(!myDevice.isOnline() && myDevice.getAvdInfo().getStatus().equals(AvdStatus.OK));
 
     super.getTableCellEditorComponent(table, value, selected, viewRowIndex, viewColumnIndex);
     return myButton;

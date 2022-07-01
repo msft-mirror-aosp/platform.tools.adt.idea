@@ -41,6 +41,7 @@ import javax.swing.JTable;
 import javax.swing.event.CellEditorListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -53,6 +54,7 @@ public final class LaunchOrStopButtonTableCellEditorTest {
 
   private IconButtonTableCellEditor myEditor;
 
+  @Ignore
   @Test
   public void onSuccessDeviceIsOnline() throws InterruptedException {
     // Arrange
@@ -120,9 +122,9 @@ public final class LaunchOrStopButtonTableCellEditorTest {
     // Assert
     IconButton button = (IconButton)component;
 
-    assertEquals(Optional.of(StudioIcons.Avd.STOP), button.getDefaultIcon());
-    assertTrue(button.isEnabled());
-    assertEquals("Stop the emulator running this AVD", button.getToolTipText());
+    assertEquals(Optional.of(StudioIcons.Avd.RUN), button.getDefaultIcon());
+    assertFalse(button.isEnabled());
+    assertEquals("Launch this AVD in the emulator", button.getToolTipText());
   }
 
   @Test
