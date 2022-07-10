@@ -62,7 +62,7 @@ class LogcatToolWindowFactoryTest {
 
   @Test
   fun isApplicable() {
-    assertThat(logcatToolWindowFactory().isApplicable(projectRule.project)).isTrue()
+    assertThat(logcatToolWindowFactory().isApplicable(projectRule.project)).isFalse()
   }
 
   @Test
@@ -134,9 +134,9 @@ class LogcatToolWindowFactoryTest {
     logcatToolWindowFactory()
     AndroidLogcatToolWindowFactory()
 
-    verify(mockColorSettingsPages).registerPage(any(LogcatColorSettingsPage::class.java))
-    verify(mockColorSettingsPages).registerPage(any(LogcatFilterColorSettingsPage::class.java))
-    verify(mockColorSettingsPages, never()).registerPage(any(AndroidLogcatColorPage::class.java))
+    verify(mockColorSettingsPages, never()).registerPage(any(LogcatColorSettingsPage::class.java))
+    verify(mockColorSettingsPages, never()).registerPage(any(LogcatFilterColorSettingsPage::class.java))
+    verify(mockColorSettingsPages).registerPage(any(AndroidLogcatColorPage::class.java))
   }
 
   @Test
