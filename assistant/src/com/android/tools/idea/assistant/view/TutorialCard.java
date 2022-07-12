@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.assistant.view;
 
+import com.android.tools.idea.assistant.OpenAssistSidePanelAction;
 import com.android.tools.idea.assistant.ScrollHandler;
 import com.android.tools.idea.assistant.datamodel.FeatureData;
 import com.android.tools.idea.assistant.datamodel.StepData;
@@ -331,7 +332,7 @@ public class TutorialCard extends CardViewPanel {
     }
 
     private void closeAssistant() {
-      ToolWindow assistantToolWindow = ToolWindowManager.getInstance(myProject).getToolWindow("Assistant");
+      ToolWindow assistantToolWindow = ToolWindowManager.getInstance(myProject).getToolWindow(OpenAssistSidePanelAction.TOOL_WINDOW_TITLE);
       if (assistantToolWindow != null) {
         assistantToolWindow.hide();
       }
