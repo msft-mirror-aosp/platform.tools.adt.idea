@@ -1,3 +1,7 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT>/firstapp (IdeBuildImpl)
+        buildName                     : :
+    gradleSupportsDirectTaskInvocation      : true
 MODULE                        : My_First_App
     externalProject               : My First App (DefaultExternalProject)
         name                          : My First App
@@ -506,6 +510,10 @@ MODULE                        : My_First_App.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>/firstapp
+    BuildId                       : <ROOT>/firstapp
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -549,7 +557,10 @@ MODULE                        : My_First_App.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.example.firstapp
+        testApplicationId             : com.example.firstapp.test
     - basicVariant:               : release
+        applicationId                 : com.example.firstapp
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -1801,9 +1812,9 @@ MODULE                        : My_First_App.app
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -1869,9 +1880,9 @@ MODULE                        : My_First_App.app
                     - friendPaths                 : <ROOT>/firstapp/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/firstapp/app/build/intermediates/compile_app_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -1939,9 +1950,9 @@ MODULE                        : My_First_App.app
                     - friendPaths                 : <ROOT>/firstapp/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/firstapp/app/build/intermediates/compile_app_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2013,6 +2024,10 @@ MODULE                        : My_First_App.app.mysharedlibrary
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>/firstapp
+    BuildId                       : <ROOT>/firstapp
+    BuildName                     : :
+    ProjectPath                   : :app:mysharedlibrary
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -2056,6 +2071,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.mysharedlibrary.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -2795,9 +2811,9 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : mysharedlibrary_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2861,9 +2877,9 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - friendPaths                 : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/shared/mysharedlibrary/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : mysharedlibrary_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2929,9 +2945,9 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     - friendPaths                 : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/shared/mysharedlibrary/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : mysharedlibrary_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none

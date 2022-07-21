@@ -1,3 +1,7 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
+    gradleSupportsDirectTaskInvocation      : true
 MODULE                        : project
     GradleModuleModel
         agpVersion                    : 7.0.0
@@ -29,6 +33,10 @@ MODULE                        : project
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -89,7 +97,10 @@ MODULE                        : project
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.android.tests.basic.debug
+        testApplicationId             : com.android.tests.basic.debug.test
     - basicVariant:               : release
+        applicationId                 : com.android.tests.basic
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false

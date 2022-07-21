@@ -1,3 +1,19 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
+    - builds                      : <ROOT>/TestCompositeLib1 (IdeBuildImpl)
+        buildName                     : includedLib1
+    - builds                      : <ROOT>/TestCompositeLib2 (IdeBuildImpl)
+        buildName                     : TestCompositeLib2
+    - builds                      : <ROOT>/TestCompositeLib3 (IdeBuildImpl)
+        buildName                     : TestCompositeLib3
+    - builds                      : <ROOT>/TestCompositeLib4 (IdeBuildImpl)
+        buildName                     : TestCompositeLib4
+    - builds                      : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1 (IdeBuildImpl)
+        buildName                     : TestCompositeLibNested_1
+    - builds                      : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3 (IdeBuildImpl)
+        buildName                     : TestCompositeLibNested_3
+    gradleSupportsDirectTaskInvocation      : true
 MODULE                        : TestCompositeLib1
     externalProject               : TestCompositeLib1 (DefaultExternalProject)
         name                          : TestCompositeLib1
@@ -443,6 +459,10 @@ MODULE                        : TestCompositeLib1.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>/TestCompositeLib1
+    BuildName                     : includedLib1
+    ProjectPath                   : :app
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -486,7 +506,10 @@ MODULE                        : TestCompositeLib1.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.test.composite1
+        testApplicationId             : com.test.composite1.test
     - basicVariant:               : release
+        applicationId                 : com.test.composite1
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -1802,9 +1825,9 @@ MODULE                        : TestCompositeLib1.app
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/TestCompositeLib1/app/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -1870,9 +1893,9 @@ MODULE                        : TestCompositeLib1.app
                     - friendPaths                 : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib1/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -1938,9 +1961,9 @@ MODULE                        : TestCompositeLib1.app
                     - friendPaths                 : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib1/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2014,6 +2037,10 @@ MODULE                        : TestCompositeLib1.lib
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>/TestCompositeLib1
+    BuildName                     : includedLib1
+    ProjectPath                   : :lib
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -2057,6 +2084,7 @@ MODULE                        : TestCompositeLib1.lib
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.test.composite1.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -2836,9 +2864,9 @@ MODULE                        : TestCompositeLib1.lib
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/TestCompositeLib1/lib/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : composite1_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2903,9 +2931,9 @@ MODULE                        : TestCompositeLib1.lib
                     - friendPaths                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : composite1_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -2970,9 +2998,9 @@ MODULE                        : TestCompositeLib1.lib
                     - friendPaths                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : composite1_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -3359,6 +3387,10 @@ MODULE                        : TestCompositeLib3.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>/TestCompositeLib3
+    BuildName                     : TestCompositeLib3
+    ProjectPath                   : :app
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -3402,7 +3434,10 @@ MODULE                        : TestCompositeLib3.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.test.composite3
+        testApplicationId             : com.test.composite3.test
     - basicVariant:               : release
+        applicationId                 : com.test.composite3
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -4199,9 +4234,9 @@ MODULE                        : TestCompositeLib3.app
                     - classpath                   : <ANDROID_SDK>/build-tools/30.0.2/core-lambda-stubs.jar
                     destination                   : <ROOT>/TestCompositeLib3/app/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -4267,9 +4302,9 @@ MODULE                        : TestCompositeLib3.app
                     - friendPaths                 : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib3/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -4335,9 +4370,9 @@ MODULE                        : TestCompositeLib3.app
                     - friendPaths                 : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/TestCompositeLib3/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -4410,6 +4445,10 @@ MODULE                        : TestCompositeLib3.lib
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>/TestCompositeLib3
+    BuildName                     : TestCompositeLib3
+    ProjectPath                   : :lib
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -4453,6 +4492,7 @@ MODULE                        : TestCompositeLib3.lib
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.test.composite3.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -5922,6 +5962,10 @@ MODULE                        : project.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -5965,7 +6009,10 @@ MODULE                        : project.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.test.compositeapp
+        testApplicationId             : com.test.compositeapp.test
     - basicVariant:               : release
+        applicationId                 : com.test.compositeapp
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -6800,9 +6847,9 @@ MODULE                        : project.app
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -6868,9 +6915,9 @@ MODULE                        : project.app
                     - friendPaths                 : <ROOT>/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -6936,9 +6983,9 @@ MODULE                        : project.app
                     - friendPaths                 : <ROOT>/app/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/app/build/intermediates/app_classes/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : app_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -7011,6 +7058,10 @@ MODULE                        : project.lib
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :lib
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -7054,6 +7105,7 @@ MODULE                        : project.lib
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.test.composite0.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -7797,9 +7849,9 @@ MODULE                        : project.lib
                     - classpath                   : <ANDROID_SDK>/build-tools/<BUILD_TOOLS_VERSION>/core-lambda-stubs.jar
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debug
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : lib_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -7863,9 +7915,9 @@ MODULE                        : project.lib
                     - friendPaths                 : <ROOT>/lib/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : lib_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none
@@ -7929,9 +7981,9 @@ MODULE                        : project.lib
                     - friendPaths                 : <ROOT>/lib/build/intermediates/javac/debug/classes [-]
                     - friendPaths                 : <ROOT>/lib/build/intermediates/compile_library_classes_jar/debug/classes.jar [-]
                     jvmDefault                    : disable
-                    jvmTarget                     : 1.8
                     moduleName                    : lib_debug
                     noJdk                         : true
+                    noReflect                     : true
                     noStdlib                      : true
                     parallelBackendThreads        : 1
                     serializeIr                   : none

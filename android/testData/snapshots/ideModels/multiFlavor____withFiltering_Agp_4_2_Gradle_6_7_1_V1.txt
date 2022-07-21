@@ -1,3 +1,6 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
 MODULE                        : MultiFlavor
     externalProject               : MultiFlavor (DefaultExternalProject)
         name                          : MultiFlavor
@@ -358,6 +361,10 @@ MODULE                        : MultiFlavor.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -399,7 +406,10 @@ MODULE                        : MultiFlavor.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : firstAbcSecondAbcDebug
+        applicationId                 : com.example.multiflavor.firstAbc.secondAbc.debug
+        testApplicationId             : com.example.multiflavor.firstAbc.secondAbc.debug.test
     - basicVariant:               : firstAbcSecondAbcRelease
+        applicationId                 : com.example.multiflavor.firstAbc.secondAbc.release
     FlavorDimensions              : Dim1
     FlavorDimensions              : Dim2
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar

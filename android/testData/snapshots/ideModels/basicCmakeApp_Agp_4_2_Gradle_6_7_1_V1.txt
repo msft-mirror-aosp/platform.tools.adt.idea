@@ -1,3 +1,6 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
 MODULE                        : project
     externalProject               : project (DefaultExternalProject)
         name                          : project
@@ -178,6 +181,10 @@ MODULE                        : project.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : 4.2.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -219,7 +226,10 @@ MODULE                        : project.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long
+        testApplicationId             : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long.test
     - basicVariant:               : release
+        applicationId                 : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false

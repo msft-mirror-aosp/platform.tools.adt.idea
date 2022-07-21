@@ -1,3 +1,7 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
+    gradleSupportsDirectTaskInvocation      : true
 MODULE                        : project
     externalProject               : project (DefaultExternalProject)
         name                          : project
@@ -300,6 +304,10 @@ MODULE                        : project.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -343,7 +351,10 @@ MODULE                        : project.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.android.test.localaarsasmodules
+        testApplicationId             : com.android.test.localaarsasmodules.test
     - basicVariant:               : release
+        applicationId                 : com.android.test.localaarsasmodules
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -685,6 +696,10 @@ MODULE                        : project.library
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :library
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -728,6 +743,7 @@ MODULE                        : project.library
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.android.test.library.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions

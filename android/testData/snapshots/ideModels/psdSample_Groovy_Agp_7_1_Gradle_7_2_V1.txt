@@ -1,3 +1,7 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
+    gradleSupportsDirectTaskInvocation      : true
 MODULE                        : project
     externalProject               : project (DefaultExternalProject)
         name                          : project
@@ -1749,6 +1753,10 @@ MODULE                        : project.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -1792,17 +1800,33 @@ MODULE                        : project.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : basicBarDebug
+        applicationId                 : com.example.psd.sample.app.defaultSuffix.barSuffix
+        testApplicationId             : com.example.psd.sample.app.default.test
     - basicVariant:               : basicOtherBarDebug
+        applicationId                 : com.example.psd.sample.app.defaultSuffix
+        testApplicationId             : com.example.psd.sample.app.default.test
     - basicVariant:               : paidBarDebug
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix.barSuffix
+        testApplicationId             : com.example.psd.sample.app.paid.test
     - basicVariant:               : paidOtherBarDebug
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix
+        testApplicationId             : com.example.psd.sample.app.paid.test
     - basicVariant:               : basicBarRelease
+        applicationId                 : com.example.psd.sample.app.defaultSuffix.barSuffix.suffix
     - basicVariant:               : basicOtherBarRelease
+        applicationId                 : com.example.psd.sample.app.defaultSuffix.suffix
     - basicVariant:               : paidBarRelease
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix.barSuffix.suffix
     - basicVariant:               : paidOtherBarRelease
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix.suffix
     - basicVariant:               : basicBarSpecialRelease
+        applicationId                 : com.example.psd.sample.app.defaultSuffix.barSuffix
     - basicVariant:               : basicOtherBarSpecialRelease
+        applicationId                 : com.example.psd.sample.app.defaultSuffix
     - basicVariant:               : paidBarSpecialRelease
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix.barSuffix
     - basicVariant:               : paidOtherBarSpecialRelease
+        applicationId                 : com.example.psd.sample.app.paid.defaultSuffix
     FlavorDimensions              : foo
     FlavorDimensions              : bar
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
@@ -3626,6 +3650,10 @@ MODULE                        : project.dyn_feature
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :dyn_feature
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_DYNAMIC_FEATURE
     CompileTarget                 : android-<SDK_VERSION>
@@ -3669,6 +3697,7 @@ MODULE                        : project.dyn_feature
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.dyn_feature.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     BaseFeature                   : :app
@@ -3986,6 +4015,10 @@ MODULE                        : project.lib
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :lib
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -4029,6 +4062,7 @@ MODULE                        : project.lib
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.projectwithappandlib.lib.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -4706,6 +4740,10 @@ MODULE                        : project.nested1
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :nested1
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -4749,6 +4787,7 @@ MODULE                        : project.nested1
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.nested1.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -5041,6 +5080,10 @@ MODULE                        : project.nested1.deep
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :nested1:deep
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -5084,6 +5127,7 @@ MODULE                        : project.nested1.deep
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.nested1.deep.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -5386,6 +5430,10 @@ MODULE                        : project.nested2
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :nested2
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -5429,7 +5477,9 @@ MODULE                        : project.nested2
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : basicDebug
+        testApplicationId             : com.example.nested2.test
     - basicVariant:               : paidDebug
+        testApplicationId             : com.example.nested2.test
     - basicVariant:               : basicRelease
     - basicVariant:               : paidRelease
     FlavorDimensions              : foo
@@ -5870,6 +5920,10 @@ MODULE                        : project.nested2.deep
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :nested2:deep
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -5913,6 +5967,7 @@ MODULE                        : project.nested2.deep
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.nested2.deep.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions
@@ -6219,6 +6274,10 @@ MODULE                        : project.nested2.trans.deep2
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :nested2:trans:deep2
     ModelVersion                  : 7.1.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -6262,6 +6321,7 @@ MODULE                        : project.nested2.trans.deep2
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.nested2.trans.deep2.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     ViewBindingOptions

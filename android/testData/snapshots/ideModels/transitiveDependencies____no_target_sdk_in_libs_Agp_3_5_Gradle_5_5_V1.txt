@@ -1,3 +1,6 @@
+CompositeBuildMap             : IdeCompositeBuildMapImpl
+    - builds                      : <ROOT> (IdeBuildImpl)
+        buildName                     : :
 MODULE                        : project
 MODULE                        : project.app
     GradleModuleModel
@@ -245,6 +248,10 @@ MODULE                        : project.app
         targetSdk
             ApiLevel                      : <SDK_VERSION>
             ApiString                     : <SDK_VERSION>
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :app
     ModelVersion                  : 3.5.0
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-<SDK_VERSION>
@@ -285,7 +292,10 @@ MODULE                        : project.app
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        applicationId                 : com.example.alruiz.transitive_dependencies
+        testApplicationId             : com.example.alruiz.transitive_dependencies.test
     - basicVariant:               : release
+        applicationId                 : com.example.alruiz.transitive_dependencies
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     DefaultConfig
         ProductFlavor
@@ -1752,6 +1762,10 @@ MODULE                        : project.library1
         targetSdk
             ApiLevel                      : 26
             ApiString                     : 26
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :library1
     ModelVersion                  : 3.5.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -1792,6 +1806,7 @@ MODULE                        : project.library1
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.library1.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     DefaultConfig
@@ -2736,6 +2751,10 @@ MODULE                        : project.library2
         targetSdk
             ApiLevel                      : 1
             ApiString                     : 1
+    RootBuildId                   : <ROOT>
+    BuildId                       : <ROOT>
+    BuildName                     : :
+    ProjectPath                   : :library2
     ModelVersion                  : 3.5.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-<SDK_VERSION>
@@ -2776,6 +2795,7 @@ MODULE                        : project.library2
         UsesCompose                   : false
         MlModelBindingEnabled         : false
     - basicVariant:               : debug
+        testApplicationId             : com.example.library2.test
     - basicVariant:               : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
     DefaultConfig
