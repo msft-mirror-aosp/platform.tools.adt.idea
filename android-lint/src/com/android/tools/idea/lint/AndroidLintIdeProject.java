@@ -24,6 +24,7 @@ import com.android.sdklib.AndroidTargetHash;
 import com.android.sdklib.AndroidVersion;
 import com.android.support.AndroidxNameUtils;
 import com.android.tools.idea.gradle.model.IdeAndroidProject;
+import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.util.GradleUtil;
 import com.android.tools.idea.lint.common.LintIdeClient;
@@ -32,6 +33,9 @@ import com.android.tools.idea.lint.model.LintModelFactory;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.projectsystem.ModuleSystemUtil;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt;
+import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath;
 import com.android.tools.idea.res.AndroidDependenciesCache;
 import com.android.tools.lint.client.api.LintClient;
 import com.android.tools.lint.detector.api.LintModelModuleAndroidLibraryProject;
@@ -107,7 +111,7 @@ public class AndroidLintIdeProject extends LintIdeProject {
       // Wrap list with a mutable list since we'll be removing the files as we see them
       files = Lists.newArrayList(files);
     }
-    for (Module module : Arrays.stream(modules).map(ModuleSystemUtil::getMainModule).distinct().collect(Collectors.toList())) {
+    for (Module module : Arrays.stream(modules).map(AndroidLintIdeProject::getMainModule).distinct().collect(Collectors.toList())) {
       addProjects(client, module, files, moduleMap, libraryMap, projectMap, projects, false);
     }
 
@@ -125,6 +129,19 @@ public class AndroidLintIdeProject extends LintIdeProject {
     else {
       return projects;
     }
+  }
+
+  @NotNull
+  private static Module getMainModule(@NotNull Module module) {
+    GradleProjectPath path = GradleProjectPathKt.getGradleProjectPath(module);
+    if (path == null) return module;
+    GradleSourceSetProjectPath pathToMain = new GradleSourceSetProjectPath(
+      path.getBuildRoot(),
+      path.getPath(),
+      IdeModuleWellKnownSourceSet.MAIN
+    );
+    Module mainModule = GradleProjectPathKt.resolveIn(pathToMain, module.getProject());
+    return mainModule != null ? mainModule : module;
   }
 
   /**
