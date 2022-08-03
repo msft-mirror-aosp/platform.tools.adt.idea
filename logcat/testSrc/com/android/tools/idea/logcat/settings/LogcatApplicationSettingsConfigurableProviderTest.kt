@@ -54,7 +54,7 @@ class LogcatApplicationSettingsConfigurableProviderTest {
 
   @Test
   fun canCreateConfigurable() {
-    assertThat(provider.canCreateConfigurable()).isTrue()
+    assertThat(provider.canCreateConfigurable()).isFalse()
   }
 
   @Test

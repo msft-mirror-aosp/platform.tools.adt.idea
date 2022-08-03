@@ -24,6 +24,7 @@ import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.TestUtils
+import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -146,7 +147,7 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 363 height: 520")
-    assertAppearance(ui, "AppearanceAndToolbarActions1", maxPercentDifferent = 0.08)
+    assertAppearance(ui, "AppearanceAndToolbarActions1", maxPercentDifferent = 0.03)
 
     // Check EmulatorPowerButtonAction.
     var button = ui.getComponent<ActionButton> { it.action.templateText == "Power" }
@@ -224,7 +225,7 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 320 height: 320")
-    assertAppearance(ui, "WearToolbarActions1", maxPercentDifferent = 0.16)
+    assertAppearance(ui, "WearToolbarActions1", maxPercentDifferent = 0.04)
 
     // Check Wear1ButtonAction.
     var button = ui.getComponent<ActionButton> { it.action.templateText == "Button 1" }
@@ -357,25 +358,22 @@ class EmulatorToolWindowPanelTest {
 
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0)
-    panel.size = Dimension(400, 600)
+    panel.size = Dimension(1200, 1200)
     ui.updateToolbars()
     ui.layoutAndDispatchEvents()
     var streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
-    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 400 height: 571")
-    assertAppearance(ui, "ChangeDisplayMode1", maxPercentDifferent = 0.08)
+    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 1080 height: 1171")
+    assertAppearance(ui, "ChangeDisplayMode1", maxPercentDifferent = 0.002)
 
-    // Set the tablet display mode.
-    executeEmulatorAction("android.emulator.display.mode.tablet", emulatorView, project)
+    // Set the desktop display mode.
+    executeEmulatorAction("android.emulator.display.mode.desktop", emulatorView, project)
     val setDisplayModeCall = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
     assertThat(setDisplayModeCall.methodName).isEqualTo("android.emulation.control.EmulatorController/setDisplayMode")
-    assertThat(shortDebugString(setDisplayModeCall.request)).isEqualTo("value: TABLET")
-    panel.waitForFrame(++frameNumber, 2, TimeUnit.SECONDS)
-    assertAppearance(ui, "ChangeDisplayMode2", maxPercentDifferent = 0.08)
+    assertThat(shortDebugString(setDisplayModeCall.request)).isEqualTo("value: DESKTOP")
 
-    panel.size = Dimension(500, 600)
-    ui.layoutAndDispatchEvents()
     streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
-    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 500 height: 571")
+    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 1200 height: 1080")
+    assertAppearance(ui, "ChangeDisplayMode2", maxPercentDifferent = 0.002)
   }
 
   @Test
@@ -446,7 +444,7 @@ class EmulatorToolWindowPanelTest {
     waitForCondition(2, TimeUnit.SECONDS) { ui.findAllComponents<EmulatorView>().size == 3 }
     ui.layoutAndDispatchEvents()
     waitForNextFrameInAllDisplays(ui, frameNumbers)
-    assertAppearance(ui, "MultipleDisplays1", maxPercentDifferent = 0.25)
+    assertAppearance(ui, "MultipleDisplays1", maxPercentDifferent = 0.09)
 
     // Resize emulator display panels.
     ui.findAllComponents<EmulatorSplitPanel>().forEach { it.proportion /= 2 }
@@ -742,12 +740,12 @@ class EmulatorToolWindowPanelTest {
   private val EmulatorToolWindowPanel.primaryEmulatorView
     get() = getData(EMULATOR_VIEW_KEY.name) as EmulatorView?
 
-  private fun assertAppearance(ui: FakeUi, @Suppress("SameParameterValue") goldenImageName: String,
-                               maxPercentDifferent: Double = 0.0) {
+  private fun assertAppearance(ui: FakeUi, goldenImageName: String, maxPercentDifferent: Double = 0.0) {
     ui.layoutAndDispatchEvents()
     ui.updateToolbars()
     val image = ui.render()
-    ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), image, maxPercentDifferent)
+    val scaledImage = ImageUtils.scale(image, 0.5)
+    ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), scaledImage, maxPercentDifferent)
   }
 
   private fun getGoldenFile(name: String): Path {

@@ -137,6 +137,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -208,7 +209,7 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
   private final Map<GradleProjectPath, DataNode<? extends ModuleData>> myModuleDataByGradlePath = new LinkedHashMap<>();
   private final Map<String, GradleProjectPath> myGradlePathByModuleId = new LinkedHashMap<>();
   private IdeResolvedLibraryTable myResolvedModuleDependencies = null;
-  private final List<Long> myKotlinCacheOriginIdentifiers = new ArrayList<>();
+  private final Collection<Long> myKotlinCacheOriginIdentifiers = new LinkedHashSet<>();
 
   public AndroidGradleProjectResolver() {
     this(new CommandLineArgs());
@@ -280,19 +281,15 @@ public final class AndroidGradleProjectResolver extends AbstractProjectResolverE
     }
   }
 
+  @SuppressWarnings("deprecation")
   private void recordKotlinCacheOriginIdentifiers(@NotNull IdeaModule gradleModule) {
     var mppModel = resolverCtx.getExtraProject(gradleModule, KotlinMPPGradleModel.class);
     var kotlinModel = resolverCtx.getExtraProject(gradleModule, KotlinGradleModel.class);
-    if (mppModel != null && kotlinModel != null) {
-      if (mppModel.getPartialCacheAware().getCacheOriginIdentifier() != kotlinModel.getPartialCacheAware().getCacheOriginIdentifier()) {
-        throw new IllegalStateException("Mpp and Kotlin model cacheOriginIdentifier's do not match");
-      }
+    if (mppModel != null) {
+      myKotlinCacheOriginIdentifiers.add(mppModel.getPartialCacheAware().getCacheOriginIdentifier());
     }
-    var cacheOriginIdentifier = 0L;
-    if (mppModel != null) cacheOriginIdentifier = mppModel.getPartialCacheAware().getCacheOriginIdentifier();
-    if (kotlinModel != null) cacheOriginIdentifier = kotlinModel.getPartialCacheAware().getCacheOriginIdentifier();
-    if (cacheOriginIdentifier != 0L) {
-      myKotlinCacheOriginIdentifiers.add(cacheOriginIdentifier);
+    if (kotlinModel != null) {
+      myKotlinCacheOriginIdentifiers.add(kotlinModel.getPartialCacheAware().getCacheOriginIdentifier());
     }
   }
 

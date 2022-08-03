@@ -21,11 +21,12 @@ import com.android.ide.common.resources.ResourceRepository
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.projectsystem.DependencyScopeType
+import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
+import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.res.AndroidDependenciesCache
 import com.android.tools.idea.res.ResourceClassRegistry
 import com.android.tools.idea.res.ResourceIdManager
-import com.android.tools.idea.res.ResourceIdManager.Companion.get
 import com.android.tools.idea.res.ResourceRepositoryManager
 import com.android.tools.idea.util.VirtualFileSystemOpener.recognizes
 import com.android.tools.idea.util.toVirtualFile
@@ -33,7 +34,6 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.android.uipreview.ModuleClassLoader
 import java.io.IOException
 import java.lang.ref.WeakReference
 import java.util.regex.Pattern
@@ -99,7 +99,7 @@ private fun ExternalAndroidLibrary.registerLibraryResources(
 private fun registerResources(module: Module) {
   val androidFacet: AndroidFacet = AndroidFacet.getInstance(module) ?: return
   val repositoryManager = ResourceRepositoryManager.getInstance(androidFacet)
-  val idManager = get(module)
+  val idManager = ResourceIdManager.get(module)
   val classRegistry = ResourceClassRegistry.get(module.project)
 
   // If final ids are used, we will read the real class from disk later (in loadAndParseRClass), using this class loader. So we
@@ -123,7 +123,6 @@ private fun registerResources(module: Module) {
                                  repositoryManager.namespace)
       }
   }
-
   module.getModuleSystem().getAndroidLibraryDependencies(DependencyScopeType.MAIN)
     .filter { it.hasResources }
     .forEach { it.registerLibraryResources(repositoryManager, classRegistry, idManager) }
@@ -149,10 +148,20 @@ class LibraryResourceClassLoader(parent: ClassLoader?, module: Module) : ClassLo
       throw ClassNotFoundException(name)
     }
 
+    if (ResourceIdManager.get(module).finalIdsUsed) {
+      // If final IDs are used, we check if the last build was successful in order to use the compiled classes instead of load them from
+      // this class loader.
+      val lastBuild = ProjectSystemService.getInstance(module.project).projectSystem.getBuildManager().getLastBuildResult()
+      if (lastBuild.mode != ProjectSystemBuildManager.BuildMode.CLEAN
+          && lastBuild.status == ProjectSystemBuildManager.BuildStatus.SUCCESS) {
+        throw ClassNotFoundException(name)
+      }
+    }
+
     val facet: AndroidFacet = AndroidFacet.getInstance(module) ?: throw ClassNotFoundException(name)
     val repositoryManager = ResourceRepositoryManager.getInstance(facet)
     val data = ResourceClassRegistry.get(module.project).findClassDefinition(name, repositoryManager) ?: throw ClassNotFoundException(name)
-    Logger.getInstance(ModuleClassLoader::class.java).debug("  Defining class from AAR registry")
+    Logger.getInstance(LibraryResourceClassLoader::class.java).debug("  Defining class from AAR registry")
     return defineClass(name, data, 0, data.size)
   }
 
