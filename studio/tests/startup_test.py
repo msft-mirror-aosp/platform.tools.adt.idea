@@ -154,8 +154,6 @@ class StartUpTest(unittest.TestCase):
       "Jetpack Compose",
       "Kotlin",
       "Machine Learning Code Completion",
-      "Machine Learning Code Completion Models",
-      "Machine Learning Local Models",
       "Markdown",
       "Mercurial",
       "Properties",
