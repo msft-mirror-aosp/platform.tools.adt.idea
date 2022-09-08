@@ -20,6 +20,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.JBUI;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import javax.swing.JComponent;
@@ -33,7 +34,6 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
   protected JTable myTable;
   private JComponent myScrollPane;
   protected DetailsPanelPanel myDetailsPanelPanel;
-  private boolean isDisposed;
 
   protected DevicePanel(@Nullable Project project) {
     super(null);
@@ -49,6 +49,7 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
 
   protected final void initScrollPane() {
     myScrollPane = new JBScrollPane(myTable);
+    myScrollPane.setBorder(JBUI.Borders.empty());
 
     myScrollPane.addComponentListener(new ComponentAdapter() {
       @Override
@@ -69,11 +70,6 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
 
   @Override
   public final void dispose() {
-    isDisposed = true;
-  }
-
-  public boolean isDisposed() {
-    return isDisposed;
   }
 
   public final @Nullable Project getProject() {
@@ -95,6 +91,18 @@ public abstract class DevicePanel extends JBPanel<DevicePanel> implements Dispos
     panel.getTabbedPane().ifPresent(pane -> pane.setSelectedIndex(index));
 
     myDetailsPanelPanel.viewDetails(panel);
+
+    switch (index) {
+      case DetailsPanel.DEVICE_INFO_TAB_INDEX:
+        panel.requestFocusInWindow();
+        break;
+      case DetailsPanel.PAIRED_DEVICES_TAB_INDEX:
+        panel.getPairedDevicesPanel().orElseThrow().getTable().requestFocusInWindow();
+        break;
+      default:
+        assert false : index;
+        break;
+    }
   }
 
   protected abstract @NotNull DetailsPanel newDetailsPanel();

@@ -17,7 +17,7 @@ package com.android.tools.idea;
 
 import com.android.testutils.JarTestSuiteRunner;
 import com.android.testutils.junit4.OldAgpSuite;
-import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_32Test;
+import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_33Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_35Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_40Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_41Test;
@@ -27,6 +27,7 @@ import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_71Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_72Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_72_V1Test;
 import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_73Test;
+import com.android.tools.idea.gradle.project.sync.SyncProject_AGP_74Test;
 import com.android.tools.tests.GradleDaemonsRule;
 import com.android.tools.tests.IdeaTestSuiteBase;
 import com.android.tools.tests.LeakCheckerRule;
@@ -44,7 +45,7 @@ import org.junit.runner.RunWith;
 @JarTestSuiteRunner.ExcludeClasses({
   OldAgpTests.class,
   IdeModelTestSuite.class,
-  SyncProject_AGP_32Test.class,
+  SyncProject_AGP_33Test.class,
   SyncProject_AGP_35Test.class,
   SyncProject_AGP_40Test.class,
   SyncProject_AGP_41Test.class,
@@ -53,7 +54,8 @@ import org.junit.runner.RunWith;
   SyncProject_AGP_71Test.class,
   SyncProject_AGP_72_V1Test.class,
   SyncProject_AGP_72Test.class,
-  SyncProject_AGP_73Test.class
+  SyncProject_AGP_73Test.class,
+  SyncProject_AGP_74Test.class,
 })
 public class OldAgpTests extends IdeaTestSuiteBase {
 

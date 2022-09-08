@@ -24,8 +24,8 @@ MODULE                        : NonStandardSourceSetDependencies
                 qName                         : :app
                 group                         : NonStandardSourceSetDependencies
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/app
                 buildDir                      : <ROOT>/app/build [-]
                 buildFile                     : <ROOT>/app/build.gradle
@@ -241,8 +241,8 @@ MODULE                        : NonStandardSourceSetDependencies
                 qName                         : :common
                 group                         : NonStandardSourceSetDependencies
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/common
                 buildDir                      : <ROOT>/common/build
                 buildFile                     : <ROOT>/common/build.gradle
@@ -463,8 +463,8 @@ MODULE                        : NonStandardSourceSetDependencies
                 qName                         : :feature-a
                 group                         : NonStandardSourceSetDependencies
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/feature-a
                 buildDir                      : <ROOT>/feature-a/build [-]
                 buildFile                     : <ROOT>/feature-a/build.gradle
@@ -685,8 +685,8 @@ MODULE                        : NonStandardSourceSetDependencies
                 qName                         : :feature-b
                 group                         : NonStandardSourceSetDependencies
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/feature-b
                 buildDir                      : <ROOT>/feature-b/build [-]
                 buildFile                     : <ROOT>/feature-b/build.gradle
@@ -1185,8 +1185,8 @@ MODULE                        : NonStandardSourceSetDependencies
                 qName                         : :lib
                 group                         : NonStandardSourceSetDependencies
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/lib
                 buildDir                      : <ROOT>/lib/build
                 buildFile                     : <ROOT>/lib/build.gradle
@@ -1465,7 +1465,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
     IsBaseSplit                   : true
     GroupId                       : NonStandardSourceSetDependencies
     Namespace                     : me.monori.studioclasspathissue
-    TestNamespace                 : me.monori.gradleprojectpathissue.test
+    TestNamespace                 : me.monori.studioclasspathissue.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -2296,6 +2296,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ApkFromBundleTaskOutputListingFile      : <ROOT>/app/build/intermediates/apk_from_bundle_ide_redirect_file/debug/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -2367,6 +2368,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -2577,6 +2579,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -2593,7 +2596,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2603,6 +2605,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <ROOT>/aarWrapperLib/build/.transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/aarWrapperedLib-api.jar
                     - classpath                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
@@ -2622,7 +2625,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2632,6 +2634,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -2651,7 +2654,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2744,7 +2746,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                 file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
         extraFeatures                 : ExtraFeaturesImpl
-            isNativeDependencyPropagationEnabled    : true
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2804,6 +2805,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -2813,7 +2815,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         moduleName                    : common
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -2914,10 +2915,14 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - dependsOnSourceSets         : commonTest
                     platform                      : JVM
                 arguments                     : KotlinCompilationArgumentsImpl
+                - associateCompilations       : KotlinCompilationCoordinatesImpl
+                    compilationName               : main
+                    targetName                    : jvm
                 cachedArgsInfo
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -2929,7 +2934,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         moduleName                    : common
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -3022,6 +3026,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -3032,7 +3037,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : desktop
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -3050,6 +3054,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -3063,7 +3068,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : desktop
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -3498,6 +3502,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/feature-a/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/feature-a/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -3667,6 +3672,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssembleTaskOutputListingFile : <ROOT>/feature-a/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/feature-a/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/feature-a/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -3836,6 +3842,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -3875,7 +3882,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -3885,6 +3891,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -3927,7 +3934,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -3937,6 +3943,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -3979,7 +3986,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -4364,6 +4370,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/feature-b/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/feature-b/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -4430,6 +4437,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssembleTaskOutputListingFile : <ROOT>/feature-b/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/feature-b/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/feature-b/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -4528,7 +4536,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                 file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
         extraFeatures                 : ExtraFeaturesImpl
-            isNativeDependencyPropagationEnabled    : true
         - kotlinImportingDiagnostics  : OrphanSourceSetsImportingDiagnostic
             kotlinSourceSet               : androidAndroidTestRelease (KotlinSourceSetImpl)
                 actualPlatforms               : KotlinPlatformContainerImpl
@@ -4691,6 +4698,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -4703,7 +4711,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -4813,10 +4820,14 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - dependsOnSourceSets         : commonTest
                     platform                      : ANDROID
                 arguments                     : KotlinCompilationArgumentsImpl
+                - associateCompilations       : KotlinCompilationCoordinatesImpl
+                    compilationName               : debug
+                    targetName                    : android
                 cachedArgsInfo
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -4832,7 +4843,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -4905,10 +4915,14 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - dependsOnSourceSets         : commonTest
                     platform                      : ANDROID
                 arguments                     : KotlinCompilationArgumentsImpl
+                - associateCompilations       : KotlinCompilationCoordinatesImpl
+                    compilationName               : debug
+                    targetName                    : android
                 cachedArgsInfo
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -4924,7 +4938,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -5025,6 +5038,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
@@ -5036,7 +5050,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -5054,6 +5067,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
@@ -5068,7 +5082,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -5086,6 +5099,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -5096,7 +5110,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary_testEnv
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -5447,6 +5460,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/lib/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/lib/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -5688,6 +5702,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssembleTaskOutputListingFile : <ROOT>/lib/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/lib/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/lib/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -5757,6 +5772,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -5771,7 +5787,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -5781,6 +5796,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/junit-1.1.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/espresso-core-3.2.0-api.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
@@ -5814,7 +5830,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -5824,6 +5839,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/junit/junit/4.12/junit-4.12.jar
                     - classpath                   : <M2>/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
@@ -5843,7 +5859,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true

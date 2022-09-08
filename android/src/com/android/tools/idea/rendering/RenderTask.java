@@ -160,6 +160,7 @@ public class RenderTask {
   private static final ExecutorService ourDisposeService =
     AppExecutorUtil.createBoundedApplicationPoolExecutor("RenderTask Dispose Thread", 1);
   public static final String GAP_WORKER_CLASS_NAME = "androidx.recyclerview.widget.GapWorker";
+  private static final String WINDOW_RECOMPOSER_ANDROID_KT_FQN = "androidx.compose.ui.platform.WindowRecomposer_androidKt";
 
   @NotNull private final ImagePool myImagePool;
   @NotNull private final RenderContext myContext;
@@ -634,8 +635,6 @@ public class RenderTask {
     params.setFlag(RenderParamsFlags.FLAG_KEY_ENABLE_LAYOUT_SCANNER, myEnableLayoutScanner);
     params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_IMAGE_CHECK, myEnableLayoutScanner);
     params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, configuration.getAdaptiveShape().getPathDescription());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_USE_THEMED_ICON, configuration.getUseThemedIcon());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_WALLPAPER_PATH, configuration.getWallpaperPath());
 
     // Request margin and baseline information.
     // TODO: Be smarter about setting this; start without it, and on the first request
@@ -1135,16 +1134,13 @@ public class RenderTask {
 
     RenderContext context = getContext();
     Module module = getContext().getModule();
-    Configuration configuration = context.getConfiguration();
     DrawableParams params =
-      new DrawableParams(drawableResourceValue, module, hardwareConfig, configuration.getResourceResolver(),
+      new DrawableParams(drawableResourceValue, module, hardwareConfig, context.getConfiguration().getResourceResolver(),
                          myLayoutlibCallback, context.getMinSdkVersion().getApiLevel(), context.getTargetSdkVersion().getApiLevel(),
                          myLogger);
     params.setForceNoDecor();
     params.setAssetRepository(myAssetRepository);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, configuration.getAdaptiveShape().getPathDescription());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_USE_THEMED_ICON, configuration.getUseThemedIcon());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_WALLPAPER_PATH, configuration.getWallpaperPath());
+    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, context.getConfiguration().getAdaptiveShape().getPathDescription());
 
     return runAsyncRenderAction(() -> myLayoutLib.renderDrawable(params))
       .thenCompose(result -> {
@@ -1190,17 +1186,14 @@ public class RenderTask {
 
     RenderContext context = getContext();
     Module module = context.getModule();
-    Configuration configuration = context.getConfiguration();
     DrawableParams params =
-      new DrawableParams(drawableResourceValue, module, hardwareConfig, configuration.getResourceResolver(),
+      new DrawableParams(drawableResourceValue, module, hardwareConfig, context.getConfiguration().getResourceResolver(),
                          myLayoutlibCallback, context.getMinSdkVersion().getApiLevel(), context.getTargetSdkVersion().getApiLevel(),
                          myLogger);
     params.setForceNoDecor();
     params.setAssetRepository(myAssetRepository);
     params.setFlag(RenderParamsFlags.FLAG_KEY_RENDER_ALL_DRAWABLE_STATES, Boolean.TRUE);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, configuration.getAdaptiveShape().getPathDescription());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_USE_THEMED_ICON, configuration.getUseThemedIcon());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_WALLPAPER_PATH, configuration.getWallpaperPath());
+    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, context.getConfiguration().getAdaptiveShape().getPathDescription());
 
     try {
       Result result = RenderService.runRenderAction(() -> myLayoutLib.renderDrawable(params));
@@ -1319,8 +1312,7 @@ public class RenderTask {
   @Nullable
   private RenderSession measure(ILayoutPullParser parser) {
     RenderContext context = getContext();
-    Configuration configuration = context.getConfiguration();
-    ResourceResolver resolver = configuration.getResourceResolver();
+    ResourceResolver resolver = context.getConfiguration().getResourceResolver();
 
     myLayoutlibCallback.reset();
 
@@ -1339,9 +1331,7 @@ public class RenderTask {
     params.setExtendedViewInfoMode(true);
     params.setLocale(myLocale.toLocaleId());
     params.setAssetRepository(myAssetRepository);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, configuration.getAdaptiveShape().getPathDescription());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_USE_THEMED_ICON, configuration.getUseThemedIcon());
-    params.setFlag(RenderParamsFlags.FLAG_KEY_WALLPAPER_PATH, configuration.getWallpaperPath());
+    params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, context.getConfiguration().getAdaptiveShape().getPathDescription());
     @Nullable MergedManifestSnapshot manifestInfo = myManifestProvider.apply(module);
     params.setRtlSupport(manifestInfo != null && manifestInfo.isRtlSupported());
 
@@ -1432,14 +1422,27 @@ public class RenderTask {
         LOG.debug(COMPOSE_VIEW_ADAPTER_FQN + " class not found", ex);
       }
 
-      if (!disposeMethod.isPresent()) {
+      if (disposeMethod.isEmpty()) {
         LOG.warn("Unable to find dispose method in ComposeViewAdapter");
+      }
+
+      try {
+        Class<?> windowRecomposer = myLayoutlibCallback.findClass(WINDOW_RECOMPOSER_ANDROID_KT_FQN);
+        Field animationScaleField = windowRecomposer.getDeclaredField("animationScale");
+        animationScaleField.setAccessible(true);
+        Object animationScale = animationScaleField.get(windowRecomposer);
+        if (animationScale instanceof Map) {
+          ((Map)animationScale).clear();
+        }
+      }
+      catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException ex) {
+        // If the WindowRecomposer does not exist or the animationScale does not exist anymore, ignore.
+        LOG.debug("Unable to dispose the recompose animationScale", ex);
       }
     }
     disposeMethod.ifPresent(m -> m.setAccessible(true));
     Optional<Method> finalDisposeMethod = disposeMethod;
     return RenderService.getRenderAsyncActionExecutor().runAsyncAction(myPriority, () -> {
-
       finalDisposeMethod.ifPresent(
         m -> renderSession.execute(
           () -> renderSession.getRootViews().forEach(v -> disposeIfCompose(v, m))

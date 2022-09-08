@@ -17,25 +17,19 @@ package com.android.tools.idea.device.dialogs
 
 import com.android.tools.idea.device.DeviceMirroringBenchmarker
 import com.android.tools.idea.emulator.AbstractDisplayView
-import com.android.tools.idea.emulator.EMULATOR_NOTIFICATION_GROUP
-import com.android.tools.idea.emulator.RunningDevicePanel
 import com.intellij.CommonBundle
-import com.intellij.notification.NotificationGroup
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.components.dialog
 import com.intellij.ui.dsl.builder.bindIntText
-import com.intellij.ui.dsl.builder.bindItemNullable
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.gridLayout.HorizontalAlign
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.not
-import com.intellij.util.concurrency.EdtExecutorService
 import java.awt.Component
 import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
@@ -67,24 +61,42 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
   }
   private var touchRateHz = 60
   private var maxTouches = 10_000
+  private var step = 1
+  private var spikiness = 3
 
   private fun createPanel() = panel {
-    row("Input event rate") {
-      intTextField(1..240, 5).bindIntText(::touchRateHz)
-      text("Hz")
+    panel {
+      row("Input event rate") {
+        intTextField(1..240, 5).bindIntText(::touchRateHz)
+        text("Hz")
+      }
+      row("Max input events") {
+        intTextField(1..Int.MAX_VALUE, 100).bindIntText(::maxTouches)
+      }
+      row("Drag speed") {
+        intTextField(1 .. 10, 1).bindIntText(::step)
+        text("px/frame")
+      }
+      row("Spikiness") {
+        intTextField(0..100, 1).bindIntText(::spikiness)
+        text("oscillations/row")
+      }
     }.enabledIf(isRunning.not())
-    row("Max input events") {
-      intTextField(1 .. Int.MAX_VALUE, 100) //.bindIntText(::maxTouches)
-        .bindIntText({maxTouches}, {maxTouches = it})
-    }.enabledIf(isRunning.not())
-    row("Input events dispatched") {
-      cell(dispatchedProgressBar)
-      button("Cancel") {
-        benchmarker?.stop()
-      }.enabledIf(isRunning)
-    }.visibleIf(isRunning)
-    row("Input events returned") {
-      cell(receivedProgressBar)
+    panel {
+      separator("Note")
+      row {
+        text("For accurate results, keep Android Studio visible until benchmarking is complete.").horizontalAlign(HorizontalAlign.CENTER)
+      }
+      separator("Progress")
+      row("Input events dispatched") {
+        cell(dispatchedProgressBar)
+        button("Cancel") {
+          benchmarker?.stop()
+        }.enabledIf(isRunning)
+      }
+      row("Input events returned") {
+        cell(receivedProgressBar)
+      }
     }.visibleIf(isRunning)
   }
 
@@ -111,7 +123,7 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
 
     override fun actionPerformed(e: ActionEvent?) {
       dialogPanel.apply()
-      benchmarker = DeviceMirroringBenchmarker(view, touchRateHz, maxTouches).apply {
+      benchmarker = DeviceMirroringBenchmarker(view, touchRateHz, maxTouches, step, spikiness).apply {
         addOnProgressCallback { dispatchedProgress, receivedProgress ->
           dispatchedProgressBar.updateProgress(dispatchedProgress)
           receivedProgressBar.updateProgress(receivedProgress)

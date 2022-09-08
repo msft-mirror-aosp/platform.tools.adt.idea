@@ -16,6 +16,8 @@
 package com.android.tools.idea.gradle.variant.view;
 
 import static com.android.tools.idea.gradle.variant.conflict.ConflictResolution.solveSelectionConflict;
+import static com.android.tools.idea.projectsystem.gradle.BuildRelativeGradleProjectPathKt.buildNamePrefixedGradleProjectPath;
+import static com.android.tools.idea.projectsystem.gradle.BuildRelativeGradleProjectPathKt.getBuildAndRelativeGradleProjectPath;
 import static com.intellij.ui.TableUtil.scrollSelectionToVisible;
 import static com.intellij.util.ui.JBUI.scale;
 import static com.intellij.util.ui.UIUtil.getTableFocusCellHighlightBorder;
@@ -23,9 +25,7 @@ import static com.intellij.util.ui.UIUtil.getToolTipBackground;
 
 import com.android.tools.idea.fileTypes.AndroidIconProvider;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
-import com.android.tools.idea.gradle.project.sync.GradleSyncListener;
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot;
-import com.android.tools.idea.gradle.util.GradleProjects;
 import com.android.tools.idea.gradle.variant.conflict.Conflict;
 import com.android.tools.idea.gradle.variant.conflict.ConflictSet;
 import com.intellij.icons.AllIcons;
@@ -88,7 +88,6 @@ public class BuildVariantView {
   private static final Color CONFLICT_CELL_BACKGROUND = MessageType.ERROR.getPopupBackground();
 
   private final Project myProject;
-  private BuildVariantUpdater myUpdater;
 
   private JPanel myToolWindowPanel;
   private JBTable myVariantsTable;
@@ -101,13 +100,8 @@ public class BuildVariantView {
     return project.getService(BuildVariantView.class);
   }
 
-  public BuildVariantView(@NotNull Project project) {
-    this(project, BuildVariantUpdater.getInstance(project));
-  }
-
-  private BuildVariantView(@NotNull Project project, @NotNull BuildVariantUpdater updater) {
+  private BuildVariantView(@NotNull Project project) {
     myProject = project;
-    myUpdater = updater;
     ((JComponent)myVariantsTable.getParent().getParent()).setBorder(JBUI.Borders.empty());
   }
 
@@ -338,7 +332,7 @@ public class BuildVariantView {
       editor.addItemListener(e -> {
         if (e.getStateChange() == ItemEvent.SELECTED) {
           BuildVariantItem selectedVariant = (BuildVariantItem)e.getItem();
-          myUpdater.updateSelectedBuildVariant(tableRow.getModule(), selectedVariant.getBuildVariantName());
+          BuildVariantUpdater.getInstance(myProject).updateSelectedBuildVariant(tableRow.getModule(), selectedVariant.getBuildVariantName());
         }
       });
       DefaultCellEditor defaultCellEditor = new DefaultCellEditor(editor);
@@ -369,7 +363,7 @@ public class BuildVariantView {
       editor.addItemListener(e -> {
         if (e.getStateChange() == ItemEvent.SELECTED) {
           AbiItem selectedAbi = (AbiItem)e.getItem();
-          myUpdater.updateSelectedAbi(tableRow.getModule(), selectedAbi.getAbiName());
+          BuildVariantUpdater.getInstance(myProject).updateSelectedAbi(tableRow.getModule(), selectedAbi.getAbiName());
         }
       });
       DefaultCellEditor defaultCellEditor = new DefaultCellEditor(editor);
@@ -573,7 +567,9 @@ public class BuildVariantView {
       if (value instanceof Module) {
         Module module = (Module)value;
         if (!module.isDisposed()) {
-          String modulePath = GradleProjects.getGradleModulePath(module);
+          final var gradleProjectPath = getBuildAndRelativeGradleProjectPath(module);
+          String modulePath = gradleProjectPath != null ? buildNamePrefixedGradleProjectPath(gradleProjectPath) : null;
+
           // Note: modulePath should never be null here.
           moduleName = modulePath != null ? modulePath : module.getName();
           moduleIcon = AndroidIconProvider.getModuleIcon(module);

@@ -20,21 +20,20 @@ import org.junit.Test
 class SdkIndexPsdTest : SdkIndexTestBase() {
   @Test
   fun snapshotUsedByPsdTest() {
+    system.installation.addVmOption("-Didea.log.debug.categories=#com.android.tools.idea.gradle.structure.daemon.PsAnalyzerDaemon")
     verifySdkIndexIsInitializedAndUsedWhen(
       showFunction = { studio, _ ->
-        // Open PSD using the menu since we can't use executeAction("AndroidShowStructureSettingsAction") here because it would spawn a
-        // modal dialog with nothing to close it.
-        studio.invokeComponent("File")
-        studio.invokeComponent("Project Structure...")
+        openAndClosePSD(studio)
       },
-      closeFunction = { studio, _ ->
-        // Close PSD
-        studio.invokeComponent("OK")
+      beforeClose = {
+        // Only an error should be shown (com.startapp:inapp-sdk:3.9.1 is marked as blocking critical)
+        verifyPsdIssues(numErrors = 1)
       },
       expectedIssues = setOf(
         "com.mopub:mopub-sdk version 4.16.0 has been marked as outdated by its author",
-        "com.startapp:inapp-sdk version 3.9.1 has been marked as outdated by its author",
         "com.snowplowanalytics:snowplow-android-tracker version 1.4.1 has an associated message from its author",
+        "com.startapp:inapp-sdk version 3.9.1 has been reported as problematic by its author and will block publishing of your app to Play Console",
+        "com.stripe:stripe-android version 9.3.2 has policy issues that will block publishing of your app to Play Console",
       )
     )
   }

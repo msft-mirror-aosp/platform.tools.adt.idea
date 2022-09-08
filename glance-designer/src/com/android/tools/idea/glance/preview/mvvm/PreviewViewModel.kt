@@ -20,9 +20,6 @@ import com.android.tools.idea.projectsystem.BuildListener
 /**
  * Preview ViewModel interface in the MVVM pattern. Intended to be accessed by the Model
  * (PreviewRepresentation).
- *
- * TODO(b/239802877): Add PreviewViewModelStatus interface providing ViewModel status to the View
- * entities that model can not updatedirectly (e.g. Actions)
  */
 interface PreviewViewModel : BuildListener {
 

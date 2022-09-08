@@ -13,8 +13,8 @@ MODULE                        : project
                 qName                         : :app
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/app
                 buildDir                      : <ROOT>/app/build
                 buildFile                     : <ROOT>/app/build.gradle
@@ -170,7 +170,7 @@ MODULE                        : project.app
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : com.example.basiccmakeapp
-    TestNamespace                 : com.example.basiccmakeapp.whose.name.is.at.least.seventy.characters.long.test
+    TestNamespace                 : com.example.basiccmakeapp.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions

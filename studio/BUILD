@@ -359,6 +359,7 @@ studio_plugin(
             "//tools/adt/idea/glance-designer:intellij.android.glance-designer",
             "//tools/adt/idea/layoutlib:intellij.android.layoutlib",
             "//tools/adt/idea/nav/editor:intellij.android.nav.editor",
+            "//tools/adt/idea/preview-designer:intellij.android.preview-designer",
         ],
     },
     resources = {
@@ -509,16 +510,12 @@ studio_plugin(
     name = "com.google.gct.login",
     directory = "google-login-as",
     libs = [
-        "//tools/studio/google/cloud/tools/google-login-plugin/third_party/jackson-core-asl:jackson-core-asl-1.9.11",
-        "//tools/studio/google/cloud/tools/google-login-plugin/third_party/javax-servlet-api:javax.servlet-api-3.0.1",
-        "//tools/studio/google/cloud/tools/google-login-plugin/lib:google-api-services-oauth2-v2-rev70-1.18.0-rc",
-        "//tools/studio/google/cloud/tools/google-login-plugin/lib:google-gct-login-context-pg",
-        "//tools/studio/google/cloud/tools/google-login-plugin/lib:google-http-client-jackson-1.18.0-rc",
-        "//tools/studio/google/cloud/tools/google-login-plugin/lib:google.gdt.eclipse.login.common",
         "//prebuilts/tools/common/google-api-java-client/1.20.0:google-api-java-client",
-    ],
-    licenses = [
-        "//tools/studio/google/cloud/tools/google-login-plugin/lib:licenses",
+        "//prebuilts/tools/common/m2:jsr305-2.0.1",
+        "//tools/adt/idea/.idea/libraries:google-api-services-oauth2-v2-rev150-1.22.0",
+        "//prebuilts/tools/common/m2:javax-servlet",
+        "@maven//:com.google.apis.google-api-services-oauth2",
+        "@maven//:com.google.auth.google-auth-library-oauth2-http",
     ],
     modules = {"google-login-as.jar": ["//tools/studio/google/cloud/tools/google-login-plugin:google-login-as"]},
 )
@@ -566,6 +563,16 @@ studio_plugin(
     ],
 )
 
+studio_plugin(
+    name = "com.google.targetsdkversionassistant",
+    directory = "targetsdkversion-upgrade-assistant",
+    modules = {"targetsdkversion-upgrade-assistant.jar": ["//tools/vendor/google/targetsdkversion-upgrade-assistant:targetsdkversion-upgrade-assistant"]},
+    deps = [
+        ":org.jetbrains.android",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+    ],
+)
+
 android_studio(
     name = "android-studio",
     codesign_entitlements = "codesign/entitlements.xml",
@@ -592,6 +599,7 @@ android_studio(
         ":com.android.tools.idea.smali",
         ":com.google.gct.test.recorder",
         ":com.google.urlassistant",
+        ":com.google.targetsdkversionassistant",
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
@@ -716,6 +724,7 @@ iml_module(
         "//tools/adt/idea/smali:intellij.android.smali[module]",
         "//tools/studio/google/cloud/testing/test-recorder[module]",
         "//tools/vendor/google/url-assistant[module]",
+        "//tools/vendor/google/targetsdkversion-upgrade-assistant[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-configurationScript",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-copyright",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-coverage",
@@ -744,7 +753,6 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-terminal",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-testng",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-textmate",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-changeReminder",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-yaml",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-clangd",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-plugin",

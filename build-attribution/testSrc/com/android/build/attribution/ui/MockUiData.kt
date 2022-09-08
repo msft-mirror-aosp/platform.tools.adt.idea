@@ -20,14 +20,16 @@ import com.android.build.attribution.analyzers.DownloadsAnalyzer
 import com.android.build.attribution.analyzers.JetifierUsageAnalyzerResult
 import com.android.build.attribution.analyzers.JetifierUsedCheckRequired
 import com.android.build.attribution.analyzers.NoIncompatiblePlugins
+import com.android.build.attribution.data.TaskCategoryBuildData
 import com.android.build.attribution.ui.data.AnnotationProcessorUiData
 import com.android.build.attribution.ui.data.AnnotationProcessorsReport
 import com.android.build.attribution.ui.data.BuildAttributionReportUiData
 import com.android.build.attribution.ui.data.BuildSummary
 import com.android.build.attribution.ui.data.ConfigurationUiData
-import com.android.build.attribution.ui.data.CriticalPathPluginTasksUiData
 import com.android.build.attribution.ui.data.CriticalPathPluginUiData
 import com.android.build.attribution.ui.data.CriticalPathPluginsUiData
+import com.android.build.attribution.ui.data.CriticalPathTaskCategoriesUiData
+import com.android.build.attribution.ui.data.CriticalPathTaskCategoryUiData
 import com.android.build.attribution.ui.data.CriticalPathTasksUiData
 import com.android.build.attribution.ui.data.PluginSourceType
 import com.android.build.attribution.ui.data.TaskIssueType
@@ -35,6 +37,7 @@ import com.android.build.attribution.ui.data.TaskIssueUiData
 import com.android.build.attribution.ui.data.TaskIssuesGroup
 import com.android.build.attribution.ui.data.TaskUiData
 import com.android.build.attribution.ui.data.TimeWithPercentage
+import com.android.ide.common.attribution.TaskCategory
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import org.jetbrains.kotlin.utils.addToStdlib.sumByLong
 import org.mockito.Mockito
@@ -61,11 +64,12 @@ class MockUiData(
   val tasksList: List<TestTaskUiData> = emptyList()
 ) : BuildAttributionReportUiData {
   override val successfulBuild = true
-  override val buildRequest: GradleBuildInvoker.Request
+  override val buildRequestData: GradleBuildInvoker.Request.RequestData
     get() = throw UnsupportedOperationException("Should be overridden for tests requiring to access the request.")
   override var buildSummary = mockBuildOverviewData()
   override var criticalPathTasks = mockCriticalPathTasksUiData()
   override var criticalPathPlugins = mockCriticalPathPluginsUiData()
+  override val criticalPathTaskCategories = mockCriticalPathTaskCategoriesUiData()
   override var issues = criticalPathTasks.tasks.flatMap { it.issues }.groupBy { it.type }.map { (k, v) -> createIssuesGroup(k, v) }
   override var configurationTime = Mockito.mock(ConfigurationUiData::class.java)
   override var annotationProcessors = mockAnnotationProcessorsData()
@@ -100,28 +104,44 @@ class MockUiData(
   fun mockTask(module: String, name: String, pluginName: String, executionTimeMs: Long) =
     mockTask(module, name, pluginName, executionTimeMs, criticalPathDurationMs)
 
+  fun mockCriticalPathTaskCategoriesUiData() = object : CriticalPathTaskCategoriesUiData {
+    override val criticalPathDuration = TimeWithPercentage(criticalPathDurationMs, totalBuildDurationMs)
+    override val miscStepsTime = criticalPathDuration.supplement()
+    override val entries = tasksList
+      .groupBy{ it.primaryTaskCategory }
+      .map{ createTaskCategoryData(it.key, it.value) }
+    override val warningCount = entries.sumOf { it.warningCount }
+    override val infoCount = entries.sumOf { it.infoCount }
+  }
+
   fun mockCriticalPathPluginsUiData() = object : CriticalPathPluginsUiData {
     override val criticalPathDuration = TimeWithPercentage(criticalPathDurationMs, totalBuildDurationMs)
     override val miscStepsTime = criticalPathDuration.supplement()
-    override val plugins: List<CriticalPathPluginUiData> = tasksList
+    override val entries: List<CriticalPathPluginUiData> = tasksList
       .groupBy { it.pluginName }
       .map { createPluginData(it.key, it.value) }
-    override val warningCount: Int = plugins.sumBy { it.warningCount }
-    override val infoCount: Int = plugins.sumBy { it.infoCount }
+    override val warningCount: Int = entries.sumBy { it.warningCount }
+    override val infoCount: Int = entries.sumBy { it.infoCount }
+  }
+
+  fun createTaskCategoryData(taskCategory: TaskCategory, tasks: List<TaskUiData>) = object : CriticalPathTaskCategoryUiData {
+    override val name = taskCategory.displayName()
+    override val criticalPathTasks = tasks
+    override val criticalPathDuration = TimeWithPercentage(tasks.sumByLong { it.executionTime.timeMs }, criticalPathDurationMs)
+    override val issues = tasks.flatMap { it.issues }.groupBy { it.type }.map { (k, v) -> createIssuesGroup(k, v) }
+    override val warningCount = tasks.count { it.hasWarning }
+    override val infoCount = tasks.count { it.hasInfo }
+    override val taskCategoryInfo: String
+      get() = taskCategory.getTaskCategoryInfo()
   }
 
   fun createPluginData(name: String, tasks: List<TaskUiData>) = object : CriticalPathPluginUiData {
     override val name = name
-    override val criticalPathTasks = object : CriticalPathPluginTasksUiData {
-      override val tasks = tasks
-      override val criticalPathDuration = TimeWithPercentage(tasks.sumByLong { it.executionTime.timeMs }, criticalPathDurationMs)
-      override val warningCount = tasks.count { it.hasWarning }
-      override val infoCount = tasks.count { it.hasInfo }
-    }
-    override val criticalPathDuration = criticalPathTasks.criticalPathDuration
-    override val issues = criticalPathTasks.tasks.flatMap { it.issues }.groupBy { it.type }.map { (k, v) -> createIssuesGroup(k, v) }
-    override val warningCount = criticalPathTasks.warningCount
-    override val infoCount = criticalPathTasks.infoCount
+    override val criticalPathTasks = tasks
+    override val criticalPathDuration = TimeWithPercentage(tasks.sumByLong { it.executionTime.timeMs }, criticalPathDurationMs)
+    override val issues = tasks.flatMap { it.issues }.groupBy { it.type }.map { (k, v) -> createIssuesGroup(k, v) }
+    override val warningCount = tasks.count { it.hasWarning }
+    override val infoCount = tasks.count { it.hasInfo }
   }
 
   fun createIssuesGroup(type: TaskIssueType, issues: List<TaskIssueUiData>) = object : TaskIssuesGroup {
@@ -197,4 +217,6 @@ class TestTaskUiData(
   override var sourceType: PluginSourceType = PluginSourceType.ANDROID_PLUGIN
   override var reasonsToRun: List<String> = emptyList()
   override var issues: List<TaskIssueUiData> = emptyList()
+  override val primaryTaskCategory: TaskCategory = TaskCategory.ANDROID_RESOURCES
+  override val secondaryTaskCategories: List<TaskCategory> = listOf(TaskCategory.COMPILATION)
 }

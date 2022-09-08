@@ -17,6 +17,7 @@ package com.android.build.attribution.ui
 
 import com.android.build.attribution.ui.data.TimeWithPercentage
 import com.android.build.attribution.ui.view.ViewActionHandlers
+import com.android.ide.common.attribution.TaskCategory
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.util.text.StringUtil
@@ -26,7 +27,6 @@ import javax.swing.Icon
 import javax.swing.JEditorPane
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
-
 
 fun TimeWithPercentage.durationString() = durationString(timeMs)
 
@@ -39,6 +39,43 @@ fun TimeWithPercentage.percentageString() = when {
 }
 
 fun TimeWithPercentage.percentageStringHtml() = StringUtil.escapeXmlEntities(percentageString())
+
+fun TaskCategory.displayName() = toString().split("_").joinToString(separator = " ") { word ->
+  word.lowercase().replaceFirstChar { it.uppercase() }
+}
+
+fun TaskCategory.getTaskCategoryInfo() = when (this) {
+  TaskCategory.GRADLE -> "Gradle created tasks."
+  TaskCategory.JAVA -> "Tasks related to Java source compilation, processing and merging."
+  TaskCategory.KOTLIN -> "Tasks related to Kotlin source compilation, processing and merging."
+  TaskCategory.ANDROID_RESOURCES -> "Tasks related to Android resources compilation, processing, linking and merging."
+  TaskCategory.NATIVE -> "Tasks related to Native build compilation, linking and packaging."
+  TaskCategory.JAVA_RESOURCES -> "Tasks related to Java resources merging and packaging."
+  TaskCategory.JAVA_DOC -> "Tasks related to Java Doc generation and processing."
+  TaskCategory.AIDL -> "Tasks related to AIDL source compilation and processing."
+  TaskCategory.RENDERSCRIPT -> "Tasks related to Renderscript sources compilation and processing."
+  TaskCategory.SHADER -> "Tasks related to Shader sources compilation and processing."
+  TaskCategory.DEXING -> "Tasks related to generating Dex files."
+  TaskCategory.ART_PROFILE -> "Tasks related to ART optimization profiles compilation and processing"
+  TaskCategory.LINT -> "Tasks related to the Lint tool."
+  TaskCategory.MANIFEST -> "Tasks related to Android Manifest merging and compiling."
+  TaskCategory.METADATA -> "Tasks related to Metadata generation and processing"
+  TaskCategory.TEST -> "Tasks related to test execution."
+  TaskCategory.DATA_BINDING -> "Tasks related to data binding."
+  TaskCategory.VERIFICATION -> "Tasks that verify the project and dependencies setup."
+  TaskCategory.SYNC -> "Tasks related to syncing IDE sources with Gradle."
+  TaskCategory.DEPLOYMENT -> "Tasks related to device deployment."
+  TaskCategory.HELP -> "Tasks that provide helpful information on the project"
+  TaskCategory.APK_PACKAGING -> "Tasks related to packaging APKs."
+  TaskCategory.AAR_PACKAGING -> "Tasks related to packaging AARs."
+  TaskCategory.BUNDLE_PACKAGING -> "Tasks related to packaging bundles."
+  TaskCategory.OPTIMIZATION -> "Tasks related to shrinking sources and resources."
+  TaskCategory.MISC -> "General Android Gradle Plugin tasks."
+  TaskCategory.UNKNOWN -> "Third-Party plugin tasks."
+  TaskCategory.COMPILED_CLASSES -> "Tasks that process the output of compilation tasks."
+  // TODO(b/245303698): Don't use else statement as it will be hard to find this when primary category is added.
+  else -> ""
+}
 
 fun durationString(timeMs: Long) = when {
   timeMs == 0L -> "0.0s"

@@ -13,8 +13,8 @@ MODULE                        : project
                 qName                         : :app
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/app
                 buildDir                      : <ROOT>/app/build [-]
                 buildFile                     : <ROOT>/app/build.gradle
@@ -132,8 +132,8 @@ MODULE                        : project
                 qName                         : :library
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/library
                 buildDir                      : <ROOT>/library/build [-]
                 buildFile                     : <ROOT>/library/build.gradle
@@ -251,8 +251,8 @@ MODULE                        : project
                 qName                         : :library-remote
                 group                         : com.example.google
                 version                       : 1.0
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/library-remote
                 buildDir                      : <ROOT>/library-remote/build [-]
                 buildFile                     : <ROOT>/library-remote/build.gradle
@@ -364,8 +364,8 @@ MODULE                        : project
                 qName                         : :lint
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/lint
                 buildDir                      : <ROOT>/lint/build [-]
                 buildFile                     : <ROOT>/lint/build.gradle
@@ -452,8 +452,8 @@ MODULE                        : project
                             - files                       : <ROOT>/lint/build/classes/java/main [-]
                             - files                       : <ROOT>/lint/build/resources/main [-]
                         - artifacts                   : <ROOT>/lint/build/libs/lint.jar [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     test                          : test (DefaultExternalSourceSet)
                         sources
                             TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -472,8 +472,8 @@ MODULE                        : project
                         - dependencies                : DefaultFileCollectionDependency
                             - files                       : <ROOT>/lint/build/classes/java/test [-]
                             - files                       : <ROOT>/lint/build/resources/test [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 externalSystemId              : GRADLE
                 - artifacts                   : <ROOT>/lint/build/libs/lint.jar [-]
                 artifactsByConfiguration
@@ -503,8 +503,8 @@ MODULE                        : project
                 qName                         : :lintpublish
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/lintpublish
                 buildDir                      : <ROOT>/lintpublish/build [-]
                 buildFile                     : <ROOT>/lintpublish/build.gradle
@@ -558,8 +558,8 @@ MODULE                        : project
                             - files                       : <ROOT>/lintpublish/build/classes/java/main [-]
                             - files                       : <ROOT>/lintpublish/build/resources/main [-]
                         - artifacts                   : <ROOT>/lintpublish/build/libs/lintpublish.jar [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     test                          : test (DefaultExternalSourceSet)
                         sources
                             TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -578,8 +578,8 @@ MODULE                        : project
                         - dependencies                : DefaultFileCollectionDependency
                             - files                       : <ROOT>/lintpublish/build/classes/java/test [-]
                             - files                       : <ROOT>/lintpublish/build/resources/test [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 externalSystemId              : GRADLE
                 - artifacts                   : <ROOT>/lintpublish/build/libs/lintpublish.jar [-]
                 artifactsByConfiguration
@@ -609,8 +609,8 @@ MODULE                        : project
                 qName                         : :lintpublish-remote
                 group                         : project
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/lintpublish-remote
                 buildDir                      : <ROOT>/lintpublish-remote/build [-]
                 buildFile                     : <ROOT>/lintpublish-remote/build.gradle
@@ -664,8 +664,8 @@ MODULE                        : project
                             - files                       : <ROOT>/lintpublish-remote/build/classes/java/main [-]
                             - files                       : <ROOT>/lintpublish-remote/build/resources/main [-]
                         - artifacts                   : <ROOT>/lintpublish-remote/build/libs/lintpublish-remote.jar [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     test                          : test (DefaultExternalSourceSet)
                         sources
                             TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -684,8 +684,8 @@ MODULE                        : project
                         - dependencies                : DefaultFileCollectionDependency
                             - files                       : <ROOT>/lintpublish-remote/build/classes/java/test [-]
                             - files                       : <ROOT>/lintpublish-remote/build/resources/test [-]
-                        sourceCompatibility           : 11
-                        targetCompatibility           : 11
+                        sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                        targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 externalSystemId              : GRADLE
                 - artifacts                   : <ROOT>/lintpublish-remote/build/libs/lintpublish-remote.jar [-]
                 artifactsByConfiguration
@@ -1023,6 +1023,7 @@ MODULE                        : project.app
                     ApkFromBundleTaskOutputListingFile      : <ROOT>/app/build/intermediates/apk_from_bundle_ide_redirect_file/debug/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -1059,6 +1060,7 @@ MODULE                        : project.app
                     AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -1364,6 +1366,7 @@ MODULE                        : project.library
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/library/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/library/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -1396,6 +1399,7 @@ MODULE                        : project.library
                     AssembleTaskOutputListingFile : <ROOT>/library/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/library/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/library/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -1696,6 +1700,7 @@ MODULE                        : project.library-remote
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/library-remote/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/library-remote/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -1733,6 +1738,7 @@ MODULE                        : project.library-remote
                     AssembleTaskOutputListingFile : <ROOT>/library-remote/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/library-remote/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/library-remote/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST

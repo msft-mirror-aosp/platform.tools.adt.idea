@@ -2,6 +2,7 @@ load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "old_agp_test")
 
 COMMON_DATA = [
     "//prebuilts/studio/jdk",
+    "//prebuilts/studio/jdk/jdk11",
     "//prebuilts/studio/layoutlib:build.prop",
     "//prebuilts/studio/layoutlib/data:framework_res.jar",
     "//prebuilts/studio/layoutlib/data:native_libs",
@@ -39,6 +40,7 @@ AGP_7_0 = "7.0.0"
 AGP_7_1 = "7.1.0"
 AGP_7_2 = "7.2.0"
 AGP_7_3 = "7.3.0-rc01"
+AGP_7_4 = "7.4.0-alpha09"
 
 AGP_MAVEN_REPOS = {
     AGP_3_1_4: ["//tools/base/build-system/previous-versions:3.1.4"],
@@ -51,6 +53,7 @@ AGP_MAVEN_REPOS = {
     AGP_7_1: ["//tools/base/build-system/previous-versions:7.1.0"],
     AGP_7_2: ["//tools/base/build-system/previous-versions:7.2.0"],
     AGP_7_3: ["//tools/base/build-system/previous-versions:7.3.0"],
+    AGP_7_4: ["//tools/base/build-system/previous-versions:7.4.0"],
 }
 
 AGP_DATA = {
@@ -67,9 +70,11 @@ AGP_DATA = {
     AGP_7_1: ["//prebuilts/studio/sdk:build-tools/30.0.2"],
     AGP_7_2: ["//prebuilts/studio/sdk:build-tools/30.0.2"],
     AGP_7_3: ["//prebuilts/studio/sdk:build-tools/30.0.3"],
+    AGP_7_4: ["//prebuilts/studio/sdk:build-tools/30.0.3"],
 }
 
 GRADLE_LATEST = "LATEST"
+GRADLE_7_5 = "7.5"
 GRADLE_7_4 = "7.4"
 GRADLE_7_3_3 = "7.3.3"
 GRADLE_7_2 = "7.2"
@@ -81,6 +86,7 @@ GRADLE_5_3_1 = "5.3.1"
 
 GRADLE_DISTRIBUTIONS = {
     GRADLE_LATEST: ["//tools/base/build-system:gradle-distrib"],
+    GRADLE_7_5: ["//tools/base/build-system:gradle-distrib-7.5"],
     GRADLE_7_4: ["//tools/base/build-system:gradle-distrib-7.4"],
     GRADLE_7_3_3: ["//tools/base/build-system:gradle-distrib-7.3.3"],
     GRADLE_7_2: ["//tools/base/build-system:gradle-distrib-7.2"],

@@ -13,8 +13,8 @@ MODULE                        : kotlinMultiPlatform
                 qName                         : :app
                 group                         : kotlinMultiPlatform
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/app
                 buildDir                      : <ROOT>/app/build [-]
                 buildFile                     : <ROOT>/app/build.gradle
@@ -230,8 +230,8 @@ MODULE                        : kotlinMultiPlatform
                 qName                         : :module2
                 group                         : kotlinMultiPlatform
                 version                       : unspecified
-                sourceCompatibility           : 11
-                targetCompatibility           : 11
+                sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 projectDir                    : <ROOT>/module2
                 buildDir                      : <ROOT>/module2/build [-]
                 buildFile                     : <ROOT>/module2/build.gradle
@@ -1426,6 +1426,7 @@ MODULE                        : kotlinMultiPlatform.app
                     ApkFromBundleTaskOutputListingFile      : <ROOT>/app/build/intermediates/apk_from_bundle_ide_redirect_file/debug/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -1628,6 +1629,7 @@ MODULE                        : kotlinMultiPlatform.app
                     AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -1813,6 +1815,7 @@ MODULE                        : kotlinMultiPlatform.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -1856,7 +1859,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1866,6 +1868,7 @@ MODULE                        : kotlinMultiPlatform.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.0.2-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/appcompat-v7-28.0.0-api.jar
                     - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-1.0.2-api.jar
@@ -1917,7 +1920,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1927,6 +1929,7 @@ MODULE                        : kotlinMultiPlatform.app
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
+                    backendThreads                : 1
                     - classpath                   : <M2>/junit/junit/4.12/junit-4.12.jar
                     - classpath                   : <M2>/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
                     - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
@@ -1975,7 +1978,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    parallelBackendThreads        : 1
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2366,6 +2368,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     AssembleTaskName              : assembleDebug
                 GeneratedResourceFolders      : <ROOT>/module2/build/generated/res/rs/debug [-]
                 GeneratedResourceFolders      : <ROOT>/module2/build/generated/res/resValues/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 ModelSyncFile
                     Type                          : BASIC
                     TaskName                      : createDebugVariantModel
@@ -2448,6 +2451,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     AssembleTaskOutputListingFile : <ROOT>/module2/build/intermediates/apk_ide_redirect_file/debugAndroidTest/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/module2/build/generated/res/rs/androidTest/debug [-]
                 GeneratedResourceFolders      : <ROOT>/module2/build/generated/res/resValues/androidTest/debug [-]
+                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -2694,6 +2698,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
@@ -2706,7 +2711,6 @@ MODULE                        : kotlinMultiPlatform.module2
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -2774,10 +2778,14 @@ MODULE                        : kotlinMultiPlatform.module2
                     - sourceDirs                  : <ROOT>/module2/src/androidTestDebug/java [-]
                     platform                      : ANDROID
                 arguments                     : KotlinCompilationArgumentsImpl
+                - associateCompilations       : KotlinCompilationCoordinatesImpl
+                    compilationName               : debug
+                    targetName                    : android
                 cachedArgsInfo
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.0.2-api.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/junit/junit/4.12/junit-4.12.jar
@@ -2799,7 +2807,6 @@ MODULE                        : kotlinMultiPlatform.module2
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true
@@ -2872,10 +2879,14 @@ MODULE                        : kotlinMultiPlatform.module2
                     - sourceDirs                  : <ROOT>/module2/src/testDebug/java [-]
                     platform                      : ANDROID
                 arguments                     : KotlinCompilationArgumentsImpl
+                - associateCompilations       : KotlinCompilationCoordinatesImpl
+                    compilationName               : debug
+                    targetName                    : android
                 cachedArgsInfo
                     compilerArguments             : K2JVMCompilerArguments
                         allowNoSourceFiles            : true
                         assertionsMode                : legacy
+                        backendThreads                : 1
                         - classpath                   : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.0.2-api.jar
                         - classpath                   : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                         - classpath                   : <M2>/junit/junit/4.12/junit-4.12.jar
@@ -2897,7 +2908,6 @@ MODULE                        : kotlinMultiPlatform.module2
                         noJdk                         : true
                         noReflect                     : true
                         noStdlib                      : true
-                        parallelBackendThreads        : 1
                         serializeIr                   : none
                         autoAdvanceApiVersion         : true
                         autoAdvanceLanguageVersion    : true

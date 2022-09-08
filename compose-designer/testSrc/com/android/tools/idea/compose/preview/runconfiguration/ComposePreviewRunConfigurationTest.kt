@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview.runconfiguration
 
 import com.android.ddmlib.IDevice
+import com.android.sdklib.AndroidVersion
+import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.run.ConsolePrinter
@@ -52,15 +54,32 @@ class ComposePreviewRunConfigurationTest : AndroidTestCase() {
     val status = mock(LaunchStatus::class.java)
     val consolePrinter = mock(ConsolePrinter::class.java)
     val device = mock(IDevice::class.java)
+    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.S_V2))
     val noApksProvider = NoApksProvider()
-    val task = runConfiguration.getApplicationLaunchTask(FakeApplicationIdProvider(), myFacet, "", false, status,
-                                                         noApksProvider, consolePrinter, device) as ActivityLaunchTask
-    assertEquals("am start -n \"com.example.myapp/androidx.compose.ui.tooling.PreviewActivity\" " +
-                 "-a android.intent.action.MAIN -c android.intent.category.LAUNCHER " +
-                 "--es composable com.mycomposeapp.SomeClass.SomeComposable" +
-                 " --es parameterProviderClassName com.mycomposeapp.ProviderClass" +
-                 " --ei parameterProviderIndex 3",
-                 task.getStartActivityCommand(mock(IDevice::class.java), status, mock(ConsolePrinter::class.java)))
+    val task =
+      runConfiguration.getApplicationLaunchTask(
+        FakeApplicationIdProvider(),
+        myFacet,
+        "",
+        false,
+        status,
+        noApksProvider,
+        consolePrinter,
+        device
+      ) as
+        ActivityLaunchTask
+    assertEquals(
+      "am start -n \"com.example.myapp/androidx.compose.ui.tooling.PreviewActivity\" " +
+        "-a android.intent.action.MAIN -c android.intent.category.LAUNCHER " +
+        "--es composable com.mycomposeapp.SomeClass.SomeComposable" +
+        " --es parameterProviderClassName com.mycomposeapp.ProviderClass" +
+        " --ei parameterProviderIndex 3",
+      task.getStartActivityCommand(
+        mock(IDevice::class.java),
+        status,
+        mock(ConsolePrinter::class.java)
+      )
+    )
   }
 
   fun testConfigurationIsNotProfilable() {
@@ -68,19 +87,28 @@ class ComposePreviewRunConfigurationTest : AndroidTestCase() {
   }
 
   fun testTriggerSourceType() {
-    assertEquals(ComposeDeployEvent.ComposeDeployEventType.UNKNOWN_EVENT_TYPE, runConfiguration.triggerSource.eventType)
+    assertEquals(
+      ComposeDeployEvent.ComposeDeployEventType.UNKNOWN_EVENT_TYPE,
+      runConfiguration.triggerSource.eventType
+    )
     runConfiguration.triggerSource = ComposePreviewRunConfiguration.TriggerSource.GUTTER
-    assertEquals(ComposeDeployEvent.ComposeDeployEventType.DEPLOY_FROM_GUTTER, runConfiguration.triggerSource.eventType)
+    assertEquals(
+      ComposeDeployEvent.ComposeDeployEventType.DEPLOY_FROM_GUTTER,
+      runConfiguration.triggerSource.eventType
+    )
     runConfiguration.triggerSource = ComposePreviewRunConfiguration.TriggerSource.TOOLBAR
-    assertEquals(ComposeDeployEvent.ComposeDeployEventType.DEPLOY_FROM_TOOLBAR, runConfiguration.triggerSource.eventType)
+    assertEquals(
+      ComposeDeployEvent.ComposeDeployEventType.DEPLOY_FROM_TOOLBAR,
+      runConfiguration.triggerSource.eventType
+    )
   }
 
   fun testReadExternal() {
     assertNull(runConfiguration.composableMethodFqn)
 
     val testConfig =
-      // language=xml
-      """
+    // language=xml
+    """
         <root>
           <compose-preview-run-configuration composable-fqn="com.example.MyClassKt.ExampleComposable"/>
         </root>
@@ -98,7 +126,11 @@ class ComposePreviewRunConfigurationTest : AndroidTestCase() {
     runConfiguration.writeExternal(testElement)
 
     val config = JDOMUtil.write(testElement)
-    assertTrue(config.contains("<compose-preview-run-configuration composable-fqn=\"com.example.MyClassKt.ExampleComposable\" />"))
+    assertTrue(
+      config.contains(
+        "<compose-preview-run-configuration composable-fqn=\"com.example.MyClassKt.ExampleComposable\" />"
+      )
+    )
   }
 
   private class FakeApplicationIdProvider : ApplicationIdProvider {
@@ -109,20 +141,32 @@ class ComposePreviewRunConfigurationTest : AndroidTestCase() {
     }
   }
 
-  private class TestComposePreviewRunConfiguration(project: Project, factory: ConfigurationFactory)
-    : ComposePreviewRunConfiguration(project, factory) {
+  private class TestComposePreviewRunConfiguration(
+    project: Project,
+    factory: ConfigurationFactory
+  ) : ComposePreviewRunConfiguration(project, factory) {
 
     // Relax visibility to call the super method (which has protected visibility) in this test
-    public override fun getApplicationLaunchTask(applicationIdProvider: @NotNull ApplicationIdProvider,
-                                                 facet: @NotNull AndroidFacet,
-                                                 contributorsAmStartOptions: @NotNull String,
-                                                 waitForDebugger: Boolean,
-                                                 launchStatus: @NotNull LaunchStatus,
-                                                 apkProvider: @NotNull ApkProvider,
-                                                 consolePrinter: @NotNull ConsolePrinter,
-                                                 device: @NotNull IDevice): @Nullable AppLaunchTask? {
-      return super.getApplicationLaunchTask(applicationIdProvider, facet, contributorsAmStartOptions, waitForDebugger, launchStatus,
-                                            apkProvider, consolePrinter, device)
+    public override fun getApplicationLaunchTask(
+      applicationIdProvider: @NotNull ApplicationIdProvider,
+      facet: @NotNull AndroidFacet,
+      contributorsAmStartOptions: @NotNull String,
+      waitForDebugger: Boolean,
+      launchStatus: @NotNull LaunchStatus,
+      apkProvider: @NotNull ApkProvider,
+      consolePrinter: @NotNull ConsolePrinter,
+      device: @NotNull IDevice
+    ): @Nullable AppLaunchTask? {
+      return super.getApplicationLaunchTask(
+        applicationIdProvider,
+        facet,
+        contributorsAmStartOptions,
+        waitForDebugger,
+        launchStatus,
+        apkProvider,
+        consolePrinter,
+        device
+      )
     }
   }
 }
