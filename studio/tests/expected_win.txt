@@ -12,6 +12,7 @@ android-studio/bin/elevator.exe
 android-studio/bin/format.bat
 android-studio/bin/fsnotifier-wsl
 android-studio/bin/fsnotifier.exe
+android-studio/bin/game-tools.bat
 android-studio/bin/helpers/jb_declarative_formatters/__init__.py
 android-studio/bin/helpers/jb_declarative_formatters/parsers/__init__.py
 android-studio/bin/helpers/jb_declarative_formatters/parsers/natvis/__init__.py
@@ -55,6 +56,8 @@ android-studio/bin/lldb/helpers/renderers/jb_lldb_string_utils.py
 android-studio/bin/lldb/helpers/renderers/jb_lldb_utils.py
 android-studio/bin/ltedit.bat
 android-studio/bin/msvcp140.dll
+android-studio/bin/profiler.bat
+android-studio/bin/profiler.exe
 android-studio/bin/restarter.exe
 android-studio/bin/runnerw.exe
 android-studio/bin/studio.bat
@@ -1340,6 +1343,7 @@ android-studio/plugins/android/lib/asm-tree-9.1.jar
 android-studio/plugins/android/lib/auto-common-0.10.jar
 android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/baksmali-2.5.2.jar
+android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
 android-studio/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
@@ -1652,12 +1656,14 @@ android-studio/plugins/android/resources/device-art-resources/watch_square/fore.
 android-studio/plugins/android/resources/device-art-resources/watch_square/mask.png
 android-studio/plugins/android/resources/device-art-resources/watch_square/shadow.png
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/device_bezel.png
+android-studio/plugins/android/resources/device-art-resources/wearos_large_round/device_mask.png
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/device_bezel.png
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/device_bezel.png
+android-studio/plugins/android/resources/device-art-resources/wearos_small_round/device_mask.png
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_square/device_bezel.png

@@ -19,9 +19,10 @@ import static com.android.SdkConstants.FN_BUILD_GRADLE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
-import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 import static com.android.tools.idea.Projects.getBaseDirPath;
+import static com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProjectKt.migratePackageAttribute;
 import static com.android.tools.idea.gradle.util.LastBuildOrSyncServiceKt.emulateStartupActivityForTest;
+import static com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentUtil.resolveAgpVersionSoftwareEnvironment;
 import static com.android.tools.idea.testing.AndroidGradleTestUtilsKt.prepareGradleProject;
 import static com.android.tools.idea.testing.AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates;
 import static com.android.tools.idea.testing.FileSubject.file;
@@ -32,8 +33,8 @@ import static com.intellij.openapi.util.io.FileUtil.join;
 import static com.intellij.openapi.util.io.FileUtil.toSystemDependentName;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import com.android.ide.common.repository.GradleVersion;
 import com.android.testutils.TestUtils;
-import com.android.tools.idea.gradle.model.IdeSyncIssue;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildResult;
 import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult;
@@ -76,7 +77,6 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import junit.framework.AssertionFailedError;
@@ -243,28 +243,25 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
   }
 
   protected final void loadProject(@NotNull String relativePath) throws Exception {
-    loadProject(relativePath, null, null, null);
+    loadProject(relativePath, null, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName) throws Exception {
-    loadProject(relativePath, chosenModuleName, null, null);
+    loadProject(relativePath, chosenModuleName, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName,
-                                   @Nullable String gradleVersion,
-                                   @Nullable String gradlePluginVersion) throws Exception {
-    loadProject(relativePath, chosenModuleName, gradleVersion, gradlePluginVersion, null, null);
+                                   @NotNull AgpVersionSoftwareEnvironmentDescriptor agpVersion) throws Exception {
+    loadProject(relativePath, chosenModuleName, agpVersion, null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName,
-                                   @Nullable String gradleVersion,
-                                   @Nullable String gradlePluginVersion,
-                                   @Nullable String kotlinVersion,
+                                   @NotNull AgpVersionSoftwareEnvironment agpVersion,
                                    @Nullable String ndkVersion) throws Exception {
-    prepareProjectForImport(relativePath, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion);
+    prepareProjectForImport(relativePath, agpVersion, ndkVersion);
     importProject();
 
     prepareProjectForTest(getProject(), chosenModuleName);
@@ -289,22 +286,24 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
   }
 
   protected void patchPreparedProject(@NotNull File projectRoot,
-                                      @Nullable String gradleVersion,
-                                      @Nullable String gradlePluginVersion,
-                                      @Nullable String kotlinVersion,
+                                      @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
                                       @Nullable String ndkVersion,
                                       File... localRepos) throws IOException {
-    AndroidGradleTests.defaultPatchPreparedProject(projectRoot, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion, localRepos);
+    AndroidGradleTests.defaultPatchPreparedProject(projectRoot, agpVersion, ndkVersion, localRepos);
+    GradleVersion agpVersionParsed = GradleVersion.tryParseAndroidGradlePluginVersion(agpVersion.getAgpVersion());
+    if (agpVersionParsed != null && agpVersionParsed.isAtLeastIncludingPreviews(8, 0, 0)) {
+      migratePackageAttribute(projectRoot);
+    }
   }
 
   @NotNull
   protected File prepareProjectForImport(@NotNull @SystemIndependent String relativePath) throws IOException {
-    return prepareProjectForImport(relativePath, null, null, null, null);
+    return prepareProjectForImport(relativePath, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
   }
 
   @NotNull
   protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath, @NotNull File targetPath) throws IOException {
-    return prepareProjectForImport(relativePath, targetPath, null, null, null, null);
+    return prepareProjectForImport(relativePath, targetPath, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
   }
 
   /**
@@ -312,29 +311,25 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
    */
   @NotNull
   protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath,
-                                         @NotNull File targetPath,
-                                         @Nullable String gradleVersion,
-                                         @Nullable String gradlePluginVersion,
-                                         @Nullable String kotlinVersion,
-                                         @Nullable String ndkVersion) throws IOException {
+                                               @NotNull File targetPath,
+                                               @NotNull AgpVersionSoftwareEnvironment agpVersion,
+                                               @Nullable String ndkVersion) throws IOException {
     File projectSourceRoot = resolveTestDataPath(relativePath);
 
     prepareGradleProject(
       projectSourceRoot,
       targetPath,
-      file -> patchPreparedProject(file, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion,
+      file -> patchPreparedProject(file, resolveAgpVersionSoftwareEnvironment(agpVersion), ndkVersion,
                                    getAdditionalRepos().toArray(new File[0])));
     return targetPath;
   }
 
   @NotNull
   protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath,
-                                         @Nullable String gradleVersion,
-                                         @Nullable String gradlePluginVersion,
-                                         @Nullable String kotlinVersion,
-                                         @Nullable String ndkVersion) throws IOException {
+                                               @NotNull AgpVersionSoftwareEnvironment agpVersion,
+                                               @Nullable String ndkVersion) throws IOException {
     File projectRoot = new File(toSystemDependentName(getProject().getBasePath()));
-    return prepareProjectForImport(relativePath, projectRoot, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion);
+    return prepareProjectForImport(relativePath, projectRoot, agpVersion, ndkVersion);
   }
 
   @NotNull
@@ -413,10 +408,6 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
     return result;
   }
 
-  protected static void createGradleWrapper(@NotNull File projectRoot) throws IOException {
-    AndroidGradleTests.createGradleWrapper(projectRoot, GRADLE_LATEST_VERSION);
-  }
-
   protected void importProject() throws Exception {
     Project project = getProject();
     AndroidGradleTests.importProject(project, GradleSyncInvoker.Request.testRequest());
@@ -452,31 +443,13 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
     return TestModuleUtil.hasModule(getProject(), moduleName);
   }
 
-  protected void requestSyncAndWait(@NotNull GradleSyncInvoker.Request request) throws Exception {
-    TestGradleSyncListener syncListener = requestSync(request);
-    AndroidGradleTests.checkSyncStatus(getProject(), syncListener);
-  }
-
   protected void requestSyncAndWait() throws SyncIssuesPresentError, Exception {
-    TestGradleSyncListener syncListener = requestSync(GradleSyncInvoker.Request.testRequest());
-    AndroidGradleTests.checkSyncStatus(getProject(), syncListener);
+    requestSyncAndWait(GradleSyncInvoker.Request.testRequest());
   }
 
   @NotNull
   protected String requestSyncAndGetExpectedFailure() throws Exception {
     return requestSyncAndGetExpectedFailure(request -> { });
-  }
-
-  @NotNull
-  protected List<IdeSyncIssue> requestSyncAndGetExpectedSyncIssueErrors() throws Exception {
-    try {
-      requestSyncAndWait(GradleSyncInvoker.Request.testRequest());
-    } catch (SyncIssuesPresentError e) {
-      return e.getIssues();
-    }
-
-    fail("Failure was expected, but no SyncIssue errors were present");
-    return null; // Unreachable
   }
 
   @NotNull
@@ -493,10 +466,9 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
     return null; // Unreachable
   }
 
-  @NotNull
-  protected TestGradleSyncListener requestSync(@NotNull GradleSyncInvoker.Request request) throws Exception {
+  protected void requestSyncAndWait(@NotNull GradleSyncInvoker.Request request) throws Exception {
     refreshProjectFiles();
-    return AndroidGradleTests.syncProject(getProject(), request);
+    AndroidGradleTests.syncProject(getProject(), request, it -> AndroidGradleTests.checkSyncStatus(getProject(), it));
   }
 
   @Override

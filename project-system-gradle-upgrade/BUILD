@@ -1,6 +1,7 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "old_agp_test")
+load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_DATA")
 
 # managed by go/iml_to_build
 iml_module(
@@ -57,6 +58,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
         "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync[module]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle.tests[module]",
     ],
 )
 
@@ -78,6 +80,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module]",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module]",
         "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync[module]",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module]",
@@ -100,12 +103,17 @@ maven_repository(
         "@maven//:androidx.savedstate.savedstate_1.1.0-rc01",
         "@maven//:androidx.test.espresso.espresso-core_3.2.0",
         "@maven//:androidx.test.ext.junit_1.1.2",
+        "@maven//:com.android.support.appcompat-v7_28.0.0",
+        "@maven//:com.android.support.constraint.constraint-layout_1.0.2",
+        "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
+        "@maven//:com.android.support.test.runner_1.0.2",
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.auto.value.auto-value-annotations_1.6.2",
         "@maven//:com.google.auto.value.auto-value_1.6.2",
         "@maven//:com.google.code.findbugs.jsr305_1.3.9",
         "@maven//:com.google.code.gson.gson_2.8.0",
         "@maven//:com.google.code.gson.gson_2.8.5",
+        "@maven//:com.google.guava.guava_19.0",
         "@maven//:com.google.guava.guava_28.1-jre",
         "@maven//:com.google.jimfs.jimfs_1.1",
         "@maven//:com.sun.activation.javax.activation_1.2.0",
@@ -132,13 +140,12 @@ maven_repository(
 old_agp_test(
     name = "ProjectUpgradeTests_From",
     timeout = "long",
-    agp_version = "4.0.0",
+    agp_version = AGP_4_0,
     data = [
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib-6.1.1",
-    ],
+    ] + AGP_DATA[AGP_4_0],
     gradle_version = "6.1.1",
     ignore_other_tests = True,
     iml_module = ":intellij.android.projectSystem.gradle.upgrade.tests",
@@ -160,13 +167,12 @@ old_agp_test(
 old_agp_test(
     name = "ProjectUpgradeTests_From",
     timeout = "long",
-    agp_version = "4.1.0",
+    agp_version = AGP_4_1,
     data = [
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib-6.5",
-    ],
+    ] + AGP_DATA[AGP_4_1],
     gradle_version = "6.5",
     ignore_other_tests = True,
     iml_module = ":intellij.android.projectSystem.gradle.upgrade.tests",
@@ -188,13 +194,12 @@ old_agp_test(
 old_agp_test(
     name = "ProjectUpgradeTests_From",
     timeout = "long",
-    agp_version = "4.2.0",
+    agp_version = AGP_4_2,
     data = [
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib-6.7.1",
-    ],
+    ] + AGP_DATA[AGP_4_2],
     gradle_version = "6.7.1",
     ignore_other_tests = True,
     iml_module = ":intellij.android.projectSystem.gradle.upgrade.tests",
@@ -216,13 +221,13 @@ old_agp_test(
 old_agp_test(
     name = "ProjectUpgradeTests_From",
     timeout = "long",
-    agp_version = "7.0.0",
+    agp_version = AGP_7_0,
     data = [
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
+        "//tools/adt/idea/android/testData:snapshots",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib-7.0.2",
-    ],
+    ] + AGP_DATA[AGP_7_0],
     gradle_version = "7.0.2",
     ignore_other_tests = True,
     iml_module = ":intellij.android.projectSystem.gradle.upgrade.tests",
@@ -244,13 +249,12 @@ old_agp_test(
 old_agp_test(
     name = "ProjectUpgradeTests_From",
     timeout = "long",
-    agp_version = "7.1.0",
+    agp_version = AGP_7_1,
     data = [
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:gradle-distrib-7.2",
-    ],
+    ] + AGP_DATA[AGP_7_1],
     gradle_version = "7.2",
     ignore_other_tests = True,
     iml_module = ":intellij.android.projectSystem.gradle.upgrade.tests",

@@ -25,13 +25,11 @@ import com.android.tools.idea.devicemanager.DeviceTables;
 import com.android.tools.idea.devicemanager.DeviceType;
 import com.android.tools.idea.devicemanager.PopUpMenuButtonTableCellEditor;
 import com.android.tools.idea.devicemanager.PopUpMenuValue;
-import java.util.Collection;
 import java.util.List;
 import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu.Separator;
 import javax.swing.JTable;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -39,29 +37,12 @@ import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
-  private final @NotNull Emulator myEmulator = Mockito.mock(Emulator.class);
-
   private final PopUpMenuButtonTableCellEditor myEditor =
-    new VirtualDevicePopUpMenuButtonTableCellEditor(Mockito.mock(VirtualDevicePanel.class), myEmulator);
-
-  @Test
-  public void newColdBootNowItemEmulatorDoesntSupportColdBooting() {
-    // Arrange
-    JTable table = DeviceTables.mock(TestVirtualDevices.pixel5Api31(Mockito.mock(AvdInfo.class)));
-    myEditor.getTableCellEditorComponent(table, PopUpMenuValue.INSTANCE, false, 0, 6);
-
-    // Act
-    Collection<JComponent> items = myEditor.newItems();
-
-    // Assert
-    assertEquals(8, items.size());
-  }
+    new VirtualDevicePopUpMenuButtonTableCellEditor(Mockito.mock(VirtualDevicePanel.class));
 
   @Test
   public void newColdBootNowItem() {
     // Arrange
-    Mockito.when(myEmulator.supportsColdBooting()).thenReturn(true);
-
     JTable table = DeviceTables.mock(TestVirtualDevices.pixel5Api31(Mockito.mock(AvdInfo.class)));
     myEditor.getTableCellEditorComponent(table, PopUpMenuValue.INSTANCE, false, 0, 6);
 
@@ -71,7 +52,7 @@ public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
     // Assert
     assertEquals(9, items.size());
 
-    AbstractButton item = (AbstractButton)items.get(2);
+    AbstractButton item = (AbstractButton)items.get(0);
 
     assertEquals("Cold Boot Now", item.getText());
     assertEquals("Force one cold boot", item.getToolTipText());
@@ -96,9 +77,9 @@ public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
     List<JComponent> items = myEditor.newItems();
 
     // Assert
-    assertEquals(8, items.size());
+    assertEquals(9, items.size());
 
-    AbstractButton item = (AbstractButton)items.get(5);
+    AbstractButton item = (AbstractButton)items.get(1);
 
     assertTrue(item.isEnabled());
     assertEquals("Pair Wearable", item.getText());
@@ -122,9 +103,9 @@ public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
     List<JComponent> items = myEditor.newItems();
 
     // Assert
-    assertEquals(8, items.size());
+    assertEquals(9, items.size());
 
-    AbstractButton item = (AbstractButton)items.get(5);
+    AbstractButton item = (AbstractButton)items.get(1);
 
     assertFalse(item.isEnabled());
     assertEquals("Pair Wearable", item.getText());
@@ -141,9 +122,9 @@ public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
     List<JComponent> items = myEditor.newItems();
 
     // Assert
-    assertEquals(8, items.size());
+    assertEquals(9, items.size());
 
-    AbstractButton item = (AbstractButton)items.get(5);
+    AbstractButton item = (AbstractButton)items.get(1);
 
     assertFalse(item.isEnabled());
     assertEquals("Pair Wearable", item.getText());
@@ -171,15 +152,14 @@ public final class VirtualDevicePopUpMenuButtonTableCellEditorTest {
     List<JComponent> items = myEditor.newItems();
 
     // Assert
-    assertEquals(8, items.size());
-    assertTrue(items.get(4) instanceof Separator);
+    assertEquals(9, items.size());
 
-    AbstractButton item = (AbstractButton)items.get(5);
+    AbstractButton item = (AbstractButton)items.get(1);
 
     assertTrue(item.isEnabled());
     assertEquals("Pair Wearable", item.getText());
     assertEquals("Wear OS virtual device pairing assistant", item.getToolTipText());
 
-    assertTrue(items.get(6) instanceof Separator);
+    assertTrue(items.get(2) instanceof Separator);
   }
 }

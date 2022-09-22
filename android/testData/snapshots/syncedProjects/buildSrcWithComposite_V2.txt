@@ -52,14 +52,8 @@ PROJECT                       : BuildSrcWithComposite
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/app/src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/app/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 0
@@ -133,7 +127,27 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : BuildSrcWithComposite.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/BuildSrcWithComposite.app.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -182,9 +196,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
@@ -193,11 +205,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -206,7 +214,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/assets [-]
@@ -214,7 +221,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -432,7 +438,27 @@ PROJECT                       : BuildSrcWithComposite
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/app/BuildSrcWithComposite.app.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/app/src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/app/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -481,9 +507,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/main
@@ -493,11 +517,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -507,13 +527,11 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -639,7 +657,25 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : BuildSrcWithComposite.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/BuildSrcWithComposite.app.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -697,7 +733,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/assets [-]
@@ -705,7 +740,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1396,14 +1430,8 @@ PROJECT                       : BuildSrcWithComposite
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 0
@@ -1477,7 +1505,27 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : android-included.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/app/android-included.app.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/app/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1526,9 +1574,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/android-included/app/src/androidTest/java
@@ -1537,11 +1583,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -1550,7 +1592,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/androidTestDebug/assets [-]
@@ -1558,7 +1599,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1686,7 +1726,27 @@ PROJECT                       : BuildSrcWithComposite
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/app/android-included.app.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/app/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1735,9 +1795,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/app/src/main
@@ -1747,11 +1805,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -1761,13 +1815,11 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/app/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/app/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1862,7 +1914,25 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : android-included.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/app/android-included.app.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1920,7 +1990,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/testDebug/assets [-]
@@ -1928,7 +1997,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/app/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/app/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2066,14 +2134,8 @@ PROJECT                       : BuildSrcWithComposite
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 1
@@ -2139,7 +2201,27 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : android-included.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/lib/android-included.lib.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/android-included/lib/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2188,9 +2270,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/src/androidTest
             JavaSource (test)             : file://<PROJECT>/android-included/lib/src/androidTest/java
@@ -2199,11 +2279,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -2212,7 +2288,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/androidTestDebug/assets [-]
@@ -2220,7 +2295,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2284,7 +2358,27 @@ PROJECT                       : BuildSrcWithComposite
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/lib/android-included.lib.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/android-included/lib/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2333,9 +2427,7 @@ PROJECT                       : BuildSrcWithComposite
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/android-included/lib/src/main
@@ -2345,11 +2437,7 @@ PROJECT                       : BuildSrcWithComposite
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -2359,13 +2447,11 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/android-included/lib/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/android-included/lib/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2424,7 +2510,25 @@ PROJECT                       : BuildSrcWithComposite
             productionModuleName          : android-included.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/android-included/lib/android-included.lib.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2482,7 +2586,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/testDebug/assets [-]
@@ -2490,7 +2593,6 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/android-included/lib/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/android-included/lib/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false

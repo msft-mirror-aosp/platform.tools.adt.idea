@@ -113,8 +113,10 @@ class LayoutInspectorTreePanelTreeTableTest : LayoutInspectorTreePanelTest(useTr
 abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
   private val disposableRule = DisposableRule()
   private val projectRule = AndroidProjectRule.withSdk()
-  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(listOf(appInspectorRule.createInspectorClientProvider()), projectRule) { it.name == PROCESS.name }
+  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectorRule = LayoutInspectorRule(listOf(appInspectorRule.createInspectorClientProvider()), projectRule) {
+    it.name == PROCESS.name
+  }
   private val treeRule = SetFlagRule(StudioFlags.USE_COMPONENT_TREE_TABLE, useTreeTable)
   private val fileOpenCaptureRule = FileOpenCaptureRule(projectRule)
   private var lastUpdateSettingsCommand: UpdateSettingsCommand? = null
@@ -122,8 +124,13 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
   private var updateSettingsLatch: ReportingCountDownLatch? = null
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(appInspectorRule).around(inspectorRule).around(fileOpenCaptureRule).around(treeRule)
-    .around(EdtRule()).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule)
+    .around(appInspectorRule)
+    .around(inspectorRule)
+    .around(fileOpenCaptureRule)
+    .around(treeRule)
+    .around(EdtRule())
+    .around(disposableRule)!!
 
   @Before
   fun setUp() {
@@ -570,7 +577,7 @@ abstract class LayoutInspectorTreePanelTest(useTreeTable: Boolean) {
     panel.registerCallbacks(callbacks)
     val ui = FakeUi(panel.focusComponent)
     ui.keyboard.setFocus(panel.focusComponent)
-    ui.keyboard.type('T'.toInt())
+    ui.keyboard.type('T'.code)
     verify(callbacks).startFiltering("T")
   }
 

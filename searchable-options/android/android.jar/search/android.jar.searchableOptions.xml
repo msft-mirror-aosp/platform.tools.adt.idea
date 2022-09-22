@@ -399,6 +399,22 @@
     <option name="open" path="ActionManager" hit="Open Asset Studio to create an image asset" />
     <option name="studio" path="ActionManager" hit="Open Asset Studio to create an image asset" />
     <option name="to" path="ActionManager" hit="Open Asset Studio to create an image asset" />
+    <option name="analyzer" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="build" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="open" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="report" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="require" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="show" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="successful" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="to" path="ActionManager" hit="Open Build Analyzer (require successful build to show report)." />
+    <option name="a" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="analyzer" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="build" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="on" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="open" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="past" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="results" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
+    <option name="s" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
     <option name="device" path="ActionManager" hit="Open Device Explorer help" />
     <option name="explorer" path="ActionManager" hit="Open Device Explorer help" />
     <option name="help" path="ActionManager" hit="Open Device Explorer help" />
@@ -435,14 +451,6 @@
     <option name="resource" path="ActionManager" hit="Open the Resource Manager" />
     <option name="the" path="ActionManager" hit="Open the Resource Manager" />
     <option name="open" path="ActionManager" hit="Open..." />
-    <option name="analyzer" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="build" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="opens" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="report" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="requires" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="show" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="successful" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
-    <option name="to" path="ActionManager" hit="Opens Build Analyzer (requires successful build to show report)." />
     <option name="assistant" path="ActionManager" hit="Opens the Wear OS emulator pairing assistant" />
     <option name="emulator" path="ActionManager" hit="Opens the Wear OS emulator pairing assistant" />
     <option name="opens" path="ActionManager" hit="Opens the Wear OS emulator pairing assistant" />
@@ -590,6 +598,12 @@
     <option name="manager" path="ActionManager" hit="Show In Resource Manager" />
     <option name="resource" path="ActionManager" hit="Show In Resource Manager" />
     <option name="show" path="ActionManager" hit="Show In Resource Manager" />
+    <option name="analysis" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
+    <option name="builds" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
+    <option name="of" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
+    <option name="previous" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
+    <option name="results" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
+    <option name="show" path="ActionManager" hit="Show Results Analysis of Previous Builds" />
     <option name="controls" path="ActionManager" hit="Show extended controls" />
     <option name="extended" path="ActionManager" hit="Show extended controls" />
     <option name="show" path="ActionManager" hit="Show extended controls" />
@@ -787,6 +801,31 @@
     <option name="for" hit="ZQSDAE (for AZERTY keyboard)" />
     <option name="keyboard" hit="ZQSDAE (for AZERTY keyboard)" />
     <option name="zqsdae" hit="ZQSDAE (for AZERTY keyboard)" />
+  </configurable>
+  <configurable id="device.mirroring" configurable_name="Device Mirroring">
+    <option name="device" hit="Device Mirroring" />
+    <option name="mirroring" hit="Device Mirroring" />
+    <option name="clipboard" hit="Enable clipboard sharing" />
+    <option name="enable" hit="Enable clipboard sharing" />
+    <option name="sharing" hit="Enable clipboard sharing" />
+    <option name="android" hit="Enable mirroring of physical Android devices" />
+    <option name="devices" hit="Enable mirroring of physical Android devices" />
+    <option name="enable" hit="Enable mirroring of physical Android devices" />
+    <option name="mirroring" hit="Enable mirroring of physical Android devices" />
+    <option name="of" hit="Enable mirroring of physical Android devices" />
+    <option name="physical" hit="Enable mirroring of physical Android devices" />
+    <option name="clipboard" hit="Maximum length of synchronized clipboard text:" />
+    <option name="length" hit="Maximum length of synchronized clipboard text:" />
+    <option name="maximum" hit="Maximum length of synchronized clipboard text:" />
+    <option name="of" hit="Maximum length of synchronized clipboard text:" />
+    <option name="synchronized" hit="Maximum length of synchronized clipboard text:" />
+    <option name="text" hit="Maximum length of synchronized clipboard text:" />
+    <option name="device" hit="Turn off device display while mirroring" />
+    <option name="display" hit="Turn off device display while mirroring" />
+    <option name="mirroring" hit="Turn off device display while mirroring" />
+    <option name="off" hit="Turn off device display while mirroring" />
+    <option name="turn" hit="Turn off device display while mirroring" />
+    <option name="while" hit="Turn off device display while mirroring" />
   </configurable>
   <configurable id="database.inspector" configurable_name="Database Inspector">
     <option name="database" hit="Database Inspector" />
@@ -1211,17 +1250,9 @@
     <option name="these" hit=" Note: These settings are for features that are considered experimental." />
     <option name="default" hit="Default profile" />
     <option name="profile" hit="Default profile" />
-    <option name="device" hit="Device Mirroring" />
-    <option name="mirroring" hit="Device Mirroring" />
     <option name="enable" hit="Enable @Preview picker" />
     <option name="picker" hit="Enable @Preview picker" />
     <option name="preview" hit="Enable @Preview picker" />
-    <option name="android" hit="Enable mirroring of physical Android devices" />
-    <option name="devices" hit="Enable mirroring of physical Android devices" />
-    <option name="enable" hit="Enable mirroring of physical Android devices" />
-    <option name="mirroring" hit="Enable mirroring of physical Android devices" />
-    <option name="of" hit="Enable mirroring of physical Android devices" />
-    <option name="physical" hit="Enable mirroring of physical Android devices" />
     <option name="enable" hit="Enable new Logcat tool window" />
     <option name="logcat" hit="Enable new Logcat tool window" />
     <option name="new" hit="Enable new Logcat tool window" />

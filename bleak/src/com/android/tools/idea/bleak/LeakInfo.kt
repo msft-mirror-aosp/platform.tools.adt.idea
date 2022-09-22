@@ -20,11 +20,12 @@ import java.util.IdentityHashMap
 class LeakInfo(val g: HeapGraph, val leakRoot: Node, val prevLeakRoot: Node) {
   val leaktrace: Leaktrace = leakRoot.getLeaktrace()
   val childrenObjects = leakRoot.childObjects.uniqueByIdentity()
+  val prevChildren = prevLeakRoot.children
   val prevChildrenObjects = prevLeakRoot.childObjects.uniqueByIdentity()
   val addedChildrenObjects = childrenObjects.filter { c -> prevChildrenObjects.all { it !== c } }
-  val addedChildren = leakRoot.children.filter { c -> prevLeakRoot.children.all { it.obj !== c.obj }}
-  val retainedByNewChildren = g.dominatedNodes(addedChildren.toSet())
-  val retainedByAllChildren = g.dominatedNodes(leakRoot.children.toSet())
+  val addedChildren = leakRoot.children.filter { c -> prevChildren.all { it.obj !== c.obj }}
+  val retainedByNewChildren = mutableListOf<Node>()
+  val retainedByAllChildren = mutableListOf<Node>()
 
   override fun toString() = buildString {
     appendln(leaktrace)
@@ -42,6 +43,10 @@ class LeakInfo(val g: HeapGraph, val leakRoot: Node, val prevLeakRoot: Node) {
     }
 
     // print information about objects retained by the added children:
+    if (retainedByAllChildren.isEmpty()) {
+      appendln("\nDominator information omitted: timeout exceeded.")
+      return@buildString
+    }
     appendln("\nRetained by new children: ${retainedByNewChildren.size} objects (${retainedByNewChildren.map { it.getApproximateSize() }.sum()} bytes)")
     mostCommonClassesOf(retainedByNewChildren, 50).forEach {
       appendln("    ${it.second} ${it.first.name}")

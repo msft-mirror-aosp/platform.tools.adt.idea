@@ -51,7 +51,8 @@ enum class TestProject(
   override val setup: () -> () -> Unit = { {} },
   override val patch: AgpVersionSoftwareEnvironmentDescriptor.(projectRoot: File) -> Unit = {},
   override val expectedSyncIssues: Set<Int> = emptySet(),
-  override val verifyOpened: ((Project) -> Unit)? = null
+  override val verifyOpened: ((Project) -> Unit)? = null,
+  override val switchVariant: TemplateBasedTestProject.VariantSelection? = null
 ) : TemplateBasedTestProject {
   APP_WITH_ML_MODELS(TestProjectToSnapshotPaths.APP_WITH_ML_MODELS),
   APP_WITH_BUILDSRC(TestProjectToSnapshotPaths.APP_WITH_BUILDSRC),
@@ -240,6 +241,11 @@ enum class TestProject(
     }
   ),
   MULTI_FLAVOR(TestProjectToSnapshotPaths.MULTI_FLAVOR),
+  MULTI_FLAVOR_SWITCH_VARIANT(
+    TestProjectToSnapshotPaths.MULTI_FLAVOR,
+    testName = "switchVariant",
+    switchVariant = TemplateBasedTestProject.VariantSelection(":app", "firstXyzSecondXyzRelease")
+  ),
   MULTI_FLAVOR_WITH_FILTERING(
     TestProjectToSnapshotPaths.MULTI_FLAVOR,
     testName = "_withFiltering",
@@ -268,7 +274,7 @@ enum class TestProject(
     }),
   MAIN_IN_ROOT(
     TestProjectToSnapshotPaths.MAIN_IN_ROOT,
-    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_80_V1 }
+    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_80 }
     ),
   NESTED_MODULE(TestProjectToSnapshotPaths.NESTED_MODULE),
   TRANSITIVE_DEPENDENCIES(TestProjectToSnapshotPaths.TRANSITIVE_DEPENDENCIES),
@@ -300,6 +306,31 @@ enum class TestProject(
     TestProjectToSnapshotPaths.PRIVACY_SANDBOX_SDK,
     isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
   )
+  ;
+
+  override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"
+
+  override fun getAdditionalRepos(): Collection<File> =
+    listOf(File(AndroidTestBase.getTestDataPath(), PathUtil.toSystemDependentName(TestProjectToSnapshotPaths.PSD_SAMPLE_REPO)))
+}
+
+/**
+ * Other test projects not included in `SyncedProjectTest`.
+ */
+enum class TestProjectOther(
+  override val template: String,
+  override val pathToOpen: String = "",
+  override val testName: String? = null,
+  override val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { true },
+  override val autoMigratePackageAttribute: Boolean = true,
+  override val setup: () -> () -> Unit = { {} },
+  override val patch: AgpVersionSoftwareEnvironmentDescriptor.(projectRoot: File) -> Unit = {},
+  override val expectedSyncIssues: Set<Int> = emptySet(),
+  override val verifyOpened: ((Project) -> Unit)? = null,
+  override val switchVariant: TemplateBasedTestProject.VariantSelection? = null
+) : TemplateBasedTestProject {
+  JPS_WITH_QUALIFIED_NAMES(TestProjectToSnapshotPaths.JPS_WITH_QUALIFIED_NAMES),
+  SIMPLE_APPLICATION_CORRUPTED_MISSING_IML_40(TestProjectToSnapshotPaths.SIMPLE_APPLICATION_CORRUPTED_MISSING_IML_40),
   ;
 
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"

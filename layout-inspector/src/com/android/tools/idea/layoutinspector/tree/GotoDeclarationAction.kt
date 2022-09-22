@@ -18,26 +18,35 @@ package com.android.tools.idea.layoutinspector.tree
 import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.concurrency.executeOnPooledThread
 import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.InspectorModel
+import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
+import com.google.common.annotations.VisibleForTesting
+import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.application.runReadAction
 import com.intellij.pom.Navigatable
 
+private const val VIEW_NOT_FOUND = "view.not.found"
+
 /**
  * Action for navigating to the currently selected node in the layout inspector.
  */
 object GotoDeclarationAction : AnAction("Go To Declaration") {
+  @get:VisibleForTesting
+  var lastAction: ListenableFuture<Unit>? = null
 
   override fun actionPerformed(event: AnActionEvent) {
     val inspector = LayoutInspector.get(event) ?: return
-    executeOnPooledThread {
+    lastAction = executeOnPooledThread {
       runReadAction {
         inspector.currentClient.stats.gotoSourceFromTreeActionMenu(event)
-        val navigatable = findNavigatable(event)
-        invokeLater { navigatable?.navigate(true) }
+        val navigatable = findNavigatable(event) ?: return@runReadAction
+        invokeLater { navigatable.navigate(true) }
+        lastAction = null
       }
     }
   }
@@ -53,7 +62,13 @@ object GotoDeclarationAction : AnAction("Go To Declaration") {
       resourceLookup.findComposableNavigatable(node)
     }
     else {
-      resourceLookup.findFileLocation(node)?.navigatable
+      val navigatable = resourceLookup.findFileLocation(node)?.navigatable
+      val layout = node.layout?.name
+      if (navigatable == null && node.viewId == null && layout != null && !node.isSystemNode) {
+        InspectorBannerService.getInstance(model.project)
+          .setNotification(LayoutInspectorBundle.message(VIEW_NOT_FOUND, node.unqualifiedName, layout))
+      }
+      navigatable
     }
   }
 }

@@ -47,6 +47,7 @@ import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.concurrency.EdtExecutorService;
 import java.awt.event.ActionListener;
+import java.text.Collator;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -69,6 +70,7 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   private final @NotNull VirtualDeviceAsyncSupplier myAsyncSupplier;
   private final @NotNull NewSetDevices myNewSetDevices;
   private @Nullable IDeviceChangeListener myListener;
+  private final @NotNull ActionListener myEmptyTextLinkListener;
 
   @VisibleForTesting
   interface NewSetDevices {
@@ -111,19 +113,15 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
                        new ActivateDeviceFileExplorerWindowButtonTableCellRenderer<>(project, this));
 
     setDefaultRenderer(EditValue.class, new IconButtonTableCellRenderer(AllIcons.Actions.Edit, "Edit this AVD"));
-    setDefaultRenderer(PopUpMenuValue.class, new IconButtonTableCellRenderer(AllIcons.Actions.More));
+    setDefaultRenderer(PopUpMenuValue.class, new IconButtonTableCellRenderer(AllIcons.Actions.More, "More Actions"));
 
     setRowSorter(newRowSorter(dataModel));
     setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     setShowGrid(false);
 
-    ActionListener listener = new BuildVirtualDeviceConfigurationWizardActionListener(this, project, this);
+    myEmptyTextLinkListener = new BuildVirtualDeviceConfigurationWizardActionListener(this, project, this);
 
-    // noinspection DialogTitleCapitalization
-    getEmptyText()
-      .appendLine("No virtual devices added. Create a virtual device to test")
-      .appendLine("applications without owning a physical device.")
-      .appendLine("Create virtual device", SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES, listener);
+    getEmptyText().setText("Loading...");
 
     refreshAvds();
   }
@@ -132,6 +130,12 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   static @NotNull FutureCallback<@NotNull List<@NotNull VirtualDevice>> newSetDevices(@NotNull VirtualDeviceTable table) {
     return new DeviceManagerFutureCallback<>(VirtualDeviceTable.class, devices -> {
       table.getModel().setDevices(devices);
+      // noinspection DialogTitleCapitalization
+      table.getEmptyText()
+        .clear()
+        .appendLine("No virtual devices added. Create a virtual device to test")
+        .appendLine("applications without owning a physical device.")
+        .appendLine("Create virtual device", SimpleTextAttributes.LINK_PLAIN_ATTRIBUTES, table.myEmptyTextLinkListener);
 
       DeviceManagerEvent event = DeviceManagerEvent.newBuilder()
         .setKind(EventKind.VIRTUAL_DEVICE_COUNT)
@@ -150,7 +154,8 @@ public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> impleme
   private static @NotNull RowSorter<@NotNull TableModel> newRowSorter(@NotNull TableModel model) {
     DefaultRowSorter<TableModel, Integer> sorter = new TableRowSorter<>(model);
 
-    sorter.setComparator(VirtualDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX, Comparator.comparing(VirtualDevice::getName));
+    sorter.setComparator(VirtualDeviceTableModel.DEVICE_MODEL_COLUMN_INDEX,
+                         Comparator.comparing(VirtualDevice::getName, Collator.getInstance()));
     sorter.setComparator(VirtualDeviceTableModel.API_MODEL_COLUMN_INDEX, Comparator.naturalOrder().reversed());
     sorter.setComparator(VirtualDeviceTableModel.SIZE_ON_DISK_MODEL_COLUMN_INDEX, Comparator.naturalOrder().reversed());
     sorter.setSortable(VirtualDeviceTableModel.LAUNCH_OR_STOP_MODEL_COLUMN_INDEX, false);

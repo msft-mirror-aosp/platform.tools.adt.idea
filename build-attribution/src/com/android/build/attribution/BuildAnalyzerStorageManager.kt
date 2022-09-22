@@ -39,7 +39,7 @@ interface BuildAnalyzerStorageManager {
    * @exception NoSuchElementException
    */
   fun getHistoricBuildResultByID(buildID : String) : BuildAnalysisResults
-  fun getListOfHistoricBuildIDs() : Set<String>
+  fun getListOfHistoricBuildDescriptors(): Set<BuildDescriptor>
 
   interface Listener {
     fun newDataAvailable()
@@ -49,8 +49,14 @@ interface BuildAnalyzerStorageManager {
     val DATA_IS_READY_TOPIC: Topic<Listener> =
       Topic.create("com.android.build.attribution.BuildAnalyzerStorageManager", Listener::class.java)
 
-    fun getInstance(project: Project): BuildAnalyzerStorageManager {
+    fun getInstance(project: Project) : BuildAnalyzerStorageManager {
       return project.getService(BuildAnalyzerStorageManager::class.java)
     }
   }
 }
+
+data class BuildDescriptor(
+  val buildSessionID: String,
+  val buildFinishedTimestamp: Long,
+  val totalBuildTimeMs: Long
+)

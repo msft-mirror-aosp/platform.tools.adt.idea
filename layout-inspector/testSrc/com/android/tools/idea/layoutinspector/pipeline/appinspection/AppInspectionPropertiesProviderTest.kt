@@ -79,13 +79,13 @@ private const val APP_NAMESPACE = "${URI_PREFIX}com.example"
 class AppInspectionPropertiesProviderTest {
   private val disposableRule = DisposableRule()
   private val projectRule = AndroidProjectRule.withSdk()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
+  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
   private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider()), projectRule) {
     it.name == MODERN_PROCESS.name
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(disposableRule)!!
 
   private lateinit var inspectorState: FakeInspectorState
 
@@ -180,7 +180,7 @@ class AppInspectionPropertiesProviderTest {
 
   @Test
   fun canQueryPropertiesForViewsWithoutResourceResolver() {
-    val facet = AndroidFacet.getInstance(inspectorRule.projectRule.module)!!
+    val facet = AndroidFacet.getInstance(projectRule.module)!!
     AndroidModel.set(facet, TestAndroidModel(applicationId = "com.nonmatching.app"))
 
     InspectorClientSettings.isCapturingModeOn = true // Enable live mode, so we only fetch properties on demand

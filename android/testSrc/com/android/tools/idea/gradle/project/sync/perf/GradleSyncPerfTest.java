@@ -28,9 +28,11 @@ import com.android.testutils.VirtualTimeScheduler;
 import com.android.tools.analytics.TestUsageTracker;
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment;
 import com.android.tools.idea.testing.AndroidGradleTestCase;
 import com.android.tools.idea.testing.AndroidGradleTests;
 import com.android.tools.idea.testing.BuildEnvironment;
+import com.android.tools.idea.testing.ResolvedAgpVersionSoftwareEnvironment;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -113,19 +115,19 @@ public class GradleSyncPerfTest extends AndroidGradleTestCase {
 
   @Override
   protected void patchPreparedProject(@NotNull File projectRoot,
-                                      @Nullable String gradleVersion,
-                                      @Nullable String gradlePluginVersion,
-                                      @Nullable String kotlinVersion,
+                                      @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
                                       @Nullable String ndkVersion,
                                       File... localRepos)
     throws IOException {
+    final var gradleVersion = agpVersion.getGradleVersion();
+    final var gradlePluginVersion = agpVersion.getAgpVersion();
     // Override settings just for tests (e.g. sdk.dir)
     AndroidGradleTests.updateLocalProperties(projectRoot, findSdkPath());
     // We need the wrapper for import to succeed
-    AndroidGradleTests.createGradleWrapper(projectRoot, gradleVersion != null ? gradleVersion : GRADLE_LATEST_VERSION);
+    AndroidGradleTests.createGradleWrapper(projectRoot, gradleVersion);
 
     //Update build.gradle in root directory
-    updateBuildFile(gradlePluginVersion != null ? gradlePluginVersion : BuildEnvironment.getInstance().getGradlePluginVersion());
+    updateBuildFile(gradlePluginVersion);
 
     //Update dependencies.gradle
     updateDependenciesFile();
@@ -310,7 +312,7 @@ public class GradleSyncPerfTest extends AndroidGradleTestCase {
   private void updateBuildFile(@NotNull String gradlePluginVersion) throws IOException {
     File buildFile = getAbsolutionFilePath("build.gradle");
     String contents = Files.toString(buildFile, Charsets.UTF_8);
-    contents = contents.replaceAll("jcenter\\(\\)", AndroidGradleTests.getLocalRepositoriesForGroovy());
+    contents = contents.replaceAll("jcenter\\(\\)", AndroidGradleTests.getLocalRepositoriesForGroovy(Collections.emptyList()));
     contents = contents.replaceAll("classpath 'com\\.android\\.tools\\.build:gradle:\\d+.\\d+.\\d+'",
                                    "classpath 'com.android.tools.build:gradle:" +
                                    gradlePluginVersion +

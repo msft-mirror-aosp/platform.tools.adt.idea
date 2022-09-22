@@ -9,6 +9,7 @@ Android Studio Preview.app/Contents/bin/appletviewer.policy
 Android Studio Preview.app/Contents/bin/brokenPlugins.db
 Android Studio Preview.app/Contents/bin/format.sh
 Android Studio Preview.app/Contents/bin/fsnotifier
+Android Studio Preview.app/Contents/bin/game-tools.sh
 Android Studio Preview.app/Contents/bin/helpers/jb_declarative_formatters/__init__.py
 Android Studio Preview.app/Contents/bin/helpers/jb_declarative_formatters/parsers/__init__.py
 Android Studio Preview.app/Contents/bin/helpers/jb_declarative_formatters/parsers/natvis/__init__.py
@@ -53,6 +54,7 @@ Android Studio Preview.app/Contents/bin/lldb/helpers/renderers/jb_lldb_string_ut
 Android Studio Preview.app/Contents/bin/lldb/helpers/renderers/jb_lldb_utils.py
 Android Studio Preview.app/Contents/bin/ltedit.sh
 Android Studio Preview.app/Contents/bin/printenv
+Android Studio Preview.app/Contents/bin/profiler.sh
 Android Studio Preview.app/Contents/bin/remote-dev-server.sh
 Android Studio Preview.app/Contents/bin/restarter
 Android Studio Preview.app/Contents/bin/studio.svg
@@ -1889,6 +1891,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/asm-tree-9.1.jar
 Android Studio Preview.app/Contents/plugins/android/lib/auto-common-0.10.jar
 Android Studio Preview.app/Contents/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/baksmali-2.5.2.jar
+Android Studio Preview.app/Contents/plugins/android/lib/build-analysis-results-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/commons-lang-2.6.jar
 Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
@@ -2201,12 +2204,14 @@ Android Studio Preview.app/Contents/plugins/android/resources/device-art-resourc
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/watch_square/mask.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/watch_square/shadow.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_large_round/device_bezel.png
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_large_round/device_mask.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_large_round/hardware.ini
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_large_round/layout
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_rect/device_bezel.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_rect/hardware.ini
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_rect/layout
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_small_round/device_bezel.png
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_small_round/device_mask.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_small_round/hardware.ini
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_small_round/layout
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/wearos_square/device_bezel.png

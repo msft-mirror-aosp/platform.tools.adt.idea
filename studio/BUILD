@@ -56,8 +56,6 @@ studio_plugin(
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:workmanager-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:background-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:workmanager-inspector-proto",
-        "//tools/adt/idea/app-inspection/inspectors/workmanager/model:workmanager-inspector-proto",
-        "//tools/adt/idea/app-inspection/inspectors/workmanager/view:workmanager-inspector-proto",
         "//tools/adt/idea/compose-designer:ui-animation-tooling-internal",
         "//tools/adt/idea/profilers-android:traceprocessor-proto",
         "//tools/adt/idea/profilers:traceprocessor-proto",
@@ -71,6 +69,7 @@ studio_plugin(
         "//tools/vendor/google/game-tools/main:game-tools-protos",
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/data-binding:compilerCommon.antlr.shaded",
+        "//tools/adt/idea/build-attribution:build-analysis-results-proto",
     ],
     licenses = [
         "//prebuilts/r8:license",
@@ -120,9 +119,6 @@ studio_plugin(
             "//tools/adt/idea/app-inspection/inspectors/backgroundtask/ide:app-inspection.inspectors.backgroundtask.ide",
             "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:app-inspection.inspectors.backgroundtask.model",
             "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:app-inspection.inspectors.backgroundtask.view",
-            "//tools/adt/idea/app-inspection/inspectors/workmanager/ide:app-inspection.inspectors.workmanager.ide",
-            "//tools/adt/idea/app-inspection/inspectors/workmanager/model:app-inspection.inspectors.workmanager.model",
-            "//tools/adt/idea/app-inspection/inspectors/workmanager/view:app-inspection.inspectors.workmanager.view",
             "//tools/adt/idea/build-attribution:intellij.android.build-attribution",
             "//tools/adt/idea/intellij.android.compose-common:intellij.android.compose-common",
             "//tools/adt/idea/android:intellij.android.core",
@@ -577,6 +573,9 @@ android_studio(
     name = "android-studio",
     codesign_entitlements = "codesign/entitlements.xml",
     codesign_filelist = "codesign/filelist",
+    files_linux = {
+        "safemode/linux/studio_safe.sh": "bin/studio_safe.sh",
+    },
     files_win = {
         "safemode/win/studio_safe.bat": "bin/studio_safe.bat",
     },
@@ -603,10 +602,10 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
-    version_micro_patch = "1.1",
+    version_micro_patch = "1.2",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 1,
+    version_release_number = 2,
     version_type = "Canary",
     # version_update_message = "<html>this is optional</html>",
     visibility = ["//visibility:public"],

@@ -624,6 +624,20 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testVersionCatalogBundlesDsl() {
+    writeToBuildFile(TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+    writeToVersionCatalogFile(TestFile.VERSION_CATALOG_BUNDLES_COMPACT_NOTATION)
+
+    val pbm = projectBuildModel
+    val buildModel = pbm.projectBuildModel!!
+    val dependencies = buildModel.dependencies()
+    val artifacts = dependencies.artifacts()
+    assertSize(2, artifacts)
+    assertEquals("com.example:foo:1.2.3", artifacts[0].compactNotation())
+    assertEquals("com.example:bar:1.2.3", artifacts[1].compactNotation())
+  }
+
+  @Test
   fun testWriteVersionCatalogMapNotation() {
     StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
     try {
@@ -677,6 +691,87 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
       assertEquals("com.example:example:2.3.4", artifacts[0].compactNotation())
       verifyFileContents(myBuildFile, TestFile.VERSION_CATALOG_BUILD_FILE)
       verifyVersionCatalogFileContents(myVersionCatalogFile, TestFile.VERSION_CATALOG_MAP_VERSION_REF_NOTATION_EXPECTED)
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testWriteVersionCatalogCompactOverBundle() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile(TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      writeToVersionCatalogFile(TestFile.VERSION_CATALOG_BUNDLES_COMPACT_NOTATION)
+      val pbm = projectBuildModel
+      let {
+        val buildModel = pbm.projectBuildModel!!
+        val dependencies = buildModel.dependencies()
+        val artifacts = dependencies.artifacts()
+        assertSize(2, artifacts)
+        artifacts[0].version().resultModel.setValue("2.3.4")
+        applyChangesAndReparse(pbm)
+      }
+
+      val artifacts = pbm.projectBuildModel!!.dependencies().artifacts()
+      assertSize(2, artifacts)
+      assertEquals("com.example:foo:2.3.4", artifacts[0].compactNotation())
+      verifyFileContents(myBuildFile, TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, TestFile.VERSION_CATALOG_BUNDLES_COMPACT_NOTATION_EXPECTED)
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testWriteVersionCatalogMapOverBundle() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile(TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      writeToVersionCatalogFile(TestFile.VERSION_CATALOG_BUNDLES_MAP_NOTATION)
+      val pbm = projectBuildModel
+      let {
+        val buildModel = pbm.projectBuildModel!!
+        val dependencies = buildModel.dependencies()
+        val artifacts = dependencies.artifacts()
+        assertSize(2, artifacts)
+        artifacts[0].version().resultModel.setValue("2.3.4")
+        applyChangesAndReparse(pbm)
+      }
+
+      val artifacts = pbm.projectBuildModel!!.dependencies().artifacts()
+      assertSize(2, artifacts)
+      assertEquals("com.example:foo:2.3.4", artifacts[0].compactNotation())
+      verifyFileContents(myBuildFile, TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, TestFile.VERSION_CATALOG_BUNDLES_MAP_NOTATION_EXPECTED)
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testWriteVersionCatalogMapVersionRefOverBundle() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile(TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      writeToVersionCatalogFile(TestFile.VERSION_CATALOG_BUNDLES_MAP_VERSION_REF_NOTATION)
+      val pbm = projectBuildModel
+      let {
+        val buildModel = pbm.projectBuildModel!!
+        val dependencies = buildModel.dependencies()
+        val artifacts = dependencies.artifacts()
+        assertSize(2, artifacts)
+        artifacts[0].version().resultModel.setValue("2.3.4")
+        applyChangesAndReparse(pbm)
+      }
+
+      val artifacts = pbm.projectBuildModel!!.dependencies().artifacts()
+      assertSize(2, artifacts)
+      assertEquals("com.example:foo:2.3.4", artifacts[0].compactNotation())
+      verifyFileContents(myBuildFile, TestFile.VERSION_CATALOG_BUNDLE_BUILD_FILE)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, TestFile.VERSION_CATALOG_BUNDLES_MAP_VERSION_REF_NOTATION_EXPECTED)
     }
     finally {
       StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
@@ -1446,6 +1541,139 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     }
   }
 
+  @Test
+  fun testSimpleBundle() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile("")
+      writeToVersionCatalogFile("""
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+
+        [bundles]
+        core = [ "foo", "bar" ]
+      """.trimIndent())
+
+      val vcModel = projectBuildModel.versionCatalogModel!!
+      val bundles = vcModel.bundles("libs")!!
+      val libraries = vcModel.libraries("libs")!!
+      val refs = bundles.findProperty("core").toList()!!
+
+      //Check that libraries.foo is the same DSL element that is referred from bundles.code[0] (foo)
+      assertTrue(libraries.findProperty("foo").rawElement == refs[0].dependencies[0].rawElement)
+      assertTrue(libraries.findProperty("bar").rawElement == refs[1].dependencies[0].rawElement)
+
+      assertEquals(refs.map { it.rawElement!!.name }, listOf("foo", "bar"))
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testBundleCreateMapWithLibs() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile("")
+      writeToVersionCatalogFile("""
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+      """.trimIndent())
+
+      val pbm = projectBuildModel
+      val vcModel = pbm.versionCatalogModel!!
+      val bundles = vcModel.bundles("libs")!!
+      val core = bundles.findProperty("core")
+
+      val libraries = vcModel.libraries("libs")!!
+      core.addListValue().setValue(ReferenceTo(libraries.findProperty("bar")))
+      core.addListValueAt(0).setValue(ReferenceTo(libraries.findProperty("foo")))
+      applyChanges(pbm)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, """
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+        [bundles]
+        core = [ "foo", "bar" ]
+      """.trimIndent())
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testBundleAppendLib() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile("")
+      writeToVersionCatalogFile("""
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+
+        [bundles]
+        core = [ "foo" ]
+      """.trimIndent())
+
+      val pbm = projectBuildModel
+      val vcModel = pbm.versionCatalogModel!!
+      val bundles = vcModel.bundles("libs")!!
+      val core = bundles.findProperty("core")
+
+      val libraries = vcModel.libraries("libs")!!
+      core.addListValue().setValue(ReferenceTo(libraries.findProperty("bar")))
+      applyChanges(pbm)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, """
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+
+        [bundles]
+        core = [ "foo", "bar" ]
+      """.trimIndent())
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
+  @Test
+  fun testDeleteLibFromBundle() {
+    StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.override(true)
+    try {
+      writeToBuildFile("")
+      writeToVersionCatalogFile("""
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+
+        [bundles]
+        core = [ "foo", "bar" ]
+      """.trimIndent())
+
+      val pbm = projectBuildModel
+      val vcModel = pbm.versionCatalogModel!!
+      val core = vcModel.bundles("libs")!!.findProperty("core")
+
+      core.toList()!![0].delete()
+      applyChanges(pbm)
+      verifyVersionCatalogFileContents(myVersionCatalogFile, """
+        [libraries]
+        foo = { group = "com.example", name = "foo", version = "1.2.3" }
+        bar = { group = "com.example", name = "bar", version = "1.2.3" }
+
+        [bundles]
+        core = [ "bar" ]
+      """.trimIndent())
+    }
+    finally {
+      StudioFlags.GRADLE_DSL_TOML_WRITE_SUPPORT.clearOverride()
+    }
+  }
+
   enum class TestFile(val path: @SystemDependent String): TestFileName {
     APPLIED_FILES_SHARED("appliedFilesShared"),
     APPLIED_FILES_SHARED_APPLIED("appliedFilesSharedApplied"),
@@ -1482,12 +1710,19 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     VERSION_CATALOG_BUILD_FILE("versionCatalogBuildFile"),
     VERSION_CATALOG_ALIAS_MAPPING_BUILD_FILE("versionCatalogAliasMappingBuildFile"),
     VERSION_CATALOG_PLUGINS_DSL_BUILD_FILE("versionCatalogPluginsDslBuildFile"),
+    VERSION_CATALOG_BUNDLE_BUILD_FILE("versionCatalogBundleBuildFile"),
     VERSION_CATALOG_BUILD_FILE_INVALID_ALIAS("versionCatalogBuildFileInvalidAlias"),
     VERSION_CATALOG_COMPACT_NOTATION("versionCatalogCompactNotation.toml"),
     VERSION_CATALOG_GROUP_COMPACT_NOTATION("versionCatalogGroupCompactNotation.toml"),
     VERSION_CATALOG_MAP_NOTATION("versionCatalogMapNotation.toml"),
     VERSION_CATALOG_MAP_NOTATION_EXPECTED("versionCatalogMapNotationExpected.toml"),
     VERSION_CATALOG_MODULE_NOTATION("versionCatalogModuleNotation.toml"),
+    VERSION_CATALOG_BUNDLES_COMPACT_NOTATION("versionCatalogBundlesCompactNotation.toml"),
+    VERSION_CATALOG_BUNDLES_COMPACT_NOTATION_EXPECTED("versionCatalogBundlesCompactNotationExpected.toml"),
+    VERSION_CATALOG_BUNDLES_MAP_NOTATION("versionCatalogBundlesMapNotation.toml"),
+    VERSION_CATALOG_BUNDLES_MAP_NOTATION_EXPECTED("versionCatalogBundlesMapNotationExpected.toml"),
+    VERSION_CATALOG_BUNDLES_MAP_VERSION_REF_NOTATION("versionCatalogBundlesMapVersionRefNotation.toml"),
+    VERSION_CATALOG_BUNDLES_MAP_VERSION_REF_NOTATION_EXPECTED("versionCatalogBundlesMapVersionRefNotationExpected.toml"),
     VERSION_CATALOG_MAP_VERSION_REF_NOTATION("versionCatalogMapVersionRefNotation.toml"),
     VERSION_CATALOG_MAP_VERSION_REF_NOTATION_EXPECTED("versionCatalogMapVersionRefNotationExpected.toml"),
     VERSION_CATALOG_MODULE_VERSION_REF_NOTATION("versionCatalogModuleVersionRefNotation.toml"),

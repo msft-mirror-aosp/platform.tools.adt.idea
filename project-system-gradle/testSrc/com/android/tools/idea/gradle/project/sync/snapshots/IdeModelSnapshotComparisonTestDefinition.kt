@@ -33,7 +33,6 @@ import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AG
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_73
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_74
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_80
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_80_V1
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.android.tools.idea.testing.ModelVersion
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
@@ -164,7 +163,6 @@ data class IdeModelSnapshotComparisonTestDefinition(
     v2snapshots.assertIsEqualToSnapshot(dump)
     // Do not remove `return`.
     return when (agpVersion) {
-      AGP_80 -> testV1vsV2(AGP_80_V1, AGP_80)
       AGP_72 -> testV1vsV2(AGP_72_V1, AGP_72)
       // Do not replace with when.
       AGP_31 -> Unit
@@ -179,7 +177,7 @@ data class IdeModelSnapshotComparisonTestDefinition(
       AGP_72_V1 -> Unit
       AGP_73 -> Unit
       AGP_74 -> Unit
-      AGP_80_V1 -> Unit
+      AGP_80 -> Unit
     }
   }
 

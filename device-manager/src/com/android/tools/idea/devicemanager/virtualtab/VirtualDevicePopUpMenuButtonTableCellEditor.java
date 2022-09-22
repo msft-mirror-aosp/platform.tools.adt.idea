@@ -19,10 +19,10 @@ import com.android.tools.idea.avdmanager.AvdManagerConnection;
 import com.android.tools.idea.avdmanager.AvdOptionsModel;
 import com.android.tools.idea.avdmanager.AvdWizardUtils;
 import com.android.tools.idea.devicemanager.DeviceManagerUsageTracker;
+import com.android.tools.idea.devicemanager.DevicePanel;
 import com.android.tools.idea.devicemanager.MenuItems;
 import com.android.tools.idea.devicemanager.PopUpMenuButtonTableCellEditor;
 import com.android.tools.idea.flags.StudioFlags;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent;
@@ -35,7 +35,6 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu.Separator;
@@ -44,16 +43,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonTableCellEditor {
-  private final @NotNull Emulator myEmulator;
-
-  VirtualDevicePopUpMenuButtonTableCellEditor(@NotNull VirtualDevicePanel panel) {
-    this(panel, new Emulator());
-  }
-
-  @VisibleForTesting
-  VirtualDevicePopUpMenuButtonTableCellEditor(@NotNull VirtualDevicePanel panel, @NotNull Emulator emulator) {
+  VirtualDevicePopUpMenuButtonTableCellEditor(@NotNull DevicePanel panel) {
     super(panel);
-    myEmulator = emulator;
   }
 
   @NotNull VirtualDevicePanel getPanel() {
@@ -68,16 +59,64 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
   public @NotNull List<@NotNull JComponent> newItems() {
     List<JComponent> items = new ArrayList<>();
 
+    items.add(newColdBootNowItem());
+    addPairDeviceItems(items);
+    items.add(new Separator());
     items.add(newDuplicateItem());
     items.add(new WipeDataItem(this));
-    newColdBootNowItem().ifPresent(items::add);
-    items.add(newShowOnDiskItem());
-    items.add(MenuItems.newViewDetailsItem(myPanel));
-    items.add(new Separator());
-    addPairDeviceItems(items);
     items.add(new DeleteItem(this));
+    items.add(new Separator());
+    items.add(MenuItems.newViewDetailsItem(myPanel));
+    items.add(newShowOnDiskItem());
 
     return items;
+  }
+
+  private @NotNull JComponent newColdBootNowItem() {
+    AbstractButton item = new JBMenuItem("Cold Boot Now");
+    item.setToolTipText("Force one cold boot");
+
+    item.addActionListener(actionEvent -> {
+      DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
+        .setKind(EventKind.VIRTUAL_COLD_BOOT_NOW_ACTION)
+        .build();
+
+      DeviceManagerUsageTracker.log(deviceManagerEvent);
+      Project project = myPanel.getProject();
+
+      Futures.addCallback(AvdManagerConnection.getDefaultAvdManagerConnection().startAvdWithColdBoot(project, getDevice().getAvdInfo()),
+                          new ShowErrorDialogFutureCallback(project),
+                          EdtExecutorService.getInstance());
+    });
+
+    return item;
+  }
+
+  private void addPairDeviceItems(@NotNull Collection<@NotNull JComponent> items) {
+    if (!StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.get()) {
+      return;
+    }
+
+    switch (myDevice.getType()) {
+      case PHONE:
+      case WEAR_OS:
+        items.add(newPairDeviceItem());
+        newViewPairedDevicesItem(EventKind.VIRTUAL_UNPAIR_DEVICE_ACTION).ifPresent(items::add);
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  private @NotNull JComponent newPairDeviceItem() {
+    JComponent item = newPairWearableItem(EventKind.VIRTUAL_PAIR_DEVICE_ACTION);
+    VirtualDevice device = getDevice();
+
+    item.setEnabled(device.isPairable());
+    item.setToolTipText(device.getPairingMessage());
+
+    return item;
   }
 
   private @NotNull JComponent newDuplicateItem() {
@@ -102,28 +141,32 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
     return item;
   }
 
-  private @NotNull Optional<@NotNull JComponent> newColdBootNowItem() {
-    if (!myEmulator.supportsColdBooting()) {
-      return Optional.empty();
-    }
-
-    AbstractButton item = new JBMenuItem("Cold Boot Now");
-    item.setToolTipText("Force one cold boot");
+  private @NotNull JComponent newShowOnDiskItem() {
+    AbstractButton item = new JBMenuItem("Show on Disk");
+    item.setToolTipText("Open the location of this AVD's data files");
 
     item.addActionListener(actionEvent -> {
       DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
-        .setKind(EventKind.VIRTUAL_COLD_BOOT_NOW_ACTION)
+        .setKind(EventKind.VIRTUAL_SHOW_ON_DISK_ACTION)
         .build();
 
       DeviceManagerUsageTracker.log(deviceManagerEvent);
-      Project project = myPanel.getProject();
-
-      Futures.addCallback(AvdManagerConnection.getDefaultAvdManagerConnection().startAvdWithColdBoot(project, getDevice().getAvdInfo()),
-                          new ShowErrorDialogFutureCallback(project),
-                          EdtExecutorService.getInstance());
+      RevealFileAction.openDirectory(getDevice().getAvdInfo().getDataFolderPath());
     });
 
-    return Optional.of(item);
+    return item;
+  }
+
+  @Override
+  public @NotNull Component getTableCellEditorComponent(@NotNull JTable table,
+                                                        @NotNull Object value,
+                                                        boolean selected,
+                                                        int viewRowIndex,
+                                                        int viewColumnIndex) {
+    super.getTableCellEditorComponent(table, value, selected, viewRowIndex, viewColumnIndex);
+    myDevice = ((VirtualDeviceTable)table).getDeviceAt(viewRowIndex);
+
+    return myButton;
   }
 
   private static final class ShowErrorDialogFutureCallback implements FutureCallback<Object> {
@@ -141,61 +184,5 @@ final class VirtualDevicePopUpMenuButtonTableCellEditor extends PopUpMenuButtonT
     public void onFailure(@NotNull Throwable throwable) {
       VirtualTabMessages.showErrorDialog(throwable, myProject);
     }
-  }
-
-  private @NotNull JComponent newShowOnDiskItem() {
-    AbstractButton item = new JBMenuItem("Show on Disk");
-    item.setToolTipText("Open the location of this AVD's data files");
-
-    item.addActionListener(actionEvent -> {
-      DeviceManagerEvent deviceManagerEvent = DeviceManagerEvent.newBuilder()
-        .setKind(EventKind.VIRTUAL_SHOW_ON_DISK_ACTION)
-        .build();
-
-      DeviceManagerUsageTracker.log(deviceManagerEvent);
-      RevealFileAction.openDirectory(getDevice().getAvdInfo().getDataFolderPath());
-    });
-
-    return item;
-  }
-
-  private void addPairDeviceItems(@NotNull Collection<@NotNull JComponent> items) {
-    if (!StudioFlags.WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED.get()) {
-      return;
-    }
-
-    switch (myDevice.getType()) {
-      case PHONE:
-      case WEAR_OS:
-        items.add(newPairDeviceItem());
-        newViewPairedDevicesItem(EventKind.VIRTUAL_UNPAIR_DEVICE_ACTION).ifPresent(items::add);
-        items.add(new Separator());
-
-        break;
-      default:
-        break;
-    }
-  }
-
-  private @NotNull JComponent newPairDeviceItem() {
-    JComponent item = newPairWearableItem(EventKind.VIRTUAL_PAIR_DEVICE_ACTION);
-    VirtualDevice device = getDevice();
-
-    item.setEnabled(device.isPairable());
-    item.setToolTipText(device.getPairingMessage());
-
-    return item;
-  }
-
-  @Override
-  public @NotNull Component getTableCellEditorComponent(@NotNull JTable table,
-                                                        @NotNull Object value,
-                                                        boolean selected,
-                                                        int viewRowIndex,
-                                                        int viewColumnIndex) {
-    super.getTableCellEditorComponent(table, value, selected, viewRowIndex, viewColumnIndex);
-    myDevice = ((VirtualDeviceTable)table).getDeviceAt(viewRowIndex);
-
-    return myButton;
   }
 }

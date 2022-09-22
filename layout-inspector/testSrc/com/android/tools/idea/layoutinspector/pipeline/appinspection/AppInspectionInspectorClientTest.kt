@@ -39,7 +39,6 @@ import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.file.someRoot
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.adtui.workbench.ToolWindowCallback
 import com.android.tools.app.inspection.AppInspection
 import com.android.tools.componenttree.treetable.TreeTableHeader
@@ -82,6 +81,7 @@ import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.project.AndroidRunConfigurations
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.run.AndroidRunConfiguration
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.addManifest
 import com.android.tools.idea.util.ListenerCollection
 import com.google.common.truth.Truth.assertThat
@@ -105,10 +105,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.spy
+import org.mockito.Mockito.`when`
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.ArrayBlockingQueue
@@ -131,16 +131,23 @@ class AppInspectionInspectorClientTest {
 
   private val disposableRule = DisposableRule()
   private val treeRule = SetFlagRule(StudioFlags.USE_COMPONENT_TREE_TABLE, true)
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider(monitor))) { it == preferredProcess}
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
+  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider { monitor }), projectRule) {
+    it == preferredProcess
+  }
   private val usageRule = MetricsTrackerRule()
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(treeRule).around(usageRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule)
+    .around(inspectionRule)
+    .around(inspectorRule)
+    .around(treeRule)
+    .around(usageRule)
+    .around(disposableRule)!!
 
   @Before
   fun before() {
-    inspectorRule.projectRule.replaceService(PropertiesComponent::class.java, PropertiesComponentMock())
     inspectorRule.attachDevice(MODERN_DEVICE)
   }
 
@@ -397,7 +404,7 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testViewDebugAttributesApplicationPackageSetAndReset() {
+  fun testViewDebugAttributesApplicationPackageSetAndReset() = runWithFlagState(false) {
     inspectorRule.attachDevice(MODERN_DEVICE)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isEqualTo(MODERN_PROCESS.name)
@@ -415,7 +422,7 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testViewDebugAttributesApplicationUntouchedIfAlreadySet() {
+  fun testViewDebugAttributesApplicationUntouchedIfAlreadySet() = runWithFlagState(false) {
     inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
 
     inspectorRule.attachDevice(MODERN_DEVICE)
@@ -431,7 +438,7 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testViewDebugAttributesApplicationPackageOverriddenAndReset() {
+  fun testViewDebugAttributesApplicationPackageOverriddenAndReset() = runWithFlagState(false) {
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.adbRule.bridge.executeShellCommand(MODERN_PROCESS.device,
                                                      "settings put global debug_view_attributes_application_package com.example.another-app")
@@ -446,7 +453,7 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testViewDebugAttributesApplicationPackageNotOverriddenIfMatching() {
+  fun testViewDebugAttributesApplicationPackageNotOverriddenIfMatching() = runWithFlagState(false) {
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.adbRule.bridge.executeShellCommand(MODERN_PROCESS.device,
                                                      "settings put global debug_view_attributes_application_package ${MODERN_PROCESS.name}")
@@ -828,7 +835,7 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() {
+  fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() = runWithFlagState(false) {
     inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
     setUpRunConfiguration()
     preferredProcess = null
@@ -932,8 +939,8 @@ class AppInspectionInspectorClientTest {
   }
 
   private fun setUpRunConfiguration(enableInspectionWithoutRestart: Boolean = false) {
-    addManifest(inspectorRule.projectRule.fixture)
-    AndroidRunConfigurations.getInstance().createRunConfiguration(AndroidFacet.getInstance(inspectorRule.projectRule.module)!!)
+    addManifest(projectRule.fixture)
+    AndroidRunConfigurations.getInstance().createRunConfiguration(AndroidFacet.getInstance(projectRule.module)!!)
     if (enableInspectionWithoutRestart) {
       val runManager = RunManager.getInstance(inspectorRule.project)
       val config = runManager.allConfigurationsList.filterIsInstance<AndroidRunConfiguration>().firstOrNull { it.name == "app" }
@@ -967,11 +974,12 @@ class AppInspectionInspectorClientTest {
 
 class AppInspectionInspectorClientWithUnsupportedApi29 {
   private val disposableRule = DisposableRule()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(listOf(mock())) { false }
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
+  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectorRule = LayoutInspectorRule(listOf(mock()), projectRule) { false }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(disposableRule)!!
 
   @Test
   fun testApi29VersionBanner() = runBlocking {
@@ -995,7 +1003,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(inspectorRule.project, processDescriptor2,
+      val client = AppInspectionInspectorClient(processDescriptor2,
                                                 isInstantlyAutoConnected = false, model(inspectorRule.project) {}, mock(), mock(),
                                                 disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
@@ -1023,7 +1031,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     assertThat(banner.isVisible).isFalse()
 
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(inspectorRule.project, processDescriptor,
+      val client = AppInspectionInspectorClient(processDescriptor,
                                                 isInstantlyAutoConnected = false, model(inspectorRule.project) {}, mock(), mock(),
                                                 disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
@@ -1043,7 +1051,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     val remotePackage = setUpSdkPackage(sdkRoot, minRevision, 29, tag, true) as RemotePackage
     packages.setRemotePkgInfos(listOf(remotePackage))
     setUpAvdManagerAndRun(sdkHandler, avdInfo, suspend {
-      val client = AppInspectionInspectorClient(inspectorRule.project, processDescriptor,
+      val client = AppInspectionInspectorClient(processDescriptor,
                                                 isInstantlyAutoConnected = false, model(inspectorRule.project) {}, mock(), mock(),
                                                 disposableRule.disposable, inspectionRule.inspectionService.apiServices,
                                                 sdkHandler = sdkHandler)
@@ -1113,6 +1121,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
       }
       override val abiCpuArch = "x86_64"
       override val name = "my name"
+      override val packageName = "my package name"
       override val isRunning = true
       override val pid = 1234
       override val streamId = 4321L
@@ -1131,25 +1140,28 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
 class AppInspectionInspectorClientWithFailingClientTest {
   private val usageTrackerRule = MetricsTrackerRule()
   private val disposableRule = DisposableRule()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
+  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
   private var throwOnState: AttachErrorState = AttachErrorState.UNKNOWN_ATTACH_ERROR_STATE
   private var exceptionToThrow: Exception = RuntimeException("expected")
-  private val monitor = spy(InspectorClientLaunchMonitor(ListenerCollection.createWithDirectExecutor())).also {
-    doAnswer { invocation ->
-      val state = invocation.arguments[0] as AttachErrorState
-      if (state == throwOnState) {
-        throw exceptionToThrow
-      }
-      null
-    }.whenever(it).updateProgress(any(AttachErrorState::class.java))
+  private val getMonitor: () -> InspectorClientLaunchMonitor = {
+    spy(InspectorClientLaunchMonitor(projectRule.project, ListenerCollection.createWithDirectExecutor())).also {
+      doAnswer { invocation ->
+        val state = invocation.arguments[0] as AttachErrorState
+        if (state == throwOnState) {
+          throw exceptionToThrow
+        }
+        null
+      }.whenever(it).updateProgress(any(AttachErrorState::class.java))
+    }
   }
 
-  private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider(monitor))) {
+  private val inspectorRule = LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider(getMonitor)), projectRule) {
     it.name == MODERN_PROCESS.name
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(usageTrackerRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(usageTrackerRule).around(disposableRule)!!
 
   @Test
   fun errorShownOnNoAgentWithApi29() {

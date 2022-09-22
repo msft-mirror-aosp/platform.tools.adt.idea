@@ -19,6 +19,8 @@ import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -93,7 +95,7 @@ public class DisposerExplorer {
 
   @NotNull
   private static ImmutableList<Disposable> getObjectNodeDisposableChildren(@NotNull Object objectNode) {
-    List<?> childNodes = getObjectNodeChildren(objectNode);
+    Collection<?> childNodes = getObjectNodeChildren(objectNode);
     if (childNodes.isEmpty()) {
       return ImmutableList.of();
     }
@@ -229,8 +231,7 @@ public class DisposerExplorer {
 
   @NotNull
   private static VisitResult visitNodeDescendants(@NotNull Object objectNode, @NotNull Visitor visitor) {
-    List<?> childNodes = getObjectNodeChildren(objectNode);
-    for (Object child : childNodes) {
+    for (Object child : getObjectNodeChildren(objectNode)) {
       VisitResult result = visitSubtree(child, visitor);
       if (result == VisitResult.ABORT) {
         return result;
@@ -263,9 +264,15 @@ public class DisposerExplorer {
 
 
   @NotNull
-  private static List<?> getObjectNodeChildren(@NotNull Object objectNode) {
-    Object childNodes = getFieldValue(objectNode, "myChildren");
-    return childNodes == null ? ImmutableList.of() : (List<?>)childNodes;
+  private static Collection<?> getObjectNodeChildren(@NotNull Object objectNode) {
+    try {
+      Object nodeChildren = getFieldValue(objectNode, "myChildren");
+      Method getAllNodes = nodeChildren.getClass().getMethod("getAllNodes");
+      getAllNodes.setAccessible(true);
+      return (Collection<?>)getAllNodes.invoke(nodeChildren);
+    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Nullable

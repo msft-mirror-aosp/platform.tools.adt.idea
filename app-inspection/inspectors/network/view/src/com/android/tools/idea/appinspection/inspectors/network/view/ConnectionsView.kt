@@ -68,7 +68,7 @@ class ConnectionsView(private val model: NetworkInspectorModel, private val pare
         return getUrlName(data.url)
       }
     },
-    SIZE(0.25 / 4, Int::class.java) {
+    SIZE(0.25 / 4, java.lang.Integer::class.java) {
       override fun getValueFrom(data: HttpData): Any {
         return data.responsePayload.size()
       }
@@ -80,7 +80,7 @@ class ConnectionsView(private val model: NetworkInspectorModel, private val pare
         return mimeTypeParts[mimeTypeParts.size - 1]
       }
     },
-    STATUS(0.25 / 4, Int::class.java) {
+    STATUS(0.25 / 4, java.lang.Integer::class.java) {
       override fun getValueFrom(data: HttpData): Any {
         return data.responseHeader.statusCode
       }
@@ -110,7 +110,7 @@ class ConnectionsView(private val model: NetworkInspectorModel, private val pare
 
 
   init {
-    connectionsTable = TimelineTable.create(tableModel, model.timeline, Column.TIMELINE.ordinal, true)
+    connectionsTable = TimelineTable.create(tableModel, model.timeline, Column.TIMELINE.toDisplayString(), true)
     customizeConnectionsTable()
     createTooltip()
     model.aspect.addDependency(this).onChange(NetworkInspectorAspect.SELECTED_CONNECTION) { updateTableSelection() }
@@ -159,7 +159,8 @@ class ConnectionsView(private val model: NetworkInspectorModel, private val pare
     connectionsTable.addComponentListener(object : ComponentAdapter() {
       override fun componentResized(e: ComponentEvent) {
         Column.values().forEachIndexed { i, column ->
-          connectionsTable.columnModel.getColumn(i).preferredWidth = (connectionsTable.width * column.widthPercentage).toInt()
+          connectionsTable.columnModel.getColumn(
+            connectionsTable.convertColumnIndexToView(i)).preferredWidth = (connectionsTable.width * column.widthPercentage).toInt()
         }
       }
     })
@@ -297,6 +298,7 @@ class ConnectionsView(private val model: NetworkInspectorModel, private val pare
     override fun getTableCellRendererComponent(isSelected: Boolean, row: Int): Component {
       val chart = connectionsCharts[table.convertRowIndexToModel(row)]
       chart.colors.setColorIndex(if (isSelected) 1 else 0)
+      chart.component.border = TimelineTable.GridBorder(table)
       return chart.component
     }
 

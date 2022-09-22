@@ -355,9 +355,9 @@ MODULE                        : project.app
     ProjectPath                   : :app
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-<SDK_VERSION>
+    CompileTarget                 : android-32
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 30.0.2
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : com.example.app
@@ -400,7 +400,7 @@ MODULE                        : project.app
         testApplicationId             : testData.namespaces.test
     - basicVariant:               : release
         applicationId                 : testData.namespaces
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -758,9 +758,9 @@ MODULE                        : project.lib
     ProjectPath                   : :lib
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-<SDK_VERSION>
+    CompileTarget                 : android-32
     BuildFolder                   : <ROOT>/lib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.lib
@@ -801,7 +801,7 @@ MODULE                        : project.lib
     - basicVariant:               : debug
         testApplicationId             : com.example.lib.test
     - basicVariant:               : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig
@@ -1118,9 +1118,9 @@ MODULE                        : project.otherlib
     ProjectPath                   : :otherlib
     ModelVersion                  : 7.0.0
     ProjectType                   : PROJECT_TYPE_LIBRARY
-    CompileTarget                 : android-<SDK_VERSION>
+    CompileTarget                 : android-32
     BuildFolder                   : <ROOT>/otherlib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 30.0.2
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.otherlib
@@ -1161,7 +1161,7 @@ MODULE                        : project.otherlib
     - basicVariant:               : debug
         testApplicationId             : com.example.otherlib.test
     - basicVariant:               : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-<SDK_VERSION>/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
     ViewBindingOptions
         Enabled                       : false
     DefaultConfig

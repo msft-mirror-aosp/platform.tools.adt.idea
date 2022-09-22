@@ -23,6 +23,7 @@ import com.android.tools.idea.editors.strings.action.FilterKeysAction;
 import com.android.tools.idea.editors.strings.action.FilterLocalesAction;
 import com.android.tools.idea.editors.strings.action.ReloadStringResourcesAction;
 import com.android.tools.idea.editors.strings.action.RemoveKeysAction;
+import com.android.tools.idea.editors.strings.action.TranslationsEditorPasteAction;
 import com.android.tools.idea.editors.strings.model.StringResourceKey;
 import com.android.tools.idea.editors.strings.table.FrozenColumnTableEvent;
 import com.android.tools.idea.editors.strings.table.FrozenColumnTableListener;
@@ -120,7 +121,7 @@ public class StringResourceViewPanel implements Disposable {
 
   private void initTable() {
     myDeleteAction = new DeleteStringAction(this);
-    myGoToAction = new GoToDeclarationAction(this);
+    myGoToAction = new GoToDeclarationAction(myFacet.getModule().getProject());
 
     myTable = new StringResourceTable();
 

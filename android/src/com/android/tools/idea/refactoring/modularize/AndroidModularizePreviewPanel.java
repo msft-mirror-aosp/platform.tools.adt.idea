@@ -23,6 +23,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBLabel;
@@ -44,6 +45,8 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.nio.charset.Charset;
 import java.util.*;
+import org.jetbrains.kotlin.psi.KtClass;
+import org.jetbrains.kotlin.psi.KtFile;
 
 public class AndroidModularizePreviewPanel {
   private static final Logger LOGGER = Logger.getInstance(AndroidModularizePreviewPanel.class);
@@ -111,13 +114,24 @@ public class AndroidModularizePreviewPanel {
 
     for (UsageInfo usageInfo : myTreeView.getCheckedNodes()) {
       PsiElement psiElement = usageInfo.getElement();
-      if (psiElement instanceof PsiClass) {
-        classesCount++;
-        methodsCount += ((PsiClass)psiElement).getMethods().length;
-        size += psiElement.getContainingFile().getVirtualFile().getLength();
-      }
-      else if (psiElement instanceof PsiFile) {
-        resourcesCount++;
+      if (psiElement instanceof PsiFile) {
+        if (psiElement instanceof KtFile) {
+          methodsCount += ((KtFile)psiElement).getDeclarations().size();
+
+          PsiClass[] classes = ((KtFile)psiElement).getClasses();
+          classesCount += classes.length;
+          for (PsiClass clazz : classes) {
+            methodsCount += clazz.getMethods().length;
+          }
+        } else if (psiElement instanceof PsiJavaFile) {
+          PsiClass[] classes = ((PsiJavaFile)psiElement).getClasses();
+          classesCount += classes.length;
+          for (PsiClass clazz : classes) {
+            methodsCount += clazz.getMethods().length;
+          }
+        } else {
+          resourcesCount++;
+        }
         size += ((PsiFile)psiElement).getVirtualFile().getLength();
       }
       else if (psiElement instanceof XmlTag) {
@@ -146,8 +160,8 @@ public class AndroidModularizePreviewPanel {
       }
 
       // We want to pre-process the resource items in order to group them by resource URLs.
-      if (myLookupMap.get(reference) instanceof AndroidModularizeProcessor.ResourceXmlUsageInfo) {
-        ResourceItem resourceItem = ((AndroidModularizeProcessor.ResourceXmlUsageInfo)myLookupMap.get(reference)).getResourceItem();
+      if (myLookupMap.get(reference) instanceof ResourceXmlUsageInfo) {
+        ResourceItem resourceItem = ((ResourceXmlUsageInfo)myLookupMap.get(reference)).getResourceItem();
         ResourceReference resourceReference = resourceItem.getReferenceToSelf();
         Set<PsiElement> otherItems = resourceGroups.computeIfAbsent(resourceReference, k -> new HashSet<>());
         otherItems.add(reference);

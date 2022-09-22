@@ -5,6 +5,7 @@ android-studio/bin/appletviewer.policy
 android-studio/bin/brokenPlugins.db
 android-studio/bin/format.sh
 android-studio/bin/fsnotifier
+android-studio/bin/game-tools.sh
 android-studio/bin/helpers/jb_declarative_formatters/__init__.py
 android-studio/bin/helpers/jb_declarative_formatters/parsers/__init__.py
 android-studio/bin/helpers/jb_declarative_formatters/parsers/natvis/__init__.py
@@ -47,11 +48,13 @@ android-studio/bin/lldb/helpers/renderers/jb_lldb_natvis_loader.py
 android-studio/bin/lldb/helpers/renderers/jb_lldb_string_utils.py
 android-studio/bin/lldb/helpers/renderers/jb_lldb_utils.py
 android-studio/bin/ltedit.sh
+android-studio/bin/profiler.sh
 android-studio/bin/restart.py
 android-studio/bin/studio.png
 android-studio/bin/studio.sh
 android-studio/bin/studio.svg
 android-studio/bin/studio64.vmoptions
+android-studio/bin/studio_safe.sh
 android-studio/build.txt
 android-studio/jbr/bin/jaotc
 android-studio/jbr/bin/jar
@@ -460,7 +463,7 @@ android-studio/lib/asm-analysis-9.2.jar
 android-studio/lib/asm-commons-9.2.jar
 android-studio/lib/asm-tree-9.2.jar
 android-studio/lib/asm-util-9.2.jar
-android-studio/lib/build-marker-AI-222.3739.54.2221.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-222.4167.29.2221.__BUILD_NUMBER__
 android-studio/lib/byte-buddy-agent.jar
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/dbus-java-3.2.1.jar
@@ -1884,6 +1887,7 @@ android-studio/plugins/android/lib/asm-tree-9.1.jar
 android-studio/plugins/android/lib/auto-common-0.10.jar
 android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/baksmali-2.5.2.jar
+android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
 android-studio/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
@@ -2196,12 +2200,14 @@ android-studio/plugins/android/resources/device-art-resources/watch_square/fore.
 android-studio/plugins/android/resources/device-art-resources/watch_square/mask.png
 android-studio/plugins/android/resources/device-art-resources/watch_square/shadow.png
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/device_bezel.png
+android-studio/plugins/android/resources/device-art-resources/wearos_large_round/device_mask.png
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_large_round/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/device_bezel.png
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_rect/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/device_bezel.png
+android-studio/plugins/android/resources/device-art-resources/wearos_small_round/device_mask.png
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/hardware.ini
 android-studio/plugins/android/resources/device-art-resources/wearos_small_round/layout
 android-studio/plugins/android/resources/device-art-resources/wearos_square/device_bezel.png

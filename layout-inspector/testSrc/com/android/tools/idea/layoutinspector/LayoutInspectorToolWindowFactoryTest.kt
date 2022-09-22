@@ -36,6 +36,7 @@ import com.android.tools.idea.layoutinspector.ui.InspectorDeviceViewSettings
 import com.android.tools.idea.layoutinspector.util.ComponentUtil
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.transport.TransportService
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.ide.DataManager
@@ -122,14 +123,14 @@ class LayoutInspectorToolWindowFactoryTest {
 
   private val disposableRule = DisposableRule()
 
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable)
-  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider(disposableRule.disposable)),
-                                                  projectRule = AndroidProjectRule.inMemory().initAndroid(false)) {
+  private val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
+  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider(disposableRule.disposable)), projectRule) {
     it.name == LEGACY_PROCESS.name
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectionRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(disposableRule)!!
 
   @Test
   fun foregroundProcessDetectionOnlyStartsIfWindowIsNotMinimized() {
@@ -237,7 +238,8 @@ class LayoutInspectorToolWindowFactoryTest {
 
   @Test
   fun toolWindowFactoryCreatesCorrectSettings() {
-    inspectorRule.projectRule.replaceService(AppInspectionDiscoveryService::class.java, mock())
+    ApplicationManager.getApplication().replaceService(TransportService::class.java, mock(), projectRule.testRootDisposable)
+    projectRule.replaceService(AppInspectionDiscoveryService::class.java, mock())
     whenever(AppInspectionDiscoveryService.instance.apiServices).thenReturn(inspectionRule.inspectionService.apiServices)
     val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(inspectorRule.project)
     LayoutInspectorToolWindowFactory().createToolWindowContent(inspectorRule.project, toolWindow)

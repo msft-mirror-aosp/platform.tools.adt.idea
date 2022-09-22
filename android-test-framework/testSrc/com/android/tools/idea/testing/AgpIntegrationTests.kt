@@ -17,7 +17,6 @@ package com.android.tools.idea.testing
 
 import com.android.testutils.junit4.OldAgpSuite
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_31
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_33_WITH_5_3_1
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 
@@ -28,46 +27,51 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   /**
    * The version of the AG. `null` means the current `-dev` version.
    */
-  val agpVersion: String?,
+  override val agpVersion: String?,
 
   /**
    * The version of Gradle to be used in integration tests for this AGP version. `null` means the latest/default version.
    */
-  val gradleVersion: String?,
+  override val gradleVersion: String?,
 
   /**
    * The version of the Gradle Kotlin plugin to be used in integration tests for this AGP version. `null` means the default version used by
    * Android Studio.
    */
-  val kotlinVersion: String? = null,
+  override val kotlinVersion: String? = null,
+
+  /**
+   * The compileSdk to use in this test. `null` means the project default.
+   */
+  override val compileSdk: String? = null,
 
   /**
    * Builder model version to query.
    */
-  val modelVersion: ModelVersion = ModelVersion.V2
-) {
-  AGP_31("3.1.4", gradleVersion = "5.3.1", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1),
-  AGP_33_WITH_5_3_1("3.3.2", gradleVersion = "5.3.1", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1),
-  AGP_33("3.3.2", gradleVersion = "5.5", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1),
-  AGP_35("3.5.0", gradleVersion = "5.5", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1),
-  AGP_40("4.0.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1),
-  AGP_41("4.1.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1),
-  AGP_42("4.2.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1),
-  AGP_70("7.0.0", gradleVersion = "7.0.2", modelVersion = ModelVersion.V1),
-  AGP_71("7.1.0", gradleVersion = "7.2", modelVersion = ModelVersion.V1),
-  AGP_72_V1("7.2.0", gradleVersion = "7.3.3", modelVersion = ModelVersion.V1),
-  AGP_72("7.2.0", gradleVersion = "7.3.3", modelVersion = ModelVersion.V2),
+  override val modelVersion: ModelVersion = ModelVersion.V2
+) : AgpVersionSoftwareEnvironment {
+  AGP_31("3.1.4", gradleVersion = "5.3.1", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_33_WITH_5_3_1("3.3.2", gradleVersion = "5.3.1", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_33("3.3.2", gradleVersion = "5.5", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_35("3.5.0", gradleVersion = "5.5", kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_40("4.0.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_41("4.1.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_42("4.2.0", gradleVersion = "6.7.1", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_70("7.0.0", gradleVersion = "7.0.2", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_71("7.1.0", gradleVersion = "7.2", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_72_V1("7.2.0", gradleVersion = "7.3.3", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_72("7.2.0", gradleVersion = "7.3.3", modelVersion = ModelVersion.V2, compileSdk = "32"),
   AGP_73("7.3.0-rc01", gradleVersion = "7.4", modelVersion = ModelVersion.V2),
   AGP_74("7.4.0-alpha09", gradleVersion = "7.5", modelVersion = ModelVersion.V2),
+
   // Must be last to represent the newest version.
-  AGP_80_V1(null, gradleVersion = null, modelVersion = ModelVersion.V1),
   AGP_80(null, gradleVersion = null, modelVersion = ModelVersion.V2);
 
   override fun toString(): String {
     return "Agp($agpVersion, g=$gradleVersion, k=$kotlinVersion, m=$modelVersion)"
   }
   companion object {
-    val AGP_CURRENT_V1 = AGP_80_V1
+    @JvmField
     val AGP_CURRENT = AGP_80
     val selected: AgpVersionSoftwareEnvironmentDescriptor
       get() {

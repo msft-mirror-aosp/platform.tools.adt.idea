@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.preview
 
 import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.adtui.workbench.WorkBench
+import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.DesignSurface
@@ -24,7 +25,6 @@ import com.android.tools.idea.common.surface.LayoutlibInteractionHandler
 import com.android.tools.idea.common.surface.handleLayoutlibNativeCrash
 import com.android.tools.idea.common.util.ControllableTicker
 import com.android.tools.idea.compose.preview.PreviewGroup.Companion.ALL_PREVIEW_GROUP
-import com.android.tools.idea.compose.preview.actions.ForceCompileAndRefreshAction
 import com.android.tools.idea.compose.preview.actions.PinAllPreviewElementsAction
 import com.android.tools.idea.compose.preview.actions.UnpinAllPreviewElementsAction
 import com.android.tools.idea.compose.preview.analytics.InteractivePreviewUsageTracker
@@ -37,7 +37,6 @@ import com.android.tools.idea.compose.preview.util.ComposePreviewElement
 import com.android.tools.idea.compose.preview.util.ComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.util.FpsCalculator
 import com.android.tools.idea.compose.preview.util.containsOffset
-import com.android.tools.idea.compose.preview.util.isComposeErrorResult
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
@@ -60,15 +59,16 @@ import com.android.tools.idea.preview.FilteredPreviewElementProvider
 import com.android.tools.idea.preview.MemoizedPreviewElementProvider
 import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.PreviewElementProvider
+import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
+import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.CodeOutOfDateTracker
 import com.android.tools.idea.projectsystem.setupBuildListener
 import com.android.tools.idea.rendering.RenderService
-import com.android.tools.idea.rendering.classloading.CooperativeInterruptTransform
-import com.android.tools.idea.rendering.classloading.toClassTransform
+import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
@@ -120,6 +120,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -129,6 +130,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.annotations.TestOnly
@@ -199,12 +201,6 @@ fun configureLayoutlibSceneManager(
     setShrinkRendering(!showDecorations)
     interactive = isInteractive
     isUsePrivateClassLoader = requestPrivateClassLoader
-    setProjectClassesTransform(
-      toClassTransform({
-        if (StudioFlags.COMPOSE_PREVIEW_INTERRUPTIBLE.get()) CooperativeInterruptTransform(it)
-        else it
-      },)
-    )
     setQuality(if (PreviewPowerSaveManager.isInPowerSaveMode) 0.5f else 0.7f)
     setShowDecorations(showDecorations)
     // The Compose Preview has its own way to track out of date files so we ask the Layoutlib Scene
@@ -872,11 +868,11 @@ class ComposePreviewRepresentation(
 
     initializeFlows()
 
-    if (resume) {
-      surface.activate()
-    } else {
+    if (!resume) {
       onInit()
     }
+
+    surface.activate()
 
     if (interactiveMode.isStartingOrReady()) {
       resumeInteractivePreview()
@@ -940,7 +936,7 @@ class ComposePreviewRepresentation(
   private fun hasErrorsAndNeedsBuild(): Boolean =
     renderedElements.isNotEmpty() &&
       (!hasRenderedAtLeastOnce.get() ||
-        surface.sceneManagers.any { it.renderResult.isComposeErrorResult() })
+        surface.sceneManagers.any { it.renderResult.isErrorResult(COMPOSE_VIEW_ADAPTER_FQN) })
 
   private fun hasSyntaxErrors(): Boolean =
     WolfTheProblemSolver.getInstance(project).isProblemFile(psiFilePointer.virtualFile)
@@ -991,10 +987,6 @@ class ComposePreviewRepresentation(
    */
   override fun updateNotifications(parentEditor: FileEditor) =
     composeWorkBench.updateNotifications(parentEditor)
-
-  private fun getPreviewDataContextForPreviewElement(
-    previewElement: ComposePreviewElementInstance
-  ) = PreviewElementDataContext(project, this@ComposePreviewRepresentation, previewElement)
 
   private fun configureLayoutlibSceneManagerForPreviewElement(
     displaySettings: PreviewDisplaySettings,
@@ -1058,8 +1050,8 @@ class ComposePreviewRepresentation(
     composeWorkBench.setPinnedSurfaceVisibility(hasPinnedElements)
     val pinnedManager = PinnedPreviewElementManager.getInstance(project)
     if (hasPinnedElements) {
-      pinnedSurface.updateComposePreviewsAndRefresh(
-        false,
+      pinnedSurface.updatePreviewsAndRefresh(
+        true,
         memoizedPinnedPreviewProvider,
         LOG,
         psiFile,
@@ -1074,8 +1066,8 @@ class ComposePreviewRepresentation(
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
     val showingPreviewElements =
-      surface.updateComposePreviewsAndRefresh(
-        quickRefresh,
+      surface.updatePreviewsAndRefresh(
+        !quickRefresh,
         previewElementProvider,
         LOG,
         psiFile,
@@ -1284,8 +1276,10 @@ class ComposePreviewRepresentation(
   }
 
   override fun registerShortcuts(applicableTo: JComponent) {
-    ForceCompileAndRefreshAction(surface)
-      .registerCustomShortcutSet(getBuildAndRefreshShortcut(), applicableTo, this)
+    psiFilePointer.element?.let {
+      BuildAndRefresh { it }
+        .registerCustomShortcutSet(getBuildAndRefreshShortcut(), applicableTo, this)
+    }
   }
 
   /**
@@ -1296,7 +1290,6 @@ class ComposePreviewRepresentation(
 
   private suspend fun requestFastPreviewRefresh(): CompilationResult? {
     val currentStatus = status()
-    var result: CompilationResult? = null
     val launcher =
       fastPreviewCompilationLauncher
         ?: UniqueTaskCoroutineLauncher(this, "Compilation Launcher").also {
@@ -1352,34 +1345,60 @@ class ComposePreviewRepresentation(
           reportRefresh()
         }
       }
-    launcher
-      .launch {
+
+    // We only want the first result sent through the channel
+    val deferredCompilationResult = CompletableDeferred<CompilationResult?>(null)
+
+    launcher.launch {
+      var refreshJob: Job? = null
+      try {
         if (!currentStatus.hasSyntaxErrors) {
           psiFilePointer.element?.let {
-            result =
+            val result =
               fastCompile(this@ComposePreviewRepresentation, it, requestTracker = requestTracker)
+            deferredCompilationResult.complete(result)
             if (result is CompilationResult.Success) {
               val refreshStartMs = System.currentTimeMillis()
-              val refreshJob = forceRefresh()
+              refreshJob = forceRefresh()
               refreshJob?.invokeOnCompletion { throwable ->
-                if (throwable == null) {
-                  requestTracker.refreshSucceeded(System.currentTimeMillis() - refreshStartMs)
-                } else {
-                  requestTracker.refreshFailed()
+                when (throwable) {
+                  null ->
+                    requestTracker.refreshSucceeded(System.currentTimeMillis() - refreshStartMs)
+                  is CancellationException ->
+                    requestTracker.refreshCancelled(compilationCompleted = true)
+                  else -> requestTracker.refreshFailed()
                 }
                 composeWorkBench.updateVisibilityAndNotifications()
               }
               refreshJob?.join()
             } else {
-              // Compilation failed, report the refresh as failed too
-              requestTracker.refreshFailed()
+              if (result is CompilationResult.CompilationAborted) {
+                requestTracker.refreshCancelled(compilationCompleted = false)
+              } else {
+                // Compilation failed, report the refresh as failed too
+                requestTracker.refreshFailed()
+              }
             }
           }
         }
+        // At this point, the compilation result should have already been sent if any compilation
+        // was done. So, send null result, that will only succeed when fastCompile was not called.
+        deferredCompilationResult.complete(null)
+      } catch (e: CancellationException) {
+        // Any cancellations during the compilation step are handled by fastCompile, so at
+        // this point, the compilation was completed or no compilation was done. Either way,
+        // a compilation result was already sent through the channel. However, the refresh
+        // may still need to be cancelled.
+        // Use runBlocking to make sure to wait until the cancellation is completed.
+        runBlocking {
+          deferredCompilationResult.complete(CompilationResult.CompilationAborted())
+          refreshJob?.cancelAndJoin()
+          throw e
+        }
       }
-      ?.join()
-
-    return result
+    }
+    // wait only for the compilation to finish, not for the whole refresh
+    return deferredCompilationResult.await()
   }
 
   override fun requestFastPreviewRefreshAsync(): Deferred<CompilationResult?> =

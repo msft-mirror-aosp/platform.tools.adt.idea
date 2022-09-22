@@ -39,9 +39,7 @@ import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.executeMakeBeforeRunStepInTest
 import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.mockDeviceFor
-import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.outputCurrentlyRunningTest
-import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.switchVariant
 import com.google.common.truth.Expect
 import com.intellij.execution.RunManager
@@ -139,7 +137,7 @@ fun IntegrationTestEnvironment.runProviderTest(testDefinition: AggregateTestDefi
     val projectPath = preparedProject.root
     val gradlePropertiesPath = projectPath.resolve("gradle.properties")
     gradlePropertiesPath.writeText(
-      gradlePropertiesPath.readText() + "\n android.suppressUnsupportedCompileSdk=${BuildEnvironment.getInstance().compileSdkVersion}"
+      gradlePropertiesPath.readText() + "\n android.suppressUnsupportedCompileSdk=${testDefinition.agpVersion.compileSdk}"
     )
     preparedProject.open { project ->
       try {

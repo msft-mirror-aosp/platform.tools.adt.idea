@@ -110,6 +110,7 @@ class GradleBuildFileNamespaceRClassesTest : AndroidGradleTestCase() {
     myFixture.enableInspections(AndroidDomInspection())
   }
 
+  // Regression test for b/202006729
   fun testManifestActivityXml() {
     val virtualFile = project.guessProjectDir()!!.findFileByRelativePath("lib/src/main/AndroidManifest.xml")
     myFixture.openFileInEditor(virtualFile!!)
@@ -119,7 +120,7 @@ class GradleBuildFileNamespaceRClassesTest : AndroidGradleTestCase() {
 
 
     // Add activity to the Manifest tag.
-    myFixture.moveCaret("""package="com.example.projectwithappandlib.lib">|""")
+    myFixture.moveCaret("""xmlns:android="http://schemas.android.com/apk/res/android">|""")
     myFixture.editor.executeAndSave {
       insertText("""
 
@@ -130,13 +131,6 @@ class GradleBuildFileNamespaceRClassesTest : AndroidGradleTestCase() {
       """.trimIndent())
     }
     myFixture.checkHighlighting()
-
-    // Remove the package attribute from the Manifest tag
-    myFixture.editor.executeAndSave {
-      replaceText(
-        """<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.projectwithappandlib.lib">""",
-        """<manifest xmlns:android="http://schemas.android.com/apk/res/android">""")
-    }
 
     myFixture.checkHighlighting()
 

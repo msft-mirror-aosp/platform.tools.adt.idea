@@ -28,7 +28,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import org.jetbrains.android.refactoring.isAndroidx
-import org.jetbrains.kotlin.config.KotlinCompilerVersion
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 import java.io.File
 
 private val log: Logger get() = logger<ProjectTemplateDataBuilder>()
@@ -38,8 +38,6 @@ private val log: Logger get() = logger<ProjectTemplateDataBuilder>()
  *
  * Extracts information from various data sources.
  */
-
-const val DEFAULT_KOTLIN_VERSION = "1.4.31"
 
 class ProjectTemplateDataBuilder(val isNewProject: Boolean) {
   var androidXSupport: Boolean? = null
@@ -67,12 +65,8 @@ class ProjectTemplateDataBuilder(val isNewProject: Boolean) {
   }
 
   private fun getBestKotlinVersion() : String {
-    // From https://github.com/JetBrains/intellij-kotlin/blob/master/project-wizard/idea/src/org/jetbrains/kotlin/tools/projectWizard/wizard/service/IdeaKotlinVersionProviderService.kt
-    val kotlinVersionFromCompiler = KotlinCompilerVersion.getVersion()
-      ?.takeUnless { it.contains("snapshot", ignoreCase = true) }
-      ?.substringBefore("-release")
-
-    return kotlinVersionFromCompiler ?: DEFAULT_KOTLIN_VERSION // The default version will only be used as a fallback
+    // See IdeaKotlinVersionProviderService.getKotlinVersionFromCompiler().
+    return KotlinPluginLayout.instance.standaloneCompilerVersion.artifactVersion
   }
 
   /**

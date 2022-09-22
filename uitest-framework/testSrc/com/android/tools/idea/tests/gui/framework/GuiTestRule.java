@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.tests.gui.framework;
 
+import static com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT;
+import static com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentUtil.resolveAgpVersionSoftwareEnvironment;
 import static com.android.tools.idea.testing.FileSubject.file;
 import static com.android.tools.idea.tests.gui.framework.GuiTests.refreshFiles;
 import static com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture.actAndWaitForGradleProjectSyncToFinish;
@@ -22,6 +24,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.io.Files.asCharSource;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.intellij.openapi.util.io.FileUtil.sanitizeFileName;
+import static java.util.Collections.emptyList;
 import static org.fest.reflect.core.Reflection.field;
 import static org.fest.reflect.core.Reflection.method;
 import static org.fest.reflect.core.Reflection.type;
@@ -33,7 +36,10 @@ import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.sdk.IdeSdks;
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment;
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor;
 import com.android.tools.idea.testing.AndroidGradleTests;
+import com.android.tools.idea.testing.CustomAgpVersionSoftwareEnvironment;
 import com.android.tools.idea.tests.gui.framework.aspects.AspectsAgentLogger;
 import com.android.tools.idea.tests.gui.framework.fixture.IdeFrameFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.WelcomeFrameFixture;
@@ -61,7 +67,6 @@ import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
@@ -410,7 +415,8 @@ public class GuiTestRule implements TestRule {
     // If the index.zip does not exist, or if the plugin is not installed, this step does not affect the test
     System.setProperty("STUDIO_PREBUILT_INDEX", projectPath.toPath().resolve("index.zip").toAbsolutePath().toString());
     createGradleWrapper(projectPath, SdkConstants.GRADLE_LATEST_VERSION);
-    updateGradleVersions(projectPath, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion);
+    updateGradleVersions(projectPath, new CustomAgpVersionSoftwareEnvironment(gradlePluginVersion, gradleVersion, kotlinVersion),
+                         ndkVersion);
     updateLocalProperties(projectPath);
     cleanUpProjectForImport(projectPath);
     refreshFiles();
@@ -445,7 +451,8 @@ public class GuiTestRule implements TestRule {
                            @Nullable String ndkVersion) throws IOException {
     File projectPath = copyProjectBeforeOpening(projectDirName);
     createGradleWrapper(projectPath, SdkConstants.GRADLE_LATEST_VERSION);
-    updateGradleVersions(projectPath, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion);
+    updateGradleVersions(projectPath, new CustomAgpVersionSoftwareEnvironment(gradlePluginVersion, gradleVersion, kotlinVersion),
+                         ndkVersion);
     updateLocalProperties(projectPath);
     cleanUpProjectForImport(projectPath);
     refreshFiles();
@@ -504,16 +511,21 @@ public class GuiTestRule implements TestRule {
   }
 
   protected void updateGradleVersions(@NotNull File projectPath) throws IOException {
-    AndroidGradleTests.updateToolingVersionsAndPaths(projectPath, null, null, null, null);
+    AndroidGradleTests.updateToolingVersionsAndPaths(projectPath,
+                                                     resolveAgpVersionSoftwareEnvironment(
+                                                       AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT),
+                                                     null,
+                                                     emptyList());
   }
 
   protected void updateGradleVersions(@NotNull File projectPath,
-                                      @Nullable String gradleVersion,
-                                      @Nullable String gradlePluginVersion,
-                                      @Nullable String kotlinVersion,
+                                      @NotNull AgpVersionSoftwareEnvironment agpVersion,
                                       @Nullable String ndkVersion
                                       ) throws IOException {
-    AndroidGradleTests.updateToolingVersionsAndPaths(projectPath, gradleVersion, gradlePluginVersion, kotlinVersion, ndkVersion);
+    AndroidGradleTests.updateToolingVersionsAndPaths(projectPath,
+                                                     resolveAgpVersionSoftwareEnvironment(agpVersion),
+                                                     ndkVersion,
+                                                     emptyList());
   }
 
   @NotNull

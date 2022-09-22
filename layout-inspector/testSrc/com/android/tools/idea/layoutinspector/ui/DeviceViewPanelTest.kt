@@ -15,10 +15,16 @@
  */
 package com.android.tools.idea.layoutinspector.ui
 
+import com.android.SdkConstants
 import com.android.ddmlib.testing.FakeAdbRule
+import com.android.ide.common.rendering.api.ResourceNamespace
+import com.android.ide.common.rendering.api.ResourceReference
+import com.android.ide.common.resources.configuration.FolderConfiguration
+import com.android.resources.ResourceType
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.PropertySetterRule
+import com.android.testutils.TestUtils
 import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.common.AdtUiCursorType
@@ -26,6 +32,7 @@ import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.adtui.common.TestAdtUiCursorsProvider
 import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
 import com.android.tools.adtui.swing.FakeKeyboard
+import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeMouse.Button
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
@@ -53,8 +60,10 @@ import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.REBOOT_FOR_LIVE_INSPECTOR_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.model.ROOT
 import com.android.tools.idea.layoutinspector.model.ROOT2
+import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.VIEW1
 import com.android.tools.idea.layoutinspector.model.VIEW2
+import com.android.tools.idea.layoutinspector.model.VIEW3
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.DeviceModel
 import com.android.tools.idea.layoutinspector.pipeline.ForegroundProcess
@@ -62,12 +71,17 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
+import com.android.tools.idea.layoutinspector.resource.data.AppContext
+import com.android.tools.idea.layoutinspector.tree.GotoDeclarationAction
 import com.android.tools.idea.layoutinspector.util.ComponentUtil.flatten
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
+import com.android.tools.idea.layoutinspector.util.FileOpenCaptureRule
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
+import com.android.tools.idea.layoutinspector.util.TestStringTable
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol.Command.SpecializedCase.UPDATE_SCREENSHOT_TYPE_COMMAND
 import com.android.tools.idea.layoutinspector.window
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
 import com.google.common.truth.Truth.assertThat
@@ -82,6 +96,8 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.keymap.impl.IdeKeyEventDispatcher
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
@@ -100,6 +116,7 @@ import org.junit.rules.RuleChain
 import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.event.KeyEvent
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.swing.Icon
@@ -115,20 +132,27 @@ private val MODERN_PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST
 class DeviceViewPanelWithFullInspectorTest {
   private val scheduler = VirtualTimeScheduler()
   private val executorRule = PropertySetterRule({ scheduler }, Toggle3dAction::executorFactory)
+  private val timeRule = PropertySetterRule({ scheduler.currentTimeMillis }, Toggle3dAction::getCurrentTimeMillis)
   private val disposableRule = DisposableRule()
-  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, withDefaultResponse = false)
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
+  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule, withDefaultResponse = false)
   private val inspectorRule = LayoutInspectorRule(
     clientProviders = listOf(appInspectorRule.createInspectorClientProvider()),
+    projectRule = projectRule,
     isPreferredProcess =  { it.name == MODERN_PROCESS.name }
   )
+  private val fileOpenCaptureRule = FileOpenCaptureRule(projectRule)
 
   @get:Rule
   val ruleChain = RuleChain
-    .outerRule(appInspectorRule)
+    .outerRule(projectRule)
+    .around(appInspectorRule)
     .around(inspectorRule)
+    .around(fileOpenCaptureRule)
     .around(IconLoaderRule())
     .around(EdtRule())
     .around(executorRule)
+    .around(timeRule)
     .around(disposableRule)!!
 
   // Used by all tests that install command handlers
@@ -136,10 +160,16 @@ class DeviceViewPanelWithFullInspectorTest {
   private val commands = mutableListOf<LayoutInspectorViewProtocol.Command>()
 
   private val deviceModel = DeviceModel(inspectorRule.processes)
+  private val appNamespace = ResourceNamespace.fromPackageName("com.example")
+  private val demoLayout = ResourceReference(appNamespace, ResourceType.LAYOUT, "demo")
+  private val view1Id = ResourceReference(appNamespace, ResourceType.ID, "v1")
+  private val view2Id = ResourceReference(appNamespace, ResourceType.ID, "v2")
 
   @Before
   fun before() {
     inspectorRule.attachDevice(MODERN_DEVICE)
+    projectRule.fixture.testDataPath =
+      TestUtils.resolveWorkspacePath("tools/adt/idea/layout-inspector/testData/resource").toString()
   }
 
   @Test
@@ -160,7 +190,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
     )
     val deviceModel = panel.getData(DEVICE_VIEW_MODEL_KEY.name) as DeviceViewPanelModel
     delegateDataProvider(panel)
@@ -169,9 +199,20 @@ class DeviceViewPanelWithFullInspectorTest {
     assertThat(toggle.isEnabled).isTrue()
     assertThat(toggle.isSelected).isFalse()
 
+    // Toggling to 3D mode will cause an UpdateScreenShotTypeCommand to execute on the device. Be ready to wait for the response.
+    latch = CountDownLatch(1)
+
     // Turn on 3D mode:
     toggle.click()
-    scheduler.advanceBy(5, TimeUnit.SECONDS)
+
+    // Wait for the UpdateScreenShotTypeCommand to finish
+    assertThat(latch?.await(1L, TimeUnit.SECONDS)).isTrue()
+    assertThat(lastImageType).isEqualTo(AndroidWindow.ImageType.SKP)
+
+    // Advance past the timeout of the animation
+    scheduler.advanceBy(15, TimeUnit.SECONDS)
+
+    // Verify we are rotated
     assertThat(scheduler.isShutdown).isTrue()
     assertThat(deviceModel.isRotated).isTrue()
     UIUtil.dispatchAllInvocationEvents()
@@ -217,7 +258,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable))
+        projectRule.fixture.testRootDisposable))
 
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
     assertThat(toggle.isEnabled).isTrue()
@@ -241,7 +282,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable))
+        projectRule.fixture.testRootDisposable))
 
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
     assertThat(toggle.isEnabled).isTrue()
@@ -268,7 +309,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
 
@@ -299,7 +340,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
 
@@ -329,7 +370,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
 
@@ -364,7 +405,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
 
@@ -403,7 +444,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
@@ -447,7 +488,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable
+        projectRule.fixture.testRootDisposable
       )
     )
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
@@ -487,7 +528,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
-      inspectorRule.projectRule.fixture.testRootDisposable
+      projectRule.fixture.testRootDisposable
     )
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
     val contentPanel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first()
@@ -525,7 +566,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
-      inspectorRule.projectRule.fixture.testRootDisposable,
+      projectRule.fixture.testRootDisposable,
     )
 
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
@@ -541,14 +582,19 @@ class DeviceViewPanelWithFullInspectorTest {
     waitForCondition(1, TimeUnit.SECONDS) { !contentPanel.showEmptyText }
 
     // Stop connecting, loading should stop
-    val selectProcessAction = contentPanel.selectTargetAction?.dropDownAction as? SelectProcessAction
-    selectProcessAction?.updateActions(mock())
+    val dropdownAction = contentPanel.selectTargetAction?.dropDownAction
+    if (dropdownAction is SelectProcessAction) {
+      dropdownAction.updateActions(mock())
+    }
+    else if (dropdownAction is SelectDeviceAction) {
+      dropdownAction.updateActions(mock())
+    }
     val actionEvent = mock<AnActionEvent>()
     whenever(actionEvent.actionManager).thenReturn(mock())
-    val stopAction = selectProcessAction?.getChildren(actionEvent)?.first { it.templateText == "Stop Inspector" }
+    val stopAction = dropdownAction?.getChildren(actionEvent)?.first { it.templateText == "Stop Inspector" }
     stopAction?.actionPerformed(mock())
 
-    waitForCondition(1, TimeUnit.SECONDS) { !loadingPane.isLoading }
+    waitForCondition(10, TimeUnit.SECONDS) { !loadingPane.isLoading }
     assertThat(contentPanel.showEmptyText).isTrue()
 
     // Release the response from the agent such that all waiting threads can complete (cleanup).
@@ -567,22 +613,97 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
-      inspectorRule.projectRule.fixture.testRootDisposable
+      projectRule.fixture.testRootDisposable
     )
 
     val selectTargetAction = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first().selectTargetAction!!
-    val selectProcessAction = selectTargetAction.dropDownAction as SelectProcessAction
+    val dropDownAction = selectTargetAction.dropDownAction
     installCommandHandlers()
     connect(MODERN_PROCESS)
     inspectorRule.processNotifier.addDevice(LEGACY_DEVICE)
     inspectorRule.processNotifier.addDevice(OLDER_LEGACY_DEVICE)
-    selectProcessAction.updateActions(DataContext.EMPTY_CONTEXT)
-    val children = selectProcessAction.getChildren(null)
-    assertThat(children).hasLength(4)
-    checkDeviceAction(children[0], enabled = true, ICON_PHONE, "Google Modern Model")
-    checkDeviceAction(children[1], enabled = true, ICON_LEGACY_PHONE, "Google Legacy Model (Live inspection disabled for API < 29)")
-    checkDeviceAction(children[2], enabled = false, ICON_PHONE, "Google Older Legacy Model (Unsupported for API < 23)")
-    checkDeviceAction(children[3], enabled = true, StudioIcons.Shell.Toolbar.STOP, "Stop Inspector")
+    if (dropDownAction is SelectProcessAction) {
+      dropDownAction.updateActions(DataContext.EMPTY_CONTEXT)
+
+      val children = dropDownAction.getChildren(null)
+      assertThat(children).hasLength(4)
+      // not alphabetically sorted in SelectProcessAction
+      checkDeviceAction(children[0], enabled = true, ICON_PHONE, "Google Modern Model")
+      checkDeviceAction(children[1], enabled = true, ICON_LEGACY_PHONE, "Google Legacy Model (Live inspection disabled for API < 29)")
+      checkDeviceAction(children[2], enabled = false, ICON_PHONE, "Google Older Legacy Model (Unsupported for API < 23)")
+      checkDeviceAction(children[3], enabled = true, StudioIcons.Shell.Toolbar.STOP, "Stop Inspector")
+    }
+    else if (dropDownAction is SelectDeviceAction) {
+      dropDownAction.updateActions(DataContext.EMPTY_CONTEXT)
+
+      val children = dropDownAction.getChildren(null)
+      assertThat(children).hasLength(4)
+      // alphabetically sorted in SelectDeviceAction
+      checkDeviceAction(children[0], enabled = true, ICON_LEGACY_PHONE, "Google Legacy Model (Live inspection disabled for API < 29)")
+      checkDeviceAction(children[1], enabled = true, ICON_PHONE, "Google Modern Model")
+      checkDeviceAction(children[2], enabled = false, ICON_PHONE, "Google Older Legacy Model (Unsupported for API < 23)")
+      checkDeviceAction(children[3], enabled = true, StudioIcons.Shell.Toolbar.STOP, "Stop Inspector")
+    }
+  }
+
+  @RunsInEdt
+  @Test
+  fun testGotoDeclaration() {
+    gotoDeclaration(VIEW2)
+    fileOpenCaptureRule.checkEditor("demo.xml", lineNumber = 4, "<v2 android:id=\"@+id/v2\"/>")
+  }
+
+  @RunsInEdt
+  @Test
+  fun testGotoDeclarationOfViewWithoutAnId() {
+    gotoDeclaration(VIEW3)
+    fileOpenCaptureRule.checkNoNavigation()
+    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message)
+      .isEqualTo("It appears that the v3 in the layout demo.xml doesnt have an id.")
+  }
+
+  private fun gotoDeclaration(selectedView: Long) {
+    installCommandHandlers()
+    latch = CountDownLatch(1)
+    connect(MODERN_PROCESS)
+    assertThat(latch?.await(1L, TimeUnit.SECONDS)).isTrue()
+    projectRule.fixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML)
+    projectRule.fixture.addFileToProject("res/layout/demo.xml", """
+      <?xml version="1.0" encoding="utf-8"?>
+      <v1 xmlns:android="http://schemas.android.com/apk/res/android"
+          android:id="@+id/v1">
+        <v2 android:id="@+id/v2"/>
+        <v3/>
+      </v1>
+    """.trimIndent())
+
+    val model = inspectorRule.inspectorModel
+    val stringTable = TestStringTable()
+    val theme = stringTable.add(ResourceReference.style(appNamespace, "AppTheme"))!!
+    val context = AppContext(theme, screenWidth = 600, screenHeight = 800)
+    model.resourceLookup.updateConfiguration(FolderConfiguration(), 1f, context, stringTable, MODERN_PROCESS)
+    inspectorRule.inspector.treeSettings.hideSystemNodes = false
+    val panel = DeviceViewPanel(
+      deviceModel,
+      inspectorRule.processes,
+      {},
+      {},
+      {},
+      inspectorRule.inspector,
+      FakeDeviceViewSettings(),
+      projectRule.fixture.testRootDisposable
+    )
+    delegateDataProvider(panel)
+    val focusManager = FakeKeyboardFocusManager(disposableRule.disposable)
+    focusManager.focusOwner = flatten(panel).filterIsInstance<DeviceViewContentPanel>().single()
+    val dispatcher = IdeKeyEventDispatcher(null)
+    val modifier = if (SystemInfo.isMac) KeyEvent.META_DOWN_MASK else KeyEvent.CTRL_DOWN_MASK
+
+    // Press ctrl-B / command-B when the selectedView is selected:
+    model.setSelection(model[selectedView], SelectionOrigin.INTERNAL)
+    dispatcher.dispatchKeyEvent(KeyEvent(panel, KeyEvent.KEY_PRESSED, 0, modifier, KeyEvent.VK_B, 'B'))
+    GotoDeclarationAction.lastAction?.get()
+    UIUtil.dispatchAllInvocationEvents()
   }
 
   private fun checkDeviceAction(action: AnAction, enabled: Boolean, icon: Icon?, text: String) {
@@ -606,8 +727,9 @@ class DeviceViewPanelWithFullInspectorTest {
         else -> {}
       }
       val window = window("w1", 1L, imageType = lastImageType) {
-        view(VIEW1, 0, 0, 10, 10, qualifiedName = "v1") {
-          view(VIEW2, 0, 0, 10, 10, qualifiedName = "v2")
+        view(VIEW1, 0, 0, 10, 10, qualifiedName = "v1", layout = demoLayout, viewId = view1Id) {
+          view(VIEW2, 0, 0, 10, 10, qualifiedName = "v2", layout = demoLayout, viewId = view2Id)
+          view(VIEW3, 0, 5, 10, 5, qualifiedName = "v3", layout = demoLayout)
         }
       }
       inspectorRule.inspectorModel.update(window, listOf("w1"), 1)
@@ -963,7 +1085,7 @@ class DeviceViewPanelTest {
     val viewport = flatten(panel).filterIsInstance<JViewport>().first()
 
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider {
-      id -> if (id == LAYOUT_INSPECTOR_DATA_KEY.name) inspector else null
+        id -> if (id == LAYOUT_INSPECTOR_DATA_KEY.name) inspector else null
     }
 
     assertThat(processes.selectedProcess).isNotNull()
@@ -1014,10 +1136,11 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
   val edtRule = EdtRule()
 
   private val disposableRule = DisposableRule()
-  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider(disposableRule.disposable)))
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
+  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider(disposableRule.disposable)), projectRule)
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectorRule).around(disposableRule)!!
 
   @Test
   fun testLiveControlDisabledWithProcessFromLegacyDevice() {
@@ -1035,7 +1158,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable,
+        projectRule.fixture.testRootDisposable,
       )
     )
 
@@ -1060,7 +1183,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
         {},
         inspectorRule.inspector,
         settings,
-        inspectorRule.projectRule.fixture.testRootDisposable,
+        projectRule.fixture.testRootDisposable,
       )
     )
 
@@ -1233,19 +1356,26 @@ class MyViewportLayoutManagerTest {
 @RunsInEdt
 class DeviceViewPanelWithNoClientsTest {
   private val disposableRule = DisposableRule()
-  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, withDefaultResponse = false)
+  private val projectRule = AndroidProjectRule.onDisk()
+  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule, withDefaultResponse = false)
   private val postCreateLatch = CountDownLatch(1)
   private val inspectorRule = LayoutInspectorRule(
     clientProviders = listOf(InspectorClientProvider { _, _ ->
         postCreateLatch.await()
         null
       }),
+    projectRule = projectRule,
     isPreferredProcess = { it.name == MODERN_PROCESS.name }
   )
 
   @get:Rule
   val ruleChain =
-    RuleChain.outerRule(appInspectorRule).around(inspectorRule).around(IconLoaderRule()).around(EdtRule()).around(disposableRule)!!
+    RuleChain.outerRule(projectRule)
+      .around(appInspectorRule)
+      .around(inspectorRule)
+      .around(IconLoaderRule())
+      .around(EdtRule())
+      .around(disposableRule)!!
 
   @Test
   fun testLoadingPane() {
@@ -1260,7 +1390,7 @@ class DeviceViewPanelWithNoClientsTest {
       {},
       inspectorRule.inspector,
       settings,
-      inspectorRule.projectRule.fixture.testRootDisposable,
+      projectRule.fixture.testRootDisposable,
     )
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
     val contentPanel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first()
@@ -1291,7 +1421,7 @@ class DeviceViewPanelWithNoClientsTest {
       {},
       inspectorRule.inspector,
       EditorDeviceViewSettings(),
-      inspectorRule.projectRule.fixture.testRootDisposable,
+      projectRule.fixture.testRootDisposable,
     )
 
     val deviceViewContentPanel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first()

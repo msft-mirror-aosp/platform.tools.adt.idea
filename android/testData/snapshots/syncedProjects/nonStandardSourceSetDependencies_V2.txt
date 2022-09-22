@@ -80,14 +80,8 @@ PROJECT                       : NonStandardSourceSetDependencies
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/app/src/main/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/app/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 0
@@ -161,7 +155,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/NonStandardSourceSetDependencies.app.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -184,9 +198,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
@@ -194,11 +206,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -208,7 +216,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/assets [-]
@@ -216,7 +223,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -300,7 +306,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/app/NonStandardSourceSetDependencies.app.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/app/src/main/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/app/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -323,9 +349,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/app/src/main
@@ -334,11 +358,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -348,14 +368,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -428,7 +446,25 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.app.main
         ModuleFile                    : <PROJECT>/.idea/modules/app/NonStandardSourceSetDependencies.app.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 0
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -460,7 +496,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/assets [-]
@@ -468,7 +503,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1132,14 +1166,8 @@ PROJECT                       : NonStandardSourceSetDependencies
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/src/main/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 1
@@ -1205,7 +1233,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.feature-a.main
         ModuleFile                    : <PROJECT>/.idea/modules/feature-a/NonStandardSourceSetDependencies.feature-a.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-a/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1228,9 +1276,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/src/androidTest [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/src/androidTestDebug [-]
@@ -1238,11 +1284,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -1252,7 +1294,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/androidTestDebug/assets [-]
@@ -1260,7 +1301,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1378,7 +1418,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/feature-a/NonStandardSourceSetDependencies.feature-a.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/src/main/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-a/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1401,9 +1461,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-a/src/main
@@ -1412,11 +1470,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -1426,14 +1480,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-a/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-a/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1520,7 +1572,25 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.feature-a.main
         ModuleFile                    : <PROJECT>/.idea/modules/feature-a/NonStandardSourceSetDependencies.feature-a.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1552,7 +1622,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/testDebug/assets [-]
@@ -1560,7 +1629,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-a/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-a/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -1688,18 +1756,8 @@ PROJECT                       : NonStandardSourceSetDependencies
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/main/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/androidMain/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/androidDebug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidAndroidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 1
@@ -1765,7 +1823,29 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.feature-b.main
         ModuleFile                    : <PROJECT>/.idea/modules/feature-b/NonStandardSourceSetDependencies.feature-b.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidAndroidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/feature-b/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1804,9 +1884,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidAndroidTest [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug [-]
@@ -1820,11 +1898,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -1833,14 +1907,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidAndroidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidAndroidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/assets [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidAndroidTestDebug/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidDebugAndroidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidDebugAndroidTest/resources [-]
@@ -2080,7 +2152,29 @@ PROJECT                       : NonStandardSourceSetDependencies
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/feature-b/NonStandardSourceSetDependencies.feature-b.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/main/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/androidMain/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/src/androidDebug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/feature-b/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2119,9 +2213,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidDebug [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidMain [-]
@@ -2132,11 +2224,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -2145,14 +2233,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidDebug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/androidDebug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/androidDebug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidDebug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidDebug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidMain/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/androidMain/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidMain/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/androidMain/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/androidMain/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidMain/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/androidMain/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/debug/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/debug/assets [-]
@@ -2160,14 +2246,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/feature-b/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature-b/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2228,7 +2312,25 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.feature-b.main
         ModuleFile                    : <PROJECT>/.idea/modules/feature-b/NonStandardSourceSetDependencies.feature-b.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2273,14 +2375,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTest/kotlin [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTest/res [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTest/resources [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTest/rs [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTest/shaders [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/aidl [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/assets [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/kotlin [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/res [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/resources [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/rs [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/androidTestDebug/shaders [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/test [-]
         CONENT_ENTRY                  : file://<PROJECT>/feature-b/src/testDebug [-]
@@ -2293,14 +2393,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidTestDebug/assets [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/androidTestDebug/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/test/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/test/assets [-]
@@ -2308,7 +2406,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/testDebug/assets [-]
@@ -2316,7 +2413,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature-b/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature-b/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2705,14 +2801,8 @@ PROJECT                       : NonStandardSourceSetDependencies
             GenFolderRelativePathAidl     : /gen
             ManifestFileRelativePath      : /src/main/AndroidManifest.xml
             ResFolderRelativePath         : /src/main/res
-            - ResFoldersRelativePath      : file://<PROJECT>/lib/src/main/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/lib/src/debug/res [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/lib/build/generated/res/rs/debug [-]
-            - ResFoldersRelativePath      : file://<PROJECT>/lib/build/generated/res/resValues/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/lib/src/androidTest/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/lib/src/androidTestDebug/res [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/lib/build/generated/res/rs/androidTest/debug [-]
-            - TestResFoldersRelativePath  : file://<PROJECT>/lib/build/generated/res/resValues/androidTest/debug [-]
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
             AssetsFolderRelativePath      : /src/main/assets
             LibsFolderRelativePath        : /libs
             ProjectType                   : 1
@@ -2778,7 +2868,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/NonStandardSourceSetDependencies.lib.androidTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/lib/src/androidTest/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/lib/src/androidTestDebug/res [-]
+            - TestResFoldersRelativePath  : file://<PROJECT>/lib/build/generated/res/resValues/androidTest/debug [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2801,9 +2911,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/aidl_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/res/resValues/androidTest/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/res/rs/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/source/buildConfig/androidTest/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/src/androidTest [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/src/androidTestDebug [-]
@@ -2811,11 +2919,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/build/generated/renderscript_source_output_dir/debugAndroidTest/out [-]
-            Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/build/generated/res/resValues/androidTest/debug [-]
-            Generated                     : true
-        WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/build/generated/res/rs/androidTest/debug [-]
             Generated                     : true
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/build/generated/source/buildConfig/androidTest/debug [-]
             Generated                     : true
@@ -2825,7 +2929,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/androidTest/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTest/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTest/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTestDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/androidTestDebug/assets [-]
@@ -2833,7 +2936,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/androidTestDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTestDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/androidTestDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -2929,7 +3031,27 @@ PROJECT                       : NonStandardSourceSetDependencies
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/lib/NonStandardSourceSetDependencies.lib.main.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      : file://<PROJECT>/lib/src/main/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/lib/src/debug/res [-]
+            - ResFoldersRelativePath      : file://<PROJECT>/lib/build/generated/res/resValues/debug [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2952,9 +3074,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/aidl_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/renderscript_source_output_dir/debug/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/res/resValues/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/res/rs/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/build/generated/source/buildConfig/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/src/debug [-]
         CONENT_ENTRY                  : file://<PROJECT>/lib/src/main
@@ -2963,11 +3083,7 @@ PROJECT                       : NonStandardSourceSetDependencies
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/build/generated/renderscript_source_output_dir/debug/out [-]
-            Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/build/generated/res/resValues/debug [-]
-            Generated                     : true
-        WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/build/generated/res/rs/debug [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/build/generated/source/buildConfig/debug [-]
             Generated                     : true
@@ -2977,14 +3093,12 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/src/debug/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/debug/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/debug/shaders [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/main/aidl [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/src/main/assets [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/lib/src/main/resources [-]
-        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/main/rs [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/lib/src/main/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false
@@ -3044,7 +3158,25 @@ PROJECT                       : NonStandardSourceSetDependencies
             productionModuleName          : NonStandardSourceSetDependencies.lib.main
         ModuleFile                    : <PROJECT>/.idea/modules/lib/NonStandardSourceSetDependencies.lib.unitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
-        HIDDEN FACET                  : Android
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : debug
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/main/AndroidManifest.xml
+            ResFolderRelativePath         : /src/main/res
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            AssetsFolderRelativePath      : /src/main/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -3076,7 +3208,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/test/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/test/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/test/shaders [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/testDebug/aidl [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/testDebug/assets [-]
@@ -3084,7 +3215,6 @@ PROJECT                       : NonStandardSourceSetDependencies
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/lib/src/testDebug/resources [-]
-        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/testDebug/rs [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/lib/src/testDebug/shaders [-]
         JDK                           : <NAME_CUT> Android SDK
         *isInherited                  : false

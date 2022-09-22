@@ -108,6 +108,12 @@ public final class StudioFlags {
     MEMORY_USAGE_REPORTING, "use.disposer.tree.references", "Memory report collection traversal will use disposer tree reference.",
     "If enabled, the memory report collecting traversal will consider disposer tree references as an object graph edges.",
     false);
+
+  public static final Flag<Boolean> MEMORY_TRAFFIC_TRACK_OLDER_GENERATIONS = Flag.create(
+    MEMORY_USAGE_REPORTING, "memory.traffic.track.older.generations",
+    "Memory report collection keeps track of the older object statistics.",
+    "If enabled, the memory usage report will contain statistics on the number and total size of objects that have been allocated 1/2/3/... iterations ago.",
+    false);
   //endregion
 
   //region Profiler
@@ -416,6 +422,11 @@ public final class StudioFlags {
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
     false);
+
+  public static final Flag<Boolean> NELE_DYNAMIC_THEMING_ACTION = Flag.create(
+    NELE, "dynamic.theming.action", "Enable previewing dynamic themes in Design Tools",
+    "If enabled, Design Tools have an action to use various backgrounds to preview dynamic themes.",
+    true);
   //endregion
 
   //region Navigation Editor
@@ -645,12 +656,13 @@ public final class StudioFlags {
     false
   );
 
+  // TODO(b/247842651): Clean up this flag.
   public static final Flag<Boolean> DEBUG_DEVICE_SDK_SOURCES_ENABLE = Flag.create(
     RUNDEBUG,
     "debug.device.sdk.sources.enable",
     "Enable SDK source resolution using debug device API level.",
     "Enable SDK source resolution using debug device API level and related fallbacks.",
-    false
+    true
   );
 
   //endregion
@@ -809,7 +821,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.auto.connect.foreground", "Enable automatically connecting to foreground process",
     "When this flag is enabled, LayoutInspector will automatically connect to whatever debuggable process is in the foreground on the phone.",
-    false);
+    true);
 
   public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER = Flag.create(
     LAYOUT_INSPECTOR, "dev.jar.location", "Location of prebuilt compose app inspection jar for development",
@@ -866,10 +878,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring",
     false);
-  public static final Flag<Boolean> DEVICE_CLIPBOARD_SYNCHRONIZATION_ENABLED = Flag.create(
-    DEVICE_MIRRORING, "clipboard.synchronization.enabled", "Enable Clipboard Synchronization with Mirrored Physical Devices",
-    "Synchronizes clipboard contents between the host computer and the mirrored physical devices",
-    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\"",
@@ -1050,11 +1058,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE = Flag.create(
     COMPOSE, "preview.scroll.on.caret.move", "Enable the Compose Preview scrolling when the caret moves",
     "If enabled, when moving the caret in the text editor, the Preview will show the preview currently under the cursor.",
-    true);
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_INTERRUPTIBLE = Flag.create(
-    COMPOSE, "preview.interruptible", "Allows the Compose Preview to interrupt rendering calls",
-    "If enabled, if a render takes too long, the preview will be able to interrupt the execution.",
     true);
 
   public static final Flag<Boolean> COMPOSE_EDITOR_SUPPORT = Flag.create(
@@ -1308,21 +1311,6 @@ public final class StudioFlags {
     COMPOSE, "preview.loader.affinity", "Enable the class loading affinity.",
     "If enabled, the class loading will cache which class loaders are more likely to have the class.",
     true);
-  // endregion
-
-  // region WorkManager Inspector
-  private static final FlagGroup WORK_MANAGER_INSPECTOR = new FlagGroup(FLAGS, "work.inspector", "WorkManager Inspector");
-  public static final Flag<Boolean> ENABLE_WORK_MANAGER_INSPECTOR_TAB = Flag.create(
-    WORK_MANAGER_INSPECTOR, "enable.tab", "Enable WorkManager Inspector Tab",
-    "Enables a WorkManager Inspector Tab in the App Inspection tool window",
-    true
-  );
-
-  public static final Flag<Boolean> ENABLE_WORK_MANAGER_GRAPH_VIEW = Flag.create(
-    WORK_MANAGER_INSPECTOR, "enable.graph.view", "Enable WorkManager Graph View",
-    "Enables a Graph View for visualizing work dependencies in the WorkManager Inspector Tab",
-    true
-  );
   // endregion
 
   // region Network Inspector

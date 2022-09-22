@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.diagnostics;
 
+import static com.android.tools.idea.diagnostics.heap.ComponentsSet.MEMORY_USAGE_REPORTING_SERVER_FLAG_NAME;
+
 import com.android.tools.analytics.AnalyticsSettings;
 import com.android.tools.analytics.HistogramUtil;
 import com.android.tools.analytics.UsageTracker;
@@ -32,8 +34,8 @@ import com.android.tools.idea.diagnostics.report.HistogramReport;
 import com.android.tools.idea.diagnostics.report.MemoryReportReason;
 import com.android.tools.idea.diagnostics.report.PerformanceThreadDumpReport;
 import com.android.tools.idea.diagnostics.report.UnanalyzedHeapReport;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.serverflags.ServerFlagService;
+import com.android.tools.idea.serverflags.protos.MemoryUsageReportConfiguration;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.LinkedHashMultiset;
@@ -149,7 +151,6 @@ import sun.tools.attach.HotSpotVirtualMachine;
 @Service
 public final class AndroidStudioSystemHealthMonitor {
   private static final Logger LOG = Logger.getInstance(AndroidStudioSystemHealthMonitor.class);
-  private static final String MEMORY_USAGE_REPORTING_SERVER_FLAG_NAME = "diagnostics/memory_usage_reporting";
 
   // The group should be registered by SystemHealthMonitor
   private final NotificationGroup myGroup = NotificationGroup.findRegisteredGroup("System Health");
@@ -418,7 +419,8 @@ public final class AndroidStudioSystemHealthMonitor {
 
     application.executeOnPooledThread(this::checkRuntime);
 
-    if (ServerFlagService.Companion.getInstance().getBoolean(MEMORY_USAGE_REPORTING_SERVER_FLAG_NAME, false)) {
+    if (ServerFlagService.Companion.getInstance()
+          .getProtoOrNull(MEMORY_USAGE_REPORTING_SERVER_FLAG_NAME, MemoryUsageReportConfiguration.getDefaultInstance()) != null) {
       HeapSnapshotTraverseService.getInstance().addMemoryReportCollectionRequest();
     }
 

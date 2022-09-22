@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.glance.preview
 
-import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -33,6 +32,7 @@ import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
+import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.CodeOutOfDateTracker
 import com.android.tools.idea.projectsystem.setupBuildListener
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
@@ -56,8 +56,6 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.locks.ReentrantLock
 import javax.swing.JComponent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +70,7 @@ private val GLANCE_APPWIDGET_SUPPORTED_ACTIONS = setOf(NlSupportedActions.TOGGLE
 
 /** A generic [MethodPreviewElement] [PreviewRepresentation]. */
 internal class GlancePreviewRepresentation<T : MethodPreviewElement>(
+  adapterViewFqcn: String,
   psiFile: PsiFile,
   previewProvider: PreviewElementProvider<T>,
   previewElementModelAdapterDelegate: GlancePreviewElementModelAdapter<T, NlModel>
@@ -129,8 +128,17 @@ internal class GlancePreviewRepresentation<T : MethodPreviewElement>(
     )
   }
 
+  private val surface: NlDesignSurface
+    get() = previewView.surface
+
   private val previewViewModel: GlancePreviewViewModel =
-    GlancePreviewViewModel(previewView, projectBuildStatusManager, project, psiFilePointer)
+    GlancePreviewViewModel(
+      adapterViewFqcn,
+      previewView,
+      projectBuildStatusManager,
+      project,
+      psiFilePointer
+    ) { surface.sceneManagers.map { it.renderResult } }
 
   private val previewFreshnessTracker =
     CodeOutOfDateTracker.create(module, this) { requestRefresh() }
@@ -138,9 +146,6 @@ internal class GlancePreviewRepresentation<T : MethodPreviewElement>(
   private val previewElementProvider =
     MemoizedPreviewElementProvider(previewProvider, previewFreshnessTracker)
   private var renderedElements: List<T> = emptyList()
-
-  private val surface: NlDesignSurface
-    get() = previewView.surface
 
   // TODO(b/239802877): We need to cover the case where the RefreshRequest with invalidate=true gets
   // called but also gets cancelled early (because of the next RefreshRequest gets collected) and
@@ -201,7 +206,8 @@ internal class GlancePreviewRepresentation<T : MethodPreviewElement>(
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
     val showingPreviewElements =
-      surface.updateGlancePreviewsAndRefresh(
+      surface.updatePreviewsAndRefresh(
+        true,
         previewElementProvider,
         LOG,
         psiFile,
@@ -328,24 +334,6 @@ internal class GlancePreviewRepresentation<T : MethodPreviewElement>(
   override fun onActivate() = lifecycleManager.activate()
 
   override fun onDeactivate() = lifecycleManager.deactivate()
-
-  /**
-   * Lock used during the [onActivate]/[onDeactivate]/[onDeactivationTimeout] to avoid activations
-   * happening in the middle.
-   */
-  private val activationLock = ReentrantLock()
-
-  /**
-   * Tracks whether this preview is active or not. The value tracks the [onActivate] and
-   * [onDeactivate] calls.
-   */
-  private val isActive = AtomicBoolean(false)
-
-  /**
-   * Tracks whether the preview has received an [onActivate] call before or not. This is used to
-   * decide whether [onInit] must be called.
-   */
-  @GuardedBy("activationLock") private var isFirstActivation = true
 
   private fun CoroutineScope.initializeFlows() {
     with(this@initializeFlows) {

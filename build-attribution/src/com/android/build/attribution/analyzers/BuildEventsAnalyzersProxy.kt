@@ -81,6 +81,8 @@ interface BuildEventsAnalysisResult {
   fun isGCSettingSet(): Boolean?
   fun buildUsesConfigurationCache(): Boolean
   fun getDownloadsAnalyzerResult(): DownloadsAnalyzer.Result
+
+  fun getTaskCategoryWarningsAnalyzerResult(): TaskCategoryWarningsAnalyzer.Result
 }
 
 /**
@@ -88,8 +90,8 @@ interface BuildEventsAnalysisResult {
  * Used to fetch the final data from the analyzers after the build is complete.
  */
 class BuildEventsAnalyzersProxy(
-  taskContainer: TaskContainer,
-  pluginContainer: PluginContainer
+  val taskContainer: TaskContainer,
+  val pluginContainer: PluginContainer
 ) {
   val alwaysRunTasksAnalyzer = AlwaysRunTasksAnalyzer(taskContainer, pluginContainer)
   val annotationProcessorsAnalyzer = AnnotationProcessorsAnalyzer(taskContainer, pluginContainer)
@@ -101,6 +103,7 @@ class BuildEventsAnalyzersProxy(
   val configurationCachingCompatibilityAnalyzer = ConfigurationCachingCompatibilityAnalyzer()
   val jetifierUsageAnalyzer = JetifierUsageAnalyzer()
   val downloadsAnalyzer = StudioFlags.BUILD_ANALYZER_DOWNLOADS_ANALYSIS.get().ifTrue { DownloadsAnalyzer() }
+  val taskCategoryWarningsAnalyzer = TaskCategoryWarningsAnalyzer(taskContainer)
 
   fun getBuildFinishedTimestamp(): Long {
     return criticalPathAnalyzer.result.buildFinishedTimestamp
@@ -117,6 +120,7 @@ class BuildEventsAnalyzersProxy(
       tasksConfigurationIssuesAnalyzer,
       configurationCachingCompatibilityAnalyzer,
       jetifierUsageAnalyzer,
-      downloadsAnalyzer
+      downloadsAnalyzer,
+      taskCategoryWarningsAnalyzer
     )
 }

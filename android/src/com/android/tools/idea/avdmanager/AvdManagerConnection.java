@@ -77,9 +77,10 @@ import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilder;
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilderFactory;
 import com.android.tools.idea.emulator.EmulatorSettings;
 import com.android.tools.idea.log.LogWrapper;
-import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator;
+import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.utils.ILogger;
+import com.android.utils.PathUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
@@ -671,7 +672,7 @@ public class AvdManagerConnection {
    */
   private static boolean shouldLaunchInToolWindow(@Nullable Project project) {
     return EmulatorSettings.getInstance().getLaunchInToolWindow() &&
-           project != null && ToolWindowManager.getInstance(project).getToolWindow("Android Emulator") != null;
+           project != null && ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null;
   }
 
   public static boolean isFoldable(@NotNull AvdInfo avd) {
@@ -1135,13 +1136,19 @@ public class AvdManagerConnection {
     // Delete the current user data file
     Path path = avdInfo.getDataFolderPath().resolve(AvdManager.USERDATA_QEMU_IMG);
     if (Files.exists(path)) {
-      if (!FileOpUtils.deleteFileOrFolder(path)) {
+      try {
+        PathUtils.deleteRecursivelyIfExists(path);
+      }
+      catch (IOException e) {
         return false;
       }
     }
     // Delete the snapshots directory
     Path snapshotDirectory = avdInfo.getDataFolderPath().resolve(AvdManager.SNAPSHOTS_DIRECTORY);
-    FileOpUtils.deleteFileOrFolder(snapshotDirectory);
+    try {
+      PathUtils.deleteRecursivelyIfExists(snapshotDirectory);
+    }
+    catch (IOException ignore) {}
 
     return true;
   }

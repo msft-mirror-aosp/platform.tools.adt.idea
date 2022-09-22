@@ -68,8 +68,12 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.EnvironmentUtil;
 import com.intellij.util.SystemProperties;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -332,31 +336,6 @@ public final class AndroidSdkUtils {
     ProjectSettingsService.getInstance(module.getProject()).openModuleDependenciesSettings(module, null);
   }
 
-  @Nullable
-  public static Sdk findAppropriateAndroidPlatform(@NotNull IAndroidTarget target, @NotNull AndroidSdkData sdkData, boolean forMaven) {
-    for (Sdk sdk : ProjectJdkTable.getInstance().getAllJdks()) {
-      String homePath = sdk.getHomePath();
-
-      AndroidSdks androidSdks = AndroidSdks.getInstance();
-      if (homePath != null && androidSdks.isAndroidSdk(sdk)) {
-        AndroidSdkData currentSdkData = getSdkData(homePath);
-
-        if (sdkData.equals(currentSdkData)) {
-          AndroidSdkAdditionalData data = androidSdks.getAndroidSdkAdditionalData(sdk);
-          if (data != null) {
-            IAndroidTarget currentTarget = data.getBuildTarget(currentSdkData);
-            if (currentTarget != null &&
-                target.hashString().equals(currentTarget.hashString()) &&
-                checkSdkRoots(sdk, target, forMaven)) {
-              return sdk;
-            }
-          }
-        }
-      }
-    }
-    return null;
-  }
-
   public static boolean checkSdkRoots(@NotNull Sdk sdk, @NotNull IAndroidTarget target, boolean forMaven) {
     String homePath = sdk.getHomePath();
     if (homePath == null) {
@@ -406,32 +385,52 @@ public final class AndroidSdkUtils {
     String path = System.getProperty(ADB_PATH_PROPERTY);
     searchedPaths.add(String.format("ADB_PATH_PROPERTY (%s): '%s'", ADB_PATH_PROPERTY, Strings.isNullOrEmpty(path) ? "<not set>" : path));
     if (path != null) {
-      File adb = new File(path);
-      if (adb.exists()) {
+      Path adb = Paths.get(path);
+      if (Files.exists(adb)) {
         return new AdbSearchResult(adb, searchedPaths);
       }
     }
 
-    File adb = null;
     if (project != null) {
       AndroidSdkData data = getProjectSdkData(project);
       if (data == null) {
         data = getFirstAndroidModuleSdkData(project);
         searchedPaths.add(String.format("Android SDK location from first Android Module in Project: %s",
-                                        data == null ? "<not present>" : String.format("'%s'", data.getLocationFile().getPath())));
+                                        data == null ? "<not present>" : String.format("'%s'", data.getLocation())));
       } else {
-        searchedPaths.add(String.format("Android SDK location from Project: '%s'", data.getLocationFile().getPath()));
+        searchedPaths.add(String.format("Android SDK location from Project: '%s'", data.getLocation()));
       }
-      adb = data == null ? null : new File(data.getLocationFile(), platformToolPath(FN_ADB));
+      if (data != null) {
+        Path adb = data.getLocation().resolve(platformToolPath(FN_ADB));
+        if (Files.exists(adb)) {
+          return new AdbSearchResult(adb, searchedPaths);
+        }
+      }
     }
 
     // If project is null, or non-android project (e.g. react-native), we'll use the global default path
-    if (adb == null && IdeSdks.getInstance().getAndroidSdkPath() != null) {
-      adb = new File(IdeSdks.getInstance().getAndroidSdkPath(), platformToolPath(FN_ADB));
-      searchedPaths.add(String.format("Android SDK location from global settings: '%s'", adb.getPath()));
+    File sdkPath = IdeSdks.getInstance().getAndroidSdkPath();
+    if (sdkPath != null) {
+      Path dir = sdkPath.toPath();
+      searchedPaths.add(String.format("Android SDK location from global settings: '%s'", dir));
+      Path adb = dir.resolve(platformToolPath(FN_ADB));
+      if (Files.exists(adb)) {
+        return new AdbSearchResult(adb, searchedPaths);
+      }
     }
 
-    return new AdbSearchResult(adb != null && adb.exists() ? adb : null, searchedPaths);
+    String pathProperty = EnvironmentUtil.getValue("PATH");
+    if (pathProperty != null) {
+      for (String dir : pathProperty.split(System.getProperty("path.separator"))) {
+        searchedPaths.add(String.format("From the PATH environment variable: '%s'", dir));
+        Path adb = Paths.get(dir, FN_ADB);
+        if (Files.exists(adb)) {
+          return new AdbSearchResult(adb, searchedPaths);
+        }
+      }
+    }
+
+    return new AdbSearchResult(null, searchedPaths);
   }
 
   @Nullable
@@ -539,28 +538,6 @@ public final class AndroidSdkUtils {
     return bridge;
   }
 
-  /**
-   * Refresh the library {@link VirtualFile}s in the given {@link Sdk}.
-   *
-   * After changes to installed Android SDK components, the contents of the {@link Sdk}s do not automatically get refreshed.
-   * The referenced {@link VirtualFile}s can be obsolete, new files may be created, or files may be deleted. The result is that
-   * references to Android classes may not be found in editors.
-   * Removing and adding the libraries effectively refreshes the contents of the IDEA SDK, and references in editors work again.
-   */
-  public static void refreshLibrariesIn(@NotNull Sdk sdk) {
-    VirtualFile[] libraries = sdk.getRootProvider().getFiles(CLASSES);
-
-    SdkModificator sdkModificator = sdk.getSdkModificator();
-    sdkModificator.removeRoots(CLASSES);
-    sdkModificator.commitChanges();
-
-    sdkModificator = sdk.getSdkModificator();
-    for (VirtualFile library : libraries) {
-      sdkModificator.addRoot(library, CLASSES);
-    }
-    sdkModificator.commitChanges();
-  }
-
   public static boolean isAndroidSdkManagerEnabled() {
     boolean sdkManagerDisabled = SystemProperties.getBooleanProperty("android.studio.sdk.manager.disabled", false);
     return !sdkManagerDisabled;
@@ -570,8 +547,8 @@ public final class AndroidSdkUtils {
     public final @Nullable File adbPath;
     public final @NotNull List<String> searchedPaths;
 
-    public AdbSearchResult(@Nullable File adbPath, @NotNull List<String> searchedPaths) {
-      this.adbPath = adbPath;
+    public AdbSearchResult(@Nullable Path adbPath, @NotNull List<String> searchedPaths) {
+      this.adbPath = adbPath == null ? null : adbPath.toFile();
       this.searchedPaths = searchedPaths;
     }
   }

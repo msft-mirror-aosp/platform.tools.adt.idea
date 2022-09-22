@@ -46,6 +46,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComponentContainer
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentManager
@@ -65,6 +66,7 @@ interface BuildAttributionUiManager : Disposable {
   fun openTab(eventSource: BuildAttributionUiAnalytics.TabOpenEventSource)
   fun hasDataToShow(): Boolean
   fun showNewReport()
+  fun showBuildAnalysisReportById(buildID : String)
 
   companion object {
     fun getInstance(project: Project): BuildAttributionUiManager {
@@ -129,6 +131,10 @@ class BuildAttributionUiManagerImpl(
     showNewReport(reportUiData, buildSessionId)
   }
 
+  override fun showBuildAnalysisReportById(buildID: String) {
+    Messages.showInfoMessage("Build report id: $buildID", "Build Report")
+  }
+
   override fun onBuildFailure(buildSessionId: String) {
     this.reportUiData = failedBuildReportData()
     invokeLaterIfNotDisposed {
@@ -178,7 +184,6 @@ class BuildAttributionUiManagerImpl(
         get() = throw UnsupportedOperationException("Shouldn't be called on this object")
       override val downloadsData: DownloadsAnalyzer.Result
         get() = throw UnsupportedOperationException("Shouldn't be called on this object")
-
     }
   }
 

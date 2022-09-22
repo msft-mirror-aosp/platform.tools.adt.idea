@@ -629,15 +629,17 @@ class LogcatMainPanelTest {
     val logcatService = FakeLogcatService()
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(logcatService = logcatService, adbSession = fakeAdbSession).also {
-        waitForCondition { it.getConnectedDevice() != null }
+        waitForCondition { it.getConnectedDevice() != null && it.logcatServiceJob != null}
       }
     }
+    // Grab logcatServiceJob now, so we can assert that it was canceled later
+    val logcatServiceJob = logcatMainPanel.logcatServiceJob!!
 
     logcatMainPanel.pauseLogcat()
     waitForCondition { logcatMainPanel.isLogcatPaused() }
 
-    // We can't actually check that it was canceled, but we can check it was set to null
-    assertThat(logcatMainPanel.logcatServiceJob).isNull()
+    assertThat(logcatServiceJob.isCancelled).isTrue()
+    waitForCondition { logcatMainPanel.logcatServiceJob == null }
   }
 
   @Test
@@ -1068,6 +1070,28 @@ class LogcatMainPanelTest {
     waitForCondition { noLogsBanner.isVisible }
     runInEdtAndWait {
       logcatMainPanel.setFilter("tag:tag1")
+    }
+    waitForCondition { !noLogsBanner.isVisible }
+  }
+
+  @Test
+  fun noLogsBanner_doesNotShowIfNoMessagesExist(): Unit = runBlocking {
+    val logcatMainPanel = runInEdtAndGet(::logcatMainPanel)
+    val noLogsBanner = logcatMainPanel.findBanner("All logs entries are hidden by the filter")
+    logcatMainPanel.processMessages(listOf(
+      LogcatMessage(LogcatHeader(WARN, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "message1"),
+    ))
+    waitForCondition {
+      logcatMainPanel.editor.document.text.trim() == """
+        1970-01-01 04:00:01.000     1-2     tag1                    app1                                 W  message1
+      """.trimIndent()
+    }
+    runInEdtAndWait {
+      logcatMainPanel.setFilter("no-match")
+    }
+    waitForCondition { noLogsBanner.isVisible }
+    runInEdtAndWait {
+      logcatMainPanel.clearMessageView()
     }
     waitForCondition { !noLogsBanner.isVisible }
   }

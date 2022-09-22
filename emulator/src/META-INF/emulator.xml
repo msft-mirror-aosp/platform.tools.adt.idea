@@ -19,19 +19,21 @@
 
     <applicationConfigurable groupId="tools" id="emulator"
                              provider="com.android.tools.idea.emulator.settings.EmulatorConfigurableProvider"/>
+    <applicationConfigurable groupId="tools" id="device.mirroring"
+                             provider="com.android.tools.idea.device.settings.DeviceMirroringConfigurableProvider"/>
 
     <customizableActionGroupProvider implementation="com.android.tools.idea.emulator.actions.EmulatorCustomizableActionGroupProvider"/>
 
-    <toolWindow id="Android Emulator"
+    <toolWindow id="Running Devices"
                 anchor="right"
                 secondary="true"
                 canCloseContents="true"
                 doNotActivateOnStart="true"
                 icon="StudioIcons.Shell.ToolWindows.EMULATOR"
                 factoryClass="com.android.tools.idea.emulator.EmulatorToolWindowFactory"/>
-    <notificationGroup id="Android Emulator Messages"
+    <notificationGroup id="Running Devices Messages"
                        displayType="BALLOON"
-                       toolWindowId="Android Emulator"
+                       toolWindowId="Running Devices"
                        bundle="messages.AndroidBundle"
                        key="android.emulator.notification.title"/>
 

@@ -49,7 +49,7 @@ public final class VirtualDeviceDetailsPanelTest {
     VirtualDevice virtualDevice = TestVirtualDevices.onlinePixel5Api31(myAvd);
 
     Device device = new VirtualDevice.Builder()
-      .setKey(TestVirtualDevices.newKey("Pixel_5_API_31"))
+      .setKey(TestVirtualDevices.PIXEL_5_API_31_KEY)
       .setName("Pixel 5 API 31")
       .setTarget("Android 12.0 Google APIs")
       .setCpuArchitecture("x86_64")
@@ -126,8 +126,8 @@ public final class VirtualDeviceDetailsPanelTest {
     // Assert
     InfoSection section = panel.getPropertiesSection();
 
-    assertEquals(List.of("fastboot.chosenSnapshotFile", "runtime.network.speed", "hw.accelerometer"), section.getNames());
-    assertEquals(List.of("", "full", "yes"), section.getValues());
+    assertEquals(List.of("fastboot.chosenSnapshotFile", "hw.accelerometer", "runtime.network.speed"), section.getNames());
+    assertEquals(List.of("", "yes", "full"), section.getValues());
   }
 
   private static @NotNull AsyncVirtualDeviceDetailsBuilder mock(@NotNull Device device) {

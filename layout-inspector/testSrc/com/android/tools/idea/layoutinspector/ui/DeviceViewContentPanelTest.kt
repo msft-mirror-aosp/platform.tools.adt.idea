@@ -630,7 +630,7 @@ class DeviceViewContentPanelTest {
           }
         }
       }
-      browserUtil.verify(atLeastOnce()) { BrowserUtil.browse("https://developer.android.com/studio/debug/layout-inspector") }
+      browserUtil.verify({ BrowserUtil.browse("https://developer.android.com/studio/debug/layout-inspector") }, atLeastOnce())
       verify(selectProcessAction, atLeastOnce()).actionPerformed(any())
     }
 
@@ -1167,6 +1167,9 @@ class DeviceViewContentPanelTest {
 
 class DeviceViewContentPanelWithScaledFontTest {
   @get:Rule
+  val projectRule = ProjectRule()
+
+  @get:Rule
   val fontRule = SetPortableUiFontRule(2.0f)
 
   @get:Rule
@@ -1175,6 +1178,8 @@ class DeviceViewContentPanelWithScaledFontTest {
   @Test
   fun testPaintEmpty() {
     AssumeUtil.assumeNotMac() // b/163289116
+    AssumeUtil.assumeNotWindows() // b/246912759
+    ApplicationManager.getApplication().replaceService(ActionManager::class.java, mock(), disposable.disposable)
     val treeSettings = FakeTreeSettings()
     treeSettings.hideSystemNodes = false
     val model = model {}
