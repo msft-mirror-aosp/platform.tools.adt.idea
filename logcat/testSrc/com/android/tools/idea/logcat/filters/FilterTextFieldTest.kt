@@ -41,6 +41,7 @@ import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.asSequence
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -73,13 +74,14 @@ import javax.swing.JSeparator
 class FilterTextFieldTest {
   private val projectRule = ProjectRule()
   private val usageTrackerRule = UsageTrackerRule()
+  private val disposableRule = DisposableRule()
 
   @get:Rule
-  val rule = RuleChain(projectRule, EdtRule(), usageTrackerRule)
+  val rule = RuleChain(projectRule, EdtRule(), usageTrackerRule, disposableRule)
 
   private val project get() = projectRule.project
   private val filterHistory by lazy { AndroidLogcatFilterHistory.getInstance() }
-  private val fakeLogcatPresenter by lazy { FakeLogcatPresenter().apply { Disposer.register(project, this) } }
+  private val fakeLogcatPresenter by lazy { FakeLogcatPresenter().apply { Disposer.register(disposableRule.disposable, this) } }
   private val logcatFilterParser by lazy { LogcatFilterParser(project, FakePackageNamesProvider()) }
 
   @After
@@ -235,7 +237,7 @@ class FilterTextFieldTest {
     filterHistory.add("bar", isFavorite = false)
     fakeLogcatPresenter.filterMatchesCount["foo"] = 1
     fakeLogcatPresenter.filterMatchesCount["bar"] = 2
-    val historyList = filterTextField().HistoryList(project, coroutineContext)
+    val historyList = filterTextField().HistoryList(disposableRule.disposable, coroutineContext)
     historyList.waitForCounts(fakeLogcatPresenter)
 
     assertThat(historyList.renderToStrings()).containsExactly(
@@ -253,7 +255,7 @@ class FilterTextFieldTest {
     filterHistory.add("bar", isFavorite = true)
     fakeLogcatPresenter.filterMatchesCount["foo"] = 1
     fakeLogcatPresenter.filterMatchesCount["bar"] = 2
-    val historyList = filterTextField().HistoryList(project, coroutineContext)
+    val historyList = filterTextField().HistoryList(disposableRule.disposable, coroutineContext)
     historyList.waitForCounts(fakeLogcatPresenter)
 
     assertThat(historyList.renderToStrings()).containsExactly(
@@ -270,7 +272,7 @@ class FilterTextFieldTest {
     filterHistory.add("bar", isFavorite = false)
     fakeLogcatPresenter.filterMatchesCount["foo"] = 1
     fakeLogcatPresenter.filterMatchesCount["bar"] = 2
-    val historyList = filterTextField().HistoryList(project, coroutineContext)
+    val historyList = filterTextField().HistoryList(disposableRule.disposable, coroutineContext)
     historyList.waitForCounts(fakeLogcatPresenter)
 
     assertThat(historyList.renderToStrings()).containsExactly(
@@ -285,7 +287,7 @@ class FilterTextFieldTest {
   fun historyList_renderNamedFilter() = runBlockingTest {
     filterHistory.add("name:Foo tag:Foo", isFavorite = false)
     fakeLogcatPresenter.filterMatchesCount["name:Foo tag:Foo"] = 1
-    val historyList = filterTextField().HistoryList(project, coroutineContext)
+    val historyList = filterTextField().HistoryList(disposableRule.disposable, coroutineContext)
     historyList.waitForCounts(fakeLogcatPresenter)
 
     assertThat(historyList.renderToStrings()).containsExactly(
@@ -301,7 +303,7 @@ class FilterTextFieldTest {
     filterHistory.add("name:Foo tag:Foobar", isFavorite = false)
     fakeLogcatPresenter.filterMatchesCount["name:Foo tag:Foo"] = 1
     fakeLogcatPresenter.filterMatchesCount["name:Foo tag:Foobar"] = 2
-    val historyList = filterTextField().HistoryList(project, coroutineContext)
+    val historyList = filterTextField().HistoryList(disposableRule.disposable, coroutineContext)
     historyList.waitForCounts(fakeLogcatPresenter)
 
     assertThat(historyList.renderToStrings()).containsExactly(
@@ -401,6 +403,21 @@ class FilterTextFieldTest {
     filterTextField.text = "bar"
 
     assertThat(AndroidLogcatFilterHistory.getInstance().mostRecentlyUsed).isEqualTo("bar")
+  }
+
+  @Test
+  @RunsInEdt
+  fun updateText_updatesFavorite() {
+    val filterTextField = filterTextField(initialText = "bar")
+    val textField = TreeWalker(filterTextField).descendants().filterIsInstance<EditorTextField>()[0]
+    val fakeUi = FakeUi(filterTextField, createFakeWindow = true)
+    val favoriteButton = fakeUi.getComponent<JLabel> { it.icon == StudioIcons.Logcat.Input.FAVORITE_OUTLINE }
+    fakeUi.clickOn(favoriteButton)
+
+    textField.text = "foo"
+    assertThat(favoriteButton.icon).isEqualTo(StudioIcons.Logcat.Input.FAVORITE_OUTLINE)
+    textField.text = "bar"
+    assertThat(favoriteButton.icon).isEqualTo(StudioIcons.Logcat.Input.FAVORITE_FILLED)
   }
 
   private fun filterTextField(

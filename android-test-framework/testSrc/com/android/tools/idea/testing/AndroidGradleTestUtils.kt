@@ -132,6 +132,7 @@ import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ProjectKeys
@@ -155,7 +156,9 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.StdModuleTypes.JAVA
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectEx
+import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.roots.AdditionalLibraryRootsProvider
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
@@ -1917,19 +1920,18 @@ fun GradleIntegrationTest.prepareGradleProject(
 
   return prepareGradleProject(
     testProjectAbsolutePath,
+    agpVersion.resolve(),
     additionalRepositories,
     name,
-    agpVersion,
     ndkVersion
   )
 }
 
-@JvmOverloads
 internal fun IntegrationTestEnvironment.prepareGradleProject(
   testProjectAbsolutePath: File,
+  resolvedAgpVersion: ResolvedAgpVersionSoftwareEnvironment,
   additionalRepositories: Collection<File>,
   name: String,
-  agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
   ndkVersion: String?
 ): File {
   val projectPath = nameToPath(name)
@@ -1941,7 +1943,7 @@ internal fun IntegrationTestEnvironment.prepareGradleProject(
   ) { projectRoot ->
     AndroidGradleTests.defaultPatchPreparedProject(
       projectRoot,
-      agpVersion.resolve(),
+      resolvedAgpVersion,
       ndkVersion,
       *additionalRepositories.toTypedArray()
     )
@@ -1967,6 +1969,7 @@ data class OpenPreparedProjectOptions @JvmOverloads constructor(
   },
   val subscribe: (MessageBusConnection) -> Unit = {},
   val disableKtsRelatedIndexing: Boolean = false,
+  val overrideProjectJdk: Sdk? = null
 )
 
 fun OpenPreparedProjectOptions.withoutKtsRelatedIndexing(): OpenPreparedProjectOptions = copy(disableKtsRelatedIndexing = true)
@@ -2035,6 +2038,12 @@ private fun <T> openPreparedProject(
           }
           afterCreateCalled = true
 
+          options.overrideProjectJdk?.let { overrideProjectJdk ->
+            runWriteActionAndWait {
+              ProjectRootManager.getInstance(project).projectSdk = overrideProjectJdk
+            }
+          }
+
           @Suppress("UnstableApiUsage")
           if (options.disableKtsRelatedIndexing) {
             ScriptingSupport.EPN.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
@@ -2049,6 +2058,8 @@ private fun <T> openPreparedProject(
           fixDummySyncViewManager(project, disposable)
         }
 
+        // NOTE: `::afterCreate` is passed to both `withAfterCreate` and `openOrImport` because, unfortunately, `openOrImport` does not
+        // pass it down to `ProjectOpenProcessor`s.
         val project = GradleProjectImporter.withAfterCreate(afterCreate = { project -> afterCreate(project) }) {
           ProjectUtil.openOrImport(
             projectPath.toPath(),

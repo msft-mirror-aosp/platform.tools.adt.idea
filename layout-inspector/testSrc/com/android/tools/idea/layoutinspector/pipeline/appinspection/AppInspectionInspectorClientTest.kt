@@ -72,7 +72,6 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INC
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PROGUARDED_LIBRARY_MESSAGE
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors.sendEvent
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewLayoutInspectorClient
-import com.android.tools.idea.layoutinspector.resource.DEFAULT_FONT_SCALE
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanel
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
@@ -753,6 +752,25 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
+  fun testDeepNestedComposeNodes() {
+    val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    inspectorState.createFakeViewTree()
+    inspectorState.createFakeLargeComposeTree()
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.modificationListeners.add { _, _, _ ->
+      modelUpdatedLatch.countDown()
+    }
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
+
+    // Verify we have all 126 composables
+    for (id in -300L downTo -425L) {
+      assertThat(inspectorRule.inspectorModel[id]).isNotNull()
+    }
+  }
+
+  @Test
   fun errorShownOnConnectException() {
     InspectorClientSettings.isCapturingModeOn = true
     val banner = InspectorBanner(inspectorRule.project)
@@ -872,8 +890,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun testConfigurationUpdates() {
-    assertThat(inspectorRule.inspectorModel.resourceLookup.dpi).isEqualTo(Density.DEFAULT_DENSITY)
-    assertThat(inspectorRule.inspectorModel.resourceLookup.fontScale).isEqualTo(DEFAULT_FONT_SCALE)
+    assertThat(inspectorRule.inspectorModel.resourceLookup.dpi).isNull()
+    assertThat(inspectorRule.inspectorModel.resourceLookup.fontScale).isNull()
 
     val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
     inspectorState.createFakeViewTree()

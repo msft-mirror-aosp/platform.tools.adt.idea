@@ -87,6 +87,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.TextRange.EMPTY_RANGE
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -128,9 +129,11 @@ class LogcatMainPanelTest {
   private val popupRule = PopupRule()
   private val androidExecutorsRule = AndroidExecutorsRule(workerThreadExecutor = executor)
   private val usageTrackerRule = UsageTrackerRule()
+  private val disposableRule = DisposableRule()
 
   @get:Rule
-  val rule = RuleChain(projectRule, EdtRule(), androidExecutorsRule, popupRule, LogcatFilterLanguageRule(), usageTrackerRule)
+  val rule =
+    RuleChain(projectRule, EdtRule(), androidExecutorsRule, popupRule, LogcatFilterLanguageRule(), usageTrackerRule, disposableRule)
 
   private val mockHyperlinkDetector = mock<HyperlinkDetector>()
   private val mockFoldingDetector = mock<FoldingDetector>()
@@ -143,7 +146,7 @@ class LogcatMainPanelTest {
     ApplicationManager.getApplication().replaceService(
       AndroidLogcatFormattingOptions::class.java,
       androidLogcatFormattingOptions,
-      project)
+      disposableRule.disposable)
   }
 
   @RunsInEdt
@@ -304,7 +307,7 @@ class LogcatMainPanelTest {
       })
     }
     val logcatMainPanel = logcatMainPanel(splitterPopupActionGroup = splitterActions).apply {
-      size = Dimension(100, 100)
+      size = Dimension(100, 500)
       editor.document.setText("foo") // put some text so 'Fold Lines Like This' is enabled
     }
     val fakeUi = FakeUi(logcatMainPanel, createFakeWindow = true)
@@ -629,7 +632,7 @@ class LogcatMainPanelTest {
     val logcatService = FakeLogcatService()
     val logcatMainPanel = runInEdtAndGet {
       logcatMainPanel(logcatService = logcatService, adbSession = fakeAdbSession).also {
-        waitForCondition { it.getConnectedDevice() != null && it.logcatServiceJob != null}
+        waitForCondition { it.getConnectedDevice() != null && it.logcatServiceJob != null }
       }
     }
     // Grab logcatServiceJob now, so we can assert that it was canceled later
@@ -1179,13 +1182,13 @@ class LogcatMainPanelTest {
     logcatService: LogcatService = FakeLogcatService(),
     zoneId: ZoneId = ZoneId.of("Asia/Yerevan"),
   ): LogcatMainPanel {
-    project.replaceService(ProjectApplicationIdsProvider::class.java, projectApplicationIdsProvider, project)
+    project.replaceService(ProjectApplicationIdsProvider::class.java, projectApplicationIdsProvider, disposableRule.disposable)
     return LogcatMainPanel(
       project,
       splitterPopupActionGroup,
       logcatColors,
       state,
-      adbSession,
+      { adbSession },
       logcatSettings,
       androidProjectDetector,
       hyperlinkDetector,
@@ -1193,7 +1196,7 @@ class LogcatMainPanelTest {
       logcatService,
       zoneId,
     ).also {
-      Disposer.register(project, it)
+      Disposer.register(disposableRule.disposable, it)
     }
   }
 }

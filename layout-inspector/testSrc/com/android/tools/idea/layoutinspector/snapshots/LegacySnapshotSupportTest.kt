@@ -17,6 +17,7 @@ package com.android.tools.idea.layoutinspector.snapshots
 
 import com.android.ddmlib.DebugViewDumpHandler
 import com.android.ddmlib.internal.ClientImpl
+import com.android.ddmlib.internal.DebugViewChunkHandler
 import com.android.ddmlib.testing.FakeAdbRule
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.MockitoKt.any
@@ -129,6 +130,9 @@ DONE.
     assertThat(actionMenuView.viewId.toString()).isEqualTo("ResourceReference{namespace=apk/res-auto, type=id, name=ac}")
     val actualImage = ViewNode.readAccess { window.root.drawChildren.filterIsInstance<DrawViewImage>().first().image }
     ImageDiffUtil.assertImageSimilar(imageFile, actualImage as BufferedImage, 0.0)
+    assertThat(newModel.resourceLookup.dpi).isEqualTo(560)
+    assertThat(newModel.resourceLookup.fontScale).isNull()
+    assertThat(newModel.resourceLookup.screenDimension).isNull()
   }
 
   private fun setUpLegacyClient(): LegacyClient {
@@ -159,7 +163,7 @@ DONE.
         argument.payload.getInt(8) == 1 /* VURT_DUMP_HIERARCHY */
     }, ArgumentMatchers.any())).thenAnswer { invocation ->
       invocation
-        .getArgument(1, DebugViewDumpHandler::class.java)
+        .getArgument(1, DebugViewChunkHandler::class.java)
         .handleChunk(client, DebugViewDumpHandler.CHUNK_VURT, ByteBuffer.wrap(treeSample.toByteArray(Charsets.UTF_8)), true, 1)
     }
     whenever(client.dumpViewHierarchy(ArgumentMatchers.eq(windowName), ArgumentMatchers.anyBoolean(), ArgumentMatchers.anyBoolean(),
@@ -183,6 +187,7 @@ DONE.
         .getArgument<DebugViewDumpHandler>(2)
         .handleChunk(client, DebugViewDumpHandler.CHUNK_VUOP, ByteBuffer.wrap(imageFile.readBytes()), true, 1234)
     }
+    whenever(client.device.density).thenReturn(560)
     legacyClient.treeLoader.ddmClientOverride = client
   }
 

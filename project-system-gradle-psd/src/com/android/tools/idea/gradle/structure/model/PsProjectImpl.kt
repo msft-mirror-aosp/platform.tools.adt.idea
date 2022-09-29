@@ -47,6 +47,7 @@ class PsProjectImpl(
   private var internalResolvedModuleModels: Map<String, PsResolvedModuleModel>? = null
   private val moduleCollection: PsModuleCollection
   val buildScript : PsBuildScript = PsBuildScript(this)
+  private val versionCatalogCollection : PsVersionCatalogCollection
   override val name: String get() = ideProject.name  // Supposedly there is no way to rename the project from within the PSD.
 
   override val parent: PsModel? = null
@@ -54,6 +55,7 @@ class PsProjectImpl(
   override val icon: Icon? = null
 
   override val modules: PsModelCollection<PsModule> get() = moduleCollection
+  override val versionCatalogs: PsModelCollection<PsVersionCatalog> get() = versionCatalogCollection
   override val modelCount: Int get() = moduleCollection.size
   override var androidGradlePluginVersion by PsProjectDescriptors.androidGradlePluginVersion
   override var gradleVersion by PsProjectDescriptors.gradleVersion
@@ -66,6 +68,7 @@ class PsProjectImpl(
     buildScriptVariables = PsVariables(buildScript, "$name (build script)", "Build Script: $name", null)
     variables = PsVariables(this, "$name (project)", "Project: $name", buildScriptVariables)
     moduleCollection = PsModuleCollection(this)
+    versionCatalogCollection = PsVersionCatalogCollection(this)
   }
 
   override fun getPluginArtifactRepositories(): Collection<ArtifactRepository> =
@@ -116,6 +119,7 @@ class PsProjectImpl(
       buildScriptVariables.refresh()
       internalResolvedModuleModels = null
       moduleCollection.refresh()
+      versionCatalogCollection.refresh()
     }
   }
 

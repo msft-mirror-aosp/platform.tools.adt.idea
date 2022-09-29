@@ -63,6 +63,7 @@ import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.RenderingHints
+import java.awt.Shape
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
@@ -92,23 +93,31 @@ class DeviceViewContentPanel(
   val inspectorModel: InspectorModel,
   val deviceModel: DeviceModel?,
   val treeSettings: TreeSettings,
-  val viewSettings: DeviceViewSettings,
+  val renderSettings: RenderSettings,
   val currentClient: () -> InspectorClient?,
   val pannable: Pannable,
   @VisibleForTesting val selectTargetAction: DropDownActionWithButton?,
-  disposableParent: Disposable
+  disposableParent: Disposable,
+  val isLoading: () -> Boolean,
+  val isCurrentForegroundProcessDebuggable: () -> Boolean,
 ) : AdtPrimaryPanel() {
 
-  var showEmptyText = true
-  var showProcessNotDebuggableText = false
+  val renderModel = RenderModel(inspectorModel, treeSettings, currentClient)
 
-  val model = DeviceViewPanelModel(inspectorModel, treeSettings, currentClient)
+  @get:VisibleForTesting
+  val showEmptyText get() = !renderModel.isActive && !isLoading() && deviceModel?.selectedDevice == null
+
+  @get:VisibleForTesting
+  val showProcessNotDebuggableText get() = !renderModel.isActive &&
+                                           !isLoading() &&
+                                           deviceModel?.selectedDevice != null &&
+                                           !isCurrentForegroundProcessDebuggable()
 
   val rootLocation: Point?
     get() {
-      val modelLocation = model.hitRects.firstOrNull()?.bounds?.bounds?.location ?: return null
-      return Point((modelLocation.x * viewSettings.scaleFraction).toInt() + (size.width / 2),
-                   (modelLocation.y * viewSettings.scaleFraction).toInt() + (size.height / 2))
+      val modelCoordinates =  renderModel.hitRects.firstOrNull()?.bounds?.bounds?.location ?: return null
+      val panelCoordinates = toPanelCoordinates(modelCoordinates.x, modelCoordinates.y)
+      return Point(panelCoordinates.x.toInt(), panelCoordinates.y.toInt())
     }
 
   /**
@@ -118,16 +127,16 @@ class DeviceViewContentPanel(
     get() {
       return AffineTransform().apply {
         translate(size.width / 2.0, size.height / 2.0)
-        scale(viewSettings.scaleFraction, viewSettings.scaleFraction)
+        scale(renderSettings.scaleFraction, renderSettings.scaleFraction)
       }
     }
 
   private val emptyText: StatusText = object : StatusText(this) {
-    override fun isStatusVisible() = !model.isActive && showEmptyText && deviceModel?.selectedDevice == null
+    override fun isStatusVisible() = showEmptyText
   }
 
   private val processNotDebuggableText: StatusText = object : StatusText(this) {
-    override fun isStatusVisible() = !model.isActive && showProcessNotDebuggableText && deviceModel?.selectedDevice != null
+    override fun isStatusVisible() = showProcessNotDebuggableText
   }
 
   init {
@@ -187,17 +196,17 @@ class DeviceViewContentPanel(
 
       override fun mouseDragged(e: MouseEvent) {
         if (e.isConsumed) return
-        if (model.overlay != null || currentClient()?.capabilities?.contains(InspectorClient.Capability.SUPPORTS_SKP) != true) {
+        if (renderModel.overlay != null || currentClient()?.capabilities?.contains(InspectorClient.Capability.SUPPORTS_SKP) != true) {
           // can't rotate
           return
         }
-        if (model.isRotated) {
+        if (renderModel.isRotated) {
           val xRotation = (e.x - x) * 0.001
           val yRotation = (e.y - y) * 0.001
           x = e.x
           y = e.y
           if (xRotation != 0.0 || yRotation != 0.0) {
-            model.rotate(xRotation, yRotation)
+            renderModel.rotate(xRotation, yRotation)
           }
           repaint()
         }
@@ -213,12 +222,10 @@ class DeviceViewContentPanel(
         }
       }
 
-      private fun nodeAtPoint(e: MouseEvent) = model.findTopViewAt((e.x - size.width / 2.0) / viewSettings.scaleFraction,
-                                                                 (e.y - size.height / 2.0) / viewSettings.scaleFraction)
-
       override fun mouseClicked(e: MouseEvent) {
         if (e.isConsumed) return
-        val view = nodeAtPoint(e)
+        val modelCoordinates = toModelCoordinates(e.x, e.y)
+        val view = renderModel.findTopViewAt(modelCoordinates.x, modelCoordinates.y)
         inspectorModel.setSelection(view, SelectionOrigin.INTERNAL)
         currentClient()?.stats?.selectionMadeFromImage(view)
       }
@@ -226,8 +233,8 @@ class DeviceViewContentPanel(
       override fun mouseMoved(e: MouseEvent) {
         if (e.isConsumed) return
         val modelCoordinates = toModelCoordinates(e.x, e.y)
-        model.hoveredDrawInfo = model.findDrawInfoAt(modelCoordinates.x, modelCoordinates.y).firstOrNull()
-        inspectorModel.hoveredNode = model.hoveredDrawInfo?.node?.findFilteredOwner(treeSettings)
+        renderModel.hoveredDrawInfo = renderModel.findDrawInfoAt(modelCoordinates.x, modelCoordinates.y).firstOrNull()
+        inspectorModel.hoveredNode = renderModel.hoveredDrawInfo?.node?.findFilteredOwner(treeSettings)
       }
     }
     addMouseListener(listener)
@@ -237,13 +244,13 @@ class DeviceViewContentPanel(
       override fun invokePopup(comp: Component, x: Int, y: Int) {
         if (!pannable.isPanning) {
           val modelCoordinates = toModelCoordinates(x, y)
-          val views = model.findViewsAt(modelCoordinates.x, modelCoordinates.y)
+          val views = renderModel.findViewsAt(modelCoordinates.x, modelCoordinates.y)
           showViewContextMenu(views.toList(), inspectorModel, this@DeviceViewContentPanel, x, y)
         }
       }
     })
 
-    viewSettings.modificationListeners.add { repaint() }
+    renderSettings.modificationListeners.add { repaint() }
     // If we get three consecutive pictures where SKPs aren't needed, reset to bitmap.
     var toResetCount = 0
     inspectorModel.modificationListeners.add { _, _, _ ->
@@ -253,12 +260,12 @@ class DeviceViewContentPanel(
       if ((inspectorModel.pictureType == AndroidWindow.ImageType.SKP ||
            inspectorModel.pictureType == AndroidWindow.ImageType.SKP_PENDING) &&
           currentClient?.isCapturing == true &&
-          !model.isRotated && !inspectorModel.hasHiddenNodes()) {
+          !renderModel.isRotated && !inspectorModel.hasHiddenNodes()) {
         // We know for sure there's not a hidden descendant now, so update the field in case it was out of date.
         if (toResetCount++ > FRAMES_BEFORE_RESET_TO_BITMAP) {
           toResetCount = 0
           // Be sure to reset the scale as well, since if we were previously paused the scale will be set to 1.
-          currentClient.updateScreenshotType(AndroidWindow.ImageType.BITMAP_AS_REQUESTED, viewSettings.scaleFraction.toFloat())
+          currentClient.updateScreenshotType(AndroidWindow.ImageType.BITMAP_AS_REQUESTED, renderSettings.scaleFraction.toFloat())
         }
       }
       else {
@@ -266,7 +273,7 @@ class DeviceViewContentPanel(
         toResetCount = 0
       }
     }
-    model.modificationListeners.add {
+    renderModel.modificationListeners.add {
       revalidate()
       repaint()
     }
@@ -284,6 +291,17 @@ class DeviceViewContentPanel(
     return transformedPoint2D
   }
 
+  private fun toPanelCoordinates(x: Int, y: Int): Point2D {
+    val originalPoint2D = Point2D.Double(x.toDouble(), y.toDouble())
+    val transformedPoint2D = Point2D.Double()
+    deviceViewContentPanelTransform.transform(originalPoint2D, transformedPoint2D)
+    return transformedPoint2D
+  }
+
+  private fun toPanelCoordinates(rectangle: Rectangle): Shape {
+    return deviceViewContentPanelTransform.createTransformedShape(rectangle)
+  }
+
   override fun paint(g: Graphics?) {
     val g2d = g as? Graphics2D ?: return
     g2d.setRenderingHints(HQ_RENDERING_HINTS)
@@ -294,49 +312,57 @@ class DeviceViewContentPanel(
 
     g2d.transform = g2d.transform.apply { concatenate(deviceViewContentPanelTransform) }
 
-    model.hitRects.forEach { drawImages(g2d, it) }
-    model.hitRects.forEach { drawBorders(g2d, it) }
+    renderModel.hitRects.forEach { drawImages(g2d, it) }
+    renderModel.hitRects.forEach { drawBorders(g2d, it) }
 
-    if (model.overlay != null) {
-      g2d.composite = AlphaComposite.SrcOver.derive(model.overlayAlpha)
-      val bounds = model.hitRects[0].bounds.bounds
-      g2d.drawImage(model.overlay, bounds.x, bounds.y, bounds.width, bounds.height, null)
+    if (renderModel.overlay != null) {
+      g2d.composite = AlphaComposite.SrcOver.derive(renderModel.overlayAlpha)
+      val bounds = renderModel.hitRects[0].bounds.bounds
+      g2d.drawImage(renderModel.overlay, bounds.x, bounds.y, bounds.width, bounds.height, null)
     }
   }
 
+
+  /**
+   * Change the panel size with the size of what is being rendered.
+   * This makes sure that when the render is too big to be entirely visible, the panel expands and scrollbars are shown.
+   */
   override fun getPreferredSize(): Dimension {
     val (desiredWidth, desiredHeight) = when {
       inspectorModel.isEmpty -> Pair(0, 0)
       // If rotated, give twice the needed size, so we have room to move the view around a little. Otherwise things can jump around
       // when the number of layers changes and the canvas size adjusts to smaller than the viewport size.
-      model.isRotated -> Pair(model.maxWidth * 2, model.maxHeight * 2)
+      renderModel.isRotated -> Pair(renderModel.maxWidth * 2, renderModel.maxHeight * 2)
       else -> inspectorModel.root.transitiveBounds.run { Pair(width, height) }
     }
-    return Dimension((desiredWidth * viewSettings.scaleFraction).toInt() + JBUIScale.scale(MARGIN) * 2,
-                     (desiredHeight * viewSettings.scaleFraction).toInt() + JBUIScale.scale(MARGIN) * 2)
+    return Dimension((desiredWidth * renderSettings.scaleFraction).toInt() + JBUIScale.scale(MARGIN) * 2,
+                     (desiredHeight * renderSettings.scaleFraction).toInt() + JBUIScale.scale(MARGIN) * 2)
   }
 
   private fun autoScrollAndRepaint(origin: SelectionOrigin) {
     val selection = inspectorModel.selection
     if (origin != SelectionOrigin.INTERNAL && selection != null) {
-      val hits = model.hitRects.filter { it.node.findFilteredOwner(treeSettings) == selection }
+      val hits = renderModel.hitRects.filter { it.node.findFilteredOwner(treeSettings) == selection }
       val bounds = Rectangle()
       hits.forEach { if (bounds.isEmpty) bounds.bounds = it.bounds.bounds else bounds.add(it.bounds.bounds) }
       if (!bounds.isEmpty) {
-        val font = StartupUiUtil.getLabelFont().deriveFont(getLabelFontSize(viewSettings.scaleFraction))
+        val font = StartupUiUtil.getLabelFont().deriveFont(getLabelFontSize(renderSettings.scaleFraction))
         val fontMetrics = getFontMetrics(font)
         val textWidth = fontMetrics.stringWidth(selection.unqualifiedName)
-        val labelHeight = getDrawNodeLabelHeight(viewSettings.scaleFraction).toInt()
-        val borderSize = getEmphasizedBorderOutlineThickness(viewSettings.scaleFraction).toInt() / 2
+        val labelHeight = getDrawNodeLabelHeight(renderSettings.scaleFraction).toInt()
+        val borderSize = getEmphasizedBorderOutlineThickness(renderSettings.scaleFraction).toInt() / 2
         bounds.width = kotlin.math.max(bounds.width, textWidth)
         bounds.x -= borderSize
         bounds.y -= borderSize + labelHeight
         bounds.width += borderSize * 2
         bounds.height += borderSize * 2 + labelHeight
-        bounds.x = (bounds.x * viewSettings.scaleFraction).toInt() + (size.width / 2)
-        bounds.y = (bounds.y * viewSettings.scaleFraction).toInt() + (size.height / 2)
-        bounds.width = (bounds.width * viewSettings.scaleFraction).toInt()
-        bounds.height = (bounds.height * viewSettings.scaleFraction).toInt()
+
+        val panelBounds = toPanelCoordinates(bounds)
+        bounds.x = panelBounds.bounds.x
+        bounds.y = panelBounds.bounds.y
+        bounds.width = panelBounds.bounds.width
+        bounds.height = panelBounds.bounds.height
+
         scrollRectToVisible(bounds)
       }
     }
@@ -353,29 +379,32 @@ class DeviceViewContentPanel(
     g2.transform = g2.transform.apply { concatenate(drawInfo.transform) }
 
     if (!drawInfo.isCollapsed &&
-        (viewSettings.drawBorders || viewSettings.drawUntransformedBounds || view == selection || view == hoveredNode ||
+        (renderSettings.drawBorders || renderSettings.drawUntransformedBounds || view == selection || view == hoveredNode ||
          (treeSettings.showRecompositions &&
           (view as? ComposeViewNode)?.recompositions?.hasHighlight == true &&
           inspectorModel.maxHighlight != 0f)
         )
     ) {
-      drawView.paintBorder(g2, view == selection, view == hoveredNode, inspectorModel, viewSettings, treeSettings)
+      drawView.paintBorder(g2, view == selection, view == hoveredNode, inspectorModel, renderSettings, treeSettings)
     }
-    if (viewSettings.drawFold && model.hitRects.isNotEmpty() && (
+    // the fold has to be drawn over the View that is select/hovered.
+    // This matters only in 3D, where users want to know where the fold is relative to each View.
+    // Since the Views are rotated it is more difficult to understand where they are relative to the fold.
+    if (renderSettings.drawFold && renderModel.hitRects.isNotEmpty() && (
         // nothing is selected or hovered: draw on the root
-        (model.hoveredDrawInfo == null && inspectorModel.selection == null && drawInfo == model.hitRects.first()) ||
+        (renderModel.hoveredDrawInfo == null && inspectorModel.selection == null && drawInfo == renderModel.hitRects.first()) ||
         // We're hovering over this node
-        model.hoveredDrawInfo == drawInfo ||
+        renderModel.hoveredDrawInfo == drawInfo ||
         // We're not hovering but there is a selection. If the selected ViewNode corresponds to multiple DrawViewNodes (that is, both
         // a structural DrawViewChild and one or more image-containing DrawViewImage), only draw on the bottom one (the DrawViewChild).
-        (model.hoveredDrawInfo == null && view != null && inspectorModel.selection == view && drawView is DrawViewChild))) {
+        (renderModel.hoveredDrawInfo == null && view != null && inspectorModel.selection == view && drawView is DrawViewChild))) {
       drawFold(g2)
     }
   }
 
   private fun drawFold(g2: Graphics2D) {
     g2.color = Color(255, 0, 255)
-    g2.stroke = getFoldStroke(viewSettings.scaleFraction)
+    g2.stroke = getFoldStroke(renderSettings.scaleFraction)
     val foldInfo = inspectorModel.foldInfo ?: return
     val maxWidth = inspectorModel.windows.values.map { it.width }.maxOrNull() ?: 0
     val maxHeight = inspectorModel.windows.values.map { it.height }.maxOrNull() ?: 0

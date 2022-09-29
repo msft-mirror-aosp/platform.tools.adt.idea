@@ -46,7 +46,6 @@ MODULE                        : project
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestBarAnnotationProcessor       : <empty>
@@ -596,7 +595,6 @@ MODULE                        : project
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestCompileOnly        : <empty>
@@ -785,7 +783,6 @@ MODULE                        : project
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestCompileOnly        : <empty>
@@ -904,7 +901,6 @@ MODULE                        : project
                         externalSystemId              : GRADLE
                         artifactsByConfiguration
                             androidApis                   : <empty>
-                            androidJacocoAnt              : <empty>
                             androidJdkImage               : <empty>
                             androidTestAnnotationProcessor          : <empty>
                             androidTestCompileOnly        : <empty>
@@ -1008,7 +1004,6 @@ MODULE                        : project
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestCompileOnly        : <empty>
@@ -1127,7 +1122,6 @@ MODULE                        : project
                         externalSystemId              : GRADLE
                         artifactsByConfiguration
                             androidApis                   : <empty>
-                            androidJacocoAnt              : <empty>
                             androidJdkImage               : <empty>
                             androidTestAnnotationProcessor          : <empty>
                             androidTestCompileOnly        : <empty>
@@ -1244,7 +1238,6 @@ MODULE                        : project
                                 externalSystemId              : GRADLE
                                 artifactsByConfiguration
                                     androidApis                   : <empty>
-                                    androidJacocoAnt              : <empty>
                                     androidJdkImage               : <empty>
                                     androidTestAnnotationProcessor          : <empty>
                                     androidTestCompileOnly        : <empty>
@@ -1356,7 +1349,6 @@ MODULE                        : project
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestBasicAnnotationProcessor     : <empty>
@@ -3214,7 +3206,6 @@ MODULE                        : project.app
                     KotlinDirectories             : <ROOT>/app/src/testBasicBarDebug/kotlin [-]
                     ResourcesDirectories          : <ROOT>/app/src/testBasicBarDebug/resources [-]
                     AidlDirectories               : <ROOT>/app/src/testBasicBarDebug/aidl [-]
-                    ResDirectories                : <ROOT>/app/src/testBasicBarDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testBasicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasicBarDebug/shaders [-]
@@ -5512,7 +5503,6 @@ MODULE                        : project.nested2
                     KotlinDirectories             : <ROOT>/nested2/src/testBasicDebug/kotlin [-]
                     ResourcesDirectories          : <ROOT>/nested2/src/testBasicDebug/resources [-]
                     AidlDirectories               : <ROOT>/nested2/src/testBasicDebug/aidl [-]
-                    ResDirectories                : <ROOT>/nested2/src/testBasicDebug/res [-]
                     AssetsDirectories             : <ROOT>/nested2/src/testBasicDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasicDebug/shaders [-]

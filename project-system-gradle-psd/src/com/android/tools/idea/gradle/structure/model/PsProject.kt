@@ -31,6 +31,7 @@ interface PsProject : PsModel {
   val pomDependencyCache: PsPomDependencyCache
   val repositorySearchFactory: RepositorySearchFactory
   val modules: PsModelCollection<PsModule>
+  val versionCatalogs: PsModelCollection<PsVersionCatalog>
   val modelCount: Int
   var androidGradlePluginVersion: ParsedValue<String>
   var gradleVersion: ParsedValue<String>

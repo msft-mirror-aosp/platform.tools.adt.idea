@@ -167,6 +167,11 @@ public final class StudioFlags {
     "A cpu trace intercept command is added that will enable perfetto instrumentation for apps" +
     " that use the perfetto SDK",
     true);
+
+  public static final Flag<Boolean> COMPOSE_TRACING_NAVIGATE_TO_SOURCE = Flag.create(
+    PROFILER, "perfetto.sdk.tracing.compose.navigation", "Navigate-to-source action for Compose Tracing",
+    "Enables navigate-to-source action in Profiler for Compose Tracing slices",
+    true);
   //endregion
 
   //region ML
@@ -979,6 +984,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = Flag.create(
+    EDITOR, "translations.editor.synchronization",
+    "Synchronize translations editor with resource file updates",
+    "If enabled, causes the translations editor to reload data when resource files are edited",
+    false
+  );
+
   //endregion
 
   //region Unified App Bundle
@@ -1448,6 +1460,22 @@ public final class StudioFlags {
       "enable.open.close.issues",
       "Enable open/close issue functionality.",
       "Add open/close button to App Quality Insights panel.",
+      false);
+
+  public static final Flag<Boolean> ADDITIONAL_FILTERS_ENABLED =
+    Flag.create(
+      APP_INSIGHTS,
+      "enable.issue.filters",
+      "Enable additional issue filters.",
+      "Add device, OS, Play Track filters to App Quality Insights panel.",
+      false);
+
+  public static final Flag<Boolean> OFFLINE_MODE_SUPPORT_ENABLED =
+    Flag.create(
+      APP_INSIGHTS,
+      "enable.offline.mode.support",
+      "Enable offline mode support.",
+      "Show previously cached data when network has issues.",
       false);
   // endregion App Insights
 

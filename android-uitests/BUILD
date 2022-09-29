@@ -131,9 +131,9 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.0-beta04",
-        "@maven//:androidx.compose.compiler.compiler_1.2.0",
-        "@maven//:androidx.compose.ui.ui-test-junit4_1.2.0",
-        "@maven//:androidx.compose.ui.ui-tooling_1.2.0",
+        "@maven//:androidx.compose.compiler.compiler_1.3.0",
+        "@maven//:androidx.compose.ui.ui-test-junit4_1.2.1",
+        "@maven//:androidx.compose.ui.ui-tooling_1.2.1",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.core.core-ktx_1.0.1",
@@ -203,12 +203,12 @@ maven_repository(
         "@maven//:javax.annotation.javax.annotation-api_1.2",
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
-        "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.7.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.7.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.7.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.7.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.7.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.7.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.10",
         "@maven//:org.mockito.mockito-core_3.12.4",
     ],
 )
@@ -566,6 +566,33 @@ java_test(
 )
 
 java_test(
+    name = "DeviceConfigurationDialogTest",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/SimpleApplication/**",
+    ]) + select({
+        ":has_emulator": [
+            "@externsdk//:system-images",
+            "@externsdk//:emulator",
+        ],
+        "//conditions:default": [],
+    }),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.avdmanager.DeviceConfigurationDialogTest"],
+    tags = COMMON_TAGS + [
+        "qa_fast",
+        "block-network",
+        "no-remote",
+        "no_mac",
+        "no_windows",
+        "qa_unreliable",  # b/77635374
+        "requires-fakeroot",
+        "requires_emulator",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
     name = "AltEnterSuggestionsTest",
     size = "large",
     data = COMMON_DATA + [
@@ -850,6 +877,8 @@ java_test(
 
 java_test(
     name = "CreateNewAppModuleWithDefaultsTest",
+    size = "enormous",
+    timeout = "long",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -1042,18 +1071,15 @@ java_test(
 
 java_test(
     name = "AddDebugAndReleaseSourceSetToProjectTest",
-    size = "large",
-    data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib/data:framework_res.jar",
-    ] + glob([
+    size = "enormous",
+    timeout = "long",
+    data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AddDebugAndReleaseSourceSetToProjectTest"],
     tags = COMMON_TAGS + [
-        "qa_fast",
-        "no_mac",
-        "very_flaky",
-    ],  # b/240730295 - Flaky Product issues.
+        "qa_smoke",
+    ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
@@ -1645,13 +1671,17 @@ java_test(
     name = "MultiModuleSearchTest",
     size = "large",
     data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data:native_libs",
     ] + glob([
         "testData/MultiAndroidModule/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.resourceexplorer.MultiModuleSearchTest"],
     tags = COMMON_TAGS + [
-        "qa_fast",
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

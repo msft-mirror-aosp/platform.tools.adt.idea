@@ -53,6 +53,7 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ex.ProjectManagerEx;
+import com.intellij.openapi.projectRoots.JavaSdkVersion;
 import com.intellij.openapi.ui.TestDialog;
 import com.intellij.openapi.ui.TestDialogManager;
 import com.intellij.openapi.util.io.FileUtil;
@@ -243,26 +244,26 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
   }
 
   protected final void loadProject(@NotNull String relativePath) throws Exception {
-    loadProject(relativePath, null, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
+    loadProject(relativePath, null, resolveAgpVersionSoftwareEnvironment(AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT), null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName) throws Exception {
-    loadProject(relativePath, chosenModuleName, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
+    loadProject(relativePath, chosenModuleName, resolveAgpVersionSoftwareEnvironment(AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT), null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName,
                                    @NotNull AgpVersionSoftwareEnvironmentDescriptor agpVersion) throws Exception {
-    loadProject(relativePath, chosenModuleName, agpVersion, null);
+    loadProject(relativePath, chosenModuleName, resolveAgpVersionSoftwareEnvironment(agpVersion), null);
   }
 
   protected final void loadProject(@NotNull String relativePath,
                                    @Nullable String chosenModuleName,
-                                   @NotNull AgpVersionSoftwareEnvironment agpVersion,
+                                   @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
                                    @Nullable String ndkVersion) throws Exception {
     prepareProjectForImport(relativePath, agpVersion, ndkVersion);
-    importProject();
+    importProject(agpVersion.getJdkVersion());
 
     prepareProjectForTest(getProject(), chosenModuleName);
   }
@@ -298,12 +299,15 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
 
   @NotNull
   protected File prepareProjectForImport(@NotNull @SystemIndependent String relativePath) throws IOException {
-    return prepareProjectForImport(relativePath, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
+    return prepareProjectForImport(relativePath, resolveAgpVersionSoftwareEnvironment(AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT),
+                                   null);
   }
 
   @NotNull
-  protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath, @NotNull File targetPath) throws IOException {
-    return prepareProjectForImport(relativePath, targetPath, AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT, null);
+  protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath, @NotNull File targetPath)
+    throws IOException {
+    return prepareProjectForImport(relativePath, targetPath,
+                                   resolveAgpVersionSoftwareEnvironment(AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT), null);
   }
 
   /**
@@ -312,21 +316,21 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
   @NotNull
   protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath,
                                                @NotNull File targetPath,
-                                               @NotNull AgpVersionSoftwareEnvironment agpVersion,
+                                               @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
                                                @Nullable String ndkVersion) throws IOException {
     File projectSourceRoot = resolveTestDataPath(relativePath);
 
     prepareGradleProject(
       projectSourceRoot,
       targetPath,
-      file -> patchPreparedProject(file, resolveAgpVersionSoftwareEnvironment(agpVersion), ndkVersion,
+      file -> patchPreparedProject(file, agpVersion, ndkVersion,
                                    getAdditionalRepos().toArray(new File[0])));
     return targetPath;
   }
 
   @NotNull
   protected final File prepareProjectForImport(@NotNull @SystemIndependent String relativePath,
-                                               @NotNull AgpVersionSoftwareEnvironment agpVersion,
+                                               @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
                                                @Nullable String ndkVersion) throws IOException {
     File projectRoot = new File(toSystemDependentName(getProject().getBasePath()));
     return prepareProjectForImport(relativePath, projectRoot, agpVersion, ndkVersion);
@@ -408,9 +412,13 @@ public abstract class AndroidGradleTestCase extends AndroidTestBase implements G
     return result;
   }
 
-  protected void importProject() throws Exception {
+  protected final void importProject() {
+    importProject(resolveAgpVersionSoftwareEnvironment(AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT).getJdkVersion());
+  }
+
+  protected final void importProject(@NotNull JavaSdkVersion jdkVersion) {
     Project project = getProject();
-    AndroidGradleTests.importProject(project, GradleSyncInvoker.Request.testRequest());
+    AgpIntegrationTestUtil.importProject(project, jdkVersion, getTestRootDisposable());
   }
 
   @NotNull

@@ -195,7 +195,7 @@ internal class FilterTextField(
       addDocumentListener(object : DocumentListener {
         override fun documentChanged(event: DocumentEvent) {
           filter = filterParser.parse(text)
-          isFavorite = false
+          isFavorite = filterHistory.favorites.contains(text)
           filterHistory.mostRecentlyUsed = textField.text
           notifyFilterChangedTask.reschedule(APPLY_FILTER_DELAY_MS) {
             for (listener in documentChangedListeners) {
@@ -207,7 +207,7 @@ internal class FilterTextField(
       })
       addFocusListener(object : FocusAdapter() {
         override fun focusGained(e: FocusEvent?) {
-          GotItTooltip(GOT_IT_ID, LogcatBundle.message("logcat.filter.hint"), project)
+          GotItTooltip(GOT_IT_ID, LogcatBundle.message("logcat.filter.hint"), logcatPresenter)
             .withBrowserLink(LogcatBundle.message("logcat.filter.got.it.link.text"), LOGCAT_FILTER_HELP_URL)
             .show(textField, BOTTOM_LEFT)
         }

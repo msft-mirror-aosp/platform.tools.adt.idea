@@ -40,7 +40,6 @@ MODULE                        : MainActivity
                     _agp_internal_javaPreCompileRemoteReleaseUnitTest_kaptClasspath       : <empty>
                     _agp_internal_javaPreCompileRemoteRelease_kaptClasspath     : <empty>
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestApi                : <empty>
@@ -703,7 +702,6 @@ MODULE                        : MainActivity
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestApi                : <empty>
@@ -1798,7 +1796,6 @@ MODULE                        : MainActivity.app
                     KotlinDirectories             : <ROOT>/app/src/testLocalDebug/java [-]
                     ResourcesDirectories          : <ROOT>/app/src/testLocalDebug/resources [-]
                     AidlDirectories               : <ROOT>/app/src/testLocalDebug/aidl [-]
-                    ResDirectories                : <ROOT>/app/src/testLocalDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testLocalDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testLocalDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testLocalDebug/shaders [-]

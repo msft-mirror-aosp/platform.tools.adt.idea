@@ -403,7 +403,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
                                                    buildInfo.agpVersion,
                                                    syncedAgpVersions.joinToString(", ") { obj: GradleVersion? -> obj.toString() }
         )
-        logger.error(incompatibilityMessage)
+        logger.warn(incompatibilityMessage)
         val quickFix = SyncProjectWithExtraCommandLineOptionsHyperlink("Sync project", "")
         NotificationGroupManager.getInstance()
           .getNotificationGroup("Android Gradle Sync Issues")
@@ -560,8 +560,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
 
     companion object {
       private const val ONE_MINUTE_MS = 60L /*sec*/ * 1000L /*millisec*/
-      val LOGGING_NOTIFICATION = NotificationGroup.logOnlyGroup("Gradle Build (Logging)", PluginId.getId("org.jetbrains.android"))
-      val BALLOON_NOTIFICATION = NotificationGroup.balloonGroup("Gradle Build (Balloon)", PluginId.getId("org.jetbrains.android"))
+      val LOGGING_NOTIFICATION = NotificationGroupManager.getInstance().getNotificationGroup("Gradle Build (Logging)")!!
+      val BALLOON_NOTIFICATION = NotificationGroupManager.getInstance().getNotificationGroup("Gradle Build (Balloon)")!!
       private val APP_ICON_ID: @NonNls String? = "compiler"
       private const val GRADLE_RUNNING_MSG_TITLE = "Gradle Running"
       private const val PASSWORD_KEY_SUFFIX = ".password="

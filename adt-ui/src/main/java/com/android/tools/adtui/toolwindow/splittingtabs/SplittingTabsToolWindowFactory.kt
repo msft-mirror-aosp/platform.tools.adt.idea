@@ -16,6 +16,7 @@
 package com.android.tools.adtui.toolwindow.splittingtabs
 
 import com.android.tools.adtui.toolwindow.splittingtabs.actions.NewTabAction
+import com.android.tools.adtui.toolwindow.splittingtabs.state.PanelState
 import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsStateManager
 import com.android.tools.adtui.toolwindow.splittingtabs.state.TabState
 import com.android.tools.adtui.toolwindow.splittingtabs.state.ToolWindowState
@@ -44,7 +45,9 @@ abstract class SplittingTabsToolWindowFactory : ToolWindowFactory {
 
     val toolWindowState = stateManager.getToolWindowState(toolWindow.id)
     if (toolWindowState.tabStates.isEmpty()) {
-      createNewTab(project, contentManager)
+      if (shouldCreateNewTabWhenEmpty()) {
+        createNewTab(project, contentManager)
+      }
     }
     else {
       restoreTabs(project, contentManager, toolWindowState)
@@ -54,13 +57,15 @@ abstract class SplittingTabsToolWindowFactory : ToolWindowFactory {
       ToolWindowManagerListener.TOPIC,
       object : ToolWindowManagerListener {
         override fun toolWindowShown(shownToolWindow: ToolWindow) {
-          if (toolWindow === shownToolWindow && toolWindow.isVisible && contentManager.isEmpty) {
-            // open a new session if all tabs were closed manually
+          // open a new session if all tabs were closed manually
+          if (shouldCreateNewTabWhenEmpty() && toolWindow === shownToolWindow && toolWindow.isVisible && contentManager.isEmpty) {
             createNewTab(project, contentManager)
           }
         }
       })
   }
+
+  open fun shouldCreateNewTabWhenEmpty() : Boolean = true
 
   abstract fun generateTabName(tabNames: Set<String>): String
 
@@ -80,13 +85,9 @@ abstract class SplittingTabsToolWindowFactory : ToolWindowFactory {
     return content
   }
 
-  protected fun createNewTab(toolWindow: ToolWindowEx, tabName: String): Content {
+  protected fun createNewTab(toolWindow: ToolWindowEx, tabName: String, clientState: String?): Content {
     val contentManager = toolWindow.contentManager
-    val content = createContent(toolWindow.project, contentManager, tabState = null)
-    contentManager.addContent(content)
-    contentManager.setSelectedContent(content, true)
-    content.displayName = tabName
-    return content
+    return createNewTab(toolWindow.project, contentManager, TabState(tabName, PanelState(clientState)))
   }
 
   private fun createContent(project: Project, contentManager: ContentManager, tabState: TabState?): Content {

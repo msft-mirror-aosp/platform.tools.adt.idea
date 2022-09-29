@@ -181,7 +181,7 @@ class DeviceViewPanelWithFullInspectorTest {
     connect(MODERN_PROCESS)
     assertThat(latch?.await(1L, TimeUnit.SECONDS)).isTrue()
 
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
         deviceModel,
         inspectorRule.processes,
@@ -192,7 +192,7 @@ class DeviceViewPanelWithFullInspectorTest {
         settings,
         projectRule.fixture.testRootDisposable
     )
-    val deviceModel = panel.getData(DEVICE_VIEW_MODEL_KEY.name) as DeviceViewPanelModel
+    val deviceModel = panel.getData(DEVICE_VIEW_MODEL_KEY.name) as RenderModel
     delegateDataProvider(panel)
     flatten(panel).filterIsInstance<ActionToolbar>().forEach { it.updateActionsImmediately() }
     val toggle = flatten(panel).filterIsInstance<ActionButton>().single { it.action is Toggle3dAction }
@@ -248,7 +248,7 @@ class DeviceViewPanelWithFullInspectorTest {
 
   @Test
   fun testLiveControlEnabledAndSetByDefaultWhenDisconnected() {
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -272,7 +272,7 @@ class DeviceViewPanelWithFullInspectorTest {
   fun testLiveControlEnabledAndNotSetInSnapshotModeWhenDisconnected() {
     InspectorClientSettings.isCapturingModeOn = false
 
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -299,7 +299,7 @@ class DeviceViewPanelWithFullInspectorTest {
     connect(MODERN_PROCESS)
     assertThat(latch?.await(1L, TimeUnit.SECONDS)).isTrue()
 
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -330,7 +330,7 @@ class DeviceViewPanelWithFullInspectorTest {
     latch = CountDownLatch(1)
     connect(MODERN_PROCESS)
     assertThat(latch?.await(1L, TimeUnit.SECONDS)).isTrue()
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -360,7 +360,7 @@ class DeviceViewPanelWithFullInspectorTest {
 
     val stats = inspectorRule.inspector.currentClient.stats
     stats.currentModeIsLive = true
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -395,7 +395,7 @@ class DeviceViewPanelWithFullInspectorTest {
 
     val stats = inspectorRule.inspector.currentClient.stats
     stats.currentModeIsLive = false
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -434,7 +434,7 @@ class DeviceViewPanelWithFullInspectorTest {
     val stats = inspectorRule.inspector.currentClient.stats
     stats.currentModeIsLive = true
     latch = CountDownLatch(2)
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -478,7 +478,7 @@ class DeviceViewPanelWithFullInspectorTest {
     stats.currentModeIsLive = false
 
     latch = CountDownLatch(1)
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         deviceModel,
@@ -519,7 +519,7 @@ class DeviceViewPanelWithFullInspectorTest {
       latch.await(20, TimeUnit.SECONDS)
       inspectorRule.inspectorModel.update(window("w1", 1L), listOf("w1"), 1)
     }
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       deviceModel,
       inspectorRule.processes,
@@ -532,21 +532,22 @@ class DeviceViewPanelWithFullInspectorTest {
     )
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
     val contentPanel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first()
+
     assertThat(loadingPane.isLoading).isFalse()
     assertThat(contentPanel.showEmptyText).isTrue()
 
-    // Start connecting, loading should show
+    // Start connecting, loading should show and empty text should not be visible
     inspectorRule.startLaunch(2)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
 
-    waitForCondition(1, TimeUnit.SECONDS) { loadingPane.isLoading }
-    waitForCondition(1, TimeUnit.SECONDS) { !contentPanel.showEmptyText }
+    waitForCondition(1, TimeUnit.SECONDS) { loadingPane.isLoading && !contentPanel.showEmptyText }
 
-    // Release the response from the agent and wait for connection. The loading should stop.
+    // Release the response from the agent and wait for connection.
+    // The loading should stop and the empty text should not be visible, because now we are connected and showing views on screen
     latch.countDown()
     inspectorRule.awaitLaunch()
 
-    waitForCondition(1, TimeUnit.SECONDS) { !loadingPane.isLoading && contentPanel.showEmptyText }
+    waitForCondition(1, TimeUnit.SECONDS) { !loadingPane.isLoading && !contentPanel.showEmptyText }
   }
 
   @Test
@@ -557,7 +558,7 @@ class DeviceViewPanelWithFullInspectorTest {
       latch.await(5, TimeUnit.HOURS)
       inspectorRule.inspectorModel.update(window("w1", 1L), listOf("w1"), 1)
     }
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       deviceModel,
       inspectorRule.processes,
@@ -604,7 +605,7 @@ class DeviceViewPanelWithFullInspectorTest {
 
   @Test
   fun testSelectProcessDropDown() {
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       deviceModel,
       inspectorRule.processes,
@@ -690,7 +691,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       {},
       inspectorRule.inspector,
-      FakeDeviceViewSettings(),
+      FakeRenderSettings(),
       projectRule.fixture.testRootDisposable
     )
     delegateDataProvider(panel)
@@ -776,7 +777,7 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnect() {
-    val viewSettings = EditorDeviceViewSettings()
+    val viewSettings = EditorRenderSettings()
     val model = InspectorModel(projectRule.project)
     val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(processes, listOf(), projectRule.project, disposableRule.disposable,
@@ -827,7 +828,7 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnectWithFiltering() {
-    val viewSettings = EditorDeviceViewSettings()
+    val viewSettings = EditorRenderSettings()
     val model = InspectorModel(projectRule.project)
     val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(processes, listOf(), projectRule.project, disposableRule.disposable,
@@ -865,7 +866,7 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnectWithFilteringAndScreenSizeFromAppContext() {
-    val viewSettings = EditorDeviceViewSettings()
+    val viewSettings = EditorRenderSettings()
     val model = InspectorModel(projectRule.project)
     val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(processes, listOf(), projectRule.project, disposableRule.disposable,
@@ -886,7 +887,7 @@ class DeviceViewPanelTest {
 
     val scrollPane = flatten(panel).filterIsInstance<JBScrollPane>().first()
     scrollPane.setSize(200, 300)
-    model.resourceLookup.screenDimension.setSize(200, 300)
+    model.resourceLookup.screenDimension = Dimension(200, 300)
 
     assertThat(viewSettings.scalePercent).isEqualTo(100)
 
@@ -904,7 +905,7 @@ class DeviceViewPanelTest {
 
   @Test
   fun testDrawNewWindow() {
-    val viewSettings = EditorDeviceViewSettings()
+    val viewSettings = EditorRenderSettings()
     val model = InspectorModel(projectRule.project)
     val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(processes, listOf(), projectRule.project, disposableRule.disposable,
@@ -952,7 +953,7 @@ class DeviceViewPanelTest {
 
   @Test
   fun testNewWindowDoesntResetZoom() {
-    val viewSettings = EditorDeviceViewSettings()
+    val viewSettings = EditorRenderSettings()
     val model = InspectorModel(projectRule.project)
     val processes = ProcessesModel(TestProcessDiscovery())
     val launcher = InspectorClientLauncher(processes, listOf(), projectRule.project, disposableRule.disposable,
@@ -973,7 +974,7 @@ class DeviceViewPanelTest {
     )
 
     val scrollPane = flatten(panel).filterIsInstance<JBScrollPane>().first()
-    val contentPanelModel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first().model
+    val contentPanelModel = flatten(panel).filterIsInstance<DeviceViewContentPanel>().first().renderModel
     scrollPane.setSize(200, 300)
 
     val window1 = window(ROOT, ROOT, 0, 0, 100, 200) {
@@ -1010,7 +1011,7 @@ class DeviceViewPanelTest {
     val treeSettings = FakeTreeSettings()
     val inspector = LayoutInspector(launcher, model, treeSettings, MoreExecutors.directExecutor())
     treeSettings.hideSystemNodes = false
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       DeviceModel(processes),
       processes,
@@ -1069,7 +1070,7 @@ class DeviceViewPanelTest {
     val treeSettings = FakeTreeSettings()
     val inspector = LayoutInspector(launcher, model, treeSettings, MoreExecutors.directExecutor())
     treeSettings.hideSystemNodes = false
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       DeviceModel(processes),
       processes,
@@ -1099,7 +1100,7 @@ class DeviceViewPanelTest {
     fakeUi.keyboard.setFocus(contentPanel)
 
     // Rotate the model so that dragging would normally rotate
-    contentPanel.model.xOff = 0.02
+    contentPanel.renderModel.xOff = 0.02
 
     assertThat(panel.isPanning).isFalse()
     startPan(fakeUi, panel)
@@ -1110,16 +1111,16 @@ class DeviceViewPanelTest {
     fakeUi.mouse.release()
 
     // Unchanged--we panned instead
-    TestCase.assertEquals(0.02, contentPanel.model.xOff)
-    TestCase.assertEquals(0.0, contentPanel.model.yOff)
+    TestCase.assertEquals(0.02, contentPanel.renderModel.xOff)
+    TestCase.assertEquals(0.0, contentPanel.renderModel.yOff)
     assertThat(viewport.viewPosition).isEqualTo(Point(10, 10))
 
     endPan(fakeUi, panel)
     // Now we'll actually rotate
     fakeUi.mouse.drag(20, 20, -10, -10)
     assertThat(panel.isPanning).isFalse()
-    TestCase.assertEquals(0.01, contentPanel.model.xOff)
-    TestCase.assertEquals(-0.01, contentPanel.model.yOff)
+    TestCase.assertEquals(0.01, contentPanel.renderModel.xOff)
+    TestCase.assertEquals(-0.01, contentPanel.renderModel.yOff)
 
     startPan(fakeUi, panel)
     fakeUi.mouse.press(20, 20, panButton)
@@ -1148,7 +1149,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
     inspectorRule.processes.selectedProcess = LEGACY_DEVICE.createProcess()
     waitForCondition(5, TimeUnit.SECONDS) { inspectorRule.inspectorClient.isConnected }
 
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         DeviceModel(inspectorRule.processes),
@@ -1173,7 +1174,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
     waitForCondition(5, TimeUnit.SECONDS) { inspectorRule.inspectorClient.isConnected }
 
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val toolbar = getToolbar(
       DeviceViewPanel(
         DeviceModel(inspectorRule.processes),
@@ -1381,7 +1382,7 @@ class DeviceViewPanelWithNoClientsTest {
   fun testLoadingPane() {
     inspectorRule.startLaunch(4)
     inspectorRule.launchSynchronously = false
-    val settings = EditorDeviceViewSettings()
+    val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
       DeviceModel(inspectorRule.processes),
       inspectorRule.processes,
@@ -1413,14 +1414,15 @@ class DeviceViewPanelWithNoClientsTest {
   fun testNotDebuggablePane() {
     inspectorRule.startLaunch(4)
     inspectorRule.launchSynchronously = false
+    val deviceModel = DeviceModel(inspectorRule.processes)
     val panel = DeviceViewPanel(
-      DeviceModel(inspectorRule.processes),
+      deviceModel,
       inspectorRule.processes,
       {},
       {},
       {},
       inspectorRule.inspector,
-      EditorDeviceViewSettings(),
+      EditorRenderSettings(),
       projectRule.fixture.testRootDisposable,
     )
 
@@ -1428,6 +1430,9 @@ class DeviceViewPanelWithNoClientsTest {
 
     // false by default
     assertThat(deviceViewContentPanel.showProcessNotDebuggableText).isFalse()
+
+    // connect device
+    deviceModel.selectedDevice = MODERN_DEVICE
 
     panel.onNewForegroundProcess(ForegroundProcess(1, "random"))
 

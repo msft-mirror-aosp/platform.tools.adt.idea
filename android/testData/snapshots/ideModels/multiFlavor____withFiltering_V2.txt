@@ -26,7 +26,6 @@ MODULE                        : MultiFlavor
                 externalSystemId              : GRADLE
                 artifactsByConfiguration
                     androidApis                   : <empty>
-                    androidJacocoAnt              : <empty>
                     androidJdkImage               : <empty>
                     androidTestAnnotationProcessor          : <empty>
                     androidTestCompileOnly        : <empty>
@@ -824,7 +823,6 @@ MODULE                        : MultiFlavor.app
                     KotlinDirectories             : <ROOT>/app/src/testFirstAbcSecondAbcDebug/kotlin [-]
                     ResourcesDirectories          : <ROOT>/app/src/testFirstAbcSecondAbcDebug/resources [-]
                     AidlDirectories               : <ROOT>/app/src/testFirstAbcSecondAbcDebug/aidl [-]
-                    ResDirectories                : <ROOT>/app/src/testFirstAbcSecondAbcDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/shaders [-]

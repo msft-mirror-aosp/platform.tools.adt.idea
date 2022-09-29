@@ -77,6 +77,7 @@ internal class LogcatHeaderPanel(
         layout = if (width > JBUI.scale(500)) createWideLayout() else createNarrowLayout()
       }
     })
+    layout = createWideLayout()
 
     helpIcon.let {
       toolTipText = LogcatBundle.message("logcat.help.tooltip")
@@ -95,10 +96,6 @@ internal class LogcatHeaderPanel(
     set(value) {
       filterComponent.text = value
     }
-
-  fun selectDevice(serialNumber: String) {
-    deviceComboBox.selectDevice(serialNumber)
-  }
 
   fun getSelectedDevice(): Device? = deviceComboBox.selectedItem as? Device
 

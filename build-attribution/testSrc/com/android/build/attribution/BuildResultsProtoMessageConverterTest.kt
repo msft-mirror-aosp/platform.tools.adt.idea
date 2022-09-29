@@ -17,12 +17,9 @@ package com.android.build.attribution
 
 import com.android.build.attribution.analyzers.AlwaysRunTasksAnalyzer
 import com.android.build.attribution.analyzers.AnnotationProcessorsAnalyzer
-import com.android.build.attribution.analyzers.ConfigurationCachingTurnedOff
 import com.android.build.attribution.analyzers.CriticalPathAnalyzer
 import com.android.build.attribution.analyzers.DownloadsAnalyzer
 import com.android.build.attribution.analyzers.GarbageCollectionAnalyzer
-import com.android.build.attribution.analyzers.JetifierNotUsed
-import com.android.build.attribution.analyzers.JetifierUsageAnalyzerResult
 import com.android.build.attribution.analyzers.NoncacheableTasksAnalyzer
 import com.android.build.attribution.analyzers.ProjectConfigurationAnalyzer
 import com.android.build.attribution.analyzers.TasksConfigurationIssuesAnalyzer
@@ -34,10 +31,13 @@ import com.android.build.attribution.data.PluginData
 import com.android.build.attribution.data.ProjectConfigurationData
 import com.android.build.attribution.data.TaskData
 import com.android.build.attribution.data.TasksSharingOutputData
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
+import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 import java.time.Duration
 
 class BuildResultsProtoMessageConverterTest {
@@ -129,6 +129,14 @@ class BuildResultsProtoMessageConverterTest {
   }
 
   @Test
+  fun testGarbageCollectionAnalyzerResultNullValues() {
+    val result = GarbageCollectionAnalyzer.Result(listOf(GarbageCollectionData("name", 12345)), null, null)
+    val resultMessage = BuildResultsProtoMessageConverter(projectRule.project).transformGarbageCollectionAnalyzerResult(result)
+    val resultConverted = BuildResultsProtoMessageConverter(projectRule.project).constructGarbageCollectionAnalyzerResult(resultMessage)
+    Truth.assertThat(result).isEqualTo(resultConverted)
+  }
+
+  @Test
   fun testProjectConfigurationAnalyzerResult() {
     val pluginsConfigurationDataMap = mutableMapOf<PluginData, Long>()
     val projectConfigurationData = mutableListOf<ProjectConfigurationData>()
@@ -201,5 +209,33 @@ class BuildResultsProtoMessageConverterTest {
     val resultMessage = BuildResultsProtoMessageConverter(projectRule.project).transformDownloadsAnalyzerResult(downloadResult)
     val resultConverted = BuildResultsProtoMessageConverter(projectRule.project).constructDownloadsAnalyzerResult(resultMessage)
     Truth.assertThat(resultConverted).isEqualTo(downloadResult)
+  }
+
+  @Test
+  fun testRequestData() {
+    val requestData = GradleBuildInvoker.Request.RequestData(
+      BuildMode.DEFAULT_BUILD_MODE,
+      File("rootproject"),
+      listOf("task1", "task2"),
+      listOf("e1", "e2"),
+      listOf("c1", "c2"),
+      mapOf(Pair("a", "b"), Pair("c","d")),
+      false
+    )
+    val requestDataMessage = BuildResultsProtoMessageConverter(projectRule.project).transformRequestData(requestData)
+    val resultConverted = BuildResultsProtoMessageConverter(projectRule.project).constructRequestData(requestDataMessage)
+    Truth.assertThat(resultConverted).isEqualTo(requestData)
+  }
+
+  @Test
+  fun testRequestDataNullMode() {
+    val requestData = GradleBuildInvoker.Request.RequestData(
+      null,
+      File("root-project"),
+      emptyList()
+    )
+    val requestDataMessage = BuildResultsProtoMessageConverter(projectRule.project).transformRequestData(requestData)
+    val resultConverted = BuildResultsProtoMessageConverter(projectRule.project).constructRequestData(requestDataMessage)
+    Truth.assertThat(resultConverted).isEqualTo(requestData)
   }
 }
