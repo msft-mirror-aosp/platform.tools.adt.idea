@@ -36,10 +36,15 @@ import com.google.wireless.android.sdk.stats.LogcatUsageEvent.Type.FILTER_ADDED_
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaTextBorder
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.keymap.Keymap
+import com.intellij.openapi.keymap.KeymapManager
+import com.intellij.openapi.keymap.KeymapManagerListener
+import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupChooserBuilder
@@ -207,9 +212,12 @@ internal class FilterTextField(
       })
       addFocusListener(object : FocusAdapter() {
         override fun focusGained(e: FocusEvent?) {
-          GotItTooltip(GOT_IT_ID, LogcatBundle.message("logcat.filter.hint"), logcatPresenter)
-            .withBrowserLink(LogcatBundle.message("logcat.filter.got.it.link.text"), LOGCAT_FILTER_HELP_URL)
-            .show(textField, BOTTOM_LEFT)
+          val hintText = getFilterHintText()
+          if (hintText != null) {
+            GotItTooltip(GOT_IT_ID, hintText, logcatPresenter)
+              .withBrowserLink(LogcatBundle.message("logcat.filter.got.it.link.text"), LOGCAT_FILTER_HELP_URL)
+              .show(textField, BOTTOM_LEFT)
+          }
         }
 
         override fun focusLost(e: FocusEvent?) {
@@ -218,8 +226,15 @@ internal class FilterTextField(
       })
       // The text field needs to be moved an extra pixel down to appear correctly.
       border = JBUI.Borders.customLine(background, 1, 0, 0, 0)
-      textField.setPlaceholder(LogcatBundle.message("logcat.filter.hint"))
-      textField.setShowPlaceholderWhenFocused(true)
+
+      setShowPlaceholderWhenFocused(true)
+      setPlaceholder(getFilterHintText())
+      ApplicationManager.getApplication().messageBus.connect(logcatPresenter)
+        .subscribe(KeymapManagerListener.TOPIC, object : KeymapManagerListener {
+          override fun activeKeymapChanged(keymap: Keymap?) {
+            setPlaceholder(getFilterHintText())
+          }
+        })
     }
 
     clearButton.apply {
@@ -331,7 +346,7 @@ internal class FilterTextField(
         })
         contentComponent.addMouseMotionListener(object : MouseAdapter() {
           override fun mouseMoved(e: MouseEvent) {
-            contentComponent.toolTipText = editor?.let {editor ->
+            contentComponent.toolTipText = editor?.let { editor ->
               val position = editor.xyToLogicalPosition(e.point)
               // The editor is in a single line so we don't have to convert to an offset
               filter?.findFilterForOffset(position.column)?.displayText
@@ -380,6 +395,7 @@ internal class FilterTextField(
    * rendering from the JBList (HistoryList) directly.
    */
   @VisibleForTesting
+  @UiThread
   internal inner class HistoryList(
     parentDisposable: Disposable,
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
@@ -396,6 +412,8 @@ internal class FilterTextField(
         }
         addAll(filterHistory.nonFavorites.map { Item(filter = it, isFavorite = false, count = null, filterParser) })
       }
+      // Parse all the filters here while we're still in the EDT
+      val filters = items.map { if (it is Item) filterParser.parse(it.filter) else null }
       model = listModel
       listModel.addAll(0, items)
       addKeyListener(object : KeyAdapter() {
@@ -414,7 +432,7 @@ internal class FilterTextField(
         listModel.items.forEachIndexed { index, item ->
           if (item is Item) {
             launch {
-              val count = application.runReadAction<Int> { logcatPresenter.countFilterMatches(item.filter) }
+              val count = application.runReadAction<Int> { logcatPresenter.countFilterMatches(filters[index]) }
               // Replacing an item in the model will remove the selection. Save the selected index, so we can restore it after.
               withContext(uiThread) {
                 val selected = selectedIndex
@@ -709,6 +727,11 @@ internal class FilterTextField(
 
     abstract fun getComponent(isSelected: Boolean, list: JList<out FilterHistoryItem>): JComponent
   }
+}
+
+private fun getFilterHintText(): String? {
+  val shortcut = KeymapManager.getInstance().activeKeymap.getShortcuts(IdeActions.ACTION_CODE_COMPLETION).firstOrNull() ?: return null
+  return LogcatBundle.message("logcat.filter.hint", KeymapUtil.getShortcutText(shortcut))
 }
 
 private operator fun Rectangle.plus(point: Point): Rectangle {

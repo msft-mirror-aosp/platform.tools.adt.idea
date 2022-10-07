@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.Slow
 import com.android.build.attribution.analyzers.BuildEventsAnalyzersProxy
 import com.android.build.attribution.analyzers.DownloadsAnalyzer
 import com.android.build.attribution.data.BuildRequestHolder
+import com.android.build.attribution.proto.BuildResultsProtoMessageConverter
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.util.toIoFile
 import com.android.utils.FileUtils
@@ -34,15 +35,14 @@ import java.io.IOException
 class BuildAnalyzerStorageManagerImpl(
   val project: Project
 ) : BuildAnalyzerStorageManager {
-  private var buildResults: BuildAnalysisResults? = null
+  private var buildResults: AbstractBuildAnalysisResult? = null
   private var historicBuildResults: MutableMap<String, BuildAnalysisResults> = mutableMapOf()
   private val dataFolder = project.guessProjectDir()?.toIoFile()?.resolve("build-analyzer-history-data")
   private val log: Logger get() = Logger.getInstance("Build Analyzer")
 
 
   private fun notifyDataListeners() {
-    var publisher = project.messageBus.syncPublisher(BuildAnalyzerStorageManager.DATA_IS_READY_TOPIC);
-    publisher.newDataAvailable()
+    project.messageBus.syncPublisher(BuildAnalyzerStorageManager.DATA_IS_READY_TOPIC).newDataAvailable()
   }
 
   private fun createBuildResultsObject(
@@ -77,7 +77,7 @@ class BuildAnalyzerStorageManagerImpl(
    * @return BuildAnalysisResults
    * @exception IllegalStateException
    */
-  override fun getLatestBuildAnalysisResults(): BuildAnalysisResults {
+  override fun getLatestBuildAnalysisResults(): AbstractBuildAnalysisResult {
     if (hasData()) return buildResults!!
     else throw IllegalStateException("Storage Manager does not have data to return.")
   }
@@ -100,7 +100,7 @@ class BuildAnalyzerStorageManagerImpl(
     }
   }
 
-  override fun storeNewBuildResults(analyzersProxy: BuildEventsAnalyzersProxy, buildID: String, requestHolder: BuildRequestHolder) {
+  override fun storeNewBuildResults(analyzersProxy: BuildEventsAnalyzersProxy, buildID: String, requestHolder: BuildRequestHolder): BuildAnalysisResults {
     val buildResults = createBuildResultsObject(analyzersProxy, buildID, requestHolder)
     this.buildResults = buildResults
     notifyDataListeners()
@@ -108,6 +108,12 @@ class BuildAnalyzerStorageManagerImpl(
       historicBuildResults[buildID] = buildResults
       storeBuildResultsInFile(buildResults)
     }
+    return buildResults
+  }
+
+  override fun recordNewFailure(buildID: String, failureType: FailureResult.Type) {
+    this.buildResults = FailureResult(buildID, failureType)
+    notifyDataListeners()
   }
 
   /**
@@ -127,7 +133,7 @@ class BuildAnalyzerStorageManagerImpl(
       FileUtils.mkdirs(dataFolder)
       val buildResultFile = File(dataFolder, buildResults.getBuildSessionID())
       buildResultFile.createNewFile()
-      BuildResultsProtoMessageConverter(project).convertBuildAnalysisResultsFromObjectToBytes(
+      BuildResultsProtoMessageConverter.convertBuildAnalysisResultsFromObjectToBytes(
         buildResults,
         buildResults.getPluginMap(),
         buildResults.getTaskMap()
@@ -155,7 +161,7 @@ class BuildAnalyzerStorageManagerImpl(
       dataFolder?.let {
         val stream = FileInputStream(dataFolder.resolve(buildSessionID))
         val message = BuildAnalysisResultsMessage.parseDelimitedFrom(stream)
-        return BuildResultsProtoMessageConverter(project)
+        return BuildResultsProtoMessageConverter
           .convertBuildAnalysisResultsFromBytesToObject(message)
       } ?: throw IOException("No data storage folder")
     }

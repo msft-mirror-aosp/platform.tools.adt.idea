@@ -20,6 +20,7 @@ import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.common.AdtPrimaryPanel
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.common.showViewContextMenu
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
@@ -100,6 +101,7 @@ class DeviceViewContentPanel(
   disposableParent: Disposable,
   val isLoading: () -> Boolean,
   val isCurrentForegroundProcessDebuggable: () -> Boolean,
+  val hasForegroundProcess: () -> Boolean
 ) : AdtPrimaryPanel() {
 
   val renderModel = RenderModel(inspectorModel, treeSettings, currentClient)
@@ -111,7 +113,14 @@ class DeviceViewContentPanel(
   val showProcessNotDebuggableText get() = !renderModel.isActive &&
                                            !isLoading() &&
                                            deviceModel?.selectedDevice != null &&
+                                           hasForegroundProcess() &&
                                            !isCurrentForegroundProcessDebuggable()
+
+  @get:VisibleForTesting
+  val showNavigateToDebuggableProcess get() = !renderModel.isActive &&
+                                              !isLoading() &&
+                                              deviceModel?.selectedDevice != null &&
+                                              !hasForegroundProcess()
 
   val rootLocation: Point?
     get() {
@@ -139,15 +148,20 @@ class DeviceViewContentPanel(
     override fun isStatusVisible() = showProcessNotDebuggableText
   }
 
+  private val navigateToDebuggableProcessText: StatusText = object : StatusText(this) {
+    override fun isStatusVisible() = showNavigateToDebuggableProcess
+  }
+
   init {
-    processNotDebuggableText.appendLine("Application not inspectable.")
-    processNotDebuggableText.appendLine("Switch to a debuggable application on your device to inspect.")
+    processNotDebuggableText.appendLine(LayoutInspectorBundle.message("application.not.inspectable"))
+    processNotDebuggableText.appendLine(LayoutInspectorBundle.message("switch.to.debuggable.application"))
+
+    navigateToDebuggableProcessText.appendLine(LayoutInspectorBundle.message("navigate.to.debuggable.application"))
 
     selectTargetAction?.let { selectTargetAction ->
-      emptyText.appendLine("No process connected")
+      emptyText.appendLine(LayoutInspectorBundle.message("no.process.connected"))
 
       emptyText.appendLine("Deploy your app or ")
-
       @Suppress("DialogTitleCapitalization")
       val text = if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED.get()) {
         "select a device"
@@ -307,8 +321,10 @@ class DeviceViewContentPanel(
     g2d.setRenderingHints(HQ_RENDERING_HINTS)
     g2d.color = primaryPanelBackground
     g2d.fillRect(0, 0, width, height)
+
     emptyText.paint(this, g)
     processNotDebuggableText.paint(this, g)
+    navigateToDebuggableProcessText.paint(this, g)
 
     g2d.transform = g2d.transform.apply { concatenate(deviceViewContentPanelTransform) }
 

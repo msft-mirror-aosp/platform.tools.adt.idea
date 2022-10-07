@@ -15,24 +15,23 @@
  */
 package com.android.build.attribution.ui
 
+import com.android.build.attribution.AbstractBuildAnalysisResult
 import com.android.build.attribution.BuildAnalyzerStorageManager
-import com.android.build.attribution.analyzers.BuildEventsAnalyzersProxy
+import com.android.build.attribution.FailureResult
+import com.android.build.attribution.analyzers.CriticalPathAnalyzer
 import com.android.build.attribution.analyzers.JetifierCanBeRemoved
 import com.android.build.attribution.analyzers.JetifierUsageAnalyzerResult
-import com.android.build.attribution.data.BuildRequestHolder
-import com.android.build.attribution.data.PluginContainer
-import com.android.build.attribution.data.TaskContainer
+import com.android.build.attribution.constructEmptyBuildResultsObject
 import com.android.build.attribution.ui.analytics.BuildAttributionUiAnalytics
-import com.android.build.attribution.ui.data.BuildAttributionReportUiData
-import com.android.build.attribution.ui.data.builder.AbstractBuildAttributionReportBuilderTest
-import com.android.build.attribution.ui.data.builder.BuildAttributionReportBuilder
+import com.android.testutils.MockitoKt
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.VirtualTimeScheduler
+import com.android.tools.adtui.TreeWalker
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.Projects
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
+import com.android.tools.idea.util.toIoFile
 import com.google.common.truth.Truth
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.BuildAttributionUiEvent
@@ -41,6 +40,7 @@ import com.intellij.build.BuildContentManagerImpl
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.PlatformTestUtil
@@ -48,8 +48,11 @@ import com.intellij.testFramework.registerComponentInstance
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.text.DateFormatUtil
+import com.intellij.util.ui.UIUtil
 import org.jetbrains.android.AndroidTestCase
+import org.mockito.Mockito
 import java.util.UUID
+import javax.swing.JEditorPane
 import javax.swing.JPanel
 
 
@@ -60,7 +63,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   private val tracker = TestUsageTracker(VirtualTimeScheduler())
 
   private lateinit var buildAttributionUiManager: BuildAttributionUiManagerImpl
-  private lateinit var reportUiData: BuildAttributionReportUiData
+  private val buildAnalyzerStorageMock = mock<BuildAnalyzerStorageManager>()
   private lateinit var buildSessionId: String
 
   override fun setUp() {
@@ -68,6 +71,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     UsageTracker.setWriterForTest(tracker)
     windowManager = ToolWindowHeadlessManagerImpl(project)
     registerProjectService(ToolWindowManager::class.java, windowManager)
+    registerProjectService(BuildAnalyzerStorageManager::class.java, buildAnalyzerStorageMock)
     registerProjectService(BuildContentManager::class.java, BuildContentManagerImpl(project))
 
     // Add a fake build tab
@@ -76,7 +80,6 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     )
 
     buildAttributionUiManager = BuildAttributionUiManagerImpl(project)
-    reportUiData = BuildAttributionReportBuilder(AbstractBuildAttributionReportBuilderTest.MockResultsProvider()).build()
     buildSessionId = UUID.randomUUID().toString()
 
     project.registerComponentInstance(FileEditorManager::class.java, FileEditorManagerImpl(project), testRootDisposable)
@@ -89,7 +92,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testShowNewReport() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
 
     verifyBuildAnalyzerTabExist()
     verifyBuildAnalyzerTabNotSelected()
@@ -110,21 +113,23 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
 
   fun testShowBuildAnalysisReportById() {
     StudioFlags.BUILD_ANALYZER_HISTORY.override(true)
-    BuildAnalyzerStorageManager.getInstance(project).storeNewBuildResults(
-      BuildEventsAnalyzersProxy(TaskContainer(), PluginContainer()),
-      buildSessionId,
-      BuildRequestHolder(GradleBuildInvoker.Request
-                           .builder(project, Projects.getBaseDirPath(project), "assembleDebug").build()))
+
+    val buildFinishedTimestamp = System.currentTimeMillis()
+    val result = constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)).copy(
+      criticalPathAnalyzerResult = CriticalPathAnalyzer.Result(emptyList(), emptyList(), 0, buildFinishedTimestamp)
+    )
+    Mockito.`when`(buildAnalyzerStorageMock.getHistoricBuildResultByID(MockitoKt.eq(buildSessionId))).thenReturn(result)
+
     buildAttributionUiManager.showBuildAnalysisReportById(buildSessionId)
     PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-    val buildDescriptor = BuildAnalyzerStorageManager.getInstance(project).getListOfHistoricBuildDescriptors().single()
+
     val selectedEditor = FileEditorManagerEx.getInstance(project).selectedEditor!!
     val vf = selectedEditor.file
-    Truth.assertThat(vf.name).isEqualTo("Build report: ${DateFormatUtil.formatDateTime((buildDescriptor.buildFinishedTimestamp))}")
+    Truth.assertThat(vf.name).isEqualTo("Build report: ${DateFormatUtil.formatDateTime(buildFinishedTimestamp)}")
   }
 
   fun testOnBuildFailureWhenTabClosed() {
-    sendOnBuildFailure(buildSessionId)
+    setNewReportData(FailureResult(buildSessionId, FailureResult.Type.BUILD_FAILURE))
 
     verifyBuildAnalyzerTabNotExist()
 
@@ -139,7 +144,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
 
 
   fun testShowNewReportAndOpenWithLink() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
     openBuildAnalyzerTabFromAction()
 
     verifyBuildAnalyzerTabExist()
@@ -157,7 +162,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testShowNewReportAndOpenWithTabClick() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
     selectBuildAnalyzerTab()
 
     verifyBuildAnalyzerTabExist()
@@ -175,7 +180,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testContentTabClosed() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
     // Get the reference to check the state later
     val buildAttributionTreeView = buildAttributionUiManager.buildAttributionView!!
     closeBuildAnalyzerTab()
@@ -203,10 +208,10 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     val buildSessionId2 = UUID.randomUUID().toString()
     val buildSessionId3 = UUID.randomUUID().toString()
 
-    setNewReportData(reportUiData, buildSessionId1)
-    setNewReportData(reportUiData, buildSessionId2)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId1, Projects.getBaseDirPath(project)))
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId2, Projects.getBaseDirPath(project)))
     closeBuildAnalyzerTab()
-    setNewReportData(reportUiData, buildSessionId3)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId3, Projects.getBaseDirPath(project)))
 
     verifyBuildAnalyzerTabExist()
 
@@ -229,8 +234,8 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     val buildSessionId1 = UUID.randomUUID().toString()
     val buildSessionId2 = UUID.randomUUID().toString()
 
-    setNewReportData(reportUiData, buildSessionId1)
-    sendOnBuildFailure(buildSessionId2)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId1, Projects.getBaseDirPath(project)))
+    setNewReportData(FailureResult(buildSessionId2, FailureResult.Type.BUILD_FAILURE))
 
     verifyBuildAnalyzerTabExist()
 
@@ -252,7 +257,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testReportTabSelectedAndUnselected() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
 
     verifyBuildAnalyzerTabExist()
 
@@ -276,7 +281,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testBuildOutputLinkClickAfterTabUnselected() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
 
     verifyBuildAnalyzerTabExist()
 
@@ -300,7 +305,7 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testBuildOutputLinkClickAfterTabClosed() {
-    setNewReportData(reportUiData, buildSessionId)
+    setNewReportData(constructEmptyBuildResultsObject(buildSessionId, Projects.getBaseDirPath(project)))
 
     closeBuildAnalyzerTab()
     openBuildAnalyzerTabFromAction()
@@ -325,6 +330,46 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     Truth.assertThat(buildAttributionUiManager.buildContent).isNotNull()
   }
 
+  fun testContentOnBuildFailure() {
+    setNewReportData(FailureResult(buildSessionId, FailureResult.Type.BUILD_FAILURE))
+
+    openBuildAnalyzerTabFromAction()
+
+    verifyBuildAnalyzerTabSelected()
+
+    val page = contentManager().findContent("Build Analyzer").component
+    val pane = TreeWalker(page).descendants().filterIsInstance<JEditorPane>().single()
+    val text = UIUtil.getHtmlBody(pane.text)
+      .trimIndent()
+      .replace("\n","")
+      .replace("<br>","\n")
+      .trim()
+    Truth.assertThat(text).isEqualTo("""
+      The Build Analyzer isn't able to analyze your build as the most recent build failed.
+      Please address any warnings in the Build Output window and rebuild your project.
+    """.trimIndent())
+  }
+
+  fun testContentOnAnalysisFailure() {
+    setNewReportData(FailureResult(buildSessionId, FailureResult.Type.ANALYSIS_FAILURE))
+
+    openBuildAnalyzerTabFromAction()
+
+    verifyBuildAnalyzerTabSelected()
+
+    val page = contentManager().findContent("Build Analyzer").component
+    val pane = TreeWalker(page).descendants().filterIsInstance<JEditorPane>().single()
+    val text = UIUtil.getHtmlBody(pane.text)
+      .trimIndent()
+      .replace("\n","")
+      .replace("<br>","\n")
+      .trim()
+    Truth.assertThat(text).isEqualTo("""
+      There was an internal failure in Build Analyzer while running analysis of this build.
+      Please help us fix it by reporting the problem using Help &gt; Submit Feedback action.
+    """.trimIndent())
+  }
+
   fun testProjectCloseBeforeAnyBuildFinished() {
     // Regression test for b/147449711.
     // Calling disposeRootDisposable() before would result in an NullPointerException exception being thrown in metrics sending logic
@@ -333,15 +378,15 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
   }
 
   fun testAutoOpenedOnCheckJetifierBuilds() {
-    val buildAnalysisResult = object : AbstractBuildAttributionReportBuilderTest.MockResultsProvider() {
-      override fun getJetifierUsageResult(): JetifierUsageAnalyzerResult = JetifierUsageAnalyzerResult(
+
+    val buildAnalysisResult = constructEmptyBuildResultsObject(buildSessionId, project.guessProjectDir()?.toIoFile()!!).copy(
+      jetifierUsageAnalyzerResult = JetifierUsageAnalyzerResult(
         JetifierCanBeRemoved,
         lastCheckJetifierBuildTimestamp = 0,
         checkJetifierBuild = true
       )
-    }
-    val reportUiData = BuildAttributionReportBuilder(buildAnalysisResult).build()
-    setNewReportData(reportUiData, buildSessionId)
+    )
+    setNewReportData(buildAnalysisResult)
 
     verifyBuildAnalyzerTabExist()
     verifyBuildAnalyzerTabSelected()
@@ -361,13 +406,10 @@ class BuildAttributionUiManagerTest : AndroidTestCase() {
     PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
   }
 
-  private fun setNewReportData(reportUiData: BuildAttributionReportUiData, buildSessionId: String) {
-    buildAttributionUiManager.showNewReport(reportUiData, buildSessionId)
-    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-  }
-
-  private fun sendOnBuildFailure(buildSessionId: String) {
-    buildAttributionUiManager.onBuildFailure(buildSessionId)
+  private fun setNewReportData(exampleResult: AbstractBuildAnalysisResult) {
+    Mockito.`when`(buildAnalyzerStorageMock.getLatestBuildAnalysisResults()).thenReturn(exampleResult)
+    Mockito.`when`(buildAnalyzerStorageMock.hasData()).thenReturn(true)
+    buildAttributionUiManager.showNewReport()
     PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
   }
 

@@ -192,6 +192,7 @@ class DeviceViewPanelWithFullInspectorTest {
         settings,
         projectRule.fixture.testRootDisposable
     )
+    val banner = InspectorBannerService.getInstance(inspectorRule.project) ?: error("no banner")
     val deviceModel = panel.getData(DEVICE_VIEW_MODEL_KEY.name) as RenderModel
     delegateDataProvider(panel)
     flatten(panel).filterIsInstance<ActionToolbar>().forEach { it.updateActionsImmediately() }
@@ -216,25 +217,23 @@ class DeviceViewPanelWithFullInspectorTest {
     assertThat(scheduler.isShutdown).isTrue()
     assertThat(deviceModel.isRotated).isTrue()
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message)
-      .isEqualTo(LayoutInspectorBundle.message(PERFORMANCE_WARNING_3D))
+    assertThat(banner.notification?.message).isEqualTo(LayoutInspectorBundle.message(PERFORMANCE_WARNING_3D))
 
     // Turn 3D mode off:
     toggle.click()
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message).isNull()
+    assertThat(banner.notification?.message).isNull()
 
     // Hide VIEW2:
     val view2 = inspectorRule.inspectorModel[VIEW2]!!
     inspectorRule.inspectorModel.hideSubtree(view2)
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message)
-      .isEqualTo(LayoutInspectorBundle.message(PERFORMANCE_WARNING_HIDDEN))
+    assertThat(banner.notification?.message).isEqualTo(LayoutInspectorBundle.message(PERFORMANCE_WARNING_HIDDEN))
 
     // Show all:
     inspectorRule.inspectorModel.showAll()
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message).isNull()
+    assertThat(banner.notification?.message).isNull()
   }
 
   private fun delegateDataProvider(panel: DeviceViewPanel) {
@@ -659,7 +658,7 @@ class DeviceViewPanelWithFullInspectorTest {
   fun testGotoDeclarationOfViewWithoutAnId() {
     gotoDeclaration(VIEW3)
     fileOpenCaptureRule.checkNoNavigation()
-    assertThat(InspectorBannerService.getInstance(inspectorRule.project).notification?.message)
+    assertThat(InspectorBannerService.getInstance(inspectorRule.project)?.notification?.message)
       .isEqualTo("It appears that the v3 in the layout demo.xml doesnt have an id.")
   }
 
@@ -1044,35 +1043,71 @@ class DeviceViewPanelTest {
     testPan({ _, _ -> }, { _, _ -> }, Button.MIDDLE)
   }
 
+  @Test
+  fun testDragWithSpaceFromSnapshot() {
+    testPan(
+      { ui, _ -> ui.keyboard.press(FakeKeyboard.Key.SPACE) },
+      { ui, _ -> ui.keyboard.release(FakeKeyboard.Key.SPACE) },
+      fromSnapshot = true
+    )
+  }
+
+  @Test
+  fun testDragInPanModeFromSnapShot() {
+    testPan(
+      { _, panel -> panel.isPanning = true },
+      { _, panel -> panel.isPanning = false },
+      fromSnapshot = true
+    )
+  }
+
+  @Test
+  fun testDragWithMiddleButtonFromSnapshot() {
+    testPan({ _, _ -> }, { _, _ -> }, Button.MIDDLE, fromSnapshot = true)
+  }
   private fun testPan(startPan: (FakeUi, DeviceViewPanel) -> Unit,
                       endPan: (FakeUi, DeviceViewPanel) -> Unit,
-                      panButton: Button = Button.LEFT) {
+                      panButton: Button = Button.LEFT,
+                      fromSnapshot: Boolean = false) {
     val model = model {
       view(ROOT, 0, 0, 100, 200) {
         view(VIEW1, 25, 30, 50, 50)
       }
     }
 
-    val fakeProcess = createFakeStream().createFakeProcess()
-    val processes = ProcessesModel(TestProcessDiscovery())
-    val latch = CountDownLatch(1)
-    processes.addSelectedProcessListeners {
-      latch.countDown()
-    }
-
-    processes.selectedProcess = fakeProcess
-    latch.await()
-
     val launcher: InspectorClientLauncher = mock()
     val client: InspectorClient = mock()
     whenever(client.capabilities).thenReturn(setOf(InspectorClient.Capability.SUPPORTS_SKP))
+    whenever(client.stats).thenReturn(mock())
     whenever(launcher.activeClient).thenReturn(client)
     val treeSettings = FakeTreeSettings()
-    val inspector = LayoutInspector(launcher, model, treeSettings, MoreExecutors.directExecutor())
     treeSettings.hideSystemNodes = false
+
+    val inspector: LayoutInspector
+    val processes: ProcessesModel?
+    val deviceModel: DeviceModel?
+    if (fromSnapshot) {
+      inspector = LayoutInspector(client, model, treeSettings)
+      processes = null
+      deviceModel = null
+    }
+    else {
+      val fakeProcess = createFakeStream().createFakeProcess()
+      val latch = CountDownLatch(1)
+      processes = ProcessesModel(TestProcessDiscovery())
+      processes.addSelectedProcessListeners {
+        latch.countDown()
+      }
+
+      processes.selectedProcess = fakeProcess
+      latch.await()
+
+      inspector = LayoutInspector(launcher, model, treeSettings, MoreExecutors.directExecutor())
+      deviceModel = DeviceModel(processes)
+    }
     val settings = EditorRenderSettings()
     val panel = DeviceViewPanel(
-      DeviceModel(processes),
+      deviceModel,
       processes,
       {},
       {},
@@ -1089,7 +1124,9 @@ class DeviceViewPanelTest {
         id -> if (id == LAYOUT_INSPECTOR_DATA_KEY.name) inspector else null
     }
 
-    assertThat(processes.selectedProcess).isNotNull()
+    if (!fromSnapshot) {
+      assertThat(processes?.selectedProcess).isNotNull()
+    }
 
     contentPanel.setSize(200, 300)
     viewport.extentSize = Dimension(100, 100)
@@ -1125,9 +1162,12 @@ class DeviceViewPanelTest {
     startPan(fakeUi, panel)
     fakeUi.mouse.press(20, 20, panButton)
     assertThat(panel.isPanning).isTrue()
+
     // make sure that disconnecting the process disables panning
-    processes.selectedProcess = null
-    assertThat(panel.isPanning).isFalse()
+    if (!fromSnapshot) {
+      processes?.selectedProcess = null
+      assertThat(panel.isPanning).isFalse()
+    }
   }
 }
 
@@ -1430,14 +1470,23 @@ class DeviceViewPanelWithNoClientsTest {
 
     // false by default
     assertThat(deviceViewContentPanel.showProcessNotDebuggableText).isFalse()
+    assertThat(deviceViewContentPanel.showNavigateToDebuggableProcess).isFalse()
 
     // connect device
     deviceModel.selectedDevice = MODERN_DEVICE
 
+    // remains false, because the device is connected but no foreground process showed up yet
+    assertThat(deviceViewContentPanel.showProcessNotDebuggableText).isFalse()
+
+    // becomes true, because the device is connected but no foreground process showed up yet
+    assertThat(deviceViewContentPanel.showNavigateToDebuggableProcess).isTrue()
+
+    // send a non-debuggable process (not in the process model)
     panel.onNewForegroundProcess(ForegroundProcess(1, "random"))
 
-    // becomes true because the foreground process is not in the process model
+    // remains true because the foreground process is not in the process model
     assertThat(deviceViewContentPanel.showProcessNotDebuggableText).isTrue()
+    assertThat(deviceViewContentPanel.showNavigateToDebuggableProcess).isFalse()
 
     val process = MODERN_PROCESS
     inspectorRule.processNotifier.addDevice(process.device)
@@ -1446,10 +1495,12 @@ class DeviceViewPanelWithNoClientsTest {
     postCreateLatch.countDown()
     inspectorRule.awaitLaunch()
 
+    // send a debuggable process (in the process model)
     panel.onNewForegroundProcess(ForegroundProcess(MODERN_PROCESS.pid, MODERN_PROCESS.name))
 
     // goes back to false because MODERN_PROCESS is in the process model
     assertThat(deviceViewContentPanel.showProcessNotDebuggableText).isFalse()
+    assertThat(deviceViewContentPanel.showNavigateToDebuggableProcess).isFalse()
   }
 }
 

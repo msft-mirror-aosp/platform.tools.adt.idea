@@ -18,94 +18,141 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="@drawable/touchable_area_delimiter"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    android:background="@drawable/initialized"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:keepScreenOn="true"
     tools:context=".InputEventRenderingActivity">
+  <TextView
+      android:id="@+id/entered_text"
+      android:layout_gravity="bottom|center_horizontal"
+      style="@style/text_bubble"
+      tools:text="12,6,2" />
   <androidx.constraintlayout.widget.ConstraintLayout
       android:layout_width="match_parent"
       android:layout_height="match_parent">
-    <TextView
+    <com.android.tools.screensharing.benchmark.EncodedIntegerView
         android:id="@+id/x"
-        android:gravity="bottom|center_horizontal"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:visibility="invisible"
+        android:orientation="vertical"
+        custom:maxBits="12"
+        custom:bitsPerChannel="2"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintWidth_default="percent"
         app:layout_constraintWidth_percent="0.5"
         app:layout_constraintHeight_default="percent"
-        app:layout_constraintHeight_percent="0.5"
-        tools:background="#1000D0"
-        tools:visibility="visible"
-        tools:text="128 #1000D0"
-        tools:textColor="#FFFFFF"/>
-    <TextView
+        app:layout_constraintHeight_percent="0.5">
+      <TextView
+          android:gravity="bottom|end"
+          tools:background="#004080"
+          tools:text="#004080"
+          tools:textColor="#FFFFFF"
+          style="@style/encoded_integer_view_block" />
+      <TextView
+          android:gravity="bottom|end"
+          tools:background="#0080C0"
+          tools:text="#0080C0"
+          tools:textColor="#FFFFFF"
+          style="@style/encoded_integer_view_block" />
+    </com.android.tools.screensharing.benchmark.EncodedIntegerView>
+
+    <com.android.tools.screensharing.benchmark.EncodedIntegerView
         android:id="@+id/y"
-        android:gravity="bottom|center_horizontal"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:visibility="invisible"
+        android:orientation="vertical"
+        custom:maxBits="12"
+        custom:bitsPerChannel="2"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintWidth_default="percent"
         app:layout_constraintWidth_percent="0.5"
         app:layout_constraintHeight_default="percent"
-        app:layout_constraintHeight_percent="0.5"
-        tools:text="256 #D030C0"
-        tools:background="#D030C0"
-        tools:visibility="visible"/>
+        app:layout_constraintHeight_percent="0.5">
+      <TextView
+          android:gravity="bottom|end"
+          tools:text="#00C000"
+          tools:textColor="#FFFFFF"
+          tools:background="#00C000"
+          style="@style/encoded_integer_view_block" />
+      <TextView
+          android:gravity="bottom|end"
+          tools:text="#4040480"
+          tools:background="#404080"
+          tools:textColor="#FFFFFF"
+          style="@style/encoded_integer_view_block" />
+    </com.android.tools.screensharing.benchmark.EncodedIntegerView>
+
     <FrameLayout
         android:id="@+id/object_tracking"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="@drawable/rick_bg"
-        android:gravity="top|left"
-        android:visibility="invisible"
+        android:gravity="top|start"
         app:layout_constraintBottom_toTopOf="@id/noise_bitmap"
         app:layout_constraintHeight_default="percent"
         app:layout_constraintHeight_percent="0.35"
-        tools:layout_editor_absoluteX="35dp"
-        tools:visibility="visible">
+        tools:layout_editor_absoluteX="35dp">
       <ImageView
           android:id="@+id/rick"
           android:layout_width="60dp"
           android:layout_height="60dp"
           android:scaleType="centerCrop"
           android:src="@drawable/rick_head"
-          android:visibility="invisible"
           tools:layout_marginStart="100dp"
-          tools:layout_marginTop="38dp"
-          tools:visibility="visible"/>
+          tools:layout_marginTop="38dp"/>
+      <TextView
+          android:id="@+id/coordinates"
+          style="@style/text_bubble"
+          tools:text="(395,790)" />
     </FrameLayout>
     <ImageView
         android:id="@+id/noise_bitmap"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:visibility="invisible"
         android:scaleType="fitXY"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintHeight_default="percent"
         app:layout_constraintHeight_percent="0.15"
         app:layout_constraintWidth_default="percent"
-        app:layout_constraintWidth_percent="0.75"
-        tools:visibility="visible"/>
-    <TextView
+        app:layout_constraintWidth_percent="0.75" />
+
+    <com.android.tools.screensharing.benchmark.CachingEncodedIntegerView
         android:id="@+id/frame_latency"
-        android:gravity="top|center_horizontal"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#0000FF"
-        android:visibility="invisible"
+        android:orientation="vertical"
         app:layout_constraintTop_toTopOf="@id/noise_bitmap"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintLeft_toRightOf="@id/noise_bitmap"
-        tools:visibility="visible"
-        tools:text="15 #0000FF"
-        tools:textColor="#FFFFFF" />
+        custom:maxBits="6"
+        custom:bitsPerChannel="1">
+      <TextView
+          android:gravity="top|end"
+          style="@style/encoded_integer_view_block"
+          tools:background="#000000"
+          tools:text="#000000"
+          tools:textColor="#FFFFFF" />
+      <TextView
+          android:gravity="top|end"
+          style="@style/encoded_integer_view_block"
+          tools:background="#FFFFFF"
+          tools:text="#FFFFFF"
+          tools:textColor="#000000" />
+    </com.android.tools.screensharing.benchmark.CachingEncodedIntegerView>
+
+    <TextView
+        android:id="@+id/frame_latency_text"
+        app:layout_constraintLeft_toLeftOf="@id/frame_latency"
+        app:layout_constraintTop_toTopOf="@id/frame_latency"
+        app:layout_constraintBottom_toBottomOf="@id/frame_latency"
+        style="@style/text_bubble"
+        tools:text="7 ms" />
   </androidx.constraintlayout.widget.ConstraintLayout>
 </FrameLayout>

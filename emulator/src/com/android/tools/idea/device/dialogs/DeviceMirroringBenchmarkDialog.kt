@@ -15,8 +15,9 @@
  */
 package com.android.tools.idea.device.dialogs
 
-import com.android.tools.idea.device.DeviceMirroringBenchmarker
-import com.android.tools.idea.emulator.AbstractDisplayView
+import com.android.tools.idea.device.benchmark.Benchmarker
+import com.android.tools.idea.device.benchmark.DeviceAdapter
+import com.android.tools.idea.device.benchmark.DeviceMirroringBenchmarkTarget
 import com.intellij.CommonBundle
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -31,6 +32,7 @@ import com.intellij.ui.dsl.gridLayout.HorizontalAlign
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.not
 import java.awt.Component
+import java.awt.Point
 import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.DefaultBoundedRangeModel
@@ -44,7 +46,7 @@ import kotlin.properties.Delegates
  * The dialog shows options for benchmarking and also shows progress while the benchmarking is underway.
  * When benchmarking finishes, a dialog displaying results is popped up.
  */
-class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val view: AbstractDisplayView) {
+class DeviceMirroringBenchmarkDialog(private val target: DeviceMirroringBenchmarkTarget) {
   private val isRunningListeners: MutableList<(Boolean) -> Unit> = mutableListOf()
   private val isRunning = object : ComponentPredicate() {
       override fun invoke(): Boolean = benchmarker != null
@@ -56,13 +58,15 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
   private val dispatchedProgressBar = JProgressBar(DefaultBoundedRangeModel(0, 0, 0, 100))
   private val receivedProgressBar = JProgressBar(DefaultBoundedRangeModel(0, 0, 0, 100))
 
-  private var benchmarker: DeviceMirroringBenchmarker? by Delegates.observable(null) { _, _, newValue ->
+  private var benchmarker: Benchmarker<Point>? by Delegates.observable(null) { _, _, newValue ->
     isRunningListeners.forEach { it(newValue != null) }
   }
   private var touchRateHz = 60
   private var maxTouches = 10_000
   private var step = 1
   private var spikiness = 3
+  private var bitsPerChannel = 2
+  private var latencyBits = 6
 
   private fun createPanel() = panel {
     panel {
@@ -73,14 +77,23 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
       row("Max input events") {
         intTextField(1..Int.MAX_VALUE, 100).bindIntText(::maxTouches)
       }
-      row("Drag speed") {
-        intTextField(1 .. 10, 1).bindIntText(::step)
-        text("px/frame")
-      }
-      row("Spikiness") {
-        intTextField(0..100, 1).bindIntText(::spikiness)
-        text("oscillations/row")
-      }
+      collapsibleGroup("Advanced Options") {
+        row("Drag speed") {
+          intTextField(1..10, 1).bindIntText(::step)
+          text("px/frame")
+        }
+        row("Spikiness") {
+          intTextField(0..100, 1).bindIntText(::spikiness)
+          text("oscillations/row")
+        }
+        row("Bits per channel") {
+          intTextField(0..8, 1).bindIntText(::bitsPerChannel)
+          text("use 0 for monochrome")
+        }
+        row("Frame latency bits") {
+          intTextField(1..16, 1).bindIntText(::latencyBits)
+        }
+      }.apply { expanded = false }
     }.enabledIf(isRunning.not())
     panel {
       separator("Note")
@@ -108,7 +121,7 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
     val startAction = StartBenchmarkAction(project, dialogPanel)
     isRunning.addListener { startAction.isEnabled = !it }
     return dialog(
-      title = "Benchmark $deviceName Mirroring",
+      title = "Benchmark ${target.name} Mirroring",
       resizable = true,
       panel = dialogPanel,
       project = project,
@@ -122,30 +135,34 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
     }
 
     override fun actionPerformed(e: ActionEvent?) {
+      if (project == null) return
       dialogPanel.apply()
-      benchmarker = DeviceMirroringBenchmarker(view, touchRateHz, maxTouches, step, spikiness).apply {
+      val deviceAdapter = DeviceAdapter(project, target, bitsPerChannel, latencyBits, maxTouches, step, spikiness)
+      benchmarker = Benchmarker(deviceAdapter, touchRateHz).apply {
         addOnProgressCallback { dispatchedProgress, receivedProgress ->
           dispatchedProgressBar.updateProgress(dispatchedProgress)
           receivedProgressBar.updateProgress(receivedProgress)
         }
         addOnStoppedCallback {
+          dispatchedProgressBar.updateProgress(0.0)
+          receivedProgressBar.updateProgress(0.0)
           if (!isDone()) {
-            ApplicationManager.getApplication().invokeLater { showErrorNotification() }
+            ApplicationManager.getApplication().invokeLater { showErrorNotification(failureMsg) }
           }
           benchmarker = null
         }
         addOnCompleteCallback {
           ApplicationManager.getApplication().invokeLater {
-            DeviceMirroringBenchmarkResultsDialog(deviceName, it).createWrapper(project).show()
+            DeviceMirroringBenchmarkResultsDialog(target.name, it).createWrapper(project).show()
           }
         }
         start()
       }
     }
 
-    private fun showErrorNotification() {
+    private fun showErrorNotification(msg: String) {
       NotificationGroupManager.getInstance().getNotificationGroup("DeviceMirrorBenchmarking")
-        .createNotification(ERROR_TITLE, ERROR_MSG, NotificationType.ERROR).notify(project)
+        .createNotification(ERROR_TITLE, msg, NotificationType.ERROR).notify(project)
     }
   }
 
@@ -165,7 +182,5 @@ class DeviceMirroringBenchmarkDialog(private val deviceName: String, private val
 
   companion object {
     private const val ERROR_TITLE = "Benchmarking failed"
-    private const val ERROR_MSG = "Check that you have the Mirroring Benchmarker app " +
-                                  "installed and active on the device you want to benchmark."
   }
 }
