@@ -31,16 +31,17 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CountDownLatch
 import javax.swing.JComponent
 import javax.swing.JPanel
-import junit.framework.Assert.assertTrue
 import kotlin.test.assertContains
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertArrayEquals
+import kotlinx.coroutines.withContext
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -149,12 +150,15 @@ class ComposePreviewRepresentationTest {
           PreferredVisibility.SPLIT
         ) { _, _, _, _, _, _, _, _, _ -> composeView }
       Disposer.register(fixture.testRootDisposable, preview)
-      launch(workerThread) {
+      withContext(Dispatchers.IO) {
         ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
         preview.onActivate()
-      }
 
-      modelRenderedLatch.await()
+        modelRenderedLatch.await()
+
+        while (preview.status().isRefreshing || DumbService.getInstance(project).isDumb) kotlinx
+          .coroutines.delay(250)
+      }
 
       mainSurface.models.forEach { assertContains(navigationHandler.defaultNavigationMap, it) }
 
@@ -162,13 +166,16 @@ class ComposePreviewRepresentationTest {
         arrayOf("groupA"),
         preview.availableGroups.map { it.displayName }.toTypedArray()
       )
-/* b/250333664
+
+      val status = preview.status()
+      val debugStatus = preview.debugStatusForTesting()
+      assertFalse(debugStatus.toString(), status.isOutOfDate)
+      // Ensure the only warning message is the missing Android SDK message
       assertTrue(
-        !preview.status().hasErrors &&
-          !preview.status().hasRuntimeErrors &&
-          !preview.status().isOutOfDate
+        debugStatus.renderResult.flatMap { it.logger.messages }.none {
+          !it.html.contains("No Android SDK found.")
+        }
       )
-b/250333664 */
       preview.onDeactivate()
     }
 }

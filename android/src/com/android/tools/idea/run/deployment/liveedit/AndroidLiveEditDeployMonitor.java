@@ -31,6 +31,8 @@ import com.android.tools.deployer.MetricsRecorder;
 import com.android.tools.deployer.tasks.LiveUpdateDeployer;
 import com.android.tools.idea.editors.literals.EditState;
 import com.android.tools.idea.editors.literals.EditStatus;
+import com.android.tools.idea.editors.literals.ManualLiveEditReset;
+import com.android.tools.idea.editors.literals.ManualLiveEditTrigger;
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration;
 import com.android.tools.idea.editors.literals.LiveEditService;
 import com.android.tools.idea.editors.literals.LiveLiteralsMonitorHandler;
@@ -44,6 +46,7 @@ import com.android.tools.idea.run.deployment.AndroidExecutionTarget;
 import com.android.tools.idea.util.StudioPathManager;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.LiveEditEvent;
+import com.intellij.concurrency.JobScheduler;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl;
 import com.intellij.openapi.application.ApplicationManager;
@@ -65,6 +68,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -154,10 +158,11 @@ public class AndroidLiveEditDeployMonitor {
 
   private static final EditStatus UP_TO_DATE = new EditStatus(EditState.UP_TO_DATE, "Up to date", null);
 
-  private static final EditStatus OUT_OF_DATE = new EditStatus(EditState.OUT_OF_DATE, "Refresh ("+ LiveEditService.Companion.leTextKey() +") to view the latest Live Edit Changes", "android.deploy.livedit.trigger");
+  private static final EditStatus OUT_OF_DATE = new EditStatus(EditState.OUT_OF_DATE, "Refresh to view the latest Live Edit Changes", "android.deploy.livedit.trigger");
 
-  private static final EditStatus RECOMPOSE_NEEDED = new EditStatus(EditState.RECOMPOSE_NEEDED, "Hard refresh (" + LiveEditService.Companion.leResetTextKey() + ") must occur for all changes to be applied. App state will be reset", "android.deploy.livedit.recompose");
+  private static final EditStatus RECOMPOSE_NEEDED = new EditStatus(EditState.RECOMPOSE_NEEDED, "Hard refresh must occur for all changes to be applied. App state will be reset", "android.deploy.livedit.recompose");
 
+  private static final EditStatus RECOMPOSE_ERROR = new EditStatus(EditState.RECOMPOSE_ERROR, "Error during recomposition", null);
 
   private final @NotNull Project project;
 
@@ -241,6 +246,7 @@ public class AndroidLiveEditDeployMonitor {
           case PAUSED:
           case UP_TO_DATE:
           case IN_PROGRESS:
+          case RECOMPOSE_ERROR:
             return UPDATE_IN_PROGRESS;
           default:
             return editStatus;
@@ -413,6 +419,19 @@ public class AndroidLiveEditDeployMonitor {
     return true;
   }
 
+  private void scheduleErrorPolling(LiveUpdateDeployer deployer, Installer installer, AdbClient adb, String packageName) {
+    ScheduledExecutorService scheduler = JobScheduler.getScheduler();
+    ScheduledFuture<?> statusPolling = scheduler.scheduleWithFixedDelay(() -> {
+      boolean hasError = !deployer.retrieveComposeStatus(installer, adb, packageName);
+      if (hasError) {
+        updateEditStatus(RECOMPOSE_ERROR);
+      }
+    }, 2, 2, TimeUnit.SECONDS);
+    // Schedule a cancel after 10 seconds.
+    scheduler.schedule(() -> {statusPolling.cancel(true);}, 10, TimeUnit.SECONDS);
+  }
+
+
   private static LiveEditEvent.Status errorToStatus(LiveUpdateDeployer.UpdateLiveEditError error) {
     switch(error.getType()) {
       case ADDED_METHOD:
@@ -482,22 +501,22 @@ public class AndroidLiveEditDeployMonitor {
   private void doSendRecomposeRequest() {
     try {
       deviceIterator(project, applicationId).forEach(device -> sendRecomposeRequests(device));
-      // TODO: Check that no error happened during recompose.
     } finally {
       updateEditStatus(UP_TO_DATE);
     }
   }
 
   private void sendRecomposeRequests(IDevice device) {
-    LiveUpdateDeployer deployer = new LiveUpdateDeployer();
+    LiveUpdateDeployer deployer = new LiveUpdateDeployer(LOGGER);
     Installer installer = newInstaller(device);
     AdbClient adb = new AdbClient(device, LOGGER);
     deployer.recompose(installer, adb, applicationId);
+    scheduleErrorPolling(deployer, installer, adb, applicationId);
   }
 
   private List<LiveUpdateDeployer.UpdateLiveEditError> pushUpdatesToDevice(
-      String packageName, IDevice device, List<AndroidLiveEditCodeGenerator.CodeGeneratorOutput> updates) {
-    LiveUpdateDeployer deployer = new LiveUpdateDeployer();
+      String applicationId, IDevice device, List<AndroidLiveEditCodeGenerator.CodeGeneratorOutput> updates) {
+    LiveUpdateDeployer deployer = new LiveUpdateDeployer(LOGGER);
     Installer installer = newInstaller(device);
     AdbClient adb = new AdbClient(device, LOGGER);
 
@@ -531,7 +550,7 @@ public class AndroidLiveEditDeployMonitor {
         }
       }
 
-      LiveUpdateDeployer.UpdateLiveEditResult result = deployer.updateLiveEdit(installer, adb, packageName, param);
+      LiveUpdateDeployer.UpdateLiveEditResult result = deployer.updateLiveEdit(installer, adb, applicationId, param);
       if (LiveEditService.Companion.isLeTriggerManual()) {
         // In manual mode, we need to let the user know that recompose was not called if classes were Primed.
         if (result.recomposeType == Deploy.AgentLiveEditResponse.RecomposeType.RESET_SKIPPED) {
@@ -545,6 +564,7 @@ public class AndroidLiveEditDeployMonitor {
       updateEditStatus(RECOMPOSE_NEEDED);
     } else {
       updateEditStatus(UP_TO_DATE);
+      scheduleErrorPolling(deployer, installer, adb, applicationId);
     }
 
     if (!results.isEmpty()) {

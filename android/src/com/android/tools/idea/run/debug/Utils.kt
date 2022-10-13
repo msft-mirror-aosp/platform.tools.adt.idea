@@ -29,6 +29,7 @@ import com.android.tools.idea.logcat.output.LogcatOutputConfigurableProvider
 import com.android.tools.idea.logcat.output.LogcatOutputSettings
 import com.android.tools.idea.run.ApplicationLogListener
 import com.android.tools.idea.run.DeploymentApplicationService
+import com.android.tools.idea.run.ShowLogcatListener
 import com.android.tools.idea.run.tasks.ConnectJavaDebuggerTask
 import com.google.common.util.concurrent.Uninterruptibles
 import com.intellij.execution.ExecutionBundle
@@ -38,11 +39,13 @@ import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionUtil
+import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.wm.ToolWindowId
+import org.jetbrains.android.util.AndroidBundle
 import java.time.ZoneId
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -54,54 +57,63 @@ import java.util.function.Function
  */
 @WorkerThread
 @Throws(ExecutionException::class)
-internal fun waitForClientReadyForDebug(device: IDevice, appIds: Collection<String>, pollTimeoutSeconds: Int = 15): Client {
-  val timeUnit = TimeUnit.SECONDS
+internal fun waitForClientReadyForDebug(device: IDevice, appIds: Collection<String>, pollTimeoutSeconds: Long = 15): Client {
 
-  val LOG = Logger.getInstance("waitForClient")
+  Logger.getInstance("waitForClient").info("Waiting for clients $appIds for $pollTimeoutSeconds seconds")
 
-  LOG.info("Waiting for clients $appIds for $pollTimeoutSeconds seconds")
-
-  for (i in 0 until pollTimeoutSeconds) {
+  val startTimeMillis = System.currentTimeMillis()
+  while ((System.currentTimeMillis() - startTimeMillis) <= TimeUnit.SECONDS.toMillis(pollTimeoutSeconds)) {
     ProgressManager.checkCanceled()
     if (!device.isOnline) {
       throw ExecutionException("Device is offline")
     }
+    // Multiple ids can be in the case of instrumented test with orchestrator.
+    // [TODO] pass only one appId.
     for (appId in appIds) {
-      val clients = DeploymentApplicationService.instance.findClient(device, appId)
-      if (clients.isNotEmpty()) {
-        LOG.info("Connecting to $appId")
-        if (clients.size > 1) {
-          LOG.info("Multiple clients with same application ID: $appId")
-        }
-        // Even though multiple processes may be related to a particular application ID, we'll only connect to the first one
-        // in the list since the debugger is set up to only connect to at most one process.
-        // TODO b/122613825: improve support for connecting to multiple processes with the same application ID.
-        // This requires this task to wait for potentially multiple Clients before returning.
-        val client = clients[0]
-        when (client.clientData.debuggerConnectionStatus) {
-          ClientData.DebuggerStatus.WAITING -> {
-            return client
-          }
-
-          ClientData.DebuggerStatus.ERROR -> {
-            val message = String.format(Locale.US,
-                                        "Debug port (%1\$d) is busy, make sure there is no other active debug connection to the same application",
-                                        client.debuggerListenPort)
-            throw ExecutionException(message)
-          }
-          ClientData.DebuggerStatus.ATTACHED -> {
-            throw ExecutionException("A debugger is already attached")
-          }
-          ClientData.DebuggerStatus.DEFAULT -> {
-            continue
-          }
-        }
-
+      val client = getClientWithAppId(device, appId)
+      if (client != null) {
+        return client
       }
     }
-    Uninterruptibles.sleepUninterruptibly(1, timeUnit)
+    Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS)
   }
   throw ExecutionException("Processes ${appIds.joinToString()} are not found. Aborting session.")
+}
+
+private fun getClientWithAppId(device: IDevice, appId: String): Client? {
+  val clients = DeploymentApplicationService.instance.findClient(device, appId)
+  if (clients.isNotEmpty()) {
+    Logger.getInstance("waitForClient").info("Connecting to $appId")
+    if (clients.size > 1) {
+      Logger.getInstance("waitForClient").info("Multiple clients with same application ID: $appId")
+    }
+    // Even though multiple processes may be related to a particular application ID, we'll only connect to the first one
+    // in the list since the debugger is set up to only connect to at most one process.
+    // TODO b/122613825: improve support for connecting to multiple processes with the same application ID.
+    // This requires this task to wait for potentially multiple Clients before returning.
+    val client = clients[0]
+    when (client.clientData.debuggerConnectionStatus) {
+      ClientData.DebuggerStatus.WAITING -> {
+        return client
+      }
+
+      ClientData.DebuggerStatus.ERROR -> {
+        val message = String.format(Locale.US,
+                                    "Debug port (%1\$d) is busy, make sure there is no other active debug connection to the same application",
+                                    client.debuggerListenPort)
+        throw ExecutionException(message)
+      }
+
+      ClientData.DebuggerStatus.ATTACHED -> {
+        throw ExecutionException("A debugger is already attached")
+      }
+
+      ClientData.DebuggerStatus.DEFAULT -> {
+        return null
+      }
+    }
+  }
+  return null
 }
 
 /**
@@ -113,8 +125,12 @@ internal fun showError(project: Project, e: ExecutionException, sessionName: Str
                                      e.message, Function.identity(), null)
 }
 
-internal fun captureLogcatOutputToProcessHandler(client: Client, debugProcessHandler: ProcessHandler) {
+internal fun captureLogcatOutputToProcessHandler(client: Client, consoleView: ConsoleView, debugProcessHandler: ProcessHandler) {
   if (!StudioFlags.RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED.get()) {
+    val device = client.device
+    consoleView.printHyperlink(AndroidBundle.message("android.launch.task.show.logcat", device.name)) {
+      it.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device.serialNumber, client.clientData.clientDescription)
+    }
     return
   }
   if (!LogcatOutputSettings.getInstance().isDebugOutputEnabled) {

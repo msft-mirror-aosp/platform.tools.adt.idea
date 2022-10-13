@@ -722,7 +722,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     List<Cpu.CpuTraceInfo> traceInfoList = CpuProfiler.getTraceInfoFromSession(myClient, mySelectedSession);
     if (!traceInfoList.isEmpty()) {
       Cpu.CpuTraceInfo lastTraceInfo = traceInfoList.get(traceInfoList.size() - 1);
-      return lastTraceInfo.getConfiguration().getInitiationType() == Cpu.TraceInitiationType.INITIATED_BY_STARTUP;
+      return lastTraceInfo.getConfiguration().getInitiationType() == Trace.TraceInitiationType.INITIATED_BY_STARTUP;
     }
 
     return false;
@@ -905,14 +905,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
   public List<StudioProfiler> getProfilers() {
     return myProfilers;
-  }
-
-  public ProfilerMode getMode() {
-    return myStage.getProfilerMode();
-  }
-
-  public void modeChanged() {
-    changed(ProfilerAspect.MODE);
   }
 
   @NotNull

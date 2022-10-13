@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.device
 
+import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
@@ -27,7 +28,6 @@ import com.android.tools.idea.emulator.DeviceMirroringSettingsListener
 import com.android.tools.idea.emulator.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.emulator.constrainInside
 import com.android.tools.idea.emulator.contains
-import com.android.tools.idea.emulator.isSameAspectRatio
 import com.android.tools.idea.emulator.location
 import com.android.tools.idea.emulator.rotatedByQuadrants
 import com.android.tools.idea.emulator.scaled
@@ -113,6 +113,7 @@ class DeviceView(
   disposableParent: Disposable,
   private val deviceSerialNumber: String,
   private val deviceAbi: String,
+  private val deviceName: String,
   private val initialDisplayOrientation: Int,
   private val project: Project,
 ) : AbstractDisplayView(PRIMARY_DISPLAY_ID), Disposable, DeviceMirroringSettingsListener {
@@ -225,7 +226,7 @@ class DeviceView(
 
   private suspend fun initializeAgent(maxOutputSize: Dimension, initialDisplayOrientation: Int) {
     try {
-      val deviceClient = DeviceClient(this, deviceSerialNumber, deviceAbi, project)
+      val deviceClient = DeviceClient(this, deviceSerialNumber, deviceAbi, deviceName, project)
       deviceClient.startAgentAndConnect(maxOutputSize, initialDisplayOrientation, MyFrameListener(), object : AgentTerminationListener {
         override fun agentTerminated(exitCode: Int) {
           disconnected(initialDisplayOrientation)
@@ -315,10 +316,10 @@ class DeviceView(
 
     // Draw device display.
     decoder.consumeDisplayFrame { displayFrame ->
-      val image = displayFrame.image
-      val rect = displayRectangle
-      if (rect != null && !isSameAspectRatio(image.width, image.height, rect.width, rect.height, 0.01)) {
-        zoom(ZoomType.FIT) // Dimensions of the display image changed - reset zoom level.
+      if (displayOrientationQuadrants != displayFrame.orientation ||
+          deviceDisplaySize.width != 0 && deviceDisplaySize.width != displayFrame.displaySize.width ||
+          deviceDisplaySize.height != 0 && deviceDisplaySize.height != displayFrame.displaySize.height) {
+        zoom(ZoomType.FIT) // Orientation or dimensions of the display have changed - reset zoom level.
       }
       val rotatedDisplaySize = displayFrame.displaySize.rotatedByQuadrants(displayFrame.orientation)
       val scale = roundScale(min(realWidth.toDouble() / rotatedDisplaySize.width, realHeight.toDouble() / rotatedDisplaySize.height))
@@ -326,6 +327,7 @@ class DeviceView(
       val h = rotatedDisplaySize.height.scaled(scale).coerceAtMost(realHeight)
       val displayRect = Rectangle((realWidth - w) / 2, (realHeight - h) / 2, w, h)
       displayRectangle = displayRect
+      val image = displayFrame.image
       if (displayRect.width == image.width && displayRect.height == image.height) {
         g.drawImage(image, null, displayRect.x, displayRect.y)
       }
@@ -487,7 +489,7 @@ class DeviceView(
     /**
      * Called when the state of the device agent's connection changes.
      */
-    @UiThread
+    @AnyThread
     fun connectionStateChanged(deviceSerialNumber: String, connectionState: ConnectionState)
   }
 

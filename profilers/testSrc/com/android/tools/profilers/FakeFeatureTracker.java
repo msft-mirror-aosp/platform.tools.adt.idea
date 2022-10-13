@@ -16,7 +16,7 @@
 package com.android.tools.profilers;
 
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.Cpu;
+import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.analytics.FilterMetadata;
 import com.android.tools.profilers.analytics.energy.EnergyEventMetadata;
@@ -60,14 +60,19 @@ public final class FakeFeatureTracker implements FeatureTracker {
   private FilterMetadata myLastFilterMetadata;
 
   /**
-   * Stores the last {@link Cpu.CpuTraceType} passed to the tracker.
+   * Stores the last {@link Trace.UserOptions.TraceType} passed to the tracker.
    */
-  public Cpu.CpuTraceType myLastCpuTraceType;
+  public Trace.UserOptions.TraceType myLastCpuTraceType;
 
   /**
    * Whether the last import trace was tracked as success.
    */
   private Boolean myLastImportTraceSucceeded;
+
+  /**
+   * Whether the trace contains Compose Tracing nodes
+   */
+  private Boolean myHasComposeTracingNodes;
 
   /**
    * Whether {@link #trackSelectThread()} was called.
@@ -267,17 +272,24 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackImportTrace(@NotNull Cpu.CpuTraceType profilerType, boolean success) {
+  public void trackImportTrace(@NotNull Trace.UserOptions.TraceType profilerType,
+                               boolean success,
+                               @Nullable Boolean hasComposeTracingNodes) {
     myLastCpuTraceType = profilerType;
     myLastImportTraceSucceeded = success;
+    myHasComposeTracingNodes = hasComposeTracingNodes;
   }
 
-  public Cpu.CpuTraceType getLastCpuTraceType() {
+  public Trace.UserOptions.TraceType getLastCpuTraceType() {
     return myLastCpuTraceType;
   }
 
   public Boolean getLastImportTraceStatus() {
     return myLastImportTraceSucceeded;
+  }
+
+  public Boolean getHasComposeTracingNodes() {
+    return myHasComposeTracingNodes;
   }
 
   @Override

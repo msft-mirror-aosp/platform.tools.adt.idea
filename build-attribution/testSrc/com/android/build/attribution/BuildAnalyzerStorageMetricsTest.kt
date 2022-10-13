@@ -21,7 +21,7 @@ import com.android.build.attribution.data.PluginData
 import com.android.build.attribution.data.ProjectConfigurationData
 import com.android.build.attribution.data.TaskData
 import com.android.build.attribution.data.TasksSharingOutputData
-import com.android.build.attribution.proto.BuildResultsProtoMessageConverter
+import com.android.build.attribution.proto.converters.BuildResultsProtoMessageConverter
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.tools.idea.gradle.util.BuildMode
@@ -34,7 +34,6 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 import java.io.FileInputStream
-import java.io.IOException
 import java.time.Duration
 import java.util.UUID
 
@@ -284,7 +283,7 @@ class BuildAnalyzerStorageMetricsTest {
     //      results.getTaskMap()
     //    )
     //println(TextFormat.printer().printToString(resultsMessage))
-    BuildAnalyzerStorageManagerImpl(projectRule.project).storeBuildResultsInFile(results)
-    return projectRule.project.guessProjectDir()?.toIoFile()?.resolve("build-analyzer-history-data")?.resolve(results.getBuildSessionID())!!
+    BuildAnalyzerStorageManagerImpl(projectRule.project).fileManager.storeBuildResultsInFile(results)
+    return BuildAnalyzerStorageManagerImpl(projectRule.project).fileManager.getFileFromBuildID(results.getBuildSessionID())
   }
 }

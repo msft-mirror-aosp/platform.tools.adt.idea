@@ -30,7 +30,7 @@ import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.VariantDependencies
 import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.GradleVersion
+import com.android.ide.common.repository.GradleVersion.AgpVersion
 import com.android.ide.gradle.model.LegacyApplicationIdModel
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeLibrary
@@ -64,7 +64,7 @@ interface ModelCache {
       androidProject: IdeAndroidProjectImpl,
       variant: Variant,
       legacyApplicationIdModel: LegacyApplicationIdModel?,
-      modelVersion: GradleVersion?,
+      modelVersion: AgpVersion?,
       androidModuleId: ModuleId
     ): IdeVariantWithPostProcessor
 
@@ -132,7 +132,7 @@ interface ModelCache {
         modelCacheV2Impl(
           internedModels,
           modelCacheLock,
-          GradleVersion.parseAndroidGradlePluginVersion(Version.ANDROID_GRADLE_PLUGIN_VERSION)
+          AgpVersion.parse(Version.ANDROID_GRADLE_PLUGIN_VERSION)
         )
       } else {
         modelCacheV1Impl(internedModels, BuildFolderPaths(), modelCacheLock)
@@ -196,7 +196,7 @@ fun getDefaultVariant(variantNames: Collection<String>): String? {
   return sortedNames.first()
 }
 
-internal val GradleVersion.agpModelIncludesApplicationId: Boolean
+internal val AgpVersion.agpModelIncludesApplicationId: Boolean
    get() = isAtLeast(7, 4, 0, "alpha", 4, false)
 
 internal fun convertArtifactName(name: String): IdeArtifactName = when (name) {

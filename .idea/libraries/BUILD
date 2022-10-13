@@ -299,14 +299,21 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "google-api-services-oauth2-v2-rev150-1.22.0",
-    jars = ["//prebuilts/tools/common/m2:google-api-services-oauth2-v2-rev150-1.22.0_files"],
+    name = "adb_proxy_proto",
+    jars = ["//tools/base/adb-proxy/proto:adb_proxy_studio_proto.jar"],
     visibility = ["//visibility:public"],
 )
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "adb_proxy_proto",
-    jars = ["//tools/base/adb-proxy/proto:adb_proxy_studio_proto.jar"],
+    name = "gson",
+    jars = ["//prebuilts/tools/common/m2:gson_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "oauth2",
+    jars = ["//prebuilts/tools/common/m2:oauth2_files"],
     visibility = ["//visibility:public"],
 )

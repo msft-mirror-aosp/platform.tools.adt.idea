@@ -15,7 +15,7 @@
  */
 package com.android.tools.profilers.cpu;
 
-import com.android.tools.profiler.proto.Cpu;
+import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
@@ -80,48 +80,48 @@ public enum ProfilingTechnology {
   }
 
   @NotNull
-  public Cpu.CpuTraceType getType() {
+  public Trace.UserOptions.TraceType getType() {
     switch (this) {
       case ART_SAMPLED:
-        return Cpu.CpuTraceType.ART;
+        return Trace.UserOptions.TraceType.ART;
       case ART_INSTRUMENTED:
-        return Cpu.CpuTraceType.ART;
+        return Trace.UserOptions.TraceType.ART;
       case ART_UNSPECIFIED:
-        return Cpu.CpuTraceType.ART;
+        return Trace.UserOptions.TraceType.ART;
       case SIMPLEPERF:
-        return Cpu.CpuTraceType.SIMPLEPERF;
+        return Trace.UserOptions.TraceType.SIMPLEPERF;
       case SYSTEM_TRACE:
-        return Cpu.CpuTraceType.ATRACE;
+        return Trace.UserOptions.TraceType.ATRACE;
     }
     throw new IllegalArgumentException("Unreachable code");
   }
 
   @NotNull
-  public Cpu.CpuTraceMode getMode() {
+  public Trace.TraceMode getMode() {
     switch (this) {
       case ART_SAMPLED:
-        return Cpu.CpuTraceMode.SAMPLED;
+        return Trace.TraceMode.SAMPLED;
       case ART_INSTRUMENTED:
-        return Cpu.CpuTraceMode.INSTRUMENTED;
+        return Trace.TraceMode.INSTRUMENTED;
       case ART_UNSPECIFIED:
-        return Cpu.CpuTraceMode.UNSPECIFIED_MODE;
+        return Trace.TraceMode.UNSPECIFIED_MODE;
       case SIMPLEPERF:
-        return Cpu.CpuTraceMode.SAMPLED;
+        return Trace.TraceMode.SAMPLED;
       case SYSTEM_TRACE:
-        return Cpu.CpuTraceMode.INSTRUMENTED;
+        return Trace.TraceMode.INSTRUMENTED;
     }
     throw new IllegalArgumentException("Unreachable code");
   }
 
   @NotNull
-  public static ProfilingTechnology fromTypeAndMode(@NotNull Cpu.CpuTraceType type,
-                                                    @NotNull Cpu.CpuTraceMode mode) {
+  public static ProfilingTechnology fromTypeAndMode(@NotNull Trace.UserOptions.TraceType type,
+                                                    @NotNull Trace.TraceMode mode) {
     switch (type) {
       case ART:
-        if (mode == Cpu.CpuTraceMode.SAMPLED) {
+        if (mode == Trace.TraceMode.SAMPLED) {
           return ART_SAMPLED;
         }
-        else if (mode == Cpu.CpuTraceMode.INSTRUMENTED) {
+        else if (mode == Trace.TraceMode.INSTRUMENTED) {
           return ART_INSTRUMENTED;
         }
         else {

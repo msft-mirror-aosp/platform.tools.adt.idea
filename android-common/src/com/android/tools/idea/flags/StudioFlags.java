@@ -153,7 +153,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILEABLE_BUILDS = Flag.create(
     PROFILER, "profileable.builds", "Support building profileable apps",
     "Allow users to build apps as profileable with a supported Gradle plugin version (>7.3.0)",
-    false);
+    true);
 
   // TODO(b/211154220): Pending user's feedback, either completely remove the keyboard event functionality in
   // Event Timeline or find a proper way to support it for Android S and newer.
@@ -470,7 +470,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED = Flag.create(
     RUNDEBUG, "logcat.console.output.enabled", "Show logcat process output in Run/Debug console window",
     "When running or debugging an Android process, output the logcat output of the process in the console window.",
-    true);
+    false);
 
   public static final Flag<Boolean> RUNDEBUG_ANDROID_BUILD_BUNDLE_ENABLED = Flag.create(
     RUNDEBUG, "android.bundle.build.enabled", "Enable the Build Bundle action",
@@ -1460,7 +1460,7 @@ public final class StudioFlags {
       "enable.open.close.issues",
       "Enable open/close issue functionality.",
       "Add open/close button to App Quality Insights panel.",
-      false);
+      true);
 
   public static final Flag<Boolean> ADDITIONAL_FILTERS_ENABLED =
     Flag.create(
@@ -1468,7 +1468,7 @@ public final class StudioFlags {
       "enable.issue.filters",
       "Enable additional issue filters.",
       "Add device, OS, Play Track filters to App Quality Insights panel.",
-      false);
+      true);
 
   public static final Flag<Boolean> OFFLINE_MODE_SUPPORT_ENABLED =
     Flag.create(
@@ -1484,7 +1484,7 @@ public final class StudioFlags {
       "enable.notes",
       "Enable read/write notes functionality.",
       "Add notes tab to App Quality Insights panel.",
-      false);
+      true);
   // endregion App Insights
 
   // region App Links Assistant
@@ -1498,6 +1498,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
                 "Improvements to Website Association Generator.", false);
+  public static final Flag<String> DEEPLINKS_GRPC_SERVER =
+    Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
+                "Deep links gRPC server address. Use a non-default value for testing purposes.",
+                "deeplinkassistant-pa.googleapis.com");
   // endregion App Links Assistant
 
   // region GOOGLE_PLAY_SDK_INDEX
@@ -1534,8 +1538,8 @@ public final class StudioFlags {
   // endregion NEW_SEND_FEEDBACK_DIALOG
 
   // region TargetSDKVersion Upgrade Assistant
-  private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "TargetSDKVersion Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the TargetSDKVersion Upgrade Assistant", "Enable the TargetSDKVersion Upgrade Assistant", false);
+  private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
+  public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   private StudioFlags() { }

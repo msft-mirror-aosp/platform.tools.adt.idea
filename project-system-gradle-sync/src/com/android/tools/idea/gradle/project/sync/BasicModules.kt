@@ -21,7 +21,7 @@ import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.GradleVersion
+import com.android.ide.common.repository.GradleVersion.AgpVersion
 import com.android.ide.gradle.model.LegacyApplicationIdModel
 import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import org.gradle.tooling.BuildController
@@ -148,7 +148,7 @@ internal class BasicV2AndroidModuleGradleProject(gradleProject: BasicGradleProje
           ?: error("Cannot get V2AndroidProject model for $gradleProject")
         val androidDsl = controller.findNonParameterizedV2Model(gradleProject, AndroidDsl::class.java)
           ?: error("Cannot get AndroidDsl model for $gradleProject")
-        val agpVersion = GradleVersion.tryParse(versions.agp)
+        val agpVersion = AgpVersion.tryParse(versions.agp)
           ?: error("AGP returned incorrect version: ${versions.agp}")
         val modelIncludesApplicationId = agpVersion.agpModelIncludesApplicationId
         val legacyApplicationIdModel = if (!modelIncludesApplicationId) {
@@ -221,7 +221,7 @@ private fun createAndroidModuleV1(
   buildIdMap: Map<BuildId, String>,
   modelCache: ModelCache.V1
 ): AndroidModule {
-  val agpVersion: GradleVersion? = GradleVersion.tryParseAndroidGradlePluginVersion(androidProjectResult.agpVersion)
+  val agpVersion: AgpVersion? = AgpVersion.tryParse(androidProjectResult.agpVersion)
 
   val ideAndroidProject = androidProjectResult.ideAndroidProject
   val allVariantNames = androidProjectResult.allVariantNames
@@ -264,7 +264,7 @@ private fun createAndroidModuleV2(
   buildIdMap: Map<BuildId, String>,
   modelCache: ModelCache
 ): AndroidModule {
-  val agpVersion: GradleVersion? = GradleVersion.tryParseAndroidGradlePluginVersion(androidProjectResult.agpVersion)
+  val agpVersion: AgpVersion? = AgpVersion.tryParse(androidProjectResult.agpVersion)
 
   val ideAndroidProject = androidProjectResult.ideAndroidProject
   val allVariantNames = androidProjectResult.allVariantNames

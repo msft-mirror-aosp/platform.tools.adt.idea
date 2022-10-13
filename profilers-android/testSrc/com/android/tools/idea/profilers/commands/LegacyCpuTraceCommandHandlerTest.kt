@@ -166,10 +166,10 @@ class LegacyCpuTraceCommandHandlerTest {
 
   companion object {
     private val FAKE_TRACE_BYTES = byteArrayOf('a'.code.toByte())
-    private val TRACE_CONFIG = Cpu.CpuTraceConfiguration.newBuilder().apply {
-      userOptions = Cpu.CpuTraceConfiguration.UserOptions.newBuilder().apply {
-        traceMode = Cpu.CpuTraceMode.INSTRUMENTED
-        traceType = Cpu.CpuTraceType.ART
+    private val TRACE_CONFIG = Trace.TraceConfiguration.newBuilder().apply {
+      userOptions = Trace.UserOptions.newBuilder().apply {
+        traceMode = Trace.TraceMode.INSTRUMENTED
+        traceType = Trace.UserOptions.TraceType.ART
       }.build()
     }.build()
 
@@ -179,6 +179,7 @@ class LegacyCpuTraceCommandHandlerTest {
         whenever(methodProfilingStatus).thenReturn(ClientData.MethodProfilingStatus.TRACER_ON)
       }
       val mockDevice = mock(IDevice::class.java).apply {
+        whenever(serialNumber).thenReturn("")
         whenever(getClientName(ArgumentMatchers.anyInt())).thenReturn("TestClient")
         whenever(getClient(ArgumentMatchers.anyString())).thenReturn(thisClient)
       }

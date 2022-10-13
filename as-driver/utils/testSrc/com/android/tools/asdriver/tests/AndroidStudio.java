@@ -199,9 +199,9 @@ public class AndroidStudio implements AutoCloseable {
   }
 
   public void invokeByIcon(String icon) {
-    ComponentMatchersBuilder updateButtonBuilder = new ComponentMatchersBuilder();
-    updateButtonBuilder.addSvgIconMatch(new ArrayList<>(List.of(icon)));
-    invokeComponent(updateButtonBuilder);
+    ComponentMatchersBuilder builder = new ComponentMatchersBuilder();
+    builder.addSvgIconMatch(new ArrayList<>(List.of(icon)));
+    invokeComponent(builder);
   }
 
   public void invokeComponent(String componentText) {
@@ -225,6 +225,7 @@ public class AndroidStudio implements AutoCloseable {
   }
 
   public void waitForIndex() {
+    System.out.println("Waiting for indexing to complete");
     ASDriver.WaitForIndexRequest rq = ASDriver.WaitForIndexRequest.newBuilder().build();
     ASDriver.WaitForIndexResponse ignore = androidStudio.waitForIndex(rq);
   }
@@ -261,6 +262,21 @@ public class AndroidStudio implements AutoCloseable {
     openFile(project, file, null, null);
   }
 
+  public void editFile(String file, String searchRegex, String replacement) {
+    ASDriver.EditFileRequest rq =
+      ASDriver.EditFileRequest.newBuilder().setFile(file).setSearchRegex(searchRegex).setReplacement(replacement).build();
+    ASDriver.EditFileResponse response = androidStudio.editFile(rq);
+    switch (response.getResult()) {
+      case OK:
+        return;
+      case ERROR:
+        throw new IllegalStateException(String.format("Could not edit file \"%s\" with searchRegex %s and replacement %s. Check the " +
+                                                      "Android Studio stderr log for the cause.", file, searchRegex, replacement));
+      default:
+        throw new IllegalStateException(String.format("Unhandled response: %s", response.getResult()));
+    }
+  }
+
   public void waitForComponent(String componentText) {
     ComponentMatchersBuilder builder = new ComponentMatchersBuilder();
     builder.addComponentTextMatch(componentText);
@@ -295,6 +311,7 @@ public class AndroidStudio implements AutoCloseable {
   }
 
   public void waitForBuild(long timeout, TimeUnit unit) throws IOException, InterruptedException {
+    System.out.printf("Waiting up to %d %s for Gradle build%n", timeout, unit);
     Matcher matcher = install.getIdeaLog()
       .waitForMatchingLine(".*Gradle build finished in (.*)", ".*org\\.gradle\\.tooling\\.\\w+Exception.*", timeout, unit);
     System.out.println("Build took " + matcher.group(1));
@@ -306,6 +323,7 @@ public class AndroidStudio implements AutoCloseable {
   }
 
   public void waitForSync(long timeout, TimeUnit unit) throws IOException, InterruptedException {
+    System.out.printf("Waiting up to %d %s for Gradle sync%n", timeout, unit);
     Matcher matcher = install.getIdeaLog()
       .waitForMatchingLine(".*Gradle sync finished in (.*)", ".*org\\.gradle\\.tooling\\.\\w+Exception.*", timeout, unit);
     System.out.println("Sync took " + matcher.group(1));

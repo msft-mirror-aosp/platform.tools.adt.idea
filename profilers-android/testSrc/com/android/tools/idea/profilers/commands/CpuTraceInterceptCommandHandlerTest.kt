@@ -27,8 +27,10 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Cpu
+import com.android.tools.profiler.proto.Trace
 import com.android.tools.profiler.proto.TransportServiceGrpc
 import com.google.common.truth.Truth
+import com.google.wireless.android.sdk.stats.PerfettoSdkHandshakeMetadata.HandshakeResult
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentCaptor
@@ -51,11 +53,11 @@ class CpuTraceInterceptCommandHandlerTest {
     val cmdId = 1
     val commandHandler = setupInterceptForTest(testPid)
 
-    var command = buildCommand(cmdId, Cpu.CpuTraceType.PERFETTO)
+    var command = buildCommand(cmdId, Trace.UserOptions.TraceType.PERFETTO)
     Truth.assertThat(commandHandler.shouldHandle(command)).isTrue()
-    command = buildCommand(cmdId, Cpu.CpuTraceType.ART)
+    command = buildCommand(cmdId, Trace.UserOptions.TraceType.ART)
     Truth.assertThat(commandHandler.shouldHandle(command)).isFalse()
-    command = buildCommand(cmdId, Cpu.CpuTraceType.SIMPLEPERF)
+    command = buildCommand(cmdId, Trace.UserOptions.TraceType.SIMPLEPERF)
     Truth.assertThat(commandHandler.shouldHandle(command)).isFalse()
   }
 
@@ -64,7 +66,7 @@ class CpuTraceInterceptCommandHandlerTest {
     val testPid = 1
     val commandHandler = setupInterceptForTest(testPid)
 
-    var command = buildCommand(1, Cpu.CpuTraceType.ART)
+    var command = buildCommand(1, Trace.UserOptions.TraceType.ART)
     var returnValue = commandHandler.execute(command)
     Truth.assertThat(returnValue.commandId).isEqualTo(1)
 
@@ -72,7 +74,7 @@ class CpuTraceInterceptCommandHandlerTest {
     Truth.assertThat(eventStream).hasSize(1)
     Truth.assertThat(eventStream.first { it.kind == Common.Event.Kind.TRACE_STATUS }.commandId).isEqualTo(1)
 
-    command = buildCommand(2, Cpu.CpuTraceType.PERFETTO)
+    command = buildCommand(2, Trace.UserOptions.TraceType.PERFETTO)
     returnValue = commandHandler.execute(command)
     Truth.assertThat(returnValue.commandId).isEqualTo(2)
 
@@ -86,7 +88,7 @@ class CpuTraceInterceptCommandHandlerTest {
     val testPid = 1
     val cmdId = 1
     val commandHandler = setupInterceptForTest(testPid)
-    val startTrackCommand = buildCommand(cmdId, Cpu.CpuTraceType.PERFETTO)
+    val startTrackCommand = buildCommand(cmdId, Trace.UserOptions.TraceType.PERFETTO)
     val returnValue = commandHandler.execute(startTrackCommand)
     Truth.assertThat(returnValue.commandId).isEqualTo(cmdId)
     val captor = ArgumentCaptor.forClass(String::class.java)
@@ -104,13 +106,18 @@ class CpuTraceInterceptCommandHandlerTest {
                            "Broadcast completed: result=2, data=\"{\"exitCode\":2,\"requiredVersion\":\"1.0.0-alpha01\"" +
                            "}\"\n")
     val commandHandler = setupInterceptForTest(testPid, broadcastFailed)
-    val startTrackCommand = buildCommand(cmdId, Cpu.CpuTraceType.PERFETTO)
+    val startTrackCommand = buildCommand(cmdId, Trace.UserOptions.TraceType.PERFETTO)
     val returnValue = commandHandler.execute(startTrackCommand)
     Truth.assertThat(returnValue.commandId).isEqualTo(cmdId)
     val captor = ArgumentCaptor.forClass(String::class.java)
     verify(commandHandler.device, times(1)).executeShellCommand(captor.capture(), MockitoKt.any())
     Truth.assertThat(captor.value).contains("broadcast")
     Truth.assertThat(commandHandler.lastResponseCode).isEqualTo(PerfettoHandshake.ResponseExitCodes.RESULT_CODE_ALREADY_ENABLED)
+    with(commandHandler.lastMetricsEvent!!) {
+      Truth.assertThat(hasAndroidProfilerEvent()).isTrue()
+      Truth.assertThat(androidProfilerEvent.hasPerfettoSdkHandshakeMetadata()).isTrue()
+      Truth.assertThat(androidProfilerEvent.perfettoSdkHandshakeMetadata.handshakeResult).isEqualTo(HandshakeResult.ALREADY_ENABLED)
+    }
   }
 
   private fun setupInterceptForTest(testPid: Int): CpuTraceInterceptCommandHandler {
@@ -134,14 +141,14 @@ class CpuTraceInterceptCommandHandlerTest {
     return commandHandler
   }
 
-  fun buildCommand(cmdId: Int, cpuTraceType: Cpu.CpuTraceType) = Commands.Command.newBuilder().apply {
+  fun buildCommand(cmdId: Int, traceType: Trace.UserOptions.TraceType) = Commands.Command.newBuilder().apply {
     type = Commands.Command.CommandType.START_CPU_TRACE
     commandId = cmdId
     startCpuTrace = Cpu.StartCpuTrace.newBuilder().apply {
-      configuration = Cpu.CpuTraceConfiguration.newBuilder().apply {
+      configuration = Trace.TraceConfiguration.newBuilder().apply {
         abiCpuArch = "FakeAbi"
-        userOptions = Cpu.CpuTraceConfiguration.UserOptions.newBuilder().apply {
-          traceType = cpuTraceType
+        userOptions = Trace.UserOptions.newBuilder().apply {
+          this.traceType = traceType
         }.build()
       }.build()
     }.build()

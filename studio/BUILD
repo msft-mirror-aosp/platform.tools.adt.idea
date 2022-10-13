@@ -112,6 +112,7 @@ studio_plugin(
             "//tools/adt/idea/android-lint:intellij.android.lint",
             "//tools/adt/idea/android-templates:intellij.android.templates",
             "//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer",
+            "//tools/base/profgen/profgen:studio.android.sdktools.profgen",
             "//tools/adt/idea/app-inspection/api:app-inspection.api",
             "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
             "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
@@ -377,7 +378,7 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.2.0-SNAPSHOT"],
+    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.3.0-SNAPSHOT"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     visibility = ["//visibility:public"],
     deps = [
@@ -389,7 +390,10 @@ studio_plugin(
 studio_plugin(
     name = "com.google.services.firebase",
     directory = "firebase",
-    libs = ["//tools/vendor/google/firebase:google-api-services-mobilesdk-v1"],
+    libs = [
+        "//tools/vendor/google/firebase:google-api-services-mobilesdk-v1",
+        "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-cloudresourcemanager-v1beta1-rev12-1.21.0",
+    ],
     licenses = [
         "//tools/vendor/google/firebase:licenses",
     ],
@@ -523,10 +527,8 @@ studio_plugin(
     libs = [
         "//prebuilts/tools/common/google-api-java-client/1.20.0:google-api-java-client",
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
-        "//tools/adt/idea/.idea/libraries:google-api-services-oauth2-v2-rev150-1.22.0",
+        "//tools/adt/idea/.idea/libraries:oauth2",
         "//prebuilts/tools/common/m2:javax-servlet",
-        "@maven//:com.google.apis.google-api-services-oauth2",
-        "@maven//:com.google.auth.google-auth-library-oauth2-http",
     ],
     modules = {"google-login-as.jar": ["//tools/studio/google/cloud/tools/google-login-plugin:google-login-as"]},
     visibility = ["//visibility:public"],
@@ -570,6 +572,9 @@ studio_plugin(
 studio_plugin(
     name = "com.google.urlassistant",
     directory = "url-assistant",
+    libs = [
+        "//tools/vendor/google/url-assistant:urlassistant_proto",
+    ],
     modules = {"url-assistant.jar": ["//tools/vendor/google/url-assistant:url-assistant"]},
     visibility = ["//visibility:public"],
     deps = [
@@ -623,10 +628,10 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
-    version_micro_patch = "1.4",
+    version_micro_patch = "1.5",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 4,
+    version_release_number = 5,
     version_type = "Canary",
     # version_update_message = "<html>this is optional</html>",
     visibility = ["//visibility:public"],

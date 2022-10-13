@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.device
 
-import com.android.annotations.concurrency.UiThread
+import com.android.annotations.concurrency.AnyThread
 import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.util.ActionToolbarUtil.makeToolbarNavigable
@@ -122,7 +122,8 @@ internal class DeviceToolWindowPanel(
 
     savedUiState as DeviceUiState?
     val initialOrientation = savedUiState?.orientation ?: UNKNOWN_ORIENTATION
-    val primaryDisplayPanel = DeviceDisplayPanel(disposable, deviceSerialNumber, deviceAbi, initialOrientation, project, zoomToolbarVisible)
+    val primaryDisplayPanel =
+        DeviceDisplayPanel(disposable, deviceSerialNumber, deviceAbi, title, initialOrientation, project, zoomToolbarVisible)
     savedUiState?.zoomScrollState?.let { primaryDisplayPanel.zoomScrollState = it }
 
     displayPanel = primaryDisplayPanel
@@ -131,7 +132,7 @@ internal class DeviceToolWindowPanel(
     mainToolbar.targetComponent = deviceView
     centerPanel.addToCenter(primaryDisplayPanel)
     deviceView.addConnectionStateListener(object : ConnectionStateListener {
-      @UiThread
+      @AnyThread
       override fun connectionStateChanged(deviceSerialNumber: String, connectionState: ConnectionState) {
         EventQueue.invokeLater {
           mainToolbar.updateActionsImmediately()

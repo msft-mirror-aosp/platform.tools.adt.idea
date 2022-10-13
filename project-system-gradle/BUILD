@@ -124,6 +124,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy[test]",
         "//tools/base/build-system:studio.android.sdktools.manifest-merger[module, test]",
         "//tools/base/lint:studio.android.sdktools.lint-checks[module, test]",
+        "//tools/analytics-library/shared:analytics-shared[module, test]",
     ],
 )
 
@@ -189,7 +190,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-js_1.7.20-Beta",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.5.2",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",
-        "@maven//:org.mockito.mockito-core_3.12.4",
+        "@maven//:org.mockito.mockito-core_4.8.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
