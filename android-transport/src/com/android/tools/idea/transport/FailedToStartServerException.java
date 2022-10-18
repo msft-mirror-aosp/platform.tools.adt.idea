@@ -13,12 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.file.explorer.toolwindow
+package com.android.tools.idea.transport;
 
-import com.android.tools.idea.ddms.DeviceNamePropertiesProvider
-import com.android.tools.idea.file.explorer.toolwindow.adbimpl.AdbDeviceFileSystem
-import com.android.tools.idea.file.explorer.toolwindow.fs.DeviceFileSystemRenderer
-
-interface DeviceFileSystemRendererFactory {
-  fun create(deviceNamePropertiesProvider: DeviceNamePropertiesProvider): DeviceFileSystemRenderer<AdbDeviceFileSystem>
+public class FailedToStartServerException extends RuntimeException {
+  FailedToStartServerException(String reason) {
+    super(reason);
+  }
 }

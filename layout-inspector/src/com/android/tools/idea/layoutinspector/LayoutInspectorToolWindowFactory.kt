@@ -34,6 +34,7 @@ import com.android.tools.idea.layoutinspector.pipeline.ForegroundProcessDetectio
 import com.android.tools.idea.layoutinspector.pipeline.ForegroundProcessDetectionInitializer
 import com.android.tools.idea.layoutinspector.pipeline.ForegroundProcessListener
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
+import com.android.tools.idea.layoutinspector.pipeline.TransportErrorListener
 import com.android.tools.idea.layoutinspector.pipeline.stopInspector
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.tree.InspectorTreeSettings
@@ -90,6 +91,8 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
     val contentManager = toolWindow.contentManager
     val content = contentManager.factory.createContent(contentPanel, "", true)
     contentManager.addContent(content)
+
+    TransportErrorListener(project)
 
     workbench.showLoading("Initializing ADB")
     AndroidExecutors.getInstance().workerThreadExecutor.execute {
@@ -172,7 +175,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
         processModel = processesModel,
         deviceModel = deviceModel,
         coroutineScope = project.coroutineScope,
-        metrics = ForegroundProcessDetectionMetrics(layoutInspectorMetrics)
+        metrics = ForegroundProcessDetectionMetrics
       ).also {
         project.messageBus.connect(workBench).subscribe(
           ToolWindowManagerListener.TOPIC,

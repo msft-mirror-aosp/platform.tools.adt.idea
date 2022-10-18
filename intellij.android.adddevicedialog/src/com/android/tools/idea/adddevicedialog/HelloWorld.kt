@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.adddevicedialog
 
+fun getMessage() = "Hello, World!"
+
 fun main() {
-  println("Hello, World!")
+  println(getMessage())
 }

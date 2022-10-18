@@ -24,6 +24,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.DebugViewAttributes
 import com.android.tools.idea.run.AndroidRunConfigurationBase
+import com.android.tools.idea.transport.FailedToStartServerException
 import com.android.tools.idea.transport.TransportClient
 import com.android.tools.idea.transport.TransportDeviceManager
 import com.android.tools.idea.transport.TransportProxy
@@ -183,8 +184,10 @@ class TransportDeviceManagerListenerImpl : TransportDeviceManager.TransportDevic
   }
 
   override fun onPreTransportDaemonStart(device: Common.Device) { }
-  override fun onStartTransportDaemonFail(device: Common.Device, exception: Exception) { }
+  override fun onTransportDaemonException(device: Common.Device, exception: Exception) { }
   override fun onTransportProxyCreationFail(device: Common.Device, exception: Exception) { }
+  override fun onStartTransportDaemonServerFail(device: Common.Device, exception: FailedToStartServerException) { }
+
   override fun customizeProxyService(proxy: TransportProxy) { }
   override fun customizeAgentConfig(configBuilder: Agent.AgentConfig.Builder, runConfig: AndroidRunConfigurationBase?) { }
 
@@ -321,7 +324,7 @@ class ForegroundProcessDetection(
                         if (!devicesWithUnknownState.contains(streamDevice)) {
                           devicesWithUnknownState.add(streamDevice)
                           // log UNKNOWN devices only once
-                          metrics.logHandshakeResult(streamEvent.event.layoutInspectorTrackingForegroundProcessSupported)
+                          metrics.logHandshakeResult(streamEvent.event.layoutInspectorTrackingForegroundProcessSupported, streamDevice)
                         }
                         delay(2000)
                         sendStartHandshakeCommand(activity.streamChannel.stream)
@@ -372,7 +375,7 @@ class ForegroundProcessDetection(
               // This could happen if there are issues in the handshake or if a device was disconnected
               // before the UNKNOWN state had time to resolve.
               // For example if a device was plugged in while locked and unplugged before ever being unlocked.
-              metrics.logConversion(HandshakeUnknownConversion.UNKNOWN_NOT_RESOLVED)
+              metrics.logHandshakeConversion(HandshakeUnknownConversion.UNKNOWN_NOT_RESOLVED, streamDevice)
             }
 
             devicesWithUnknownState.clear()
@@ -401,10 +404,10 @@ class ForegroundProcessDetection(
     streamDevice: DeviceDescriptor,
     conversion: HandshakeUnknownConversion
   ) {
-    metrics.logHandshakeResult(handshakeResult)
+    metrics.logHandshakeResult(handshakeResult, streamDevice)
     if (devicesWithUnknownState.contains(streamDevice)) {
       devicesWithUnknownState.remove(streamDevice)
-      metrics.logConversion(conversion)
+      metrics.logHandshakeConversion(conversion, streamDevice)
     }
   }
 

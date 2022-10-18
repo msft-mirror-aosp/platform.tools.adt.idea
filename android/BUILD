@@ -176,6 +176,9 @@ iml_module(
         "editors.manifest": {
             "test_filter": "com.android.tools.idea.editors.manifest",
         },
+        "editors.literals": {
+            "test_filter": "com.android.tools.idea.editors.literals",
+        },
         "instantapp": {
             "test_filter": "com.android.tools.idea.instantapp",
         },
@@ -446,6 +449,7 @@ filegroup(
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/vendor/google/firebase/src/proto:firebase_java_proto",
+        "//tools/vendor/google/url-assistant/src/proto:urlassistant_proto",
         "//tools/adt/idea/build-attribution/proto:build-analysis-results-proto",
     ] + select({
         "//tools/base/bazel:windows": [],
@@ -470,7 +474,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.0-beta04",
-        "@maven//:androidx.compose.ui.ui-tooling_1.2.1",
+        "@maven//:androidx.compose.ui.ui-tooling_1.3.0",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.core.core-ktx_1.0.1",

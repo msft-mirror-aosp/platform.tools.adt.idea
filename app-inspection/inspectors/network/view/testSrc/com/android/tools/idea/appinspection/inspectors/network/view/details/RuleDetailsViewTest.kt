@@ -142,7 +142,7 @@ class RuleDetailsViewTest {
     model.detailContent = NetworkInspectorModel.DetailContent.RULE
     val parentPanel = JPanel()
     val component = TooltipLayeredPane(parentPanel)
-    inspectorView = NetworkInspectorView(model, FakeUiComponentsProvider(), component, services, scope)
+    inspectorView = NetworkInspectorView(projectRule.project, model, FakeUiComponentsProvider(), component, services, scope)
     parentPanel.add(inspectorView.component)
     detailsPanel = inspectorView.detailsPanel
   }
@@ -300,9 +300,10 @@ class RuleDetailsViewTest {
       assertThat(it.ruleDetailUpdated.component).isEqualTo(NetworkInspectorEvent.RuleUpdatedEvent.Component.URL_PORT)
     }
 
+    // A '/' prefix should be added to path automatically if not already there.
     val pathComponent = findComponentWithUniqueName(ruleDetailsView, "pathTextField") as JTextField
     assertThat(pathComponent.text).isEmpty()
-    pathComponent.text = "/path"
+    pathComponent.text = "path"
     pathComponent.onFocusLost()
     tracker.verifyLatestEvent {
       assertThat(it.type).isEqualTo(NetworkInspectorEvent.Type.RULE_UPDATED)

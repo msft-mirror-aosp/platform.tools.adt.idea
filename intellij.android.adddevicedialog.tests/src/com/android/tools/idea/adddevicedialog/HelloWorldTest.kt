@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.file.explorer.toolwindow.adbimpl
+package com.android.tools.idea.adddevicedialog
 
-import com.android.tools.idea.ddms.DeviceNamePropertiesProvider
-import com.android.tools.idea.file.explorer.toolwindow.DeviceFileSystemRendererFactory
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 
-class AdbDeviceFileSystemRendererFactory(private val adbDeviceFileSystemService: AdbDeviceFileSystemService) : DeviceFileSystemRendererFactory {
-  override fun create(deviceNamePropertiesProvider: DeviceNamePropertiesProvider): AdbDeviceFileSystemRenderer {
-    return AdbDeviceFileSystemRenderer(adbDeviceFileSystemService, deviceNamePropertiesProvider)
+@RunWith(JUnit4::class)
+class HelloWorldTest {
+  @Test
+  fun testGetMessage() {
+    // Act
+    val message = getMessage()
+
+    // Assert
+    assertEquals("Hello, World!", message)
   }
 }
