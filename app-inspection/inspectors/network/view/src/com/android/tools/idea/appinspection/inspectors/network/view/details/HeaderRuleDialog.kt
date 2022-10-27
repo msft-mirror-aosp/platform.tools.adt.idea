@@ -23,9 +23,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.components.TextComponentEmptyText
 import com.intellij.ui.components.panels.VerticalLayout
-import com.intellij.util.BooleanFunction
 import com.intellij.util.ui.JBUI
 import org.jetbrains.annotations.VisibleForTesting
 import java.awt.event.ItemEvent
@@ -87,13 +85,10 @@ class HeaderRuleDialog(
         textField.isEnabled = isSelected
         if (!isSelected) {
           regexCheckBox?.isSelected = false
-          textField.text = ""
         }
         regexCheckBox?.isEnabled = isSelected
         updateOkAction()
       }
-      textField.putClientProperty(TextComponentEmptyText.STATUS_VISIBLE_FUNCTION, BooleanFunction<JBTextField>
-      { !it.isEnabled })
       addItemListener(changeAction)
       changeAction(ItemEvent(this, 0, null, ITEM_STATE_CHANGED))
     }
@@ -219,19 +214,22 @@ class HeaderRuleDialog(
   }
 }
 
-class EmptyFieldDocumentFilter(var updateOkAction: () -> Unit): DocumentFilter() {
-  override fun remove(fb: FilterBypass?, offset: Int, length: Int) {
+class EmptyFieldDocumentFilter(val updateOkAction: () -> Unit): DocumentFilter() {
+  override fun remove(fb: FilterBypass, offset: Int, length: Int) {
     super.remove(fb, offset, length)
     if (isDocumentEmpty(fb)) updateOkAction()
   }
 
-  override fun replace(fb: FilterBypass?, offset: Int, length: Int, text: String?, attrs: AttributeSet?) {
+  override fun insertString(fb: FilterBypass, offset: Int, string: String, attr: AttributeSet?) {
+    super.insertString(fb, offset, string, attr)
+    if(!isDocumentEmpty(fb)) updateOkAction()
+  }
+
+  override fun replace(fb: FilterBypass, offset: Int, length: Int, text: String, attrs: AttributeSet?) {
     super.replace(fb, offset, length, text, attrs)
     if (!isDocumentEmpty(fb)) updateOkAction()
   }
 
-  private fun isDocumentEmpty(fb: FilterBypass?): Boolean {
-    return fb?.document?.getText(0, fb.document.length)?.isEmpty() == true
-  }
+  private fun isDocumentEmpty(fb: FilterBypass) = fb.document.getText(0, fb.document.length).isEmpty()
 }
 

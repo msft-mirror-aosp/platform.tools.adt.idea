@@ -52,7 +52,6 @@ iml_module(
     test_class = "com.android.tools.idea.compose.preview.ComposePreviewTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk",
         "//prebuilts/studio/jdk/jdk11",
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
@@ -63,6 +62,7 @@ iml_module(
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/compose-designer/testData",
+        "//tools/adt/idea/compose-ide-plugin/testData",
         "//tools/base/build-system:gradle-distrib",
         "//tools/base/build-system:android_gradle_plugin.zip",
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",

@@ -121,6 +121,7 @@ studio_plugin(
             "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:app-inspection.inspectors.backgroundtask.model",
             "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:app-inspection.inspectors.backgroundtask.view",
             "//tools/adt/idea/build-attribution:intellij.android.build-attribution",
+            "//tools/adt/idea/intellij.android.adddevicedialog",
             "//tools/adt/idea/intellij.android.compose-common:intellij.android.compose-common",
             "//tools/adt/idea/android:intellij.android.core",
             "//tools/adt/idea/android-navigator:intellij.android.navigator",
@@ -131,6 +132,10 @@ studio_plugin(
             "//tools/adt/idea/deploy:intellij.android.deploy",
             "//tools/adt/idea/device-file-explorer-toolwindow:intellij.android.device-file-explorer-toolwindow",
             "//tools/adt/idea/device-monitor-toolwindow:intellij.android.device-monitor-toolwindow",
+            "//tools/adt/idea/device-explorer:intellij.android.device-explorer",
+            "//tools/adt/idea/device-explorer-files:intellij.android.device-explorer-files",
+            "//tools/adt/idea/device-explorer-monitor:intellij.android.device-explorer-monitor",
+            "//tools/adt/idea/device-explorer-common:intellij.android.device-explorer-common",
             "//tools/adt/idea/device-manager:intellij.android.device-manager",
             "//tools/adt/idea/emulator:intellij.android.emulator",
             "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api",
@@ -217,6 +222,7 @@ studio_plugin(
             "//tools/base/annotations:studio.android.sdktools.android-annotations",
             "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer",
             "//tools/base/apkparser:studio.android.sdktools.binary-resources",
+            "//tools/base/build-analyzer/common:studio.android.build-analyzer.common",
             "//tools/base/build-system/builder-model:studio.android.sdktools.builder-model",
             "//tools/base/build-system/builder-test-api:studio.android.sdktools.builder-test-api",
             "//tools/base/adblib:studio.android.sdktools.adblib",
@@ -227,6 +233,7 @@ studio_plugin(
             "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
             "//tools/base/device_validator:studio.android.sdktools.dvlib",
             "//tools/base/draw9patch:studio.android.sdktools.draw9patch",
+            "//tools/base/jdwp-tracer:studio.android.sdktools.jdwptracer",
             "//tools/base/lint:studio.android.sdktools.lint-api",
             "//tools/base/lint:studio.android.sdktools.lint-checks",
             "//tools/base/lint:studio.android.sdktools.lint-model",
@@ -601,6 +608,12 @@ android_studio(
     codesign_filelist = "codesign/filelist",
     files_linux = {
         "safemode/linux/studio_safe.sh": "bin/studio_safe.sh",
+    },
+    files_mac = {
+        "safemode/mac/studio_safe.sh": "bin/studio_safe.sh",
+    },
+    files_mac_arm = {
+        "safemode/mac/studio_safe.sh": "bin/studio_safe.sh",
     },
     files_win = {
         "safemode/win/studio_safe.bat": "bin/studio_safe.bat",

@@ -77,7 +77,7 @@ class TasksPageViewTest {
   fun testCreateView() {
     assertThat(view.component.name).isEqualTo("tasks-view")
     assertThat(view.groupingCheckBox.isSelected).isFalse()
-    assertThat(view.tasksGroupingComboBox.selectedItem).isEqualTo(TasksDataPageModel.Grouping.UNGROUPED)
+    assertThat(view.tasksGroupingComboBox.selectedItem).isEqualTo(TasksDataPageModel.Grouping.BY_TASK_CATEGORY)
     assertThat(view.treeHeaderLabel.text).isEqualTo(model.treeHeaderText)
 
     assertThat(view.tree.selectionPath).isNull()
@@ -87,6 +87,10 @@ class TasksPageViewTest {
   @Test
   @RunsInEdt
   fun testModelUpdated() {
+    StudioFlags.BUILD_ANALYZER_CATEGORY_ANALYSIS.override(false)
+    view = TasksPageView(model, mockHandlers).apply {
+      component.size = Dimension(600, 200)
+    }
     // Act - update model by opening Plugin page
     model.selectPageById(TasksPageId(TasksDataPageModel.Grouping.BY_PLUGIN, TaskDetailsPageType.PLUGIN_DETAILS, "resources.plugin"))
 

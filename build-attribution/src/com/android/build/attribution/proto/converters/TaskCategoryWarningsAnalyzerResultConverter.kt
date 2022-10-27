@@ -18,24 +18,50 @@ package com.android.build.attribution.proto.converters
 import com.android.build.attribution.BuildAnalysisResultsMessage
 import com.android.build.attribution.analyzers.TaskCategoryWarningsAnalyzer
 import com.android.build.attribution.proto.PairEnumFinder
-import com.android.ide.common.attribution.BuildAnalyzerTaskCategoryIssue
+import com.android.buildanalyzer.common.TaskCategoryIssue
 
 class TaskCategoryWarningsAnalyzerResultConverter {
   companion object {
-    fun transform(taskCategoryWarningsAnalyzerResult: TaskCategoryWarningsAnalyzer.Result) =
-      BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.newBuilder()
-        .addAllBuildAnalyzerTaskCategoryIssues(
-          taskCategoryWarningsAnalyzerResult.buildAnalyzerTaskCategoryIssues.map(this::transformBuildAnalyzerTaskCategoryIssue))
-        .build()
+    fun transform(
+      taskCategoryWarningsAnalyzerResult: TaskCategoryWarningsAnalyzer.Result
+    ): BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult {
+
+      val supportType = when (taskCategoryWarningsAnalyzerResult) {
+        TaskCategoryWarningsAnalyzer.FeatureDisabled ->
+          BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.FEATURE_DISABLED
+        TaskCategoryWarningsAnalyzer.NoDataFromAGP ->
+          BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.NO_DATA_FROM_AGP
+        else -> BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.SUPPORTED
+      }
+
+      val builder = BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.newBuilder()
+      builder.taskCategorySupportType = supportType
+      if (taskCategoryWarningsAnalyzerResult is TaskCategoryWarningsAnalyzer.IssuesResult) {
+        builder.addAllTaskCategoryIssues(
+          taskCategoryWarningsAnalyzerResult.taskCategoryIssues.map(this::transformTaskCategoryIssue)
+        )
+      }
+
+      return builder.build()
+    }
 
     fun construct(taskCategoryWarningsAnalyzerResult: BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult): TaskCategoryWarningsAnalyzer.Result =
-      TaskCategoryWarningsAnalyzer.Result(
-        taskCategoryWarningsAnalyzerResult.buildAnalyzerTaskCategoryIssuesList.map(this::constructBuildAnalyzerTaskCategoryIssue))
+      when (taskCategoryWarningsAnalyzerResult.taskCategorySupportType) {
+        BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.FEATURE_DISABLED ->
+          TaskCategoryWarningsAnalyzer.FeatureDisabled
+        BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.NO_DATA_FROM_AGP ->
+          TaskCategoryWarningsAnalyzer.NoDataFromAGP
+        BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategorySupportType.SUPPORTED ->
+          TaskCategoryWarningsAnalyzer.IssuesResult(
+            taskCategoryIssues = taskCategoryWarningsAnalyzerResult.taskCategoryIssuesList.map(this::constructTaskCategoryIssue)
+          )
+        else -> throw RuntimeException("Unexpected value ${taskCategoryWarningsAnalyzerResult.taskCategorySupportType}")
+      }
 
-    private fun transformBuildAnalyzerTaskCategoryIssue(buildAnalyzerTaskCategoryIssue: BuildAnalyzerTaskCategoryIssue): BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.BuildAnalyzerTaskCategoryIssue =
-      PairEnumFinder.aToB(buildAnalyzerTaskCategoryIssue)
+    private fun transformTaskCategoryIssue(taskCategoryIssue: TaskCategoryIssue): BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategoryIssue =
+      PairEnumFinder.aToB(taskCategoryIssue)
 
-    private fun constructBuildAnalyzerTaskCategoryIssue(buildAnalyzerTaskCategoryIssue: BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.BuildAnalyzerTaskCategoryIssue): BuildAnalyzerTaskCategoryIssue =
-      PairEnumFinder.bToA(buildAnalyzerTaskCategoryIssue)
+    private fun constructTaskCategoryIssue(taskCategoryIssue: BuildAnalysisResultsMessage.TaskCategoryWarningsAnalyzerResult.TaskCategoryIssue): TaskCategoryIssue =
+      PairEnumFinder.bToA(taskCategoryIssue)
   }
 }

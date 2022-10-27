@@ -21,9 +21,11 @@ import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.GradleVersion.AgpVersion
+import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.LegacyApplicationIdModel
 import com.android.ide.gradle.model.LegacyV1AgpVersionModel
+import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
+import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.mapCatching
 import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradleModel
@@ -100,25 +102,35 @@ internal class BasicV1AndroidModuleGradleProject(
           legacyApplicationIdModel = legacyApplicationIdModel
         )
 
-        val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
-        val nativeAndroidProject: NativeAndroidProject? =
-          if (nativeModule == null)
-            controller.findParameterizedAndroidModel(
-              gradleProject, NativeAndroidProject::class.java,
-              shouldBuildVariant = false
+        return androidProjectResult
+          .mapCatching { androidProjectResult ->
+            val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
+            val nativeAndroidProject: NativeAndroidProject? =
+              if (nativeModule == null)
+                controller.findParameterizedAndroidModel(
+                  gradleProject, NativeAndroidProject::class.java,
+                  shouldBuildVariant = false
+                )
+              else null
+
+            createAndroidModuleV1(
+              gradleProject,
+              androidProjectResult,
+              nativeAndroidProject,
+              nativeModule,
+              buildInfo.buildNameMap,
+              buildInfo.buildIdMap,
+              modelCache
             )
-          else null
-
-        return createAndroidModuleV1(
-          gradleProject,
-          androidProjectResult,
-          nativeAndroidProject,
-          nativeModule,
-          buildInfo.buildNameMap,
-          buildInfo.buildIdMap,
-          modelCache
-        )
-
+          }
+          .let {
+            val result = it.ignoreExceptionsAndGet()
+            // If we were unable to create an AndroidModule we have enough data to create a JavaModule. This is a fallback allowing users
+            // access to at least build configuration files.
+              ?: JavaModule(gradleProject, kotlinGradleModel = null, kaptGradleModel = null)
+            result.recordExceptions(it.exceptions)
+            result
+          }
       },
       fetchesV1Models = true,
       fetchesKotlinModels = true
@@ -129,7 +141,12 @@ internal class BasicV1AndroidModuleGradleProject(
 /**
  * The container class of Android modules that can be fetched using V2 builder models.
  */
-internal class BasicV2AndroidModuleGradleProject(gradleProject: BasicGradleProject, buildName: String, val versions: Versions) :
+internal class BasicV2AndroidModuleGradleProject(
+  gradleProject: BasicGradleProject,
+  buildName: String,
+  val versions: Versions,
+  val syncTestMode: SyncTestMode
+) :
   BasicIncompleteAndroidModule(gradleProject, buildName)
 {
   override val agpVersion: String
@@ -138,7 +155,7 @@ internal class BasicV2AndroidModuleGradleProject(gradleProject: BasicGradleProje
   override fun getGradleModuleAction(
     internedModels: InternedModels,
     modelCacheLock: ReentrantLock,
-    buildInfo: BuildInfo
+    buildInfo: BuildInfo,
   ): ActionToRun<GradleModule> {
     return ActionToRun(
       fun(controller: BuildController): GradleModule {
@@ -157,7 +174,7 @@ internal class BasicV2AndroidModuleGradleProject(gradleProject: BasicGradleProje
           null
         }
 
-        val modelCache = modelCacheV2Impl(internedModels, modelCacheLock, agpVersion)
+        val modelCache = modelCacheV2Impl(internedModels, modelCacheLock, agpVersion, syncTestMode)
         val rootBuildId = buildInfo.buildNameMap[":"] ?: error("Root build (':') not found")
         val buildId = buildInfo.buildNameMap[basicAndroidProject.buildName]
           ?: error("(Included) build named '${basicAndroidProject.buildName}' not found")
@@ -173,17 +190,28 @@ internal class BasicV2AndroidModuleGradleProject(gradleProject: BasicGradleProje
             legacyApplicationIdModel = legacyApplicationIdModel
           )
 
-        // TODO(solodkyy): Perhaps request the version interface depending on AGP version.
-        val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
+        return androidProjectResult.mapCatching { androidProjectResult ->
+          // TODO(solodkyy): Perhaps request the version interface depending on AGP version.
+          val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
 
-        return createAndroidModuleV2(
-          gradleProject,
-          androidProjectResult,
-          nativeModule,
-          buildInfo.buildNameMap,
-          buildInfo.buildIdMap,
-          modelCache
-        )
+          createAndroidModuleV2(
+            gradleProject,
+            androidProjectResult,
+            nativeModule,
+            buildInfo.buildNameMap,
+            buildInfo.buildIdMap,
+            modelCache
+          )
+        }
+          .let {
+            val result = it.ignoreExceptionsAndGet()
+            // If we were unable to create an AndroidModule we have enough data to create a JavaModule. This is a fallback allowing users
+            // access to at least build configuration files.
+            // TODO(b/254045637): Provide a fallback in the case when `BasicAndroidProject` is available but `AndroidProject` is not.
+              ?: JavaModule(gradleProject, kotlinGradleModel = null, kaptGradleModel = null)
+            result.recordExceptions(it.exceptions)
+            result
+          }
       },
       fetchesV2Models = true
     )

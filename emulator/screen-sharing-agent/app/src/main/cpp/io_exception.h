@@ -38,7 +38,4 @@ class IoTimeout : public IoException {
 class EndOfFile : public IoException {
 };
 
-class StreamClosedException : public IoException {
-};
-
 }  // namespace screensharing

@@ -15,9 +15,7 @@
  */
 package com.android.tools.idea.emulator
 
-import com.android.adblib.AdbSession
 import com.android.adblib.DeviceInfo
-import com.android.adblib.DeviceList
 import com.android.adblib.DevicePropertyNames
 import com.android.adblib.DevicePropertyNames.RO_BOOT_QEMU_AVD_NAME
 import com.android.adblib.DevicePropertyNames.RO_BUILD_CHARACTERISTICS
@@ -31,13 +29,13 @@ import com.android.adblib.deviceProperties
 import com.android.adblib.trackDevices
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
-import com.android.ddmlib.IDevice
 import com.android.sdklib.SdkVersionInfo
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.avdmanager.AvdLaunchListener
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.addCallback
 import com.android.tools.idea.device.DeviceToolWindowPanel
+import com.android.tools.idea.device.dialogs.MirroringConfirmationDialog
 import com.android.tools.idea.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.emulator.EmulatorController.ConnectionStateListener
 import com.android.tools.idea.emulator.RunningDevicePanel.UiState
@@ -58,7 +56,6 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowEx
@@ -69,9 +66,12 @@ import com.intellij.ui.content.ContentManager
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.util.Alarm
+import com.intellij.util.concurrency.AppExecutorUtil.createBoundedApplicationPoolExecutor
 import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.apache.commons.lang.WordUtils
@@ -79,7 +79,6 @@ import java.awt.EventQueue
 import java.text.Collator
 import java.time.Duration
 import java.util.concurrent.CancellationException
-import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Manages contents of the Emulator tool window. Listens to changes in [RunningEmulatorCatalog]
@@ -90,18 +89,25 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
   private val project: Project
 ) : RunningEmulatorCatalog.Listener, DeviceMirroringSettingsListener, DumbAware {
 
+  private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
   private var contentCreated = false
   private var physicalDeviceWatcher: PhysicalDeviceWatcher? = null
   private val panels = arrayListOf<RunningDevicePanel>()
   private var selectedPanel: RunningDevicePanel? = null
-  /** When the tool window is hidden, the ID of the last selected Emulator, otherwise null. */
+  /** When the tool window is hidden, the ID of the last selected device, otherwise null. */
   private var lastSelectedDeviceId: DeviceId? = null
   /** When the tool window is hidden, the state of the UI for all emulators, otherwise empty. */
   private val savedUiState = hashMapOf<DeviceId, UiState>()
   private val emulators = hashSetOf<EmulatorController>()
+  /** Properties of mirrorable devices keyed by serial numbers. */
+  private var mirrorableDeviceProperties = mutableMapOf<String, Map<String, String>>()
+  /** Serial numbers of mirrored devices. */
+  private var mirroredDevices = mutableSetOf<String>()
   private val properties = PropertiesComponent.getInstance(project)
+  // Serial numbers of devices that recently requested attention.
+  private val recentAttentionRequests = CacheBuilder.newBuilder().expireAfterWrite(ATTENTION_REQUEST_EXPIRATION).build<String, String>()
   // IDs of recently launched AVDs keyed by themselves.
-  private val recentLaunches = CacheBuilder.newBuilder().expireAfterWrite(LAUNCH_INFO_EXPIRATION).build<String, String>()
+  private val recentEmulatorLaunches = CacheBuilder.newBuilder().expireAfterWrite(ATTENTION_REQUEST_EXPIRATION).build<String, String>()
   private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, project.earlyDisposable)
 
   private val contentManagerListener = object : ContentManagerListener {
@@ -184,58 +190,105 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
                                      if (project == this.project && isEmbeddedEmulator(commandLine)) {
                                        RunningEmulatorCatalog.getInstance().updateNow()
                                        EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
-                                         onEmulatorUsed(avd.name)
+                                         onEmulatorHeadsUp(avd.name)
                                        }
                                      }
                                    })
 
     messageBusConnection.subscribe(DeviceHeadsUpListener.TOPIC,
-                                   DeviceHeadsUpListener { device, project ->
-                                     if (project == this.project && device.isEmulator) {
-                                       onDeploymentToEmulator(device)
+                                   DeviceHeadsUpListener { deviceSerialNumber, project ->
+                                     if (project == this.project) {
+                                       UIUtil.invokeLaterIfNeeded {
+                                         onDeviceHeadsUp(deviceSerialNumber)
+                                       }
                                      }
                                    })
 
-
     messageBusConnection.subscribe(DeviceMirroringSettingsListener.TOPIC, this)
-  }
 
-  @AnyThread
-  private fun onDeploymentToEmulator(device: IDevice) {
-    val future = RunningEmulatorCatalog.getInstance().updateNow()
-    future.addCallback(EdtExecutorService.getInstance(),
-                       success = { emulators ->
-                         if (emulators != null) {
-                           onDeploymentToEmulator(device, emulators)
-                         }},
-                       failure = {})
-  }
+    UIUtil.invokeLaterIfNeeded {
+      createPhysicalDeviceWatcherIfToolWindowAvailable(ToolWindowManager.getInstance(project))
+      if (physicalDeviceWatcher == null) {
+        messageBusConnection.subscribe(ToolWindowManagerListener.TOPIC, object : ToolWindowManagerListener {
 
-  private fun onDeploymentToEmulator(device: IDevice, runningEmulators: Set<EmulatorController>) {
-    val serialPort = device.serialPort
-    val emulator = runningEmulators.find { it.emulatorId.serialPort == serialPort } ?: return
-    // Ignore standalone emulators.
-    if (emulator.emulatorId.isEmbedded) {
-      onEmulatorUsed(emulator.emulatorId.avdId)
-    }
-  }
-
-  private fun onEmulatorUsed(avdId: String) {
-    val toolWindow = getToolWindow()
-    if (!toolWindow.isVisible) {
-      toolWindow.show(null)
-      if (!toolWindow.isActive) {
-        toolWindow.activate(null)
+          override fun toolWindowsRegistered(ids: List<String>, toolWindowManager: ToolWindowManager) {
+            if (ids.contains(RUNNING_DEVICES_TOOL_WINDOW_ID) && deviceMirroringSettings.deviceMirroringEnabled &&
+                physicalDeviceWatcher == null) {
+              createPhysicalDeviceWatcherIfToolWindowAvailable(toolWindowManager)
+            }
+          }
+        })
       }
     }
+  }
+
+  private fun createPhysicalDeviceWatcherIfToolWindowAvailable(toolWindowManager: ToolWindowManager) {
+    val toolWindow = toolWindowManager.getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)
+    if (toolWindow != null) {
+      physicalDeviceWatcher = PhysicalDeviceWatcher(toolWindow.disposable)
+    }
+  }
+
+  private fun onDeviceHeadsUp(deviceSerialNumber: String) {
+    if (mirrorableDeviceProperties.contains(deviceSerialNumber)) {
+      onPhysicalDeviceHeadsUp(deviceSerialNumber)
+    }
+    else {
+      recentAttentionRequests.put(deviceSerialNumber, deviceSerialNumber)
+      alarm.addRequest(recentAttentionRequests::cleanUp, ATTENTION_REQUEST_EXPIRATION.toMillis())
+      if (deviceSerialNumber.startsWith("emulator-")) {
+        val future = RunningEmulatorCatalog.getInstance().updateNow()
+        future.addCallback(EdtExecutorService.getInstance(),
+                           success = { emulators ->
+                             if (emulators != null) {
+                               onEmulatorHeadsUp(deviceSerialNumber, emulators)
+                             }
+                           },
+                           failure = {})
+      }
+    }
+  }
+
+  private fun onPhysicalDeviceHeadsUp(deviceSerialNumber: String) {
+    val toolWindow = getToolWindow()
+    if (!toolWindow.isVisible) {
+      lastSelectedDeviceId = DeviceId.ofPhysicalDevice(deviceSerialNumber)
+      toolWindow.showAndActivate()
+    }
+    else {
+      val panel = findPanelBySerialNumber(deviceSerialNumber)
+      if (panel != null) {
+        selectPanel(panel, toolWindow)
+        toolWindow.showAndActivate()
+      }
+    }
+  }
+
+  private fun onEmulatorHeadsUp(deviceSerialNumber: String, runningEmulators: Set<EmulatorController>) {
+    val emulator = runningEmulators.find { it.emulatorId.serialNumber == deviceSerialNumber } ?: return
+    // Ignore standalone emulators.
+    if (emulator.emulatorId.isEmbedded) {
+      onEmulatorHeadsUp(emulator.emulatorId.avdId)
+    }
+  }
+
+  private fun onEmulatorHeadsUp(avdId: String) {
+    val toolWindow = getToolWindow()
+    toolWindow.showAndActivate()
 
     val panel = findPanelByAvdId(avdId)
     if (panel == null) {
       RunningEmulatorCatalog.getInstance().updateNow()
-      recentLaunches.put(avdId, avdId)
-      alarm.addRequest(recentLaunches::cleanUp, LAUNCH_INFO_EXPIRATION.toMillis())
+      recentEmulatorLaunches.put(avdId, avdId)
+      alarm.addRequest(recentEmulatorLaunches::cleanUp, ATTENTION_REQUEST_EXPIRATION.toMillis())
     }
-    else if (selectedPanel != panel) {
+    else {
+      selectPanel(panel, toolWindow)
+    }
+  }
+
+  private fun selectPanel(panel: RunningDevicePanel, toolWindow: ToolWindow) {
+    if (selectedPanel != panel) {
       val contentManager = toolWindow.contentManager
       val content = contentManager.getContent(panel)
       contentManager.setSelectedContent(content)
@@ -259,22 +312,33 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
     // Ignore standalone emulators.
     emulators.addAll(emulatorCatalog.emulators.filter { it.emulatorId.isEmbedded })
 
-    // Create the panel for the last selected Emulator before other panels so that it becomes selected
-    // unless a recently launched Emulator takes over.
-    val activeEmulator = (lastSelectedDeviceId as? DeviceId.EmulatorDeviceId)?.let { lastSelected ->
-      emulators.find { it.emulatorId == lastSelected.emulatorId }
+    // Create the panel for the last selected device before other panels so that it becomes selected.
+    when (val activeDeviceId = lastSelectedDeviceId) {
+      is DeviceId.EmulatorDeviceId -> {
+        val activeEmulator = emulators.find { it.emulatorId == activeDeviceId.emulatorId }
+        if (activeEmulator != null && !activeEmulator.isShuttingDown) {
+          addEmulatorPanel(activeEmulator)
+        }
+      }
+      is DeviceId.PhysicalDeviceId -> {
+        val deviceProperties = mirrorableDeviceProperties[activeDeviceId.serialNumber]
+        if (deviceProperties != null) {
+          physicalDeviceWatcher?.deviceConnected(activeDeviceId.serialNumber, deviceProperties)
+        }
+      }
+      else -> {}
     }
-    if (activeEmulator != null && !activeEmulator.isShuttingDown) {
-      addEmulatorPanel(activeEmulator)
-    }
+
     for (emulator in emulators) {
-      if (emulator != activeEmulator && !emulator.isShuttingDown) {
+      if (emulator.emulatorId.serialNumber != lastSelectedDeviceId?.serialNumber && !emulator.isShuttingDown) {
         addEmulatorPanel(emulator)
       }
     }
 
-    if (DeviceMirroringSettings.getInstance().deviceMirroringEnabled) {
-      physicalDeviceWatcher = PhysicalDeviceWatcher()
+    for ((serialNumber, deviceProperties) in mirrorableDeviceProperties) {
+      if (serialNumber != lastSelectedDeviceId?.serialNumber) {
+        physicalDeviceWatcher?.deviceConnected(serialNumber, deviceProperties)
+      }
     }
 
     // Not maintained when the tool window is visible.
@@ -294,8 +358,6 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
       return
     }
     contentCreated = false
-    physicalDeviceWatcher?.let { Disposer.dispose(it) }
-    physicalDeviceWatcher = null
 
     lastSelectedDeviceId = selectedPanel?.id
 
@@ -304,12 +366,14 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
       emulator.removeConnectionStateListener(connectionStateListener)
     }
     emulators.clear()
+    mirroredDevices.clear()
     selectedPanel?.let {
       savedUiState[it.id] = it.destroyContent()
     }
     selectedPanel = null
     panels.clear()
-    recentLaunches.invalidateAll()
+    recentAttentionRequests.invalidateAll()
+    recentEmulatorLaunches.invalidateAll()
     val contentManager = toolWindow.contentManager
     contentManager.removeContentManagerListener(contentManagerListener)
     contentManager.removeAllContents(true)
@@ -363,8 +427,8 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
         val deviceId = panel.id
         if (deviceId is DeviceId.EmulatorDeviceId) {
           val avdId = deviceId.emulatorId.avdId
-          if (recentLaunches.getIfPresent(avdId) != null) {
-            recentLaunches.invalidate(avdId)
+          if (recentEmulatorLaunches.getIfPresent(avdId) != null) {
+            recentEmulatorLaunches.invalidate(avdId)
             contentManager.setSelectedContent(content)
           }
         }
@@ -483,8 +547,8 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
 
   override fun settingsChanged(settings: DeviceMirroringSettings) {
     if (settings.deviceMirroringEnabled) {
-      if (contentCreated && physicalDeviceWatcher == null) {
-        physicalDeviceWatcher = PhysicalDeviceWatcher()
+      if (physicalDeviceWatcher == null) {
+        createPhysicalDeviceWatcherIfToolWindowAvailable(ToolWindowManager.getInstance(project))
       }
     }
     else {
@@ -494,16 +558,16 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
     }
   }
 
-  /**
-   * Extracts and returns the port number from the serial number of an Emulator device,
-   * or zero if the serial number doesn't have an expected format, "emulator-<port_number>".
-   */
-  private val IDevice.serialPort: Int
-    get() {
-      require(isEmulator)
-      val pos = serialNumber.indexOf('-')
-      return StringUtil.parseInt(serialNumber.substring(pos + 1), 0)
+  private fun ToolWindow.showAndActivate() {
+    if (isVisible) {
+      activate(null)
     }
+    else {
+      show {
+        activate(null)
+      }
+    }
+  }
 
   private inner class ToggleDeviceFrameAction : ToggleAction("Show Device Frame"), DumbAware {
 
@@ -548,7 +612,7 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
     private val ID_KEY = Key.create<DeviceId>("device-id")
 
     @JvmStatic
-    private val LAUNCH_INFO_EXPIRATION = Duration.ofSeconds(30)
+    private val ATTENTION_REQUEST_EXPIRATION = Duration.ofSeconds(30)
 
     @JvmStatic
     private val COLLATOR = Collator.getInstance()
@@ -578,45 +642,93 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
       commandLine.parametersList.parameters.contains("-qt-hide-window")
   }
 
-  private inner class PhysicalDeviceWatcher : Disposable {
-    /** Serial numbers of mirrored devices. */
-    private var mirroredDevices = CopyOnWriteArraySet<String>()
-    private val coroutineScope = AndroidCoroutineScope(this)
+  private inner class PhysicalDeviceWatcher(disposableParent: Disposable) : Disposable {
+    private val adbSession = AdbLibService.getSession(project)
+    private val coroutineScope: CoroutineScope
 
     init {
-      Disposer.register(getToolWindow().disposable, this)
+      Disposer.register(disposableParent, this)
+      val executor = createBoundedApplicationPoolExecutor("EmulatorToolWindowManager.PhysicalDeviceWatcher", 1)
+      coroutineScope = AndroidCoroutineScope(this, executor.asCoroutineDispatcher())
       coroutineScope.launch {
-        val adbSession = AdbLibService.getSession(project)
         adbSession.trackDevices().collect { deviceList ->
-          onDeviceListChanged(deviceList.devices, adbSession)
-        }
-      }
-    }
-
-    @AnyThread
-    private suspend fun onDeviceListChanged(deviceList: DeviceList, adbSession: AdbSession) {
-      val onlineDevices = deviceList.filter { it.deviceState == DeviceState.ONLINE }.map(DeviceInfo::serialNumber).toSet()
-      val removed = mirroredDevices.minus(onlineDevices)
-      mirroredDevices.removeAll(removed)
-      for (device in removed) {
-        physicalDeviceDisconnected(device)
-      }
-      for (deviceSerialNumber in onlineDevices) {
-        if (!mirroredDevices.contains(deviceSerialNumber)) {
-          coroutineScope.launch {
-            val deviceProperties = getMirrorableDeviceProperties(deviceSerialNumber, adbSession)
-            if (deviceProperties != null) {
-              physicalDeviceConnected(deviceSerialNumber, deviceProperties)
-            }
+          UIUtil.invokeLaterIfNeeded {
+            val devices = deviceList.devices.entries.filter { it.deviceState == DeviceState.ONLINE }.map(DeviceInfo::serialNumber).toSet()
+            devicesConnected(devices)
           }
         }
       }
     }
 
-    /**
-     * Returns properties of the device if it supports mirroring. Otherwise, returns null.
-     */
-    private suspend fun getMirrorableDeviceProperties(deviceSerialNumber: String, adbSession: AdbSession): Map<String, String>? {
+    fun devicesConnected(devices: Set<String>) {
+      val removed = mirroredDevices.minus(devices)
+      mirroredDevices.removeAll(removed)
+      mirrorableDeviceProperties.keys.removeAll(removed)
+      for (device in removed) {
+        removePhysicalDevicePanel(device)
+      }
+      for (deviceSerialNumber in devices) {
+        if (!mirroredDevices.contains(deviceSerialNumber)) {
+          coroutineScope.launch {
+            deviceConnected(deviceSerialNumber)
+          }
+        }
+      }
+    }
+
+    @AnyThread
+    private suspend fun deviceConnected(deviceSerialNumber: String) {
+      val deviceProperties = getMirrorableDeviceProperties(deviceSerialNumber)
+      if (deviceProperties != null) {
+        UIUtil.invokeLaterIfNeeded { // This is safe because this code doesn't touch PSI or VFS.
+          mirrorableDeviceProperties[deviceSerialNumber] = deviceProperties
+          if (contentCreated) {
+            deviceConnected(deviceSerialNumber, deviceProperties)
+          }
+          else if (recentAttentionRequests.getIfPresent(deviceSerialNumber) != null) {
+            recentAttentionRequests.invalidate(deviceSerialNumber)
+            lastSelectedDeviceId = DeviceId.ofPhysicalDevice(deviceSerialNumber)
+            getToolWindow().showAndActivate()
+          }
+        }
+      }
+    }
+
+    fun deviceConnected(deviceSerialNumber: String, deviceProperties: Map<String, String>) {
+      if (!mirroredDevices.contains(deviceSerialNumber)) {
+        val deviceName = getDeviceName(deviceProperties, deviceSerialNumber)
+        val deviceAbi = deviceProperties[RO_PRODUCT_CPU_ABI]
+        if (deviceAbi == null) {
+          thisLogger().warn("Unable to determine ABI of $deviceName")
+          return
+        }
+
+        if (deviceMirroringSettings.confirmationDialogShown) {
+          startMirroring(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
+        }
+        else {
+          val dialog = MirroringConfirmationDialog(deviceName)
+          val dialogWrapper = dialog.createWrapper(project).apply { show() }
+          when (dialogWrapper.exitCode) {
+            MirroringConfirmationDialog.ACCEPT_EXIT_CODE -> startMirroring(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
+            MirroringConfirmationDialog.REJECT_EXIT_CODE -> deviceMirroringSettings.deviceMirroringEnabled = false
+            else -> return
+          }
+          deviceMirroringSettings.confirmationDialogShown = true
+        }
+      }
+    }
+
+    private fun startMirroring(deviceSerialNumber: String, deviceAbi: String, deviceName: String, deviceProperties: Map<String, String>) {
+      mirroredDevices.add(deviceSerialNumber)
+      if (contentCreated) {
+        addPhysicalDevicePanel(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
+      }
+    }
+
+    /** Returns properties of the device if it supports mirroring. Otherwise, returns null. */
+    @AnyThread
+    private suspend fun getMirrorableDeviceProperties(deviceSerialNumber: String): Map<String, String>? {
       if (deviceSerialNumber.startsWith("emulator-")) {
         if (!StudioFlags.DEVICE_MIRRORING_STANDALONE_EMULATORS.get()) {
           return null
@@ -648,23 +760,6 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
       }
     }
 
-    @AnyThread
-    private fun physicalDeviceConnected(deviceSerialNumber: String, deviceProperties: Map<String, String>) {
-      UIUtil.invokeLaterIfNeeded { // This is safe because this code doesn't touch PSI or VFS.
-        if (!mirroredDevices.contains(deviceSerialNumber)) {
-          val deviceName = getDeviceName(deviceProperties, deviceSerialNumber)
-          val deviceAbi = deviceProperties[RO_PRODUCT_CPU_ABI]
-          if (deviceAbi == null) {
-            thisLogger().warn("Unable to determine ABI of $deviceName")
-          }
-          else {
-            mirroredDevices.add(deviceSerialNumber)
-            addPhysicalDevicePanel(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
-          }
-        }
-      }
-    }
-
     private fun getDeviceName(deviceProperties: Map<String, String>, deviceSerialNumber: String): String {
       var name = (deviceProperties[RO_BOOT_QEMU_AVD_NAME] ?: deviceProperties[RO_KERNEL_QEMU_AVD_NAME])?.replace('_', ' ')
       if (name == null) {
@@ -675,13 +770,6 @@ internal class EmulatorToolWindowManager @AnyThread private constructor(
         }
       }
       return name
-    }
-
-    @AnyThread
-    private fun physicalDeviceDisconnected(deviceSerialNumber: String) {
-      UIUtil.invokeLaterIfNeeded { // This is safe because this code doesn't touch PSI or VFS.
-        removePhysicalDevicePanel(deviceSerialNumber)
-      }
     }
 
     override fun dispose() {

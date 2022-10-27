@@ -629,6 +629,77 @@ class RuleDetailsViewTest {
   }
 
   @Test
+  fun textFieldNotEmptyWhenDisabledAndEnabled() {
+    addNewRule()
+    val ruleDetailsView = detailsPanel.ruleDetailsView
+    val headerTable = findComponentWithUniqueName(ruleDetailsView, "headerRules") as TableView<*>
+
+    val addAction = findAction(headerTable.parent.parent.parent, "Add")
+    createModalDialogAndInteractWithIt({ addAction.actionPerformed(TestActionEvent()) }) {
+      val dialog = it as HeaderRuleDialog
+      dialog.tabs.selectedComponent = dialog.editHeaderPanel
+
+      assertThat(dialog.findNameTextField.isEnabled).isFalse()
+      assertThat(dialog.findNameTextField.text).isEmpty()
+      assertThat(dialog.findNameCheckBox.isSelected).isFalse()
+
+      // Check checkbox
+      dialog.findNameCheckBox.isSelected = true
+      // Assert text field is enabled
+      assertThat(dialog.findNameTextField.isEnabled).isTrue()
+
+      // Add text
+      dialog.findNameTextField.text = "Some-Header"
+      // Uncheck checkbox
+      dialog.findNameCheckBox.isSelected = false
+
+      // Assert the text does not disappear when checkbox unchecked
+      assertThat(dialog.findNameTextField.isEnabled).isFalse()
+      assertThat(dialog.findNameTextField.text).isNotEmpty()
+      assertThat(dialog.findNameTextField.text).isEqualTo("Some-Header")
+
+      // Check checkbox again to verify text is still present
+      dialog.findNameCheckBox.isSelected = true
+
+      // Assert the text does not disappear when checkbox checked
+      assertThat(dialog.findNameTextField.isEnabled).isTrue()
+      assertThat(dialog.findNameTextField.text).isNotEmpty()
+      assertThat(dialog.findNameTextField.text).isEqualTo("Some-Header")
+    }
+  }
+
+  @Test
+  fun disableOkButtonOnEmptyNewHeaderInputInNewHeaderDialog() {
+    addNewRule()
+    val ruleDetailsView = detailsPanel.ruleDetailsView
+    val headerTable = findComponentWithUniqueName(ruleDetailsView, "headerRules") as TableView<*>
+    assertThat(headerTable.rowCount).isEqualTo(0)
+
+    val addAction = findAction(headerTable.parent.parent.parent, "Add")
+    createModalDialogAndInteractWithIt({ addAction.actionPerformed(TestActionEvent()) }) {
+      val dialog = it as HeaderRuleDialog
+      dialog.tabs.selectedComponent = dialog.newHeaderPanel
+      // Assert that OK button is disabled since the default value is empty
+      assertThat(dialog.isOKActionEnabled).isFalse()
+
+      // Add text to the text field. Calls "replace" in DocumentFilter
+      dialog.newAddedNameLabel.text = "New-Header"
+      // Assert that the added text enabled the OK button
+      assertThat(dialog.isOKActionEnabled).isTrue()
+
+      // Clear the text field
+      dialog.newAddedNameLabel.document.remove(0, dialog.newAddedNameLabel.text.length)
+      // Assert that OK button is disabled due to empty text
+      assertThat(dialog.isOKActionEnabled).isFalse()
+
+      // Simulate copy-paste by user
+      dialog.newAddedNameLabel.document.insertString(0, "TestInsertString", null)
+      // Assert that OK button enabled when paste occurs
+      assertThat(dialog.isOKActionEnabled).isTrue()
+    }
+  }
+
+  @Test
   fun addAndRemoveBodyReplacedRulesFromDetailsView() {
     addNewRule()
     val ruleDetailsView = detailsPanel.ruleDetailsView
@@ -987,6 +1058,45 @@ class RuleDetailsViewTest {
 
     assert(!newCodeWarningLabel.isVisible)
     assert(rule.statusCodeRuleData.isActive)
+  }
+
+  @Test
+  fun statusCodeInActiveWhenCheckBoxUnchecked() {
+    val rule = addNewRule()
+    val ruleDetailsView = detailsPanel.ruleDetailsView
+    val findCodeTextField = findComponentWithUniqueName(ruleDetailsView, "findCodeTextField") as JTextField
+    val newCodeTextField = findComponentWithUniqueName(ruleDetailsView, "newCodeTextField") as JTextField
+    val isActiveCheckBox = TreeWalker(ruleDetailsView).descendantStream().filter { it is JCheckBox }.getIfSingle() as JCheckBox
+
+    // Assert checkbox is unselected by default
+    assertThat(isActiveCheckBox.isSelected).isFalse()
+
+    // Setup a valid status code
+    isActiveCheckBox.isSelected = true
+    findCodeTextField.text = "200"
+    findCodeTextField.onFocusLost()
+    newCodeTextField.text = "404"
+    newCodeTextField.onFocusLost()
+
+    // Assert status code is active
+    assertThat(rule.statusCodeRuleData.isActive).isTrue()
+    client.verifyLatestCommand {
+      assertThat(it.interceptRuleUpdated.rule.transformationList.size).isEqualTo(1)
+      it.interceptRuleUpdated.rule.transformationList[0].also { transformation ->
+        assertThat(transformation.hasStatusCodeReplaced()).isTrue()
+        assertThat(transformation.statusCodeReplaced.targetCode.text).isEqualTo("200")
+        assertThat(transformation.statusCodeReplaced.newCode).isEqualTo("404")
+      }
+    }
+
+    // Uncheck the status code checkbox
+    isActiveCheckBox.isSelected = false
+
+    // Assert that status code is inactive
+    assertThat(rule.statusCodeRuleData.isActive).isFalse()
+    client.verifyLatestCommand {
+      assertThat(it.interceptRuleUpdated.rule.transformationList.size).isEqualTo(0)
+    }
   }
 
   private fun addNewRule(): RuleData {

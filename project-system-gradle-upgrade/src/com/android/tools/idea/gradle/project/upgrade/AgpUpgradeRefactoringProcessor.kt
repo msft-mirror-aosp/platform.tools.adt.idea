@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.upgrade
 
-import com.android.ide.common.repository.GradleVersion.AgpVersion
+import com.android.ide.common.repository.AgpVersion
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
@@ -638,19 +638,13 @@ class AgpUpgradeRefactoringProcessor(
   }
 }
 
-internal fun notifyCancelledUpgrade(project: Project, processor: AgpUpgradeRefactoringProcessor) {
-  val current = processor.current
-  val new = processor.new
-  val listener = NotificationListener { notification, _ ->
-    notification.expire()
-    ApplicationManager.getApplication().executeOnPooledThread {
-      showAndInvokeAgpUpgradeRefactoringProcessor(project, current, new)
-    }
-  }
+internal fun notifyCancelledUpgrade(project: Project) {
+  // TODO(xof): this is now only called from the forced upgrade flow, where this notification is probably not the right one: we should
+  //  probably re-show the forced upgrade modal dialog instead.
   val notification = UpgradeSuggestion(
     AndroidBundle.message("project.upgrade.notifyCancelledUpgrade.title"),
-    AndroidBundle.message("project.upgrade.notifyCancelledUpgrade.body"),
-    listener)
+    AndroidBundle.message("project.upgrade.notifyCancelledUpgrade.body")
+  )
   notification.notify(project)
 }
 

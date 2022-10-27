@@ -21,6 +21,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common[module]",
+        "//tools/base/build-analyzer/common:studio.android.build-analyzer.common[module]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
         "//tools/analytics-library/tracker:analytics-tracker[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
@@ -65,7 +66,6 @@ iml_module(
     test_class = "com.android.build.attribution.AndroidBuildAttributionTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk",
         "//prebuilts/studio/jdk/jdk11",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
@@ -86,6 +86,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
         "//tools/base/common:studio.android.sdktools.common[module, test]",
+        "//tools/base/build-analyzer/common:studio.android.build-analyzer.common[module, test]",
         "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions[module, test]",
@@ -111,7 +112,6 @@ old_agp_test(
     timeout = "long",
     agp_version = AGP_7_1,
     data = [
-        "//prebuilts/studio/jdk",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/build-attribution/testData",

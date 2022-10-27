@@ -74,7 +74,7 @@ public class CreateNewAppModuleWithDefaultsTest {
       .enterModuleName("application_module")
       .wizard()
       .clickNext()
-      .chooseActivity("Empty Activity")
+      .chooseActivity("Empty Views Activity")
       .clickNext()
       .clickFinishAndWaitForSyncToFinish();
     guiTest.waitForAllBackgroundTasksToBeCompleted();

@@ -18,6 +18,7 @@ package com.android.tools.idea.run.deployment.liveedit
 import com.android.annotations.Trace
 import com.android.tools.idea.editors.literals.LiveEditService
 import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
+import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException.Companion.compilationError
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException.Companion.internalError
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException.Companion.nonPrivateInlineFunctionFailure
 import com.google.common.collect.HashMultimap
@@ -45,6 +46,9 @@ import org.jetbrains.kotlin.psi.KtNamedDeclarationUtil
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 class AndroidLiveEditCodeGenerator(val project: Project, val inlineCandidateCache: SourceInlineCandidateCache? = null) {
   data class CodeGeneratorInput(val file: PsiFile, var element: KtElement, var parentGroups: List<KtFunction>? = null)
@@ -185,6 +189,12 @@ class AndroidLiveEditCodeGenerator(val project: Project, val inlineCandidateCach
       throw LiveEditUpdateException.internalError("No compiler output.", input.file)
     }
 
+    if (input.element.containingFile == null) {
+      // The function we are looking at no longer belongs to file. This is mostly an IDE refactor. Make it a recoverable error
+      // to see if the next step of the refactor can fix it. This should be solve nicely with a ClassDiffer.
+      throw compilationError("Invalid AST. Function no longer belong to any files.")
+    }
+
     when(input.element) {
       // When the edit event was contained in a function
       is KtNamedFunction -> {
@@ -230,7 +240,12 @@ class AndroidLiveEditCodeGenerator(val project: Project, val inlineCandidateCach
     var elem: PsiElement = targetFunction
     while (elem.getKotlinFqName() == null || elem !is KtNamedFunction) {
       if (elem.parent == null) {
-        throw LiveEditUpdateException.internalError("Unable to retrieve context for function ${targetFunction.name}", elem.containingFile);
+        // Suppose you are editing:
+        // val direct = @Composable{Text(text = "hi")}
+        //
+        // We would not be able to find a named function with the current implementation. What we need to do is figure out the name
+        // of the function in the .class that is changed. This can only be done with something like a class differ.
+        throw LiveEditUpdateException.internalError("Unsupported edit of unnamed function", elem.containingFile);
       }
       elem = elem.parent
     }
@@ -268,11 +283,6 @@ class AndroidLiveEditCodeGenerator(val project: Project, val inlineCandidateCach
   }
 
   private fun getCompiledClasses(internalClassName: String, input: KtFile, compilerOutput: List<OutputFile>) : Pair<ByteArray, Map<String, ByteArray>> {
-    fun isProxiable(clazzFile : ClassReader) : Boolean = clazzFile.superName == "kotlin/jvm/internal/Lambda" ||
-                                                         clazzFile.superName == "kotlin/coroutines/jvm/internal/SuspendLambda" ||
-                                                         clazzFile.superName == "kotlin/coroutines/jvm/internal/RestrictedSuspendLambda" ||
-                                                         clazzFile.className.contains("ComposableSingletons\$")
-
     var primaryClass = ByteArray(0)
     val supportClasses = mutableMapOf<String, ByteArray>()
     // TODO: Remove all these println once we are more stable.
@@ -319,6 +329,44 @@ class AndroidLiveEditCodeGenerator(val project: Project, val inlineCandidateCach
     }
     println("Lived edit classes summary end")
     return Pair(primaryClass, supportClasses)
+  }
+
+  private fun isProxiable(clazzFile: ClassReader): Boolean {
+    if (clazzFile.superName == "kotlin/jvm/internal/Lambda" ||
+        clazzFile.superName == "kotlin/coroutines/jvm/internal/SuspendLambda" ||
+        clazzFile.superName == "kotlin/coroutines/jvm/internal/RestrictedSuspendLambda" ||
+        clazzFile.className.contains("ComposableSingletons\$")) {
+      return true
+    }
+
+    // Checking for SAM (single abstract method) interfaces; these aren't specifically tagged in bytecode, so we need a heuristic.
+    // All the following should be true:
+    //   - inner classes (classes with '$' in the name)
+    //   - that implement a single interface
+    //   - that implement exactly one public method
+    if (!clazzFile.className.contains('$') || clazzFile.interfaces.size != 1) {
+      return false
+    }
+
+    var publicMethodCount = 0
+    clazzFile.accept(object : ClassVisitor(Opcodes.ASM5) {
+      override fun visitMethod(access: Int,
+                               name: String?,
+                               descriptor: String?,
+                               signature: String?,
+                               exceptions: Array<out String>?): MethodVisitor? {
+        if (access and Opcodes.ACC_PUBLIC != 0 &&
+            access and Opcodes.ACC_STATIC == 0 &&
+            !name.equals("<init>")) {
+          publicMethodCount++
+        }
+
+        // visitMethod return
+        return null
+      }
+    }, 0)
+
+    return publicMethodCount == 1
   }
 
   // The PSI returns the class name in the same format it would be used in an import statement: com.package.Class.InnerClass; however,

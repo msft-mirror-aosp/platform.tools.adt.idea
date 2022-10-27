@@ -20,6 +20,7 @@ import com.android.tools.profiler.proto.Cpu
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.cpu.CpuProfilerTestUtils
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
+import com.android.tools.profilers.cpu.systemtrace.CounterModel
 import com.android.tools.profilers.cpu.systemtrace.CpuCoreModel
 import com.android.tools.profilers.cpu.systemtrace.ProcessModel
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceModelAdapter
@@ -37,6 +38,7 @@ class FakeTraceProcessorService: TraceProcessorService {
       setOf(
         CpuProfilerTestUtils.getTraceFile("perfetto.trace"),
         CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"),
+        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
         CpuProfilerTestUtils.getTraceFile("perfetto_frame_lifecycle.trace")
       )
     }
@@ -147,6 +149,8 @@ class FakeTraceProcessorService: TraceProcessorService {
     override fun getDanglingThread(tid: Int): ThreadModel? = null
     override fun getCpuCores(): List<CpuCoreModel> = emptyList()
     override fun getSystemTraceTechnology() = Trace.UserOptions.TraceType.PERFETTO
+    override fun getPowerRails(): List<CounterModel> = emptyList()
+    override fun getBatteryDrain(): List<CounterModel> = emptyList()
     override fun isCapturePossibleCorrupted() = false
     override fun getAndroidFrameLayers(): List<TraceProcessor.AndroidFrameEventsResult.Layer> = emptyList()
     override fun getAndroidFrameTimelineEvents(): List<AndroidFrameTimelineEvent> = emptyList()
@@ -154,9 +158,15 @@ class FakeTraceProcessorService: TraceProcessorService {
 }
 
 /**
- * Wrapper for old fake trace that had `null` for timeline events and resulted in `IllegalStateException` when inspected
+ * Wrapper for old fake trace that had `null` for timeline events, power rails, and battery drain
+ * and resulted in `IllegalStateException` when inspected.
  */
 private class FakeTimelineModelAdapter(private val base: SystemTraceModelAdapter,
-                                       private val fakeEvents: List<AndroidFrameTimelineEvent> = listOf()): SystemTraceModelAdapter by base {
+                                       private val fakeEvents: List<AndroidFrameTimelineEvent> = listOf(),
+                                       private val fakePowerRails: List<CounterModel> = listOf(),
+                                       private val fakeBatteryDrain: List<CounterModel> = listOf()): SystemTraceModelAdapter by base {
   override fun getAndroidFrameTimelineEvents() = base.getAndroidFrameTimelineEvents() ?: fakeEvents
+  override fun getPowerRails(): List<CounterModel> = base.getPowerRails() ?: fakePowerRails
+  override fun getBatteryDrain(): List<CounterModel> = base.getBatteryDrain() ?: fakeBatteryDrain
+
 }

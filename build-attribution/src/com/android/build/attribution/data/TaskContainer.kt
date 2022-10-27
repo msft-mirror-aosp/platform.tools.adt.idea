@@ -15,8 +15,8 @@
  */
 package com.android.build.attribution.data
 
-import com.android.ide.common.attribution.AndroidGradlePluginAttributionData
-import com.android.ide.common.attribution.TaskCategory
+import com.android.buildanalyzer.common.AndroidGradlePluginAttributionData
+import com.android.buildanalyzer.common.TaskCategory
 import com.android.tools.idea.flags.StudioFlags.BUILD_ANALYZER_CATEGORY_ANALYSIS
 import org.gradle.tooling.events.task.TaskFinishEvent
 
@@ -53,6 +53,8 @@ class TaskContainer {
   }
 
   fun getTasks(predicate: (TaskData) -> Boolean) = taskCache.values.filter(predicate)
+
+  fun any(predicate: (TaskData) -> Boolean) = taskCache.values.any(predicate)
 
   fun clear() {
     taskCache.clear()

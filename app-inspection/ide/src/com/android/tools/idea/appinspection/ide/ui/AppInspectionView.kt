@@ -39,6 +39,7 @@ import com.android.tools.idea.appinspection.inspector.api.AppInspectionVersionIn
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorForcefullyDisposedException
 import com.android.tools.idea.appinspection.inspector.api.awaitForDisposal
 import com.android.tools.idea.appinspection.inspector.api.launch.LaunchParameters
+import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatibility
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.inspector.ide.AppInspectorMessengerTarget
 import com.android.tools.idea.appinspection.inspector.ide.AppInspectorTab
@@ -47,6 +48,7 @@ import com.android.tools.idea.appinspection.inspector.ide.LibraryInspectorLaunch
 import com.android.tools.idea.appinspection.inspector.ide.SingleAppInspectorTabProvider
 import com.android.tools.idea.appinspection.inspector.ide.ui.EmptyStatePanel
 import com.android.tools.idea.concurrency.createChildScope
+import com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerUtil.withChecksDisabledForCallable
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AppInspectionEvent
 import com.intellij.ide.ActivityTracker
@@ -293,7 +295,7 @@ class AppInspectionView @VisibleForTesting constructor(
                     config.id,
                     jarTarget.jar,
                     project.name,
-                    (config.params as? LibraryInspectorLaunchParams)?.minVersionLibraryCoordinate,
+                    (config.params as? LibraryInspectorLaunchParams)?.minVersionLibraryCoordinate?.let { LibraryCompatibility(it) },
                     force
                   )
                 )
@@ -378,9 +380,10 @@ class AppInspectionView @VisibleForTesting constructor(
       }
 
       val tabs = tabTargetsList.map { tabTargets ->
-        AppInspectorTabShell(tabTargets).also { shell ->
-          launchInspectorForTab(process, shell, force)
-        }
+        withContext(uiDispatcher) { AppInspectorTabShell(tabTargets) }
+          .also { shell ->
+            launchInspectorForTab(process, shell, force)
+          }
       }
 
       withContext(uiDispatcher)

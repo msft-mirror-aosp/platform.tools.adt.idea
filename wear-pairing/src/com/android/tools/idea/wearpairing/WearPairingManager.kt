@@ -67,7 +67,7 @@ import java.util.regex.Pattern
 
 private val LOG get() = logger<WearPairingManager>()
 
-object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener, AndroidStartupActivity {
+object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   enum class PairingState {
     UNKNOWN,
     OFFLINE, // One or both device are offline/disconnected
@@ -111,22 +111,14 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener, AndroidSta
 
   private val pairedDevicesList = mutableListOf<PhoneWearPair>()
 
+  @JvmStatic
+  fun getInstance(): WearPairingManager = this
+
   @TestOnly
   fun setDataProviders(virtualDevices: () -> List<AvdInfo>, connectedDevices: () -> List<IDevice>) {
     virtualDevicesProvider = virtualDevices
     connectedDevicesProvider = connectedDevices
     pairedDevicesList.clear()
-  }
-
-  @UiThread
-  override fun runActivity(project: Project, disposable: Disposable) {
-    NonUrgentExecutor.getInstance().execute {
-      synchronized(this) {
-        if (runningJob == null) {
-          loadSettings()
-        }
-      }
-    }
   }
 
   @WorkerThread
@@ -481,6 +473,19 @@ object WearPairingManager : AndroidDebugBridge.IDeviceChangeListener, AndroidSta
       }
     }
   }
+
+  object WearPairingManagerStartupActivity : AndroidStartupActivity {
+    override fun runActivity(project: Project, disposable: Disposable) {
+      val wearPairingManager = getInstance()
+      NonUrgentExecutor.getInstance().execute {
+        synchronized(wearPairingManager) {
+          if (wearPairingManager.runningJob == null) {
+            wearPairingManager.loadSettings()
+          }
+        }
+      }
+    }
+  }
 }
 
 private fun IDevice.toPairingDevice(deviceID: String, avdDevice: PairingDevice?): PairingDevice {
@@ -507,7 +512,7 @@ private fun AvdInfo.toPairingDevice(deviceID: String): PairingDevice {
     state = ConnectionState.OFFLINE,
     hasPlayStore = hasPlayStore(),
   ).apply {
-    launch = { project -> WearPairingManager.launchDevice(project, deviceID, this@toPairingDevice) }
+    launch = { project -> WearPairingManager.getInstance().launchDevice(project, deviceID, this@toPairingDevice) }
   }
 }
 

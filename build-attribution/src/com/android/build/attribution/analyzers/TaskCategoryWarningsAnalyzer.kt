@@ -17,40 +17,55 @@ package com.android.build.attribution.analyzers
 
 import com.android.build.attribution.data.StudioProvidedInfo
 import com.android.build.attribution.data.TaskContainer
-import com.android.build.attribution.ui.BuildAnalyzerBrowserLinks
-import com.android.build.attribution.ui.data.IssueLevel
-import com.android.ide.common.attribution.AndroidGradlePluginAttributionData
-import com.android.ide.common.attribution.TaskCategory
-import com.android.ide.common.attribution.BuildAnalyzerTaskCategoryIssue
+import com.android.buildanalyzer.common.AndroidGradlePluginAttributionData
+import com.android.buildanalyzer.common.TaskCategory
+import com.android.buildanalyzer.common.TaskCategoryIssue
+import com.android.tools.idea.flags.StudioFlags
 
 class TaskCategoryWarningsAnalyzer(private val taskContainer: TaskContainer) : BaseAnalyzer<TaskCategoryWarningsAnalyzer.Result>(),
                                                                                BuildAttributionReportAnalyzer,
                                                                                PostBuildProcessAnalyzer {
-   private val buildAnalyzerTaskCategoryIssues = mutableListOf<BuildAnalyzerTaskCategoryIssue>()
+   private val taskCategoryIssues = mutableListOf<TaskCategoryIssue>()
+   private var agpSupportsTaskCategories: Boolean = false
 
-  override fun calculateResult(): Result = Result(buildAnalyzerTaskCategoryIssues.toList())
+  override fun calculateResult(): Result = when {
+    !StudioFlags.BUILD_ANALYZER_CATEGORY_ANALYSIS.get() -> FeatureDisabled
+    !agpSupportsTaskCategories -> NoDataFromAGP
+    else -> IssuesResult(taskCategoryIssues.toList())
+  }
 
   override fun cleanupTempState() {
-    buildAnalyzerTaskCategoryIssues.clear()
+    taskCategoryIssues.clear()
   }
 
   override fun receiveBuildAttributionReport(androidGradlePluginAttributionData: AndroidGradlePluginAttributionData) {
-    buildAnalyzerTaskCategoryIssues.addAll(androidGradlePluginAttributionData.buildAnalyzerTaskCategoryIssues)
+    agpSupportsTaskCategories = androidGradlePluginAttributionData.taskNameToTaskInfoMap.any {
+      it.value.taskCategoryInfo.primaryTaskCategory != TaskCategory.UNKNOWN
+    }
+    taskCategoryIssues.addAll(androidGradlePluginAttributionData.taskCategoryIssues)
   }
 
   override fun runPostBuildAnalysis(analyzersResult: BuildEventsAnalyzersProxy, studioProvidedInfo: StudioProvidedInfo) {
-    if (taskContainer.getTasks { it.primaryTaskCategory == TaskCategory.RENDERSCRIPT }.isNotEmpty()) {
-      buildAnalyzerTaskCategoryIssues.add(BuildAnalyzerTaskCategoryIssue.RENDERSCRIPT_API_DEPRECATED)
+    if (taskContainer.any { it.primaryTaskCategory == TaskCategory.RENDERSCRIPT }) {
+      taskCategoryIssues.add(TaskCategoryIssue.RENDERSCRIPT_API_DEPRECATED)
     }
-    if (taskContainer.getTasks { it.primaryTaskCategory == TaskCategory.AIDL }.isNotEmpty()) {
-      buildAnalyzerTaskCategoryIssues.add(BuildAnalyzerTaskCategoryIssue.AVOID_AIDL_UNNECESSARY_USE)
+    if (taskContainer.any { it.primaryTaskCategory == TaskCategory.AIDL }) {
+      taskCategoryIssues.add(TaskCategoryIssue.AVOID_AIDL_UNNECESSARY_USE)
     }
     val nonIncrementalAnnotationProcessors = analyzersResult.annotationProcessorsAnalyzer.result.nonIncrementalAnnotationProcessorsData
     if (nonIncrementalAnnotationProcessors.isNotEmpty()) {
-      buildAnalyzerTaskCategoryIssues.add(BuildAnalyzerTaskCategoryIssue.JAVA_NON_INCREMENTAL_ANNOTATION_PROCESSOR)
+      taskCategoryIssues.add(TaskCategoryIssue.JAVA_NON_INCREMENTAL_ANNOTATION_PROCESSOR)
     }
     ensureResultCalculated()
   }
 
-  data class Result(val buildAnalyzerTaskCategoryIssues: List<BuildAnalyzerTaskCategoryIssue>): AnalyzerResult
+  sealed class Result: AnalyzerResult
+
+  object FeatureDisabled: Result()
+
+  object NoDataFromAGP: Result()
+
+  data class IssuesResult(
+    val taskCategoryIssues: List<TaskCategoryIssue>
+  ): Result()
 }

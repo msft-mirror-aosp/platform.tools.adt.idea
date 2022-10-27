@@ -29,7 +29,7 @@ import com.android.build.attribution.ui.view.BuildAnalyzerTreeNodePresentation.N
 import com.android.build.attribution.ui.view.BuildAnalyzerTreeNodePresentation.NodeIconState.WARNING_ICON
 import com.android.build.attribution.ui.view.chart.ChartValueProvider
 import com.android.build.attribution.ui.warningsCountString
-import com.android.ide.common.attribution.IssueSeverity
+import com.android.buildanalyzer.common.TaskCategoryIssue
 import com.google.wireless.android.sdk.stats.BuildAttributionUiEvent.Page.PageType
 import org.jetbrains.kotlin.utils.addToStdlib.sumByLong
 import java.awt.Color
@@ -94,6 +94,13 @@ interface TasksDataPageModel {
   val availableGroupings: List<Grouping>
     get() = Grouping.values().asList()
 
+  val defaultGrouping: Grouping
+    get() = if (reportData.showTaskCategoryInfo) {
+      Grouping.BY_TASK_CATEGORY
+    } else {
+      Grouping.UNGROUPED
+    }
+
   fun applyFilter(newFilter: TasksFilter)
 }
 
@@ -154,7 +161,7 @@ class TasksDataPageModelImpl(
   // True when tree changed it's structure since last listener call.
   private var treeStructureChanged = false
 
-  private var selectedPageId: TasksPageId = TasksPageId.emptySelection(TasksDataPageModel.Grouping.UNGROUPED)
+  private var selectedPageId: TasksPageId = TasksPageId.emptySelection(defaultGrouping)
     private set(value) {
       val newSelectedGrouping = value.grouping
       if (newSelectedGrouping != field.grouping) {
@@ -240,7 +247,7 @@ private class TasksTreeStructure(
     when (grouping) {
       TasksDataPageModel.Grouping.UNGROUPED -> createUngroupedNodes(filter, treeStats)
       TasksDataPageModel.Grouping.BY_PLUGIN -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathPlugins)
-      TasksDataPageModel.Grouping.BY_TASK_CATEGORY -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathTaskCategories)
+      TasksDataPageModel.Grouping.BY_TASK_CATEGORY -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathTaskCategories!!)
     }
     treeStats.filteredTaskTimesDistribution.seal()
     treeStats.totalTasksTimeMs = reportData.criticalPathTasks.tasks.sumByLong { it.executionTime.timeMs }
@@ -265,7 +272,7 @@ private class TasksTreeStructure(
       if (filteredTasksForEntry.isNotEmpty()) {
         val entryNode = treeNode(EntryDetailsNodeDescriptor(entryUiData, filteredTasksForEntry, filteredEntryTimesDistribution))
         if (entryUiData is CriticalPathTaskCategoryUiData) {
-          treeStats.visibleWarnings += entryUiData.getTaskCategoryIssues(IssueSeverity.WARNING, forWarningsPage = false).size
+          treeStats.visibleWarnings += entryUiData.getTaskCategoryIssues(TaskCategoryIssue.Severity.WARNING, forWarningsPage = false).size
         }
         filteredTasksForEntry.forEach {
           if (it.hasWarning) treeStats.visibleWarnings++
@@ -381,7 +388,7 @@ class EntryDetailsNodeDescriptor(
     get() = BuildAnalyzerTreeNodePresentation(
       mainText = entryData.name,
       suffix = if (entryData is CriticalPathTaskCategoryUiData) {
-        warningsCountString(filteredWarningCount + entryData.getTaskCategoryIssues(IssueSeverity.WARNING, forWarningsPage = false).size)
+        warningsCountString(filteredWarningCount + entryData.getTaskCategoryIssues(TaskCategoryIssue.Severity.WARNING, forWarningsPage = false).size)
       }
       else {
         warningsCountString(filteredWarningCount)

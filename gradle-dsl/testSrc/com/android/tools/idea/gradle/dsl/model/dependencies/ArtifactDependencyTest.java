@@ -1118,22 +1118,9 @@ public class ArtifactDependencyTest extends GradleFileModelTestCase {
     expected.assertMatches(artifacts.get(0));
 
     ArtifactDependencyModel first = artifacts.get(0);
-    try {
-      first.name().delete();
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
-
-    try {
-      first.name().rename("Hello");
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
-
+    first.name().delete();
+    assertFalse(buildModel.isModified());
+    first.name().rename("Hello");
     assertFalse(buildModel.isModified());
   }
 
@@ -1430,37 +1417,14 @@ public class ArtifactDependencyTest extends GradleFileModelTestCase {
 
     List<ArtifactDependencyModel> artifacts = dependencies.artifacts();
     ArtifactDependencyModel artifact = artifacts.get(0);
-    try {
-      artifact.version().rename("hello"); // This doesn't make sense
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
+    artifact.version().rename("hello");
+    assertFalse(buildModel.isModified());
+    artifact.name().delete();
+    assertFalse(buildModel.isModified());
 
-    try {
-      artifact.name().delete(); // Names can't be deleted
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
-
-    try {
-      artifact.classifier().convertToEmptyMap(); // Again this operation doesn't make sense
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
-
-    try {
-      artifact.extension().convertToEmptyList();
-      fail();
-    }
-    catch (UnsupportedOperationException e) {
-      // Expected
-    }
+    // These operations don't make sense but should leave the model unmodified.
+    artifact.classifier().convertToEmptyMap();
+    artifact.extension().convertToEmptyList();
 
     assertFalse(buildModel.isModified());
   }
@@ -1966,13 +1930,9 @@ public class ArtifactDependencyTest extends GradleFileModelTestCase {
     }
 
     {
-      try {
-        // Try an unsupported case.
-        artifacts.get(7).setConfigurationName("debugImplementation1");
-        fail();
-      }
-      catch (UnsupportedOperationException e) {
-      }
+      // An unsupported case should not fail but should also leave its state (and the underlying Dsl) unchanged
+      artifacts.get(7).setConfigurationName("debugImplementation1");
+      assertThat(artifacts.get(7).configurationName()).isEqualTo("releaseImplementation");
     }
     {
       artifacts.get(10).setConfigurationName("debugApi1");
@@ -2154,6 +2114,28 @@ public class ArtifactDependencyTest extends GradleFileModelTestCase {
     verifyFileContents(myBuildFile, TestFile.DELETE_PLATFORM_DEPENDENCIES_EXPECTED);
   }
 
+  @Test
+  public void testAddPlatformDependencies() throws IOException {
+    writeToBuildFile(TestFile.PARSE_PLATFORM_DEPENDENCIES);
+    GradleBuildModel buildModel = getGradleBuildModel();
+    buildModel.dependencies().addPlatformArtifact("implementation", "androidx.compose:compose-bom:2022.10.0", false);
+    buildModel.dependencies().addPlatformArtifact("implementation", "org.springframework:spring-framework-bom:5.1.9.RELEASE", true);
+    buildModel.dependencies().addPlatformArtifact("implementation", "com.example:foo:${version}", false);
+    applyChangesAndReparse(buildModel);
+    verifyFileContents(myBuildFile, TestFile.ADD_PLATFORM_DEPENDENCIES_EXPECTED);
+    List<ArtifactDependencyModel> artifacts = buildModel.dependencies().artifacts();
+    assertThat(artifacts).hasSize(8);
+    assertThat(artifacts.get(5)).isInstanceOf(PlatformDependencyModel.class);
+    assertThat(artifacts.get(5).compactNotation()).isEqualTo("androidx.compose:compose-bom:2022.10.0");
+    assertThat(((PlatformDependencyModel)artifacts.get(5)).enforced()).isFalse();
+    assertThat(artifacts.get(6)).isInstanceOf(PlatformDependencyModel.class);
+    assertThat(artifacts.get(6).compactNotation()).isEqualTo("org.springframework:spring-framework-bom:5.1.9.RELEASE");
+    assertThat(((PlatformDependencyModel)artifacts.get(6)).enforced()).isTrue();
+    assertThat(artifacts.get(7)).isInstanceOf(PlatformDependencyModel.class);
+    assertThat(artifacts.get(7).compactNotation()).isEqualTo("com.example:foo:3.14");
+    assertThat(((PlatformDependencyModel)artifacts.get(7)).enforced()).isFalse();
+  }
+
   public static class ExpectedArtifactDependency extends ArtifactDependencySpecImpl {
     @NotNull public String configurationName;
 
@@ -2295,6 +2277,7 @@ public class ArtifactDependencyTest extends GradleFileModelTestCase {
     PARSE_PLATFORM_DEPENDENCIES("parsePlatformDependencies"),
     SET_PLATFORM_DEPENDENCY_VERSIONS_EXPECTED("setPlatformDependencyVersionsExpected"),
     DELETE_PLATFORM_DEPENDENCIES_EXPECTED("deletePlatformDependenciesExpected"),
+    ADD_PLATFORM_DEPENDENCIES_EXPECTED("addPlatformDependenciesExpected"),
     ;
 
     @NotNull private @SystemDependent String path;

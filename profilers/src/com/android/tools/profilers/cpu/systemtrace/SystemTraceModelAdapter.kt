@@ -48,6 +48,10 @@ interface SystemTraceModelAdapter {
 
   fun getSystemTraceTechnology(): Trace.UserOptions.TraceType
 
+  fun getPowerRails(): List<CounterModel>
+
+  fun getBatteryDrain(): List<CounterModel>
+
   /**
    * @return true if there is potentially missing data from the capture.
    * It's hard to guarantee if data is missing or not, so this is a best guess.
@@ -185,7 +189,7 @@ data class AndroidFrameTimelineEvent(
   val onTimeFinish: Boolean,
   val gpuComposition: Boolean,
   val layoutDepth: Int
-) {
+) : Serializable {
   val expectedDurationUs get() = expectedEndUs - expectedStartUs
   val actualDurationUs get() = actualEndUs - expectedStartUs
   val isJank get() = appJankType != PerfettoTrace.FrameTimelineEvent.JankType.JANK_NONE

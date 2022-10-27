@@ -20,6 +20,8 @@ import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.Slow
 import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.concurrency.ThrottlingAsyncSupplier
+import com.android.tools.idea.stats.ManifestMergerStatsTracker
+import com.android.tools.idea.stats.ManifestMergerStatsTracker.MergeResult
 import com.android.tools.idea.util.androidFacet
 import com.android.utils.TraceUtils
 import com.android.utils.concurrency.AsyncSupplier
@@ -104,9 +106,30 @@ private class MergedManifestSupplier(private val module: Module) : AsyncSupplier
         // Make sure the module wasn't disposed while we were waiting for the read lock.
         facet.isDisposed() || module.project.isDisposed -> throw ProcessCanceledException()
         cachedSnapshot != null && snapshotUpToDate(cachedSnapshot) -> cachedSnapshot
-        else -> MergedManifestSnapshotFactory.createMergedManifestSnapshot(facet, MergedManifestInfo.create(facet))
+        else -> createMergedManifestSnapshot(facet)
       }
     }
+  }
+
+  /** Create a [MergedManifestSnapshot] and record associated telemetry. */
+  @Slow
+  private fun createMergedManifestSnapshot(facet: AndroidFacet): MergedManifestSnapshot {
+    val snapshot: MergedManifestSnapshot
+    val startMillis = System.currentTimeMillis()
+    var result = MergeResult.FAILED
+
+    try {
+      snapshot = MergedManifestSnapshotFactory.createMergedManifestSnapshot(facet, MergedManifestInfo.create(facet))
+      result = MergeResult.SUCCESS
+    } catch (e: ProcessCanceledException) {
+      result = MergeResult.CANCELED
+      throw e
+    } finally {
+      val endMillis = System.currentTimeMillis()
+      ManifestMergerStatsTracker.recordManifestMergeRunTime(endMillis - startMillis, result)
+    }
+
+    return snapshot
   }
 
   /**

@@ -17,7 +17,6 @@ package org.jetbrains.android.uipreview
 
 import com.android.flags.ifEnabled
 import com.android.tools.idea.LogAnonymizerUtil.anonymize
-import com.android.tools.idea.flags.StudioFlags.COMPOSE_CLASSLOADERS_PRELOADING
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.getHolderModule
@@ -234,10 +233,9 @@ class ModuleClassLoaderManager {
       // Make sure the helper service is initialized
       moduleRenderContext.module.project.getService(ModuleClassLoaderProjectHelperService::class.java)
       LOG.debug { "Loading new class loader for module ${anonymize(module)}" }
-      val preloadedClassLoader: ModuleClassLoader? = COMPOSE_CLASSLOADERS_PRELOADING.ifEnabled {
+      val preloadedClassLoader: ModuleClassLoader? =
         moduleRenderContext.module.getOrCreateHatchery().requestClassLoader(
           parent, combinedProjectTransformations, combinedNonProjectTransformations)
-      }
       moduleClassLoader = preloadedClassLoader ?:
                           ModuleClassLoader(parent, moduleRenderContext, combinedProjectTransformations, combinedNonProjectTransformations, createDiagnostics())
       module.putUserData(PRELOADER, Preloader(moduleClassLoader))
@@ -265,10 +263,9 @@ class ModuleClassLoaderManager {
 
     val combinedProjectTransformations = combine(PROJECT_DEFAULT_TRANSFORMS, additionalProjectTransformation)
     val combinedNonProjectTransformations = combine(NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS, additionalNonProjectTransformation)
-    val preloadedClassLoader: ModuleClassLoader? = COMPOSE_CLASSLOADERS_PRELOADING.ifEnabled {
+    val preloadedClassLoader: ModuleClassLoader? =
       moduleRenderContext.module.getOrCreateHatchery().requestClassLoader(
         parent, combinedProjectTransformations, combinedNonProjectTransformations)
-    }
     return (preloadedClassLoader ?: ModuleClassLoader(parent, moduleRenderContext,
                              combinedProjectTransformations,
                              combinedNonProjectTransformations,
@@ -300,8 +297,12 @@ class ModuleClassLoaderManager {
 
   @Synchronized
   fun clearCache(module: Module) {
-    setOf(module.getHolderModule(), module).forEach { module ->
-      module.removeUserData(PRELOADER)?.getClassLoader()?.let { Disposer.dispose(it) }
+    holders.keys.toList().filter { it.module?.getHolderModule() == module.getHolderModule() }.forEach {
+      holders.remove(it)
+    }
+    setOf(module.getHolderModule(), module).forEach { mdl ->
+      mdl.removeUserData(PRELOADER)?.getClassLoader()?.let { Disposer.dispose(it) }
+      mdl.getUserData(HATCHERY)?.destroy()
     }
   }
 
@@ -327,7 +328,7 @@ class ModuleClassLoaderManager {
         return@let
       }
       if (module.getUserData(PRELOADER)?.isLoadingFor(moduleClassLoader) != true) {
-        if (COMPOSE_CLASSLOADERS_PRELOADING.get() && holders.isNotEmpty()) {
+        if (holders.isNotEmpty()) {
           module.getOrCreateHatchery().incubateIfNeeded(moduleClassLoader, ::createCopy)
         }
       }

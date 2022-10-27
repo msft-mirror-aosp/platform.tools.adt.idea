@@ -16,7 +16,7 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.v2.models.Versions
-import com.android.ide.common.repository.GradleVersion.AgpVersion
+import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import com.android.tools.idea.gradle.model.IdeCompositeBuildMap
@@ -133,7 +133,7 @@ internal class AndroidExtraModelProviderWorker(
               val versions = controller.findNonParameterizedV2Model(gradleProject, Versions::class.java)
               if (versions != null && canFetchV2Models(AgpVersion.tryParse(versions.agp))) {
                 // This means we can request V2.
-                return BasicV2AndroidModuleGradleProject(gradleProject, buildName, versions)
+                return BasicV2AndroidModuleGradleProject(gradleProject, buildName, versions, syncOptions.syncTestMode)
               }
             }
             // We cannot request V2 models.

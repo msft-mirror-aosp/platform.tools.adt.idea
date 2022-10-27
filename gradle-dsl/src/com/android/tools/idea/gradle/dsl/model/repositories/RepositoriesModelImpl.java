@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.model.repositories;
 
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel;
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel;
@@ -23,8 +24,8 @@ import com.android.tools.idea.gradle.dsl.parser.repositories.FlatDirRepositoryDs
 import com.android.tools.idea.gradle.dsl.parser.repositories.MavenRepositoryDslElement;
 import com.android.tools.idea.gradle.dsl.parser.repositories.RepositoriesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.google.common.collect.Lists;
 import com.intellij.psi.PsiElement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.jetbrains.annotations.NotNull;
 
@@ -48,7 +49,7 @@ public class RepositoriesModelImpl extends GradleDslBlockModel implements Reposi
   @NotNull
   @Override
   public List<RepositoryModel> repositories() {
-    List<RepositoryModel> result = Lists.newArrayList();
+    List<RepositoryModel> result = new ArrayList<>();
     for (GradleDslElement element : myDslElement.getAllPropertyElements()) {
       if (element instanceof MavenRepositoryDslElement) {
         if (MAVEN.name.equals(element.getName())) {
@@ -106,7 +107,8 @@ public class RepositoriesModelImpl extends GradleDslBlockModel implements Reposi
     List<FlatDirRepositoryDslElement> flatDirElements = myDslElement.getPropertyElements(FlatDirRepositoryDslElement.class);
     if (!flatDirElements.isEmpty()) {
       // A repository already exists
-      new FlatDirRepositoryModel(myDslElement, flatDirElements.get(0)).dirs().addListValue().setValue(dirName);
+      GradlePropertyModel listModel = new FlatDirRepositoryModel(myDslElement, flatDirElements.get(0)).dirs().addListValue();
+      if (listModel != null) listModel.setValue(dirName);
     }
     else {
       // We need to create one

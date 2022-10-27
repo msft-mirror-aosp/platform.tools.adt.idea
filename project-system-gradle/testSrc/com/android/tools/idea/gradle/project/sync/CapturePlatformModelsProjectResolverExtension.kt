@@ -39,7 +39,11 @@ import org.jetbrains.plugins.gradle.tooling.ModelBuilderContext
 import org.jetbrains.plugins.gradle.tooling.ModelBuilderService
 import java.io.Serializable
 
-class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExtension() {
+sealed class CapturePlatformModelsProjectResolverExtension(val mode: TestGradleModelProviderMode) : AbstractProjectResolverExtension() {
+  class IdeModels : CapturePlatformModelsProjectResolverExtension(TestGradleModelProviderMode.IDE_MODELS)
+  class TestGradleModels : CapturePlatformModelsProjectResolverExtension(TestGradleModelProviderMode.TEST_GRADLE_MODELS)
+  class TestExceptionModels : CapturePlatformModelsProjectResolverExtension(TestGradleModelProviderMode.TEST_EXCEPTION_MODELS)
+
   companion object {
     private val kotlinModels = mutableMapOf<String, KotlinGradleModel>()
     private val kaptModels = mutableMapOf<String, KaptGradleModel>()
@@ -47,6 +51,7 @@ class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExt
     private val externalProjectModels = mutableMapOf<String, ExternalProject>()
     private val testGradleModels = mutableMapOf<String, TestGradleModel>()
     private val testParameterizedGradleModels = mutableMapOf<String, TestParameterizedGradleModel>()
+    private val testExceptionModels = mutableMapOf<String, TestExceptionModel>()
 
     fun getKotlinModel(module: Module): KotlinGradleModel? = kotlinModels[getGradleProjectPath(module)]
     fun getKaptModel(module: Module): KaptGradleModel? = kaptModels[getGradleProjectPath(module)]
@@ -55,6 +60,8 @@ class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExt
     fun getTestGradleModel(module: Module): TestGradleModel? = testGradleModels[getGradleProjectPath(module)]
     fun getTestParameterizedGradleModel(module: Module): TestParameterizedGradleModel? =
       testParameterizedGradleModels[getGradleProjectPath(module)]
+
+    fun getTestExceptionModel(module: Module): TestExceptionModel? = testExceptionModels[getGradleProjectPath(module)]
 
     private fun getGradleProjectPath(module: Module): String? {
       return ExternalSystemApiUtil.getExternalProjectPath(module)
@@ -68,13 +75,14 @@ class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExt
       externalProjectModels.clear()
       testGradleModels.clear()
       testParameterizedGradleModels.clear()
+      testExceptionModels.clear()
     }
 
-    fun registerTestHelperProjectResolver(disposable: Disposable) {
+    fun registerTestHelperProjectResolver(prototypeInstance: CapturePlatformModelsProjectResolverExtension, disposable: Disposable) {
       ApplicationManager.getApplication().registerExtension(
         @Suppress("UnstableApiUsage")
         EP_NAME,
-        CapturePlatformModelsProjectResolverExtension(), // Note: a new instance is created by the external system.
+        prototypeInstance, // Note: a new instance is created by the external system.
         disposable
       )
       Disposer.register(disposable, object : Disposable {
@@ -110,6 +118,9 @@ class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExt
     resolverCtx.getExtraProject(gradleModule, TestParameterizedGradleModel::class.java)?.let {
       testParameterizedGradleModels[gradleProjectPath] = it
     }
+    resolverCtx.getExtraProject(gradleModule, TestExceptionModel::class.java)?.let {
+      testExceptionModels[gradleProjectPath] = it
+    }
     super.populateModuleExtraModels(gradleModule, ideModule)
   }
 
@@ -118,15 +129,21 @@ class CapturePlatformModelsProjectResolverExtension : AbstractProjectResolverExt
   }
 
   override fun getModelProvider(): ProjectImportModelProvider {
-    return TestGradleModelProvider("EHLO")
+    return TestGradleModelProvider("EHLO", mode)
   }
 
   override fun getExtraProjectModelClasses(): Set<Class<*>> {
-    return setOf(TestGradleModel::class.java)
+    error("Not expected to be called when `getModelProvider` is overridden")
   }
 }
 
-class TestGradleModelProvider(private val paramValue: String) : ProjectImportModelProvider {
+enum class TestGradleModelProviderMode {
+  IDE_MODELS,
+  TEST_GRADLE_MODELS,
+  TEST_EXCEPTION_MODELS
+}
+
+class TestGradleModelProvider(private val paramValue: String, val mode: TestGradleModelProviderMode) : ProjectImportModelProvider {
   override fun populateBuildModels(
     controller: BuildController,
     buildModel: GradleBuild,
@@ -139,14 +156,28 @@ class TestGradleModelProvider(private val paramValue: String) : ProjectImportMod
     projectModel: Model,
     modelConsumer: ProjectImportModelProvider.ProjectModelConsumer
   ) {
-    val testGradleModel = controller.findModel(projectModel, TestGradleModel::class.java)
-    testGradleModel?.also { pluginModel -> modelConsumer.consume(pluginModel, TestGradleModel::class.java) }
+    when (mode) {
+      TestGradleModelProviderMode.IDE_MODELS -> Unit
+      TestGradleModelProviderMode.TEST_GRADLE_MODELS -> {
+        val testGradleModel = controller.findModel(projectModel, TestGradleModel::class.java)
+        testGradleModel?.also { pluginModel -> modelConsumer.consume(pluginModel, TestGradleModel::class.java) }
 
-    val testParameterizedGradleModel =
-      controller.findModel(projectModel, TestParameterizedGradleModel::class.java, ModelBuilderService.Parameter::class.java) { parameter ->
-        parameter.value = paramValue
+        val testParameterizedGradleModel =
+          controller.findModel(
+            projectModel,
+            TestParameterizedGradleModel::class.java,
+            ModelBuilderService.Parameter::class.java
+          ) { parameter ->
+            parameter.value = paramValue
+          }
+        testParameterizedGradleModel?.also { pluginModel -> modelConsumer.consume(pluginModel, TestParameterizedGradleModel::class.java) }
       }
-    testParameterizedGradleModel?.also { pluginModel -> modelConsumer.consume(pluginModel, TestParameterizedGradleModel::class.java) }
+
+      TestGradleModelProviderMode.TEST_EXCEPTION_MODELS -> {
+        val testExceptionModel = controller.findModel(projectModel, TestExceptionModel::class.java)
+        testExceptionModel?.also { pluginModel -> modelConsumer.consume(pluginModel, TestExceptionModel::class.java) }
+      }
+    }
   }
 }
 
@@ -158,16 +189,26 @@ interface TestParameterizedGradleModel {
   val message: String
 }
 
+interface TestExceptionModel {
+  val exception: Throwable
+}
+
 data class TestGradleModelImpl(override val message: String) : TestGradleModel, Serializable
 data class TestParameterizedGradleModelImpl(override val message: String) : TestParameterizedGradleModel, Serializable
+data class TestExceptionModelImpl(override val exception: Throwable) : TestExceptionModel, Serializable
 
 class TestModelBuilderService : ModelBuilderService {
   override fun canBuild(modelName: String?): Boolean {
-    return modelName == TestGradleModel::class.java.name
+    return modelName == TestGradleModel::class.java.name ||
+      modelName == TestExceptionModel::class.java.name
   }
 
   override fun buildAll(modelName: String?, project: Project?): Any {
-    return TestGradleModelImpl("Hello, ${project?.buildDir}")
+    return when (modelName) {
+      TestGradleModel::class.java.name -> TestGradleModelImpl("Hello, ${project?.buildDir}")
+      TestExceptionModel::class.java.name -> TestExceptionModelImpl(kotlin.runCatching { error("expected error") }.exceptionOrNull()!!)
+      else -> error("Unexpected model name: $modelName")
+    }
   }
 
   override fun getErrorMessageBuilder(project: Project, e: Exception): ErrorMessageBuilder {

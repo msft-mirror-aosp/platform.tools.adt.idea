@@ -401,7 +401,7 @@ public class AvdManagerConnection {
    */
   @NotNull
   public List<String> getSystemImageUpdates() {
-    List<String> requested = Lists.newArrayList();
+    List<String> requested = new ArrayList<>();
     SystemImageUpdateDependency[] dependencies = getSystemImageUpdateDependencies();
     if (dependencies == null) {
       return requested;
@@ -1128,6 +1128,11 @@ public class AvdManagerConnection {
     }
   }
 
+  public final @NotNull ListenableFuture<@NotNull Boolean> wipeUserDataAsync(@NotNull AvdInfo avd) {
+    return Futures.submit(() -> wipeUserData(avd), AppExecutorUtil.getAppExecutorService());
+  }
+
+  @Slow
   public boolean wipeUserData(@NotNull AvdInfo avdInfo) {
     if (!initIfNecessary()) {
       return false;

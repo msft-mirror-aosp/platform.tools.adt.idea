@@ -2,7 +2,7 @@ package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.SdkConstants
 import com.android.ide.common.repository.GradleVersion
-import com.android.ide.common.repository.GradleVersion.AgpVersion
+import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.project.upgrade.CompatibleGradleVersion.Companion.getCompatibleGradleVersion
 import com.google.common.truth.Expect
 import com.intellij.testFramework.LightPlatformTestCase
@@ -25,8 +25,8 @@ class AgpCompatibleVersionTest : LightPlatformTestCase() {
        * this comment should encourage the brave maintainer to do.  Changes to GRADLE_LATEST_VERSION are both less likely to be disruptive
        * and more likely to be noticed quickly.
        */
-      "3.1" to GradleVersion.parse("4.10"),
-      "3.2" to GradleVersion.parse("4.10"),
+      "3.1" to GradleVersion.parse("4.8.1"),
+      "3.2" to GradleVersion.parse("4.8.1"),
       "3.3" to GradleVersion.parse("4.10.1"),
       "3.4" to GradleVersion.parse("5.1.1"),
       "3.5" to GradleVersion.parse("5.4.1"),

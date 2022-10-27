@@ -331,7 +331,7 @@ void DisplayStreamer::Shutdown() {
   if (socket_fd_ > 0) {
     close(socket_fd_);
     StopCodec();
-    DisplayManager::UnregisterDisplayListener( Jvm::GetJni(), this);
+    DisplayManager::UnregisterDisplayListener(Jvm::GetJni(), this);
   }
 }
 
@@ -368,7 +368,7 @@ bool DisplayStreamer::ProcessFramesUntilStopped(AMediaCodec* codec, VideoPacketH
       }
       end_of_stream = true;
     }
-    if (codec_buffer.IsConfig()) {
+    if (!codec_buffer.IsConfig()) {
       packet_header->frame_number++;
     }
   }

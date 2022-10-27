@@ -155,6 +155,11 @@ public final class StudioFlags {
     "Allow users to build apps as profileable with a supported Gradle plugin version (>7.3.0)",
     true);
 
+  public static final Flag<Boolean> PROFILER_SYSTRACE_POWER_TRACKS = Flag.create(
+    PROFILER, "power.tracks", "Enable power tracks in system trace UI",
+    "Shows power data track groups in the system trace.",
+    false);
+
   // TODO(b/211154220): Pending user's feedback, either completely remove the keyboard event functionality in
   // Event Timeline or find a proper way to support it for Android S and newer.
   public static final Flag<Boolean> PROFILER_KEYBOARD_EVENT = Flag.create(
@@ -607,6 +612,14 @@ public final class StudioFlags {
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> MERGED_DEVICE_FILE_EXPLORER_AND_DEVICE_MONITOR_TOOL_WINDOW_ENABLED = Flag.create(
+    RUNDEBUG,
+    "adb.device.explorer.enable",
+    "Enable the \"Device Explorer\" tool window",
+    "Enable the \"Device Explorer\" tool window which merges Device File Explorer and Device Monitor tool windows.\n" +
+    "Changing the value of this flag requires restarting Android Studio.",
+    true);
+
   public static final Flag<Boolean> ADBLIB_MIGRATION_DEVICE_EXPLORER = Flag.create(
     RUNDEBUG,
     "adblib.migration.device.explorer",
@@ -627,6 +640,13 @@ public final class StudioFlags {
     "Use adblib to track device processes (Client)",
     "Use adblib instead of ddmlib to track processes (Client) on devices and handle debug sessions. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
+    false);
+
+  public static final Flag<Boolean> JDWP_TRACER = Flag.create(
+    RUNDEBUG,
+    "adb.jdwp.tracer.enabled",
+    "Enable JDWP Traces",
+    "Enables capture of JDWP traffic and generate a perfetto report",
     false);
 
   public static final Flag<Boolean> SUPPORT_FEATURE_ON_FEATURE_DEPS = Flag.create(
@@ -757,7 +777,7 @@ public final class StudioFlags {
     "Enable access to historic build analysis in Build Analyzer.", false);
   public static final Flag<Boolean> BUILD_ANALYZER_CATEGORY_ANALYSIS = Flag.create(
     GRADLE_IDE, "build.analyzer.category.analysis", "Enable 'Group by Task Category' category task analysis",
-    "Enable 'Group by Task Category' category task analysis in Build Analyzer.", false);
+    "Enable 'Group by Task Category' category task analysis in Build Analyzer.", true);
 
   public static final Flag<Boolean> DISABLE_FORCED_UPGRADES = Flag.create(
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
@@ -1234,13 +1254,6 @@ public final class StudioFlags {
     30
   );
 
-  public static final Flag<Boolean> COMPOSE_CLASSLOADERS_PRELOADING = Flag.create(
-    COMPOSE, "preview.classloaders.preloading",
-    "Enable background classes preloading",
-    "If enabled, a background classes preloading will happen to speed-up preview ClassLoader warm-up",
-    true
-  );
-
   public static final Flag<Boolean> COMPOSE_STATE_OBJECT_CUSTOM_RENDERER = Flag.create(
     COMPOSE, "custom.renderer.for.compose.state.objects",
     "Enable custom renderers for compose state objects",
@@ -1285,6 +1298,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = Flag.create(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
     "If enabled, the project will be treated as a Compose project, showing Previews if available and enhancing the Compose editing",
+    false);
+
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_AUTO_DISABLE = Flag.create(
+    COMPOSE, "fast.preview.auto.disable", "If enabled, Fast Preview can auto-disable",
+    "If enabled, if fast preview finds a compiler problem, it will be auto disable until the user re-enables it",
     false);
   //endregion
 

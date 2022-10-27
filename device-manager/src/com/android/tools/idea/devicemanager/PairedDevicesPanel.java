@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.devicemanager;
 
+import com.android.annotations.concurrency.AnyThread;
 import com.android.annotations.concurrency.UiThread;
 import com.android.annotations.concurrency.WorkerThread;
 import com.android.tools.adtui.stdui.CommonButton;
@@ -58,7 +59,7 @@ public final class PairedDevicesPanel extends JBPanel<PairedDevicesPanel> implem
 
   @UiThread
   public PairedDevicesPanel(@NotNull Key key, @NotNull Disposable parent, @Nullable Project project) {
-    this(key, parent, project, WearPairingManager.INSTANCE);
+    this(key, parent, project, WearPairingManager.getInstance());
   }
 
   @UiThread
@@ -174,21 +175,30 @@ public final class PairedDevicesPanel extends JBPanel<PairedDevicesPanel> implem
   }
 
   /**
-   * Called by an AndroidIoManager coroutine thread
+   * Called by IO dispatcher worker threads and the event dispatch thread
+   */
+  @AnyThread
+  @Override
+  public void pairingStatusChanged(@NotNull PhoneWearPair pair) {
+    reloadPairingsIfPairContainsKey(pair);
+  }
+
+  /**
+   * Called by IO dispatcher worker threads
    */
   @WorkerThread
   @Override
-  public void pairingStatusChanged(@NotNull PhoneWearPair pair) {
-    if (pair.contains(myKey.toString())) {
-      ApplicationManager.getApplication().invokeLater(this::reloadPairings, ModalityState.any());
-    }
+  public void pairingDeviceRemoved(@NotNull PhoneWearPair pair) {
+    reloadPairingsIfPairContainsKey(pair);
   }
 
-  @UiThread
-  @Override
-  public void pairingDeviceRemoved(@NotNull PhoneWearPair pair) {
+  /**
+   * Called by IO dispatcher worker threads and the event dispatch thread
+   */
+  @AnyThread
+  private void reloadPairingsIfPairContainsKey(@NotNull PhoneWearPair pair) {
     if (pair.contains(myKey.toString())) {
-      reloadPairings();
+      ApplicationManager.getApplication().invokeLater(this::reloadPairings, ModalityState.any());
     }
   }
 
