@@ -389,7 +389,7 @@ public class AndroidLiveEditDeployMonitor {
 
     updateEditStatus(UPDATE_IN_PROGRESS);
 
-    while(!processChanges(project, bufferedEvents)) {
+    while(!processChanges(project, bufferedEvents, LiveEditEvent.Mode.MANUAL)) {
         LOGGER.info("ProcessChanges was interrupted");
     }
     bufferedEvents.clear();
@@ -415,12 +415,12 @@ public class AndroidLiveEditDeployMonitor {
       return true;
     }
 
-    return processChanges(project, changes);
+    return processChanges(project, changes, LiveEditEvent.Mode.AUTO);
   }
 
   @Trace
-  private boolean processChanges(Project project, List<EditEvent> changes) {
-    LiveEditEvent.Builder event = LiveEditEvent.newBuilder();
+  private boolean processChanges(Project project, List<EditEvent> changes, LiveEditEvent.Mode mode) {
+    LiveEditEvent.Builder event = LiveEditEvent.newBuilder().setMode(mode);
 
     long start = System.nanoTime();
     long compileFinish, pushFinish;
@@ -611,7 +611,10 @@ public class AndroidLiveEditDeployMonitor {
                                      update.getHasGroupId());
 
       // In manual mode we don't recompose automatically if priming happened.
-      boolean recomposeAfterPriming = !LiveEditService.Companion.isLeTriggerManual();
+      // Last minute change, we don't want user to have to perform "hard-refresh" is a class was primed.
+      //boolean recomposeAfterPriming = !LiveEditService.Companion.isLeTriggerManual();
+      boolean recomposeAfterPriming = true;
+
       LiveUpdateDeployer.UpdateLiveEditsParam param =
         new LiveUpdateDeployer.UpdateLiveEditsParam(
           update.getClassName(), update.getMethodName(), update.getMethodDesc(),
