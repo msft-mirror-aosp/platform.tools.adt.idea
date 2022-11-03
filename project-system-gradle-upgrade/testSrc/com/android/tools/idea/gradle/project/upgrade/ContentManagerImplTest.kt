@@ -46,6 +46,7 @@ import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.Run
 import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.RunningUpgradeSync
 import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.UpgradeSyncFailed
 import com.android.tools.idea.gradle.project.upgrade.ToolWindowModel.UIState.UpgradeSyncSucceeded
+import com.android.tools.idea.gradle.util.CompatibleGradleVersion
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.onEdt
@@ -60,6 +61,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
+import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBLabel
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.junit.Before
@@ -358,6 +360,36 @@ class ContentManagerImplTest {
     val detailsPanelContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "content" } as HtmlLabel
     assertThat(detailsPanelContent.text).contains("<b>Up-to-date for Android Gradle Plugin version $currentAgpVersion</b>")
     assertThat(detailsPanelContent.text).contains("Upgrades to newer versions")
+  }
+
+  @Test
+  fun testToolWindowViewUpgradeToStableDetailsPanel() {
+    addMinimalBuildGradleToProject()
+    val contentManager = ContentManagerImpl(project)
+    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)!!
+    val model = ToolWindowModel(project, { currentAgpVersion }, AgpVersion.parse("4.1.1"))
+    val view = ContentManagerImpl.View(model, toolWindow.contentManager)
+    val detailsPanelContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "content" } as HtmlLabel
+    assertThat(detailsPanelContent.text).contains("<b>Updates available</b>")
+    assertThat(detailsPanelContent.text).contains("To take advantage of the latest features, improvements and fixes")
+    val linkContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "browse release notes link" } as BrowserLink
+    assertThat(linkContent.url).isEqualTo("https://developer.android.com/studio/releases/gradle-plugin")
+    assertThat(linkContent.text).isEqualTo("release notes")
+  }
+
+  @Test
+  fun testToolWindowViewUpgradeToPreviewDetailsPanel() {
+    addMinimalBuildGradleToProject()
+    val contentManager = ContentManagerImpl(project)
+    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)!!
+    val model = ToolWindowModel(project, { currentAgpVersion }, AgpVersion.parse("4.2.0-alpha01"))
+    val view = ContentManagerImpl.View(model, toolWindow.contentManager)
+    val detailsPanelContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "content" } as HtmlLabel
+    assertThat(detailsPanelContent.text).contains("<b>Updates available</b>")
+    assertThat(detailsPanelContent.text).contains("To take advantage of the latest features, improvements and fixes")
+    val linkContent = TreeWalker(view.detailsPanel).descendants().first { it.name == "browse release notes link" } as BrowserLink
+    assertThat(linkContent.url).isEqualTo("https://developer.android.com/studio/preview/features")
+    assertThat(linkContent.text).isEqualTo("preview release notes")
   }
 
   @Test

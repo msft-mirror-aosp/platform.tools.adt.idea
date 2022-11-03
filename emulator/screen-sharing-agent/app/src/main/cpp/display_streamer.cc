@@ -17,6 +17,7 @@
 #include "display_streamer.h"
 
 #include <linux/uio.h>
+#include <sys/system_properties.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -137,12 +138,13 @@ unique_ptr<CodecInfo> SelectCodec(Jni jni, const string& mime_type) {
   if (codec_info.IsNull()) {
     Log::Fatal("No video encoder is available for %s", mime_type.c_str());
   }
-  string name = JString(codec_info.GetObjectField(clazz.GetFieldId("name", "Ljava/lang/String;"))).GetValue();
+  JString jname = JString(codec_info.GetObjectField(clazz.GetFieldId("name", "Ljava/lang/String;")));
+  string codec_name = jname.IsNull() ? "<unnamed>" : jname.GetValue();
   int max_width = codec_info.GetIntField(clazz.GetFieldId("maxWidth", "I"));
   int max_height = codec_info.GetIntField(clazz.GetFieldId("maxHeight", "I"));
   int width_alignment = codec_info.GetIntField(clazz.GetFieldId("widthAlignment", "I"));
   int height_alignment = codec_info.GetIntField(clazz.GetFieldId("heightAlignment", "I"));
-  return make_unique<CodecInfo>(name, Size(max_width, max_height), Size(width_alignment, height_alignment));
+  return make_unique<CodecInfo>(codec_name, Size(max_width, max_height), Size(width_alignment, height_alignment));
 }
 
 int32_t RoundUpToMultipleOf(int32_t value, int32_t power_of_two) {
@@ -159,10 +161,10 @@ Size ComputeVideoSize(Size rotated_display_size, Size max_resolution, Size size_
 }
 
 Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_video_resolution, AMediaFormat* media_format,
-                    const DisplayInfo& display_info, int32_t rotation_correction) {
+                    const DisplayInfo& display_info) {
   Size max_resolution = Size(min(max_video_resolution.width, codec_info.max_resolution.width),
                              min(max_video_resolution.height, codec_info.max_resolution.height));
-  Size video_size = ComputeVideoSize(display_info.logical_size.Rotated(rotation_correction), max_resolution, codec_info.size_alignment);
+  Size video_size = ComputeVideoSize(display_info.logical_size, max_resolution, codec_info.size_alignment);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_WIDTH, video_size.width);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_HEIGHT, video_size.height);
   media_status_t status = AMediaCodec_configure(codec, media_format, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
@@ -172,20 +174,19 @@ Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_vi
   return video_size;
 }
 
-// The display area defined by display_info.logical_size is mapped to projected size and then
-// rotated counterclockwise by the number of quadrants determined by the rotation parameter.
-void ConfigureDisplay(const SurfaceControl& surface_control, jobject display_token, ANativeWindow* surface, int32_t rotation,
-                      const DisplayInfo& display_info, Size projected_size) {
+// The display area defined by display_info.logical_size is mapped to projected size.
+void ConfigureDisplay(const SurfaceControl& surface_control, jobject display_token, ANativeWindow* surface, const DisplayInfo& display_info,
+                      Size projected_size) {
   SurfaceControl::Transaction transaction(surface_control);
   surface_control.SetDisplaySurface(display_token, surface);
-  surface_control.SetDisplayProjection(
-      display_token, NormalizeRotation(-rotation), display_info.logical_size.toRect(), projected_size.toRect());
+  surface_control.SetDisplayProjection(display_token, 0, display_info.logical_size.toRect(), projected_size.toRect());
   surface_control.SetDisplayLayerStack(display_token, display_info.layer_stack);
 }
 
 }  // namespace
 
-DisplayStreamer::DisplayStreamer(int display_id, string codec_name, Size max_video_resolution, int initial_video_orientation, int socket_fd)
+DisplayStreamer::DisplayStreamer(int32_t display_id, string codec_name, Size max_video_resolution, int32_t initial_video_orientation,
+                                 int32_t max_bit_rate, int socket_fd)
     : display_rotation_watcher_(this),
       display_id_(display_id),
       codec_name_(move(codec_name)),
@@ -195,6 +196,7 @@ DisplayStreamer::DisplayStreamer(int display_id, string codec_name, Size max_vid
       display_info_(),
       max_video_resolution_(max_video_resolution),
       video_orientation_(initial_video_orientation),
+      max_bit_rate_(max_bit_rate),
       running_codec_() {
   assert(socket_fd > 0);
 }
@@ -212,14 +214,16 @@ void DisplayStreamer::Run() {
          codec_info->name.c_str(), codec_info->max_resolution.width, codec_info->max_resolution.height);
   AMediaFormat* media_format = CreateMediaFormat(mime_type.c_str());
 
-  string header;
-  header.reserve(CHANNEL_HEADER_LENGTH);
-  header.append(codec_name_);
+  string buf;
+  int buf_size = 1 + CHANNEL_HEADER_LENGTH;
+  buf.reserve(buf_size);  // Single-byte channel marker followed by header.
+  buf.append("V");  // Video channel marker.
+  buf.append(codec_name_);
   // Pad with spaces to the fixed length.
-  while (header.length() < CHANNEL_HEADER_LENGTH) {
-    header.insert(header.end(), ' ');
+  while (buf.length() < buf_size) {
+    buf.insert(buf.end(), ' ');
   }
-  write(socket_fd_, header.c_str(), header.length());
+  write(socket_fd_, buf.c_str(), buf_size);
 
   WindowManager::WatchRotation(jni, &display_rotation_watcher_);
   DisplayManager::RegisterDisplayListener(jni, this);
@@ -243,7 +247,10 @@ void DisplayStreamer::Run() {
     Log::D("display_info: %s", display_info.ToDebugString().c_str());
     // Use heuristics for determining a bit rate value that doesn't cause SIGABRT in the encoder (b/251659422).
     int32_t bit_rate = api_level < 32 && IsCodecResolutionLessThanDisplayResolution(codec_info->max_resolution, display_info.logical_size) ?
-                       BIT_RATE_REDUCED : BIT_RATE;
+        BIT_RATE_REDUCED : BIT_RATE;
+    if (max_bit_rate_ > 0 && bit_rate > max_bit_rate_) {
+      bit_rate = max_bit_rate_;
+    }
     AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_BIT_RATE, bit_rate);
     ANativeWindow* surface = nullptr;
     {
@@ -251,12 +258,13 @@ void DisplayStreamer::Run() {
       display_info_ = display_info;
       int32_t rotation_correction = video_orientation_ >= 0 ? NormalizeRotation(video_orientation_ - display_info.rotation) : 0;
       media_status_t status;
-      Size video_size = ConfigureCodec(codec, *codec_info, max_video_resolution_, media_format, display_info, rotation_correction);
+      Size video_size = ConfigureCodec(codec, *codec_info, max_video_resolution_, media_format, display_info);
+      Log::D("rotation_correction = %d video_size = %dx%d", rotation_correction, video_size.width, video_size.height);
       status = AMediaCodec_createInputSurface(codec, &surface);  // Requires API 26.
       if (status != AMEDIA_OK) {
         Log::Fatal("AMediaCodec_createInputSurface returned %d", status);
       }
-      ConfigureDisplay(surface_control, display, surface, rotation_correction, display_info, video_size.Rotated(-rotation_correction));
+      ConfigureDisplay(surface_control, display, surface, display_info, video_size);
       AMediaCodec_start(codec);
       running_codec_ = codec;
       Size display_size = display_info.NaturalSize();  // The display dimensions in the canonical orientation.

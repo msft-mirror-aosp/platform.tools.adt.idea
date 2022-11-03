@@ -17,6 +17,7 @@ package com.android.tools.idea.layoutinspector.pipeline.appinspection
 
 import com.android.ddmlib.testing.FakeAdbRule
 import com.android.fakeadbserver.DeviceState
+import com.android.flags.junit.RestoreFlagRule
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
@@ -29,18 +30,23 @@ import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatbi
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.internal.AppInspectionTarget
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COMPOSE_INSPECTION_NOT_AVAILABLE_KEY
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COMPOSE_JAR_FOUND_FOUND_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient.Companion.resolveFolder
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INCOMPATIBLE_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INSPECTOR_NOT_FOUND_USE_SNAPSHOT_KEY
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.MAVEN_DOWNLOAD_PROBLEM
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.MINIMUM_COMPOSE_COORDINATE
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PROGUARDED_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.VERSION_MISSING_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.transport.TransportNonExistingFileException
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorCode
 import com.intellij.openapi.application.ApplicationManager
@@ -50,9 +56,12 @@ import com.intellij.testFramework.registerServiceInstance
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.runBlocking
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UnknownCommandResponse
+import org.jetbrains.kotlin.konan.file.File
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import java.net.UnknownHostException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.EnumSet
@@ -76,11 +85,13 @@ class ComposeLayoutInspectorClientTest {
     override val streamId = 4321L
   }
 
-  @get:Rule
-  val projectRule = AndroidProjectRule.inMemory()
+  private val projectRule = AndroidProjectRule.inMemory()
+  private val adbRule = FakeAdbRule()
+  private val devFlagRule = RestoreFlagRule(StudioFlags.APP_INSPECTION_USE_DEV_JAR)
+  private val devFolderFlagRule = RestoreFlagRule(StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER)
 
   @get:Rule
-  val adbRule = FakeAdbRule()
+  val rule = RuleChain.outerRule(projectRule).around(adbRule).around(devFlagRule).around(devFolderFlagRule)!!
 
   @Before
   fun before() {
@@ -109,7 +120,8 @@ class ComposeLayoutInspectorClientTest {
   fun inspectorArtifactNotFound_showUseSnapshotBanner() = runBlocking {
     val artifactService = object : InspectorArtifactService {
       override suspend fun getOrResolveInspectorArtifact(artifactCoordinate: ArtifactCoordinate, project: Project): Path {
-        throw AppInspectionArtifactNotFoundException("not found")
+        throw AppInspectionArtifactNotFoundException("not found",
+                                                     ArtifactCoordinate("group", "id", "1.0.0-SNAPSHOT", ArtifactCoordinate.Type.AAR))
       }
     }
     ApplicationManager.getApplication().registerServiceInstance(InspectorArtifactService::class.java, artifactService)
@@ -126,7 +138,8 @@ class ComposeLayoutInspectorClientTest {
   fun inspectorArtifactNotFound_showComposeInspectionNotAvailableBanner() = runBlocking {
     val artifactService = object : InspectorArtifactService {
       override suspend fun getOrResolveInspectorArtifact(artifactCoordinate: ArtifactCoordinate, project: Project): Path {
-        throw AppInspectionArtifactNotFoundException("not found")
+        throw AppInspectionArtifactNotFoundException("not found",
+                                                     ArtifactCoordinate("androidx.compose.ui", "ui", "1.0.0", ArtifactCoordinate.Type.AAR))
       }
     }
     ApplicationManager.getApplication().registerServiceInstance(InspectorArtifactService::class.java, artifactService)
@@ -176,6 +189,72 @@ class ComposeLayoutInspectorClientTest {
   }
 
   @Test
+  fun inspectorCouldNotDownloadArtifact_showBanner() = runBlocking {
+    val artifact = ArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0", ArtifactCoordinate.Type.AAR)
+    val artifactService = object : InspectorArtifactService {
+      override suspend fun getOrResolveInspectorArtifact(artifactCoordinate: ArtifactCoordinate, project: Project): Path {
+        throw AppInspectionArtifactNotFoundException("Artifact $artifactCoordinate could not be resolved on $GMAVEN_HOSTNAME.",
+                                                     artifact, UnknownHostException(GMAVEN_HOSTNAME))
+      }
+    }
+    ApplicationManager.getApplication().registerServiceInstance(InspectorArtifactService::class.java, artifactService)
+    val target = mock<AppInspectionTarget>()
+    whenever(target.getLibraryVersions(any())).thenReturn(listOf(LibraryCompatbilityInfo(mock(), mock(), "1.3.0", "")))
+    val apiServices = mock<AppInspectionApiServices>()
+    whenever(apiServices.attachToProcess(processDescriptor, projectRule.project.name)).thenReturn(target)
+
+    checkLaunch(apiServices, LayoutInspectorBundle.message(MAVEN_DOWNLOAD_PROBLEM, artifact.toString()),
+                AttachErrorCode.APP_INSPECTION_FAILED_MAVEN_DOWNLOAD)
+  }
+
+  @Test
+  fun inspectorCouldNotFindComposeInspectorJarWithDevFlag() = runBlocking {
+    val folder = "/non-existing-folder/other/folder"
+    val file = "$folder/compose-ui-inspection.jar"
+    StudioFlags.APP_INSPECTION_USE_DEV_JAR.override(true)
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER.override(folder)
+    val artifactService = mock<InspectorArtifactService>()
+    whenever(artifactService.getOrResolveInspectorArtifact(any(), any())).thenReturn(Paths.get("/foo/bar"))
+    ApplicationManager.getApplication().registerServiceInstance(InspectorArtifactService::class.java, artifactService)
+    val apiServices = mock<AppInspectionApiServices>()
+    whenever(apiServices.launchInspector(any())).thenThrow(
+      TransportNonExistingFileException("File $file could not be found for device emulator-123", file)
+    )
+    val target = mock<AppInspectionTarget>()
+    whenever(target.getLibraryVersions(any())).thenReturn(listOf(LibraryCompatbilityInfo(mock(), mock(), "1.3.0", "")))
+    whenever(apiServices.attachToProcess(processDescriptor, projectRule.project.name)).thenReturn(target)
+
+    checkLaunch(apiServices,
+                LayoutInspectorBundle.message(COMPOSE_JAR_FOUND_FOUND_KEY, file,
+                                              StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER.id),
+                AttachErrorCode.TRANSPORT_PUSH_FAILED_FILE_NOT_FOUND)
+  }
+
+  @Test
+  fun inspectorCouldNotFindComposeInspectorJarWithReleaseFlag() = runBlocking {
+    val folder = "/non-existing-folder"
+    val file = "$folder/compose-ui-inspection.jar"
+    StudioFlags.APP_INSPECTION_USE_DEV_JAR.override(true)
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_RELEASE_FOLDER.override(folder)
+    val artifactService = mock<InspectorArtifactService>()
+    whenever(artifactService.getOrResolveInspectorArtifact(any(), any())).thenReturn(Paths.get("/foo/bar"))
+    ApplicationManager.getApplication().registerServiceInstance(InspectorArtifactService::class.java, artifactService)
+    val apiServices = mock<AppInspectionApiServices>()
+    whenever(apiServices.launchInspector(any())).thenThrow(
+      TransportNonExistingFileException("File $file could not be found for device emulator-123", file)
+    )
+    val target = mock<AppInspectionTarget>()
+    whenever(target.getLibraryVersions(any())).thenReturn(listOf(LibraryCompatbilityInfo(mock(), mock(), "1.3.0", "")))
+    whenever(apiServices.attachToProcess(processDescriptor, projectRule.project.name)).thenReturn(target)
+
+    checkLaunch(apiServices,
+                LayoutInspectorBundle.message(COMPOSE_JAR_FOUND_FOUND_KEY, file,
+                                              StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_RELEASE_FOLDER.id),
+                AttachErrorCode.TRANSPORT_PUSH_FAILED_FILE_NOT_FOUND,
+                isRunningFromSources = false)
+  }
+
+  @Test
   fun inspectorArtifactLibraryMissing_showNoBanner() = runBlocking {
     val target = mock<AppInspectionTarget>()
     whenever(target.getLibraryVersions(any()))
@@ -186,17 +265,40 @@ class ComposeLayoutInspectorClientTest {
     checkLaunch(apiServices, "", AttachErrorCode.UNKNOWN_ERROR_CODE)
   }
 
+  @Test
+  fun testResolveFolder() {
+    assertThat(resolveFolder("/Volumes/android/studio-main/tools/adt/idea", "#tools/../prebuilts/studio/sdk"))
+      .isEqualTo("../../../prebuilts/studio/sdk".replace("/", File.separator))
+    assertThat(resolveFolder("/Volumes/android/studio-main/tools/adt/idea", "#idea/../data"))
+      .isEqualTo("../data".replace("/", File.separator))
+    assertThat(resolveFolder("/Volumes/android/studio-main/tools/adt/idea", "#Volumes/data"))
+      .isEqualTo("../../../../../data".replace("/", File.separator))
+    assertThat(resolveFolder("/Volumes/android/studio-main/tools/adt/idea", "#not-here/data"))
+      .isEqualTo("data")
+    assertThat(resolveFolder("/Volumes/android", "../relative/extra"))
+      .isEqualTo("../relative/extra")
+    assertThat(resolveFolder(
+      "/Volumes/android/androidx-main/frameworks/support/studio/android-studio-2022.2.1.5-mac/Android Studio Preview.app/Contents",
+      "#studio/../../../out/some-folder")
+    ).isEqualTo("../../../../../../out/some-folder".replace("/", File.separator))
+    assertThat(resolveFolder(
+      "/usr/local/google/home/jlauridsen/internal/androidx-main/frameworks/support/studio/android-studio-2022.2.1.5-linux/android-studio",
+      "#studio/../../../out/some-folder")
+    ).isEqualTo("../../../../../out/some-folder".replace("/", File.separator))
+  }
+
   private suspend fun checkLaunch(
     apiServices: AppInspectionApiServices,
     expectedMessage: String,
     expectedError: AttachErrorCode,
-    expectClient: Boolean = false
+    expectClient: Boolean = false,
+    isRunningFromSources: Boolean = true
   ) {
     var errorCode = AttachErrorCode.UNKNOWN_ERROR_CODE
     val capabilities = EnumSet.noneOf(InspectorClient.Capability::class.java)
     val banner = InspectorBanner(projectRule.project)
     val client = ComposeLayoutInspectorClient.launch(apiServices, processDescriptor, model(projectRule.project) {}, mock(), capabilities,
-                                                     mock()) { errorCode = it }
+                                                     mock(), { errorCode = it }, isRunningFromSources)
     if (expectClient) {
       assertThat(client).isNotNull()
     } else {

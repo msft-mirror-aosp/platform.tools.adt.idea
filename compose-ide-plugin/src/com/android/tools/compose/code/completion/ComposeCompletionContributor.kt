@@ -18,15 +18,10 @@ package com.android.tools.compose.code.completion
 import com.android.tools.compose.COMPOSABLE_FQ_NAMES
 import com.android.tools.compose.ComposeSettings
 import com.android.tools.compose.isComposableFunction
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.flags.StudioFlags.COMPOSE_COMPLETION_INSERT_HANDLER
-import com.android.tools.idea.flags.StudioFlags.COMPOSE_COMPLETION_PRESENTATION
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionLocation
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.completion.CompletionWeigher
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.daemon.impl.quickfix.EmptyExpression
 import com.intellij.codeInsight.lookup.LookupElement
@@ -39,7 +34,6 @@ import com.intellij.codeInsight.template.impl.ConstantNode
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.castSafelyTo
 import icons.StudioIcons
@@ -57,11 +51,8 @@ import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.CallType
 import org.jetbrains.kotlin.idea.util.CallTypeAndReceiver
 import org.jetbrains.kotlin.kdoc.psi.impl.KDocName
-import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.psi.psiUtil.getNextSiblingIgnoringWhitespace
@@ -71,15 +62,6 @@ import org.jetbrains.kotlin.resolve.calls.results.argumentValueType
 import org.jetbrains.kotlin.types.typeUtil.isUnit
 
 private val COMPOSABLE_FUNCTION_ICON = StudioIcons.Compose.Editor.COMPOSABLE_FUNCTION
-
-/**
- * Checks if this completion is for a statement (where Compose views usually called) and not part of another expression.
- */
-private fun CompletionParameters.isForStatement(): Boolean {
-  return position is LeafPsiElement &&
-         position.node.elementType == KtTokens.IDENTIFIER &&
-         position.parent?.parent is KtBlockExpression
-}
 
 private fun LookupElement.getFunctionDescriptor(): FunctionDescriptor? {
   return this.`object`
@@ -134,8 +116,7 @@ private fun PsiElement?.isKdoc() = this is KDocName
  */
 class ComposeCompletionContributor : CompletionContributor() {
   override fun fillCompletionVariants(parameters: CompletionParameters, resultSet: CompletionResultSet) {
-    if (!StudioFlags.COMPOSE_EDITOR_SUPPORT.get() ||
-        parameters.position.getModuleSystem()?.usesCompose != true ||
+    if (parameters.position.getModuleSystem()?.usesCompose != true ||
         parameters.position.language != KotlinLanguage.INSTANCE) {
       return
     }
@@ -183,12 +164,10 @@ private class ComposeLookupElement(original: LookupElement) : LookupElementDecor
   override fun renderElement(presentation: LookupElementPresentation) {
     super.renderElement(presentation)
 
-    if (COMPOSE_COMPLETION_PRESENTATION.get()) {
-      val descriptor = getFunctionDescriptor() ?: return
-      presentation.icon = COMPOSABLE_FUNCTION_ICON
-      presentation.setTypeText(if (descriptor.returnType?.isUnit() == true) null else presentation.typeText, null)
-      rewriteSignature(descriptor, presentation)
-    }
+    val descriptor = getFunctionDescriptor() ?: return
+    presentation.icon = COMPOSABLE_FUNCTION_ICON
+    presentation.setTypeText(if (descriptor.returnType?.isUnit() == true) null else presentation.typeText, null)
+    rewriteSignature(descriptor, presentation)
   }
 
   override fun handleInsert(context: InsertionContext) {
@@ -196,7 +175,6 @@ private class ComposeLookupElement(original: LookupElement) : LookupElementDecor
     val parent = context.getParent()
     val callType by lazy { parent.inferCallType() }
     return when {
-      !COMPOSE_COMPLETION_INSERT_HANDLER.get() -> super.handleInsert(context)
       !ComposeSettings.getInstance().state.isComposeInsertHandlerEnabled -> super.handleInsert(context)
       parent.isKdoc() -> super.handleInsert(context)
       descriptor == null -> super.handleInsert(context)
@@ -261,53 +239,6 @@ private val SHORT_NAMES_WITH_DOTS = BasicLookupElementFactory.SHORT_NAMES_RENDER
       builder.append(if (parameterCount == 0) "...)" else ", ...)")
     }
   }
-}
-
-/**
- * Set of Composable FQNs that have a conflicting name with a non-composable and where we want to promote the
- * non-composable instead.
- */
-private val COMPOSABLE_CONFLICTING_NAMES = setOf(
-  "androidx.compose.material.MaterialTheme"
-)
-
-/**
- * Custom [CompletionWeigher] which moves composable functions up the completion list.
- *
- * It doesn't give composable functions "absolute" priority, some weighers are hardcoded to run first: specifically one that puts prefix
- * matches above [LookupElement]s where the match is in the middle of the name. Overriding this behavior would require an extension point in
- * [org.jetbrains.kotlin.idea.completion.CompletionSession.createSorter].
- *
- * See [com.intellij.codeInsight.completion.PrioritizedLookupElement] for more information on how ordering of lookup elements works and how
- * to debug it.
- */
-class ComposeCompletionWeigher : CompletionWeigher() {
-  override fun weigh(element: LookupElement, location: CompletionLocation): Int = when {
-      !StudioFlags.COMPOSE_EDITOR_SUPPORT.get() -> 0
-      !StudioFlags.COMPOSE_COMPLETION_WEIGHER.get() -> 0
-      location.completionParameters.position.language != KotlinLanguage.INSTANCE -> 0
-      location.completionParameters.position.getModuleSystem()?.usesCompose != true -> 0
-      element.isForNamedArgument() -> 3
-      location.completionParameters.isForStatement() -> {
-        val isConflictingName = COMPOSABLE_CONFLICTING_NAMES.contains((element.psiElement as? KtNamedDeclaration)?.fqName?.asString() ?: "")
-        val isComposableFunction = element.psiElement?.isComposableFunction() ?: false
-        // This method ensures that the order of completion ends up as:
-        //
-        // Composables with non-conflicting names (like Button {}) +2
-        // Non Composables with conflicting names (like the MaterialTheme object) +2
-        // Composable with conflicting names      (like MaterialTheme {}) +1
-        // Anything else 0
-        when {
-          isComposableFunction && !isConflictingName -> 2
-          !isComposableFunction && isConflictingName -> 2
-          isComposableFunction && isConflictingName -> 1
-          else -> 0
-        }
-      }
-      else -> 0
-    }
-
-  private fun LookupElement.isForNamedArgument() = lookupString.endsWith(" =")
 }
 
 private fun InsertionContext.getNextElementIgnoringWhitespace(): PsiElement? {

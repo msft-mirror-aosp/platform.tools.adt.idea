@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jetbrains.annotations.NotNull;
 
 public class Emulator implements AutoCloseable {
   private final TestFileSystem fileSystem;
@@ -156,6 +157,11 @@ public class Emulator implements AutoCloseable {
     return portString;
   }
 
+  public String getSerialNumber() {
+    // In accordance with https://cs.android.com/android/platform/superproject/+/master:packages/modules/adb/SERVICES.TXT
+    return "emulator-" + portString;
+  }
+
   @Override
   public void close() throws InterruptedException {
     if (process != null) {
@@ -175,5 +181,18 @@ public class Emulator implements AutoCloseable {
       throw new IllegalStateException(String.format("Regex '%s' not found in %s", regex, file));
     }
     return matcher;
+  }
+
+  /** A particular supported {@link Emulator} image to use. */
+  public enum SystemImage {
+    API_29("system_image_android-29_default_x86_64"),
+    API_30("system_image_android-30_default_x86_64");
+    /** Path to the image for this emulator {@link SystemImage}. */
+    @NotNull
+    public final String path;
+
+    private SystemImage(@NotNull String path) {
+      this.path = path;
+    }
   }
 }

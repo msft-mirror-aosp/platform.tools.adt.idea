@@ -15,22 +15,32 @@
  */
 package com.android.tools.idea.profilers
 
+import com.android.ide.common.repository.AgpVersion
+import com.android.sdklib.AndroidVersion.VersionCodes
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.util.GradleUtil
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker
 import com.android.tools.idea.run.AndroidRunConfigurationBase
+import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.StudioProgramRunner
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup
 import com.android.tools.idea.run.profiler.ProfilingMode
 import com.android.tools.idea.run.util.SwapInfo
 import com.google.wireless.android.sdk.stats.RunWithProfilingMetadata
 import com.intellij.execution.ExecutionException
+import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.ui.components.JBLabel
+import java.awt.BorderLayout
+import javax.swing.JComponent
+import javax.swing.JPanel
 
 class ProfilerProgramRunner : StudioProgramRunner() {
   override fun getRunnerId() = "ProfilerProgramRunner"
@@ -45,10 +55,57 @@ class ProfilerProgramRunner : StudioProgramRunner() {
 
   @Throws(ExecutionException::class)
   override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? {
+    val executorId = environment.executor.id
+    return if (ProfileRunExecutor.EXECUTOR_ID == executorId) {
+      // Profile executor for ASwB.
+      doExecuteInternal(state, environment)
+    }
+    else {
+      // Profile executor group for Profileable Builds.
+      when (AbstractProfilerExecutorGroup.getInstance()?.getRegisteredSettings(executorId)?.profilingMode) {
+        ProfilingMode.DEBUGGABLE, ProfilingMode.NOT_SET -> doExecuteInternal(state, environment)
+        ProfilingMode.PROFILEABLE -> checkProfileableSupportAndExecute(state, environment)
+        else -> null
+      }
+    }
+  }
+
+  private fun doExecuteInternal(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? {
     val descriptor = super.doExecute(state, environment)
-    createProfilerToolWindow(environment.project, descriptor, environment.getUserData(SwapInfo.SWAP_INFO_KEY) != null,
+    createProfilerToolWindow(environment.project,
+                             environment.runnerAndConfigurationSettings,
+                             environment.getUserData(SwapInfo.SWAP_INFO_KEY) != null,
                              environment.executor.id)
     return descriptor
+  }
+
+  /**
+   * Checks if Profileable Builds is supported. If so process to execution. Otherwise, prompt user to choose if they want to continue with
+   * the debuggable fallback or abort.
+   */
+  private fun checkProfileableSupportAndExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? {
+    if (isAgpVersionSupported(environment.project) && isDeviceSupported(environment)) {
+      return doExecuteInternal(state, environment)
+    }
+    val dialog = object : DialogWrapper(environment.project) {
+      override fun createCenterPanel(): JComponent {
+        return JPanel(BorderLayout()).apply {
+          add(JBLabel("<html>Profiling with Low Overhead requires Android Gradle Plugin 8.0 and a device with API level 29 or higher.<br>" +
+                      "Do you want to continue to Profile with Complete Data?</html>"), BorderLayout.CENTER)
+        }
+      }
+
+      init {
+        title = "Confirmation"
+        init()
+      }
+    }
+    if (dialog.showAndGet()) {
+      // Profileable is unsupported but user agrees to fall back to debuggable.
+      return doExecuteInternal(state, environment)
+    }
+    // Cancel the profiling session.
+    return null
   }
 
   companion object {
@@ -56,13 +113,16 @@ class ProfilerProgramRunner : StudioProgramRunner() {
     @JvmStatic
     fun createProfilerToolWindow(
       project: Project,
-      descriptor: RunContentDescriptor?,
+      settings: RunnerAndConfigurationSettings?,
       isSwapExecution: Boolean = false,
       executorId: String? = null
     ) {
       ApplicationManager.getApplication().assertIsDispatchThread()
 
-      descriptor?.isActivateToolWindowWhenAdded = false
+      // Prevents the Run tool window from taking over the Profiler tool window.
+      // TODO(b/251297822): find a better fix than overwriting this user configuration.
+      settings?.isActivateToolWindowBeforeRun = false
+
       ToolWindowManager.getInstance(project).getToolWindow(AndroidProfilerToolWindowFactory.ID)?.apply {
         if (!isVisible) {
           // First unset the last run app info, showing the tool window can trigger the profiler to start profiling using the stale info.
@@ -117,6 +177,20 @@ class ProfilerProgramRunner : StudioProgramRunner() {
         }
         // Legacy profiler executor.
         return ProfileRunExecutor.EXECUTOR_ID == executorId
+      }
+      return false
+    }
+
+    private fun isAgpVersionSupported(project: Project): Boolean {
+      val agpVersion = GradleUtil.getLastKnownAndroidGradlePluginVersion(project)?.let { AgpVersion.tryParse(it) }
+      return agpVersion != null && agpVersion.isAtLeastIncludingPreviews(8, 0, 0)
+    }
+
+    private fun isDeviceSupported(env: ExecutionEnvironment): Boolean {
+      val deviceFutures = env.getCopyableUserData(DeviceFutures.KEY)
+      val targetDevices = deviceFutures?.devices ?: emptyList()
+      if (targetDevices.isNotEmpty()) {
+        return targetDevices[0].version.isGreaterOrEqualThan(VersionCodes.Q)
       }
       return false
     }

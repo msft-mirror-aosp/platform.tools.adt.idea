@@ -40,6 +40,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.kotlin.descriptors.InvalidModuleException
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
@@ -58,6 +59,7 @@ private fun Throwable?.isCompilationError(): Boolean =
     LiveEditUpdateException.Error.NON_PRIVATE_INLINE_FUNCTION,
     LiveEditUpdateException.Error.INTERNAL_ERROR,
     LiveEditUpdateException.Error.UNABLE_TO_LOCATE_COMPOSE_GROUP,
+    LiveEditUpdateException.Error.UNSUPPORTED_BUILD_SRC_CHANGE,
     LiveEditUpdateException.Error.KNOWN_ISSUE -> false
   }
 
@@ -99,7 +101,14 @@ fun <T> retryInNonBlockingReadAction(retryTimes: Int = defaultRetryTimes,
         .submit(AndroidExecutors.getInstance().workerThreadExecutor).get()
     }
     catch (t: ProcessCanceledException) {
-      lastException = NonRetriableException(t)
+      lastException = when (t.cause) {
+        // InvalidModuleException needs to be retried. It can cancel the NonReadBlocking
+        // action but can be solved by retrying again.
+        is InvalidModuleException -> t.cause
+
+        // Any other ProcessCanceledException should not be retried.
+        else -> NonRetriableException(t)
+      }
     }
     if (result.isCompleted) return result.getCompleted()
 
@@ -108,7 +117,7 @@ fun <T> retryInNonBlockingReadAction(retryTimes: Int = defaultRetryTimes,
         throw nonRetriableException
       }
 
-      Logger.getInstance(EmbeddedCompilerClientImpl::class.java).warn("Retrying after error (retry $retryAttempt)", it)
+      Logger.getInstance(EmbeddedCompilerClientImpl::class.java).debug("Retrying after error (retry $retryAttempt)", it)
     }
     indicator.checkCanceled()
     Thread.sleep((50 * retryAttempt).coerceAtMost(200).toLong())

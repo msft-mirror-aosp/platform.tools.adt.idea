@@ -68,6 +68,7 @@ enum class EditState {
   PAUSED,           // No apps are ready to receive live edit updates or a compilation error is preventing push to the device.
   RECOMPOSE_NEEDED, // In manual mode, changes have been pushed to the devices but not recomposed yet.
   OUT_OF_DATE,      // In manual mode, changes have been detected but not pushed to the device yet.
+  LOADING,          // App is being deployed.
   IN_PROGRESS,      // Processing...
   UP_TO_DATE,       // The device and the code are in Sync.
   DISABLED          // LiveEdit has been disabled (via UI or custom properties).
@@ -121,7 +122,10 @@ class LiveEditService private constructor(val project: Project, var listenerExec
     }
   }
 
-  fun resetState() = inlineCandidateCache.clear()
+  fun resetState() {
+    inlineCandidateCache.clear()
+    deployMonitor.clearBufferedEvents()
+  }
 
   fun interface EditListener {
     operator fun invoke(method: EditEvent)
@@ -154,6 +158,7 @@ class LiveEditService private constructor(val project: Project, var listenerExec
     val listener = MyPsiListener(::onMethodBodyUpdated)
     PsiManager.getInstance(project).addPsiTreeChangeListener(listener, this)
     deployMonitor = AndroidLiveEditDeployMonitor(this, project)
+    // TODO: Delete if it turns our we don't need Hard-refresh trigger.
     //bindKeyMapShortcut(LiveEditApplicationConfiguration.getInstance().leTriggerMode)
   }
 
@@ -221,6 +226,10 @@ class LiveEditService private constructor(val project: Project, var listenerExec
 
   fun devices(): Set<IDevice> {
     return editStatusProviders.stream().map { it.devices() }.flatMap { it.stream() }.collect(Collectors.toSet())
+  }
+
+  fun notifyDebug(packageName: String, device: IDevice) {
+    deployMonitor.notifyDebug(packageName, device)
   }
 
   fun getCallback(packageName: String, device: IDevice) : Callable<*>? {

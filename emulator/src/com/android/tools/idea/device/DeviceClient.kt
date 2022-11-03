@@ -47,16 +47,22 @@ import java.io.EOFException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
+import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
+import java.util.concurrent.TimeUnit
 
 internal const val SCREEN_SHARING_AGENT_JAR_NAME = "screen-sharing-agent.jar"
 internal const val SCREEN_SHARING_AGENT_SO_NAME = "libscreen-sharing-agent.so"
 internal const val SCREEN_SHARING_AGENT_SOURCE_PATH = "tools/adt/idea/emulator/screen-sharing-agent"
 internal const val DEVICE_PATH_BASE = "/data/local/tmp/.studio"
 const val TURN_OFF_DISPLAY_WHILE_MIRRORING = 0x01 // Keep in sync with flags.h
+const val MAX_BIT_RATE_EMULATOR = 2000000
+const val DEFAULT_AGENT_LOG_LEVEL = "info"
+const val VIDEO_CHANNEL_MARKER = 'V'.code.toByte()
+const val CONTROL_CHANNEL_MARKER = 'C'.code.toByte()
 
 internal class DeviceClient(
   disposableParent: Disposable,
@@ -75,7 +81,7 @@ internal class DeviceClient(
   internal var startTime = 0L // Time when startAgentAndConnect was called.
   internal var pushEndTime = 0L // Time when the agent push completed.
   internal var startAgentTime = 0L // Time when the command to start the agent was issued.
-  internal var videoChannelConnectedTime = 0L // Time when the video channel was connected.
+  internal var channelConnectedTime = 0L // Time when the channels were connected.
   private val logger = thisLogger()
 
   init {
@@ -106,10 +112,7 @@ internal class DeviceClient(
         it.startForwarding()
         agentPushed.await()
         startAgent(deviceSelector, adb, maxVideoSize, initialDisplayOrientation, agentTerminationListener)
-        videoChannel = serverSocketChannel.accept()
-        videoChannelConnectedTime = System.currentTimeMillis()
-        controlChannel = serverSocketChannel.accept()
-        controlChannel.setOption(StandardSocketOptions.TCP_NODELAY, true)
+        connectChannels(serverSocketChannel)
         // Port forwarding can be removed since the already established connections will continue to work without it.
       }
     }
@@ -117,6 +120,39 @@ internal class DeviceClient(
     videoDecoder = VideoDecoder(videoChannel, maxVideoSize)
     videoDecoder.addFrameListener(frameListener)
     videoDecoder.start(coroutineScope)
+  }
+
+  private suspend fun connectChannels(serverSocketChannel: SuspendingServerSocketChannel) {
+    val channel1 = serverSocketChannel.accept()
+    val channel2 = serverSocketChannel.accept()
+    // The channels are distinguished by single-byte markers, 'V' for video and 'C' for control.
+    // Read the markers to assign the channels appropriately.
+    coroutineScope {
+      val marker1 = async { readChannelMarker(channel1) }
+      val marker2 = async { readChannelMarker(channel2) }
+      val m1 = marker1.await()
+      val m2 = marker2.await()
+      if (m1 == VIDEO_CHANNEL_MARKER && m2 == CONTROL_CHANNEL_MARKER) {
+        videoChannel = channel1
+        controlChannel = channel2
+      }
+      else if (m1 == CONTROL_CHANNEL_MARKER && m2 == VIDEO_CHANNEL_MARKER) {
+        videoChannel = channel2
+        controlChannel = channel1
+      }
+      else {
+        throw RuntimeException("Unexpected channel markers: $m1, $m2")
+      }
+    }
+    channelConnectedTime = System.currentTimeMillis()
+    controlChannel.setOption(StandardSocketOptions.TCP_NODELAY, true)
+  }
+
+  private suspend fun readChannelMarker(channel: SuspendingSocketChannel): Byte {
+    val buf = ByteBuffer.allocate(1)
+    channel.read(buf, 5, TimeUnit.SECONDS)
+    buf.flip()
+    return buf.get()
   }
 
   override fun dispose() {
@@ -207,12 +243,20 @@ internal class DeviceClient(
     val orientationArg = if (initialDisplayOrientation == UNKNOWN_ORIENTATION) "" else " --orientation=$initialDisplayOrientation"
     val flagsArg = if (DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring) " --flags=$TURN_OFF_DISPLAY_WHILE_MIRRORING"
                    else ""
+    val maxBitRateArg = when {
+      deviceSerialNumber.startsWith("emulator-") -> " --max_bit_rate=$MAX_BIT_RATE_EMULATOR"
+      StudioFlags.DEVICE_MIRRORING_MAX_BIT_RATE.get() > 0 -> " --max_bit_rate=${StudioFlags.DEVICE_MIRRORING_MAX_BIT_RATE.get()}"
+      else -> ""
+    }
+    val logLevelArg = if (StudioFlags.DEVICE_MIRRORING_AGENT_LOG_LEVEL.get() == DEFAULT_AGENT_LOG_LEVEL) ""
+                      else " --log=${StudioFlags.DEVICE_MIRRORING_AGENT_LOG_LEVEL.get()}"
     val command = "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process $DEVICE_PATH_BASE" +
                   " com.android.tools.screensharing.Main" +
                   " --max_size=${maxVideoSize.width},${maxVideoSize.height}" +
                   orientationArg +
                   flagsArg +
-                  " --log=${StudioFlags.DEVICE_MIRRORING_AGENT_LOG_LEVEL.get()}" +
+                  maxBitRateArg +
+                  logLevelArg +
                   " --codec=${StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()}"
     // Use a coroutine scope that not linked to the lifecycle of the client to make sure that
     // the agent has a chance to terminate gracefully when the client is disposed rather than

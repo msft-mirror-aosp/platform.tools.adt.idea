@@ -604,19 +604,11 @@ public final class StudioFlags {
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
 
-  public static final Flag<Boolean> ADB_DEVICE_MONITOR_TOOL_WINDOW_ENABLED = Flag.create(
-    RUNDEBUG,
-    "adb.device.monitor.enable",
-    "Enable the \"Device Monitor\" tool window",
-    "Enable the \"Device Monitor\" tool window which shows the list of JDWP proceses of Android Devices.\n" +
-    "Changing the value of this flag requires restarting Android Studio.",
-    true);
-
   public static final Flag<Boolean> MERGED_DEVICE_FILE_EXPLORER_AND_DEVICE_MONITOR_TOOL_WINDOW_ENABLED = Flag.create(
     RUNDEBUG,
-    "adb.device.explorer.enable",
+    "adb.device.monitor.enable",
     "Enable the \"Device Explorer\" tool window",
-    "Enable the \"Device Explorer\" tool window which merges Device File Explorer and Device Monitor tool windows.\n" +
+    "Enable the \"Device Explorer\" tool window which contains Device File Explorer and Device Monitor.\n" +
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
@@ -817,6 +809,20 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = Flag.create(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
+  public static final Flag<String> AGP_VERSION_TO_USE = Flag.create(
+    GRADLE_IDE, "agp.version.to.use", "Version of AGP to use",
+    "The AGP version to use when making a new project, e.g. \"8.0.0-dev\". When set, a compatible Gradle version will also be " +
+    "selected. If unset, the latest AGP version and the latest Gradle version will be used.",
+    ""
+  );
+
+  public static final Flag<String> GRADLE_LOCAL_DISTRIBUTION_URL = Flag.create(
+    GRADLE_IDE, "local.distribution.url", "Local override for distributionUrl",
+    "When creating a project, Gradle updates the distributionUrl to point to a server accessible via the internet. When internet egress " +
+    "is unavailable, this flag can be used to override the server destination to be a local URI.",
+    ""
+  );
+
   //endregion
 
   //region Database Inspector
@@ -906,7 +912,11 @@ public final class StudioFlags {
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\"",
-    "debug");
+    "info");
+  public static final Flag<Integer> DEVICE_MIRRORING_MAX_BIT_RATE = Flag.create(
+    DEVICE_MIRRORING, "max.bit.rate", "Maximum Bit Rate for Mirroring of Physical Devices",
+    "The maximum bit rate of video stream, zero means no limit",
+    0);
   public static final Flag<String> DEVICE_MIRRORING_VIDEO_CODEC = Flag.create(
     DEVICE_MIRRORING, "video.codec", "Video Codec Used for Mirroring of Physical Devices",
     "The name of a video codec, e.g. \"vp8\" or \"vp9\"",
@@ -1092,35 +1102,6 @@ public final class StudioFlags {
     "If enabled, when moving the caret in the text editor, the Preview will show the preview currently under the cursor.",
     true);
 
-  public static final Flag<Boolean> COMPOSE_EDITOR_SUPPORT = Flag.create(
-    COMPOSE, "editor",
-    "Compose-specific support in the code editor",
-    "Controls whether Compose-specific editor features, like completion tweaks, are enabled. This flag has priority over " +
-    "all flags in the `compose.editor.*` namespace.",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_COMPLETION_PRESENTATION = Flag.create(
-    COMPOSE, "editor.completion.presentation",
-    "Custom presentation for code completion items for composable functions",
-    "If enabled, code completion items for composable functions use a custom presentation (icon, text).",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_COMPLETION_WEIGHER = Flag.create(
-    COMPOSE, "editor.completion.weigher",
-    "Custom weigher for Compose",
-    "If enabled, code completion puts composable functions above other completion suggestions.",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_COMPLETION_INSERT_HANDLER = Flag.create(
-    COMPOSE, "editor.completion.insert.handler",
-    "Custom insert handler for composable functions",
-    "If enabled, code completion for composable functions uses a custom InsertHandler that inserts required parameter names.",
-    true
-  );
-
   public static final Flag<Boolean> COMPOSE_CONSTRAINTLAYOUT_COMPLETION = Flag.create(
     COMPOSE, "editor.completion.constraintlayout.json",
     "Completion for ConstraintLayout JSON syntax",
@@ -1274,6 +1255,11 @@ public final class StudioFlags {
     "If enabled, animation dragging will be available in Animation Inspector timeline.",
     false
   );
+
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE = Flag.create(
+    COMPOSE, "preview.animation.animate.as.state", "Enable animate*AsState support",
+    "If enabled, the animate*AsState Compose API support will be available in Animation Preview.",
+    true);
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
     COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
@@ -1499,7 +1485,7 @@ public final class StudioFlags {
       "enable.offline.mode.support",
       "Enable offline mode support.",
       "Show previously cached data when network has issues.",
-      false);
+      true);
 
   public static final Flag<Boolean> NOTES_ENABLED =
     Flag.create(

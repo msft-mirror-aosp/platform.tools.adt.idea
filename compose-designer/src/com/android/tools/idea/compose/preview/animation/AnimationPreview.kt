@@ -24,14 +24,21 @@ import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.compose.preview.analytics.AnimationToolingEvent
 import com.android.tools.idea.compose.preview.analytics.AnimationToolingUsageTracker
 import com.android.tools.idea.compose.preview.animation.AnimationPreview.Timeline
+import com.android.tools.idea.compose.preview.animation.actions.FreezeAction
 import com.android.tools.idea.compose.preview.animation.managers.AnimationManager
 import com.android.tools.idea.compose.preview.animation.managers.UnsupportedAnimationManager
+import com.android.tools.idea.compose.preview.animation.state.AnimationState
+import com.android.tools.idea.compose.preview.animation.state.EmptyState
+import com.android.tools.idea.compose.preview.animation.state.FromToState
+import com.android.tools.idea.compose.preview.animation.state.PickerState
+import com.android.tools.idea.compose.preview.animation.state.SingleState
 import com.android.tools.idea.compose.preview.animation.timeline.ElementState
 import com.android.tools.idea.compose.preview.animation.timeline.PositionProxy
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineLine
 import com.android.tools.idea.compose.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.util.concurrent.MoreExecutors
@@ -334,9 +341,11 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         ComposeAnimationType.ANIMATED_VALUE ->
           UnsupportedAnimationManager(animation, tabNames.createName(animation))
         ComposeAnimationType.ANIMATED_VISIBILITY -> AnimatedVisibilityAnimationManager(animation)
+        ComposeAnimationType.ANIMATE_X_AS_STATE ->
+          if (COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE.get()) AnimateXAsStateManager(animation)
+          else UnsupportedAnimationManager(animation, tabNames.createName(animation))
         ComposeAnimationType.ANIMATABLE,
         ComposeAnimationType.ANIMATE_CONTENT_SIZE,
-        ComposeAnimationType.ANIMATE_X_AS_STATE,
         ComposeAnimationType.ANIMATED_CONTENT,
         ComposeAnimationType.DECAY_ANIMATION,
         ComposeAnimationType.INFINITE_TRANSITION,
@@ -452,8 +461,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         loadProperties()
         // Set up the combo box listeners so further changes to the selected state will trigger a
         // call to updateAnimationStartAndEndStates.
-        // Note: this is called only once per tab, in this method, when creating the tab.
-        stateComboBox.setupListeners()
+        stateComboBox.callbackEnabled = true
         callback.invoke()
       }
     }
@@ -469,6 +477,35 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         is Boolean -> setOf(true, false)
         else -> originalStates
       }
+  }
+
+  private inner class AnimateXAsStateManager(animation: ComposeAnimation) :
+    SupportedAnimationManager(animation) {
+
+    /**
+     * Updates the `initial` and `target` state combo boxes to display the states of the given
+     * animation, and resets the timeline. Invokes a given callback once everything is populated.
+     */
+    override fun setup(callback: () -> Unit) {
+      stateComboBox.updateStates(animation.states)
+      // Call updateAnimationStartAndEndStates directly here to set the initial animation states in
+      // PreviewAnimationClock
+      updateAnimationStatesExecutor.execute {
+        // Use a longer timeout the first time we're updating the start and end states. Since we're
+        // running off EDT, the UI will not freeze.
+        // This is necessary here because it's the first time the animation mutable states will be
+        // written, when setting the clock, and
+        // read, when getting its duration. These operations take longer than the default 30ms
+        // timeout the first time they're executed.
+        updateAnimationStartAndEndStates(longTimeout = true)
+        loadTransitionFromCacheOrLib(longTimeout = true)
+        loadProperties()
+        // Set up the state listeners so further changes to the selected state will trigger a
+        // call to updateAnimationStartAndEndStates.
+        stateComboBox.callbackEnabled = true
+        callback.invoke()
+      }
+    }
   }
 
   private inner class AnimatedVisibilityAnimationManager(animation: ComposeAnimation) :
@@ -505,8 +542,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         loadTransitionFromCacheOrLib(longTimeout = true)
         // Set up the combo box listener so further changes to the selected state will trigger a
         // call to updateAnimatedVisibility.
-        // Note: this is called only once per tab, in this method, when creating the tab.
-        stateComboBox.setupListeners()
+        stateComboBox.callbackEnabled = true
         callback.invoke()
       }
     }
@@ -515,23 +551,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
   private abstract inner class SupportedAnimationManager(animation: ComposeAnimation) :
     AnimationManager(animation, tabNames.createName(animation)) {
 
-    /**
-     * [StateComboBox] for single animation tab. Should not be used directly. Use [stateComboBox] to
-     * control the state.
-     */
-    private val stateComboBoxInTab = createComboBox()
-
-    /**
-     * [StateComboBox] for animation card. Should not be used directly. Use [stateComboBox] to
-     * control the state.
-     */
-    private val stateComboBoxInCard = createComboBox()
-
-    /**
-     * Wrapper around two [InspectorPainter.StateComboBox] as state should be shared between them.
-     */
-    val stateComboBox =
-      InspectorPainter.StateComboBoxes(listOf(stateComboBoxInTab, stateComboBoxInCard))
+    val stateComboBox = createState()
 
     /** State of animation, shared between single animation tab and coordination panel. */
     final override val elementState =
@@ -550,25 +570,25 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
 
     /** [AnimationCard] for coordination panel. */
     override val card =
-      AnimationCard(previewState, surface, elementState, tracker).apply {
+      AnimationCard(previewState, surface, elementState, stateComboBox.extraActions, tracker)
+        .apply {
 
-        /** [TabInfo] for the animation when it is opened in a new tab. */
-        var tabInfo: TabInfo? = null
+          /** [TabInfo] for the animation when it is opened in a new tab. */
+          var tabInfo: TabInfo? = null
 
-        /** Create if required and open the tab. */
-        fun addTabToPane() {
-          if (tabInfo == null) {
-            tabInfo =
-              TabInfo(tabComponent).apply {
-                text = tabTitle
-                tabbedPane.addTabWithCloseButton(this) { tabInfo = null }
-              }
+          /** Create if required and open the tab. */
+          fun addTabToPane() {
+            if (tabInfo == null) {
+              tabInfo =
+                TabInfo(tabComponent).apply {
+                  text = tabTitle
+                  tabbedPane.addTabWithCloseButton(this) { tabInfo = null }
+                }
+            }
+            tabInfo?.let { tabbedPane.select(it, true) }
           }
-          tabInfo?.let { tabbedPane.select(it, true) }
+          this.addOpenInTabListener { addTabToPane() }
         }
-        this.addStateComponent(stateComboBoxInCard.component)
-        this.addOpenInTabListener { addTabToPane() }
-      }
 
     private val tabScrollPane =
       JBScrollPane().apply { border = MatteBorder(1, 1, 0, 0, JBColor.border()) }
@@ -578,7 +598,8 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
 
     val tabComponent =
       JPanel(TabularLayout("Fit,*,Fit", "30px,*")).apply {
-        add(stateComboBoxInTab.component, TabularLayout.Constraint(0, 2))
+        val toolbar = DefaultToolbarImpl(surface, "State", stateComboBox.extraActions)
+        add(toolbar.component, TabularLayout.Constraint(0, 2))
         add(tabScrollPane, TabularLayout.Constraint(1, 0, 3))
         tabScrollPane.setViewportView(tabTimelineParent)
         add(
@@ -595,29 +616,36 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
       currentTransitionCallback = { updateTimelineElements() }
     }
 
-    private fun createComboBox(): InspectorPainter.StateComboBox {
+    private fun createState(): AnimationState {
       return when (animation.type) {
         ComposeAnimationType.TRANSITION_ANIMATION ->
-          InspectorPainter.StartEndComboBox(surface, tracker) {
+          FromToState(tracker) {
             updateAnimationStartAndEndStates()
             loadTransitionFromCacheOrLib()
             loadProperties()
           }
         ComposeAnimationType.ANIMATED_VISIBILITY ->
-          InspectorPainter.AnimatedVisibilityComboBox(tracker) {
+          SingleState(tracker) {
             updateAnimatedVisibility()
             loadTransitionFromCacheOrLib()
             loadProperties()
           }
+        ComposeAnimationType.ANIMATE_X_AS_STATE ->
+          if (COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE.get())
+            PickerState(tracker) {
+              updateAnimationStartAndEndStates()
+              loadTransitionFromCacheOrLib()
+              loadProperties()
+            }
+          else EmptyState()
         ComposeAnimationType.ANIMATED_VALUE,
         ComposeAnimationType.ANIMATABLE,
         ComposeAnimationType.ANIMATE_CONTENT_SIZE,
-        ComposeAnimationType.ANIMATE_X_AS_STATE,
         ComposeAnimationType.ANIMATED_CONTENT,
         ComposeAnimationType.DECAY_ANIMATION,
         ComposeAnimationType.INFINITE_TRANSITION,
         ComposeAnimationType.TARGET_BASED_ANIMATION,
-        ComposeAnimationType.UNSUPPORTED -> InspectorPainter.EmptyComboBox()
+        ComposeAnimationType.UNSUPPORTED -> EmptyState()
       }
     }
 
@@ -631,6 +659,8 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         val toState = stateComboBox.getState(1)
 
         if (!executeOnRenderThread(longTimeout) {
+            startState ?: return@executeOnRenderThread
+            toState ?: return@executeOnRenderThread
             updateFromAndToStates(animation, startState, toState)
           }
         )
@@ -646,7 +676,8 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
     fun updateAnimatedVisibility(longTimeout: Boolean = false) {
       animationClock?.apply {
         if (!executeOnRenderThread(longTimeout) {
-            updateAnimatedVisibilityState(animation, stateComboBox.getState())
+            val state = stateComboBox.getState(0) ?: return@executeOnRenderThread
+            updateAnimatedVisibilityState(animation, state)
           }
         )
           return

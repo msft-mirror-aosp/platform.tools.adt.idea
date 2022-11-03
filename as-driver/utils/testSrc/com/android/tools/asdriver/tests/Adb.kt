@@ -17,6 +17,8 @@ package com.android.tools.asdriver.tests
 
 import com.android.SdkConstants
 import com.android.testutils.TestUtils
+import com.android.utils.time.TimeSource
+import com.android.utils.time.toDurationUnit
 import java.io.FileWriter
 import java.io.IOException
 import java.nio.file.Files
@@ -26,6 +28,7 @@ import java.util.concurrent.TimeUnit.MICROSECONDS
 import java.util.regex.Matcher
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.toDuration
 
 class Adb private constructor(
   private val sdk: AndroidSdk,
@@ -44,11 +47,27 @@ class Adb private constructor(
   }
 
   @Throws(IOException::class, InterruptedException::class)
-  fun waitForLog(expectedRegex: String?, timeout: Long, unit: TimeUnit?): Matcher =
+  fun waitForLog(expectedRegex: String, timeout: Long, unit: TimeUnit): Matcher =
     LogFile(stdout).waitForMatchingLine(expectedRegex, timeout, unit)
 
   @JvmSynthetic
-  fun waitForLog(expectedRegex: String?, timeout: Duration): Matcher = waitForLog(expectedRegex, timeout.inWholeMicroseconds, MICROSECONDS)
+  fun waitForLog(expectedRegex: String, timeout: Duration): Matcher = waitForLog(expectedRegex, timeout.inWholeMicroseconds, MICROSECONDS)
+
+  /** Waits for the expected regular expressions to show up in the logs for this [Adb], in order. The timeout is for all lines. */
+  @Throws(IOException::class, InterruptedException::class)
+  fun waitForLogs(expectedRegexes: Iterable<String>, timeout: Long, unit: TimeUnit): List<Matcher> =
+    waitForLogs(expectedRegexes, timeout.toDuration(unit.toDurationUnit()))
+
+  /** Waits for the expected regular expressions to show up in the logs for this [Adb], in order. The timeout is for all lines. */
+  @JvmSynthetic
+  fun waitForLogs(expectedRegexes: Iterable<String>, timeout: Duration): List<Matcher> {
+    val start = TimeSource.Monotonic.markNow()
+    val logFile = LogFile(stdout)
+    return expectedRegexes.map {
+      val remainingDuration = timeout - start.elapsedNow()
+      logFile.waitForMatchingLine(it, remainingDuration.inWholeMicroseconds, MICROSECONDS)
+    }
+  }
 
   @Throws(IOException::class, InterruptedException::class)
   fun waitForDevice(emulator: Emulator) {
@@ -59,17 +78,20 @@ class Adb private constructor(
   fun waitForDevice(emulator: Emulator, duration: Duration) {
     runCommand("track-devices") {
       // https://cs.android.com/android/platform/superproject/+/fbe41e9a47a57f0d20887ace0fc4d0022afd2f5f:packages/modules/adb/SERVICES.TXT;l=23
-      waitForLog("([0-9a-f]{4})?emulator-${emulator.portString}\tdevice", duration)
+      waitForLog("([0-9a-f]{4})?${emulator.serialNumber}\tdevice", duration)
     }
   }
 
   @Throws(IOException::class)
   fun runCommand(vararg command: String): Adb = exec(sdk, home, *command)
 
+  @Throws(IOException::class)
+  fun runCommand(vararg command: String, emulator: Emulator): Adb = exec(sdk, home, *command, emulator=emulator)
+
   @JvmSynthetic
   @Throws(IOException::class)
-  fun runCommand(vararg command: String, block: (Adb.() -> Unit)) {
-    exec(sdk, home, *command).use { with(it, block) }
+  fun runCommand(vararg command: String, emulator: Emulator? = null, block: (Adb.() -> Unit)) {
+    exec(sdk, home, *command, emulator=emulator).use { with(it, block) }
   }
 
   companion object {
@@ -87,7 +109,7 @@ class Adb private constructor(
     }
 
     @Throws(IOException::class)
-    private fun exec(sdk: AndroidSdk, home: Path, vararg params: String): Adb {
+    private fun exec(sdk: AndroidSdk, home: Path, vararg params: String, emulator: Emulator? = null): Adb {
       val logsDir = Files.createTempDirectory(TestUtils.getTestOutputDir(), "adb_logs")
       val stdout = logsDir.resolve("stdout.txt").also { Files.createFile(it) }
       val stderr = logsDir.resolve("stderr.txt").also { Files.createFile(it) }
@@ -100,6 +122,7 @@ class Adb private constructor(
         redirectOutput(stdout.toFile())
         redirectError(stderr.toFile())
         environment()["HOME"] = home.toString()
+        emulator?.let { environment()["ANDROID_SERIAL"] = emulator.serialNumber }
       }
       return Adb(sdk, home, pb.start(), stdout, stderr)
     }
