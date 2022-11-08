@@ -26,7 +26,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.tests.IdeaTestSuiteBase
 import com.android.utils.executeWithRetries
 import com.google.common.truth.Truth.assertThat
-import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
@@ -51,6 +50,7 @@ import java.awt.event.KeyEvent
 import java.nio.file.Files
 import java.util.regex.Pattern
 import javax.swing.JScrollPane
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 @RunWith(Suite::class)
@@ -84,7 +84,7 @@ class ScreenSharingAgentTest {
           fakeUi.keyboard.type(char.code)
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-          waitForLogs(char.androidCode.downUp(), 10.seconds)
+          waitForLogs(char.androidCode.downUp(), INPUT_TIMEOUT)
         }
       }
     }
@@ -106,7 +106,7 @@ class ScreenSharingAgentTest {
               ".*: KEY UP: ${char.androidCode}",
               ".*: KEY UP: $AKEYCODE_SHIFT_LEFT",
             ),
-            10.seconds)
+            INPUT_TIMEOUT)
         }
       }
     }
@@ -121,7 +121,7 @@ class ScreenSharingAgentTest {
           fakeUi.keyboard.type(char.code)
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-          waitForLogs(char.androidCode.downUp(), 10.seconds)
+          waitForLogs(char.androidCode.downUp(), INPUT_TIMEOUT)
         }
       }
     }
@@ -151,7 +151,7 @@ class ScreenSharingAgentTest {
           fakeUi.keyboard.pressAndRelease(hostKeyStroke)
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-          waitForLogs(androidKeyCode.downUp(), 10.seconds)
+          waitForLogs(androidKeyCode.downUp(), INPUT_TIMEOUT)
         }
       }
     }
@@ -174,7 +174,7 @@ class ScreenSharingAgentTest {
           fakeUi.keyboard.pressAndRelease(hostKeyStroke)
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-          waitForLogs(androidKeyCode.downUp(), 10.seconds)
+          waitForLogs(androidKeyCode.downUp(), INPUT_TIMEOUT)
         }
       }
     }
@@ -191,10 +191,10 @@ class ScreenSharingAgentTest {
     runEventLogger {
       adb.logcat {
         // Ensure that touch events can be received by the app. We don't really care if this first point takes a few tries.
-        executeWithRetries<InterruptedException>(FIRST_TOUCH_RETRIES) {
+        executeWithRetries<InterruptedException>(LONG_DEVICE_OPERATION_TIMEOUT) {
           fakeUi.mouse.click(firstTouch.x, firstTouch.y)
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-          waitForLogs(deviceView.toDeviceDisplayCoordinates(firstTouch)!!.click(), 30.seconds)
+          waitForLogs(firstTouch.clickLogs(), INPUT_TIMEOUT)
         }
 
         // Now that we know touch events can be received by the app, conduct the real test.
@@ -206,8 +206,55 @@ class ScreenSharingAgentTest {
             fakeUi.mouse.click(x, y)
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-            waitForLogs(deviceView.toDeviceDisplayCoordinates(Point(x, y))!!.click(), 30.seconds)
+            waitForLogs(Point(x, y).clickLogs(), INPUT_TIMEOUT)
           }
+        }
+      }
+    }
+  }
+
+  @Test
+  fun touchEvents_drag() {
+    // Wait for at least one frame to be sure that the device's display rectangle is set.
+    waitFrames(1)
+    assertThat(deviceView.displayRectangle).isNotNull()
+
+    // Before beginning the actual test, we will touch this point until we register a response from the app.
+    val firstTouch = Point(90, 90)
+    runEventLogger {
+      adb.logcat {
+        // Ensure that touch events can be received by the app. We don't really care if this first point takes a few tries.
+        executeWithRetries<InterruptedException>(LONG_DEVICE_OPERATION_TIMEOUT) {
+          fakeUi.mouse.click(firstTouch.x, firstTouch.y)
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          waitForLogs(firstTouch.clickLogs(), INPUT_TIMEOUT)
+        }
+
+        // Build a set of points in the rectangle from (50, 150) to (150, 250) spaced out by 10 pixels in each dimension.
+        val pointsToTouch: List<Point> = (50..150 step 10).flatMap { x ->
+          (150..250 step 10).map { y -> Point(x,y) }
+        }
+
+        // Seed our RNG so every instance of the test will behave the same.
+        val random = Random(42)
+        // Partition the space into disjoint "random" paths of <= 10 points for which we will press on the first,
+        // drag through the rest, and then release. This will give us a good variety of angles and distances to
+        // drag the pointer.
+        val paths = pointsToTouch.shuffled(random).chunked(10)
+        for (path in paths) {
+          fakeUi.mouse.press(path.first())
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          waitForLog(path.first().pressLog(), INPUT_TIMEOUT)
+
+          for(p in path.drop(1)) {
+            fakeUi.mouse.dragTo(p)
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            waitForLog(p.dragToLog(), INPUT_TIMEOUT)
+          }
+
+          fakeUi.mouse.release()
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          waitForLog(path.last().releaseLog(), INPUT_TIMEOUT)
         }
       }
     }
@@ -217,16 +264,16 @@ class ScreenSharingAgentTest {
     try {
       adb.runCommand("shell", START_COMMAND, emulator = emulator) {
         val logLine = Pattern.quote("Starting: Intent { flg=0x${NO_ANIMATIONS.toString(16)} cmp=$APP_PKG/.$ACTIVITY }")
-        waitForLog(logLine, 30.seconds)
+        waitForLog(logLine, LONG_DEVICE_OPERATION_TIMEOUT)
       }
       adb.logcat {
-        waitForLog(".*: RESUMED", 10.seconds)
+        waitForLog(".*: RESUMED", SHORT_DEVICE_OPERATION_TIMEOUT)
       }
       block()
     }
     finally {
       adb.runCommand("shell", CLEAR_DATA_COMMAND, emulator = emulator) {
-        waitForLog("Success", 30.seconds)
+        waitForLog("Success", SHORT_DEVICE_OPERATION_TIMEOUT)
       }
     }
   }
@@ -240,7 +287,15 @@ class ScreenSharingAgentTest {
     private const val START_COMMAND = "am start -n $APP_PKG/.$ACTIVITY -f $NO_ANIMATIONS"
     private const val CLEAR_DATA_COMMAND = "pm clear $APP_PKG"
     private const val EVENT_LOGGER_INSTALLATION_MAX_RETRIES = 3
-    private const val FIRST_TOUCH_RETRIES = 5
+
+    // Long timeout for longer device operations like app installation
+    private val LONG_DEVICE_OPERATION_TIMEOUT = 30.seconds
+
+    // Short timeout for fast device operations like clearing cache
+    private val SHORT_DEVICE_OPERATION_TIMEOUT = 10.seconds
+
+    // Short timeout for quick operations like an app responding to an input
+    private val INPUT_TIMEOUT = 10.seconds
 
     private val system: AndroidSystem = AndroidSystem.basic()
     private val projectRule = ProjectRule()
@@ -271,6 +326,20 @@ class ScreenSharingAgentTest {
       emulator.waitForBoot()
       adb.waitForDevice(emulator)
 
+      // We must disable input resampling on the emulator, because it may change our inputs and make them impossible to verify.
+      // This requires overriding a system property and rebooting.
+      adb.runCommand("shell", "echo ro.input.resampling=0 | su root tee -a /data/local.prop", emulator = emulator) {
+        waitForLog("ro.input.resampling=0", SHORT_DEVICE_OPERATION_TIMEOUT)
+      }
+      adb.runCommand("reboot", emulator = emulator)
+      emulator.waitForBoot()
+      adb.waitForDevice(emulator)
+
+      // Don't bother starting the test if input sampling is still on.
+      adb.runCommand("shell", "su root getprop ro.input.resampling") {
+        waitForLog("0", SHORT_DEVICE_OPERATION_TIMEOUT)
+      }
+
       deviceView = DeviceView(
         disposableParent = projectRule.project.earlyDisposable,
         deviceSerialNumber = emulator.serialNumber,
@@ -283,7 +352,7 @@ class ScreenSharingAgentTest {
       fakeUi = FakeUi(deviceView.wrapInScrollPane(200, 300))
       fakeUi.render()
 
-      waitForCondition(30.seconds) { deviceView.isConnected }
+      waitForCondition(LONG_DEVICE_OPERATION_TIMEOUT) { deviceView.isConnected }
 
       deviceView.addFrameListener { _, _, _, _ -> framesReceived++ }
 
@@ -291,7 +360,7 @@ class ScreenSharingAgentTest {
       val eventLoggerApk = getBinPath("tools/adt/idea/emulator/integration/event-logger/event-logger.apk")
       executeWithRetries<InterruptedException>(EVENT_LOGGER_INSTALLATION_MAX_RETRIES) {
         adb.runCommand("install", eventLoggerApk.toString(), emulator = emulator) {
-          waitForLog("Success", 30.seconds)
+          waitForLog("Success", LONG_DEVICE_OPERATION_TIMEOUT)
         }
       }
     }
@@ -300,7 +369,10 @@ class ScreenSharingAgentTest {
     @AfterClass
     fun tearDownClass() {
       emulator.close()
-      waitForCondition(30.seconds) { !deviceView.isConnected }
+      // Don't tear this down if setup failed because it will create distracting stacks in the test failure.
+      if (::deviceView.isInitialized) {
+        waitForCondition(LONG_DEVICE_OPERATION_TIMEOUT) { !deviceView.isConnected }
+      }
       adb.close()
     }
 
@@ -326,14 +398,21 @@ class ScreenSharingAgentTest {
 
     private fun Int.downUp(): List<String> = listOf(".*: KEY DOWN: $this", ".*: KEY UP: $this")
 
-    private fun Point.click(): List<String> {
-      val coordinates = Pattern.quote("(${x.toDouble()},${y.toDouble()})")
-      return listOf(".*: TOUCH EVENT: ACTION_DOWN $coordinates", ".*: TOUCH EVENT: ACTION_UP $coordinates")
-    }
+    private fun Point.clickLogs(): List<String> = listOf(pressLog(), releaseLog())
+    private fun Point.pressLog(): String = logForAction("ACTION_DOWN")
+    private fun Point.releaseLog(): String = logForAction("ACTION_UP")
+    private fun Point.dragToLog(): String = logForAction("ACTION_MOVE")
+    private fun Point.logForAction(action: String): String = ".*: TOUCH EVENT: $action $coordinates"
+
+    private val Point.coordinates: String
+      get() {
+        val devicePoint = deviceView.toDeviceDisplayCoordinates(this)!!
+        return Pattern.quote("(${devicePoint.x.toDouble()},${devicePoint.y.toDouble()})")
+      }
 
     private fun waitFrames(numFrames: Int) {
       val framesToWaitFor = framesReceived + numFrames
-      waitForCondition(30.seconds) {
+      waitForCondition(LONG_DEVICE_OPERATION_TIMEOUT) {
         fakeUi.render()
         framesReceived > framesToWaitFor
       }

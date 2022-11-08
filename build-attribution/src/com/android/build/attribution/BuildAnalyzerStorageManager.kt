@@ -18,8 +18,10 @@ package com.android.build.attribution
 import com.android.annotations.concurrency.Slow
 import com.android.build.attribution.analyzers.BuildEventsAnalyzersProxy
 import com.android.build.attribution.data.BuildRequestHolder
+import com.intellij.openapi.observable.properties.AtomicProperty
 import com.intellij.openapi.project.Project
 import com.intellij.util.messages.Topic
+import java.util.concurrent.Future
 
 interface BuildAnalyzerStorageManager {
   /**
@@ -30,8 +32,7 @@ interface BuildAnalyzerStorageManager {
    * @exception IllegalStateException
    */
   fun getLatestBuildAnalysisResults(): AbstractBuildAnalysisResult
-  @Slow
-  fun storeNewBuildResults(analyzersProxy: BuildEventsAnalyzersProxy, buildID: String, requestHolder: BuildRequestHolder): BuildAnalysisResults
+  fun storeNewBuildResults(analyzersProxy: BuildEventsAnalyzersProxy, buildID: String, requestHolder: BuildRequestHolder): Future<BuildAnalysisResults>
   fun recordNewFailure(buildID: String, failureType: FailureResult.Type)
   fun hasData() : Boolean
   /**
@@ -41,30 +42,21 @@ interface BuildAnalyzerStorageManager {
    * @return BuildAnalysisResults
    * @exception NoSuchElementException
    */
-  @Slow
-  fun getHistoricBuildResultByID(buildID: String): BuildAnalysisResults
+  fun getHistoricBuildResultByID(buildID: String): Future<BuildAnalysisResults>
 
-  /**
-   * Deletes the result of an assembly analysis
-   *
-   * @param buildID id of the result to be deleted
-   */
-  @Slow
-  fun deleteHistoricBuildResultByID(buildID: String)
-  @Slow
   fun getListOfHistoricBuildDescriptors(): Set<BuildDescriptor>
-  @Slow
-  fun clearBuildResultsStored(): Boolean
+  fun clearBuildResultsStored(): Future<*>
   @Slow
   fun getCurrentBuildHistoryDataSize(): Long
+  fun getNumberOfBuildResultsStored(): Int
+
   @Slow
-  fun getNumberOfBuildFilesStored(): Int
+  fun getStorageDescriptor(): BuildAnalyzerStorageDescriptor
 
   /**
    * Retrieves new setting values and updates the storage to meet them
    */
-  @Slow
-  fun onSettingsChange()
+  fun onSettingsChange(): Future<*>
 
   interface Listener {
     fun newDataAvailable()
@@ -85,3 +77,8 @@ interface BuildDescriptor {
   val buildFinishedTimestamp: Long
   val totalBuildTimeMs: Long
 }
+
+data class BuildAnalyzerStorageDescriptor (
+  val currentBuildHistoryDataSize: AtomicProperty<Long>,
+  val numberOfBuildResultsStored: AtomicProperty<Int>
+)

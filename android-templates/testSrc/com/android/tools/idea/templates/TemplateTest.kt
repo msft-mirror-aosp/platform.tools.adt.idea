@@ -20,6 +20,7 @@ import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.npw.project.GradleAndroidModuleTemplate
 import com.android.tools.idea.gradle.repositories.IdeGoogleMavenRepository
 import com.android.tools.idea.gradle.repositories.OfflineIdeGoogleMavenRepository
 import com.android.tools.idea.gradle.repositories.RepositoryUrlManager
@@ -42,6 +43,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExpectedException
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.system.measureTimeMillis
@@ -64,6 +66,9 @@ class TemplateTest {
 
   @get:Rule
   val disposableRule = DisposableRule()
+
+  @get:Rule
+  var exceptionRule: ExpectedException = ExpectedException.none()
 
   /** A UsageTracker implementation that allows introspection of logged metrics in tests. */
   private val usageTracker = TestUsageTracker(VirtualTimeScheduler())
@@ -161,9 +166,18 @@ class TemplateTest {
     "New Folder Location" to location
   )
 
-  private fun withNewPackage(packageName: String):TemplateStateCustomizer = mapOf(
-    "Package name" to packageName
-  )
+  private fun withApplicationId(applicationId: String): ProjectStateCustomizer =
+    { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+        projectData.applicationPackage = applicationId
+    }
+
+  private fun withPackage(packageName: String): ProjectStateCustomizer =
+    { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+        moduleData.packageName = packageName
+        val paths = GradleAndroidModuleTemplate.createDefaultModuleTemplate(projectRule.project, moduleData.name!!).paths
+        moduleData.setModuleRoots(paths, projectData.topOut!!.path, moduleData.name!!, packageName)
+    }
+
 
   //--- Activity templates ---
   @TemplateCheck
@@ -188,8 +202,25 @@ class TemplateTest {
 
   @TemplateCheck
   @Test
+  fun testNewEmptyViewActivity_notInRootPackage() {
+    checkCreateTemplate("Empty Views Activity",
+                        withApplicationId("com.mycompany.myapp"),
+                        withPackage("com.mycompany.myapp.subpackage"))
+  }
+
+  @TemplateCheck
+  @Test
   fun testNewEmptyViewActivityWithKotlin() {
     checkCreateTemplate("Empty Views Activity", withKotlin)
+  }
+
+  @TemplateCheck
+  @Test
+  fun testNewEmptyViewActivityWithKotlin_notInRootPackage() {
+    checkCreateTemplate("Empty Views Activity",
+                        withKotlin,
+                        withApplicationId("com.mycompany.myapp"),
+                        withPackage("com.mycompany.myapp.subpackage"))
   }
 
   @TemplateCheck
@@ -207,149 +238,154 @@ class TemplateTest {
   @TemplateCheck
   @Test
   fun testNewTabbedActivity() {
-    checkCreateTemplate("Tabbed View Activity")
+    checkCreateTemplate("Tabbed Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewTabbedActivityWithKotlin() {
-    checkCreateTemplate("Tabbed View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Tabbed Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewNavigationDrawerActivity() {
-    checkCreateTemplate("Navigation Drawer Activity")
+    checkCreateTemplate("Navigation Drawer Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewNavigationDrawerActivityWithKotlin() {
-    checkCreateTemplate("Navigation Drawer Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Navigation Drawer Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewPrimaryDetailFlow() {
-    checkCreateTemplate("Primary/Detail View Flow")
+    checkCreateTemplate("Primary/Detail Views Flow")
   }
 
   @TemplateCheck
   @Test
   fun testNewPrimaryDetailFlowWithKotlin() {
-    checkCreateTemplate("Primary/Detail View Flow", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Primary/Detail Views Flow", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewFullscreenActivity() {
-    checkCreateTemplate("Fullscreen View Activity")
+    checkCreateTemplate("Fullscreen Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewFullscreenActivityWithKotlin() {
-    checkCreateTemplate("Fullscreen View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Fullscreen Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewFullscreenActivity_activityNotInRootPackage() {
-    checkCreateTemplate("Fullscreen View Activity", templateStateCustomizer = withNewPackage("com.mycompany.myapp.subpackage"))
+    checkCreateTemplate(
+      "Fullscreen Views Activity",
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage"))
   }
 
   @TemplateCheck
   @Test
   fun testNewFullscreenActivityWithKotlin_activityNotInRootPackage() {
     checkCreateTemplate(
-      "Fullscreen View Activity",
+      "Fullscreen Views Activity",
       withKotlin,
-      avoidModifiedModuleName = true,
-      templateStateCustomizer = withNewPackage("com.mycompany.myapp.subpackage"))
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage"),
+      avoidModifiedModuleName = true
+    )
   }
 
   @TemplateCheck
   @Test
   fun testNewLoginActivity() {
-    checkCreateTemplate("Login View Activity")
+    checkCreateTemplate("Login Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewLoginActivityWithKotlin() {
-    checkCreateTemplate("Login View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Login Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewScrollingActivity() {
-    checkCreateTemplate("Scrolling View Activity")
+    checkCreateTemplate("Scrolling Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewScrollingActivityWithKotlin() {
-    checkCreateTemplate("Scrolling View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Scrolling Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testNewSettingsActivity() {
-    checkCreateTemplate("Settings View Activity")
+    checkCreateTemplate("Settings Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewSettingsActivityWithKotlin() {
-    checkCreateTemplate("Settings View Activity", withKotlin)
+    checkCreateTemplate("Settings Views Activity", withKotlin)
   }
 
   @TemplateCheck
   @Test
   fun testBottomNavigationActivity() {
-    checkCreateTemplate("Bottom Navigation View Activity")
+    checkCreateTemplate("Bottom Navigation Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testBottomNavigationActivityWithKotlin() {
-    checkCreateTemplate("Bottom Navigation View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Bottom Navigation Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testGoogleAdMobAdsActivity() {
-    checkCreateTemplate("Google AdMob Ads View Activity")
+    checkCreateTemplate("Google AdMob Ads Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testGoogleAdMobAdsActivityWithKotlin() {
-    checkCreateTemplate("Google AdMob Ads View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Google AdMob Ads Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testGoogleMapsActivity() {
-    checkCreateTemplate("Google Maps View Activity")
+    checkCreateTemplate("Google Maps Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testGoogleMapsActivityWithKotlin() {
-    checkCreateTemplate("Google Maps View Activity", withKotlin, avoidModifiedModuleName = true)
+    checkCreateTemplate("Google Maps Views Activity", withKotlin, avoidModifiedModuleName = true)
   }
 
   @TemplateCheck
   @Test
   fun testGooglePayActivity() {
-    checkCreateTemplate("Google Pay View Activity")
+    checkCreateTemplate("Google Pay Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testGooglePayActivityWithKotlin() {
-    checkCreateTemplate("Google Pay View Activity", withKotlin)
+    checkCreateTemplate("Google Pay Views Activity", withKotlin)
   }
 
   @TemplateCheck
@@ -394,13 +430,13 @@ class TemplateTest {
   @TemplateCheck
   @Test
   fun testResponsiveActivity() {
-    checkCreateTemplate("Responsive Activity")
+    checkCreateTemplate("Responsive Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testResponsiveActivityWithKotlin() {
-    checkCreateTemplate("Responsive Activity", withKotlin)
+    checkCreateTemplate("Responsive Views Activity", withKotlin)
   }
 
   @TemplateCheck
@@ -426,13 +462,13 @@ class TemplateTest {
   @TemplateCheck
   @Test
   fun testNewTvActivity() {
-    checkCreateTemplate("Android TV Blank View Activity")
+    checkCreateTemplate("Android TV Blank Views Activity")
   }
 
   @TemplateCheck
   @Test
   fun testNewTvActivityWithKotlin() {
-    checkCreateTemplate("Android TV Blank View Activity", withKotlin)
+    checkCreateTemplate("Android TV Blank Views Activity", withKotlin)
   }
 
   @TemplateCheck

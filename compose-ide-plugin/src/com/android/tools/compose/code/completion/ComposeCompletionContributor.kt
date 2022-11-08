@@ -15,8 +15,9 @@
  */
 package com.android.tools.compose.code.completion
 
-import com.android.tools.compose.COMPOSABLE_FQ_NAMES
 import com.android.tools.compose.ComposeSettings
+import com.android.tools.compose.code.getComposableFunctionRenderParts
+import com.android.tools.compose.code.isComposableFunctionParameter
 import com.android.tools.compose.isComposableFunction
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.codeInsight.completion.CompletionContributor
@@ -37,13 +38,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.castSafelyTo
 import icons.StudioIcons
-import org.jetbrains.kotlin.builtins.isBuiltinFunctionalType
 import org.jetbrains.kotlin.builtins.isFunctionType
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.completion.BasicLookupElementFactory
-import org.jetbrains.kotlin.idea.completion.LambdaSignatureTemplates
 import org.jetbrains.kotlin.idea.completion.LookupElementFactory
 import org.jetbrains.kotlin.idea.completion.handlers.KotlinCallableInsertHandler
 import org.jetbrains.kotlin.idea.core.completion.DeclarationLookupObject
@@ -51,12 +49,10 @@ import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.CallType
 import org.jetbrains.kotlin.idea.util.CallTypeAndReceiver
 import org.jetbrains.kotlin.kdoc.psi.impl.KDocName
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.psi.psiUtil.getNextSiblingIgnoringWhitespace
-import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
 import org.jetbrains.kotlin.resolve.calls.results.argumentValueType
 import org.jetbrains.kotlin.types.typeUtil.isUnit
@@ -70,26 +66,15 @@ private fun LookupElement.getFunctionDescriptor(): FunctionDescriptor? {
     ?.castSafelyTo<FunctionDescriptor>()
 }
 
-private val List<ValueParameterDescriptor>.hasComposableChildren: Boolean
-  get() {
-    val lastArgType = lastOrNull()?.type ?: return false
-    return lastArgType.isBuiltinFunctionalType
-           && COMPOSABLE_FQ_NAMES.any { lastArgType.annotations.hasAnnotation(FqName(it)) }
-  }
-
-private val ValueParameterDescriptor.isLambdaWithNoParameters: Boolean
-  get() = type.isFunctionType
-          // The only type in the list is the return type (can be Unit).
-          && argumentValueType.arguments.size == 1
+private fun ValueParameterDescriptor.isLambdaWithNoParameters() =
+  // The only type in the list is the return type (can be Unit).
+  type.isFunctionType && argumentValueType.arguments.size == 1
 
 /**
- * true if the last parameter is required, and a lambda type with no parameters.
+ * true iff the last parameter is required, and a lambda type with no parameters.
  */
-private val List<ValueParameterDescriptor>.isLastRequiredLambdaWithNoParameters: Boolean
-  get() {
-    val lastParameter = lastOrNull() ?: return false
-    return !lastParameter.hasDefaultValue() && lastParameter.isLambdaWithNoParameters
-  }
+private fun ValueParameterDescriptor.isRequiredLambdaWithNoParameters() =
+  !hasDefaultValue() && isLambdaWithNoParameters()
 
 
 private fun InsertionContext.getParent(): PsiElement? = file.findElementAt(startOffset)?.parent
@@ -184,60 +169,11 @@ private class ComposeLookupElement(original: LookupElement) : LookupElementDecor
   }
 
   private fun rewriteSignature(descriptor: FunctionDescriptor, presentation: LookupElementPresentation) {
-    val allParameters = descriptor.valueParameters
-    val requiredParameters = allParameters.filter { !it.declaresDefaultValue() }
-    val inParens = if (requiredParameters.hasComposableChildren) requiredParameters.dropLast(1) else requiredParameters
-    val renderer = when {
-      requiredParameters.size < allParameters.size -> SHORT_NAMES_WITH_DOTS
-      inParens.isEmpty() && requiredParameters.hasComposableChildren -> {
-        // Don't render an empty pair of parenthesis if we're rendering a lambda afterwards.
-        null
-      }
-      else -> BasicLookupElementFactory.SHORT_NAMES_RENDERER
-    }
+    val (parameters, tail) = descriptor.getComposableFunctionRenderParts()
 
     presentation.clearTail()
-    renderer
-      ?.renderValueParameters(inParens, false)
-      ?.let { presentation.appendTailTextItalic(it, false) }
-
-    if (requiredParameters.hasComposableChildren) {
-      presentation.appendTailText(" " + LambdaSignatureTemplates.DEFAULT_LAMBDA_PRESENTATION, true)
-    }
-  }
-}
-
-/**
- * A version of [BasicLookupElementFactory.SHORT_NAMES_RENDERER] that adds `, ...)` at the end of the parameters list.
- */
-private val SHORT_NAMES_WITH_DOTS = BasicLookupElementFactory.SHORT_NAMES_RENDERER.withOptions {
-  val delegate = DescriptorRenderer.ValueParametersHandler.DEFAULT
-  valueParametersHandler = object : DescriptorRenderer.ValueParametersHandler {
-    override fun appendAfterValueParameter(
-      parameter: ValueParameterDescriptor,
-      parameterIndex: Int,
-      parameterCount: Int,
-      builder: StringBuilder
-    ) {
-      delegate.appendAfterValueParameter(parameter, parameterIndex, parameterCount, builder)
-    }
-
-    override fun appendBeforeValueParameter(
-      parameter: ValueParameterDescriptor,
-      parameterIndex: Int,
-      parameterCount: Int,
-      builder: StringBuilder
-    ) {
-      delegate.appendBeforeValueParameter(parameter, parameterIndex, parameterCount, builder)
-    }
-
-    override fun appendBeforeValueParameters(parameterCount: Int, builder: StringBuilder) {
-      delegate.appendBeforeValueParameters(parameterCount, builder)
-    }
-
-    override fun appendAfterValueParameters(parameterCount: Int, builder: StringBuilder) {
-      builder.append(if (parameterCount == 0) "...)" else ", ...)")
-    }
+    parameters?.let { presentation.appendTailTextItalic(it, /* grayed = */ false) }
+    tail?.let { presentation.appendTailText(" $it", /* grayed = */ true) }
   }
 }
 
@@ -266,8 +202,8 @@ private class ComposeInsertHandler(
     val templateManager = TemplateManager.getInstance(project)
     val allParameters = descriptor.valueParameters
     val requiredParameters = allParameters.filter { !it.declaresDefaultValue() }
-    val insertLambda = requiredParameters.hasComposableChildren
-                       || allParameters.isLastRequiredLambdaWithNoParameters
+    val insertLambda = requiredParameters.lastOrNull()?.isComposableFunctionParameter() == true
+                       || allParameters.lastOrNull()?.isRequiredLambdaWithNoParameters() == true
     val inParens = if (insertLambda) requiredParameters.dropLast(1) else requiredParameters
 
     val template = templateManager.createTemplate("", "").apply {
@@ -282,7 +218,7 @@ private class ComposeInsertHandler(
               addTextSegment(", ")
             }
             addTextSegment(parameter.name.asString() + " = ")
-            if (parameter.isLambdaWithNoParameters) {
+            if (parameter.isLambdaWithNoParameters()) {
               addVariable(ConstantNode("{ /*TODO*/ }"), true)
             }
             else {
@@ -291,6 +227,7 @@ private class ComposeInsertHandler(
           }
           addTextSegment(")")
         }
+
         !insertLambda -> addTextSegment("()")
         requiredParameters.size < allParameters.size -> {
           addTextSegment("(")

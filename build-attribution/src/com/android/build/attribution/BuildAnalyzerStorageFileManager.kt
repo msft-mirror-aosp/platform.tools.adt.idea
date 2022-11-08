@@ -20,22 +20,18 @@ import com.android.build.attribution.proto.converters.BuildResultsProtoMessageCo
 import com.android.utils.FileUtils
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.observable.properties.AtomicProperty
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import com.intellij.openapi.project.Project
-import java.io.FileInputStream
-import java.io.FileNotFoundException
 
 class BuildAnalyzerStorageFileManager(
   private val dataFolder: File
 ) {
   private val log: Logger get() = Logger.getInstance("Build Analyzer")
 
-  @Slow
-  fun clearAll() {
-    FileUtils.deleteDirectoryContents(dataFolder)
-  }
+  val totalFilesSize = AtomicProperty(getCurrentBuildHistoryDataSize())
 
   /**
    * Converts build analysis results into a protobuf-generated data structure, that is then stored in byte form in a file. If there is an
@@ -55,12 +51,24 @@ class BuildAnalyzerStorageFileManager(
         buildResults.getPluginMap(),
         buildResults.getTaskMap()
       ).writeDelimitedTo(FileOutputStream(buildResultFile))
+      updateObservables()
       true
     }
     catch (e: IOException) {
       log.error("Error when attempting to store build results with ID ${buildResults.getBuildSessionID()} in file.")
       false
     }
+
+  /**
+   * Does not take in input, returns the size of the build-analyzer-history-data folder in bytes.
+   * If it fails to locate the folder then 0 is returned.
+   * @return Bytes
+   */
+  @Slow
+  fun getCurrentBuildHistoryDataSize() : Long {
+    FileUtils.mkdirs(dataFolder)
+    return FileUtils.getAllFiles(dataFolder).sumOf { it.length() }
+  }
 
   /**
    * Reads in build results with the build session ID specified from bytes and converts them to a proto-structure,
@@ -84,33 +92,15 @@ class BuildAnalyzerStorageFileManager(
     }
   }
 
-  /**
-   * Does not take in input, returns the size of the build-analyzer-history-data folder in bytes.
-   * If it fails to locate the folder then 0 is returned.
-   * @return Bytes
-   */
-  @Slow
-  fun getCurrentBuildHistoryDataSize() : Long {
-    FileUtils.mkdirs(dataFolder)
-    return FileUtils.getAllFiles(dataFolder).sumOf { it.length() }
-  }
-
-  /**
-   * Does not take an input, returns the number of files in the build-analyzer-history-data folder.
-   * If it fails to locate the folder then 0 is returned.
-   * @return Number of files in build-analyzer-history-data folder
-   */
-  @Slow
-  fun getNumberOfBuildFilesStored() : Int {
-    FileUtils.mkdirs(dataFolder)
-    return FileUtils.getAllFiles(dataFolder).size()
-  }
-
   @Slow
   fun deleteHistoricBuildResultByID(buildID: String) {
-    if (!getFileFromBuildID(buildID).delete()) {
-      throw FileNotFoundException("File ${getFileFromBuildID(buildID)} was not found and cannot be deleted")
-    }
+    getFileFromBuildID(buildID).delete()
+    updateObservables()
+  }
+
+  @Slow
+  private fun updateObservables() {
+    totalFilesSize.set(getCurrentBuildHistoryDataSize())
   }
 
   @VisibleForTesting

@@ -22,16 +22,17 @@ import com.android.ddmlib.IDevice;
 import com.android.tools.idea.deploy.DeploymentConfiguration;
 import com.android.tools.idea.editors.literals.LiveEditService;
 import com.android.tools.idea.gradle.util.DynamicAppUtils;
+import com.android.tools.idea.projectsystem.AndroidProjectSystem;
+import com.android.tools.idea.projectsystem.ProjectSystemService;
 import com.android.tools.idea.run.activity.launch.DeepLinkLaunch;
-import com.android.tools.idea.run.editor.AndroidDebugger;
 import com.android.tools.idea.run.editor.AndroidDebuggerContext;
-import com.android.tools.idea.run.editor.AndroidDebuggerState;
 import com.android.tools.idea.run.tasks.AppLaunchTask;
 import com.android.tools.idea.run.tasks.ApplyChangesTask;
 import com.android.tools.idea.run.tasks.ApplyCodeChangesTask;
 import com.android.tools.idea.run.tasks.ClearAppStorageTask;
 import com.android.tools.idea.run.tasks.ClearLogcatTask;
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask;
+import com.android.tools.idea.run.tasks.DefaultConnectDebuggerTaskKt;
 import com.android.tools.idea.run.tasks.DeployTask;
 import com.android.tools.idea.run.tasks.DismissKeyguardTask;
 import com.android.tools.idea.run.tasks.KillAndRestartAppLaunchTask;
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.idea.util.projectStructure.ProjectStructureUtilKt;
 
 public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
   private final Logger myLogger = Logger.getInstance(AndroidLaunchTasksProvider.class);
@@ -212,7 +214,10 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
           LiveEditService.getInstance(myProject).notifyDebug(packageName, device);
         }
         else {
-          tasks.add(new StartLiveUpdateMonitoringTask(LiveEditService.getInstance(myProject).getCallback(packageName, device)));
+          AndroidProjectSystem androidProjectSystem = ProjectSystemService.getInstance(myProject).getProjectSystem();
+          if (ProjectStructureUtilKt.allModules(myProject).stream().anyMatch(m -> androidProjectSystem.getModuleSystem(m).getUsesCompose())) {
+            tasks.add(new StartLiveUpdateMonitoringTask(LiveEditService.getInstance(myProject).getCallback(packageName, device)));
+          }
         }
         break;
       default: throw new IllegalStateException("Unhandled Deploy Type");
@@ -259,27 +264,9 @@ public class AndroidLaunchTasksProvider implements LaunchTasksProvider {
     if (!myLaunchOptions.isDebug()) {
       return null;
     }
-    Logger logger = Logger.getInstance(AndroidLaunchTasksProvider.class);
-
     AndroidDebuggerContext androidDebuggerContext = myRunConfig.getAndroidDebuggerContext();
-    AndroidDebugger debugger = androidDebuggerContext.getAndroidDebugger();
-    if (debugger == null) {
-      logger.warn("Unable to determine debugger to use for this launch");
-      return null;
-    }
-    logger.info("Using debugger: " + debugger.getId());
 
-    AndroidDebuggerState androidDebuggerState = androidDebuggerContext.getAndroidDebuggerState();
-    if (androidDebuggerState != null) {
-      //noinspection unchecked
-      return debugger.getConnectDebuggerTask(myEnv,
-                                             myApplicationIdProvider,
-                                             myFacet,
-                                             androidDebuggerState);
-    }
-
-    logger.warn("No debugger state present and cannot get debugger task");
-    return null;
+    return DefaultConnectDebuggerTaskKt.getBaseDebuggerTask(androidDebuggerContext, myFacet, myApplicationIdProvider, myEnv);
   }
 
   private boolean shouldDeployAsInstant() {

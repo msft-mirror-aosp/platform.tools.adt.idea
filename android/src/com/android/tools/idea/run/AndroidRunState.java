@@ -95,12 +95,11 @@ public class AndroidRunState implements RunProfileState {
       console instanceof ConsoleView ? ((ConsoleView)console)::printHyperlink : (s, h) -> {
       };
 
-    LaunchInfo launchInfo = new LaunchInfo(executor, runner, myEnv, myConsoleProvider);
     LaunchTaskRunner task = new LaunchTaskRunner(myModule.getProject(),
                                                  myLaunchConfigName,
                                                  getApplicationId(),
                                                  myEnv.getExecutionTarget().getDisplayName(),
-                                                 launchInfo,
+                                                 myEnv,
                                                  processHandler,
                                                  myDeviceFutures,
                                                  myLaunchTasksProvider,
@@ -159,7 +158,7 @@ public class AndroidRunState implements RunProfileState {
       return getApplicationId();
     }
     AndroidTestRunConfiguration testRunConfiguration = (AndroidTestRunConfiguration) runProfile;
-    return OrchestratorUtilsKt.getMAP_EXECUTION_TYPE_TO_MASTER_ANDROID_PROCESS_NAME().getOrDefault(
+    return OrchestratorUtilsKt.MAP_EXECUTION_TYPE_TO_MASTER_ANDROID_PROCESS_NAME.getOrDefault(
       testRunConfiguration.getTestExecutionOption(AndroidFacet.getInstance(myModule)),
       getApplicationId());
   }

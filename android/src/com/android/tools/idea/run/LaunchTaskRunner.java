@@ -16,13 +16,13 @@
 package com.android.tools.idea.run;
 
 import com.android.ddmlib.IDevice;
-import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask;
 import com.android.tools.idea.run.tasks.LaunchContext;
 import com.android.tools.idea.run.tasks.LaunchResult;
 import com.android.tools.idea.run.tasks.LaunchResult.Result;
 import com.android.tools.idea.run.tasks.LaunchTask;
+import com.android.tools.idea.run.tasks.LaunchTaskDurations;
 import com.android.tools.idea.run.tasks.LaunchTasksProvider;
 import com.android.tools.idea.run.util.LaunchStatus;
 import com.android.tools.idea.run.util.ProcessHandlerLaunchStatus;
@@ -32,8 +32,10 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.wireless.android.sdk.stats.LaunchTaskDetail;
+import com.intellij.execution.executors.DefaultDebugExecutor;
 import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.ProcessHandler;
+import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.RunContentManager;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationListener;
@@ -70,7 +72,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
   @NotNull private final String myConfigName;
   @NotNull private final String myApplicationId;
   @Nullable private final String myExecutionTargetName; // Change to NotNull once everything is moved over to DeviceAndSnapshot
-  @NotNull private final LaunchInfo myLaunchInfo;
+  private ExecutionEnvironment myEnv;
   @NotNull private final ProcessHandler myProcessHandler;
   @NotNull private final DeviceFutures myDeviceFutures;
   @NotNull private final LaunchTasksProvider myLaunchTasksProvider;
@@ -85,7 +87,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
                           @NotNull String configName,
                           @NotNull String applicationId,
                           @Nullable String executionTargetName,
-                          @NotNull LaunchInfo launchInfo,
+                          @NotNull ExecutionEnvironment env,
                           @NotNull ProcessHandler processHandler,
                           @NotNull DeviceFutures deviceFutures,
                           @NotNull LaunchTasksProvider launchTasksProvider,
@@ -96,7 +98,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
     myConfigName = configName;
     myApplicationId = applicationId;
     myExecutionTargetName = executionTargetName;
-    myLaunchInfo = launchInfo;
+    myEnv = env;
     myProcessHandler = processHandler;
     myDeviceFutures = deviceFutures;
     myLaunchTasksProvider = launchTasksProvider;
@@ -117,18 +119,11 @@ public class LaunchTaskRunner extends Task.Backgroundable {
       ProcessHandlerLaunchStatus launchStatus = new ProcessHandlerLaunchStatus(myProcessHandler);
       ProcessHandlerConsolePrinter consolePrinter = new ProcessHandlerConsolePrinter(myProcessHandler);
       List<ListenableFuture<IDevice>> listenableDeviceFutures = myDeviceFutures.get();
-      AndroidVersion androidVersion = myDeviceFutures.getDevices().size() == 1
-                                      ? myDeviceFutures.getDevices().get(0).getVersion()
-                                      : null;
-      ConnectDebuggerTask debugSessionTask = isSwap() ? null : myLaunchTasksProvider.getConnectDebuggerTask();
+      boolean shouldConnectDebugger = myEnv.getExecutor() instanceof DefaultDebugExecutor && !isSwap();
 
-      if (debugSessionTask != null) {
-        if (listenableDeviceFutures.size() != 1) {
-          launchStatus.terminateLaunch("Cannot launch a debug session on more than 1 device.", true);
-          return;
-        }
-        // Copy over console output from the original console to the debug console once it is established.
-        AndroidProcessText.attach(myProcessHandler);
+      if (shouldConnectDebugger && listenableDeviceFutures.size() != 1) {
+        launchStatus.terminateLaunch("Cannot launch a debug session on more than 1 device.", true);
+        return;
       }
 
       printLaunchTaskStartedMessage(consolePrinter);
@@ -195,7 +190,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
       final int totalScheduledStepsCount = launchTaskMap
         .values()
         .stream()
-        .mapToInt(launchTasks -> getTotalDuration(launchTasks, debugSessionTask))
+        .mapToInt(launchTasks -> getTotalDuration(launchTasks, shouldConnectDebugger))
         .sum();
 
       // A list of devices that we have launched application successfully.
@@ -205,7 +200,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
         IDevice device = entry.getKey();
         boolean isSucceeded = runLaunchTasks(
           entry.getValue(),
-          new LaunchContext(myProject, myLaunchInfo.executor, device, launchStatus, consolePrinter, myProcessHandler, indicator),
+          new LaunchContext(myProject, myEnv.getExecutor(), device, launchStatus, consolePrinter, myProcessHandler, indicator),
           destroyProcessOnCancellation,
           completedStepsCount,
           totalScheduledStepsCount
@@ -229,14 +224,18 @@ public class LaunchTaskRunner extends Task.Backgroundable {
       }
 
       // A debug session task should be performed sequentially at the end.
-      for (IDevice device : launchedDevices) {
-        if (debugSessionTask != null) {
-          indicator.setText(debugSessionTask.getDescription());
-          debugSessionTask.perform(myLaunchInfo, device, launchStatus, consolePrinter);
-          // Update the indicator progress bar.
-          completedStepsCount.set(completedStepsCount.get() + debugSessionTask.getDuration());
-          indicator.setFraction(completedStepsCount.get().floatValue() / totalScheduledStepsCount);
+      if (shouldConnectDebugger) {
+        assert launchedDevices.size() == 1;
+        IDevice device = launchedDevices.get(0);
+        ConnectDebuggerTask debuggerTask = myLaunchTasksProvider.getConnectDebuggerTask();
+        if (debuggerTask == null) {
+          throw new RuntimeException("ConnectDebuggerTask is null for task provider " + myLaunchTasksProvider.getClass().getName());
         }
+        indicator.setText("Connecting debugger");
+        debuggerTask.perform(device, myApplicationId, myEnv, myProcessHandler);
+        // Update the indicator progress bar.
+        completedStepsCount.set(completedStepsCount.get() + LaunchTaskDurations.CONNECT_DEBUGGER);
+        indicator.setFraction(completedStepsCount.get().floatValue() / totalScheduledStepsCount);
       }
     }
     finally {
@@ -298,7 +297,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
 
           // Show the tool window when we have an error.
           ApplicationManager.getApplication().invokeLater(() -> RunContentManager.getInstance(myProject).toFrontRunContent(
-            myLaunchInfo.executor, myProcessHandler));
+            myEnv.getExecutor(), myProcessHandler));
 
           if (result == Result.ERROR) {
             myStats.setErrorId(launchResult.getErrorId());
@@ -432,27 +431,27 @@ public class LaunchTaskRunner extends Task.Backgroundable {
     return true;
   }
 
-  private static int getTotalDuration(@NotNull List<LaunchTask> launchTasks, @Nullable ConnectDebuggerTask debugSessionTask) {
+  private static int getTotalDuration(@NotNull List<LaunchTask> launchTasks, boolean shouldConnectDebugger) {
     int total = 0;
 
     for (LaunchTask task : launchTasks) {
       total += task.getDuration();
     }
 
-    if (debugSessionTask != null) {
-      total += debugSessionTask.getDuration();
+    if (shouldConnectDebugger) {
+      total += LaunchTaskDurations.CONNECT_DEBUGGER;
     }
 
     return total;
   }
 
   private boolean isSwap() {
-    return myLaunchInfo.env.getUserData(SwapInfo.SWAP_INFO_KEY) != null;
+    return myEnv.getUserData(SwapInfo.SWAP_INFO_KEY) != null;
   }
 
   @NotNull
   private String getLaunchVerb() {
-    SwapInfo swapInfo = myLaunchInfo.env.getUserData(SwapInfo.SWAP_INFO_KEY);
+    SwapInfo swapInfo = myEnv.getUserData(SwapInfo.SWAP_INFO_KEY);
     if (swapInfo != null) {
       if (swapInfo.getType() == SwapInfo.SwapType.APPLY_CHANGES) {
         return "Applying changes to";

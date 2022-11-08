@@ -178,6 +178,7 @@ studio_plugin(
             "//tools/adt/idea/app-inspection/inspectors/network/view:app-inspection.inspectors.network.view",
             "//tools/adt/idea/server-flags:intellij.android.server-flags",
             "//tools/adt/idea/codenavigation:codenavigation",
+            "//tools/adt/idea/execution/common:intellij.android.execution.common",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -385,7 +386,7 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.3.0-SNAPSHOT"],
+    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.4.0-SNAPSHOT"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     visibility = ["//visibility:public"],
     deps = [
@@ -641,10 +642,10 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
-    version_micro_patch = "1.8",
+    version_micro_patch = "1.6",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 8,
+    version_release_number = 6,
     version_type = "Canary",
     # version_update_message = "<html>this is optional</html>",
     visibility = ["//visibility:public"],
