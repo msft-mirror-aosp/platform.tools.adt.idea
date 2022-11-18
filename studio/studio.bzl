@@ -247,7 +247,7 @@ def _studio_plugin_impl(ctx):
 
 _studio_plugin = rule(
     attrs = {
-        "modules": attr.label_list(providers = [ImlModuleInfo], allow_empty = False),
+        "modules": attr.label_list(providers = [ImlModuleInfo], allow_empty = True),
         "libs": attr.label_list(allow_files = True),
         "licenses": attr.label_list(allow_files = True),
         "jars": attr.string_list(),
@@ -467,12 +467,11 @@ def _get_channel_info(version_type):
     return channel, is_eap
 
 def _form_version_full(ctx):
-    """Forms version_full based on code name, channel, and release number"""
-    (channel, _) = _get_channel_info(ctx.attr.version_type)
+    """Forms version_full based on code name, version type, and release number"""
     return (ctx.attr.version_code_name +
             " | " +
             "{0}.{1}.{2} " +
-            channel +
+            ctx.attr.version_type +
             " " +
             str(ctx.attr.version_release_number))
 
@@ -993,7 +992,7 @@ def intellij_platform(
         name = name + "-build-txt",
         srcs = select({
             "//tools/base/bazel:windows": [src + "/windows/android-studio/build.txt"],
-            "//tools/base/bazel:darwin": [src + "/darwin/android-studio/Contents/build.txt"],
+            "//tools/base/bazel:darwin": [src + "/darwin/android-studio/Contents/Resources/build.txt"],
             "//conditions:default": [src + "/linux/android-studio/build.txt"],
         }),
         visibility = ["//visibility:public"],

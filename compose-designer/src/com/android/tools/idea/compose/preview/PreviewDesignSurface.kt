@@ -40,6 +40,14 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.project.Project
 
+private val NO_GROUP_TRANSFORM:
+  (Collection<PositionableContent>) -> List<List<PositionableContent>> =
+  {
+    // FIXME(b/258718991): we decide not group the previews for now.
+    listOf(it.toList())
+  }
+
+@Suppress("unused") // b/258718991
 private val GROUP_BY_GROUP_ID_TRANSFORM:
   (Collection<PositionableContent>) -> List<List<PositionableContent>> =
   { contents ->
@@ -82,12 +90,12 @@ internal val PREVIEW_LAYOUT_MANAGER_OPTIONS =
       listOf(
         SurfaceLayoutManagerOption(
           "Group List Layout (By Group Name)",
-          GroupedListSurfaceLayoutManager(5, 20, GROUP_BY_GROUP_ID_TRANSFORM),
+          GroupedListSurfaceLayoutManager(5, 20, NO_GROUP_TRANSFORM),
           DesignSurface.SceneViewAlignment.LEFT
         ),
         SurfaceLayoutManagerOption(
           "Group Grid Layout (By Group name)",
-          GroupedGridSurfaceLayoutManager(5, 20, GROUP_BY_GROUP_ID_TRANSFORM),
+          GroupedGridSurfaceLayoutManager(5, 20, NO_GROUP_TRANSFORM),
           DesignSurface.SceneViewAlignment.LEFT
         ),
       )
@@ -131,7 +139,7 @@ private fun createPreviewDesignSurfaceBuilder(
     }
     .setDelegateDataProvider(dataProvider)
     .setSelectionModel(NopSelectionModel)
-    .setZoomControlsPolicy(DesignSurface.ZoomControlsPolicy.HIDDEN)
+    .setZoomControlsPolicy(DesignSurface.ZoomControlsPolicy.AUTO_HIDE)
     .setSupportedActions(COMPOSE_SUPPORTED_ACTIONS)
     .setShouldRenderErrorsPanel(true)
     .setScreenViewProvider(COMPOSE_SCREEN_VIEW_PROVIDER, false)
@@ -155,29 +163,3 @@ internal fun createMainDesignSurfaceBuilder(
       sceneComponentProvider
     )
     .setLayoutManager(DEFAULT_PREVIEW_LAYOUT_MANAGER)
-
-/** Creates a [NlDesignSurface.Builder] for the pinned design surface in the Compose preview. */
-internal fun createPinnedDesignSurfaceBuilder(
-  project: Project,
-  navigationHandler: NavigationHandler,
-  delegateInteractionHandler: InteractionHandler,
-  dataProvider: DataProvider,
-  parentDisposable: Disposable,
-  sceneComponentProvider: ComposeSceneComponentProvider
-) =
-  createPreviewDesignSurfaceBuilder(
-      project,
-      navigationHandler,
-      delegateInteractionHandler,
-      dataProvider,
-      parentDisposable,
-      sceneComponentProvider
-    )
-    .setLayoutManager(
-      GridSurfaceLayoutManager(
-        NlConstants.DEFAULT_SCREEN_OFFSET_X,
-        NlConstants.DEFAULT_SCREEN_OFFSET_Y,
-        NlConstants.SCREEN_DELTA,
-        NlConstants.SCREEN_DELTA
-      )
-    )

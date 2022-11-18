@@ -62,7 +62,7 @@ class ProfilerProgramRunner : StudioProgramRunner() {
     }
     else {
       // Profile executor group for Profileable Builds.
-      when (AbstractProfilerExecutorGroup.getInstance()?.getRegisteredSettings(executorId)?.profilingMode) {
+      when (AbstractProfilerExecutorGroup.getExecutorSetting(executorId)?.profilingMode) {
         ProfilingMode.DEBUGGABLE, ProfilingMode.NOT_SET -> doExecuteInternal(state, environment)
         ProfilingMode.PROFILEABLE -> checkProfileableSupportAndExecute(state, environment)
         else -> null
@@ -90,7 +90,7 @@ class ProfilerProgramRunner : StudioProgramRunner() {
     val dialog = object : DialogWrapper(environment.project) {
       override fun createCenterPanel(): JComponent {
         return JPanel(BorderLayout()).apply {
-          add(JBLabel("<html>Profiling with Low Overhead requires Android Gradle Plugin 8.0 and a device with API level 29 or higher.<br>" +
+          add(JBLabel("<html>Profiling with Low Overhead requires Android Gradle Plugin 7.3 and a device with API level 29 or higher.<br>" +
                       "Do you want to continue to Profile with Complete Data?</html>"), BorderLayout.CENTER)
         }
       }
@@ -158,7 +158,7 @@ class ProfilerProgramRunner : StudioProgramRunner() {
         // Track profiling mode.
         // Executor will be null for legacy AGP version, which doesn't support profiling mode.
         // ASwB does not support profiling mode either, but it uses a different ProgramRunner so no event will be recorded.
-        val profilingMode = AbstractProfilerExecutorGroup.getInstance()?.getRegisteredSettings(executorId)?.profilingMode
+        val profilingMode = AbstractProfilerExecutorGroup.getExecutorSetting(executorId)?.profilingMode
                             ?: ProfilingMode.NOT_SET
         metadataBuilder.profilingMode = profilingMode.analyticsProtoType
         // TODO(b/234158986): track build type metadata (debuggable, profileable, etc.)
@@ -183,7 +183,7 @@ class ProfilerProgramRunner : StudioProgramRunner() {
 
     private fun isAgpVersionSupported(project: Project): Boolean {
       val agpVersion = GradleUtil.getLastKnownAndroidGradlePluginVersion(project)?.let { AgpVersion.tryParse(it) }
-      return agpVersion != null && agpVersion.isAtLeastIncludingPreviews(8, 0, 0)
+      return agpVersion != null && agpVersion.isAtLeastIncludingPreviews(7, 3, 0)
     }
 
     private fun isDeviceSupported(env: ExecutionEnvironment): Boolean {

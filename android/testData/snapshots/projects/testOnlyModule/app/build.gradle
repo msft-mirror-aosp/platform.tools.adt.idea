@@ -25,6 +25,14 @@ android {
     applicationId 'com.example.android.app'
   }
 
+  buildTypes {
+    benchmark {
+      signingConfig signingConfigs.debug
+      matchingFallbacks = ['release']
+      debuggable false
+    }
+  }
+
   publishNonDefault true
 }
 

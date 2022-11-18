@@ -16,9 +16,9 @@
 package com.android.tools.idea.devicemanager.physicaltab;
 
 import com.android.ddmlib.IDevice;
+import com.android.tools.idea.device.Resolution;
 import com.android.tools.idea.devicemanager.AdbShellCommandExecutor;
 import com.android.tools.idea.devicemanager.DeviceManagerAndroidDebugBridge;
-import com.android.tools.idea.devicemanager.Resolution;
 import com.android.tools.idea.devicemanager.StorageDevice;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.FluentFuture;
@@ -78,7 +78,7 @@ final class AsyncDetailsBuilder {
       .setTarget(myDevice.getTarget())
       .setAndroidVersion(myDevice.getAndroidVersion())
       .setPower(myExecutor.execute(device, "dumpsys battery").flatMap(Battery::newBattery).orElse(null))
-      .setResolution(myExecutor.execute(device, "wm size").flatMap(Resolution::newResolution).orElse(null))
+      .setResolution(myExecutor.execute(device, "wm size").map(Resolution::parseWmSizeOutput).orElse(null))
       .setDensity(device.getDensity())
       .addAllAbis(device.getAbis())
       .setStorageDevice(myExecutor.execute(device, "df /data").flatMap(StorageDevice::newStorageDevice).orElse(null))

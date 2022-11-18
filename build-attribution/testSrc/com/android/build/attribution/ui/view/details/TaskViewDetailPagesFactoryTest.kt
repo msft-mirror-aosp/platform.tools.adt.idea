@@ -25,6 +25,7 @@ import com.android.build.attribution.ui.model.TasksDataPageModel
 import com.android.build.attribution.ui.model.TasksDataPageModelImpl
 import com.android.build.attribution.ui.model.TasksPageId
 import com.android.build.attribution.ui.view.ViewActionHandlers
+import com.android.buildanalyzer.common.TaskCategory
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.flags.StudioFlags
@@ -253,12 +254,12 @@ which it must do in order to support incremental builds.<BR/>
   @Test
   fun testCreateTaskCategoryPageWithoutWarning() {
     StudioFlags.BUILD_ANALYZER_CATEGORY_ANALYSIS.override(true)
-    val data = MockUiData(tasksList = listOf(mockTask(":module1", "task1", "myPlugin", 100)))
+    val data = MockUiData(tasksList = listOf(mockTask(":module1", "task1", "myPlugin", 100, taskCategory = TaskCategory.ANDROID_RESOURCES)))
     val model = TasksDataPageModelImpl(data)
     val factory = TaskViewDetailPagesFactory(model, mockHandlers)
     model.selectGrouping(TasksDataPageModel.Grouping.BY_TASK_CATEGORY)
     val taskCategoryData = data.criticalPathTaskCategories.entries.first{ it.name == "Android Resources" }
-    val descriptor = model.getNodeDescriptorById(TasksPageId.taskCategory(taskCategoryData)) as EntryDetailsNodeDescriptor
+    val descriptor = model.getNodeDescriptorById(TasksPageId.taskCategory(taskCategoryData.taskCategory)) as EntryDetailsNodeDescriptor
 
     val htmlBody = factory.entryDetailsHtml(descriptor, HtmlLinksHandler(mockHandlers)).clearHtml()
     assertThat(htmlBody).isEqualTo("""
@@ -276,13 +277,13 @@ which it must do in order to support incremental builds.<BR/>
   @Test
   fun testCreateTaskCategoryPageWithWarning() {
     StudioFlags.BUILD_ANALYZER_CATEGORY_ANALYSIS.override(true)
-    val data = MockUiData(tasksList = listOf(mockTask(":module1", "task1", "myPlugin", 100)),
+    val data = MockUiData(tasksList = listOf(mockTask(":module1", "task1", "myPlugin", 100, taskCategory = TaskCategory.ANDROID_RESOURCES)),
                           createTaskCategoryWarning = true)
     val model = TasksDataPageModelImpl(data)
     val factory = TaskViewDetailPagesFactory(model, mockHandlers)
     model.selectGrouping(TasksDataPageModel.Grouping.BY_TASK_CATEGORY)
     val taskCategoryData = data.criticalPathTaskCategories.entries.first{ it.name == "Android Resources" }
-    val descriptor = model.getNodeDescriptorById(TasksPageId.taskCategory(taskCategoryData)) as EntryDetailsNodeDescriptor
+    val descriptor = model.getNodeDescriptorById(TasksPageId.taskCategory(taskCategoryData.taskCategory)) as EntryDetailsNodeDescriptor
 
     val htmlBody = factory.entryDetailsHtml(descriptor, HtmlLinksHandler(mockHandlers)).clearHtml()
     assertThat(htmlBody).isEqualTo("""

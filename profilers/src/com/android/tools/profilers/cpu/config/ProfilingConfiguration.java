@@ -17,8 +17,10 @@ package com.android.tools.profilers.cpu.config;
 
 import com.android.tools.adtui.model.options.OptionsProvider;
 import com.android.tools.adtui.model.options.OptionsProperty;
+import com.android.tools.idea.protobuf.GeneratedMessageV3;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Trace.UserOptions.TraceType;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -29,6 +31,11 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
   public static final int DEFAULT_BUFFER_SIZE_MB = 8;
   public static final int DEFAULT_SAMPLING_INTERVAL_US = 1000;
   public static final String TRACE_CONFIG_GROUP = "Trace config";
+
+  public enum AdditionalOptions {
+    SYMBOL_DIRS,
+    APP_PKG_NAME
+  }
 
   /**
    * Name to identify the profiling preference. It should be displayed in the preferences list.
@@ -64,35 +71,35 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
    * Converts from {@link Trace.TraceConfiguration} to {@link ProfilingConfiguration}.
    */
   @NotNull
-  public static ProfilingConfiguration fromProto(@NotNull Trace.UserOptions proto) {
+  public static ProfilingConfiguration fromProto(@NotNull Trace.TraceConfiguration proto) {
     ProfilingConfiguration configuration = null;
-    switch (proto.getTraceType()) {
+    switch (proto.getUserOptions().getTraceType()) {
       case ART:
-        if (proto.getTraceMode() == Trace.TraceMode.SAMPLED) {
-          ArtSampledConfiguration artSampled = new ArtSampledConfiguration(proto.getName());
-          artSampled.setProfilingSamplingIntervalUs(proto.getSamplingIntervalUs());
-          artSampled.setProfilingBufferSizeInMb(proto.getBufferSizeInMb());
+        if (proto.getUserOptions().getTraceMode() == Trace.TraceMode.SAMPLED) {
+          ArtSampledConfiguration artSampled = new ArtSampledConfiguration(proto.getUserOptions().getName());
+          artSampled.setProfilingSamplingIntervalUs(proto.getUserOptions().getSamplingIntervalUs());
+          artSampled.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
           configuration = artSampled;
         }
         else {
-          ArtInstrumentedConfiguration art = new ArtInstrumentedConfiguration(proto.getName());
-          art.setProfilingBufferSizeInMb(proto.getBufferSizeInMb());
+          ArtInstrumentedConfiguration art = new ArtInstrumentedConfiguration(proto.getUserOptions().getName());
+          art.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
           configuration = art;
         }
         break;
       case PERFETTO:
-        PerfettoConfiguration perfetto = new PerfettoConfiguration(proto.getName());
-        perfetto.setProfilingBufferSizeInMb(proto.getBufferSizeInMb());
+        PerfettoConfiguration perfetto = new PerfettoConfiguration(proto.getUserOptions().getName());
+        perfetto.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
         configuration = perfetto;
         break;
       case ATRACE:
-        AtraceConfiguration atrace = new AtraceConfiguration(proto.getName());
-        atrace.setProfilingBufferSizeInMb(proto.getBufferSizeInMb());
+        AtraceConfiguration atrace = new AtraceConfiguration(proto.getUserOptions().getName());
+        atrace.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
         configuration = atrace;
         break;
       case SIMPLEPERF:
-        SimpleperfConfiguration simpleperf = new SimpleperfConfiguration(proto.getName());
-        simpleperf.setProfilingSamplingIntervalUs(proto.getSamplingIntervalUs());
+        SimpleperfConfiguration simpleperf = new SimpleperfConfiguration(proto.getUserOptions().getName());
+        simpleperf.setProfilingSamplingIntervalUs(proto.getUserOptions().getSamplingIntervalUs());
         configuration = simpleperf;
         break;
       case UNRECOGNIZED:
@@ -114,6 +121,18 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
   }
 
   protected abstract Trace.UserOptions.Builder buildUserOptions();
+
+  /**
+   * Returns an options proto (field of {@link Trace.TraceConfiguration}) equivalent of the ProfilingConfiguration
+   */
+  protected abstract GeneratedMessageV3 getOptions();
+
+  /**
+   * Adds/sets the options field of a {@link Trace.TraceConfiguration} with proto conversion of {@link ProfilingConfiguration}
+   * The additional options are a property bag for additional fields that should be set during TraceConfiguration creation.
+   */
+  public abstract void addOptions(Trace.TraceConfiguration.Builder configBuilder,
+                                  Map<AdditionalOptions, ? extends Object> additionalOptions);
 
   @Override
   public boolean equals(Object obj) {

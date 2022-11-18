@@ -22,12 +22,9 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
-import com.intellij.testFramework.PsiTestUtil
 import junit.framework.Assert
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
-import org.jetbrains.kotlin.idea.gradleTooling.get
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
@@ -37,7 +34,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
 
@@ -116,6 +112,9 @@ class BasicCompileTest {
                                                                 "import androidx.compose.runtime.Composable\n" +
                                                                 "@Composable fun hasLambdaA(content: @Composable () -> Unit) { }\n" +
                                                                 "@Composable fun hasLambdaB() { hasLambdaA {} }")
+
+    files["RecoverableError.kt"] = projectRule.fixture.configureByText("RecoverableError.kt",
+                                                                      "fun recoverableError() {\"a\".toString()}}")
   }
 
   @Test
@@ -144,6 +143,16 @@ class BasicCompileTest {
 
     // Re-compiling A.kt targetting bar(). Note that the offsets of bar() does not change despite foo() is now longer.
     output = compile(files["A.kt"], "bar").singleOutput()
+  }
+
+  @Test
+  fun recoverableErrors() {
+    try {
+      compile(files["RecoverableError.kt"], "recoverableError")
+      Assert.fail("RecoverableError.kt contains a lexical error and should not be updated by Live Edit")
+    } catch (e: LiveEditUpdateException) {
+      Assert.assertEquals("Expecting a top level declaration", e.message)
+    }
   }
 
   @Test
@@ -182,6 +191,9 @@ class BasicCompileTest {
     // We could potentially look into doing that. However, for the purpose of verifying the
     // compose compiler was invoked correctly, we can just check the output's methods.
     Assert.assertTrue(output.classData.isNotEmpty())
+
+    Assert.assertEquals(1639534479, output.groupId)
+
     var c = loadClass(output)
     var foundFunction = false;
     for (m in c.methods) {
@@ -197,6 +209,8 @@ class BasicCompileTest {
     var output = compile(files["ComposeNested.kt"], "composableNested").singleOutput()
     Assert.assertEquals("composableNested", output.methodName)
     Assert.assertEquals("(Landroidx/compose/runtime/Composer;I)Lkotlin/jvm/functions/Function3;", output.methodDesc)
+
+    Assert.assertEquals(-1050554150, output.groupId)
   }
 
   @Test
@@ -241,7 +255,7 @@ class BasicCompileTest {
   private fun compile(file: PsiFile, function: KtNamedFunction, useInliner: Boolean = false) :
         List<AndroidLiveEditCodeGenerator.CodeGeneratorOutput> {
     LiveEditAdvancedConfiguration.getInstance().useInlineAnalysis = useInliner
-    LiveEditAdvancedConfiguration.getInstance().usePartialRecompose = false
+    LiveEditAdvancedConfiguration.getInstance().usePartialRecompose = true
     val output = mutableListOf<AndroidLiveEditCodeGenerator.CodeGeneratorOutput>()
 
     // The real Live Edit / Fast Preview has a retry system should the compilation got cancelled.

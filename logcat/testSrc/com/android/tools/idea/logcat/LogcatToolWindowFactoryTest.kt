@@ -24,12 +24,15 @@ import com.android.testutils.MockitoKt.whenever
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.adb.processnamemonitor.ProcessNameMonitor
+import com.android.tools.idea.adblib.AdbLibService
+import com.android.tools.idea.adblib.testing.TestAdbLibService
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.filters.LogcatFilterColorSettingsPage
 import com.android.tools.idea.logcat.messages.FormattingOptions
 import com.android.tools.idea.logcat.messages.LogcatColorSettingsPage
 import com.android.tools.idea.logcat.messages.TagFormat
+import com.android.tools.idea.logcat.service.LogcatService
 import com.android.tools.idea.logcat.testing.TestDevice
 import com.android.tools.idea.logcat.testing.setupCommandsForDevice
 import com.android.tools.idea.run.ShowLogcatListener
@@ -45,7 +48,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.registerServiceInstance
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.replaceService
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl.MockToolWindow
 import org.junit.Before
@@ -66,13 +69,16 @@ class LogcatToolWindowFactoryTest {
   val rule = RuleChain(projectRule, EdtRule(), disposableRule)
 
   private val project get() = projectRule.project
+  private val disposable get() = disposableRule.disposable
   private val settings = LogcatExperimentalSettings()
   private val mockProcessNameMonitor = mock<ProcessNameMonitor>()
   private val fakeAdbSession = FakeAdbSession()
+  private val fakeLogcatService = FakeLogcatService()
 
   @Before
   fun setUp() {
-    ApplicationManager.getApplication().replaceService(LogcatExperimentalSettings::class.java, settings, disposableRule.disposable)
+    ApplicationManager.getApplication().replaceService(LogcatExperimentalSettings::class.java, settings, disposable)
+    project.replaceService(LogcatService::class.java, fakeLogcatService, disposable)
   }
 
   @Test
@@ -203,8 +209,10 @@ class LogcatToolWindowFactoryTest {
   private fun logcatToolWindowFactory(
     processNameMonitor: ProcessNameMonitor = mockProcessNameMonitor,
     adbSession: FakeAdbSession = fakeAdbSession,
-  ) = LogcatToolWindowFactory { adbSession }.also {
-    project.registerServiceInstance(ProcessNameMonitor::class.java, processNameMonitor)
+  ): LogcatToolWindowFactory {
+    project.registerOrReplaceServiceInstance(ProcessNameMonitor::class.java, processNameMonitor, disposable)
+    project.registerOrReplaceServiceInstance(AdbLibService::class.java, TestAdbLibService(adbSession), disposable)
+    return LogcatToolWindowFactory()
   }
 }
 

@@ -854,6 +854,12 @@ public final class StudioFlags {
     "When this flag is enabled, LayoutInspector will automatically connect to whatever debuggable process is in the foreground on the phone.",
     true);
 
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.ignore.framework.recompositions", "Ignore recompositions in compose framework",
+    "When this flag is enabled, LayoutInspector will disregard all recomposition counts for framework composables, " +
+    "such that the user can concentrate on their own code.",
+    true);
+
   public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER = Flag.create(
     LAYOUT_INSPECTOR, "dev.jar.location", "Location of prebuilt compose app inspection jar for development",
     "If APP_INSPECTION_USE_DEV_JAR is enabled use this location to load the inspector jar in development.",
@@ -1207,25 +1213,11 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_PIN_PREVIEW = Flag.create(
-    COMPOSE, "preview.pin.enable",
-    "Enable pinning compose previews",
-    "If enabled, a user can pin a preview",
-    false
-  );
-
   public static final Flag<Boolean> COMPOSE_CONSTRAINT_VISUALIZATION = Flag.create(
     COMPOSE, "constraint.visualization",
     "Enable ConstraintLayout visualization in Compose previews",
     "If enabled, constraints from a ConstraintLayout composable will be shown in the preview",
     true
-  );
-
-  public static final Flag<Boolean> COMPOSE_INDIVIDUAL_PIN_PREVIEW = Flag.create(
-    COMPOSE, "preview.individual.pin.enable",
-    "Enable pinning of individual compose previews",
-    "If enabled, a user can pin a single preview within a file",
-    false
   );
 
   public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = Flag.create(
@@ -1259,7 +1251,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE = Flag.create(
     COMPOSE, "preview.animation.animate.as.state", "Enable animate*AsState support",
     "If enabled, the animate*AsState Compose API support will be available in Animation Preview.",
-    true);
+    false);
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
     COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
@@ -1410,6 +1402,15 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       false);
 
+  public static final Flag<Boolean> DIRECT_ACCESS_MULTIPLE_DEVICES =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.multiple.devices",
+      "Multiple devices",
+      "Enables running multiple devices from FTL",
+      false
+    );
+
   public static final Flag<String> DIRECT_ACCESS_PROJECT =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1558,6 +1559,7 @@ public final class StudioFlags {
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
   public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   private StudioFlags() { }

@@ -17,7 +17,6 @@ package com.android.tools.profilers.cpu.config
 
 import com.android.tools.adtui.model.options.OptionsProperty
 import com.android.tools.adtui.model.options.Slider
-import com.android.tools.profiler.proto.Cpu
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profiler.proto.Trace.TraceMode
 
@@ -35,6 +34,17 @@ class ArtInstrumentedConfiguration(name: String) : ProfilingConfiguration(name) 
     return Trace.UserOptions.newBuilder()
       .setTraceMode(TraceMode.INSTRUMENTED)
       .setBufferSizeInMb(profilingBufferSizeInMb)
+  }
+
+  override fun getOptions(): Trace.ArtOptions {
+    return Trace.ArtOptions.newBuilder()
+      .setTraceMode(TraceMode.INSTRUMENTED)
+      .setBufferSizeInMb(profilingBufferSizeInMb)
+      .build()
+  }
+
+  override fun addOptions(configBuilder: Trace.TraceConfiguration.Builder, additionalOptions: Map<AdditionalOptions, Any>) {
+    configBuilder.artOptions = options
   }
 
   override fun getTraceType(): Trace.UserOptions.TraceType {

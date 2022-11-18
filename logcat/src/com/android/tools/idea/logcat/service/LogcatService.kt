@@ -17,6 +17,7 @@ package com.android.tools.idea.logcat.service
 
 import com.android.tools.idea.logcat.devices.Device
 import com.android.tools.idea.logcat.message.LogcatMessage
+import com.intellij.openapi.project.Project
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -26,4 +27,8 @@ internal interface LogcatService {
   suspend fun readLogcat(device: Device) : Flow<List<LogcatMessage>>
 
   suspend fun clearLogcat(device: Device)
+
+  companion object {
+    fun getInstance(project: Project): LogcatService = project.getService(LogcatService::class.java)
+  }
 }

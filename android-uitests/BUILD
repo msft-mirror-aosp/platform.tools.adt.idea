@@ -58,7 +58,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/.idea/libraries:emulator-proto[test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",
-        "//tools/adt/idea/emulator:intellij.android.emulator[module, test]",
+        "//tools/adt/idea/streaming:intellij.android.streaming[module, test]",
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
@@ -154,9 +154,11 @@ maven_repository(
         "@maven//:androidx.lifecycle.lifecycle-extensions_2.2.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.4.1",
         "@maven//:androidx.media.media_1.5.0",
-        "@maven//:androidx.navigation.navigation-fragment-ktx_2.4.1",
+        "@maven//:androidx.navigation.navigation-fragment-ktx_2.5.2",
+        "@maven//:androidx.navigation.navigation-fragment_2.5.2",
         "@maven//:androidx.navigation.navigation-safe-args-gradle-plugin_2.5.2",
-        "@maven//:androidx.navigation.navigation-ui-ktx_2.4.1",
+        "@maven//:androidx.navigation.navigation-ui-ktx_2.5.2",
+        "@maven//:androidx.navigation.navigation-ui_2.5.2",
         "@maven//:androidx.palette.palette-ktx_1.0.0",
         "@maven//:androidx.recyclerview.recyclerview_1.2.1",
         "@maven//:androidx.slice.slice-builders_1.0.0",
@@ -205,13 +207,13 @@ maven_repository(
         "@maven//:javax.annotation.javax.annotation-api_1.2",
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
-        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.7.20",
+        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.7.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.7.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.7.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.7.21",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.21",
         "@maven//:org.mockito.mockito-core_4.8.0",
     ],
 )
@@ -707,6 +709,8 @@ java_test(
 
 java_test(
     name = "BuildAnalyzerTest",
+    size = "enormous",
+    timeout = "long",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
     ] + glob([
@@ -1386,9 +1390,11 @@ java_test(
 )
 
 java_test(
-    name = "NavGraphAttributeTest",
-    data = COMMON_DATA,
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.NavGraphAttributeTest"],
+    name = "NavGraphSanityTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+    ],
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.NavGraphSanityTest"],
     tags = COMMON_TAGS + [
         "qa_smoke",
     ],

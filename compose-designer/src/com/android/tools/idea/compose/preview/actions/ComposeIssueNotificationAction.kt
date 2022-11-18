@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.preview.actions
 
 import com.android.flags.ifEnabled
 import com.android.tools.adtui.InformationPopup
+import com.android.tools.adtui.InformationPopupImpl
 import com.android.tools.adtui.common.ColoredIconGenerator
 import com.android.tools.idea.common.actions.ActionButtonWithToolTipDescription
 import com.android.tools.idea.common.surface.DesignSurface
@@ -71,6 +72,9 @@ internal fun getStatusInfo(project: Project, dataContext: DataContext): PreviewS
       !project.fastPreviewManager.isAutoDisabled &&
       previewStatus.isOutOfDate -> PreviewStatusNotification.OutOfDate
 
+    // Resources are out of date. FastPreview does not help with this.
+    previewStatus.areResourcesOutOfDate -> PreviewStatusNotification.OutOfDate
+
     // Refresh status
     previewStatus.interactiveMode == ComposePreviewManager.InteractiveMode.STARTING ->
       PreviewStatusNotification.Refreshing(message("notification.interactive.preview.starting"))
@@ -115,7 +119,7 @@ fun defaultCreateInformationPopup(
   return getStatusInfo(project, dataContext)?.let {
     val isAutoDisabled =
       it is PreviewStatusNotification.FastPreviewFailed && project.fastPreviewManager.isAutoDisabled
-    return@let InformationPopup(
+    return@let InformationPopupImpl(
         null,
         it.description,
         listOfNotNull(StudioFlags.COMPOSE_FAST_PREVIEW.ifEnabled { ToggleFastPreviewAction() }),
@@ -161,7 +165,7 @@ fun defaultCreateInformationPopup(
         // This allows for actions within the
         // popup to query for things like the Editor even when the Editor is not directly related to
         // the popup.
-        DataManager.registerDataProvider(newPopup.component()) { dataId ->
+        DataManager.registerDataProvider(newPopup.popupComponent) { dataId ->
           dataContext.getData(dataId)
         }
       }

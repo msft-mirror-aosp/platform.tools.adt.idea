@@ -4,6 +4,7 @@ apply plugin: SamplePlugin
 class SampleTask extends DefaultTask {
     @TaskAction
     def run() {
+      Thread.sleep(1000)
     }
 }
 
@@ -28,7 +29,6 @@ class SamplePlugin implements Plugin<Project> {
 android {
     namespace "com.example.buildattributionapp"
     compileSdkVersion 31
-    buildToolsVersion "30.0.2"
 
     defaultConfig {
         applicationId "com.example.buildattributionapp"

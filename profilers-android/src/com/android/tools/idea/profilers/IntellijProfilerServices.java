@@ -289,17 +289,12 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @Override
   public List<ProfilingConfiguration> getUserCpuProfilerConfigs(int apiLevel) {
     CpuProfilerConfigsState configsState = CpuProfilerConfigsState.getInstance(myProject);
-    return ContainerUtil.map(
-      CpuProfilerConfigConverter.toProto(configsState.getUserConfigs(), apiLevel),
-      ProfilingConfiguration::fromProto);
+    return CpuProfilerConfigConverter.toProfilingConfiguration(configsState.getUserConfigs(), apiLevel);
   }
 
   @Override
   public List<ProfilingConfiguration> getDefaultCpuProfilerConfigs(int apiLevel) {
-    return ContainerUtil.map(
-      CpuProfilerConfigConverter.toProto(CpuProfilerConfigsState.getDefaultConfigs(), apiLevel),
-      ProfilingConfiguration::fromProto
-    );
+    return CpuProfilerConfigConverter.toProfilingConfiguration(CpuProfilerConfigsState.getDefaultConfigs(), apiLevel);
   }
 
   @Override

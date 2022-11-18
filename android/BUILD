@@ -56,8 +56,6 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module]",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module]",
         "//tools/adt/idea/android/lib:spantable",
-        "//prebuilts/tools/common/m2:okio",
-        "//prebuilts/tools/common/m2:moshi",
         "//tools/base/repository:studio.android.sdktools.repository[module]",
         "//tools/data-binding:studio.baseLibrary[module]",
         "//tools/data-binding:studio.baseLibrarySupport[module]",
@@ -127,6 +125,7 @@ iml_module(
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools[module]",
         "//tools/base/adblib:studio.android.sdktools.adblib[module]",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner[module]",
+        "//tools/adt/idea/execution/common:intellij.android.execution.common[module]",
     ],
 )
 
@@ -336,6 +335,7 @@ iml_module(
         "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils[module, test]",
         "//tools/base/threading-agent-callback:studio.android.sdktools.threading-agent-callback[module, test]",
         "//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin[module, test]",
+        "//tools/adt/idea/execution/common:intellij.android.execution.common[module, test]",
     ],
 )
 
@@ -429,7 +429,7 @@ filegroup(
         ":profiler-artifacts",
         ":transport-artifacts",
         "//tools/adt/idea/server-flags:server-flag-test-proto",
-        "//tools/adt/idea/emulator/screen-sharing-agent:bundle",
+        "//tools/adt/idea/streaming/screen-sharing-agent:bundle",
         "//tools/adt/idea/swingp:swing-instrumenter_deploy.jarjar.jar",
         "//tools/analytics-library/protos/src/main/proto:studio.proto",
         "//tools/base/bazel:studio-grpc",

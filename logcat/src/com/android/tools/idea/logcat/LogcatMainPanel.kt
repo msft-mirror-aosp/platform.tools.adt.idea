@@ -15,12 +15,9 @@
  */
 package com.android.tools.idea.logcat
 
-import com.android.adblib.AdbSession
 import com.android.annotations.concurrency.UiThread
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsStateProvider
-import com.android.tools.idea.adb.processnamemonitor.ProcessNameMonitor
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
@@ -69,7 +66,6 @@ import com.android.tools.idea.logcat.messages.TextAccumulator
 import com.android.tools.idea.logcat.messages.TextAccumulator.FilterHint
 import com.android.tools.idea.logcat.messages.TimestampFormat
 import com.android.tools.idea.logcat.service.LogcatService
-import com.android.tools.idea.logcat.service.LogcatServiceImpl
 import com.android.tools.idea.logcat.settings.AndroidLogcatSettings
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
@@ -105,6 +101,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys.EDITOR
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.event.CaretEvent
@@ -161,7 +158,7 @@ private val TEXT_CURSOR = Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR)
 class LogcatMainPanelFactory {
   companion object {
     fun create(project: Project): JComponent {
-      return LogcatMainPanel(project, SimpleActionGroup(), LogcatColors(), null) { AdbLibService.getInstance(it).session }
+      return LogcatMainPanel(project, SimpleActionGroup(), LogcatColors(), null)
     }
   }
 }
@@ -184,12 +181,10 @@ internal class LogcatMainPanel @TestOnly constructor(
   private val splitterPopupActionGroup: ActionGroup,
   logcatColors: LogcatColors,
   state: LogcatPanelConfig?,
-  adbSessionFactory: (Project) -> AdbSession,
   private var logcatSettings: AndroidLogcatSettings,
   private var androidProjectDetector: AndroidProjectDetector,
   hyperlinkDetector: HyperlinkDetector?,
   foldingDetector: FoldingDetector?,
-  logcatService: LogcatService?,
   zoneId: ZoneId = ZoneId.systemDefault()
 ) : BorderLayoutPanel(), LogcatPresenter, SplittingTabsStateProvider, DataProvider, Disposable {
 
@@ -198,18 +193,15 @@ internal class LogcatMainPanel @TestOnly constructor(
     splitterPopupActionGroup: ActionGroup,
     logcatColors: LogcatColors,
     state: LogcatPanelConfig?,
-    adbSessionFactory: (Project) -> AdbSession,
   ) : this(
     project,
     splitterPopupActionGroup,
     logcatColors,
     state,
-    adbSessionFactory,
     AndroidLogcatSettings.getInstance(),
     AndroidProjectDetectorImpl(),
     hyperlinkDetector = null,
     foldingDetector = null,
-    logcatService = null,
   )
 
   private var isLogcatPaused: Boolean = false
@@ -247,7 +239,6 @@ internal class LogcatMainPanel @TestOnly constructor(
     logcatFilterParser,
     state?.filter ?: getDefaultFilter(project, androidProjectDetector),
     state?.device,
-    adbSessionFactory(project),
   )
 
 
@@ -260,10 +251,7 @@ internal class LogcatMainPanel @TestOnly constructor(
   private val toolbar = ActionManager.getInstance().createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
   private val hyperlinkDetector = hyperlinkDetector ?: EditorHyperlinkDetector(project, editor)
   private val foldingDetector = foldingDetector ?: EditorFoldingDetector(project, editor)
-  private val logcatService = logcatService ?: LogcatServiceImpl(
-    this,
-    { adbSessionFactory(project).deviceServices },
-    ProcessNameMonitor.getInstance(project))
+  private val logcatService = LogcatService.getInstance(project)
   private var ignoreCaretAtBottom = false // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
   private val connectedDevice = AtomicReference<Device?>()
   private val logcatServiceChannel = Channel<LogcatServiceEvent>(1)
@@ -467,6 +455,7 @@ internal class LogcatMainPanel @TestOnly constructor(
   }
 
   override suspend fun appendMessages(textAccumulator: TextAccumulator) = withContext(uiThread(ModalityState.any())) {
+    LOGGER.debug { "Appending ${textAccumulator.text.length} bytes. isActive=$isActive" }
     if (!isActive) {
       return@withContext
     }
@@ -507,6 +496,7 @@ internal class LogcatMainPanel @TestOnly constructor(
 
   @UiThread
   override fun applyFilter(logcatFilter: LogcatFilter?) {
+    LOGGER.debug { "Applying filter $logcatFilter" }
     messageProcessor.logcatFilter = logcatFilter
     noApplicationIdsBanner.isVisible = isMissingApplicationIds()
     reloadMessages()

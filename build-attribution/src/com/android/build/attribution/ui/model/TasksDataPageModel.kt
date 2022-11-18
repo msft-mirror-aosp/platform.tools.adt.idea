@@ -22,6 +22,7 @@ import com.android.build.attribution.ui.data.CriticalPathPluginUiData
 import com.android.build.attribution.ui.data.CriticalPathTaskCategoryUiData
 import com.android.build.attribution.ui.data.TaskUiData
 import com.android.build.attribution.ui.data.TimeWithPercentage
+import com.android.build.attribution.ui.displayName
 import com.android.build.attribution.ui.durationString
 import com.android.build.attribution.ui.panels.CriticalPathChartLegend
 import com.android.build.attribution.ui.view.BuildAnalyzerTreeNodePresentation
@@ -29,10 +30,12 @@ import com.android.build.attribution.ui.view.BuildAnalyzerTreeNodePresentation.N
 import com.android.build.attribution.ui.view.BuildAnalyzerTreeNodePresentation.NodeIconState.WARNING_ICON
 import com.android.build.attribution.ui.view.chart.ChartValueProvider
 import com.android.build.attribution.ui.warningsCountString
+import com.android.buildanalyzer.common.TaskCategory
 import com.android.buildanalyzer.common.TaskCategoryIssue
 import com.google.wireless.android.sdk.stats.BuildAttributionUiEvent.Page.PageType
 import org.jetbrains.kotlin.utils.addToStdlib.sumByLong
 import java.awt.Color
+import java.lang.IllegalArgumentException
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.swing.tree.DefaultMutableTreeNode
 
@@ -246,8 +249,8 @@ private class TasksTreeStructure(
     treeRoot.removeAllChildren()
     when (grouping) {
       TasksDataPageModel.Grouping.UNGROUPED -> createUngroupedNodes(filter, treeStats)
-      TasksDataPageModel.Grouping.BY_PLUGIN -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathPlugins)
-      TasksDataPageModel.Grouping.BY_TASK_CATEGORY -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathTaskCategories!!)
+      TasksDataPageModel.Grouping.BY_PLUGIN -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathPlugins, grouping)
+      TasksDataPageModel.Grouping.BY_TASK_CATEGORY -> createGroupedByEntryNodes(filter, treeStats, reportData.criticalPathTaskCategories!!, grouping)
     }
     treeStats.filteredTaskTimesDistribution.seal()
     treeStats.totalTasksTimeMs = reportData.criticalPathTasks.tasks.sumByLong { it.executionTime.timeMs }
@@ -256,7 +259,7 @@ private class TasksTreeStructure(
   private fun createUngroupedNodes(filter: TasksFilter, treeStats: TreeStats) {
     treeRoot.removeAllChildren()
     reportData.criticalPathTasks.tasks.asSequence()
-      .filter { filter.acceptTask(it) }
+      .filter { filter.acceptTask(it, TasksDataPageModel.Grouping.UNGROUPED) }
       .map { TaskDetailsNodeDescriptor(it, TasksDataPageModel.Grouping.UNGROUPED, treeStats.filteredTaskTimesDistribution) }
       .forEach {
         if (it.taskData.hasWarning) treeStats.visibleWarnings++
@@ -264,11 +267,11 @@ private class TasksTreeStructure(
       }
   }
 
-  private fun createGroupedByEntryNodes(filter: TasksFilter, treeStats: TreeStats, criticalPathEntry: CriticalPathEntriesUiData) {
+  private fun createGroupedByEntryNodes(filter: TasksFilter, treeStats: TreeStats, criticalPathEntry: CriticalPathEntriesUiData, grouping: TasksDataPageModel.Grouping) {
     treeRoot.removeAllChildren()
     val filteredEntryTimesDistribution = TimeDistributionBuilder()
     criticalPathEntry.entries.forEach { entryUiData ->
-      val filteredTasksForEntry = entryUiData.criticalPathTasks.filter { filter.acceptTask(it) }
+      val filteredTasksForEntry = entryUiData.criticalPathTasks.filter { filter.acceptTask(it, grouping) }
       if (filteredTasksForEntry.isNotEmpty()) {
         val entryNode = treeNode(EntryDetailsNodeDescriptor(entryUiData, filteredTasksForEntry, filteredEntryTimesDistribution))
         if (entryUiData is CriticalPathTaskCategoryUiData) {
@@ -322,8 +325,8 @@ data class TasksPageId(
     fun plugin(plugin: CriticalPathPluginUiData) =
       TasksPageId(TasksDataPageModel.Grouping.BY_PLUGIN, TaskDetailsPageType.PLUGIN_DETAILS, plugin.name)
 
-    fun taskCategory(taskCategory: CriticalPathTaskCategoryUiData) =
-      TasksPageId(TasksDataPageModel.Grouping.BY_TASK_CATEGORY, TaskDetailsPageType.TASK_CATEGORY_DETAILS, taskCategory.name)
+    fun taskCategory(taskCategory: TaskCategory) =
+      TasksPageId(TasksDataPageModel.Grouping.BY_TASK_CATEGORY, TaskDetailsPageType.TASK_CATEGORY_DETAILS, taskCategory.displayName())
 
     fun emptySelection(grouping: TasksDataPageModel.Grouping) =
       TasksPageId(grouping, TaskDetailsPageType.EMPTY_SELECTION, "EMPTY")
@@ -381,8 +384,11 @@ class EntryDetailsNodeDescriptor(
 ) : TasksTreePresentableNodeDescriptor() {
   val filteredWarningCount = filteredTaskNodes.count { it.hasWarning }
   val filteredEntryTime = timeDistributionBuilder.registerTimeEntry(filteredTaskNodes.sumByLong { it.executionTime.timeMs })
-  override val pageId = if (entryData is CriticalPathPluginUiData) TasksPageId.plugin(entryData) else TasksPageId.taskCategory(
-    entryData as CriticalPathTaskCategoryUiData)
+  override val pageId = when (entryData) {
+    is CriticalPathPluginUiData -> TasksPageId.plugin(entryData)
+    is CriticalPathTaskCategoryUiData -> TasksPageId.taskCategory(entryData.taskCategory)
+    else -> throw IllegalArgumentException("Unknown type ${entryData::class.java} of ${entryData.name}")
+  }
   override val analyticsPageType = if (entryData is CriticalPathPluginUiData) PageType.PLUGIN_PAGE else PageType.TASK_CATEGORY_PAGE
   override val presentation: BuildAnalyzerTreeNodePresentation
     get() = BuildAnalyzerTreeNodePresentation(

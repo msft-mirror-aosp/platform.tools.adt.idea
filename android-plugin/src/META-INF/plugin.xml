@@ -7,18 +7,16 @@
     ]]>
   </description>
   <category>Android</category>
-  <version>2022.2.1 Canary 9</version>
+  <version>2022.2.1 Canary 7</version>
   <vendor>JetBrains, Google</vendor>
   <depends>com.intellij.platform.images</depends>
   <depends>com.intellij.modules.java</depends>
 
   <xi:include href="/META-INF/android-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
 
-  <xi:include href="/META-INF/add-device-dialog.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/android-adb.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/android-adb-ui.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/adt-ui.xml" xpointer="xpointer(/idea-plugin/*)"/>
-  <xi:include href="/META-INF/emulator.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/database-inspector.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/android-lang.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/android-lang-databinding.xml" xpointer="xpointer(/idea-plugin/*)"/>
@@ -28,6 +26,7 @@
   <xi:include href="/META-INF/databinding.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/mlkit.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/sdk-updates.xml" xpointer="xpointer(/idea-plugin/*)"/>
+  <xi:include href="/META-INF/streaming.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/safeargs.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/pipeline.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/profilers.xml" xpointer="xpointer(/idea-plugin/*)"/>
@@ -49,6 +48,7 @@
   <xi:include href="/META-INF/backgroundtask-inspector.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/android-debuggers.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/gradle-dsl.xml" xpointer="xpointer(/idea-plugin/*)"/>
+  <xi:include href="/META-INF/intellij.android.device.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/logcat.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/intellij.android.device-file-explorer-toolwindow.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/intellij.android.device-monitor-toolwindow.xml" xpointer="xpointer(/idea-plugin/*)"/>

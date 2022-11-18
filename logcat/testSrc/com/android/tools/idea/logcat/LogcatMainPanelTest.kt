@@ -32,14 +32,16 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.FakeAndroidProjectDetector
+import com.android.tools.idea.adblib.AdbLibService
+import com.android.tools.idea.adblib.testing.TestAdbLibService
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.actions.PopupActionGroupAction
-import com.android.tools.idea.logcat.devices.Device
 import com.android.tools.idea.logcat.filters.AndroidLogcatFilterHistory
 import com.android.tools.idea.logcat.filters.LogcatFilterField.IMPLICIT_LINE
 import com.android.tools.idea.logcat.filters.LogcatFilterField.LINE
+import com.android.tools.idea.logcat.filters.LogcatMasterFilter
 import com.android.tools.idea.logcat.filters.ProjectAppFilter
 import com.android.tools.idea.logcat.filters.StringFilter
 import com.android.tools.idea.logcat.folding.FoldingDetector
@@ -62,11 +64,14 @@ import com.android.tools.idea.logcat.testing.TestDevice
 import com.android.tools.idea.logcat.testing.setDevices
 import com.android.tools.idea.logcat.testing.setupCommandsForDevice
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
-import com.android.tools.idea.logcat.util.LogcatFilterLanguageRule
+import com.android.tools.idea.logcat.util.LOGGER
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.logcatEvents
 import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.testing.AndroidExecutorsRule
+import com.android.tools.idea.testing.ApplicationServiceRule
+import com.android.tools.idea.testing.ProjectServiceRule
+import com.android.tools.idea.testing.TestLoggerRule
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent
@@ -81,7 +86,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.impl.DocumentImpl
 import com.intellij.openapi.project.DumbAware
@@ -93,17 +97,14 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.tools.SimpleActionGroup
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.util.ConcurrencyUtil
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.runBlocking
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.times
@@ -133,23 +134,28 @@ class LogcatMainPanelTest {
   private val usageTrackerRule = UsageTrackerRule()
   private val disposableRule = DisposableRule()
 
+  private val androidLogcatFormattingOptions = AndroidLogcatFormattingOptions()
+  private val fakeLogcatService = FakeLogcatService()
+  private val fakeAdbSession = FakeAdbSession()
+
   @get:Rule
-  val rule =
-    RuleChain(projectRule, EdtRule(), androidExecutorsRule, popupRule, LogcatFilterLanguageRule(), usageTrackerRule, disposableRule)
+  val rule = RuleChain(
+    projectRule,
+    ApplicationServiceRule(AndroidLogcatFormattingOptions::class.java, androidLogcatFormattingOptions),
+    ProjectServiceRule(projectRule, AdbLibService::class.java, TestAdbLibService(fakeAdbSession)),
+    ProjectServiceRule(projectRule, LogcatService::class.java, fakeLogcatService),
+    EdtRule(),
+    androidExecutorsRule,
+    popupRule,
+    usageTrackerRule,
+    disposableRule,
+    TestLoggerRule(),
+  )
 
   private val mockHyperlinkDetector = mock<HyperlinkDetector>()
   private val mockFoldingDetector = mock<FoldingDetector>()
-  private val fakeAdbSession = FakeAdbSession()
-  private val androidLogcatFormattingOptions = AndroidLogcatFormattingOptions()
   private val project get() = projectRule.project
-
-  @Before
-  fun setUp() {
-    ApplicationManager.getApplication().replaceService(
-      AndroidLogcatFormattingOptions::class.java,
-      androidLogcatFormattingOptions,
-      disposableRule.disposable)
-  }
+  private val disposable get() = disposableRule.disposable
 
   @RunsInEdt
   @Test
@@ -607,14 +613,13 @@ class LogcatMainPanelTest {
     val testDevice = TestDevice("device1", DeviceState.ONLINE, "11", 30, "Google", "Pixel", "")
     fakeAdbSession.deviceServices.setupCommandsForDevice(testDevice)
     fakeAdbSession.hostServices.setDevices(testDevice)
-    val logcatService = FakeLogcatService()
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(logcatService = logcatService, adbSession = fakeAdbSession).also {
+      logcatMainPanel(adbSession = fakeAdbSession).also {
         waitForCondition { it.getConnectedDevice() != null }
       }
     }
 
-    logcatService.logMessages(message1)
+    fakeLogcatService.logMessages(message1)
 
     waitForCondition { logcatMainPanel.logcatServiceJob != null }
     waitForCondition { logcatMainPanel.messageBacklog.get().messages.isNotEmpty() }
@@ -631,9 +636,8 @@ class LogcatMainPanelTest {
     val testDevice = TestDevice("device1", DeviceState.ONLINE, "11", 30, "Google", "Pixel", "")
     fakeAdbSession.deviceServices.setupCommandsForDevice(testDevice)
     fakeAdbSession.hostServices.setDevices(testDevice)
-    val logcatService = FakeLogcatService()
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(logcatService = logcatService, adbSession = fakeAdbSession).also {
+      logcatMainPanel(adbSession = fakeAdbSession).also {
         waitForCondition { it.getConnectedDevice() != null && it.logcatServiceJob != null }
       }
     }
@@ -653,9 +657,8 @@ class LogcatMainPanelTest {
     val testDevice = TestDevice("device1", DeviceState.ONLINE, "11", 30, "Google", "Pixel", "")
     fakeAdbSession.deviceServices.setupCommandsForDevice(testDevice)
     fakeAdbSession.hostServices.setDevices(testDevice)
-    val logcatService = FakeLogcatService()
     val logcatMainPanel = runInEdtAndGet {
-      logcatMainPanel(logcatService = logcatService, adbSession = fakeAdbSession).also {
+      logcatMainPanel(adbSession = fakeAdbSession).also {
         waitForCondition { it.getConnectedDevice() != null }
       }
     }
@@ -664,7 +667,7 @@ class LogcatMainPanelTest {
 
     logcatMainPanel.resumeLogcat()
     waitForCondition { !logcatMainPanel.isLogcatPaused() }
-    logcatService.logMessages(message1)
+    fakeLogcatService.logMessages(message1)
 
     assertThat(logcatMainPanel.logcatServiceJob).isNotNull()
     waitForCondition { logcatMainPanel.messageBacklog.get().messages.isNotEmpty() }
@@ -902,7 +905,7 @@ class LogcatMainPanelTest {
       LogcatMessage(LogcatHeader(INFO, 1, 2, "app2", "", "tag2", Instant.ofEpochMilli(1000)), "bar"),
     ))
     runInEdtAndWait { logcatMainPanel.setFilter("foo") }
-    logcatMainPanel.editor.document.waitForCondition { text.endsWith("foo\n") }
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) { text.endsWith("foo\n") }
     logcatMainPanel.messageProcessor.onIdle {
       runInEdtAndWait {
         val offset = logcatMainPanel.editor.document.immutableCharSequence.indexOf("app1")
@@ -928,7 +931,7 @@ class LogcatMainPanelTest {
       LogcatMessage(LogcatHeader(DEBUG, 1, 2, "app2", "", "tag2", Instant.ofEpochMilli(1000)), "bar"),
     ))
     runInEdtAndWait { logcatMainPanel.setFilter("foo level:INFO") }
-    logcatMainPanel.editor.document.waitForCondition { text.endsWith("foo\n") }
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) { text.endsWith("foo\n") }
     logcatMainPanel.messageProcessor.onIdle {
       runInEdtAndWait {
         val offset = logcatMainPanel.editor.document.immutableCharSequence.indexOf(" I ")
@@ -952,7 +955,7 @@ class LogcatMainPanelTest {
       LogcatMessage(LogcatHeader(DEBUG, 1, 2, "app2", "", "tag2", Instant.ofEpochMilli(1000)), "bar"),
     ))
     runInEdtAndWait { logcatMainPanel.setFilter(" level:INFO foo level:INFO") }
-    logcatMainPanel.editor.document.waitForCondition { text.endsWith("foo\n") }
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) { text.endsWith("foo\n") }
     logcatMainPanel.messageProcessor.onIdle {
       runInEdtAndWait {
         val offset = logcatMainPanel.editor.document.immutableCharSequence.indexOf(" I ")
@@ -1062,7 +1065,7 @@ class LogcatMainPanelTest {
     logcatMainPanel.processMessages(listOf(
       LogcatMessage(LogcatHeader(WARN, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "message1"),
     ))
-    logcatMainPanel.editor.document.waitForCondition {
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) {
       text.trim() == """
         1970-01-01 04:00:01.000     1-2     tag1                    app1                                 W  message1
       """.trimIndent()
@@ -1084,7 +1087,7 @@ class LogcatMainPanelTest {
     logcatMainPanel.processMessages(listOf(
       LogcatMessage(LogcatHeader(WARN, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "message1"),
     ))
-    logcatMainPanel.editor.document.waitForCondition {
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) {
       text.trim() == """
         1970-01-01 04:00:01.000     1-2     tag1                    app1                                 W  message1
       """.trimIndent()
@@ -1106,7 +1109,7 @@ class LogcatMainPanelTest {
     logcatMainPanel.processMessages(listOf(
       LogcatMessage(LogcatHeader(WARN, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "message1"),
     ))
-    logcatMainPanel.editor.document.waitForCondition {
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) {
       text.trim() == """
         1970-01-01 04:00:01.000     1-2     tag1                    app1                                 W  message1
       """.trimIndent()
@@ -1142,7 +1145,7 @@ class LogcatMainPanelTest {
     whenever(iDevice.clients).thenReturn(arrayOf(client))
     AndroidDebugBridge.deviceChanged(iDevice, CHANGE_CLIENT_LIST)
 
-    logcatMainPanel.editor.document.waitForCondition {
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) {
       text.contains("PROCESS STARTED (0) for package myapp")
     }
   }
@@ -1171,7 +1174,7 @@ class LogcatMainPanelTest {
     runInEdtAndWait {
       logcatMainPanel.setFilter("package:mine | tag:tag2")
     }
-    logcatMainPanel.editor.document.waitForCondition {
+    logcatMainPanel.editor.document.waitForCondition(logcatMainPanel) {
       text.trim() == """
         1970-01-01 04:00:01.000     1-2     tag2                    app2                                 W  message2
       """.trimIndent()
@@ -1201,45 +1204,27 @@ class LogcatMainPanelTest {
     foldingDetector: FoldingDetector? = null,
     projectApplicationIdsProvider: ProjectApplicationIdsProvider = FakeProjectApplicationIdsProvider(project),
     adbSession: AdbSession = FakeAdbSession(),
-    logcatService: LogcatService = FakeLogcatService(),
     zoneId: ZoneId = ZoneId.of("Asia/Yerevan"),
   ): LogcatMainPanel {
     project.replaceService(ProjectApplicationIdsProvider::class.java, projectApplicationIdsProvider, disposableRule.disposable)
+    project.registerOrReplaceServiceInstance(AdbLibService::class.java, TestAdbLibService(adbSession), disposable)
     return LogcatMainPanel(
       project,
       splitterPopupActionGroup,
       logcatColors,
       state,
-      { adbSession },
       logcatSettings,
       androidProjectDetector,
       hyperlinkDetector,
       foldingDetector,
-      logcatService,
       zoneId,
     ).also {
-      Disposer.register(disposableRule.disposable, it)
+      Disposer.register(disposable, it)
     }
   }
 }
 
 private fun LogcatMessage.length() = FormattingOptions().getHeaderWidth() + message.length
-
-private class FakeLogcatService : LogcatService {
-  private var channel: Channel<List<LogcatMessage>>? = null
-
-  suspend fun logMessages(vararg messages: LogcatMessage) {
-    channel?.send(messages.asList()) ?: throw IllegalStateException("Channel not setup. Did you call readLogcat()?")
-  }
-
-  override suspend fun readLogcat(device: Device): Flow<List<LogcatMessage>> {
-    return Channel<List<LogcatMessage>>(1).also { channel = it }.consumeAsFlow()
-  }
-
-  override suspend fun clearLogcat(device: Device) {
-  }
-
-}
 
 private fun List<AnAction>.mapToStrings(indent: String = ""): List<String> {
   return flatMap {
@@ -1256,19 +1241,21 @@ private fun waitForCondition(condition: () -> Boolean) = waitForCondition(TIMEOU
 private fun LogcatMainPanel.findBanner(text: String) =
   TreeWalker(this).descendants().first { it is EditorNotificationPanel && it.text == text } as EditorNotificationPanel
 
-// Attempting to fix b/241939879. Wait for a document to satisfy a condition. If it fails, print the document text and try again.
-// Even it passes the second attempt, throw an exception but we'll know that it succeeded on the second attempt.
-private fun Document.waitForCondition(condition: Document.() -> Boolean) {
+// Attempting to fix b/241939879. Wait for a document to satisfy a condition. If it fails, print some state information.
+private fun Document.waitForCondition(logcatMainPanel: LogcatMainPanel, condition: Document.() -> Boolean) {
   try {
     waitForCondition(TIMEOUT_SEC, SECONDS) { this.condition() }
-  } catch (e: TimeoutException) {
-    println("Document.waitForCondition() failed. Attempting again. Document text was:\n============\n$text\n============")
-    try {
-      waitForCondition(TIMEOUT_SEC, SECONDS) { this.condition() }
-    } catch (e: TimeoutException) {
-      println("Document.waitForCondition() failed again. Document text was:\n============\n$text\n============")
-      throw RuntimeException("Failed on the second attempt", e)
-    }
-    throw RuntimeException("Failed first but then passed", e)
+  }
+  catch (e: TimeoutException) {
+    fun List<LogcatMessage>.toLog() = joinToString("\n").prependIndent("    ")
+    val backlog = logcatMainPanel.messageBacklog.get()
+    val filter = logcatMainPanel.messageProcessor.logcatFilter
+
+    LOGGER.debug("Document.waitForCondition() failed.")
+    LOGGER.debug("Document text:\n${text.trim().prependIndent("    ")}")
+    LOGGER.debug("Message backlog:\n${backlog.messages.toLog()}")
+    LOGGER.debug("Filter: $filter")
+    LOGGER.debug("Filtered messages:\n${LogcatMasterFilter(filter).filter(backlog.messages).toLog()}")
+    throw e
   }
 }

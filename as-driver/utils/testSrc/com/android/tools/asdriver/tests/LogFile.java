@@ -18,10 +18,13 @@ package com.android.tools.asdriver.tests;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,13 +36,22 @@ public class LogFile {
   private static final int MAX_DELAY_MS = 1000;
   private final Path path;
 
+  /** The size of the log file's header, which we do not want to search when looking for matching lines. */
+  private final long headerSize;
+
   /** The current position on the log file, see {@code waitForMatchingLine} */
   private long position;
 
   private static final String CHECK_LOGS_INSTRUCTIONS = "For more information, check the logs: go/e2e-find-log-files";
 
   public LogFile(Path filePath) {
+    this(filePath, 0);
+  }
+
+  public LogFile(Path filePath, int headerSize) {
     path = filePath;
+    this.headerSize = headerSize;
+    position = headerSize;
   }
 
   public Matcher waitForMatchingLine(String regex, String failureRegex, long timeout, TimeUnit unit) throws IOException, InterruptedException {
@@ -78,6 +90,7 @@ public class LogFile {
       long elapsed = 0;
       long start = System.currentTimeMillis();
       int delayMs = MIN_DELAY_MS;
+      List<String> verifyLines = new ArrayList<>();
       while (elapsed < timeoutMillis) {
         String line = raf.readLine();
         if (failurePattern != null && line != null && failurePattern.matcher(line).matches()) {
@@ -93,9 +106,20 @@ public class LogFile {
           Thread.sleep(Math.min(delayMs, timeoutMillis - elapsed));
           delayMs = Math.min(MAX_DELAY_MS, 2 * delayMs);  // Exponential backoff up to 1 second max
         }
+        else {
+          verifyLines.add(line);
+        }
         elapsed = System.currentTimeMillis() - start;
       }
       if (matcher == null) {
+        // This may happen more than once per instance of this class, so we must generate a unique unused path.
+        Path verification = Files.createTempFile(path.getParent(), "verification-", "-" + path.getFileName().toString());
+        try (PrintWriter out = new PrintWriter(verification.toFile())) {
+          out.println("Failed to find '" + regex + "' in:\n");
+          for (String line: verifyLines) {
+            out.println(line);
+          }
+        }
         throw new InterruptedException(
           String.format("Time out while waiting for line matching '%s'%n%n%s", regex, CHECK_LOGS_INSTRUCTIONS));
       }
@@ -126,6 +150,6 @@ public class LogFile {
   }
 
   public void reset() {
-    position = 0;
+    position = headerSize;
   }
 }

@@ -16,6 +16,7 @@
 package com.android.tools.idea.profilers
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.run.ExecutorIconProvider
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup
 import com.android.tools.idea.run.profiler.ProfilingMode
@@ -42,7 +43,11 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
    */
   class ProfilerSetting(profilingMode: ProfilingMode) : AbstractProfilerSetting(profilingMode) {
     override val actionName: String
-      get() = "Profile"
+      get() = when (profilingMode) {
+        ProfilingMode.PROFILEABLE -> "Profile with low overhead"
+        ProfilingMode.DEBUGGABLE -> "Profile with complete data"
+        else -> "Profile"
+      }
 
     override val icon: Icon
       get() = when (profilingMode) {
@@ -51,7 +56,7 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
         else -> StudioIcons.Shell.Toolbar.PROFILER
       }
 
-    override val startActionText = actionName
+    override val startActionText = "Profile"
     override fun canRun(profile: RunProfile) = true
     override fun isApplicable(project: Project) = true
     override fun getStartActionText(configurationName: String) = when (profilingMode) {
@@ -62,7 +67,13 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
   }
 
   private class GroupWrapper(actionGroup: ActionGroup) : ExecutorGroupWrapper(actionGroup) {
-    override fun groupShouldBeVisible(e: AnActionEvent) = StudioFlags.PROFILEABLE_BUILDS.get()
+    /**
+     * @return true if the Profileable Builds feature flag is true and the project's build system supports profiling mode (e.g. Gradle).
+     */
+    override fun groupShouldBeVisible(e: AnActionEvent) : Boolean {
+      val isProfilingModeSupported = e.project?.getProjectSystem()?.supportsProfilingMode() ?: false
+      return isProfilingModeSupported && StudioFlags.PROFILEABLE_BUILDS.get()
+    }
 
     override fun updateDisabledActionPresentation(eventPresentation: Presentation) {
       eventPresentation.icon = PROFILEABLE_ICON

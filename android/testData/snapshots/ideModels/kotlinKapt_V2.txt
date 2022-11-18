@@ -917,23 +917,8 @@ MODULE                        : MainActivity.app
         buildFile                     : <ROOT>/app/build.gradle
         buildFilePath                 : <ROOT>/app/build.gradle
         rootFolderPath                : <ROOT>
-        - gradlePlugins               : com.android.ide.gradle.model.builder.AndroidStudioToolingPlugin
-        - gradlePlugins               : org.gradle.api.plugins.HelpTasksPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.BuildInitPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.WrapperPlugin
-        - gradlePlugins               : com.android.build.gradle.internal.plugins.VersionCheckPlugin
-        - gradlePlugins               : org.gradle.language.base.plugins.LifecycleBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.BasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JvmEcosystemPlugin
-        - gradlePlugins               : org.gradle.api.plugins.ReportingBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JavaBasePlugin$Inject
-        - gradlePlugins               : com.android.build.gradle.api.AndroidBasePlugin
-        - gradlePlugins               : com.android.build.gradle.internal.plugins.AppPlugin
-        - gradlePlugins               : com.android.build.gradle.AppPlugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.AndroidSubplugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.AndroidExtensionsSubpluginIndicator
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin
+        hasSafeArgsJava               : false
+        hasSafeArgsKotlin             : false
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -1906,6 +1891,7 @@ MODULE                        : MainActivity.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1968,6 +1954,7 @@ MODULE                        : MainActivity.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2019,6 +2006,7 @@ MODULE                        : MainActivity.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2086,23 +2074,8 @@ MODULE                        : MainActivity.javaLib
         buildFile                     : <ROOT>/javaLib/build.gradle
         buildFilePath                 : <ROOT>/javaLib/build.gradle
         rootFolderPath                : <ROOT>
-        - gradlePlugins               : com.android.ide.gradle.model.builder.AndroidStudioToolingPlugin
-        - gradlePlugins               : org.gradle.api.plugins.HelpTasksPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.BuildInitPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.WrapperPlugin
-        - gradlePlugins               : org.gradle.language.base.plugins.LifecycleBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.BasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JvmEcosystemPlugin
-        - gradlePlugins               : org.gradle.api.plugins.ReportingBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JavaBasePlugin$Inject
-        - gradlePlugins               : org.gradle.testing.base.plugins.TestSuiteBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JvmTestSuitePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JavaPlugin
-        - gradlePlugins               : org.gradle.api.plugins.JavaLibraryPlugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.scripting.internal.ScriptingKotlinGradleSubplugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.scripting.internal.ScriptingGradleSubplugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin
+        hasSafeArgsJava               : false
+        hasSafeArgsKotlin             : false
     kotlinGradleModel             : kotlin-platform-jvm (KotlinGradleModelImpl)
         additionalVisibleSourceSets
             main                          : <empty>
@@ -2128,6 +2101,7 @@ MODULE                        : MainActivity.javaLib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2168,6 +2142,7 @@ MODULE                        : MainActivity.javaLib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2225,22 +2200,8 @@ MODULE                        : MainActivity.lib
         buildFile                     : <ROOT>/lib/build.gradle
         buildFilePath                 : <ROOT>/lib/build.gradle
         rootFolderPath                : <ROOT>
-        - gradlePlugins               : com.android.ide.gradle.model.builder.AndroidStudioToolingPlugin
-        - gradlePlugins               : org.gradle.api.plugins.HelpTasksPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.BuildInitPlugin
-        - gradlePlugins               : org.gradle.buildinit.plugins.WrapperPlugin
-        - gradlePlugins               : com.android.build.gradle.internal.plugins.VersionCheckPlugin
-        - gradlePlugins               : org.gradle.language.base.plugins.LifecycleBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.BasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JvmEcosystemPlugin
-        - gradlePlugins               : org.gradle.api.plugins.ReportingBasePlugin
-        - gradlePlugins               : org.gradle.api.plugins.JavaBasePlugin$Inject
-        - gradlePlugins               : com.android.build.gradle.api.AndroidBasePlugin
-        - gradlePlugins               : com.android.build.gradle.internal.plugins.LibraryPlugin
-        - gradlePlugins               : com.android.build.gradle.LibraryPlugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.AndroidSubplugin
-        - gradlePlugins               : org.jetbrains.kotlin.gradle.internal.AndroidExtensionsSubpluginIndicator
+        hasSafeArgsJava               : false
+        hasSafeArgsKotlin             : false
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -3418,6 +3379,7 @@ MODULE                        : MainActivity.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -3485,6 +3447,7 @@ MODULE                        : MainActivity.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -3552,6 +3515,7 @@ MODULE                        : MainActivity.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
+                    enableSignatureClashChecks    : true
                     errors                        : ArgumentParseErrors
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
