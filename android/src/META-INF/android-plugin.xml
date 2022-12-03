@@ -58,7 +58,6 @@
     <group id="Android.LiveEdit">
       <action id="android.deploy.livedit.recompose" class="com.android.tools.idea.editors.literals.ManualLiveEditReset"
         description="Trigger @Composable recompose via LiveEDit">
-        <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift S"/>
       </action>
     </group>
 
@@ -117,9 +116,6 @@
       <action internal="true" id="Android.Jfr.Dump" class="com.android.tools.idea.diagnostics.profiler.DumpJfrRecording" />
       <action internal="true" id="Android.Jfr.Stop" class="com.android.tools.idea.diagnostics.profiler.StopJfr" />
       <action internal="true" id="Android.Diagnostic.Summary.File" class="com.android.tools.idea.diagnostics.report.DiagnosticSummaryAction" />
-      <action internal="true" id="Android.DeviceMirroring.Benchmark" icon="StudioIcons.Shell.Menu.PROFILER"
-              class="com.android.tools.idea.streaming.benchmark.DeviceMirroringBenchmarkAction" text="Benchmark device mirroring"
-              description="Benchmark mirroring of physical device" />
       <add-to-group group-id="Internal"/>
     </group>
     <group id="Internal.Android.LiveLiterals" text="Live Literals" popup="true" internal="true">
@@ -735,7 +731,7 @@
     <extensionPoint qualifiedName="com.android.run.deployTargetProvider" interface="com.android.tools.idea.run.editor.DeployTargetProvider" />
     <extensionPoint qualifiedName="com.android.ide.androidConfigurableContributor"
                     interface="com.android.tools.idea.structure.dialog.AndroidConfigurableContributor"/>
-    <extensionPoint qualifiedName="com.android.run.androidDebugger" interface="com.android.tools.idea.run.editor.AndroidDebugger" />
+    <extensionPoint qualifiedName="com.android.run.androidDebugger" interface="com.android.tools.idea.execution.common.debug.AndroidDebugger" />
     <extensionPoint qualifiedName="com.android.tools.idea.run.editor.androidDebuggerInfoProvider"
                     interface="com.android.tools.idea.run.editor.AndroidDebuggerInfoProvider" />
     <extensionPoint qualifiedName="com.android.tools.idea.sendFeedbackDescriptionProvider"
@@ -791,7 +787,7 @@
   <xi:include href="new-deployment-target-selection.xml" xpointer="xpointer(/idea-plugin/*)"/>
 
   <extensions defaultExtensionNs="com.android.run">
-    <androidDebugger implementation="com.android.tools.idea.run.editor.AndroidJavaDebugger"/>
+    <androidDebugger implementation="com.android.tools.idea.execution.common.debug.impl.java.AndroidJavaDebugger"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.android.tools.idea.run.editor">
@@ -809,12 +805,10 @@
   <applicationListeners>
     <listener class="com.android.tools.idea.editors.literals.LiveEditAnActionListener"
               topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
-  </applicationListeners>
-
-  <applicationListeners>
     <listener class="com.android.tools.idea.startup.ProjectMetricsInitializer"
               topic="com.intellij.openapi.project.ProjectManagerListener"/>
-
+    <listener class="com.android.tools.idea.stats.ManifestMergerStatsTracker"
+              topic="com.android.tools.idea.model.MergedManifestSnapshotComputeListener"/>
   </applicationListeners>
 
   <projectListeners>

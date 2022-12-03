@@ -53,47 +53,36 @@ open class SingleDirectionLayoutManager(@SwingCoordinate private val horizontalP
                                 @SwingCoordinate availableHeight: Int,
                                 @SwingCoordinate dimension: Dimension?)
     : Dimension {
-    val dim = dimension ?: Dimension()
-
-    val vertical = isVertical(content, availableWidth, availableHeight)
-
-    val preferredWidth: Int
-    val preferredHeight: Int
-    if (vertical) {
-      preferredWidth = content.maxOf { contentSize.width } ?: 0
-      preferredHeight = content.sumOf { margin.vertical + contentSize.height + verticalViewDelta } - verticalViewDelta
-    }
-    else {
-      preferredWidth = content.sumOf { margin.horizontal + contentSize.width + horizontalViewDelta } - horizontalViewDelta
-      preferredHeight = content.maxOf { contentSize.height } ?: 0
-    }
-
-    val width = max(0, preferredWidth)
-    val height = max(0, preferredHeight)
-    dim.setSize(width, height)
-    return dim
+    return getSize(content, PositionableContent::contentSize, availableWidth, availableHeight, dimension)
   }
 
   override fun getRequiredSize(content: Collection<PositionableContent>,
                                @SwingCoordinate availableWidth: Int,
                                @SwingCoordinate availableHeight: Int,
                                @SwingCoordinate dimension: Dimension?): Dimension {
-    val dim = dimension ?: Dimension()
+    return getSize(content, PositionableContent::scaledContentSize, availableWidth, availableHeight, dimension)
+  }
 
-    val requiredWidth: Int
-    val requiredHeight: Int
-    if (isVertical(content, availableWidth, availableHeight)) {
-      requiredWidth = content.maxOf { scaledContentSize.width } ?: 0
-      requiredHeight = content.sumOf { margin.vertical + scaledContentSize.height + verticalViewDelta } - verticalViewDelta
+  private fun getSize(content: Collection<PositionableContent>,
+                      sizeFunc: PositionableContent.() -> Dimension,
+                      @SwingCoordinate availableWidth: Int,
+                      @SwingCoordinate availableHeight: Int,
+                      @SwingCoordinate dimension: Dimension?): Dimension {
+    val dim = dimension ?: Dimension()
+    val vertical = isVertical(content, availableWidth, availableHeight)
+
+    val width: Int
+    val height: Int
+    if (vertical) {
+      width = content.maxOf { sizeFunc().width } ?: 0
+      height = content.sumOf { margin.vertical + sizeFunc().height + verticalViewDelta } - verticalViewDelta
     }
     else {
-      requiredWidth = content.sumOf { margin.horizontal + scaledContentSize.width + horizontalViewDelta } - horizontalViewDelta
-      requiredHeight = content.maxOf { scaledContentSize.height } ?: 0
+      width = content.sumOf { margin.horizontal + sizeFunc().width + horizontalViewDelta } - horizontalViewDelta
+      height = content.maxOf { sizeFunc().height } ?: 0
     }
 
-    val width = max(0, requiredWidth)
-    val height = max(0, requiredHeight)
-    dim.setSize(width, height)
+    dim.setSize(max(0, width + 2 * horizontalPadding), max(0, height + 2 * verticalPadding))
     return dim
   }
 
@@ -125,10 +114,10 @@ open class SingleDirectionLayoutManager(@SwingCoordinate private val horizontalP
       startY = previousVerticalPadding
     } else {
       val requiredSize = getRequiredSize(content, availableWidth, availableHeight, null)
-      val requiredWidth = requiredSize.width
-      val requiredHeight = requiredSize.height
-      startX = max((availableWidth - requiredWidth) / 2, horizontalPadding)
-      startY = max((availableHeight - requiredHeight) / 2, verticalPadding)
+      val requiredContentWidth = requiredSize.width - 2 * horizontalPadding
+      val requiredContentHeight = requiredSize.height - 2 * verticalPadding
+      startX = max((availableWidth - requiredContentWidth) / 2, horizontalPadding)
+      startY = max((availableHeight - requiredContentHeight) / 2, verticalPadding)
       previousHorizontalPadding = startX
       previousVerticalPadding = startY
     }

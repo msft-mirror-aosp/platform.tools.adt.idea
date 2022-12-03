@@ -44,10 +44,10 @@ import com.android.tools.idea.gradle.project.sync.GradleSyncEventLogger
 import com.android.tools.idea.gradle.project.sync.IdeAndroidModels
 import com.android.tools.idea.gradle.project.sync.IdeAndroidNativeVariantsModels
 import com.android.tools.idea.gradle.project.sync.IdeAndroidSyncError
+import com.android.tools.idea.gradle.project.sync.IdeAndroidSyncExceptions
 import com.android.tools.idea.gradle.project.sync.IdeSyncExecutionReport
 import com.android.tools.idea.gradle.project.sync.SdkSync
 import com.android.tools.idea.gradle.project.sync.SimulatedSyncErrors
-import com.android.tools.idea.gradle.project.sync.IdeAndroidSyncExceptions
 import com.android.tools.idea.gradle.project.sync.common.CommandLineArgs
 import com.android.tools.idea.gradle.project.sync.errors.COULD_NOT_INSTALL_GRADLE_DISTRIBUTION_PREFIX
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.getIdeModuleSourceSet
@@ -55,8 +55,10 @@ import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.getModuleName
 import com.android.tools.idea.gradle.project.sync.idea.TraceSyncUtil.addTraceJvmArgs
 import com.android.tools.idea.gradle.project.sync.idea.VariantProjectDataNodes.Companion.collectCurrentAndPreviouslyCachedVariants
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectCleanupModel
+import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectJdkUpdateData
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.gradle.project.sync.idea.issues.validateProjectGradleJdk
+import com.android.tools.idea.gradle.project.sync.jdk.JdkUtils
 import com.android.tools.idea.gradle.project.sync.toException
 import com.android.tools.idea.gradle.project.upgrade.AssistantInvoker
 import com.android.tools.idea.gradle.util.AndroidGradleSettings
@@ -97,6 +99,7 @@ import com.intellij.openapi.externalSystem.model.project.LibraryLevel
 import com.intellij.openapi.externalSystem.model.project.LibraryPathType
 import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.externalSystem.model.project.ProjectData
+import com.intellij.openapi.externalSystem.model.project.ProjectSdkData
 import com.intellij.openapi.externalSystem.model.project.TestData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -171,6 +174,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     if (project != null) {
       removeExternalSourceSetsAndReportWarnings(project, gradleProject)
       attachVariantsSavedFromPreviousSyncs(project, projectDataNode)
+      alignProjectJdkWithGradleSyncJdk(project, projectDataNode)
     }
     val buildMap = resolverCtx.models.getModel(IdeCompositeBuildMap::class.java)
     if (buildMap != null) {
@@ -205,6 +209,11 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       projectDataNode.createChild(AndroidProjectKeys.PROJECT_CLEANUP_MODEL, ProjectCleanupModel.getInstance())
     }
     super.populateProjectExtraModels(gradleProject, projectDataNode)
+
+    if (IdeInfo.getInstance().isAndroidStudio) {
+      // Remove platform ProjectSdkDataService data node overwritten by our ProjectJdkUpdateService
+      ExternalSystemApiUtil.find(projectDataNode, ProjectSdkData.KEY)?.clear(true)
+    }
   }
 
   override fun createModule(gradleModule: IdeaModule, projectDataNode: DataNode<ProjectData>): DataNode<ModuleData>? {
@@ -781,11 +790,11 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       return GradleModuleModel(
         moduleName,
         gradleModule.gradleProject,
-        gradlePluginModel?.hasSafeArgsJava() ?: false,
-        gradlePluginModel?.hasSafeArgsKotlin() ?: false,
         buildScriptPath,
         buildScriptClasspathModel?.gradleVersion,
-        modelVersionString
+        modelVersionString,
+        gradlePluginModel?.hasSafeArgsJava() ?: false,
+        gradlePluginModel?.hasSafeArgsKotlin() ?: false
       )
     }
 
@@ -1010,6 +1019,12 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       }
     }
 
+    fun alignProjectJdkWithGradleSyncJdk(project: Project, projectDataNode: DataNode<ProjectData>) {
+      JdkUtils.getMaxVersionJdkPathFromAllGradleRoots(project)?.let {
+        projectDataNode.createChild(AndroidProjectKeys.PROJECT_JDK_UPDATE, ProjectJdkUpdateData(it))
+      }
+    }
+
     private fun getAllSourceFolders(provider: IdeSourceProvider): Collection<File> {
       return listOf(
         provider.javaDirectories,
@@ -1018,7 +1033,8 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
         provider.aidlDirectories,
         provider.renderscriptDirectories,
         provider.assetsDirectories,
-        provider.jniLibsDirectories
+        provider.jniLibsDirectories,
+        provider.baselineProfileDirectories,
       ).flatten()
     }
 

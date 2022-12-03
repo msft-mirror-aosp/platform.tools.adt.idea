@@ -60,6 +60,7 @@ private fun Throwable?.isCompilationError(): Boolean =
     LiveEditUpdateException.Error.INTERNAL_ERROR,
     LiveEditUpdateException.Error.UNABLE_TO_LOCATE_COMPOSE_GROUP,
     LiveEditUpdateException.Error.UNSUPPORTED_BUILD_SRC_CHANGE,
+    LiveEditUpdateException.Error.UNSUPPORTED_TEST_SRC_CHANGE,
     LiveEditUpdateException.Error.KNOWN_ISSUE -> false
   }
 
@@ -167,14 +168,14 @@ class EmbeddedCompilerClientImpl(
         ProgressManager.checkCanceled()
         val languageVersionSettings = inputs.first().languageVersionSettings
         log.debug("analyze")
-        val bindingContext = analyze(inputs, resolution)
+        val analysisResult = analyze(inputs, resolution)
         val inlineCandidates = inputs
-          .flatMap { analyzeSingleDepthInlinedFunctions(resolution, it, bindingContext, inlineCandidateCache) }
+          .flatMap { analyzeSingleDepthInlinedFunctions(it, analysisResult.bindingContext, inlineCandidateCache) }
           .toSet()
         ProgressManager.checkCanceled()
         log.debug("backCodeGen")
         try {
-          backendCodeGen(project, resolution, bindingContext, inputs, module, inlineCandidates,
+          backendCodeGen(project, analysisResult, inputs, module, inlineCandidates,
                          AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
         }
         catch (e: LiveEditUpdateException) {
@@ -192,18 +193,16 @@ class EmbeddedCompilerClientImpl(
           // from another source file then perform a compilation again.
           log.debug("inline analysis")
           val inputFilesWithInlines = inputs.flatMap {
-            performInlineSourceDependencyAnalysis(resolution, it, bindingContext)
+            performInlineSourceDependencyAnalysis(resolution, it, analysisResult.bindingContext)
           }
 
           // We need to perform the analysis once more with the new set of input files.
           log.debug("inline analysis with inlines ${inputFilesWithInlines.joinToString(",") { it.name }}")
           val newAnalysisResult = resolution.analyzeWithAllCompilerChecks(inputFilesWithInlines)
 
-          // We will need to start using the binding context from the new analysis for code gen.
-          val newBindingContext = newAnalysisResult.bindingContext
-
+          // We will need to start using the new analysis for code gen.
           log.debug("backCodeGen retry")
-          backendCodeGen(project, resolution, newBindingContext, inputFilesWithInlines, module, inlineCandidates,
+          backendCodeGen(project, newAnalysisResult, inputFilesWithInlines, module, inlineCandidates,
                          AndroidLiveEditLanguageVersionSettings(languageVersionSettings))
         }
       }

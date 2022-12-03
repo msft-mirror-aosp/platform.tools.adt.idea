@@ -26,14 +26,15 @@ import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
+import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
-import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcess
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcessDetection
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcessDetectionInitializer
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcessListener
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
+import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.TransportErrorListener
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.stopInspector
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
@@ -74,13 +75,26 @@ fun dataProviderForLayoutInspector(layoutInspector: LayoutInspector, deviceViewP
   DataProvider { dataId -> if (LAYOUT_INSPECTOR_DATA_KEY.`is`(dataId)) layoutInspector else deviceViewPanel.getData(dataId) }
 
 /**
+ * Class used to keep track of open projects, for metrics purposes
+ */
+object LayoutInspectorOpenProjectsTracker {
+  internal var openProjects = 0
+
+  fun areMultipleProjectsOpen(): Boolean = openProjects > 1
+}
+
+/**
  * ToolWindowFactory: For creating a layout inspector tool window for the project.
  */
 class LayoutInspectorToolWindowFactory : ToolWindowFactory {
 
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+    LayoutInspectorOpenProjectsTracker.openProjects += 1
+    Disposer.register(toolWindow.disposable) { LayoutInspectorOpenProjectsTracker.openProjects -= 1 }
+
     val workbench = WorkBench<LayoutInspector>(project, LAYOUT_INSPECTOR_TOOL_WINDOW_ID, null, project)
     val viewSettings = InspectorRenderSettings()
+    val inspectorClientSettings = InspectorClientSettings(project)
 
     val edtExecutor = EdtExecutorService.getInstance()
 
@@ -92,7 +106,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
     val content = contentManager.factory.createContent(contentPanel, "", true)
     contentManager.addContent(content)
 
-    TransportErrorListener(project)
+    TransportErrorListener(project, LayoutInspectorMetrics)
 
     workbench.showLoading("Initializing ADB")
     AndroidExecutors.getInstance().workerThreadExecutor.execute {
@@ -117,12 +131,13 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
 
         lateinit var launcher: InspectorClientLauncher
         val treeSettings = InspectorTreeSettings { launcher.activeClient }
-        val metrics = LayoutInspectorMetrics(project, null)
+        val metrics = LayoutInspectorSessionMetrics(project, null)
         launcher = InspectorClientLauncher.createDefaultLauncher(
           processesModel,
           model,
           metrics,
           treeSettings,
+          inspectorClientSettings,
           workbench
         )
         val layoutInspector = LayoutInspector(launcher, model, treeSettings)
@@ -138,6 +153,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
           onStopInspector = { stopInspector(project, deviceModel, processesModel, foregroundProcessDetection) },
           layoutInspector = layoutInspector,
           viewSettings = viewSettings,
+          inspectorClientSettings = inspectorClientSettings,
           disposableParent = workbench
         )
 
@@ -208,7 +224,7 @@ class LayoutInspectorToolWindowManagerListener @VisibleForTesting constructor(pr
     wasWindowVisible = isWindowVisible
     if (windowVisibilityChanged) {
       if (isWindowVisible) {
-        LayoutInspectorMetrics(project).logEvent(DynamicLayoutInspectorEventType.OPEN, DisconnectedClient.stats)
+        LayoutInspectorMetrics.logEvent(DynamicLayoutInspectorEventType.OPEN)
       }
       else if (clientLauncher.activeClient.isConnected) {
         toolWindowManager.notifyByBalloon(

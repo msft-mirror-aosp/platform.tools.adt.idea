@@ -32,8 +32,13 @@ import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.compose.pickers.preview.utils.findOrParseFromDefinition
 import com.android.tools.idea.compose.pickers.preview.utils.getDefaultPreviewDevice
+import com.android.tools.idea.compose.preview.defaultFilePreviewElementFinder
 import com.android.tools.idea.compose.preview.hasPreviewElements
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
+import com.android.tools.idea.concurrency.psiFileChangeFlow
 import com.android.tools.idea.configurations.Configuration
+import com.android.tools.idea.configurations.Wallpaper
 import com.android.tools.idea.preview.DisplayPositioning
 import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.PreviewElement
@@ -45,18 +50,32 @@ import com.android.tools.idea.projectsystem.isTestFile
 import com.android.tools.idea.projectsystem.isUnitTestFile
 import com.android.tools.idea.uibuilder.model.updateConfigurationScreenSize
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.parentOfType
 import java.awt.Dimension
 import java.util.Objects
+import kotlin.coroutines.coroutineContext
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.full.functions
 import kotlin.reflect.jvm.isAccessible
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.android.sdk.CompatibilityRenderTarget
 import org.jetbrains.android.uipreview.ModuleClassLoaderManager
 import org.jetbrains.android.uipreview.ModuleRenderContext
@@ -78,6 +97,9 @@ const val UNDEFINED_DIMENSION = -1
 
 /** Default background to be used by the rendered elements when showBackground is set to true. */
 private const val DEFAULT_PREVIEW_BACKGROUND = "?android:attr/windowBackground"
+
+/** Value to use for the wallpaper attribute when none has been specified. */
+private const val NO_WALLPAPER_SELECTED = -1
 
 /**
  * Method name to be used when we fail to load a PreviewParameterProvider. In this case, we should
@@ -242,6 +264,9 @@ private fun PreviewConfiguration.applyTo(
   renderConfiguration.locale = Locale.create(locale)
   renderConfiguration.uiModeFlagValue = uiMode
   renderConfiguration.fontScale = max(0f, fontScale)
+  renderConfiguration.wallpaperPath =
+    if (wallpaper in Wallpaper.values().indices) Wallpaper.values()[wallpaper].resourcePath
+    else null
 
   val allDevices = devicesProvider(renderConfiguration)
   val device =
@@ -340,7 +365,8 @@ internal constructor(
   val locale: String,
   val fontScale: Float,
   val uiMode: Int,
-  val deviceSpec: String
+  val deviceSpec: String,
+  val wallpaper: Int,
 ) {
   companion object {
     /**
@@ -356,7 +382,8 @@ internal constructor(
       locale: String? = null,
       fontScale: Float? = null,
       uiMode: Int? = null,
-      device: String? = null
+      device: String? = null,
+      wallpaper: Int? = null,
     ): PreviewConfiguration =
       // We only limit the sizes. We do not limit the API because using an incorrect API level will
       // throw an exception that
@@ -369,7 +396,8 @@ internal constructor(
         locale = locale ?: "",
         fontScale = fontScale ?: 1f,
         uiMode = uiMode ?: 0,
-        deviceSpec = device ?: NO_DEVICE_SPEC
+        deviceSpec = device ?: NO_DEVICE_SPEC,
+        wallpaper = wallpaper ?: NO_WALLPAPER_SELECTED,
       )
   }
 }
@@ -515,13 +543,18 @@ private class ParametrizedComposePreviewElementInstance(
   private val basePreviewElement: ComposePreviewElement,
   parameterName: String,
   val providerClassFqn: String,
-  val index: Int
+  val index: Int,
+  val maxIndex: Int
 ) : ComposePreviewElementInstance(), ComposePreviewElement by basePreviewElement {
   override val instanceId: String = "$composableMethodFqn#$parameterName$index"
 
   override val displaySettings: PreviewDisplaySettings =
     PreviewDisplaySettings(
-      "${basePreviewElement.displaySettings.name} ($parameterName $index)",
+      "${basePreviewElement.displaySettings.name} ($parameterName ${
+        // Make all index numbers to use the same number of digits,
+        // so that they can be properly sorted later.
+        index.toString().padStart(maxIndex.toString().length, '0')
+      })",
       basePreviewElement.displaySettings.group,
       basePreviewElement.displaySettings.showDecoration,
       basePreviewElement.displaySettings.showBackground,
@@ -601,6 +634,7 @@ class ParametrizedComposePreviewElementTemplate(
                   basePreviewElement = basePreviewElement,
                   parameterName = previewParameter.name,
                   index = index,
+                  maxIndex = providerCount - 1,
                   providerClassFqn = previewParameter.providerClassFqn
                 )
               }
@@ -700,4 +734,45 @@ interface FilePreviewElementFinder {
     project: Project,
     vFile: VirtualFile
   ): Collection<ComposePreviewElement>
+}
+
+/**
+ * Creates a new [StateFlow] containing all the [ComposePreviewElement]s contained in the given
+ * [psiFilePointer]. The given [FilePreviewElementFinder] is used to parse the file and obtain the
+ * [ComposePreviewElement]s.
+ */
+@OptIn(FlowPreview::class)
+suspend fun previewElementFlowForFile(
+  parentDisposable: Disposable,
+  psiFilePointer: SmartPsiElementPointer<PsiFile>,
+  filePreviewElementProvider: () -> FilePreviewElementFinder = ::defaultFilePreviewElementFinder
+): StateFlow<Set<ComposePreviewElement>> {
+  val scope = AndroidCoroutineScope(parentDisposable, coroutineContext)
+  val state = MutableStateFlow<Set<ComposePreviewElement>>(emptySet())
+
+  val previewProvider =
+    object : PreviewElementProvider<ComposePreviewElement> {
+      override suspend fun previewElements(): Sequence<ComposePreviewElement> =
+        withContext(workerThread) {
+          filePreviewElementProvider()
+            .findPreviewMethods(psiFilePointer.project, psiFilePointer.virtualFile)
+            .asSequence()
+        }
+    }
+
+  scope.launch(workerThread) {
+    psiFileChangeFlow(psiFilePointer.project, parentDisposable)
+      // filter only for the file we care about
+      .filter {
+        PsiManager.getInstance(psiFilePointer.project)
+          .areElementsEquivalent(psiFilePointer.element, it)
+      }
+      // debounce to avoid many equality comparisons of the set
+      .debounce(250)
+      .collect { state.update { previewProvider.previewElements().toSet() } }
+  }
+
+  // Set the initial state to the first elements found
+  state.update { previewProvider.previewElements().toSet() }
+  return state
 }

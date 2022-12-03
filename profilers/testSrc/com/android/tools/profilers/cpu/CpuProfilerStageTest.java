@@ -43,6 +43,7 @@ import com.android.tools.profilers.cpu.CpuProfilerStage.CaptureState;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.event.FakeEventService;
 import java.io.File;
@@ -57,6 +58,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import perfetto.protos.PerfettoConfig;
 
 public final class CpuProfilerStageTest extends AspectObserver {
   private static final int FAKE_PID = 20;
@@ -387,7 +389,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     // Make sure we tracked the correct configuration
     ProfilingConfiguration trackedConfig =
       ((FakeFeatureTracker)myServices.getFeatureTracker()).getLastCpuCaptureMetadata().getProfilingConfiguration();
-    assertThat(trackedConfig.getTraceType()).isEqualTo(Trace.UserOptions.TraceType.SIMPLEPERF);
+    assertThat(trackedConfig.getTraceType()).isEqualTo(TraceType.SIMPLEPERF);
   }
 
   @Test
@@ -395,7 +397,6 @@ public final class CpuProfilerStageTest extends AspectObserver {
     // API-initiated tracing starts.
     Trace.TraceConfiguration apiTracingConfig = Trace.TraceConfiguration.newBuilder()
       .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_API)
-      .setUserOptions(Trace.UserOptions.newBuilder().setTraceType(Trace.UserOptions.TraceType.ART))
       .build();
     addTraceInfoHelper(1, FAKE_DEVICE_ID, FAKE_PROCESS.getPid(), 100, -1, apiTracingConfig);
 
@@ -432,7 +433,6 @@ public final class CpuProfilerStageTest extends AspectObserver {
     // API-initiated tracing starts.
     Trace.TraceConfiguration apiTracingConfig = Trace.TraceConfiguration.newBuilder()
       .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_API)
-      .setUserOptions(Trace.UserOptions.newBuilder().setTraceType(Trace.UserOptions.TraceType.ART))
       .build();
     addTraceInfoHelper(1, FAKE_DEVICE_ID, FAKE_PROCESS.getPid(), 100, -1, apiTracingConfig);
 
@@ -449,9 +449,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
   public void rightOptionSelectedForStartUpTracing() {
     Trace.TraceConfiguration startUpTracingConfig = Trace.TraceConfiguration.newBuilder()
       .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_STARTUP)
-      .setUserOptions(Trace.UserOptions.newBuilder()
-                        .setName(FakeIdeProfilerServices.FAKE_ATRACE_NAME)
-                        .setTraceType(Trace.UserOptions.TraceType.PERFETTO))
+      .setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance())
       .build();
     addTraceInfoHelper(1, FAKE_DEVICE_ID, FAKE_PROCESS.getPid(), 100, -1, startUpTracingConfig);
 
@@ -460,7 +458,6 @@ public final class CpuProfilerStageTest extends AspectObserver {
     assertThat(myStage.getCaptureInitiationType()).isEqualTo(Trace.TraceInitiationType.INITIATED_BY_STARTUP);
     assertThat(myStage.getRecordingModel().isRecording()).isTrue();
     assertThat(myStage.getRecordingModel().getSelectedOption()).isNotNull();
-    assertThat(myStage.getRecordingModel().getSelectedOption().getTitle()).isEqualTo(FakeIdeProfilerServices.FAKE_ATRACE_NAME);
   }
 
   @Test
@@ -484,10 +481,14 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void configurationShouldBeTheOnGoingProfilingAfterExitAndEnter() throws InterruptedException {
-    ProfilingConfiguration testConfig = new SimpleperfConfiguration(FakeIdeProfilerServices.FAKE_SIMPLEPERF_NAME);
+    SimpleperfConfiguration testConfig = new SimpleperfConfiguration(FakeIdeProfilerServices.FAKE_SIMPLEPERF_NAME);
     myStage.getProfilerConfigModel().setProfilingConfiguration(testConfig);
     CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
-    assertThat(myStage.getProfilerConfigModel().getProfilingConfiguration()).isEqualTo(testConfig);
+    ProfilingConfiguration beforeExitProfilingConfiguration = myStage.getProfilerConfigModel().getProfilingConfiguration();
+    assertThat(beforeExitProfilingConfiguration.getTraceType()).isEqualTo(testConfig.getTraceType());
+    assertThat(((SimpleperfConfiguration)beforeExitProfilingConfiguration).getProfilingSamplingIntervalUs()).isEqualTo(
+      testConfig.getProfilingSamplingIntervalUs());
+
     myStage.exit();
 
     // Enter CpuProfilerStage again.
@@ -498,7 +499,10 @@ public final class CpuProfilerStageTest extends AspectObserver {
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
 
     assertThat(newStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
-    assertThat(newStage.getProfilerConfigModel().getProfilingConfiguration()).isEqualTo(testConfig);
+    ProfilingConfiguration afterEnterProfilingConfiguration = newStage.getProfilerConfigModel().getProfilingConfiguration();
+    assertThat(afterEnterProfilingConfiguration.getTraceType()).isEqualTo(testConfig.getTraceType());
+    assertThat(((SimpleperfConfiguration)afterEnterProfilingConfiguration).getProfilingSamplingIntervalUs()).isEqualTo(
+      testConfig.getProfilingSamplingIntervalUs());
   }
 
   @Test
@@ -589,7 +593,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     ArtSampledConfiguration metadataConfig = (ArtSampledConfiguration)metadata.getProfilingConfiguration();
     assertThat(metadataConfig.getProfilingSamplingIntervalUs()).isEqualTo(10);
     assertThat(metadataConfig.getProfilingBufferSizeInMb()).isEqualTo(15);
-    assertThat(metadataConfig.getTraceType()).isEqualTo(Trace.UserOptions.TraceType.ART);
+    assertThat(metadataConfig.getTraceType()).isEqualTo(TraceType.ART);
     assertThat(metadata.getParsingTimeMs()).isGreaterThan(0L);
     assertThat(metadata.getStoppingTimeMs()).isEqualTo(FakeCpuService.FAKE_STOPPING_DURATION_MS);
     assertThat(metadata.getRecordDurationMs()).isGreaterThan(0L);
@@ -618,8 +622,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     ArtSampledConfiguration metadataConfig = (ArtSampledConfiguration)metadata.getProfilingConfiguration();
     assertThat(metadataConfig.getProfilingSamplingIntervalUs()).isEqualTo(10);
     assertThat(metadataConfig.getProfilingBufferSizeInMb()).isEqualTo(15);
-    assertThat(metadataConfig.getTraceType()).isEqualTo(Trace.UserOptions.TraceType.ART);
-    //assertThat(metadataConfig.getMode()).isEqualTo(Trace.TraceMode.SAMPLED);
+    assertThat(metadataConfig.getTraceType()).isEqualTo(TraceType.ART);
     // Capture duration is calculated from the elapsed time since recording has started.
     // Note the legacy pipeline would generate two instances of metadata. First, it gets the error status from
     // the StopProfilingApp rpc right away. Second, just like unified pipeline, InProgressTraceHandler will detect
@@ -653,7 +656,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     ArtSampledConfiguration metadataConfig = (ArtSampledConfiguration)metadata.getProfilingConfiguration();
     assertThat(metadataConfig.getProfilingSamplingIntervalUs()).isEqualTo(10);
     assertThat(metadataConfig.getProfilingBufferSizeInMb()).isEqualTo(15);
-    assertThat(metadataConfig.getTraceType()).isEqualTo(Trace.UserOptions.TraceType.ART);
+    assertThat(metadataConfig.getTraceType()).isEqualTo(TraceType.ART);
     // Trace was generated, so trace size should be greater than 0
     assertThat(metadata.getTraceFileSizeBytes()).isGreaterThan(0);
     // Capture duration is calculated from the elapsed time since recording has started.
@@ -684,7 +687,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     ArtSampledConfiguration metadataConfig = (ArtSampledConfiguration)metadata.getProfilingConfiguration();
     assertThat(metadataConfig.getProfilingSamplingIntervalUs()).isEqualTo(10);
     assertThat(metadataConfig.getProfilingBufferSizeInMb()).isEqualTo(15);
-    assertThat(metadataConfig.getTraceType()).isEqualTo(Trace.UserOptions.TraceType.ART);
+    assertThat(metadataConfig.getTraceType()).isEqualTo(TraceType.ART);
     // Trace was generated, so trace size should be greater than 0
     assertThat(metadata.getTraceFileSizeBytes()).isGreaterThan(0);
     // Capture duration is calculated from the elapsed time since recording has started.
@@ -891,7 +894,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     @NotNull
     @Override
     public CompletableFuture<CpuCapture> parse(
-      @NotNull File traceFile, long traceId, @Nullable Trace.UserOptions.TraceType preferredProfilerType, int idHint, @Nullable String nameHint) {
+      @NotNull File traceFile, long traceId, @Nullable TraceType preferredProfilerType, int idHint, @Nullable String nameHint) {
       CompletableFuture<CpuCapture> capture = new CompletableFuture<>();
       capture.cancel(true);
       return capture;

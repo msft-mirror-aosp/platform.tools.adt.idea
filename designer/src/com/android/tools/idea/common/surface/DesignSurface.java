@@ -217,7 +217,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   @NotNull private final SceneViewPanel mySceneViewPanel;
   @NotNull private final MouseClickDisplayPanel myMouseClickDisplayPanel;
   @VisibleForTesting
-  private final InteractionManager myInteractionManager;
+  private final GuiInputHandler myGuiInputHandler;
   private final Object myListenersLock = new Object();
   @GuardedBy("myListenersLock")
   protected final ArrayList<DesignSurfaceListener> myListeners = new ArrayList<>();
@@ -347,7 +347,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
     mySceneViewPanel = new SceneViewPanel(
       this::getSceneViews,
-      () -> getInteractionManager().getLayers(),
+      () -> getGuiInputHandler().getLayers(),
       positionableLayoutManagerProvider.apply(this));
     mySceneViewPanel.setBackground(getBackground());
 
@@ -431,8 +431,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     });
 
     Interactable interactable = new SurfaceInteractable(this);
-    myInteractionManager = new InteractionManager(this, interactable, interactionProviderCreator.apply(this));
-    myInteractionManager.startListening();
+    myGuiInputHandler = new GuiInputHandler(this, interactable, interactionProviderCreator.apply(this));
+    myGuiInputHandler.startListening();
     //noinspection AbstractMethodCallInConstructor
     myActionManager = actionManagerProvider.apply(this);
     myActionManager.registerActionsShortcuts(myLayeredPane);
@@ -661,7 +661,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     // only point subclasses can override to disable the layoutlib render behaviour.
     return modelSceneManager.requestRenderAsync()
       .whenCompleteAsync((result, ex) -> {
-        reactivateInteractionManager();
+        reactivateGuiInputHandler();
 
         revalidateScrollArea();
 
@@ -701,7 +701,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
         listener.modelChanged(this, model);
       }
     });
-    reactivateInteractionManager();
+    reactivateGuiInputHandler();
     return manager;
   }
 
@@ -722,7 +722,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     }
 
     // Mark the scene view panel as invalid to force the scene views to be updated
-    mySceneViewPanel.invalidate();
+    mySceneViewPanel.removeSceneViewForModel(model);
 
     if (manager == null) {
       return false;
@@ -747,7 +747,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       return;
     }
 
-    reactivateInteractionManager();
+    reactivateGuiInputHandler();
   }
 
   /**
@@ -776,7 +776,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
     return requestRender()
       .whenCompleteAsync((result, ex) -> {
-        reactivateInteractionManager();
+        reactivateGuiInputHandler();
         if (!restorePreviousScale(model)) {
           zoomToFit();
         }
@@ -791,14 +791,14 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   }
 
   /**
-   * Update the status of {@link InteractionManager}. It will start or stop listening depending on the current layout type.
+   * Update the status of {@link GuiInputHandler}. It will start or stop listening depending on the current layout type.
    */
-  private void reactivateInteractionManager() {
+  private void reactivateGuiInputHandler() {
     if (isEditable()) {
-      myInteractionManager.startListening();
+      myGuiInputHandler.startListening();
     }
     else {
-      myInteractionManager.stopListening();
+      myGuiInputHandler.stopListening();
     }
   }
 
@@ -808,7 +808,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       myListeners.clear();
       myZoomListeners.clear();
     }
-    myInteractionManager.stopListening();
+    myGuiInputHandler.stopListening();
     Toolkit.getDefaultToolkit().removeAWTEventListener(myOnHoverListener);
     synchronized (myRenderFutures) {
       for (CompletableFuture<Void> future : myRenderFutures) {
@@ -981,7 +981,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @Override
   public void setPanning(boolean isPanning) {
-    myInteractionManager.setPanning(isPanning);
+    myGuiInputHandler.setPanning(isPanning);
   }
 
   /**
@@ -1069,9 +1069,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
     int availableWidth = getExtentSize().width;
     int availableHeight = getExtentSize().height;
-    Dimension padding = getDefaultOffset();
-    availableWidth -= padding.width;
-    availableHeight -= padding.height;
 
     @SurfaceScale double scaleX = size.width == 0 ? 1 : (double)availableWidth / size.width;
     @SurfaceScale double scaleY = size.height == 0 ? 1 : (double)availableHeight / size.height;
@@ -1085,7 +1082,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   }
 
   @SwingCoordinate
-  protected abstract Dimension getDefaultOffset();
+  protected abstract Dimension getScrollToVisibleOffset();
 
   @SwingCoordinate
   @NotNull
@@ -1104,7 +1101,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @Override
   public boolean isPanning() {
-    return myInteractionManager.isPanning();
+    return myGuiInputHandler.isPanning();
   }
 
   @Override
@@ -1143,8 +1140,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   public final void scrollToVisible(@NotNull SceneView sceneView, boolean forceScroll) {
     Rectangle rectangle = mySceneViewPanel.findSceneViewRectangle(sceneView);
     if (rectangle != null && (forceScroll || !getViewport().getViewRect().intersects(rectangle))) {
-      Dimension defaultOffset = getDefaultOffset();
-      setScrollPosition(rectangle.x - defaultOffset.width, rectangle.y - defaultOffset.height);
+      Dimension offset = getScrollToVisibleOffset();
+      setScrollPosition(rectangle.x - offset.width, rectangle.y - offset.height);
     }
   }
 
@@ -1425,7 +1422,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     myIsActive = false;
     myIssueModel.deactivate();
 
-    myInteractionManager.cancelInteraction();
+    myGuiInputHandler.cancelInteraction();
   }
 
   /**
@@ -1552,8 +1549,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   }
 
   @NotNull
-  public InteractionManager getInteractionManager() {
-    return myInteractionManager;
+  public GuiInputHandler getGuiInputHandler() {
+    return myGuiInputHandler;
   }
 
   protected boolean getSupportPinchAndZoom() {
@@ -1813,7 +1810,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @Override
   public Object getData(@NotNull @NonNls String dataId) {
-    if (DESIGN_SURFACE.is(dataId) || ZOOMABLE_KEY.is(dataId) || PANNABLE_KEY.is(dataId) || InteractionManager.CURSOR_RECEIVER.is(dataId)) {
+    if (DESIGN_SURFACE.is(dataId) || ZOOMABLE_KEY.is(dataId) || PANNABLE_KEY.is(dataId) || GuiInputHandler.CURSOR_RECEIVER.is(dataId)) {
       return this;
     }
     if (PlatformCoreDataKeys.FILE_EDITOR.is(dataId)) {

@@ -29,13 +29,13 @@ class SimpleperfPipelinePreprocessorTest {
     const val TRACE_ID = 1234L
   }
 
-  val validEvent = Common.Event.newBuilder().setCpuTrace(Cpu.CpuTraceData.newBuilder().setTraceStarted(
+  private val validEvent = Common.Event.newBuilder().setCpuTrace(Cpu.CpuTraceData.newBuilder().setTraceStarted(
     Cpu.CpuTraceData.TraceStarted.newBuilder().setTraceInfo(Cpu.CpuTraceInfo.newBuilder()
                                                               .setTraceId(TRACE_ID)
                                                               .setConfiguration(Trace.TraceConfiguration.newBuilder()
-                                                                                  .setUserOptions(
-                                                                                    Trace.UserOptions.newBuilder()
-                                                                                      .setTraceType(Trace.UserOptions.TraceType.SIMPLEPERF))
+                                                                                  .setSimpleperfOptions(
+                                                                                    Trace.SimpleperfOptions.newBuilder().addSymbolDirs(
+                                                                                      "/path"))
                                                                                   .addSymbolDirs("/path")))))
     .build()
 
@@ -52,11 +52,9 @@ class SimpleperfPipelinePreprocessorTest {
     assertThat(preprocessor.shouldPreprocess(event.build())).isFalse()
     event.cpuTraceBuilder.traceStartedBuilder.traceInfoBuilder.configuration = Trace.TraceConfiguration.getDefaultInstance()
     assertThat(preprocessor.shouldPreprocess(event.build())).isFalse()
-    event.cpuTraceBuilder.traceStartedBuilder.traceInfoBuilder.configurationBuilder.userOptions =
-      Trace.UserOptions.getDefaultInstance()
     assertThat(preprocessor.shouldPreprocess(event.build())).isFalse()
-    event.cpuTraceBuilder.traceStartedBuilder.traceInfoBuilder.configurationBuilder.userOptionsBuilder.traceType =
-      Trace.UserOptions.TraceType.SIMPLEPERF
+    event.cpuTraceBuilder.traceStartedBuilder.traceInfoBuilder.configurationBuilder.simpleperfOptions =
+      Trace.SimpleperfOptions.getDefaultInstance()
     assertThat(preprocessor.shouldPreprocess(event.build())).isTrue()
     assertThat(preprocessor.shouldPreprocess(validEvent)).isTrue()
   }

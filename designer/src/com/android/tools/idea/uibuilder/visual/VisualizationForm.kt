@@ -177,7 +177,6 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
         VisualizationInteractionHandler(surface) { myCurrentModelsProvider }
       }
       .setLayoutManager(surfaceLayoutManager)
-      .setMinScale(0.01)
       .setMaxScale(4.0)
       .setSupportedActions(VISUALIZATION_SUPPORTED_ACTIONS)
       .build()
@@ -188,7 +187,8 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
     myWorkBench = WorkBench(project, "Visualization", null, this)
     myWorkBench.setLoadingText("Loading...")
     myWorkBench.setToolContext(surface)
-    val mainComponent: JComponent = if (StudioFlags.NELE_VISUAL_LINT.get()) {
+    val mainComponent: JComponent = if (StudioFlags.NELE_VISUAL_LINT.get() &&
+                                        !StudioFlags.NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL.get()) {
       IssuePanelSplitter(null, surface, myWorkBench)
     }
     else {
@@ -215,7 +215,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
                                        null, this, null, Alarm.ThreadToUse.POOLED_THREAD)
     myUpdateQueue.setRestartTimerOnAdd(true)
 
-    visualLintHandler = VisualizationFormVisualLintHandler(project, surface.issueModel)
+    visualLintHandler = VisualizationFormVisualLintHandler(this, project, surface.issueModel)
   }
 
   private fun createToolbarPanel(): JComponent {
@@ -580,7 +580,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
     // This render the added components.
     for (manager in surface.sceneManagers) {
       if (StudioFlags.NELE_VISUAL_LINT.get() && manager is LayoutlibSceneManager) {
-        visualLintHandler.setupForLayoutlibSceneManager(manager)
+        visualLintHandler.setupForLayoutlibSceneManager(manager) { !isActive || isRenderingCanceled.get() }
       }
       renderFuture = renderFuture.thenCompose {
         if (isRenderingCanceled.get()) {

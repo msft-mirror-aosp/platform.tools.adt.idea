@@ -16,8 +16,8 @@
 package com.android.tools.idea.run.tasks;
 
 import com.android.ddmlib.IDevice;
-import com.android.tools.idea.run.AndroidProcessHandler;
-import com.android.tools.idea.run.ApplicationTerminator;
+import com.android.tools.idea.execution.common.ApplicationTerminator;
+import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler;
 import com.android.tools.idea.run.ui.DeployAction;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.executors.DefaultDebugExecutor;
@@ -87,7 +87,7 @@ public class KillAndRestartAppLaunchTask implements LaunchTask {
     // Ensure the app is killed (otherwise launch won't work).
     ApplicationTerminator appTerminator = new ApplicationTerminator(device, myPackageName);
     try {
-      if (!appTerminator.killApp(launchContext.getLaunchStatus())) {
+      if (!appTerminator.killApp()) {
         return LaunchResult.error("", "trying to terminate app prior to restarting.");
       }
     }

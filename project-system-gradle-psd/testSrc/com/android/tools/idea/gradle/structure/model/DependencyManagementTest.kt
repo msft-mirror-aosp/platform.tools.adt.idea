@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.structure.model
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -27,8 +28,7 @@ import com.android.tools.idea.gradle.structure.model.java.PsJavaModule
 import com.android.tools.idea.gradle.structure.model.meta.DslText
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.EdtAndroidProjectRule
-import com.android.tools.idea.testing.onEdt
+import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.containers.nullize
 import org.hamcrest.CoreMatchers.equalTo
@@ -36,7 +36,9 @@ import org.hamcrest.CoreMatchers.hasItems
 import org.hamcrest.CoreMatchers.notNullValue
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.CoreMatchers.sameInstance
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThat
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -44,7 +46,7 @@ import org.junit.Test
 class DependencyManagementTest {
 
   @get:Rule
-  val projectRule: EdtAndroidProjectRule = AndroidProjectRule.withAndroidModels().onEdt()
+  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
   fun testParsedDependencies() {
@@ -915,6 +917,30 @@ class DependencyManagementTest {
         val resolvedDependencies = module.findVariant("freeRelease")?.findArtifact(IdeArtifactName.MAIN)?.dependencies
         assertThat(resolvedDependencies?.findModuleDependency(":jModuleK"), notNullValue())
       }
+    }
+  }
+
+  @Test
+  fun testCatalogDependencyCanExtractVariableIsFalse() {
+    StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.override(true)
+    try {
+      val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_VERSION_CATALOG_SAMPLE_GROOVY)
+      projectRule.psTestWithProject(preparedProject) {
+        val module = project.findModuleByName("app") as PsAndroidModule
+        run {
+          val resolvedDependencies = module.findVariant("release")?.findArtifact(IdeArtifactName.MAIN)?.dependencies
+          val catalogDep = resolvedDependencies?.findLibraryDependencies("com.google.guava", "guava")?.singleOrNull()?.declaredDependencies
+          assertThat(catalogDep!!.size,equalTo(1))
+          assertFalse(catalogDep[0].canExtractVariable())
+
+          val plainDep = resolvedDependencies.findLibraryDependencies("com.android.support", "appcompat-v7").singleOrNull()?.declaredDependencies
+          assertThat(plainDep!!.size,equalTo(1))
+          assertTrue(plainDep[0].canExtractVariable())
+        }
+      }
+    }
+    finally {
+      StudioFlags.COMPOSE_PREVIEW_ELEMENT_PICKER.clearOverride()
     }
   }
 

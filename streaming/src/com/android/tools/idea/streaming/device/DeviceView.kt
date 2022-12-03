@@ -22,12 +22,12 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
+import com.android.tools.idea.streaming.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.constrainInside
 import com.android.tools.idea.streaming.contains
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
 import com.android.tools.idea.streaming.device.DeviceClient.AgentTerminationListener
-import com.android.tools.idea.streaming.emulator.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.location
 import com.android.tools.idea.streaming.rotatedByQuadrants
 import com.android.tools.idea.streaming.scaled
@@ -102,11 +102,13 @@ import javax.swing.KeyStroke
 import kotlin.math.min
 
 /**
- * A view of the Emulator display optionally encased in the device frame.
+ * A view of a mirrored device display.
  *
  * @param disposableParent the disposable parent determining the lifespan of the view
  * @param deviceSerialNumber the serial number of the device
  * @param deviceAbi the application binary interface of the device
+ * @param deviceName the name of the device to be used in user-facing messages
+ * @param initialDisplayOrientation initial orientation of the device display in quadrants counterclockwise
  * @param project the project associated with the view
  */
 internal class DeviceView(
@@ -183,7 +185,7 @@ internal class DeviceView(
 
     addComponentListener(object : ComponentAdapter() {
       override fun componentShown(event: ComponentEvent) {
-        if (realWidth > 0 && realHeight > 0 && connectionState == ConnectionState.INITIAL) {
+        if (physicalWidth > 0 && physicalHeight > 0 && connectionState == ConnectionState.INITIAL) {
           initializeAgentAsync(initialDisplayOrientation)
         }
       }
@@ -207,7 +209,7 @@ internal class DeviceView(
   override fun setBounds(x: Int, y: Int, width: Int, height: Int) {
     val resized = width != this.width || height != this.height
     super.setBounds(x, y, width, height)
-    if (resized && realWidth > 0 && realHeight > 0) {
+    if (resized && physicalWidth > 0 && physicalHeight > 0) {
       if (connectionState == ConnectionState.INITIAL) {
         initializeAgentAsync(initialDisplayOrientation)
       }
@@ -220,7 +222,7 @@ internal class DeviceView(
   /** Starts asynchronous initialization of the Screen Sharing Agent. */
   private fun initializeAgentAsync(initialDisplayOrientation: Int) {
     connectionState = ConnectionState.CONNECTING
-    val maxOutputSize = realSize
+    val maxOutputSize = physicalSize
     AndroidCoroutineScope(this@DeviceView).launch { initializeAgent(maxOutputSize, initialDisplayOrientation) }
   }
 
@@ -254,9 +256,9 @@ internal class DeviceView(
   private fun updateVideoSize() {
     val deviceClient = deviceClient ?: return
     val videoDecoder = deviceClient.videoDecoder
-    if (videoDecoder.maxOutputSize != realSize) {
-      videoDecoder.maxOutputSize = realSize
-      deviceClient.deviceController.sendControlMessage(SetMaxVideoResolutionMessage(realWidth, realHeight))
+    if (videoDecoder.maxOutputSize != physicalSize) {
+      videoDecoder.maxOutputSize = physicalSize
+      deviceClient.deviceController.sendControlMessage(SetMaxVideoResolutionMessage(physicalWidth, physicalHeight))
     }
   }
 
@@ -322,10 +324,12 @@ internal class DeviceView(
         zoom(ZoomType.FIT) // Orientation or dimensions of the display have changed - reset zoom level.
       }
       val rotatedDisplaySize = displayFrame.displaySize.rotatedByQuadrants(displayFrame.orientation)
-      val scale = roundScale(min(realWidth.toDouble() / rotatedDisplaySize.width, realHeight.toDouble() / rotatedDisplaySize.height))
-      val w = rotatedDisplaySize.width.scaled(scale).coerceAtMost(realWidth)
-      val h = rotatedDisplaySize.height.scaled(scale).coerceAtMost(realHeight)
-      val displayRect = Rectangle((realWidth - w) / 2, (realHeight - h) / 2, w, h)
+      val maxSize = computeMaxImageSize()
+      val scale = roundScale(min(maxSize.width.toDouble() / rotatedDisplaySize.width,
+                                 maxSize.height.toDouble() / rotatedDisplaySize.height))
+      val w = rotatedDisplaySize.width.scaled(scale).coerceAtMost(physicalWidth)
+      val h = rotatedDisplaySize.height.scaled(scale).coerceAtMost(physicalHeight)
+      val displayRect = Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
       displayRectangle = displayRect
       val image = displayFrame.image
       if (displayRect.width == image.width && displayRect.height == image.height) {

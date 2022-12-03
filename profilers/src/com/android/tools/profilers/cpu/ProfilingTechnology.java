@@ -20,6 +20,7 @@ import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import org.jetbrains.annotations.NotNull;
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 
 public enum ProfilingTechnology {
   ART_SAMPLED("Java/Kotlin Method Sample Recording (legacy)",
@@ -80,18 +81,18 @@ public enum ProfilingTechnology {
   }
 
   @NotNull
-  public Trace.UserOptions.TraceType getType() {
+  public TraceType getType() {
     switch (this) {
       case ART_SAMPLED:
-        return Trace.UserOptions.TraceType.ART;
+        return TraceType.ART;
       case ART_INSTRUMENTED:
-        return Trace.UserOptions.TraceType.ART;
+        return TraceType.ART;
       case ART_UNSPECIFIED:
-        return Trace.UserOptions.TraceType.ART;
+        return TraceType.ART;
       case SIMPLEPERF:
-        return Trace.UserOptions.TraceType.SIMPLEPERF;
+        return TraceType.SIMPLEPERF;
       case SYSTEM_TRACE:
-        return Trace.UserOptions.TraceType.ATRACE;
+        return TraceType.ATRACE;
     }
     throw new IllegalArgumentException("Unreachable code");
   }
@@ -113,24 +114,27 @@ public enum ProfilingTechnology {
     throw new IllegalArgumentException("Unreachable code");
   }
 
+  /**
+   * Utilizes the {@link Trace.TraceConfiguration} technology specific option
+   * to determine the respective {@link ProfilingTechnology}.
+   */
   @NotNull
-  public static ProfilingTechnology fromTypeAndMode(@NotNull Trace.UserOptions.TraceType type,
-                                                    @NotNull Trace.TraceMode mode) {
-    switch (type) {
-      case ART:
-        if (mode == Trace.TraceMode.SAMPLED) {
+  public static ProfilingTechnology fromTraceConfiguration(@NotNull Trace.TraceConfiguration config) {
+    switch (config.getUnionCase()) {
+      case ART_OPTIONS:
+        if (config.getArtOptions().getTraceMode() == Trace.TraceMode.SAMPLED) {
           return ART_SAMPLED;
         }
-        else if (mode == Trace.TraceMode.INSTRUMENTED) {
+        else if (config.getArtOptions().getTraceMode() == Trace.TraceMode.INSTRUMENTED) {
           return ART_INSTRUMENTED;
         }
         else {
           return ART_UNSPECIFIED;
         }
-      case SIMPLEPERF:
+      case SIMPLEPERF_OPTIONS:
         return SIMPLEPERF;
-      case ATRACE: // fall-through
-      case PERFETTO:
+      case ATRACE_OPTIONS: // fall-through
+      case PERFETTO_OPTIONS:
         return SYSTEM_TRACE;
       default:
         throw new IllegalStateException("Error while trying to get the name of an unknown profiling configuration");

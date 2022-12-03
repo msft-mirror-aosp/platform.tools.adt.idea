@@ -336,6 +336,7 @@ iml_module(
         "//tools/base/threading-agent-callback:studio.android.sdktools.threading-agent-callback[module, test]",
         "//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin[module, test]",
         "//tools/adt/idea/execution/common:intellij.android.execution.common[module, test]",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-coverage[test]",
     ],
 )
 
@@ -454,6 +455,7 @@ filegroup(
         "//tools/vendor/google/firebase/src/proto:firebase_java_proto",
         "//tools/vendor/google/url-assistant/src/proto:urlassistant_proto",
         "//tools/adt/idea/build-attribution/proto:build-analysis-results-proto",
+        "//tools/base/common:version",
     ] + select({
         "//tools/base/bazel:windows": [],
         "//conditions:default": [

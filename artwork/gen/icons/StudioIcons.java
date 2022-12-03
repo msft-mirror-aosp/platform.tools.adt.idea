@@ -35,6 +35,15 @@ public class StudioIcons {
     public static final Icon SEND = load("/studio/icons/app-quality-insights/send.svg"); // 16x16
   }
 
+  public static class Assistant {
+    public static class AppLinks {
+      public static final Icon STEP_1_LARGE = load("/studio/icons/assistant/app-links/step-1-large.svg"); // 50x50
+      public static final Icon STEP_2_LARGE = load("/studio/icons/assistant/app-links/step-2-large.svg"); // 50x50
+      public static final Icon STEP_3_LARGE = load("/studio/icons/assistant/app-links/step-3-large.svg"); // 50x50
+      public static final Icon STEP_4_LARGE = load("/studio/icons/assistant/app-links/step-4-large.svg"); // 50x50
+    }
+  }
+
   public static class Avd {
     public static final Icon CONNECTION_GENERIC = load("/studio/icons/avd/connection-generic.svg"); // 16x16
     public static final Icon CONNECTION_USB = load("/studio/icons/avd/connection-usb.svg"); // 16x16
@@ -680,6 +689,7 @@ public class StudioIcons {
     public static final Icon RECOMPOSITION_COUNT = load("/studio/icons/layout-inspector/recomposition-count.svg"); // 16x16
     public static final Icon RECOMPOSITION_SKIPPED = load("/studio/icons/layout-inspector/recomposition-skipped.svg"); // 16x16
     public static final Icon RESET_VIEW = load("/studio/icons/layout-inspector/reset-view.svg"); // 16x16
+    public static final Icon SNAPSHOT = load("/studio/icons/layout-inspector/snapshot.svg"); // 16x16
   }
 
   public static class Logcat {

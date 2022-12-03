@@ -32,8 +32,8 @@ import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.gradle.structure.model.meta.annotated
 import com.android.tools.idea.gradle.structure.model.meta.maybeValue
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.OpenPreparedProjectOptions
-import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.withoutKtsRelatedIndexing
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.RunsInEdt
@@ -48,7 +48,7 @@ import org.junit.Test
 class ExtractVariableWorkerTest {
 
   @get:Rule
-  val projectRule = AndroidProjectRule.withAndroidModels().onEdt()
+  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   private fun doTestExtractVariable(resolvedProject: Project) {
 
@@ -359,7 +359,7 @@ class ExtractVariableWorkerTest {
         val targetSdkVersion = PsProductFlavor.ProductFlavorDescriptors.targetSdkVersion.bind(paidProductFlavor)
         checkPreferredName(maxSdkVersion, "paidMaxSdkVersion", 25)
         checkPreferredName(minSdkVersion, "paidMinSdkVersion", "10")
-        checkPreferredName(targetSdkVersion, "paidTargetSdkVersion", "20")
+        checkPreferredName(targetSdkVersion, "paidTargetSdkVersion", "${SdkVersionInfo.HIGHEST_KNOWN_STABLE_API}")
       }
 
       // test{ApplicationId,FunctionalTest,HandleProfiling,InstrumentationRunner}

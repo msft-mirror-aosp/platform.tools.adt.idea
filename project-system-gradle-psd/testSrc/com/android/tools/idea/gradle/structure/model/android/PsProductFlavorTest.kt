@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.structure.model.android
 
+import com.android.sdklib.SdkVersionInfo
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -27,8 +28,8 @@ import com.android.tools.idea.gradle.structure.model.meta.annotated
 import com.android.tools.idea.gradle.structure.model.meta.getValue
 import com.android.tools.idea.gradle.structure.model.testResolve
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.OpenPreparedProjectOptions
-import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.tools.idea.testing.withoutKtsRelatedIndexing
 import com.google.common.truth.Expect
@@ -46,7 +47,7 @@ import org.junit.Test
 class PsProductFlavorTest {
 
   @get:Rule
-  val projectRule = AndroidProjectRule.withAndroidModels().onEdt()
+  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @get:Rule
   val expect = Expect.createAndEnableStackTrace()!!
@@ -141,8 +142,8 @@ class PsProductFlavorTest {
       assertThat(
         PsProductFlavor.ProductFlavorDescriptors.getParsed(productFlavor)?.targetSdkVersion()?.valueType,
         equalTo(GradlePropertyModel.ValueType.INTEGER))
-      assertThat(targetSdkVersion.resolved.asTestValue(), equalTo("20"))
-      assertThat(targetSdkVersion.parsedValue.asTestValue(), equalTo("20"))
+      assertThat(targetSdkVersion.resolved.asTestValue(), equalTo("${SdkVersionInfo.HIGHEST_KNOWN_STABLE_API}"))
+      assertThat(targetSdkVersion.parsedValue.asTestValue(), equalTo("${SdkVersionInfo.HIGHEST_KNOWN_STABLE_API}"))
 
       assertThat(testApplicationId.resolved.asTestValue(), equalTo("com.example.psd.sample.app.paid.test"))
       assertThat(testApplicationId.parsedValue.asTestValue(), equalTo("com.example.psd.sample.app.paid.test"))

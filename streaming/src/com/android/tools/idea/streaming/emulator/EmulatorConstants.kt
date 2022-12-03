@@ -16,8 +16,6 @@
 @file:JvmName("EmulatorConstants")
 package com.android.tools.idea.streaming.emulator
 
-import com.intellij.notification.NotificationGroup
-import com.intellij.notification.NotificationGroup.Companion.findRegisteredGroup
 import com.intellij.openapi.actionSystem.DataKey
 
 /** Embedded Emulator constants. */
@@ -26,13 +24,6 @@ import com.intellij.openapi.actionSystem.DataKey
 
 @JvmField val EMULATOR_VIEW_KEY = DataKey.create<EmulatorView>("EmulatorView")
 
-@JvmField val NUMBER_OF_DISPLAYS = DataKey.create<Int>("NumberOfDisplays")
-
 internal const val EMULATOR_MAIN_TOOLBAR_ID = "EmulatorToolbar"
 
 internal const val EMULATOR_SECONDARY_TOOLBAR_ID = "EmulatorToolbarSecondary"
-
-internal val RUNNING_DEVICES_NOTIFICATION_GROUP: NotificationGroup
-  get() = findRegisteredGroup("Running Devices Messages")!!
-
-const val PRIMARY_DISPLAY_ID = 0

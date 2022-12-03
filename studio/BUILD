@@ -68,6 +68,7 @@ studio_plugin(
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
+        "//tools/base/common:version",
     ],
     licenses = [
         "//prebuilts/r8:license",
@@ -600,6 +601,11 @@ studio_plugin(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
     ],
 )
+
+exports_files([
+    "codesign/entitlements.xml",
+    "codesign/filelist",
+])
 
 android_studio(
     name = "android-studio",

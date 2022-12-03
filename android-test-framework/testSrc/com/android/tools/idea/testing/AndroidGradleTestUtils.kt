@@ -586,6 +586,7 @@ fun AndroidProjectStubBuilder.createMainSourceProviderForDefaultTestProjectStruc
     myMlModelsDirectories = emptyList(),
     myShadersDirectories = emptyList(),
     myCustomSourceDirectories = emptyList(),
+    myBaselineProfileDirectories = emptyList(),
   )
 }
 
@@ -646,6 +647,7 @@ private fun sourceProvider(
     myMlModelsDirectories = listOf(),
     myShadersDirectories = listOf("shaders"),
     myCustomSourceDirectories = listOf(/*IdeCustomSourceDirectoryImpl("custom", rootDir, "custom")*/),
+    myBaselineProfileDirectories = listOf("baselineProfiles"),
   )
 }
 
@@ -1471,11 +1473,12 @@ private fun createAndroidModuleDataNode(
         listOf(),
         gradlePath,
         moduleBasePath,
-        false,
-        false,
+        listOf(),
         moduleBasePath.resolve("build.gradle"),
         gradleVersion,
-        agpVersion
+        agpVersion,
+        false,
+        false
       ),
       null
     )
@@ -1668,11 +1671,12 @@ private fun createJavaModuleDataNode(
           listOf(),
           gradlePath,
           moduleBasePath,
-          false,
-          false,
+          listOf(),
           null,
           null,
-          null
+          null,
+          false,
+          false
         ),
         null
       )

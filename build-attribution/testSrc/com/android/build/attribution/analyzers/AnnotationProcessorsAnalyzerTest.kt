@@ -23,8 +23,7 @@ import com.android.buildanalyzer.common.TaskCategoryIssue
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.EdtAndroidProjectRule
-import com.android.tools.idea.testing.onEdt
+import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.utils.FileUtils
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
@@ -36,7 +35,7 @@ import org.junit.Test
 class AnnotationProcessorsAnalyzerTest {
 
   @get:Rule
-  val projectRule: EdtAndroidProjectRule = AndroidProjectRule.withAndroidModels().onEdt()
+  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
   fun testNonIncrementalAnnotationProcessorsAnalyzer() {
@@ -48,7 +47,7 @@ class AnnotationProcessorsAnalyzerTest {
       var results = buildAnalyzerStorageManager.getSuccessfulResult()
 
       assertThat(
-        results.getAnnotationProcessorsData().map { it.className }).containsExactlyElementsIn(
+        results.getNonIncrementalAnnotationProcessorsData().map { it.className }).containsExactlyElementsIn(
         setOf(
           "com.google.auto.value.processor.AutoAnnotationProcessor",
           "com.google.auto.value.processor.AutoValueBuilderProcessor",
@@ -74,10 +73,10 @@ class AnnotationProcessorsAnalyzerTest {
           .replace("annotationProcessor 'com.google.auto.value:auto-value:1.6.2'", "")
       )
 
-      invokeTasks(":app:compileDebugJavaWithJavac")
+      invokeTasks("clean", ":app:compileDebugJavaWithJavac")
       results = buildAnalyzerStorageManager.getSuccessfulResult()
 
-      assertThat(results.getAnnotationProcessorsData()).isEmpty()
+      assertThat(results.getNonIncrementalAnnotationProcessorsData()).isEmpty()
       assertThat(results.getTaskCategoryWarningsAnalyzerResult()).isInstanceOf(TaskCategoryWarningsAnalyzer.IssuesResult::class.java)
       assertThat(
         (results.getTaskCategoryWarningsAnalyzerResult() as TaskCategoryWarningsAnalyzer.IssuesResult).taskCategoryIssues
@@ -106,7 +105,7 @@ class AnnotationProcessorsAnalyzerTest {
       val results = buildAnalyzerStorageManager.getSuccessfulResult()
 
       assertThat(
-        results.getAnnotationProcessorsData().map { it.className }).containsExactlyElementsIn(
+        results.getNonIncrementalAnnotationProcessorsData().map { it.className }).containsExactlyElementsIn(
         setOf(
           "com.google.auto.value.processor.AutoValueBuilderProcessor",
           "com.google.auto.value.processor.AutoOneOfProcessor",

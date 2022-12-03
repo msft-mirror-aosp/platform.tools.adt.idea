@@ -122,6 +122,7 @@ abstract class GradleBuildModelRefactoringProcessor : BaseRefactoringProcessor {
 
   val otherAffectedFiles = mutableSetOf<PsiFile>()
   val psiSpoilingUsageInfos = mutableListOf<UsageInfo>()
+  val undoHooks = mutableListOf<UndoHook>()
 
   var foundUsages: Boolean = false
 
@@ -247,6 +248,11 @@ abstract class SpoilingGradleBuildModelUsageInfo(
   }
 }
 
+data class UndoHook(
+  val undo: () -> Unit,
+  val redo: () -> Unit
+)
+
 class AgpUpgradeRefactoringProcessor(
   project: Project,
   val current: AgpVersion,
@@ -262,6 +268,7 @@ class AgpUpgradeRefactoringProcessor(
     GMavenRepositoryRefactoringProcessor(this),
     GradleVersionRefactoringProcessor(this),
     GradlePluginsRefactoringProcessor(this),
+    ProjectJdkRefactoringProcessor(this),
     Java8DefaultRefactoringProcessor(this),
     CompileRuntimeConfigurationRefactoringProcessor(this),
     FabricCrashlyticsRefactoringProcessor(this),
@@ -271,6 +278,7 @@ class AgpUpgradeRefactoringProcessor(
     RenderScriptDefaultRefactoringProcessor(this),
     BuildConfigDefaultRefactoringProcessor(this),
     NonTransitiveRClassDefaultRefactoringProcessor(this),
+    NonConstantRClassDefaultRefactoringProcessor(this),
     AidlDefaultRefactoringProcessor(this),
     REMOVE_SOURCE_SET_JNI_INFO.RefactoringProcessor(this),
     MIGRATE_AAPT_OPTIONS_TO_ANDROID_RESOURCES.RefactoringProcessor(this),
@@ -589,10 +597,14 @@ class AgpUpgradeRefactoringProcessor(
     syncRequestCallback?.invoke()
     GradleSyncInvoker.getInstance().requestProjectSync(project, request, listener)
     UndoManager.getInstance(project).undoableActionPerformed(object : BasicUndoableAction() {
-      override fun undo(): Unit =
+      override fun undo() {
+        undoHooks.reversed().forEach { it.undo.invoke() }
         GradleSyncInvoker.getInstance().requestProjectSync(project, GradleSyncInvoker.Request(TRIGGER_MODIFIER_ACTION_UNDONE))
-      override fun redo(): Unit =
+      }
+      override fun redo() {
+        undoHooks.forEach { it.redo.invoke() }
         GradleSyncInvoker.getInstance().requestProjectSync(project, GradleSyncInvoker.Request(TRIGGER_MODIFIER_ACTION_REDONE))
+      }
     })
   }
 
@@ -616,23 +628,28 @@ class AgpUpgradeRefactoringProcessor(
     // being done; on the other hand it is cancellable, shows numeric progress and takes around 30 seconds for a project with 1k modules.
     //
     // Moving to an asynchronous process would involve modifying callers to do the subsequent work after parsing in callbacks.
-    progressManager.runProcessWithProgressSynchronously(
-      {
-        val indicator = progressManager.progressIndicator
-        projectBuildModel.getAllIncludedBuildModels { seen, total ->
-          indicator?.let {
-            indicator.checkCanceled()
-            // both "Parsing file ..." and "Parsing module ..." here are in general slightly wrong (given included and settings files).
-            indicator.text = "Parsing file $seen${if (total != null) " of $total" else ""}"
-            indicator.isIndeterminate = total == null
-            total?.let { indicator.fraction = seen.toDouble() / total.toDouble() }
+
+    DumbService.getInstance(project).runWhenSmart {
+      // we must be in smart mode before starting the modal progress display, otherwise attempts to use indexes in
+      // processors (with e.g. runReadActionInSmartMode) will softlock if indexes are not ready.
+      progressManager.runProcessWithProgressSynchronously(
+        {
+          val indicator = progressManager.progressIndicator
+          projectBuildModel.getAllIncludedBuildModels { seen, total ->
+            indicator?.let {
+              indicator.checkCanceled()
+              // both "Parsing file ..." and "Parsing module ..." here are in general slightly wrong (given included and settings files).
+              indicator.text = "Parsing file $seen${if (total != null) " of $total" else ""}"
+              indicator.isIndeterminate = total == null
+              total?.let { indicator.fraction = seen.toDouble() / total.toDouble() }
+            }
           }
-        }
-        // Ensure that we have the information about no-ops, which might also involve inspecting Psi directly (and thus should not be
-        // done on the EDT).
-        componentRefactoringProcessors.forEach { it.initializeComponentCaches() }
-      },
-      commandName, true, project)
+          // Ensure that we have the information about no-ops, which might also involve inspecting Psi directly (and thus should not be
+          // done on the EDT).
+          componentRefactoringProcessors.forEach { it.initializeComponentCaches() }
+        },
+        commandName, true, project)
+    }
   }
 }
 

@@ -22,10 +22,8 @@ import com.android.tools.profiler.proto.Trace
  * Unspecified configuration used as a placeholder configuration for things like ui objects.
  */
 open class UnspecifiedConfiguration(name: String) : ProfilingConfiguration(name) {
-  override fun buildUserOptions(): Trace.UserOptions.Builder = Trace.UserOptions.newBuilder()
-
-  override fun getTraceType(): Trace.UserOptions.TraceType {
-    return Trace.UserOptions.TraceType.UNSPECIFIED_TYPE
+  override fun getTraceType(): TraceType {
+    return TraceType.UNSPECIFIED
   }
 
   override fun getRequiredDeviceLevel(): Int {

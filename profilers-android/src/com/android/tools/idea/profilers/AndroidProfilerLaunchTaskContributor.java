@@ -57,6 +57,7 @@ import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.AdditionalOptions;
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
@@ -268,16 +269,11 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
     ProfilingConfiguration profilingConfiguration =
       CpuProfilerConfigConverter.toProfilingConfiguration(startupConfig, device.getVersion().getFeatureLevel());
 
-    // TODO (b/259116828): Remove traceOptions/setUserOptions once transition from UserOptions to tech-specific options field is complete.
-    Trace.UserOptions traceOptions =
-      CpuProfilerConfigConverter.toProto(startupConfig, device.getVersion().getFeatureLevel());
-
     Trace.TraceConfiguration.Builder configurationBuilder = Trace.TraceConfiguration.newBuilder()
       .setAppName(appPackageName)
       .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_STARTUP)
       .setAbiCpuArch(cpuAbi)
-      .setTempPath(traceFilePath)
-      .setUserOptions(traceOptions);
+      .setTempPath(traceFilePath);
 
     // Set the options field of the TraceConfiguration with the respective profiling configuration.
     profilingConfiguration.addOptions(configurationBuilder, Map.of(AdditionalOptions.APP_PKG_NAME, appPackageName));
@@ -311,7 +307,7 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
     StudioFeatureTracker featureTracker = new StudioFeatureTracker(project);
     featureTracker.trackCpuStartupProfiling(profilerDevice, ProfilingConfiguration.fromProto(configuration));
 
-    if (profilingConfiguration.getTraceType() != Trace.UserOptions.TraceType.ART) {
+    if (profilingConfiguration.getTraceType() != TraceType.ART) {
       return "";
     }
 

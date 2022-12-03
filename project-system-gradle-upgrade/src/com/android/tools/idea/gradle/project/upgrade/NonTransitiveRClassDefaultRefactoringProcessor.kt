@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
+import com.android.tools.idea.gradle.dsl.utils.FN_GRADLE_PROPERTIES
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.project.Project
@@ -98,7 +99,7 @@ class NonTransitiveRClassUsageInfo(
   override fun performBuildModelRefactoring(processor: GradleBuildModelRefactoringProcessor) {
     val (propertiesFile, psiFile) = when (val realElement = wrappedElement.realElement) {
       is PropertiesFile -> realElement to (realElement as? PsiFile ?: return)
-      is PsiDirectory -> realElement.createFile("gradle.properties").let {
+      is PsiDirectory -> (realElement.findFile(FN_GRADLE_PROPERTIES) ?: realElement.createFile (FN_GRADLE_PROPERTIES)).let {
         (it as? PropertiesFile ?: return) to (it as? PsiFile ?: return)
       }
       else -> return

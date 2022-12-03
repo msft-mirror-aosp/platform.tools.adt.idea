@@ -19,7 +19,6 @@ import com.android.tools.adtui.model.options.OptionsProvider;
 import com.android.tools.adtui.model.options.OptionsProperty;
 import com.android.tools.idea.protobuf.GeneratedMessageV3;
 import com.android.tools.profiler.proto.Trace;
-import com.android.tools.profiler.proto.Trace.UserOptions.TraceType;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,6 +34,44 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
   public enum AdditionalOptions {
     SYMBOL_DIRS,
     APP_PKG_NAME
+  }
+
+  public enum TraceType {
+    ART ("Art"),
+    ATRACE("Atrace"),
+    SIMPLEPERF("Simpleperf"),
+    PERFETTO("Perfetto"),
+    UNSPECIFIED("Unspecified");
+
+    @NotNull
+    public static TraceType from(@NotNull Trace.TraceConfiguration config) {
+      if (config.hasArtOptions()) {
+        return ART;
+      }
+      else if (config.hasAtraceOptions()) {
+        return ATRACE;
+      }
+      else if (config.hasSimpleperfOptions()) {
+        return SIMPLEPERF;
+      }
+      else if (config.hasPerfettoOptions()) {
+        return PERFETTO;
+      }
+      else {
+        return UNSPECIFIED;
+      }
+    }
+
+    @NotNull private final String myDisplayName;
+
+    TraceType(@NotNull String displayName) {
+      myDisplayName = displayName;
+    }
+
+    @NotNull
+    public String getDisplayName() {
+      return myDisplayName;
+    }
   }
 
   /**
@@ -72,55 +109,40 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
    */
   @NotNull
   public static ProfilingConfiguration fromProto(@NotNull Trace.TraceConfiguration proto) {
-    ProfilingConfiguration configuration = null;
-    switch (proto.getUserOptions().getTraceType()) {
-      case ART:
-        if (proto.getUserOptions().getTraceMode() == Trace.TraceMode.SAMPLED) {
-          ArtSampledConfiguration artSampled = new ArtSampledConfiguration(proto.getUserOptions().getName());
-          artSampled.setProfilingSamplingIntervalUs(proto.getUserOptions().getSamplingIntervalUs());
-          artSampled.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
-          configuration = artSampled;
+    switch (proto.getUnionCase()) {
+      case ART_OPTIONS:
+        if (proto.getArtOptions().getTraceMode() == Trace.TraceMode.SAMPLED) {
+          ArtSampledConfiguration artSampled = new ArtSampledConfiguration("");
+          artSampled.setProfilingSamplingIntervalUs(proto.getArtOptions().getSamplingIntervalUs());
+          artSampled.setProfilingBufferSizeInMb(proto.getArtOptions().getBufferSizeInMb());
+          return artSampled;
         }
         else {
-          ArtInstrumentedConfiguration art = new ArtInstrumentedConfiguration(proto.getUserOptions().getName());
-          art.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
-          configuration = art;
+          ArtInstrumentedConfiguration artInstrumented = new ArtInstrumentedConfiguration("");
+          artInstrumented.setProfilingBufferSizeInMb(proto.getArtOptions().getBufferSizeInMb());
+          return artInstrumented;
         }
-        break;
-      case PERFETTO:
-        PerfettoConfiguration perfetto = new PerfettoConfiguration(proto.getUserOptions().getName());
-        perfetto.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
-        configuration = perfetto;
-        break;
-      case ATRACE:
-        AtraceConfiguration atrace = new AtraceConfiguration(proto.getUserOptions().getName());
-        atrace.setProfilingBufferSizeInMb(proto.getUserOptions().getBufferSizeInMb());
-        configuration = atrace;
-        break;
-      case SIMPLEPERF:
-        SimpleperfConfiguration simpleperf = new SimpleperfConfiguration(proto.getUserOptions().getName());
-        simpleperf.setProfilingSamplingIntervalUs(proto.getUserOptions().getSamplingIntervalUs());
-        configuration = simpleperf;
-        break;
-      case UNRECOGNIZED:
-      case UNSPECIFIED_TYPE:
+      case PERFETTO_OPTIONS:
+        PerfettoConfiguration perfetto = new PerfettoConfiguration("");
+        if (proto.getPerfettoOptions().getBuffersCount() > 0) {
+          // Perfetto buffer size is configured for the first buffer always. Value is fetched as Kb, so we convert to Mb.
+          perfetto.setProfilingBufferSizeInMb(proto.getPerfettoOptions().getBuffers(0).getSizeKb() / 1024);
+        }
+        return perfetto;
+      case ATRACE_OPTIONS:
+        AtraceConfiguration atrace = new AtraceConfiguration("");
+        atrace.setProfilingBufferSizeInMb(proto.getAtraceOptions().getBufferSizeInMb());
+        return atrace;
+      case SIMPLEPERF_OPTIONS:
+        SimpleperfConfiguration simpleperf = new SimpleperfConfiguration("");
+        simpleperf.setProfilingSamplingIntervalUs(proto.getSimpleperfOptions().getSamplingIntervalUs());
+        return simpleperf;
+      case UNION_NOT_SET:
+        // fall through
+      default:
         return new UnspecifiedConfiguration(DEFAULT_CONFIGURATION_NAME);
     }
-    return configuration;
   }
-
-  /**
-   * Converts {@code this} to {@link Trace.UserOptions}.
-   */
-  @NotNull
-  public Trace.UserOptions toProto() {
-    return buildUserOptions()
-      .setName(getName())
-      .setTraceType(getTraceType())
-      .build();
-  }
-
-  protected abstract Trace.UserOptions.Builder buildUserOptions();
 
   /**
    * Returns an options proto (field of {@link Trace.TraceConfiguration}) equivalent of the ProfilingConfiguration
@@ -140,11 +162,11 @@ public abstract class ProfilingConfiguration implements OptionsProvider {
       return false;
     }
     ProfilingConfiguration incoming = (ProfilingConfiguration)obj;
-    return incoming.toProto().equals(toProto());
+    return incoming.getOptions().equals(getOptions());
   }
 
   @Override
   public int hashCode() {
-    return toProto().hashCode();
+    return getOptions().hashCode();
   }
 }

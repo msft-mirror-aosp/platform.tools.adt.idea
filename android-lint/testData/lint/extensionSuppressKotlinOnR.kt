@@ -2,7 +2,7 @@ package androidx.annotation
 
 import android.os.Build
 
-annotation class RequiresSdkVersion(val sdk: Int, val version: Int)
+annotation class RequiresExtension(val extension: Int, val version: Int)
 internal class SdkExtensionsTest {
     fun test() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -10,7 +10,7 @@ internal class SdkExtensionsTest {
         }
     }
 
-    @RequiresSdkVersion(sdk = Build.VERSION_CODES.R, version = 4)
+    @RequiresExtension(extension = Build.VERSION_CODES.R, version = 4)
     fun requiresExtRv4() {
     }
 }

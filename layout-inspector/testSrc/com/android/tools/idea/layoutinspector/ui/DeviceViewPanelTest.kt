@@ -176,7 +176,8 @@ class DeviceViewPanelWithFullInspectorTest {
 
   @Test
   fun testShowAndClearPerformanceWarnings() {
-    InspectorClientSettings.isCapturingModeOn = true
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = true
 
     installCommandHandlers()
     latch = CountDownLatch(1)
@@ -192,6 +193,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        InspectorClientSettings(projectRule.project),
         projectRule.fixture.testRootDisposable
     )
     val banner = InspectorBannerService.getInstance(inspectorRule.project) ?: error("no banner")
@@ -259,7 +261,9 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
-        projectRule.fixture.testRootDisposable))
+        InspectorClientSettings(projectRule.project),
+        projectRule.fixture.testRootDisposable)
+    )
 
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
     assertThat(toggle.isEnabled).isTrue()
@@ -271,7 +275,8 @@ class DeviceViewPanelWithFullInspectorTest {
 
   @Test
   fun testLiveControlEnabledAndNotSetInSnapshotModeWhenDisconnected() {
-    InspectorClientSettings.isCapturingModeOn = false
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = false
 
     val settings = EditorRenderSettings()
     val toolbar = getToolbar(
@@ -283,6 +288,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        clientSettings,
         projectRule.fixture.testRootDisposable))
 
     val toggle = toolbar.components.find { it is ActionButton && it.action is DeviceViewPanel.PauseLayoutInspectorAction } as ActionButton
@@ -310,6 +316,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        InspectorClientSettings(projectRule.project),
         projectRule.fixture.testRootDisposable
       )
     )
@@ -326,7 +333,9 @@ class DeviceViewPanelWithFullInspectorTest {
 
   @Test
   fun testLiveControlEnabledAndNotSetInSnapshotModeWhenConnected() {
-    InspectorClientSettings.isCapturingModeOn = false
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = false
+
     installCommandHandlers()
     latch = CountDownLatch(1)
     connect(MODERN_PROCESS)
@@ -341,6 +350,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        clientSettings,
         projectRule.fixture.testRootDisposable
       )
     )
@@ -359,6 +369,9 @@ class DeviceViewPanelWithFullInspectorTest {
   fun testTurnOnSnapshotModeWhenDisconnected() {
     installCommandHandlers()
 
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = true
+
     val stats = inspectorRule.inspector.currentClient.stats
     stats.currentModeIsLive = true
     val settings = EditorRenderSettings()
@@ -371,6 +384,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        clientSettings,
         projectRule.fixture.testRootDisposable
       )
     )
@@ -385,14 +399,15 @@ class DeviceViewPanelWithFullInspectorTest {
       "impact runtime performance.")
 
     assertThat(commands).isEmpty()
-    assertThat(InspectorClientSettings.isCapturingModeOn).isFalse()
+    assertThat(clientSettings.isCapturingModeOn).isFalse()
     assertThat(stats.currentModeIsLive).isTrue() // unchanged
   }
 
   @Test
   fun testTurnOnLiveModeWhenDisconnected() {
     installCommandHandlers()
-    InspectorClientSettings.isCapturingModeOn = false
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = false
 
     val stats = inspectorRule.inspector.currentClient.stats
     stats.currentModeIsLive = false
@@ -406,6 +421,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        clientSettings,
         projectRule.fixture.testRootDisposable
       )
     )
@@ -422,7 +438,7 @@ class DeviceViewPanelWithFullInspectorTest {
       "impact runtime performance.")
 
     assertThat(commands).isEmpty()
-    assertThat(InspectorClientSettings.isCapturingModeOn).isTrue()
+    assertThat(clientSettings.isCapturingModeOn).isTrue()
     assertThat(stats.currentModeIsLive).isFalse() // unchanged
   }
 
@@ -445,6 +461,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        InspectorClientSettings(projectRule.project),
         projectRule.fixture.testRootDisposable
       )
     )
@@ -472,7 +489,10 @@ class DeviceViewPanelWithFullInspectorTest {
     latch = CountDownLatch(1)
 
     installCommandHandlers()
-    InspectorClientSettings.isCapturingModeOn = false
+
+    val clientSettings = InspectorClientSettings(projectRule.project)
+    clientSettings.isCapturingModeOn = false
+
     connect(MODERN_PROCESS)
     assertThat(latch?.await(1, TimeUnit.SECONDS)).isTrue()
     val stats = inspectorRule.inspector.currentClient.stats
@@ -489,6 +509,7 @@ class DeviceViewPanelWithFullInspectorTest {
         {},
         inspectorRule.inspector,
         settings,
+        clientSettings,
         projectRule.fixture.testRootDisposable
       )
     )
@@ -529,6 +550,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable
     )
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
@@ -568,6 +590,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable,
     )
 
@@ -615,6 +638,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable
     )
 
@@ -642,7 +666,12 @@ class DeviceViewPanelWithFullInspectorTest {
       assertThat(children).hasLength(4)
       // alphabetically sorted in SelectDeviceAction
       checkDeviceAction(children[0], enabled = true, ICON_LEGACY_PHONE, "Google Legacy Model (Live inspection disabled for API < 29)")
-      checkDeviceAction(children[1], enabled = true, ICON_PHONE, "Google Modern Model")
+      checkDeviceAction(
+        children[1],
+        enabled = true,
+        ICON_PHONE,
+        "Google Modern Model ${LayoutInspectorBundle.message("cant.detect.foreground.process")}"
+      )
       checkDeviceAction(children[2], enabled = false, ICON_PHONE, "Google Older Legacy Model (Unsupported for API < 23)")
       checkDeviceAction(children[3], enabled = true, StudioIcons.Shell.Toolbar.STOP, "Stop Inspector")
     }
@@ -693,6 +722,7 @@ class DeviceViewPanelWithFullInspectorTest {
       {},
       inspectorRule.inspector,
       FakeRenderSettings(),
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable
     )
     delegateDataProvider(panel)
@@ -794,6 +824,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       viewSettings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable
     )
 
@@ -845,6 +876,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       viewSettings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable
     )
 
@@ -883,6 +915,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       viewSettings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable
     )
 
@@ -922,6 +955,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       viewSettings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable,
       MoreExecutors.directExecutor()
     )
@@ -974,6 +1008,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       viewSettings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable,
       MoreExecutors.directExecutor()
     )
@@ -1025,6 +1060,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable,
     )
     val toolbar = getToolbar(panel)
@@ -1120,6 +1156,7 @@ class DeviceViewPanelTest {
       {},
       inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       disposableRule.disposable,
     )
 
@@ -1205,6 +1242,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
         {},
         inspectorRule.inspector,
         settings,
+        InspectorClientSettings(projectRule.project),
         projectRule.fixture.testRootDisposable,
       )
     )
@@ -1230,6 +1268,7 @@ class DeviceViewPanelLegacyClientOnLegacyDeviceTest {
         {},
         inspectorRule.inspector,
         settings,
+        InspectorClientSettings(projectRule.project),
         projectRule.fixture.testRootDisposable,
       )
     )
@@ -1437,6 +1476,7 @@ class DeviceViewPanelWithNoClientsTest {
       {},
       inspectorRule.inspector,
       settings,
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable,
     )
     val loadingPane = flatten(panel).filterIsInstance<JBLoadingPanel>().first()
@@ -1469,6 +1509,7 @@ class DeviceViewPanelWithNoClientsTest {
       {},
       inspectorRule.inspector,
       EditorRenderSettings(),
+      InspectorClientSettings(projectRule.project),
       projectRule.fixture.testRootDisposable,
     )
 

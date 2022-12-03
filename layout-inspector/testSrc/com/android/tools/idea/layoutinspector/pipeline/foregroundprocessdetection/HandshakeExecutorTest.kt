@@ -123,7 +123,7 @@ class HandshakeExecutorTest {
       verifyNoMoreRequests()
     }
 
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -156,7 +156,7 @@ class HandshakeExecutorTest {
       verifyNoMoreRequests()
     }
 
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -198,7 +198,7 @@ class HandshakeExecutorTest {
       assertThat(executeRequest4).isEqualTo(expectedRequest)
     }
 
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -223,10 +223,12 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // supported
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor)
-    verify(mockMetrics).logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeUnknownConversion.UNKNOWN_TO_SUPPORTED, deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, false)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED, deviceDescriptor, false
+    )
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -251,10 +253,12 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // not supported
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor)
-    verify(mockMetrics).logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeUnknownConversion.UNKNOWN_TO_NOT_SUPPORTED, deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_NOT_SUPPORTED, deviceDescriptor, false
+    )
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -279,9 +283,11 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // unknown not resolved
-    verify(mockMetrics).logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeUnknownConversion.UNKNOWN_NOT_RESOLVED, deviceDescriptor)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_DISCONNECTED, deviceDescriptor, false
+    )
     verifyNoMoreInteractions(mockMetrics)
   }
 
@@ -312,9 +318,58 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // unknown not resolved
-    verify(mockMetrics).logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeUnknownConversion.UNKNOWN_NOT_RESOLVED, deviceDescriptor)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_DISCONNECTED, deviceDescriptor, false
+    )
+    verifyNoMoreInteractions(mockMetrics)
+  }
+
+  @Test
+  fun testNotSupportedToSupportedLogsMetrics() {
+    val expectedRequest = createHandshakeExecuteRequest(1)
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
+    runBlocking {
+      handshakeExecutor.post(HandshakeState.Connected)
+      val executeRequest1 = syncChannel.receive()
+      assertThat(executeRequest1).isEqualTo(expectedRequest)
+
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
+      val executeRequest2 = syncChannel.receive()
+      assertThat(executeRequest2).isEqualTo(expectedRequest)
+
+      val executeRequest3 = syncChannel.receive()
+      assertThat(executeRequest3).isEqualTo(expectedRequest)
+
+      handshakeExecutor.post(HandshakeState.NotSupported(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)))
+
+      handshakeExecutor.post(HandshakeState.Connected)
+      val executeRequest4 = syncChannel.receive()
+      assertThat(executeRequest4).isEqualTo(expectedRequest)
+
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
+      val executeRequest5 = syncChannel.receive()
+      assertThat(executeRequest5).isEqualTo(expectedRequest)
+
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
+      verifyNoMoreRequests()
+    }
+
+    // unknown
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_NOT_SUPPORTED, deviceDescriptor, false
+    )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, true)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, true)
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED, deviceDescriptor, true
+    )
+    verify(mockMetrics).logHandshakeConversion(
+      DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_NOT_SUPPORTED_TO_SUPPORTED, deviceDescriptor, true
+    )
     verifyNoMoreInteractions(mockMetrics)
   }
 

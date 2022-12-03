@@ -23,8 +23,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
-import perfetto.protos.PerfettoConfig
-import perfetto.protos.PerfettoConfig.ProcessStatsConfig
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 
 class ProfilingConfigurationTest {
 
@@ -33,37 +32,28 @@ class ProfilingConfigurationTest {
 
   @Test
   fun fromProto() {
-    val userOptions = Trace.UserOptions.newBuilder()
-      .setName("MyConfiguration")
-      .setTraceMode(Trace.TraceMode.SAMPLED)
-      .setTraceType(Trace.UserOptions.TraceType.ART)
-      .setSamplingIntervalUs(123)
-      .setBufferSizeInMb(12)
-      .build()
-    val proto = Trace.TraceConfiguration.newBuilder()
-      .setUserOptions(userOptions)
+    val proto = TraceConfiguration.newBuilder()
+      .setArtOptions(Trace.ArtOptions.newBuilder().setTraceMode(TraceMode.SAMPLED).setSamplingIntervalUs(123).setBufferSizeInMb(12))
       .build()
     val config = ProfilingConfiguration.fromProto(proto)
     assertThat(config).isInstanceOf(ArtSampledConfiguration::class.java)
-    val art = config as ArtSampledConfiguration
-    assertThat(config.name).isEqualTo("MyConfiguration")
+    config as ArtSampledConfiguration
+    assertThat(config.name).isEqualTo("")
     assertThat(config).isInstanceOf(ArtSampledConfiguration::class.java)
-    assertThat(config.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
+    assertThat(config.traceType).isEqualTo(TraceType.ART)
     assertThat(config.profilingSamplingIntervalUs).isEqualTo(123)
     assertThat(config.profilingBufferSizeInMb).isEqualTo(12)
   }
 
   @Test
-  fun toProto() {
-    val configuration = SimpleperfConfiguration("MyConfiguration").apply {
-      profilingSamplingIntervalUs = 1234
-    }
-    val proto = configuration.toProto()
-
-    assertThat(proto.name).isEqualTo("MyConfiguration")
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.SAMPLED)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.SIMPLEPERF)
-    assertThat(proto.samplingIntervalUs).isEqualTo(1234)
+  fun fromProtoOptionsNotSet() {
+    val proto = TraceConfiguration.getDefaultInstance()
+    val config = ProfilingConfiguration.fromProto(proto)
+    assertThat(config).isInstanceOf(UnspecifiedConfiguration::class.java)
+    config as UnspecifiedConfiguration
+    assertThat(config.name).isEqualTo("Unnamed")
+    assertThat(config).isInstanceOf(UnspecifiedConfiguration::class.java)
+    assertThat(config.traceType).isEqualTo(TraceType.UNSPECIFIED)
   }
 
   @Test
@@ -140,68 +130,15 @@ class ProfilingConfigurationTest {
     val config = configBuilder.build()
 
     assertThat(config.hasPerfettoOptions()).isTrue()
+
+    // Check that right amount of buffers and data sources were added.
+    // More robust testing for the actual construction of the TraceConfig is found in {@link PerfettoTraceConfigBuildersTest}
     assertThat(config.perfettoOptions.buffersCount).isEqualTo(2)
-    assertThat(config.perfettoOptions.getBuffers(0).sizeKb).isEqualTo(1234 * 1024)
-    // 256 Kb is the hardcoded value used for the secondary buffer
-    assertThat(config.perfettoOptions.getBuffers(1).sizeKb).isEqualTo(256)
     assertThat(config.perfettoOptions.dataSourcesCount).isEqualTo(8)
+
+    // Ensure the additional options were added.
     val actualDataSources = config.perfettoOptions.dataSourcesList
-
-    // Verify first data source (Ftrace Data Source) is built correctly.
-    assertThat(actualDataSources[0].config.name).isEqualTo("linux.ftrace")
-    assertThat(actualDataSources[0].config.targetBuffer).isEqualTo(0)
-    assertThat(actualDataSources[0].config.ftraceConfig.drainPeriodMs).isEqualTo(170)
-    assertThat(actualDataSources[0].config.ftraceConfig.compactSched.enabled).isTrue()
-    assertThat(actualDataSources[0].config.ftraceConfig.ftraceEventsList).containsExactly("thermal/thermal_temperature",
-                                                                                          "perf_trace_counters/perf_trace_user",
-                                                                                          "fence/signaled",
-                                                                                          "fence/fence_wait_start",
-                                                                                          "power/cpu_frequency",
-                                                                                          "power/cpu_idle",
-                                                                                          "task/task_rename",
-                                                                                          "task/task_newtask"
-    )
-    assertThat(actualDataSources[0].config.ftraceConfig.atraceCategoriesList).containsExactly(
-      "gfx", "input", "view", "wm", "am", "sm", "camera", "hal", "res", "pm", "ss", "power", "database",
-      "binder_driver", "binder_lock", "sched", "freq"
-    )
-    assertThat(actualDataSources[0].config.perfEventConfig.allCpus).isTrue()
     assertThat(actualDataSources[0].config.perfEventConfig.targetCmdlineList).containsExactly("foo")
-    assertThat(actualDataSources[0].config.ftraceConfig.atraceAppsCount).isEqualTo(1)
-
-    // Verify second data source (First Process and Thread Names) is built correctly.
-    assertThat(actualDataSources[1].config.name).isEqualTo("linux.process_stats")
-    assertThat(actualDataSources[1].config.targetBuffer).isEqualTo(1)
-    assertThat(actualDataSources[1].config.processStatsConfig.scanAllProcessesOnStart).isTrue()
-    assertThat(actualDataSources[1].config.processStatsConfig.recordThreadNames).isTrue()
-
-    // Verify second data source (Second Process and Thread Names) is built correctly.
-    assertThat(actualDataSources[2].config.name).isEqualTo("linux.process_stats")
-    assertThat(actualDataSources[2].config.targetBuffer).isEqualTo(0)
-    assertThat(actualDataSources[2].config.processStatsConfig.procStatsPollMs).isEqualTo(1000)
-    assertThat(actualDataSources[2].config.processStatsConfig.quirksList).containsExactly(ProcessStatsConfig.Quirks.DISABLE_ON_DEMAND)
-
-    // Verify second data source (CPU Info) is built correctly.
-    assertThat(actualDataSources[3].config.name).isEqualTo("linux.system_info")
-
-    // Verify second data source (Lifecycle Data) is built correctly.
-    assertThat(actualDataSources[4].config.name).isEqualTo("android.surfaceflinger.frame")
-
-    // Verify second data source (Frame Timeline Data) is built correctly.
-    assertThat(actualDataSources[5].config.name).isEqualTo("android.surfaceflinger.frametimeline")
-
-    // Verify second data source (TrackEvent API Data) is built correctly.
-    assertThat(actualDataSources[6].config.name).isEqualTo("track_event")
-
-    // Verify second data source (Power Data) is built correctly.
-    assertThat(actualDataSources[7].config.name).isEqualTo("android.power")
-    assertThat(actualDataSources[7].config.targetBuffer).isEqualTo(0)
-    assertThat(actualDataSources[7].config.androidPowerConfig.collectPowerRails).isTrue()
-    assertThat(actualDataSources[7].config.androidPowerConfig.batteryCountersList).containsExactly(
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CAPACITY_PERCENT,
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CHARGE,
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT
-    )
   }
 
   @Test

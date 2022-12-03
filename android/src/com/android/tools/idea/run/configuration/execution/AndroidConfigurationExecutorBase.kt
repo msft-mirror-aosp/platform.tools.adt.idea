@@ -22,10 +22,10 @@ import com.android.tools.deployer.model.App
 import com.android.tools.idea.concurrency.executeOnPooledThread
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
-import com.android.tools.idea.run.AndroidProcessHandler
+import com.android.tools.idea.execution.common.ApplicationTerminator
+import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApplicationIdProvider
-import com.android.tools.idea.run.ApplicationTerminator
 import com.android.tools.idea.run.configuration.isDebug
 import com.android.tools.idea.run.editor.DeployTarget
 import com.android.tools.idea.run.util.LaunchUtils
@@ -77,7 +77,7 @@ abstract class AndroidConfigurationExecutorBase(
     val console = createConsole()
     val processHandler = AndroidProcessHandler(project, appId, getStopCallback(console, false))
 
-    val applicationInstaller = getApplicationInstaller(console)
+    val applicationInstaller = getApplicationDeployer(console)
 
     val onDevice = { device: IDevice ->
       terminatePreviousAppInstance(device)
@@ -134,7 +134,7 @@ abstract class AndroidConfigurationExecutorBase(
 
     // ApkProvider provides multiple ApkInfo only for instrumented tests.
     val app = apkProvider.getApks(device).single()
-    val deployResult = getApplicationInstaller(console).fullDeploy(device, app, appRunSettings.deployOptions)
+    val deployResult = getApplicationDeployer(console).fullDeploy(device, app, appRunSettings.deployOptions)
 
     executeOnPooledThread {
       promise.catchError {
@@ -211,7 +211,7 @@ abstract class AndroidConfigurationExecutorBase(
   }
 
   @Throws(ExecutionException::class)
-  open fun getApplicationInstaller(console: ConsoleView): ApplicationDeployer {
+  open fun getApplicationDeployer(console: ConsoleView): ApplicationDeployer {
     return ApplicationDeployerImpl(project, console)
   }
 

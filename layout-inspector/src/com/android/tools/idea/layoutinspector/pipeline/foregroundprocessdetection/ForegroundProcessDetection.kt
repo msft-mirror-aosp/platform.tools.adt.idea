@@ -21,6 +21,7 @@ import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescrip
 import com.android.tools.idea.appinspection.internal.process.toDeviceDescriptor
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
+import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.DebugViewAttributes
 import com.android.tools.idea.transport.TransportClient
 import com.android.tools.idea.transport.manager.StreamConnected
@@ -32,6 +33,7 @@ import com.android.tools.idea.transport.manager.TransportStreamManager
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Transport
+import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorTransportError
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.CoroutineDispatcher
@@ -100,7 +102,9 @@ fun interface ForegroundProcessListener {
 class ForegroundProcessDetection(
   private val project: Project,
   private val deviceModel: DeviceModel,
+  processModel: ProcessesModel,
   private val transportClient: TransportClient,
+  private val layoutInspectorMetrics: LayoutInspectorMetrics,
   private val metrics: ForegroundProcessDetectionMetrics,
   scope: CoroutineScope,
   workDispatcher: CoroutineDispatcher = AndroidDispatchers.workerThread,
@@ -140,7 +144,7 @@ class ForegroundProcessDetection(
     private val connectTimestamps = mutableMapOf<DeviceDescriptor, Long>()
     private val loggedDevices = mutableSetOf<DeviceDescriptor>()
 
-    private fun addTimeStamp(deviceDescriptor: DeviceDescriptor, newTimeStamp: Long) {
+    private fun addTimeStamp(deviceDescriptor: DeviceDescriptor, newTimeStamp: Long, layoutInspectorMetrics: LayoutInspectorMetrics) {
       if (connectTimestamps.contains(deviceDescriptor)) {
         val prevTimeStamp = connectTimestamps[deviceDescriptor]!!
         // the previous timestamp is >= the new timestamp, this means that b/250589069 happened.
@@ -151,6 +155,10 @@ class ForegroundProcessDetection(
           )
           // log only once per device
           loggedDevices.add(deviceDescriptor)
+          layoutInspectorMetrics.logTransportError(
+            DynamicLayoutInspectorTransportError.Type.TRANSPORT_OLD_TIMESTAMP_BIGGER_THAN_NEW_TIMESTAMP,
+            deviceDescriptor
+          )
         }
         else {
           connectTimestamps[deviceDescriptor] = newTimeStamp
@@ -173,6 +181,28 @@ class ForegroundProcessDetection(
   private val handshakeExecutors = ConcurrentHashMap<DeviceDescriptor, HandshakeExecutor>()
 
   init {
+    processModel.addSelectedProcessListeners {
+      val selectedProcess = processModel.selectedProcess ?: return@addSelectedProcessListeners
+
+      val device = if (selectedProcess.isRunning) {
+        selectedProcess.device
+      }
+      else {
+        return@addSelectedProcessListeners
+      }
+
+      // If there is a new selectedProcess, but the device does not support foreground process detection,
+      // it means the process was selected by the user from the process picker (TODO verify this works) or by launching the app.
+      // When this happens, initiate the handshake with the device again.
+      // We don't know exactly all the configurations on which the handshake can fail (device in weird states),
+      // this is our last resort to recover from false negatives.
+      if (!deviceModel.supportsForegroundProcessDetection(device)) {
+        scope.launch {
+          initiateNewHandshake(device)
+        }
+      }
+    }
+
     val manager = TransportStreamManager.createManager(transportClient.transportStub, workDispatcher)
 
     scope.launch {
@@ -187,7 +217,7 @@ class ForegroundProcessDetection(
             val timeRequest = Transport.TimeRequest.newBuilder().setStreamId(stream.streamId).build()
             val currentTime = activity.streamChannel.client.getCurrentTime(timeRequest).timestampNs
 
-            addTimeStamp(streamDevice, currentTime)
+            addTimeStamp(streamDevice, currentTime, layoutInspectorMetrics)
 
             // start listening for LAYOUT_INSPECTOR_FOREGROUND_PROCESS events
             launch {
@@ -354,6 +384,14 @@ class ForegroundProcessDetection(
     val deviceModels = ForegroundProcessDetection.deviceModels
     val count = deviceModels.mapNotNull { it.selectedDevice }.count { it.serial == selectedDevice.serial }
     return count <= 1
+  }
+
+  /**
+   * Initiates a new handshake. Only if [device] already executed the handshake that happens at connection time.
+   */
+  private suspend fun initiateNewHandshake(device: DeviceDescriptor) {
+    val handshakeExecutor = handshakeExecutors[device]
+    handshakeExecutor?.post(HandshakeState.Connected)
   }
 }
 

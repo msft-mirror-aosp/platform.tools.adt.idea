@@ -15,7 +15,11 @@
  */
 package com.android.tools.idea.run;
 
+import static com.android.tools.idea.run.debug.CaptureLogcatOutputToProcessHandlerKt.captureLogcatOutputToProcessHandler;
+
 import com.android.ddmlib.IDevice;
+import com.android.tools.idea.execution.common.ApplicationTerminator;
+import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask;
 import com.android.tools.idea.run.tasks.LaunchContext;
@@ -146,7 +150,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
           ContainerUtil.map(devices, device -> MoreExecutors.listeningDecorator(AppExecutorUtil.getAppExecutorService()).submit(() -> {
             ApplicationTerminator terminator = new ApplicationTerminator(device, myApplicationId);
             try {
-              if (!terminator.killApp(launchStatus)) {
+              if (!terminator.killApp()) {
                 throw new CancellationException("Could not terminate running app " + myApplicationId);
               }
             }
@@ -162,6 +166,7 @@ public class LaunchTaskRunner extends Task.Backgroundable {
         ProgressIndicatorUtils.awaitWithCheckCanceled(waitApplicationTerminationTask, indicator);
 
         if (waitApplicationTerminationTask.isCancelled()) {
+          launchStatus.terminateLaunch(String.format("Couldn't terminate the existing process for %s.", myApplicationId), true);
           return;
         }
       }
@@ -232,7 +237,18 @@ public class LaunchTaskRunner extends Task.Backgroundable {
           throw new RuntimeException("ConnectDebuggerTask is null for task provider " + myLaunchTasksProvider.getClass().getName());
         }
         indicator.setText("Connecting debugger");
-        debuggerTask.perform(device, myApplicationId, myEnv, myProcessHandler);
+        debuggerTask.perform(device, myApplicationId, myEnv, myProcessHandler)
+          .onSuccess(
+            session -> ApplicationManager.getApplication().executeOnPooledThread(
+              () ->
+                DeploymentApplicationService.getInstance()
+                  .findClient(device, myApplicationId).stream().findAny()
+                  .ifPresent(
+                    client -> captureLogcatOutputToProcessHandler(client, session.getConsoleView(),
+                                                                  session.getDebugProcess().getProcessHandler())
+                  )
+            )
+          );
         // Update the indicator progress bar.
         completedStepsCount.set(completedStepsCount.get() + LaunchTaskDurations.CONNECT_DEBUGGER);
         indicator.setFraction(completedStepsCount.get().floatValue() / totalScheduledStepsCount);

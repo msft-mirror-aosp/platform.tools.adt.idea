@@ -30,12 +30,6 @@ class SimpleperfConfiguration(name: String) : ProfilingConfiguration(name) {
   @OptionsProperty(name = "Sample interval: ", group = TRACE_CONFIG_GROUP, order = 100, unit = "Us (Microseconds)")
   var profilingSamplingIntervalUs = DEFAULT_SAMPLING_INTERVAL_US
 
-  override fun buildUserOptions(): Trace.UserOptions.Builder {
-    return Trace.UserOptions.newBuilder()
-      .setTraceMode(Trace.TraceMode.SAMPLED)
-      .setSamplingIntervalUs(profilingSamplingIntervalUs)
-  }
-
   override fun getOptions(): SimpleperfOptions {
     return SimpleperfOptions.newBuilder()
       .setSamplingIntervalUs(profilingSamplingIntervalUs)
@@ -56,8 +50,8 @@ class SimpleperfConfiguration(name: String) : ProfilingConfiguration(name) {
     configBuilder.simpleperfOptions = simpleperfOptionsBuilder.build()
   }
 
-  override fun getTraceType(): Trace.UserOptions.TraceType {
-    return Trace.UserOptions.TraceType.SIMPLEPERF
+  override fun getTraceType(): TraceType {
+    return TraceType.SIMPLEPERF
   }
 
   override fun getRequiredDeviceLevel(): Int {

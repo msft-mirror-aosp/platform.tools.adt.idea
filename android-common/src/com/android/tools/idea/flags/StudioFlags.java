@@ -437,6 +437,11 @@ public final class StudioFlags {
     NELE, "dynamic.theming.action", "Enable previewing dynamic themes in Design Tools",
     "If enabled, Design Tools have an action to use various backgrounds to preview dynamic themes.",
     true);
+
+  public static final Flag<Boolean> NELE_DP_SIZED_PREVIEW = Flag.create(
+    NELE, "dp.sized.preview", "Use dp size instead of px size for previews",
+    "If enabled, the size of previews will be proportional to screen dp size instead of screen px size.",
+    false);
   //endregion
 
   //region Navigation Editor
@@ -560,13 +565,6 @@ public final class StudioFlags {
     "applychanges.variablereinitialization",
     "Use ART's new variable reinitializaiton extension for Apply Changes.",
     "Requires applychanges.structuralredefinition to be true.",
-    true);
-
-  public static final Flag<Boolean> APPLY_CHANGES_FAST_RESTART_ON_SWAP_FAIL = Flag.create(
-    RUNDEBUG,
-    "applychanges.swap.fastrestartonswapfail",
-    "Allow fast restart on swap failure.",
-    "Eliminate the need to build again when auto re-run checkbox is turned on.",
     true);
 
   public static final Flag<Boolean> APPLY_CHANGES_KEEP_CONNECTION_ALIVE = Flag.create(
@@ -806,6 +804,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_DSL_TOML_WRITE_SUPPORT = Flag.create(
     GRADLE_IDE, "gradle.dsl.toml.write", "Write TOML files", "Write changes to TOML Version Catalog files.", true);
 
+  public static final Flag<Boolean> GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT = Flag.create(
+    GRADLE_IDE, "gradle.extended.version.catalog", "Gradle version catalog support", "Multiple TOML files, catalog variables in PSD", true);
+
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = Flag.create(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
@@ -820,6 +821,14 @@ public final class StudioFlags {
     GRADLE_IDE, "local.distribution.url", "Local override for distributionUrl",
     "When creating a project, Gradle updates the distributionUrl to point to a server accessible via the internet. When internet egress " +
     "is unavailable, this flag can be used to override the server destination to be a local URI.",
+    ""
+  );
+
+  public static final Flag<String> GRADLE_HPROF_OUTPUT_DIRECTORY = Flag.create(
+    GRADLE_IDE,
+    "gradle.hprof.output.directory",
+    "Gradle sync HPROF output directory",
+    "If set, HPROF snapshots will be created at certain points during project sync and saved in the directory",
     ""
   );
 
@@ -1059,6 +1068,17 @@ public final class StudioFlags {
     TESTING, "utp.instrumentation.testing", "Run instrumentation tests via UTP",
     "If enabled, a checkbox to opt-in to running instrumentation tests via UTP feature is displayed in the settings.",
     true
+  );
+
+  public static final Flag<Integer> ANDROID_PLATFORM_TO_AUTOCREATE = Flag.create(
+    TESTING,
+    "android.platform.to.autocreate",
+    "Android platform to auto-create",
+    "Automatically sets up the JDK table at initialization time and points to the specified API level of the Android SDK " +
+    "(rather than always pointing to the latest). This is largely intended for use by tests where Android Studio can't be easily " +
+    "configured ahead of time. If this value is 0, then this flag is considered to be off and no platform will be automatically created. " +
+    "If this value is -1, then the platform will be automatically created with the latest version.",
+    0
   );
   //endregion
 
@@ -1366,6 +1386,13 @@ public final class StudioFlags {
     "Enable the Paired devices tab",
     "Enable the Paired devices tab in the details panel",
     true);
+
+  public static final Flag<Boolean> VIRTUAL_DEVICE_WATCHER_ENABLED = Flag.create(
+    DEVICE_MANAGER,
+    "virtual.device.watcher.enabled",
+    "Enable VirtualDeviceWatcher",
+    "Enable VirtualDeviceWatcher to update the Virtual table based on disk changes",
+    false);
   // endregion
 
   //region DDMLIB
@@ -1558,7 +1585,7 @@ public final class StudioFlags {
 
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", true);
+  public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", false);
   // endregion TargetSDKVersion Upgrade Assistant
 

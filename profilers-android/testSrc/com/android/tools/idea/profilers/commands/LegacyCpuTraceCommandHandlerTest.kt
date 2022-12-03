@@ -167,9 +167,8 @@ class LegacyCpuTraceCommandHandlerTest {
   companion object {
     private val FAKE_TRACE_BYTES = byteArrayOf('a'.code.toByte())
     private val TRACE_CONFIG = Trace.TraceConfiguration.newBuilder().apply {
-      userOptions = Trace.UserOptions.newBuilder().apply {
+      artOptions = Trace.ArtOptions.newBuilder().apply {
         traceMode = Trace.TraceMode.INSTRUMENTED
-        traceType = Trace.UserOptions.TraceType.ART
       }.build()
     }.build()
 

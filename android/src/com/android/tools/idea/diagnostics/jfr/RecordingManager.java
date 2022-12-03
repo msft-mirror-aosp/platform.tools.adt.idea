@@ -16,6 +16,7 @@
 package com.android.tools.idea.diagnostics.jfr;
 
 import com.android.tools.idea.diagnostics.jfr.reports.JfrFreezeReports;
+import com.android.tools.idea.diagnostics.jfr.reports.JfrTypingLatencyReports;
 import com.android.tools.idea.diagnostics.report.JfrBasedReport;
 import com.android.tools.idea.diagnostics.report.DiagnosticReport;
 import com.android.tools.idea.diagnostics.report.DiagnosticReportProperties;
@@ -104,12 +105,14 @@ public class RecordingManager {
           }
         }
       }, 0, JFR_RECORDING_DURATION_SECONDS, TimeUnit.SECONDS);
+      createReportManagers();
     }
-    createReportManagers();
   }
 
   private static void createReportManagers() {
-    JfrFreezeReports.Companion.getFreezeReportManager();
+    JfrFreezeReports.Companion.createFreezeReportManager();
+    // TODO(b/259447928): Wrap this creation in a flag.
+    // JfrTypingLatencyReports.Companion.createReportManager();
   }
 
   static void startCapture(JfrReportGenerator.Capture capture) {

@@ -47,6 +47,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.psi.PsiFile
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.JBScrollPane
@@ -86,10 +88,16 @@ typealias ComposeAnimationEventTracker =
  * `TransitionAnimation`, `AnimatedValue`). In addition, [Timeline] is a timeline view that can be
  * controlled by scrubbing or through a set of controllers, such as play/pause and jump to end. The
  * [AnimationPreview] therefore allows a detailed inspection of Compose animations.
+ * @param psiFilePointer a pointer to a [PsiFile] for current Preview in which Animation Preview is
+ * opened.
  */
-class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disposable {
+class AnimationPreview(
+  val surface: DesignSurface<LayoutlibSceneManager>,
+  val psiFilePointer: SmartPsiElementPointer<PsiFile>
+) : Disposable {
 
-  private val animationPreviewPanel = JPanel(TabularLayout("Fit,*", "Fit,*,30px"))
+  private val animationPreviewPanel =
+    JPanel(TabularLayout("*", "*,30px")).apply { name = "Animation Preview" }
 
   val component = TooltipLayeredPane(animationPreviewPanel)
 
@@ -162,6 +170,27 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
       setLoadingText(message("animation.inspector.loading.animations.panel.message"))
     }
 
+  /**
+   * If [loadingPanelVisible] is true - [noAnimationsPanel] is added to layout and animation tabs
+   * are removed. If [loadingPanelVisible] is false - [noAnimationsPanel] is removed from layout and
+   * animation tabs are added.
+   */
+  private var loadingPanelVisible: Boolean = false
+    set(value) {
+      field = value
+      if (value) {
+        noAnimationsPanel.startLoading()
+        animationPreviewPanel.add(noAnimationsPanel, TabularLayout.Constraint(0, 0))
+        animationPreviewPanel.remove(tabbedPane.component)
+        animationPreviewPanel.remove(bottomPanel)
+      } else {
+        noAnimationsPanel.stopLoading()
+        animationPreviewPanel.remove(noAnimationsPanel)
+        animationPreviewPanel.add(tabbedPane.component, TabularLayout.Constraint(0, 0))
+        animationPreviewPanel.add(bottomPanel, TabularLayout.Constraint(1, 0))
+      }
+    }
+
   private val timeline = Timeline()
 
   private val clockControl = SliderClockControl(timeline)
@@ -201,7 +230,10 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
     }
 
   /** Create list of [TimelineElement] for selected [SupportedAnimationManager]s. */
-  private fun createTimelineElements(tabs: Collection<AnimationManager>) {
+  private fun createTimelineElements(
+    tabs: Collection<AnimationManager>,
+    elementsCreated: () -> Unit = {}
+  ) {
     executeOnRenderThread(false) {
       var minY = InspectorLayout.timelineHeaderHeightScaled()
       // Call once to update all sizes as all curves / lines required it.
@@ -233,6 +265,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
                 line
               }
               .toMutableList()
+        elementsCreated()
       }
       timeline.revalidate()
       coordinationTab.revalidate()
@@ -240,8 +273,8 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
   }
 
   /** Update currently displayed [TimelineElement]s. */
-  private fun updateTimelineElements() {
-    createTimelineElements(selectedAnimation?.let { listOf(it) } ?: animations)
+  private fun updateTimelineElements(elementsCreated: () -> Unit = {}) {
+    createTimelineElements(selectedAnimation?.let { listOf(it) } ?: animations, elementsCreated)
   }
 
   private fun setClockTime(newValue: Int, longTimeout: Boolean = false) {
@@ -311,10 +344,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
 
   /** Replaces the [tabbedPane] with [noAnimationsPanel]. */
   private fun showNoAnimationsPanel() {
-    animationPreviewPanel.remove(tabbedPane.component)
-    animationPreviewPanel.remove(bottomPanel)
-    noAnimationsPanel.startLoading()
-    animationPreviewPanel.add(noAnimationsPanel, TabularLayout.Constraint(1, 0, 2))
+    loadingPanelVisible = true
     // Reset tab names, so when new tabs are added they start as #1
     tabNames.clear()
     timeline.cachedVal =
@@ -369,8 +399,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
     if (isAddingFirstTab) {
       // There are no tabs and we're about to add one. Replace the placeholder panel with the
       // TabbedPane.
-      noAnimationsPanel.stopLoading()
-      animationPreviewPanel.remove(noAnimationsPanel)
+      loadingPanelVisible = false
       tabbedPane.addTab(
         TabInfo(coordinationTab).apply {
           text = "${message("animation.inspector.tab.all.title")}  "
@@ -378,8 +407,6 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
         0
       )
       coordinationTab.addTimeline(timeline)
-      animationPreviewPanel.add(tabbedPane.component, TabularLayout.Constraint(1, 0, 2))
-      animationPreviewPanel.add(bottomPanel, TabularLayout.Constraint(2, 0, 2))
     }
   }
 
@@ -396,8 +423,8 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
     }
     animationsMap.remove(animation)
 
-    if (tabbedPane.tabCount == 1) {
-      tabbedPane.removeTab(tabbedPane.getTabAt(0))
+    if (animations.size == 0) {
+      tabbedPane.removeAllTabs()
       // There are no more tabs. Replace the TabbedPane with the placeholder panel.
       showNoAnimationsPanel()
     } else if (tabbedPane.tabCount != 0) {
@@ -426,9 +453,7 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
   }
 
   init {
-    animationPreviewPanel.name = "Animation Preview"
-    noAnimationsPanel.startLoading()
-    animationPreviewPanel.add(noAnimationsPanel, TabularLayout.Constraint(1, 0, 2))
+    loadingPanelVisible = true
   }
 
   private inner class TransitionAnimationManager(animation: ComposeAnimation) :
@@ -613,7 +638,9 @@ class AnimationPreview(val surface: DesignSurface<LayoutlibSceneManager>) : Disp
     private val cachedTransitions: MutableMap<Int, Transition> = mutableMapOf()
 
     init {
-      currentTransitionCallback = { updateTimelineElements() }
+      currentTransitionCallback = {
+        updateTimelineElements { invokeLater { coordinationTab.updateCardSize(card) } }
+      }
     }
 
     private fun createState(): AnimationState {

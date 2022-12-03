@@ -19,13 +19,14 @@ import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.dataProviderForLayoutInspector
-import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
+import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatisticsImpl
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
+import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.properties.PropertiesProvider
 import com.android.tools.idea.layoutinspector.tree.EditorTreeSettings
@@ -64,7 +65,7 @@ import javax.swing.JPanel
 private const val LAYOUT_INSPECTOR_SNAPSHOT_ID = "Layout Inspector Snapshot"
 
 class LayoutInspectorFileEditor(val project: Project, private val path: Path) : UserDataHolderBase(), FileEditor {
-  private var metrics: LayoutInspectorMetrics? = null
+  private var metrics: LayoutInspectorSessionMetrics? = null
   private var stats: SessionStatistics = DisconnectedClient.stats
 
   override fun getFile() = VfsUtil.findFile(path, true)
@@ -123,8 +124,19 @@ class LayoutInspectorFileEditor(val project: Project, private val path: Path) : 
 
       // TODO: persisted tree setting scoped to file
       val treeSettings = EditorTreeSettings(client.capabilities)
+      val inspectorClientSettings = InspectorClientSettings(project)
       val layoutInspector = LayoutInspector(client, model, treeSettings)
-      val deviceViewPanel = DeviceViewPanel(null, null, { }, { }, { }, layoutInspector, viewSettings, workbench)
+      val deviceViewPanel = DeviceViewPanel(
+        deviceModel = null,
+        processesModel = null,
+        onDeviceSelected = { },
+        onProcessSelected = { },
+        onStopInspector = { },
+        layoutInspector = layoutInspector,
+        viewSettings = viewSettings,
+        inspectorClientSettings = inspectorClientSettings,
+        disposableParent = workbench
+      )
       DataManager.registerDataProvider(workbench, dataProviderForLayoutInspector(layoutInspector, deviceViewPanel))
       workbench.init(deviceViewPanel, layoutInspector, listOf(
         LayoutInspectorTreePanelDefinition(), LayoutInspectorPropertiesPanelDefinition()), false)
@@ -137,13 +149,13 @@ class LayoutInspectorFileEditor(val project: Project, private val path: Path) : 
       StartupManager.getInstance(project).runAfterOpened {
         invokeLater(ModalityState.any()) { deviceViewPanel.zoom(ZoomType.FIT) }
       }
-      metrics = LayoutInspectorMetrics(project, snapshotLoader.processDescriptor, snapshotMetadata = metadata)
+      metrics = LayoutInspectorSessionMetrics(project, snapshotLoader.processDescriptor, snapshotMetadata = metadata)
       metrics?.logEvent(SNAPSHOT_LOADED, stats)
     }
     catch (exception: Exception) {
       // TODO: better error panel
       Logger.getInstance(LayoutInspectorFileEditor::class.java).warn("Error loading snapshot", exception)
-      LayoutInspectorMetrics(project, snapshotLoader?.processDescriptor, metadata).logEvent(SNAPSHOT_LOAD_ERROR, stats)
+      LayoutInspectorSessionMetrics(project, snapshotLoader?.processDescriptor, metadata).logEvent(SNAPSHOT_LOAD_ERROR, stats)
       val status = object : StatusText() {
         override fun isStatusVisible() = true
       }

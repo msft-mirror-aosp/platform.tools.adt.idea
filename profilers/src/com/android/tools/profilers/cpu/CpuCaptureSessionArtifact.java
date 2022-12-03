@@ -21,6 +21,7 @@ import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Cpu;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -77,8 +78,8 @@ public class CpuCaptureSessionArtifact implements SessionArtifact<Cpu.CpuTraceIn
   @Override
   @NotNull
   public String getName() {
-    Trace.UserOptions options = myInfo.getConfiguration().getUserOptions();
-    return ProfilingTechnology.fromTypeAndMode(options.getTraceType(), options.getTraceMode()).getName();
+    Trace.TraceConfiguration config = myInfo.getConfiguration();
+    return ProfilingTechnology.fromTraceConfiguration(config).getName();
   }
 
   public String getSubtitle() {

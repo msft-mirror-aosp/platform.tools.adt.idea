@@ -110,10 +110,11 @@ int CodecOutputBuffer::consequent_error_count = 0;
 constexpr double MIN_VIDEO_RESOLUTION = 128;
 constexpr int COLOR_FormatSurface = 0x7F000789;  // See android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
 constexpr int BIT_RATE = 8000000;
-constexpr int BIT_RATE_REDUCED = 2000000;
+constexpr int BIT_RATE_REDUCED = 1000000;
 constexpr int I_FRAME_INTERVAL_SECONDS = 10;
 constexpr int REPEAT_FRAME_DELAY_MILLIS = 100;
 constexpr int CHANNEL_HEADER_LENGTH = 20;
+constexpr char const* AMEDIACODEC_KEY_REQUEST_SYNC_FRAME = "request-sync";  // Introduced in API 31.
 
 bool IsCodecResolutionLessThanDisplayResolution(Size codec_resolution, Size display_resolution) {
   return max(codec_resolution.width, codec_resolution.height) < max(display_resolution.width, display_resolution.height);
@@ -193,10 +194,10 @@ DisplayStreamer::DisplayStreamer(int32_t display_id, string codec_name, Size max
       socket_fd_(socket_fd),
       presentation_timestamp_offset_(0),
       stopped_(),
+      max_bit_rate_(max_bit_rate),
       display_info_(),
       max_video_resolution_(max_video_resolution),
       video_orientation_(initial_video_orientation),
-      max_bit_rate_(max_bit_rate),
       running_codec_() {
   assert(socket_fd > 0);
 }
@@ -257,10 +258,9 @@ void DisplayStreamer::Run() {
       scoped_lock lock(mutex_);
       display_info_ = display_info;
       int32_t rotation_correction = video_orientation_ >= 0 ? NormalizeRotation(video_orientation_ - display_info.rotation) : 0;
-      media_status_t status;
       Size video_size = ConfigureCodec(codec, *codec_info, max_video_resolution_, media_format, display_info);
       Log::D("rotation_correction = %d video_size = %dx%d", rotation_correction, video_size.width, video_size.height);
-      status = AMediaCodec_createInputSurface(codec, &surface);  // Requires API 26.
+      media_status_t status = AMediaCodec_createInputSurface(codec, &surface);  // Requires API 26.
       if (status != AMEDIA_OK) {
         Log::Fatal("AMediaCodec_createInputSurface returned %d", status);
       }
@@ -273,8 +273,11 @@ void DisplayStreamer::Run() {
       packet_header.display_orientation = NormalizeRotation(display_info.rotation + rotation_correction);
       packet_header.display_orientation_correction = NormalizeRotation(rotation_correction);
     }
-    bool end_of_stream = ProcessFramesUntilStopped(codec, &packet_header);
+    AMediaFormat* sync_frame_request = AMediaFormat_new();
+    AMediaFormat_setInt32(sync_frame_request, AMEDIACODEC_KEY_REQUEST_SYNC_FRAME, 0);
+    bool end_of_stream = ProcessFramesUntilStopped(codec, &packet_header, sync_frame_request);
     StopCodec();
+    AMediaFormat_delete(sync_frame_request);
     surface_control.DestroyDisplay(display);
     AMediaCodec_delete(codec);
     codec = nullptr;
@@ -343,8 +346,10 @@ void DisplayStreamer::Shutdown() {
   }
 }
 
-bool DisplayStreamer::ProcessFramesUntilStopped(AMediaCodec* codec, VideoPacketHeader* packet_header) {
+bool DisplayStreamer::ProcessFramesUntilStopped(AMediaCodec* codec, VideoPacketHeader* packet_header,
+                                                const AMediaFormat* sync_frame_request) {
   bool end_of_stream = false;
+  bool first_frame_after_start = true;
   while (!end_of_stream && IsCodecRunning()) {
     CodecOutputBuffer codec_buffer(codec);
     if (!codec_buffer.Deque(-1)) {
@@ -353,6 +358,15 @@ bool DisplayStreamer::ProcessFramesUntilStopped(AMediaCodec* codec, VideoPacketH
     end_of_stream = codec_buffer.IsEndOfStream();
     if (!IsCodecRunning()) {
       return false;
+    }
+    if (first_frame_after_start) {
+      // Request another sync frame to prevent a green bar that sometimes appears at the bottom
+      // of the first frame.
+      media_status_t status = AMediaCodec_setParameters(codec, sync_frame_request);
+      if (status != AMEDIA_OK) {
+        Log::E("AMediaCodec_setParameters returned %d", status);
+      }
+      first_frame_after_start = false;
     }
     int64_t delta = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count() - Agent::GetLastTouchEventTime();
     if (delta < 1000) {
@@ -420,4 +434,3 @@ void DisplayStreamer::DisplayRotationWatcher::OnRotationChanged(int32_t new_rota
 }
 
 }  // namespace screensharing
-

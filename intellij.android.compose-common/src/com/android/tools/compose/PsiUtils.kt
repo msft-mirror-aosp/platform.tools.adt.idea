@@ -18,41 +18,58 @@
 package com.android.tools.compose
 
 import com.android.tools.idea.kotlin.fqNameMatches
-import com.android.tools.idea.kotlin.getQualifiedName
 import com.intellij.openapi.roots.ProjectRootModificationTracker
+import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
-fun PsiElement.isComposableFunction(): Boolean {
-  if (this !is KtNamedFunction) return false
+private val composableFunctionKey = Key.create<CachedValue<Boolean>>("com.android.tools.compose.PsiUtil.isComposableFunction")
+private val deprecatedKey = Key.create<CachedValue<Boolean>>("com.android.tools.compose.PsiUtil.isDeprecated")
 
-  return CachedValuesManager.getCachedValue(this) {
-    val hasComposableAnnotation = annotationEntries.any {
-      // fqNameMatches is expensive, so we first verify that the short name of the annotation matches.
-      it.shortName?.identifier == COMPOSABLE_ANNOTATION_NAME &&
-      it.fqNameMatches(COMPOSABLE_FQ_NAMES)
-    }
+fun PsiElement.isComposableFunction(): Boolean =
+  (this as? KtNamedFunction)?.checkHasAnnotationWithCaching(composableFunctionKey) { it.isComposableAnnotation() } ?: false
+
+fun PsiElement.isDeprecated(): Boolean =
+  (this as? KtAnnotated)?.checkHasAnnotationWithCaching(deprecatedKey) { it.isDeprecatedAnnotation() } ?: false
+
+private fun KtAnnotated.checkHasAnnotationWithCaching(key: Key<CachedValue<Boolean>>, doCheck: (KtAnnotationEntry) -> Boolean): Boolean {
+  return CachedValuesManager.getCachedValue(this, key) {
+    val hasAnnotation = annotationEntries.any { doCheck(it) }
     val containingKtFile = this.containingKtFile
 
     CachedValueProvider.Result.create(
       // TODO: see if we can handle alias imports without ruining performance.
-      hasComposableAnnotation,
+      hasAnnotation,
       containingKtFile,
       ProjectRootModificationTracker.getInstance(project)
     )
   }
 }
 
-fun PsiElement.isComposableAnnotation():Boolean {
+fun PsiElement.isComposableAnnotation(): Boolean {
   if (this !is KtAnnotationEntry) return false
-  val fqName = this.getQualifiedName() ?: return false
-  return COMPOSABLE_FQ_NAMES.any { it == fqName }
+
+  // fqNameMatches is expensive, so we first verify that the short name of the annotation matches.
+  return shortName?.identifier == COMPOSABLE_ANNOTATION_NAME && fqNameMatches(COMPOSABLE_FQ_NAMES)
 }
+
+private const val DEPRECATED_ANNOTATION_NAME = "Deprecated"
+
+private val DEPRECATED_FQ_NAMES = setOf(
+  "kotlin.$DEPRECATED_ANNOTATION_NAME",
+  "java.lang.$DEPRECATED_ANNOTATION_NAME"
+)
+
+private fun KtAnnotationEntry.isDeprecatedAnnotation() =
+  // fqNameMatches is expensive, so we first verify that the short name of the annotation matches.
+  shortName?.identifier == DEPRECATED_ANNOTATION_NAME && fqNameMatches(DEPRECATED_FQ_NAMES)
 
 fun PsiElement.isInsideComposableCode(): Boolean {
   // TODO: also handle composable lambdas.

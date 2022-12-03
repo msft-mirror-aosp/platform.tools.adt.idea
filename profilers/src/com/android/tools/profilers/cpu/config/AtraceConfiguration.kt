@@ -19,7 +19,6 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.model.options.OptionsProperty
 import com.android.tools.adtui.model.options.Slider
 import com.android.tools.profiler.proto.Trace
-import com.android.tools.profiler.proto.Trace.UserOptions.TraceType
 
 /**
  * Configuration for ATrace traces.
@@ -30,11 +29,6 @@ class AtraceConfiguration(name: String) : ProfilingConfiguration(name) {
                    description = "In memory buffer size for capturing trace events.",
             unit = "Mb")
   var profilingBufferSizeInMb = DEFAULT_BUFFER_SIZE_MB
-
-  override fun buildUserOptions(): Trace.UserOptions.Builder {
-    return Trace.UserOptions.newBuilder()
-      .setBufferSizeInMb(profilingBufferSizeInMb)
-  }
 
   override fun getOptions(): Trace.AtraceOptions {
     return Trace.AtraceOptions.newBuilder()

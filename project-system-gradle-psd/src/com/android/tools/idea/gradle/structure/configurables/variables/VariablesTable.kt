@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.variables
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType
 import com.android.tools.idea.gradle.structure.configurables.PsContext
+import com.android.tools.idea.gradle.structure.configurables.ui.stringPropertyEditor
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.ModelPropertyEditor
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.PropertyCellEditor
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.renderAnyTo
@@ -39,7 +41,6 @@ import com.android.tools.idea.gradle.structure.model.meta.Annotated
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.gradle.structure.model.meta.maybeLiteralValue
 import com.android.tools.idea.structure.dialog.logUsagePsdAction
-import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeRenderer
@@ -504,7 +505,11 @@ class VariablesTable private constructor(
         is EmptyValueNode -> node.createVariable(ParsedValue.NotSet)
         else -> throw IllegalStateException()
       }
-      val uiProperty = uiProperty(PsVariable.Descriptors.variableValue, ::simplePropertyEditor, psdUsageLogFieldId = null)
+      val uiProperty = if ((node as DefaultMutableTreeNode).parent is VersionCatalogNode)
+        uiProperty(PsVariable.Descriptors.variableStringValue, ::stringPropertyEditor, psdUsageLogFieldId = null)
+      else
+        uiProperty(PsVariable.Descriptors.variableValue, ::simplePropertyEditor, psdUsageLogFieldId = null)
+
       val enterHandlingProxyCellEditor =
         object : TableCellEditor by this {
           override fun stopCellEditing(): Boolean {
@@ -830,9 +835,14 @@ internal fun createTreeModel(root: ProjectShadowNode, parentDisposable: Disposab
 internal data class ProjectShadowNode(val project: PsProject) : ShadowNode {
   override fun getChildrenModels(): Collection<ShadowNode> =
     listOf(RootModuleShadowNode(project.buildScriptVariables)) +
-    project.versionCatalogs.sortedBy { it.name }.map { VersionCatalogShadowNode(it) } +
+    getVersionCatalogNodes() +
     listOf(RootModuleShadowNode(project.variables)) +
     project.modules.filter { it.isDeclared }.sortedBy { it.gradlePath }.map { ModuleShadowNode(it) }
+
+  fun getVersionCatalogNodes(): List<VersionCatalogShadowNode> =
+    if (StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.get())
+      project.versionCatalogs.sortedBy { it.name }.map { VersionCatalogShadowNode(it) }
+    else listOf()
 
   override fun createNode(): VariablesBaseNode = VariablesBaseNode(this)
   override fun onChange(disposable: Disposable, listener: () -> Unit) {

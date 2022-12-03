@@ -17,7 +17,6 @@ package com.android.tools.idea.profilers.profilingconfig
 
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.run.profiler.CpuProfilerConfig
-import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration
 import com.android.tools.profilers.cpu.config.AtraceConfiguration
@@ -26,155 +25,11 @@ import com.android.tools.profilers.cpu.config.PerfettoConfiguration
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
 import com.android.tools.profilers.cpu.config.SimpleperfConfiguration
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class CpuProfilerConfigConverterTest {
-
-  @Test
-  fun fromProtoSampledJava() {
-    val proto = Trace.UserOptions
-      .newBuilder()
-      .setName("MySampledJava")
-      .setTraceType(Trace.UserOptions.TraceType.ART)
-      .setTraceMode(Trace.TraceMode.SAMPLED)
-      .setSamplingIntervalUs(1234)
-      .setBufferSizeInMb(12)
-      .build()
-
-    val config = CpuProfilerConfigConverter.fromProto(proto)
-    assertThat(config.name).isEqualTo("MySampledJava")
-    assertThat(config.technology).isEqualTo(CpuProfilerConfig.Technology.SAMPLED_JAVA)
-    assertThat(config.samplingIntervalUs).isEqualTo(1234)
-    assertThat(config.bufferSizeMb).isEqualTo(12)
-  }
-
-  @Test
-  fun fromProtoSampledNative() {
-    val proto = Trace.UserOptions
-      .newBuilder()
-      .setTraceType(Trace.UserOptions.TraceType.SIMPLEPERF)
-      .setTraceMode(Trace.TraceMode.SAMPLED)
-      .build()
-    val config = CpuProfilerConfigConverter.fromProto(proto)
-    assertThat(config.technology).isEqualTo(CpuProfilerConfig.Technology.SAMPLED_NATIVE)
-  }
-
-  @Test
-  fun fromProtoInstrumentedJava() {
-    val proto = Trace.UserOptions
-      .newBuilder()
-      .setTraceType(Trace.UserOptions.TraceType.ART)
-      .setTraceMode(Trace.TraceMode.INSTRUMENTED)
-      .build()
-    val config = CpuProfilerConfigConverter.fromProto(proto)
-    assertThat(config.technology).isEqualTo(CpuProfilerConfig.Technology.INSTRUMENTED_JAVA)
-  }
-
-  @Test
-  fun fromProtoAtrace() {
-    val proto = Trace.UserOptions
-      .newBuilder()
-      .setTraceType(Trace.UserOptions.TraceType.ATRACE)
-      .setTraceMode(Trace.TraceMode.INSTRUMENTED)
-      .build()
-    val config = CpuProfilerConfigConverter.fromProto(proto)
-    assertThat(config.technology).isEqualTo(CpuProfilerConfig.Technology.SYSTEM_TRACE)
-  }
-
-  @Test
-  fun fromProtoPerfetto() {
-    val proto = Trace.UserOptions
-      .newBuilder()
-      .setTraceType(Trace.UserOptions.TraceType.PERFETTO)
-      .setTraceMode(Trace.TraceMode.INSTRUMENTED)
-      .build()
-    val config = CpuProfilerConfigConverter.fromProto(proto)
-    assertThat(config.technology).isEqualTo(CpuProfilerConfig.Technology.SYSTEM_TRACE)
-  }
-
-  @Test
-  fun toProtoSampledJava() {
-    val config = CpuProfilerConfig("MySampledJava", CpuProfilerConfig.Technology.SAMPLED_JAVA).apply {
-      samplingIntervalUs = 1234
-      bufferSizeMb = 12
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.N)
-    assertThat(proto.name).isEqualTo("MySampledJava")
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.SAMPLED)
-    assertThat(proto.samplingIntervalUs).isEqualTo(1234)
-    assertThat(proto.bufferSizeInMb).isEqualTo(12)
-  }
-
-  @Test
-  fun toProtoInstrumentedJava() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.INSTRUMENTED_JAVA
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.N)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.INSTRUMENTED)
-  }
-
-
-  @Test
-  fun toProtoSampledNative() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.SAMPLED_NATIVE
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.N)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.SIMPLEPERF)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.SAMPLED)
-  }
-
-  @Test
-  fun toProtoSystemTraceOnN() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.SYSTEM_TRACE
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.N)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.ATRACE)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.INSTRUMENTED)
-  }
-
-  @Test
-  fun toProtoSystemTraceOnO() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.SYSTEM_TRACE
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.O)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.ATRACE)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.INSTRUMENTED)
-  }
-
-  @Test
-  fun toProtoSystemTraceOnP() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.SYSTEM_TRACE
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.P)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.PERFETTO)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.INSTRUMENTED)
-  }
-
-  @Test
-  fun toProtoSystemTraceOnQ() {
-    val config = CpuProfilerConfig().apply {
-      technology = CpuProfilerConfig.Technology.SYSTEM_TRACE
-    }
-
-    val proto = CpuProfilerConfigConverter.toProto(config, AndroidVersion.VersionCodes.Q)
-    assertThat(proto.traceType).isEqualTo(Trace.UserOptions.TraceType.PERFETTO)
-    assertThat(proto.traceMode).isEqualTo(Trace.TraceMode.INSTRUMENTED)
-  }
-
   @Test
   fun toProfilingConfigurationSampledJava() {
     val config = CpuProfilerConfig().apply {
@@ -187,12 +42,11 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.N)
     assertThat(profilingConfiguration).isInstanceOf(ArtSampledConfiguration::class.java)
     assertThat((profilingConfiguration as ArtSampledConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.ART)
     assertThat(profilingConfiguration.profilingSamplingIntervalUs).isEqualTo(config.samplingIntervalUs)
     assertThat(profilingConfiguration.profilingBufferSizeInMb).isEqualTo(5678)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(0)
   }
-
 
   @Test
   fun toProfilingConfigurationInstrumentedJava() {
@@ -206,11 +60,10 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.N)
     assertThat(profilingConfiguration).isInstanceOf(ArtInstrumentedConfiguration::class.java)
     assertThat((profilingConfiguration as ArtInstrumentedConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.ART)
     assertThat(profilingConfiguration.profilingBufferSizeInMb).isEqualTo(5678)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(0)
   }
-
 
   @Test
   fun toProfilingConfigurationSampledNative() {
@@ -224,7 +77,7 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.N)
     assertThat(profilingConfiguration).isInstanceOf(SimpleperfConfiguration::class.java)
     assertThat((profilingConfiguration as SimpleperfConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.SIMPLEPERF)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.SIMPLEPERF)
     assertThat(profilingConfiguration.profilingSamplingIntervalUs).isEqualTo(1234)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(AndroidVersion.VersionCodes.O)
   }
@@ -241,7 +94,7 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.O)
     assertThat(profilingConfiguration).isInstanceOf(AtraceConfiguration::class.java)
     assertThat((profilingConfiguration as AtraceConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.ATRACE)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.ATRACE)
     assertThat(profilingConfiguration.profilingBufferSizeInMb).isEqualTo(5678)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(AndroidVersion.VersionCodes.N)
   }
@@ -258,7 +111,7 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.P)
     assertThat(profilingConfiguration).isInstanceOf(PerfettoConfiguration::class.java)
     assertThat((profilingConfiguration as PerfettoConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.PERFETTO)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.PERFETTO)
     assertThat(profilingConfiguration.profilingBufferSizeInMb).isEqualTo(5678)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(AndroidVersion.VersionCodes.P)
   }
@@ -275,7 +128,7 @@ class CpuProfilerConfigConverterTest {
     val profilingConfiguration = CpuProfilerConfigConverter.toProfilingConfiguration(config, AndroidVersion.VersionCodes.P)
     assertThat(profilingConfiguration).isInstanceOf(ArtSampledConfiguration::class.java)
     assertThat((profilingConfiguration as ArtSampledConfiguration).name).isEqualTo(config.name)
-    assertThat(profilingConfiguration.traceType).isEqualTo(Trace.UserOptions.TraceType.ART)
+    assertThat(profilingConfiguration.traceType).isEqualTo(TraceType.ART)
     assertThat(profilingConfiguration.profilingSamplingIntervalUs).isEqualTo(1234)
     assertThat(profilingConfiguration.profilingBufferSizeInMb).isEqualTo(5678)
     assertThat(profilingConfiguration.requiredDeviceLevel).isEqualTo(0)

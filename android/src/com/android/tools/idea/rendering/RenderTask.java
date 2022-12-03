@@ -99,12 +99,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.CompatibilityRenderTarget;
@@ -887,6 +890,9 @@ public class RenderTask {
     }), RenderAsyncActionExecutor.DEFAULT_RENDER_THREAD_TIMEOUT_MS * 10, TimeUnit.MILLISECONDS)
       .handle((result, ex) -> {
         if (ex != null) {
+          while (ex instanceof CompletionException) {
+            ex = ex.getCause();
+          }
           String message = ex.getMessage();
           if (message == null) {
             message = ex.toString();
@@ -1007,6 +1013,11 @@ public class RenderTask {
    * Method used to report unhandled layoutlib exceptions to the crash reporter
    */
   private void reportException(@NotNull Throwable e) {
+    if (e instanceof CancellationException) {
+      // Cancellation exceptions are due to either cancelled Visual Linting tasks or tasks evicted from a full render queue.
+      // They are not crashes and so should not be reported to the crash reporter.
+      return;
+    }
     // This in an unhandled layoutlib exception, pass it to the crash reporter
     myCrashReporter.submit(new StudioExceptionReport.Builder().setThrowable(e, false, true).build());
   }
@@ -1442,6 +1453,7 @@ public class RenderTask {
   @NotNull
   private CompletableFuture<Void> disposeRenderSession(@NotNull RenderSession renderSession) {
     Optional<Method> disposeMethod = Optional.empty();
+    AtomicReference<WeakReference<List<?>>> applyObserversRef = new AtomicReference<>(null);
     if (myLayoutlibCallback.hasLoadedClass(COMPOSE_VIEW_ADAPTER_FQN)) {
       try {
         Class<?> composeViewAdapter = myLayoutlibCallback.findClass(COMPOSE_VIEW_ADAPTER_FQN);
@@ -1469,6 +1481,8 @@ public class RenderTask {
         // If the WindowRecomposer does not exist or the animationScale does not exist anymore, ignore.
         LOG.debug("Unable to dispose the recompose animationScale", ex);
       }
+
+      applyObserversRef.set(new WeakReference<>(findApplyObservers(myLayoutlibCallback)));
     }
 
     try {
@@ -1492,6 +1506,13 @@ public class RenderTask {
           () -> renderSession.getRootViews().forEach(v -> disposeIfCompose(v, m))
         )
       );
+      WeakReference<List<?>> weakApplyObservers = applyObserversRef.get();
+      if (weakApplyObservers != null) {
+        List<?> applyObservers = weakApplyObservers.get();
+        if (applyObservers != null) {
+          applyObservers.clear();
+        }
+      }
       renderSession.dispose();
     });
   }
@@ -1513,5 +1534,25 @@ public class RenderTask {
     catch (IllegalAccessException | InvocationTargetException ex) {
       LOG.warn("Unexpected error while disposing compose view", ex);
     }
+  }
+
+  private static final String SNAPSHOT_KT_FQN = "androidx.compose.runtime.snapshots.SnapshotKt";
+
+  @Nullable
+  private static List<?> findApplyObservers(@NotNull LayoutlibCallbackImpl layoutlibCallback) {
+    try {
+      Class<?> snapshotKt = layoutlibCallback.findClass(SNAPSHOT_KT_FQN);
+      Field applyObserversField = snapshotKt.getDeclaredField("applyObservers");
+      applyObserversField.setAccessible(true);
+      Object applyObservers = applyObserversField.get(null);
+      if (applyObservers instanceof List<?>) {
+        return (List<?>)applyObservers;
+      }
+      LOG.warn("SnapshotsKt.applyObservers found but it is not a List");
+    }
+    catch (ReflectiveOperationException ex) {
+      LOG.warn("Unable to find SnapshotsKt.applyObservers", ex);
+    }
+    return null;
   }
 }
