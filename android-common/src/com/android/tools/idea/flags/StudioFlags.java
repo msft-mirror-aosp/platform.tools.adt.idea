@@ -608,7 +608,7 @@ public final class StudioFlags {
     "Enable the \"Device Explorer\" tool window",
     "Enable the \"Device Explorer\" tool window which contains Device File Explorer and Device Monitor.\n" +
     "Changing the value of this flag requires restarting Android Studio.",
-    true);
+    false);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DEVICE_EXPLORER = Flag.create(
     RUNDEBUG,
