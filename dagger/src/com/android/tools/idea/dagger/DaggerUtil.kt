@@ -17,6 +17,7 @@ package com.android.tools.idea.dagger
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.AndroidPsiUtils.toPsiType
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.kotlin.psiType
 import com.android.tools.idea.kotlin.toPsiType
 import com.intellij.openapi.module.Module
@@ -39,6 +40,9 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.PsiVariable
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.SearchScope
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.util.EmptyQuery
+import com.intellij.util.Query
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.idea.util.findAnnotation
@@ -80,20 +84,177 @@ private const val SUBCOMPONENTS_ATTR_NAME = "subcomponents"
 private val injectedConstructorAnnotations = setOf(INJECT_ANNOTATION, DAGGER_VIEW_MODEL_INJECT_ANNOTATION, DAGGER_WORKER_INJECT_ANNOTATION)
 
 /**
- * Returns all classes annotated [annotationName] in a given [searchScope].
+ * Searching for annotations is done behind an interface, allowing us to switch out implementations and compare performance characteristics.
  */
-private fun getClassesWithAnnotation(project: Project, annotationName: String, searchScope: SearchScope) =
-  DaggerAnnotatedElementsSearch.getInstance(project).searchClasses(annotationName, searchScope)
+private interface AnnotationSearchStrategy {
+  /**
+   * Returns all classes annotated [annotationName] in a given [searchScope].
+   */
+  fun getClassesWithAnnotation(project: Project, annotationName: String, searchScope: SearchScope): Iterable<PsiClass>
+
+  /**
+   * Returns all @BindsInstance-annotated methods and params that return given [type] within [scope].
+   */
+  fun getDaggerBindsInstanceMethodsAndParametersForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiModifierListOwner>
+
+  /**
+   * Returns all @Inject-annotated fields of [type] within given [scope].
+   */
+  fun getInjectedFieldsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiField>
+
+  /**
+   * Returns params of @Provides/@Binds/@Inject-annotated method or @Inject-annotated constructor that have given [type] within given [scope].
+   */
+  fun getParamsOfDaggerProvidersForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiParameter>
+
+  /**
+   * Returns all @Provide-annotated methods that return given [type] within [scope].
+   */
+  fun getDaggerProvidesMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod>
+
+  /**
+   * Returns all @Binds-annotated methods that return given [type] within [scope].
+   */
+  fun getDaggerBindsMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod>
+
+  /**
+   * Returns all the relevant methods from @AssistedFactory-annotated classes where the return type matches [type], scope to the [module]
+   * and its dependents.
+   */
+  fun getAssistedFactoryMethodsForType(type: PsiType, module: Module): Collection<PsiMethod>
+}
+
+/**
+ * Annotation search strategy using the custom [DaggerAnnotatedElementsSearch].
+ */
+private object CustomDaggerSearchStrategy : AnnotationSearchStrategy {
+  override fun getClassesWithAnnotation(project: Project, annotationName: String, searchScope: SearchScope) =
+    DaggerAnnotatedElementsSearch.getInstance(project).searchClasses(annotationName, searchScope)
+
+  override fun getDaggerBindsInstanceMethodsAndParametersForType(type: PsiType,
+                                                                 scope: GlobalSearchScope,
+                                                                 project: Project): Collection<PsiModifierListOwner> {
+    val unboxedType = type.unboxed
+    val project = scope.project ?: return emptyList()
+    val search = DaggerAnnotatedElementsSearch.getInstance(project)
+    return search.searchMethods(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, unboxedType) +
+           search.searchParameters(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, unboxedType)
+  }
+
+  override fun getInjectedFieldsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiField> {
+    val project = scope.project ?: return emptyList()
+    return DaggerAnnotatedElementsSearch.getInstance(project).searchFields(INJECT_ANNOTATION, scope, type.unboxed)
+  }
+
+  override fun getParamsOfDaggerProvidersForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiParameter> {
+    val unboxedType = type.unboxed
+    val project = scope.project ?: return emptyList()
+    val search = DaggerAnnotatedElementsSearch.getInstance(project)
+    return injectedConstructorAnnotations.flatMap { search.searchParameterOfMethodAnnotatedWith(it, scope, unboxedType) } +
+           search.searchParameterOfMethodAnnotatedWith(DAGGER_BINDS_ANNOTATION, scope, unboxedType) +
+           search.searchParameterOfMethodAnnotatedWith(DAGGER_PROVIDES_ANNOTATION, scope, unboxedType) +
+           search.searchParameterOfMethodAnnotatedWith(DAGGER_ASSISTED_INJECT, scope, unboxedType)
+  }
+
+  override fun getDaggerProvidesMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod> {
+    val project = scope.project ?: return emptyList()
+    return DaggerAnnotatedElementsSearch.getInstance(project).searchMethods(DAGGER_PROVIDES_ANNOTATION, scope, type.unboxed)
+  }
+
+  override fun getDaggerBindsMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod> {
+    val project = scope.project ?: return emptyList()
+    return DaggerAnnotatedElementsSearch.getInstance(project).searchMethods(DAGGER_BINDS_ANNOTATION, scope, type.unboxed)
+  }
+
+  override fun getAssistedFactoryMethodsForType(type: PsiType, module: Module): Collection<PsiMethod> {
+    val scope = module.moduleWithDependentsAndDependenciesScope()
+    val psiClasses = DaggerAnnotatedElementsSearch.getInstance(module.project).searchClasses(DAGGER_ASSISTED_FACTORY, scope)
+    return psiClasses.flatMap { it.methods.toList() }.filter { it.returnType == type }
+  }
+}
+
+/** Annotation search using build in [AnnotatedElementsSearch]. */
+private object BuiltInAnnotationSearchStrategy : AnnotationSearchStrategy {
+  override fun getClassesWithAnnotation(project: Project, annotationName: String, searchScope: SearchScope): Query<PsiClass> {
+    val annotationClass = JavaPsiFacade.getInstance(project).findClass(annotationName, GlobalSearchScope.allScope(project))
+                          ?: return EmptyQuery()
+    return AnnotatedElementsSearch.searchPsiClasses(annotationClass, searchScope)
+  }
+
+  override fun getDaggerBindsInstanceMethodsAndParametersForType(type: PsiType,
+                                                                 scope: GlobalSearchScope,
+                                                                 project: Project): Collection<PsiModifierListOwner> {
+    return getMethodsWithAnnotation(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, project).filter { it.returnType?.unboxed == type.unboxed } +
+           getParametersWithAnnotation(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, project).filter { it.type.unboxed == type.unboxed }
+  }
+
+  override fun getInjectedFieldsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiField> {
+    val annotationClass = JavaPsiFacade.getInstance(project).findClass(INJECT_ANNOTATION, scope) ?: return emptyList()
+    return AnnotatedElementsSearch.searchPsiFields(annotationClass, scope).filter { it.type.unboxed == type.unboxed }
+  }
+
+  override fun getParamsOfDaggerProvidersForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiParameter> {
+    val methodsQueries = getMethodsWithAnnotation(INJECT_ANNOTATION, scope, project) +
+                         getMethodsWithAnnotation(DAGGER_BINDS_ANNOTATION, scope, project) +
+                         getMethodsWithAnnotation(DAGGER_PROVIDES_ANNOTATION, scope, project)
+    return methodsQueries.flatMap { it.parameterList.parameters.toList() }.filter { it.type.unboxed == type.unboxed }
+  }
+
+  override fun getDaggerProvidesMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod> {
+    return getMethodsWithAnnotation(DAGGER_PROVIDES_ANNOTATION, scope, project)
+      .filter { it.returnType?.unboxed == type.unboxed && it.isInDaggerModule }
+  }
+
+  override fun getDaggerBindsMethodsForType(type: PsiType, scope: GlobalSearchScope, project: Project): Collection<PsiMethod> {
+    return getMethodsWithAnnotation(DAGGER_BINDS_ANNOTATION, scope, project).filter {
+      it.returnType?.unboxed == type.unboxed && it.isInDaggerModule
+    }
+  }
+
+  override fun getAssistedFactoryMethodsForType(type: PsiType, module: Module): Collection<PsiMethod> {
+    val scope = module.moduleWithDependentsAndDependenciesScope()
+    val project = module.project
+    val psiClasses = getClassesWithAnnotation(project, DAGGER_ASSISTED_FACTORY, scope)
+    return psiClasses.flatMap { it.methods.toList() }.filter { it.returnType == type }
+  }
+
+  /**
+   * Returns all methods with [annotationName] within [scope].
+   */
+  private fun getMethodsWithAnnotation(annotationName: String, scope: GlobalSearchScope, project: Project): Query<PsiMethod> {
+    val annotationClass = JavaPsiFacade.getInstance(project).findClass(annotationName, scope) ?: return EmptyQuery()
+    return AnnotatedElementsSearch.searchPsiMethods(annotationClass, scope)
+  }
+
+  /**
+   * Returns all PsiParameters with [annotationName] within [scope].
+   */
+  private fun getParametersWithAnnotation(annotationName: String, scope: GlobalSearchScope, project: Project): Query<PsiParameter> {
+    val annotationClass = JavaPsiFacade.getInstance(project).findClass(annotationName, scope) ?: return EmptyQuery()
+    return AnnotatedElementsSearch.searchPsiParameters(annotationClass, scope)
+  }
+
+  /**
+   * True if PsiMethod belongs to a class annotated with @Module.
+   */
+  private val PsiMethod.isInDaggerModule: Boolean
+    get() = containingClass?.hasAnnotation(DAGGER_MODULE_ANNOTATION) == true
+}
+
+private val searchStrategy: AnnotationSearchStrategy get() =
+  if (StudioFlags.DAGGER_BUILT_IN_SEARCH_ENABLED.get()) BuiltInAnnotationSearchStrategy else CustomDaggerSearchStrategy
 
 /**
  * Returns all Dagger providers (see [isDaggerProvider] for a [type] with a [qualifierInfo] within a [scope].
  *
  * Null [qualifierInfo] means that binding has not qualifier or has more then one.
  */
-private fun getDaggerProviders(type: PsiType, qualifierInfo: QualifierInfo?, scope: GlobalSearchScope): Collection<PsiModifierListOwner> {
-  return getDaggerProvidesMethodsForType(type, scope).filterByQualifier(qualifierInfo) +
-         getDaggerBindsMethodsForType(type, scope).filterByQualifier(qualifierInfo) +
-         getDaggerBindsInstanceMethodsAndParametersForType(type, scope).filterByQualifier(qualifierInfo) +
+private fun getDaggerProviders(type: PsiType, qualifierInfo: QualifierInfo?, scope: GlobalSearchScope,
+                               project: Project): Collection<PsiModifierListOwner> {
+  val strategy = searchStrategy
+  return strategy.getDaggerProvidesMethodsForType(type, scope, project).filterByQualifier(qualifierInfo) +
+         strategy.getDaggerBindsMethodsForType(type, scope, project).filterByQualifier(qualifierInfo) +
+         strategy.getDaggerBindsInstanceMethodsAndParametersForType(type, scope, project).filterByQualifier(qualifierInfo) +
          getDaggerInjectedConstructorsForType(type) +
          getAssistedFactoryObjectForType(type)
 }
@@ -101,17 +262,6 @@ private fun getDaggerProviders(type: PsiType, qualifierInfo: QualifierInfo?, sco
 private fun getAssistedFactoryObjectForType(type: PsiType): Collection<PsiModifierListOwner> {
   val clazz = (type as? PsiClassType)?.resolve() ?: return emptyList()
   return if (clazz.isDaggerAssistedFactory) listOf(clazz) else emptyList()
-}
-
-/**
- * Returns all @BindsInstance-annotated methods and params that return given [type] within [scope].
- */
-private fun getDaggerBindsInstanceMethodsAndParametersForType(type: PsiType, scope: GlobalSearchScope): Collection<PsiModifierListOwner> {
-  val unboxedType = type.unboxed
-  val project = scope.project ?: return emptyList()
-  val search = DaggerAnnotatedElementsSearch.getInstance(project)
-  return search.searchMethods(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, unboxedType) +
-         search.searchParameters(DAGGER_BINDS_INSTANCE_ANNOTATION, scope, unboxedType)
 }
 
 /**
@@ -123,28 +273,7 @@ fun getDaggerProvidersFor(element: PsiElement): Collection<PsiModifierListOwner>
   val scope = module.moduleWithDependentsAndDependenciesScope()
   val (type, qualifierInfo) = extractTypeAndQualifierInfo(element) ?: return emptyList()
 
-  return getDaggerProviders(type, qualifierInfo, scope)
-}
-
-/**
- * Returns all @Inject-annotated fields of [type] within given [scope].
- */
-private fun getInjectedFieldsForType(type: PsiType, scope: GlobalSearchScope): Collection<PsiField> {
-  val project = scope.project ?: return emptyList()
-  return DaggerAnnotatedElementsSearch.getInstance(project).searchFields(INJECT_ANNOTATION, scope, type.unboxed)
-}
-
-/**
- * Returns params of @Provides/@Binds/@Inject-annotated method or @Inject-annotated constructor that have given [type] within given [scope].
- */
-private fun getParamsOfDaggerProvidersForType(type: PsiType, scope: GlobalSearchScope): Collection<PsiParameter> {
-  val unboxedType = type.unboxed
-  val project = scope.project ?: return emptyList()
-  val search = DaggerAnnotatedElementsSearch.getInstance(project)
-  return injectedConstructorAnnotations.flatMap { search.searchParameterOfMethodAnnotatedWith(it, scope, unboxedType) } +
-         search.searchParameterOfMethodAnnotatedWith(DAGGER_BINDS_ANNOTATION, scope, unboxedType) +
-         search.searchParameterOfMethodAnnotatedWith(DAGGER_PROVIDES_ANNOTATION, scope, unboxedType) +
-         search.searchParameterOfMethodAnnotatedWith(DAGGER_ASSISTED_INJECT, scope, unboxedType)
+  return getDaggerProviders(type, qualifierInfo, scope, element.project)
 }
 
 /**
@@ -152,9 +281,11 @@ private fun getParamsOfDaggerProvidersForType(type: PsiType, scope: GlobalSearch
  *
  * Null [qualifierInfo] means that binding has not qualifier or has more then one.
  */
-private fun getDaggerConsumers(type: PsiType, qualifierInfo: QualifierInfo?, scope: GlobalSearchScope): Collection<PsiVariable> {
-  return getInjectedFieldsForType(type, scope).filterByQualifier(qualifierInfo) +
-         getParamsOfDaggerProvidersForType(type, scope).filterByQualifier(qualifierInfo)
+private fun getDaggerConsumers(type: PsiType, qualifierInfo: QualifierInfo?, scope: GlobalSearchScope,
+                               project: Project): Collection<PsiVariable> {
+  val strategy = searchStrategy
+  return strategy.getInjectedFieldsForType(type, scope, project).filterByQualifier(qualifierInfo) +
+         strategy.getParamsOfDaggerProvidersForType(type, scope, project).filterByQualifier(qualifierInfo)
 }
 
 /**
@@ -164,20 +295,21 @@ private fun getDaggerConsumers(type: PsiType, qualifierInfo: QualifierInfo?, sco
 fun getDaggerConsumersFor(element: PsiElement): Collection<PsiVariable> {
   val module = element.module ?: return emptyList()
   val scope = module.moduleWithDependentsAndDependenciesScope()
+  val project = element.project
   val (type, qualifierInfo) = extractTypeAndQualifierInfo(element) ?: return emptyList()
 
-  var consumers = getDaggerConsumers(type, qualifierInfo, scope)
+  var consumers = getDaggerConsumers(type, qualifierInfo, scope, project)
 
   val lazyClass = JavaPsiFacade.getInstance(element.project).findClass(DAGGER_LAZY, scope)
   if (lazyClass != null) {
     val lazyType = PsiElementFactory.getInstance(element.project).createType(lazyClass, type)
-    consumers += getDaggerConsumers(lazyType, qualifierInfo, scope)
+    consumers += getDaggerConsumers(lazyType, qualifierInfo, scope, project)
   }
 
   val javaxInjectProviderClass = JavaPsiFacade.getInstance(element.project).findClass(JAVAX_INJECT_PROVIDER, scope)
   if (javaxInjectProviderClass != null) {
     val javaxInjectProviderType = PsiElementFactory.getInstance(element.project).createType(javaxInjectProviderClass, type)
-    consumers += getDaggerConsumers(javaxInjectProviderType, qualifierInfo, scope)
+    consumers += getDaggerConsumers(javaxInjectProviderType, qualifierInfo, scope, project)
   }
 
   return consumers
@@ -192,17 +324,7 @@ fun getDaggerAssistedFactoryMethodsForAssistedInjectedConstructor(constructor: P
   val (type, _) = extractTypeAndQualifierInfo(constructor) ?: return emptyList()
 
   // No need to check for qualifiers since AssistedFactories can only have a single abstract, non-default method.
-  return getAssistedFactoryMethodsForType(type, module)
-}
-
-/**
- * Returns all the relevant methods from @AssistedFactory-annotated clases where the return type matches [type], scope to the [module] and
- * it's dependents.
- */
-private fun getAssistedFactoryMethodsForType(type: PsiType, module: Module): Collection<PsiMethod> {
-  val scope = module.moduleWithDependentsAndDependenciesScope()
-  val psiClasses = DaggerAnnotatedElementsSearch.getInstance(module.project).searchClasses(DAGGER_ASSISTED_FACTORY, scope)
-  return psiClasses.flatMap { it.methods.toList() }.filter { it.returnType == type }
+  return searchStrategy.getAssistedFactoryMethodsForType(type, module)
 }
 
 /**
@@ -228,22 +350,6 @@ private fun getDaggerAssistedInjectConstructorsForType(type: PsiType): Collectio
 private fun getDaggerInjectedConstructorsForType(type: PsiType): Collection<PsiMethod> {
   val clazz = (type as? PsiClassType)?.resolve() ?: return emptyList()
   return clazz.constructors.filter { constructor -> injectedConstructorAnnotations.any { constructor.hasAnnotation(it) } }
-}
-
-/**
- * Returns all @Provide-annotated methods that return given [type] within [scope].
- */
-private fun getDaggerProvidesMethodsForType(type: PsiType, scope: GlobalSearchScope): Collection<PsiMethod> {
-  val project = scope.project ?: return emptyList()
-  return DaggerAnnotatedElementsSearch.getInstance(project).searchMethods(DAGGER_PROVIDES_ANNOTATION, scope, type.unboxed)
-}
-
-/**
- * Returns all @Binds-annotated methods that return given [type] within [scope].
- */
-private fun getDaggerBindsMethodsForType(type: PsiType, scope: GlobalSearchScope): Collection<PsiMethod> {
-  val project = scope.project ?: return emptyList()
-  return DaggerAnnotatedElementsSearch.getInstance(project).searchMethods(DAGGER_BINDS_ANNOTATION, scope, type.unboxed)
 }
 
 /**
@@ -409,7 +515,7 @@ private fun extractTypeAndQualifierInfo(element: PsiElement): Pair<PsiType, Qual
 @WorkerThread
 fun getDaggerComponentMethodsForProvider(provider: PsiElement): Collection<PsiMethod> {
   val (type, qualifierInfo) = extractTypeAndQualifierInfo(provider) ?: return emptyList()
-  val components = getClassesWithAnnotation(provider.project, DAGGER_COMPONENT_ANNOTATION, provider.useScope)
+  val components = searchStrategy.getClassesWithAnnotation(provider.project, DAGGER_COMPONENT_ANNOTATION, provider.useScope)
   return components.flatMap {
     // Instantiating methods doesn't have parameters.
     component ->
@@ -424,7 +530,7 @@ fun getDaggerComponentMethodsForProvider(provider: PsiElement): Collection<PsiMe
 @WorkerThread
 fun getDaggerEntryPointsMethodsForProvider(provider: PsiElement): Collection<PsiMethod> {
   val (type, qualifierInfo) = extractTypeAndQualifierInfo(provider) ?: return emptyList()
-  val entryPoints = getClassesWithAnnotation(provider.project, DAGGER_ENTRY_POINT_ANNOTATION, provider.useScope)
+  val entryPoints = searchStrategy.getClassesWithAnnotation(provider.project, DAGGER_ENTRY_POINT_ANNOTATION, provider.useScope)
   return entryPoints.flatMap {
     // Instantiating methods doesn't have parameters.
     component ->
@@ -444,8 +550,9 @@ fun getDaggerEntryPointsMethodsForProvider(provider: PsiElement): Collection<Psi
 @WorkerThread
 internal fun getDaggerParentComponentsForSubcomponent(subcomponent: PsiClass): Collection<PsiClass> {
 
-  val components = getClassesWithAnnotation(subcomponent.project, DAGGER_COMPONENT_ANNOTATION, subcomponent.useScope) +
-                   getClassesWithAnnotation(subcomponent.project, DAGGER_SUBCOMPONENT_ANNOTATION, subcomponent.useScope)
+  val strategy = searchStrategy
+  val components = strategy.getClassesWithAnnotation(subcomponent.project, DAGGER_COMPONENT_ANNOTATION, subcomponent.useScope) +
+                   strategy.getClassesWithAnnotation(subcomponent.project, DAGGER_SUBCOMPONENT_ANNOTATION, subcomponent.useScope)
 
   val modulesFQCN = getDaggerModulesForSubcomponent(subcomponent).map { it.qualifiedName }
 
@@ -474,7 +581,7 @@ internal fun getSubcomponents(component: PsiClass): Collection<PsiClass> {
  * Returns classes annotated [DAGGER_MODULE_ANNOTATION] that in [SUBCOMPONENTS_ATTR_NAME] attribute have subcomponents class.
  */
 private fun getDaggerModulesForSubcomponent(subcomponent: PsiClass): Collection<PsiClass> {
-  val modules = getClassesWithAnnotation(subcomponent.project, DAGGER_MODULE_ANNOTATION, subcomponent.useScope)
+  val modules = searchStrategy.getClassesWithAnnotation(subcomponent.project, DAGGER_MODULE_ANNOTATION, subcomponent.useScope)
   return modules.filter {
     it.getAnnotation(DAGGER_MODULE_ANNOTATION)?.isClassPresentedInAttribute(SUBCOMPONENTS_ATTR_NAME, subcomponent.qualifiedName!!) == true
   }
@@ -505,9 +612,10 @@ private fun PsiAnnotation.isClassPresentedInAttribute(attrName: String, fqcn: St
  */
 @WorkerThread
 fun getUsagesForDaggerModule(module: PsiClass): Collection<PsiClass> {
-  val componentQuery = getClassesWithAnnotation(module.project, DAGGER_COMPONENT_ANNOTATION, module.useScope)
-  val subComponentQuery = getClassesWithAnnotation(module.project, DAGGER_SUBCOMPONENT_ANNOTATION, module.useScope)
-  val moduleQuery = getClassesWithAnnotation(module.project, DAGGER_MODULE_ANNOTATION, module.useScope)
+  val strategy = searchStrategy
+  val componentQuery = strategy.getClassesWithAnnotation(module.project, DAGGER_COMPONENT_ANNOTATION, module.useScope)
+  val subComponentQuery = strategy.getClassesWithAnnotation(module.project, DAGGER_SUBCOMPONENT_ANNOTATION, module.useScope)
+  val moduleQuery = strategy.getClassesWithAnnotation(module.project, DAGGER_MODULE_ANNOTATION, module.useScope)
   val predicate: (PsiClass, String, String) -> Boolean = predicate@{ component, annotationName, attrName ->
     component.getAnnotation(annotationName)?.isClassPresentedInAttribute(attrName, module.qualifiedName!!) == true
   }
@@ -521,7 +629,7 @@ fun getUsagesForDaggerModule(module: PsiClass): Collection<PsiClass> {
  */
 @WorkerThread
 fun getDependantComponentsForComponent(component: PsiClass): Collection<PsiClass> {
-  val components = getClassesWithAnnotation(component.project, DAGGER_COMPONENT_ANNOTATION, component.useScope)
+  val components = searchStrategy.getClassesWithAnnotation(component.project, DAGGER_COMPONENT_ANNOTATION, component.useScope)
   return components.filter {
     it.getAnnotation(DAGGER_COMPONENT_ANNOTATION)?.isClassPresentedInAttribute(DEPENDENCIES_ATTR_NAME, component.qualifiedName!!) == true
   }

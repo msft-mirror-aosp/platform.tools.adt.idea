@@ -160,7 +160,6 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
         val sceneManager = LayoutlibSceneManager(model, surface, config)
         sceneManager.setListenResourceChange(false)
         sceneManager.setShowDecorations(VisualizationToolSettings.getInstance().globalState.showDecoration)
-        sceneManager.setRerenderWhenModelDerivedDataChanged(false)
         sceneManager.setUpdateAndRenderWhenActivated(false)
         sceneManager.setUseImagePool(false)
         // 0.0f makes it spend 50% memory. See document in RenderTask#MIN_DOWNSCALING_FACTOR.
@@ -245,19 +244,17 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
     viewOptions.add(ToggleShowDecorationAction())
     viewOptions.isPopup = true
     group.add(viewOptions)
-    if (StudioFlags.NELE_VISUALIZATION_MULTIPLE_CUSTOM.get()) {
-      group.add(AddCustomConfigurationSetAction { createdConfigSetId: String ->
-        val configurationSets = getConfigurationSets().stream()
-          .filter { set: ConfigurationSet -> createdConfigSetId == set.id }
-          .collect(Collectors.toList())
-        if (configurationSets.isNotEmpty()) {
-          onSelectedConfigurationSetChanged(configurationSets[0])
-        }
-      })
-      group.add(RemoveCustomConfigurationSetAction(myCurrentConfigurationSet) {
-        onSelectedConfigurationSetChanged(ConfigurationSetProvider.defaultSet)
-      })
-    }
+    group.add(AddCustomConfigurationSetAction { createdConfigSetId: String ->
+      val configurationSets = getConfigurationSets().stream()
+        .filter { set: ConfigurationSet -> createdConfigSetId == set.id }
+        .collect(Collectors.toList())
+      if (configurationSets.isNotEmpty()) {
+        onSelectedConfigurationSetChanged(configurationSets[0])
+      }
+    })
+    group.add(RemoveCustomConfigurationSetAction(myCurrentConfigurationSet) {
+      onSelectedConfigurationSetChanged(ConfigurationSetProvider.defaultSet)
+    })
     // Use ActionPlaces.EDITOR_TOOLBAR as place to update the ui when appearance is changed.
     // In IJ's implementation, only the actions in ActionPlaces.EDITOR_TOOLBAR toolbar will be tweaked when ui is changed.
     // See com.intellij.openapi.actionSystem.impl.ActionToolbarImpl.tweakActionComponentUI()
@@ -579,7 +576,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
 
     // This render the added components.
     for (manager in surface.sceneManagers) {
-      if (StudioFlags.NELE_VISUAL_LINT.get() && manager is LayoutlibSceneManager) {
+      if (StudioFlags.NELE_VISUAL_LINT.get()) {
         visualLintHandler.setupForLayoutlibSceneManager(manager) { !isActive || isRenderingCanceled.get() }
       }
       renderFuture = renderFuture.thenCompose {
@@ -587,7 +584,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
           return@thenCompose CompletableFuture.completedFuture<Void?>(null)
         }
         else {
-          val modelUpdateFuture = (manager as LayoutlibSceneManager).updateModelAsync()
+          val modelUpdateFuture = manager.updateModelAsync()
           if (isRenderingCanceled.get()) {
             return@thenCompose CompletableFuture.completedFuture<Void?>(null)
           }
@@ -702,8 +699,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
 
     override fun setSelected(e: AnActionEvent, state: Boolean) {
       VisualizationToolSettings.getInstance().globalState.showDecoration = state
-      surface.models.map { model: NlModel -> surface.getSceneManager(model) }
-        .filterIsInstance<LayoutlibSceneManager>()
+      surface.models.mapNotNull { model: NlModel -> surface.getSceneManager(model) }
         .forEach { manager -> manager.setShowDecorations(state) }
       surface.requestRender().thenRun {
         if (!Disposer.isDisposed(myWorkBench)) {

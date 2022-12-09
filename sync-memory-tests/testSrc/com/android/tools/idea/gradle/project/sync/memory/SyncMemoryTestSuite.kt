@@ -22,24 +22,44 @@ import com.android.tools.tests.IdeaTestSuiteBase
 import com.android.tools.tests.LeakCheckerRule
 import org.junit.ClassRule
 import org.junit.runner.RunWith
-import java.util.logging.Logger
+
+class Benchmark100MemoryTest : AbstractGradleSyncMemoryUsageTestCase() {
+  override val relativePath = "benchmark-100"
+  override val projectName = "100Modules"
+}
+
+class Benchmark200MemoryTest : AbstractGradleSyncMemoryUsageTestCase() {
+  override val relativePath = "benchmark-200"
+  override val projectName = "200Modules"
+}
+
+class Benchmark500MemoryTest : AbstractGradleSyncMemoryUsageTestCase() {
+  override val relativePath = "benchmark-500"
+  override val projectName = "500Modules"
+}
 
 @RunWith(JarTestSuiteRunner::class)
-@ExcludeClasses(SyncMemoryTestSuite::class)
 object SyncMemoryTestSuite : IdeaTestSuiteBase() {
   @JvmField @ClassRule  val checker = LeakCheckerRule()
   @JvmField @ClassRule  val gradle = GradleDaemonsRule()
 
   init {
-    setUpSourceZip(
-      "prebuilts/studio/buildbenchmarks/extra-large.2022.9/src.zip",
-      "tools/adt/idea/sync-memory-tests/testData/benchmark-100",
-      DiffSpec("prebuilts/studio/buildbenchmarks/extra-large.2022.9/diff-100", 0),
-      DiffSpec("prebuilts/studio/buildbenchmarks/extra-large.2022.9/diff-properties", 0)
-    )
+    setUpProject("benchmark-100", "diff-100")
+    setUpProject("benchmark-200", "diff-200")
+    setUpProject("benchmark-500", "diff-500")
     unzipIntoOfflineMavenRepo("prebuilts/studio/buildbenchmarks/extra-large.2022.9/repo.zip")
     unzipIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin.zip")
+    unzipIntoOfflineMavenRepo("tools/data-binding/data_binding_runtime.zip")
     linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest")
     linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest")
+  }
+
+  private fun setUpProject(directory: String, diffFileName: String) {
+    setUpSourceZip(
+      "prebuilts/studio/buildbenchmarks/extra-large.2022.9/src.zip",
+      "tools/adt/idea/sync-memory-tests/testData/$directory",
+      DiffSpec("prebuilts/studio/buildbenchmarks/extra-large.2022.9/$diffFileName", 0),
+      DiffSpec("prebuilts/studio/buildbenchmarks/extra-large.2022.9/diff-properties", 0)
+    )
   }
 }

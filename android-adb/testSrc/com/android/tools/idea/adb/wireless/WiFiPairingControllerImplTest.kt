@@ -17,11 +17,11 @@ package com.android.tools.idea.adb.wireless
 
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.TimeoutRemainder
-import com.android.flags.junit.RestoreFlagRule
+import com.android.flags.junit.FlagRule
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.adtui.swing.SetPortableUiFontRule
+import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.swing.enableHeadlessDialogs
 import com.android.tools.idea.concurrency.coroutineScope
@@ -37,7 +37,6 @@ import icons.StudioIcons
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -52,10 +51,10 @@ import javax.swing.text.html.HTMLDocument
 class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
   /** Ensures feature flag is reset after test */
   @get:Rule
-  val restoreFlagRule = RestoreFlagRule(StudioFlags.ADB_WIRELESS_PAIRING_ENABLED)
+  val FlagRule = FlagRule(StudioFlags.ADB_WIRELESS_PAIRING_ENABLED)
 
   @get:Rule
-  val portableUiFontRule = SetPortableUiFontRule()
+  val portableUiFontRule = PortableUiFontRule()
 
   @get:Rule
   val threadingCheckRule = ThreadingCheckRule()

@@ -15,7 +15,10 @@
  */
 package com.android.tools.idea.gradle.project.sync.memory
 
+import com.android.SdkConstants
+import com.android.testutils.TestUtils
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.util.GradleProperties
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.perflogger.Benchmark
 import com.android.tools.perflogger.Metric
@@ -32,6 +35,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 import java.time.Instant
 import kotlin.io.path.createDirectory
 import kotlin.system.measureTimeMillis
@@ -52,6 +56,7 @@ abstract class AbstractGradleSyncMemoryUsageTestCase {
 
   private val eclipseMatHelper = EclipseMatHelper()
   private lateinit var snapshotDirectory: String
+  private val keepSnapshots = System.getProperty("keep_snapshots").toBoolean()
 
   @Before
   open fun setUp() {
@@ -73,6 +78,7 @@ abstract class AbstractGradleSyncMemoryUsageTestCase {
 
   @Test
   open fun testSyncMemory() {
+    reduceMaxMemory()
     projectRule.loadProject(relativePath)
     // Free up some memory by closing the Gradle Daemon
     DefaultGradleConnector.close()
@@ -92,8 +98,19 @@ abstract class AbstractGradleSyncMemoryUsageTestCase {
         }
       }
       println("Analysis took $elapsedTime MS.")
+      if (keepSnapshots) {
+        val testOutputDir = TestUtils.getTestOutputDir()
+        Files.move(hprofPath.toPath(), testOutputDir.resolve(hprofPath.name))
+      }
     }
     metricAfterSync.commit()
     metricBeforeSync.commit()
+  }
+
+  private fun reduceMaxMemory() {
+    GradleProperties(File(projectRule.resolveTestDataPath(relativePath), SdkConstants.FN_GRADLE_PROPERTIES)).apply {
+      setJvmArgs(jvmArgs.orEmpty().replace("-Xmx60g", "-Xmx8g"))
+      save()
+    }
   }
 }

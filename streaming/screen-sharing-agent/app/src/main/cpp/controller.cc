@@ -88,9 +88,7 @@ void RemoveAgentFiles() {
 // Sets the receive timeout for the given socket. Zero timeout value means that reading
 // from the socket will never time out.
 void SetReceiveTimeoutMillis(int timeout_millis, int socket_fd) {
-  struct timeval tv;
-  tv.tv_sec = timeout_millis / 1000;
-  tv.tv_usec = (timeout_millis % 1000) * 1000;
+  struct timeval tv = { .tv_sec = timeout_millis / 1000, .tv_usec = (timeout_millis % 1000) * 1000 };
   setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
@@ -105,7 +103,8 @@ Controller::Controller(int socket_fd)
       motion_event_start_time_(0),
       key_character_map_(),
       clipboard_listener_(this),
-      max_synced_clipboard_length_(0) {
+      max_synced_clipboard_length_(0),
+      clipboard_changed_() {
   assert(socket_fd > 0);
   char channel_marker = 'C';
   write(socket_fd_, &channel_marker, sizeof(channel_marker));  // Control channel marker.
@@ -176,7 +175,7 @@ void Controller::Run() {
       } catch (IoTimeout& e) {
         continue;
       }
-      SetReceiveTimeoutMillis(0, socket_fd_);  //
+      SetReceiveTimeoutMillis(0, socket_fd_);  // Remove receive timeout for reading the rest of the message.
       unique_ptr<ControlMessage> message = ControlMessage::Deserialize(message_type, input_stream_);
       ProcessMessage(*message);
     }
@@ -371,7 +370,7 @@ void Controller::ProcessClipboardChange() {
   }
   last_clipboard_text_ = text;
 
-  ClipboardChangedNotification message(move(text));
+  ClipboardChangedNotification message(std::move(text));
   try {
     message.Serialize(output_stream_);
     output_stream_.Flush();

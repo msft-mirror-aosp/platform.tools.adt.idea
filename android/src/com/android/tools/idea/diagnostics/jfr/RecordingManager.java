@@ -16,10 +16,12 @@
 package com.android.tools.idea.diagnostics.jfr;
 
 import com.android.tools.idea.diagnostics.jfr.reports.JfrFreezeReports;
+import com.android.tools.idea.diagnostics.jfr.reports.JfrManifestMergerReports;
 import com.android.tools.idea.diagnostics.jfr.reports.JfrTypingLatencyReports;
 import com.android.tools.idea.diagnostics.report.JfrBasedReport;
 import com.android.tools.idea.diagnostics.report.DiagnosticReport;
 import com.android.tools.idea.diagnostics.report.DiagnosticReportProperties;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.serverflags.ServerFlagService;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -31,6 +33,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.LowMemoryWatcher;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.messages.MessageBusConnection;
 import java.io.File;
@@ -67,7 +70,9 @@ public class RecordingManager {
   private static Consumer<DiagnosticReport> reportCallback;
 
   public static void init(Consumer<DiagnosticReport> callback) {
-    if (ServerFlagService.Companion.getInstance().getBoolean(JFR_SERVER_FLAG_NAME, false)) {
+    ServerFlagService serverFlagService = ServerFlagService.Companion.getInstance();
+    // TODO(b/257594096): disabled on Mac due to crashes in the JVM during sampling
+    if (!SystemInfo.isMac && serverFlagService.getBoolean(JFR_SERVER_FLAG_NAME, false)) {
       reportCallback = callback;
       setupActionEvents();
       setupLowMemoryEvents();
@@ -105,14 +110,20 @@ public class RecordingManager {
           }
         }
       }, 0, JFR_RECORDING_DURATION_SECONDS, TimeUnit.SECONDS);
-      createReportManagers();
+      createReportManagers(serverFlagService);
     }
   }
 
-  private static void createReportManagers() {
+  private static void createReportManagers(ServerFlagService serverFlagService) {
     JfrFreezeReports.Companion.createFreezeReportManager();
-    // TODO(b/259447928): Wrap this creation in a flag.
-    // JfrTypingLatencyReports.Companion.createReportManager();
+
+    if (StudioFlags.JFR_MANIFEST_MERGE_ENABLED.get()) {
+      JfrManifestMergerReports.Companion.createReportManager();
+    }
+
+    if (StudioFlags.JFR_TYPING_LATENCY_ENABLED.get()) {
+      JfrTypingLatencyReports.Companion.createReportManager(serverFlagService);
+    }
   }
 
   static void startCapture(JfrReportGenerator.Capture capture) {

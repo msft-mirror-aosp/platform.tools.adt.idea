@@ -645,11 +645,11 @@ android_studio(
         ":com.google.targetsdkversionassistant",
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
-    version_code_name = "Flamingo",
-    version_micro_patch = "1.9",
+    version_code_name = "Giraffe",
+    version_micro_patch = "1.1",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 9,
+    version_release_number = 1,
     version_type = "Canary",
     # version_update_message = "<html>this is optional</html>",
     visibility = ["//visibility:public"],
@@ -875,6 +875,25 @@ iml_test(
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
+)
+
+iml_test(
+    name = "StartUpAswbTest",
+    data = select({
+        "@platforms//os:linux": [
+            "//tools/vendor/google/aswb:aswb.linux.zip",
+        ],
+        "@platforms//os:macos": [
+            "//tools/vendor/google/aswb:aswb.mac.zip",
+        ],
+        "@platforms//os:windows": [
+            "//tools/vendor/google/aswb:aswb.win.zip",
+        ],
+    }),
+    module = ":intellij.android.studio.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.StartUpAswbTest",
 )
 
 iml_test(

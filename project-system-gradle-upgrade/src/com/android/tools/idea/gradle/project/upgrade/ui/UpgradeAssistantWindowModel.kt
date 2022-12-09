@@ -447,7 +447,9 @@ class UpgradeAssistantWindowModel(
     if (application.isUnitTestMode) {
       setEnabled(newProcessor, projectFilesClean, versionCatalogs)
     } else {
-      invokeLater(ModalityState.NON_MODAL) { setEnabled(newProcessor, projectFilesClean, versionCatalogs) }
+      DumbService.getInstance(newProcessor.project).smartInvokeLater {
+        setEnabled(newProcessor, projectFilesClean, versionCatalogs)
+      }
     }
   }
 
@@ -462,11 +464,11 @@ class UpgradeAssistantWindowModel(
       }
       uiState.set(UIState.Blocked)
     }
-    else if (!projectFilesClean) {
-      uiState.set(UIState.ProjectFilesNotCleanWarning)
-    }
     else if ((treeModel.root as? CheckedTreeNode)?.childCount == 0) {
       uiState.set(UIState.AllDone)
+    }
+    else if (!projectFilesClean) {
+      uiState.set(UIState.ProjectFilesNotCleanWarning)
     }
     else if (versionCatalogs) {
       uiState.set(UIState.ProjectUsesVersionCatalogs)

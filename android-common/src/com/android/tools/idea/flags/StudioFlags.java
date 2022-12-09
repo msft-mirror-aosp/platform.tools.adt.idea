@@ -243,26 +243,6 @@ public final class StudioFlags {
     "If enabled, the surface displays some debug information to diagnose performance",
     false);
 
-  public static final Flag<Boolean> NELE_COLOR_RESOURCE_PICKER_FOR_FILE_EDITORS = Flag.create(
-    NELE, "editor.color.picker", "Enable popup color resource picker for java and kotlin files.",
-    "Show the popup color resource picker when clicking the gutter icon of color resource in java and kotlin files.",
-    true);
-
-  public static final Flag<Boolean> NELE_DRAWABLE_POPUP_PICKER = Flag.create(
-    NELE, "show.drawable.popup.picker", "Enable drawable popup picker in Xml Editor.",
-    "Show the resource popup picker for picking drawable resources from the Editor's gutter icon.",
-    true);
-
-  public static final Flag<Boolean> NELE_DRAWABLE_BACKGROUND_MENU = Flag.create(
-    NELE, "show.drawable.background.menu", "Enable background option menu in drawable preview panel.",
-    "Show the background option menu to switch the background when previewing drawable resources.",
-    true);
-
-  public static final Flag<Boolean> NELE_WEAR_DEVICE_FIXED_ORIENTATION = Flag.create(
-    NELE, "wear.fixed.orientation", "Fixes the orientation of wear os devices.",
-    "For wear device, force using the portrait for square and round devices and landscape for chin devices.",
-    true);
-
   public static final Flag<Boolean> NELE_LOG_ANDROID_FRAMEWORK = Flag.create(
     NELE, "log.android.framework", "Log messages coming from Layoutlib Native.",
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
@@ -300,26 +280,6 @@ public final class StudioFlags {
     "Use the new designed device menu to support device classes",
     true);
 
-  public static final Flag<Boolean> NELE_VISUALIZATION_WINDOW_SIZE_MODE = Flag.create(
-    NELE, "visualization.window.sizes", "Use Window Sizes Category in Layout Validation Tool",
-    "Use Window Sizes as default group and replace the pixel devices category with it in Layout Validation Tool",
-    true);
-
-  public static final Flag<Boolean> NELE_VISUALIZATION_LOCALE_MODE = Flag.create(
-    NELE, "visualization.locale", "Locale Mode in Layout Validation Tool",
-    "Enable locale mode in Layout Validation Tool to preview layout in project's locales",
-    true);
-
-  public static final Flag<Boolean> NELE_VISUALIZATION_APPLY_CONFIG_TO_LAYOUT_EDITOR = Flag.create(
-    NELE, "visualization.apply.config", "Apply Selected Configuration in Validation Tool to Layout Editor",
-    "Apply the configuration to Layout Editor by double clicking the preview in Validation Tool",
-    true);
-
-  public static final Flag<Boolean> NELE_VISUALIZATION_MULTIPLE_CUSTOM = Flag.create(
-    NELE, "visualization.multiple.custom", "Multiple Custom Categories in Layout Validation Tool",
-    "Allow to create or delete multiple custom categories in Layout Validation Tool",
-    true);
-
   public static final Flag<Boolean> NELE_SOURCE_CODE_EDITOR = Flag.create(
     NELE, "show.source.code.editor", "New Source Code Editor",
     "Enable new source code editor with preview(s) coming as a substitute to Compose and Custom View editors.",
@@ -335,13 +295,6 @@ public final class StudioFlags {
     "When you right click recycler view in layout editor, you can now see \"Generate Adapter\" " +
     "that takes you through setup wizard",
     false);
-
-  public static final Flag<Boolean> NELE_CUSTOM_SHORTCUT_KEYMAP = Flag.create(
-    NELE, "custom.shortcut.keymap", "Design Tool Custom Shortcut",
-    "Make the shortcuts of design tools configurable. The shortcut keymap can be changed in Preferences -> Keymap -> Android Design" +
-    " Tools",
-    true
-  );
 
   public static final Flag<Boolean> NELE_LAYOUT_SCANNER_IN_EDITOR = Flag.create(
     NELE, "toggle.layout.editor.validator.a11y", "Toggle layout validator for layout editor.",
@@ -401,11 +354,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_CLASS_BINARY_CACHE = Flag.create(
     NELE, "toggle.layout.editor.class.binary.cache", "Enable binary cache",
     "Enable binary cache of classes used in preview",
-    true);
-
-  public static final Flag<Boolean> NELE_STATE_LIST_PICKER = Flag.create(
-    NELE, "state.list.picker", "Enable State List Picker",
-    "Enable state list picker for selector drawable.",
     true);
 
   public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = Flag.create(
@@ -630,7 +578,7 @@ public final class StudioFlags {
     "Use adblib to track device processes (Client)",
     "Use adblib instead of ddmlib to track processes (Client) on devices and handle debug sessions. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    false);
+    true);
 
   public static final Flag<Boolean> JDWP_TRACER = Flag.create(
     RUNDEBUG,
@@ -1029,11 +977,32 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> DAGGER_BUILT_IN_SEARCH_ENABLED = Flag.create(
+    EDITOR, "dagger.built.in.search.enabled",
+    "Enable using the built in annotation search for dagger",
+    "If enabled, uses the built in annotation search for dagger usages rather than the custom DaggerAnnotatedElementsSearch",
+    false
+  );
+
   public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = Flag.create(
     EDITOR, "translations.editor.synchronization",
     "Synchronize translations editor with resource file updates",
     "If enabled, causes the translations editor to reload data when resource files are edited",
     false
+  );
+
+  public static final Flag<Boolean> JFR_MANIFEST_MERGE_ENABLED = Flag.create(
+    EDITOR, "jfr.manifest.merge.enabled",
+    "Enable JFR for manifest merge",
+    "If enabled, allows JFR reports to be generated when manifest merge exceeds the defined threshold",
+    true
+  );
+
+  public static final Flag<Boolean> JFR_TYPING_LATENCY_ENABLED = Flag.create(
+    EDITOR, "jfr.typing.latency.enabled",
+    "Enable JFR for typing latency",
+    "If enabled, allows JFR reports to be generated when typing latency exceeds the defined threshold",
+    true
   );
 
   //endregion
@@ -1310,7 +1279,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.appwidget.enabled", "Enable Glance AppWidget preview",
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
-    false);
+    true);
 
   public static final Flag<Boolean> GLANCE_TILE_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.tile.enabled", "Enable Glance Tile preview",
