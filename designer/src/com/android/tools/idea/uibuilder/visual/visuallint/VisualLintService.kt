@@ -45,6 +45,7 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.profile.ProfileChangeAdapter
@@ -65,6 +66,8 @@ private val visualLintExecutorService = AppExecutorUtil.createBoundedApplication
 private val visualLintAnalyzerExecutorService = AppExecutorUtil.createBoundedApplicationPoolExecutor("Visual Lint Analyzer", 1)
 /** Time out for visual lint analysis. Use a longer one for testing to ensure it always completes then. */
 private val visualLintTimeout: Long = if (ApplicationManager.getApplication().isUnitTestMode) 30 else 5
+
+private val LOG = Logger.getInstance(VisualLintService::class.java)
 
 /**
  * Service that runs visual lints
@@ -128,6 +131,7 @@ class VisualLintService(val project: Project): Disposable {
   fun runVisualLintAnalysis(parentDisposable: Disposable, issueProvider: VisualLintIssueProvider, models: List<NlModel>, executorService: ExecutorService) {
     CompletableFuture.runAsync({
       removeAllIssueProviders()
+      issueProvider.clear()
       Disposer.register(parentDisposable) {
         issueModel.removeIssueProvider(issueProvider)
       }
@@ -171,6 +175,7 @@ class VisualLintService(val project: Project): Disposable {
         }
         latch.await(visualLintTimeout, TimeUnit.SECONDS)
         issueModel.updateErrorsList()
+        LOG.debug("Visual Lint analysis finished, ${issueModel.issueCount} ${if (issueModel.issueCount > 1) "errors" else "error"} found")
       } finally {
         displayingModel.removeListener(listener)
       }

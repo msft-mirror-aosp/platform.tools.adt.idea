@@ -38,6 +38,7 @@ import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Insets
+import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -249,13 +250,18 @@ class SceneViewPeerPanel(val sceneView: SceneView,
       // Initialize the toolbar as invisible. Its visibility will be controlled by hovering the sceneViewTopPanel.
       sceneViewToolbar.isVisible = false
     }
-    // The space of name label is sacrified when there is no enough width to display the toolbar.
+    // The space of name label is sacrificed when there is no enough width to display the toolbar.
     // When it happens, the label will be trimmed and show the ellipsis at its tail.
     // User can still hover it to see the full label in the tooltips.
     val minWidth = (sceneViewStatusIcon?.minimumSize?.width ?: 0) +
                    MODEL_NAME_LABEL_MIN_WIDTH +
                    (sceneViewToolbar?.minimumSize?.width ?: 0)
-    minimumSize = Dimension(minWidth, minimumSize.height)
+    // Since sceneViewToolbar visibility can change, sceneViewTopPanel (its container) might want to reduce its size when sceneViewToolbar
+    // gets invisible, resulting in a visual misbehavior where the toolbar moves a little when the actions appear/disappear. To fix this,
+    // we should set sceneViewTopPanel preferred size to always occupy the height taken by sceneViewToolbar.
+    val minHeight = maxOf(minimumSize.height, sceneViewToolbar?.preferredSize?.height ?: 0)
+    minimumSize = Dimension(minWidth, minHeight)
+    preferredSize = Dimension(minWidth, minHeight)
 
     setUpTopPanelMouseListeners()
   }
@@ -277,13 +283,27 @@ class SceneViewPeerPanel(val sceneView: SceneView,
       }
 
       override fun mouseExited(e: MouseEvent?) {
+        SwingUtilities.getWindowAncestor(this@setUpTopPanelMouseListeners)?.let {
+          if (!it.isFocused) {
+            // Dismiss the toolbar if the current window loses focus, e.g. when alt tabbing.
+            hideToolbar()
+            return@mouseExited
+          }
+        }
+
         // Hide the toolbar when the mouse exits the bounds of sceneViewTopPanel.
         e?.locationOnScreen?.let {
           SwingUtilities.convertPointFromScreen(it, this@setUpTopPanelMouseListeners)
-          if (!contains(it)) {
+          if (!containsExcludingBorder(it)) {
             hideToolbar()
           }
         } ?: hideToolbar()
+      }
+
+      private fun JPanel.containsExcludingBorder(p: Point): Boolean {
+        val borderInsets = border.getBorderInsets(this@setUpTopPanelMouseListeners)
+        return p.x in borderInsets.left until (width - borderInsets.right)
+               && p.y in borderInsets.top until (height - borderInsets.bottom)
       }
 
       private fun hideToolbar() {
