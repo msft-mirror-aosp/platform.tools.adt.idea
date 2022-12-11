@@ -641,8 +641,8 @@ android_studio(
     version_micro_patch = "1.10",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 1,
-    version_type = "Beta",
+    version_release_number = 10,
+    version_type = "Canary",
     # version_update_message = "<html>this is optional</html>",
     visibility = ["//visibility:public"],
 )
