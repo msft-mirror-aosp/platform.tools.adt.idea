@@ -343,4 +343,80 @@ class GroupedListSurfaceLayoutManagerTest {
       assertEquals(scaledSize1, scaledSize3)
     }
   }
+
+  @Test
+  fun testFitIntoScaleWithoutPaddings() {
+    val manager = GroupedListSurfaceLayoutManager(0, { 0 }) { contents ->
+      listOf(contents.toList())
+    }
+
+    val contents = listOf(TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100))
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 100, 500)
+      assertEquals(1.0, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 400, 1000)
+      assertEquals(2.0, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 200, 4000)
+      assertEquals(2.0, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 50, 1000)
+      assertEquals(0.5, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 100, 50)
+      assertEquals(0.1, scale)
+    }
+  }
+
+  @Test
+  fun testFitIntoScaleWithPaddings() {
+    val manager = GroupedListSurfaceLayoutManager(0, { 10 }) { contents ->
+      listOf(contents.toList())
+    }
+
+    val contents = listOf(TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100),
+                          TestPositionableContent(0, 0, 100, 100))
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 100, 1000)
+      assertEquals(0.8, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 400, 1000)
+      assertEquals(1.8, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 200, 1000)
+      assertEquals(1.8, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 50, 1000)
+      assertEquals(0.3, scale)
+    }
+
+    run {
+      val scale = manager.getFitIntoScale(contents, 100, 1000)
+      assertEquals(0.8, scale)
+    }
+  }
 }
