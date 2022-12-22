@@ -34,6 +34,7 @@ import com.android.tools.idea.logcat.ProjectApplicationIdsProvider.ProjectApplic
 import com.android.tools.idea.logcat.actions.ClearLogcatAction
 import com.android.tools.idea.logcat.actions.CopyMessageTextAction
 import com.android.tools.idea.logcat.actions.CreateScratchFileAction
+import com.android.tools.idea.logcat.actions.IgnoreTagAction
 import com.android.tools.idea.logcat.actions.LogcatFoldLinesLikeThisAction
 import com.android.tools.idea.logcat.actions.LogcatFormatAction
 import com.android.tools.idea.logcat.actions.LogcatScrollToTheEndToolbarAction
@@ -102,6 +103,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys.EDITOR
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.RangeMarker
@@ -391,6 +393,7 @@ internal class LogcatMainPanel @TestOnly constructor(
       add(SearchWebAction().withText(ActionsBundle.message("action.\$SearchWeb.text")))
       add(LogcatFoldLinesLikeThisAction(editor))
       add(ToggleFilterAction(this@LogcatMainPanel, logcatFilterParser))
+      add(IgnoreTagAction())
       add(CreateScratchFileAction())
       add(Separator.create())
       actions.forEach { add(it) }
@@ -495,6 +498,9 @@ internal class LogcatMainPanel @TestOnly constructor(
     val bufferSize = logcatSettings.bufferSize
     documentAppender.setMaxDocumentSize(bufferSize)
     messageBacklog.get().setMaxSize(bufferSize)
+    runInEdt {
+      reloadMessages()
+    }
   }
 
   @UiThread

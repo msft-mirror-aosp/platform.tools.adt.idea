@@ -389,7 +389,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_DP_SIZED_PREVIEW = Flag.create(
     NELE, "dp.sized.preview", "Use dp size instead of px size for previews",
     "If enabled, the size of previews will be proportional to screen dp size instead of screen px size.",
-    false);
+    true);
   //endregion
 
   //region Navigation Editor
@@ -461,11 +461,6 @@ public final class StudioFlags {
     RUNDEBUG, "android.new.execution.flow.enabled", "Enable new Execution flow",
     "If enabled, AS executes Run Configuration via new.AndroidRunProfileState",
     false);
-
-  public static final Flag<Boolean> ALLOW_RUN_WEAR_CONFIGURATIONS_FROM_GUTTER = Flag.create(
-    RUNDEBUG, "run.wear.configuration.gutter.enabled", "Run Wear Configurations from gutter",
-    "If enabled, allow to Run Wear Configurations from the gutter.",
-    true);
 
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
@@ -570,6 +565,14 @@ public final class StudioFlags {
     "adblib.migration.wifi.pairing",
     "Use adblib in Pair Device over Wi-Fi",
     "Use adblib instead of ddmlib for Pair Device over Wi-Fi",
+    true);
+
+  /** b/262404780: forces the use of legacy shell to collect ps output. */
+  public static final Flag<Boolean> ADBLIB_LEGACY_SHELL_FOR_PS_MONITOR = Flag.create(
+    RUNDEBUG,
+    "adblib.legacy.shell.for.psname.monitor",
+    "Use adblib's legacy shell connection to monitor process names",
+    "Use adblib's legacy shell instead of shell-v2 to monitor process names",
     true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER = Flag.create(
@@ -1223,13 +1226,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_INTERACTIVE_ANIMATION_CURVES = Flag.create(
-    COMPOSE, "preview.animation.curves",
-    "Enable animation curves in Animation Inspector",
-    "If enabled, animation curves will be rendered in Animation Inspector timeline.",
-    true
-  );
-
   public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG = Flag.create(
     COMPOSE, "preview.animation.coordination.drag",
     "Enable animation dragging in timeline for Animation Inspector",
@@ -1240,7 +1236,17 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE = Flag.create(
     COMPOSE, "preview.animation.animate.as.state", "Enable animate*AsState support",
     "If enabled, the animate*AsState Compose API support will be available in Animation Preview.",
-    false);
+    true);
+
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATED_CONTENT = Flag.create(
+    COMPOSE, "preview.animation.animated.content", "Enable animatedContent support",
+    "If enabled, the animatedContent Compose API support will be available in Animation Preview.",
+    true);
+
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_INFINITE_TRANSITION = Flag.create(
+    COMPOSE, "preview.animation.infinite.transition", "Enable rememberInfiniteTransition support",
+    "If enabled, the rememberInfiniteTransition Compose API support will be available in Animation Preview.",
+    true);
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
     COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
@@ -1377,6 +1383,17 @@ public final class StudioFlags {
     false
   );
   // endregion DDMLIB
+
+  // region Deployment
+  private static final FlagGroup DEPLOYMENT = new FlagGroup(FLAGS, "deployment", "Deployment");
+
+  public static final @NotNull Flag<@NotNull Boolean> LOGGERS_ERRORS_ENABLED =
+    Flag.create(DEPLOYMENT,
+                "loggers.errors.enabled",
+                "Enable the logging of errors from Loggers::errorOrWarn",
+                "Enable the logging of errors from Loggers::errorOrWarn",
+                false);
+  // endregion
 
   //region SERVER_FLAGS
   private static final FlagGroup SERVER_FLAGS = new FlagGroup(FLAGS, "serverflags", "Server Flags");

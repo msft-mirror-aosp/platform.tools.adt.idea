@@ -23,6 +23,7 @@ import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
@@ -113,14 +114,20 @@ fun interface InspectorClientProvider {
  * Simple, convenient provider for generating a real [LegacyClient]
  */
 fun LegacyClientProvider(
-  parentDisposable: Disposable,
+  getDisposable: () -> Disposable,
   treeLoaderOverride: LegacyTreeLoader? = Mockito.mock(LegacyTreeLoader::class.java).also {
     whenever(it.getAllWindowIds(ArgumentMatchers.any())).thenReturn(listOf("1"))
   }
 ) = InspectorClientProvider { params, inspector ->
-  LegacyClient(params.process, params.isInstantlyAutoConnected, inspector.layoutInspectorModel,
-               LayoutInspectorSessionMetrics(inspector.layoutInspectorModel.project, params.process),
-               parentDisposable, treeLoaderOverride)
+  LegacyClient(
+    params.process,
+    params.isInstantlyAutoConnected,
+    inspector.layoutInspectorModel,
+    LayoutInspectorSessionMetrics(inspector.layoutInspectorModel.project, params.process),
+    AndroidCoroutineScope(getDisposable()),
+    getDisposable(),
+    treeLoaderOverride
+  )
 }
 
 /**
@@ -189,6 +196,8 @@ class LayoutInspectorRule(
    */
   val project get() = projectRule.project
 
+  val disposable get() = projectRule.testRootDisposable
+
   /**
    * A notifier which acts as a source of processes being externally connected.
    */
@@ -233,12 +242,15 @@ class LayoutInspectorRule(
     projectRule.replaceService(PropertiesComponent::class.java, PropertiesComponentMock())
 
     inspectorModel = InspectorModel(projectRule.project)
-    launcher = InspectorClientLauncher(processes,
-                                       clientProviders.map { provider -> { params -> provider.create(params, inspector) } },
-                                       project,
-                                       launcherDisposable,
-                                       executor = launcherExecutor)
-    Disposer.register(projectRule.fixture.testRootDisposable, launcherDisposable)
+    launcher = InspectorClientLauncher(
+      processes,
+      clientProviders.map { provider -> { params -> provider.create(params, inspector) } },
+      project,
+      AndroidCoroutineScope(projectRule.testRootDisposable),
+      launcherDisposable,
+      executor = launcherExecutor
+    )
+    Disposer.register(projectRule.testRootDisposable, launcherDisposable)
     AndroidFacet.getInstance(projectRule.module)?.let { AndroidModel.set(it, TestAndroidModel("com.example")) }
 
     // Client starts disconnected, and will be updated after the ProcessesModel's selected process is updated

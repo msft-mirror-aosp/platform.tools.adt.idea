@@ -41,7 +41,7 @@ import com.android.tools.idea.layoutinspector.view
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
-import com.intellij.testFramework.DisposableRule
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,10 +54,8 @@ import kotlin.concurrent.thread
 private val PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 class AppInspectionSnapshotSupportTest {
-  private val disposableRule = DisposableRule()
-
   private val projectRule = AndroidProjectRule.withSdk()
-  private val appInspectorRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val appInspectorRule = AppInspectionInspectorRule(projectRule)
   private lateinit var inspectorClientSettings: InspectorClientSettings
   private val inspectorRule = LayoutInspectorRule(
     listOf(appInspectorRule.createInspectorClientProvider(getClientSettings = { inspectorClientSettings })), projectRule
@@ -66,7 +64,7 @@ class AppInspectionSnapshotSupportTest {
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(appInspectorRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(appInspectorRule).around(inspectorRule)!!
 
   @Before
   fun setUp() {
@@ -143,7 +141,7 @@ class AppInspectionSnapshotSupportTest {
   @Test
   fun saveAndLoadNonLiveSnapshot() {
     inspectorClientSettings.isCapturingModeOn = false
-    inspectorRule.inspectorClient.stopFetching()
+    runBlocking { inspectorRule.inspectorClient.stopFetching() }
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       appInspectorRule.viewInspector.connection.sendEvent {
         rootsEventBuilder.apply {
@@ -221,7 +219,7 @@ class AppInspectionSnapshotSupportTest {
 
     // Now switch to non-live
     inspectorClientSettings.isCapturingModeOn = false
-    inspectorRule.inspectorClient.stopFetching().get()
+    runBlocking { inspectorRule.inspectorClient.stopFetching() }
 
     val startedLatch = CountDownLatch(1)
     // Try to save the snapshot right away, before we've gotten any events

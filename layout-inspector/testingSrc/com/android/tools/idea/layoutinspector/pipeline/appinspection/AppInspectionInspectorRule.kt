@@ -23,6 +23,7 @@ import com.android.tools.idea.appinspection.api.AppInspectionApiServices
 import com.android.tools.idea.appinspection.test.AppInspectionServiceRule
 import com.android.tools.idea.appinspection.test.TestAppInspectorCommandHandler
 import com.android.tools.idea.appinspection.test.createResponse
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.InspectorClientProvider
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
@@ -56,7 +57,7 @@ fun AppInspectionClientProvider(
   getApiServices: () -> AppInspectionApiServices,
   getMonitor: () -> InspectorClientLaunchMonitor,
   getClientSettings: () -> InspectorClientSettings,
-  parentDisposable: Disposable
+  getDisposable: () -> Disposable
 ) = InspectorClientProvider { params, inspector ->
   val apiServices = getApiServices()
 
@@ -67,7 +68,8 @@ fun AppInspectionClientProvider(
     metrics = LayoutInspectorSessionMetrics(inspector.layoutInspectorModel.project, params.process),
     treeSettings = inspector.treeSettings,
     inspectorClientSettings = getClientSettings(),
-    parentDisposable = parentDisposable,
+    coroutineScope = AndroidCoroutineScope(getDisposable()),
+    parentDisposable = getDisposable(),
     apiServices = apiServices).apply {
     launchMonitor = getMonitor()
   }
@@ -77,7 +79,6 @@ fun AppInspectionClientProvider(
  * App inspection-pipeline specific setup and teardown for tests.
  */
 class AppInspectionInspectorRule(
-  private val parentDisposable: Disposable,
   private val projectRule: AndroidProjectRule,
   withDefaultResponse: Boolean = true
 ) : TestRule {
@@ -143,9 +144,10 @@ class AppInspectionInspectorRule(
    */
   fun createInspectorClientProvider(
     getMonitor: () -> InspectorClientLaunchMonitor = { defaultMonitor() },
-    getClientSettings: () -> InspectorClientSettings = { defaultInspectorClientSettings() }
+    getClientSettings: () -> InspectorClientSettings = { defaultInspectorClientSettings() },
+    getDisposable: () -> Disposable = { defaultDisposable() }
   ): InspectorClientProvider {
-    return AppInspectionClientProvider({ inspectionService.apiServices }, getMonitor, getClientSettings, parentDisposable)
+    return AppInspectionClientProvider({ inspectionService.apiServices }, getMonitor, getClientSettings, getDisposable)
   }
 
   private fun defaultMonitor(): InspectorClientLaunchMonitor {
@@ -154,6 +156,10 @@ class AppInspectionInspectorRule(
 
   private fun defaultInspectorClientSettings(): InspectorClientSettings {
     return InspectorClientSettings(projectRule.project)
+  }
+
+  private fun defaultDisposable(): Disposable {
+    return projectRule.testRootDisposable
   }
 
   override fun apply(base: Statement, description: Description): Statement {

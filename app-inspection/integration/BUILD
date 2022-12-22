@@ -35,10 +35,10 @@ iml_test(
     }) + [
         ":minapp_deps",
         ":minapp",
-        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/base/build-system:gradle-distrib",
+        "//tools/base/build-system:gradle-distrib-7.5",
         "@system_image_android-29_default_x86_64//:x86_64-android-29-images",
     ],
     module = ":app-inspection.integration",
@@ -57,10 +57,10 @@ maven_repository(
     artifacts = [
         "@maven//:com.android.tools.build.aapt2_7.1.0-7984345",
         "@maven//:com.android.tools.build.gradle_7.1.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.0-Beta",
     ],
 )
 

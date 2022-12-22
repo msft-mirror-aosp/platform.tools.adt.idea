@@ -54,6 +54,7 @@ import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescript
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.avdmanager.AvdManagerConnection
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
@@ -80,6 +81,7 @@ import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
 import com.android.tools.idea.layoutinspector.util.ComponentUtil
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
+import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.project.AndroidRunConfigurations
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.run.AndroidRunConfiguration
@@ -96,7 +98,6 @@ import com.intellij.execution.RunManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
-import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
@@ -133,10 +134,9 @@ class AppInspectionInspectorClientTest {
 
   private lateinit var inspectorClientSettings: InspectorClientSettings
 
-  private val disposableRule = DisposableRule()
   private val treeRule = FlagRule(StudioFlags.USE_COMPONENT_TREE_TABLE, true)
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectionRule = AppInspectionInspectorRule(projectRule)
   private val inspectorRule = LayoutInspectorRule(
     listOf(inspectionRule.createInspectorClientProvider({ monitor }, { inspectorClientSettings })), projectRule
   ) {
@@ -149,8 +149,7 @@ class AppInspectionInspectorClientTest {
     .around(inspectionRule)
     .around(inspectorRule)
     .around(treeRule)
-    .around(usageRule)
-    .around(disposableRule)!!
+    .around(usageRule)!!
 
   @Before
   fun before() {
@@ -170,10 +169,36 @@ class AppInspectionInspectorClientTest {
     assertThat(inspectorRule.inspectorClient.isConnected).isTrue()
   }
 
+  @Test
+  fun clientCanConnectTolockedDevice() {
+    inspectionRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
+      sendProgress(LayoutInspectorViewProtocol.ProgressEvent.ProgressCheckpoint.START_RECEIVED)
+      sendProgress(LayoutInspectorViewProtocol.ProgressEvent.ProgressCheckpoint.STARTED)
+      sendProgress(LayoutInspectorViewProtocol.ProgressEvent.ProgressCheckpoint.RESPONSE_SENT)
+      inspectionRule.viewInspector.connection.sendEvent {
+        // A locked device sends an empty LayoutEvent:
+        layoutEvent = LayoutInspectorViewProtocol.LayoutEvent.getDefaultInstance()
+      }
+      LayoutInspectorViewProtocol.Response.newBuilder()
+        .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
+        .build()
+    }
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    assertThat(inspectorRule.inspectorClient.isConnected).isTrue()
+  }
+
+  private fun sendProgress(progress: LayoutInspectorViewProtocol.ProgressEvent.ProgressCheckpoint) {
+    inspectionRule.viewInspector.connection.sendEvent {
+      progressEvent = LayoutInspectorViewProtocol.ProgressEvent.newBuilder().apply {
+        checkpoint = progress
+      }.build()
+    }
+  }
+
   @org.junit.Ignore("b/244336884")
   @Test
   fun treeRecompositionVisibilitySetAtConnectTime() {
-    val panel = LayoutInspectorTreePanel(disposableRule.disposable)
+    val panel = LayoutInspectorTreePanel(projectRule.testRootDisposable)
     var updateActionsCalled = 0
     var enabledActions = 0
     panel.registerCallbacks(object : ToolWindowCallback {
@@ -677,7 +702,7 @@ class AppInspectionInspectorClientTest {
             else {
               handlingFirstBatch = false
               assertThat(viewEvent.screenshot.bytes.byteAt(0)).isEqualTo(10.toByte())
-              client.stopFetching() // Triggers second batch of layout events
+              runBlocking { client.stopFetching() } // Triggers second batch of layout events
             }
           }
           else {
@@ -1015,13 +1040,12 @@ class AppInspectionInspectorClientTest {
 }
 
 class AppInspectionInspectorClientWithUnsupportedApi29 {
-  private val disposableRule = DisposableRule()
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectionRule = AppInspectionInspectorRule(projectRule)
   private val inspectorRule = LayoutInspectorRule(listOf(mock()), projectRule) { false }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule)!!
 
   @Test
   fun testApi29VersionBanner() = runBlocking {
@@ -1052,7 +1076,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
         metrics = mock(),
         treeSettings = mock(),
         inspectorClientSettings = InspectorClientSettings(projectRule.project),
-        parentDisposable = disposableRule.disposable,
+        coroutineScope = AndroidCoroutineScope(projectRule.testRootDisposable),
+        parentDisposable = projectRule.testRootDisposable,
         apiServices = inspectionRule.inspectionService.apiServices,
         sdkHandler = sdkHandler
       )
@@ -1087,7 +1112,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
         metrics = mock(),
         treeSettings = mock(),
         inspectorClientSettings = InspectorClientSettings(projectRule.project),
-        parentDisposable = disposableRule.disposable,
+        coroutineScope = AndroidCoroutineScope(projectRule.testRootDisposable),
+        parentDisposable = projectRule.testRootDisposable,
         apiServices = inspectionRule.inspectionService.apiServices,
         sdkHandler = sdkHandler
       )
@@ -1115,7 +1141,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
         metrics = mock(),
         treeSettings = mock(),
         inspectorClientSettings = InspectorClientSettings(projectRule.project),
-        parentDisposable = disposableRule.disposable,
+        coroutineScope = AndroidCoroutineScope(projectRule.testRootDisposable),
+        parentDisposable = projectRule.testRootDisposable,
         apiServices = inspectionRule.inspectionService.apiServices,
         sdkHandler = sdkHandler
       )
@@ -1203,9 +1230,8 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
 
 class AppInspectionInspectorClientWithFailingClientTest {
   private val usageTrackerRule = MetricsTrackerRule()
-  private val disposableRule = DisposableRule()
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
+  private val inspectionRule = AppInspectionInspectorRule(projectRule)
   private var throwOnState: AttachErrorState = AttachErrorState.UNKNOWN_ATTACH_ERROR_STATE
   private var exceptionToThrow: Exception = RuntimeException("expected")
   private val getMonitor: () -> InspectorClientLaunchMonitor = {
@@ -1230,7 +1256,7 @@ class AppInspectionInspectorClientWithFailingClientTest {
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(usageTrackerRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(usageTrackerRule)!!
 
   @Before
   fun setUp() {

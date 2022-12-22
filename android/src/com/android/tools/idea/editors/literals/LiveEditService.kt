@@ -17,15 +17,17 @@
 package com.android.tools.idea.editors.literals
 
 import com.android.ddmlib.IDevice
-import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.editors.liveedit.ui.EmulatorLiveEditAdapter
 import com.android.tools.idea.editors.liveedit.ui.LiveEditAction
+import com.android.tools.idea.run.deployment.liveedit.AdbConnection
 import com.android.tools.idea.run.deployment.liveedit.AndroidLiveEditDeployMonitor
+import com.android.tools.idea.run.deployment.liveedit.DeviceConnection
+import com.android.tools.idea.run.deployment.liveedit.EditEvent
+import com.android.tools.idea.run.deployment.liveedit.PsiListener
 import com.android.tools.idea.run.deployment.liveedit.SourceInlineCandidateCache
 import com.android.tools.idea.streaming.RUNNING_DEVICES_TOOL_WINDOW_ID
 import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
-import com.android.tools.idea.util.ListenerCollection
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.application.ApplicationManager
@@ -33,34 +35,13 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiTreeChangeEvent
-import com.intellij.psi.PsiTreeChangeListener
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import java.util.concurrent.Callable
 import java.util.concurrent.Executor
-
-
-/**
- * @param file: Where the file event originate
- * @param origin: The most narrow PSI Element where the edit event occurred.
- */
-data class EditEvent(val file: PsiFile,
-                     val origin: KtElement) {
-
-  // A list of all functions that encapsulate the origin of the event in the source code ordered by nesting level
-  // from inner-most to outer-most. This will be use to determine which compose groups to invalidate on the given change.
-  val parentGroup = ArrayList<KtFunction>()
-}
 
 enum class EditState {
   ERROR,                  // LiveEdit has encountered an error that is not recoverable.
@@ -75,17 +56,22 @@ enum class EditState {
   DISABLED                // LiveEdit has been disabled (via UI or custom properties).
 }
 
-data class EditStatus(val editState: EditState, val message: String, val actionId: String?)
+data class EditStatus(val editState: EditState, val message: String, val actionId: String?) {
+  fun merge(other: EditStatus) = if (other.editState.ordinal < editState.ordinal) other else this
+}
 
 /**
  * Allows any component to listen to all method body edits of a project.
  */
 @Service
-class LiveEditService private constructor(val project: Project, var listenerExecutor: Executor) : Disposable {
+class LiveEditService constructor(val project: Project,
+                                  val deviceConnection: DeviceConnection,
+                                  var executor: Executor) : Disposable {
 
-  val inlineCandidateCache = SourceInlineCandidateCache()
-
+  // We quickly hand off the processing of PSI events to our own executor, since PSI events are likely
+  // dispatched from the UI thread, and we do not want to block it.
   constructor(project: Project) : this(project,
+                                       AdbConnection,
                                        AppExecutorUtil.createBoundedApplicationPoolExecutor(
                                          "Document changed listeners executor", 1))
 
@@ -123,26 +109,20 @@ class LiveEditService private constructor(val project: Project, var listenerExec
     }
   }
 
+  fun inlineCandidateCache() : SourceInlineCandidateCache {
+    return deployMonitor.compiler.inlineCandidateCache
+  }
+
+  // TODO: Find out why we can't just recreate deployMonitor
   fun resetState() {
-    inlineCandidateCache.clear()
     deployMonitor.resetState()
   }
 
-  fun interface EditListener {
-    operator fun invoke(method: EditEvent)
-  }
-
-  private val onEditListeners = ListenerCollection.createWithExecutor<EditListener>(listenerExecutor)
-
   private val deployMonitor: AndroidLiveEditDeployMonitor
-
-  fun addOnEditListener(listener: EditListener) {
-    onEditListeners.add(listener)
-  }
 
   init {
     // TODO: Deactivate this when not needed.
-    val listener = MyPsiListener(::onMethodBodyUpdated)
+    val listener = PsiListener(this::onPsiChanged)
     PsiManager.getInstance(project).addPsiTreeChangeListener(listener, this)
     deployMonitor = AndroidLiveEditDeployMonitor(this, project)
     // TODO: Delete if it turns our we don't need Hard-refresh trigger.
@@ -183,20 +163,12 @@ class LiveEditService private constructor(val project: Project, var listenerExec
     return deployMonitor
   }
 
+  fun devices(): Set<IDevice> {
+    return deployMonitor.devices();
+  }
+
   fun editStatus(device: IDevice): EditStatus {
     return deployMonitor.status(device)
-  }
-
-  fun editStatus(): MutableMap<IDevice, EditStatus> {
-    return deployMonitor.status()
-  }
-
-  fun mergeStatuses(statuses: Map<IDevice, EditStatus>): EditStatus {
-    return deployMonitor.mergeStatuses(statuses)
-  }
-
-  fun notifyDebug(packageName: String, device: IDevice) {
-    deployMonitor.notifyDebug(packageName, device)
   }
 
   fun getCallback(packageName: String, device: IDevice) : Callable<*>? {
@@ -204,135 +176,8 @@ class LiveEditService private constructor(val project: Project, var listenerExec
   }
 
   @com.android.annotations.Trace
-  private fun onMethodBodyUpdated(event: EditEvent) {
-    // Drop any invalid events.
-    // As mention in other parts of the code. The type of PSI event sent are really unpredictable. Intermediate events
-    // sometimes contains event origins that is not valid or no longer exist in any file. In automatic mode this might not be a big
-    // issue but in automatic mode, a single failing event can get merged into the big edit event which causes the single compiler
-    // invocation to crash.
-    if (!event.origin.isValid || event.origin.containingFile == null) {
-      return
-    }
-
-    onEditListeners.forEach {
-      it(event)
-    }
-  }
-
-  private inner class MyPsiListener(private val editListener: EditListener) : PsiTreeChangeListener {
-    @com.android.annotations.Trace
-    private fun handleChangeEvent(event: PsiTreeChangeEvent) {
-      // THIS CODE IS EXTREMELY FRAGILE AT THE MOMENT.
-      // According to the PSI listener doc, there is no guarantee what events we get.
-      // Changing a single variable name can result with a "replace" of the whole file.
-      //
-      // While this works "ok" for the most part, we need to figure out a better way to detect
-      // the change is actually a function change somehow.
-
-      if (event.file == null || event.file !is KtFile) {
-        return
-      }
-
-      val file = event.file as KtFile
-      var parent = event.parent;
-
-      // The code might not be valid at this point, so we should not be making any
-      // assumption based on the Kotlin language structure.
-
-      while (parent != null) {
-        when (parent) {
-          is KtNamedFunction -> {
-            val event = EditEvent(file, parent)
-            editListener(event)
-            break;
-          }
-          is KtFunction -> {
-            val event = EditEvent(file, parent)
-
-            // Record each unnamed function as part of the event until we reach a named function.
-            // This will be used to determine how partial recomposition is done on this edit in a later stage.
-            var groupParent = parent.parent
-            while (groupParent != null) {
-              when (groupParent) {
-                is KtNamedFunction -> {
-                  event.parentGroup.add(groupParent)
-                  break
-                }
-                is KtNamedFunction -> {
-                  event.parentGroup.add(groupParent)
-                }
-              }
-              groupParent = groupParent.parent
-            }
-            editListener(event)
-            break;
-          }
-          is KtClass -> {
-            val event = EditEvent(file, parent)
-            editListener(event)
-            break;
-          }
-        }
-        parent = parent.parent
-      }
-
-      // This is a workaround to experiment with partial recomposition. Right now any simple edit would create multiple
-      // edit events and one of them is usually a spurious whole file event that will trigger an unnecessary whole recompose.
-      // For now we just ignore that event until Live Edit becomes better at diff'ing changes.
-      if (!LiveEditAdvancedConfiguration.getInstance().usePartialRecompose) {
-        // If there's no Kotlin construct to use as a parent for this event, use the KtFile itself as the parent.
-        val event = EditEvent(file, file)
-        editListener(event)
-      }
-    }
-
-    override fun childAdded(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun childRemoved(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun childReplaced(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun childrenChanged(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun childMoved(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun propertyChanged(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforeChildAddition(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforeChildRemoval(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforeChildReplacement(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforeChildMovement(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforeChildrenChange(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
-
-    override fun beforePropertyChange(event: PsiTreeChangeEvent) {
-      handleChangeEvent(event);
-    }
+  private fun onPsiChanged(event: EditEvent) {
+    executor.execute { deployMonitor.onPsiChanged(event) }
   }
 
   override fun dispose() {
@@ -341,9 +186,5 @@ class LiveEditService private constructor(val project: Project, var listenerExec
 
   fun triggerLiveEdit() {
     deployMonitor.onManualLETrigger(project)
-  }
-
-  fun sendRecomposeRequest() {
-    deployMonitor.sendRecomposeRequest();
   }
 }

@@ -66,7 +66,7 @@ import javax.swing.table.TableRowSorter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> implements VirtualDeviceWatcherListener, Disposable {
+public final class VirtualDeviceTable extends DeviceTable<VirtualDevice> implements Disposable {
   private final @NotNull VirtualDeviceAsyncSupplier myAsyncSupplier;
   private final @NotNull NewSetDevices myNewSetDevices;
   private @Nullable IDeviceChangeListener myListener;

@@ -1005,9 +1005,9 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.SideConstraintHandlingTest"],
     tags = COMMON_TAGS + [
-        "qa_smoke",  # b/110178024
-        "qa_unreliable",  # bug: b/78469702
-        "qa_smoke_unreliable",  # bug: b/78469702
+        "qa_smoke",
+        "no_mac",
+        "no_windows",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1028,8 +1028,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BaselineConstraintHandlingTest"],
     tags = COMMON_TAGS + [
         "qa_smoke",
-        "qa_smoke_unreliable",  # b/159635974
-        "qa_unreliable",  # b/159635974
+        "no_mac",
+        "no_windows",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1052,6 +1052,25 @@ java_test(
     tags = COMMON_TAGS + [
         "ui_test",
         "very_flaky",  # b/241915111
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "ComponentSelectionSplitViewTest",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+    ] + glob(["testData/SimpleApplication/**"]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.ComponentSelectionSplitViewTest"],
+    tags = COMMON_TAGS + [
+        "ui_test",
+        "very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1451,6 +1470,31 @@ java_test(
 )
 
 java_test(
+    name = "ComponentSelectionTest",
+    size = "enormous",
+    timeout = "long",
+    data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "@maven//:com.android.support.support-annotations_28.0.0",
+        "@maven//:com.android.support.appcompat-v7_26.1.0",
+    ] + glob([
+        "testData/SimpleApplication/**",
+    ]) + glob(["testData/LayoutTest/**"]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.ComponentSelectionTest"],
+    tags = COMMON_TAGS + [
+        "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
     name = "CreateNavNIGraphTest",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
@@ -1659,7 +1703,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.QuickFixForJniTest"],
     tags = COMMON_TAGS + [
-        "qa_unreliable",
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2661,6 +2705,8 @@ java_test(
 
 java_test(
     name = "AgpUpgradeTest",
+    size = "enormous",
+    timeout = "long",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),

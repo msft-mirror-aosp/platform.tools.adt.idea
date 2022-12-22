@@ -161,7 +161,7 @@ MODULE                        : project.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-32
     BuildFolder                   : <ROOT>/app/build [-]
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 30.0.3
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : google.simpleapplication
@@ -205,7 +205,6 @@ MODULE                        : project.app
     - basicVariant:               : release
         applicationId                 : google.simpleapplication
     BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-32/optional/org.apache.http.legacy.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo

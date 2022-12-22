@@ -19,6 +19,7 @@ package com.android.tools.idea.run;
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler;
 import com.android.tools.idea.run.applychanges.ApplyChangesUtilsKt;
 import com.android.tools.idea.run.applychanges.ExistingSession;
+import com.android.tools.idea.run.editor.DeployTarget;
 import com.android.tools.idea.run.tasks.LaunchTasksProvider;
 import com.android.tools.idea.stats.RunStats;
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration;
@@ -31,15 +32,15 @@ import com.intellij.execution.Executor;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.configurations.RunProfile;
 import com.intellij.execution.configurations.RunProfileState;
-import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.ConsoleView;
-import com.intellij.execution.ui.ExecutionConsole;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
-import java.util.function.BiConsumer;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
 import kotlin.Unit;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
@@ -50,7 +51,7 @@ public class AndroidRunState implements RunProfileState {
   @NotNull private final Module myModule;
   @NotNull private final ApplicationIdProvider myApplicationIdProvider;
   @NotNull private final ConsoleProvider myConsoleProvider;
-  @NotNull private final DeviceFutures myDeviceFutures;
+  private final DeployTarget myDeviceFutures;
   @NotNull private final LaunchTasksProvider myLaunchTasksProvider;
 
   public AndroidRunState(@NotNull ExecutionEnvironment env,
@@ -58,7 +59,7 @@ public class AndroidRunState implements RunProfileState {
                          @NotNull Module module,
                          @NotNull ApplicationIdProvider applicationIdProvider,
                          @NotNull ConsoleProvider consoleProvider,
-                         @NotNull DeviceFutures deviceFutures,
+                         @NotNull DeployTarget deviceFutures,
                          @NotNull LaunchTasksProvider launchTasksProvider) {
     myEnv = env;
     myLaunchConfigName = launchConfigName;
@@ -74,7 +75,7 @@ public class AndroidRunState implements RunProfileState {
   public ExecutionResult execute(Executor executor, @NotNull ProgramRunner runner) throws ExecutionException {
     ExistingSession prevHandler = ApplyChangesUtilsKt.findExistingSessionAndMaybeDetachForColdSwap(myEnv);
     ProcessHandler processHandler = prevHandler.getProcessHandler();
-    ExecutionConsole console = prevHandler.getExecutionConsole();
+    ConsoleView console = (ConsoleView)prevHandler.getExecutionConsole();
 
     if (processHandler == null) {
       String appId = getMasterAndroidProcessId(myEnv.getRunProfile());
@@ -87,25 +88,32 @@ public class AndroidRunState implements RunProfileState {
         },
         shouldAutoTerminate(myEnv.getRunnerAndConfigurationSettings()));
     }
+    Project project = myModule.getProject();
     if (console == null) {
-      console = myConsoleProvider.createAndAttach(myModule.getProject(), processHandler, executor);
+      console = myConsoleProvider.createAndAttach(project, processHandler, executor);
     }
 
-    BiConsumer<String, HyperlinkInfo> hyperlinkConsumer =
-      console instanceof ConsoleView ? ((ConsoleView)console)::printHyperlink : (s, h) -> {
-      };
+    LaunchTaskRunner taskRunner = new LaunchTaskRunner(project,
+                                                       getApplicationId(),
+                                                       myEnv,
+                                                       processHandler,
+                                                       myDeviceFutures,
+                                                       myLaunchTasksProvider,
+                                                       createRunStats(),
+                                                       console);
+    ProcessHandler finalProcessHandler = processHandler;
+    ProgressManager.getInstance().run(new Task.Backgroundable(project, "Launching " + myLaunchConfigName) {
+      @Override
+      public void run(@NotNull ProgressIndicator indicator) {
+        taskRunner.run(indicator);
+      }
 
-    LaunchTaskRunner task = new LaunchTaskRunner(myModule.getProject(),
-                                                 myLaunchConfigName,
-                                                 getApplicationId(),
-                                                 myEnv.getExecutionTarget().getDisplayName(),
-                                                 myEnv,
-                                                 processHandler,
-                                                 myDeviceFutures,
-                                                 myLaunchTasksProvider,
-                                                 createRunStats(),
-                                                 hyperlinkConsumer);
-    ProgressManager.getInstance().run(task);
+      @Override
+      public void onThrowable(@NotNull Throwable error) {
+        finalProcessHandler.destroyProcess();
+        super.onThrowable(error);
+      }
+    });
     return new DefaultExecutionResult(console, processHandler);
   }
 

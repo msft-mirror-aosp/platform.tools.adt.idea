@@ -135,7 +135,7 @@ object ComposeUnit {
 
   class IntUnit(value: Int) : Unit1D<Int>(value) {
     override fun createProperties(prefix: String) =
-      listOf(AnimatedPropertyItem(prefix, "$component1", { EDITOR_NO_ERROR }, "Int"))
+      listOf(AnimatedPropertyItem(prefix, "$component1", IntValidation, "Int"))
 
     override fun parseUnit(getValue: (Int) -> String?): Unit<*>? {
       return try {
@@ -430,6 +430,9 @@ object ComposeUnit {
         }
         return null
       }
+
+      fun create(color: java.awt.Color) =
+        Color(color.red / 255f, color.green / 255f, color.blue / 255f, color.alpha / 255f)
     }
 
     val color: java.awt.Color? =

@@ -104,6 +104,7 @@ import com.android.tools.idea.gradle.model.impl.IdeSourceProviderImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl
+import com.android.tools.idea.gradle.model.impl.IdeUnknownLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedModuleLibraryImpl
@@ -440,6 +441,10 @@ internal fun modelCacheV2Impl(
     return internedModels.getOrCreate(unnamed)
   }
 
+  fun javaLibraryFromJarFile(jarFile: File): LibraryReference {
+    return internedModels.getOrCreate(IdeJavaLibraryImpl("${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified", "", jarFile))
+  }
+
   fun moduleLibraryFrom(
     projectPath: String,
     buildId: BuildId,
@@ -482,6 +487,7 @@ internal fun modelCacheV2Impl(
     ownerProjectPath: String,
     dependencies: List<GraphItem>,
     libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildNameMap: Map<String, BuildId>
   ): ModelResult<IdeDependenciesCoreImpl> = ModelResult.create {
@@ -599,6 +605,17 @@ internal fun modelCacheV2Impl(
       }
     }
 
+    fun getOptionalBootClasspathLibraries(bootClasspath: Collection<String>): Collection<File> {
+      val androidJar = bootClasspath.asSequence().map { File(it) }.firstOrNull { it.name == "android.jar" } ?: return emptyList()
+      val optionalDir = androidJar.parentFile.resolve("optional")
+      return bootClasspath.asSequence()
+        .map { File(it) }
+        .filter {
+          it.parentFile.path == optionalDir.path // Assumes 'optional` won't be created as `Optional` etc.
+        }
+        .toList()
+    }
+
     fun populateJavaLibraries(
       javaLibraries: Collection<Library>,
       visited: MutableSet<String>
@@ -614,27 +631,53 @@ internal fun modelCacheV2Impl(
       }
     }
 
+    fun populateOptionalSdkLibrariesLibraries(
+      visited: MutableSet<String>
+    ) {
+      getOptionalBootClasspathLibraries(bootClasspath).forEach { jarFile ->
+        visited.add(jarFile.path) // Any unique keyidentifying the library  is suitable.
+        librariesById.computeIfAbsent(jarFile.path) {
+          IdeDependencyCoreImpl(javaLibraryFromJarFile(jarFile))
+        }
+      }
+    }
+
     class LibrariesByType(
       val androidLibraries: List<Library>,
       val javaLibraries: List<Library>,
-      val projectLibraries: List<Library>
+      val projectLibraries: List<Library>,
+      val unknownLibraries: List<Library>
     )
 
     fun getTypedLibraries(
       dependencies: List<Library>
     ): LibrariesByType {
-      return dependencies.groupBy { it.type }.let {
-        LibrariesByType(
-          androidLibraries = it[LibraryType.ANDROID_LIBRARY] ?: emptyList(),
-          javaLibraries = it[LibraryType.JAVA_LIBRARY] ?: emptyList(),
-          projectLibraries = it[LibraryType.PROJECT] ?: emptyList()
-        )
+      val androidLibraries: MutableList<Library> = mutableListOf()
+      val javaLibraries: MutableList<Library> = mutableListOf()
+      val projectLibraries: MutableList<Library> = mutableListOf()
+      val unknownLibraries: MutableList<Library> = mutableListOf()
+
+      dependencies.forEach { dep ->
+        when (dep.type) {
+          LibraryType.ANDROID_LIBRARY -> androidLibraries
+          LibraryType.PROJECT -> projectLibraries
+          LibraryType.JAVA_LIBRARY -> javaLibraries
+          LibraryType.RELOCATED -> unknownLibraries
+          LibraryType.NO_ARTIFACT_FILE -> unknownLibraries
+        }.add(dep)
       }
+
+      return LibrariesByType(
+        androidLibraries = androidLibraries,
+        javaLibraries = javaLibraries,
+        projectLibraries = projectLibraries,
+        unknownLibraries = unknownLibraries
+      )
     }
 
     /*
-  Flattens a direct acyclic graph of dependencies into a list that includes each node only once and is the result of traversal in the
-  depth-first pre-order order.
+    Flattens a direct acyclic graph of dependencies into a list that includes each node only once and is the result of traversal in the
+    depth-first pre-order order.
    */
     fun List<GraphItem>.toFlatLibraryList(): List<Library> {
       val result = mutableListOf<Library>()
@@ -670,6 +713,18 @@ internal fun modelCacheV2Impl(
       }
     }
 
+    fun populateUnknownDependencies(libraries: List<Library>, visited: MutableSet<String>) {
+      for (identifier in libraries) {
+        val address = identifier.key
+        if (!visited.contains(address)) {
+          visited.add(address)
+          librariesById.computeIfAbsent(identifier.key) {
+            IdeDependencyCoreImpl(internedModels.getOrCreate(IdeUnknownLibraryImpl(identifier.key)))
+          }
+        }
+      }
+    }
+
     fun createIdeDependencies(
       artifactAddresses: Collection<String>
     ): IdeDependenciesCoreImpl {
@@ -684,7 +739,9 @@ internal fun modelCacheV2Impl(
       val typedLibraries = getTypedLibraries(dependencyList)
       populateAndroidLibraries(typedLibraries.androidLibraries, visited)
       populateJavaLibraries(typedLibraries.javaLibraries, visited)
+      populateOptionalSdkLibrariesLibraries(visited)
       populateProjectDependencies(typedLibraries.projectLibraries, visited)
+      populateUnknownDependencies(typedLibraries.unknownLibraries, visited)
       return createIdeDependencies(visited)
     }
     createIdeDependenciesInstance()
@@ -699,6 +756,7 @@ internal fun modelCacheV2Impl(
     ownerProjectPath: String,
     dependencies: List<GraphItem>,
     libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildNameMap: Map<String, BuildId>
   ): ModelResult<IdeDependenciesCoreImpl> {
@@ -707,6 +765,7 @@ internal fun modelCacheV2Impl(
       ownerProjectPath,
       dependencies,
       libraries,
+      bootClasspath,
       androidProjectPathResolver,
       buildNameMap
     )
@@ -827,6 +886,7 @@ internal fun modelCacheV2Impl(
     artifact: IdeAndroidArtifactCoreImpl,
     artifactDependencies: ArtifactDependencies,
     libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildNameMap: Map<String, BuildId>,
   ): ModelResult<IdeAndroidArtifactCoreImpl> {
@@ -836,6 +896,7 @@ internal fun modelCacheV2Impl(
         ownerProjectPath,
         artifactDependencies.compileDependencies,
         libraries,
+        bootClasspath,
         androidProjectPathResolver,
         buildNameMap
       ).recordAndGet()
@@ -845,6 +906,7 @@ internal fun modelCacheV2Impl(
         ownerProjectPath,
         artifactDependencies.runtimeDependencies,
         libraries,
+        bootClasspath,
         androidProjectPathResolver,
         buildNameMap
       ).recordAndGet()
@@ -885,6 +947,7 @@ internal fun modelCacheV2Impl(
     artifact: IdeJavaArtifactCoreImpl,
     variantDependencies: ArtifactDependencies,
     libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildNameMap: Map<String, BuildId>
   ): ModelResult<IdeJavaArtifactCoreImpl> {
@@ -894,6 +957,7 @@ internal fun modelCacheV2Impl(
         projectPath,
         variantDependencies.compileDependencies,
         libraries,
+        bootClasspath,
         androidProjectPathResolver,
         buildNameMap
       ).recordAndGet()
@@ -903,6 +967,7 @@ internal fun modelCacheV2Impl(
         projectPath,
         variantDependencies.runtimeDependencies,
         libraries,
+        bootClasspath,
         androidProjectPathResolver,
         buildNameMap
       ).recordAndGet()
@@ -1008,6 +1073,7 @@ internal fun modelCacheV2Impl(
     ownerProjectPath: String,
     variant: IdeVariantCoreImpl,
     variantDependencies: VariantDependencies,
+    bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildNameMap: Map<String, BuildId>
   ): ModelResult<IdeVariantWithPostProcessor> {
@@ -1020,6 +1086,7 @@ internal fun modelCacheV2Impl(
             artifact = it,
             artifactDependencies = variantDependencies.mainArtifact,
             libraries = variantDependencies.libraries,
+            bootClasspath = bootClasspath,
             androidProjectPathResolver = androidProjectPathResolver,
             buildNameMap = buildNameMap
           ).recordAndGet()
@@ -1033,6 +1100,7 @@ internal fun modelCacheV2Impl(
             artifact = it,
             variantDependencies = variantDependencies.unitTestArtifact!!,
             libraries = variantDependencies.libraries,
+            bootClasspath = bootClasspath,
             androidProjectPathResolver = androidProjectPathResolver,
             buildNameMap = buildNameMap
           ).recordAndGet()
@@ -1046,6 +1114,7 @@ internal fun modelCacheV2Impl(
             artifact = it,
             artifactDependencies = variantDependencies.androidTestArtifact!!,
             libraries = variantDependencies.libraries,
+            bootClasspath = bootClasspath,
             androidProjectPathResolver = androidProjectPathResolver,
             buildNameMap = buildNameMap
           ).recordAndGet()
@@ -1059,6 +1128,7 @@ internal fun modelCacheV2Impl(
             artifact = it,
             artifactDependencies = variantDependencies.testFixturesArtifact!!,
             libraries = variantDependencies.libraries,
+            bootClasspath = bootClasspath,
             androidProjectPathResolver = androidProjectPathResolver,
             buildNameMap = buildNameMap
           ).recordAndGet()
@@ -1321,10 +1391,21 @@ internal fun modelCacheV2Impl(
       ownerProjectPath: String,
       variant: IdeVariantCoreImpl,
       variantDependencies: VariantDependencies,
+      bootClasspath: Collection<String>,
       androidProjectPathResolver: AndroidProjectPathResolver,
       buildNameMap: Map<String, BuildId>
     ): ModelResult<IdeVariantWithPostProcessor> =
-      lock.withLock { variantFrom(ownerBuildId, ownerProjectPath, variant, variantDependencies, androidProjectPathResolver, buildNameMap) }
+      lock.withLock {
+        variantFrom(
+          ownerBuildId,
+          ownerProjectPath,
+          variant,
+          variantDependencies,
+          bootClasspath,
+          androidProjectPathResolver,
+          buildNameMap
+        )
+      }
 
     override fun androidProjectFrom(
       rootBuildId: BuildId,

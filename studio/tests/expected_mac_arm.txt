@@ -326,10 +326,10 @@ Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/FiraCode-Medium.
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/FiraCode-Regular.ttf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/FiraCode-Retina.ttf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inconsolata.ttf
-Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-Bold.otf
-Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-BoldItalic.otf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-Italic.otf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-Regular.otf
+Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-SemiBold.otf
+Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/Inter-SemiBoldItalic.otf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/JetBrainsMono-Bold.ttf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/JetBrainsMono-BoldItalic.ttf
 Android Studio Preview.app/Contents/jbr/Contents/Home/lib/fonts/JetBrainsMono-ExtraBold.ttf
@@ -2461,6 +2461,7 @@ Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/darwin-
 Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/darwin-x86_64/simpleperf
 Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/x86/simpleperf
 Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/x86_64/simpleperf
+Android Studio Preview.app/Contents/plugins/android/resources/threading_agent.jar
 Android Studio Preview.app/Contents/plugins/android/resources/trace_agent.jar
 Android Studio Preview.app/Contents/plugins/android/resources/trace_processor_daemon/trace_processor_daemon
 Android Studio Preview.app/Contents/plugins/android/resources/transport/arm64-v8a/transport

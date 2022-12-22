@@ -17,6 +17,7 @@ package com.android.tools.idea.run.deployment;
 
 import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.ApkProvisionException;
@@ -24,11 +25,15 @@ import com.android.tools.idea.run.ApplicationIdProvider;
 import com.android.tools.idea.run.deployable.Deployable;
 import com.android.tools.idea.run.deployable.DeployableProvider;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.serviceContainer.NonInjectable;
-import java.util.Collections;
+import java.awt.EventQueue;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
@@ -56,10 +61,9 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
 
   @Override
   public @Nullable Deployable getDeployable(@NotNull RunConfiguration runConfiguration) {
-    if (!(runConfiguration instanceof AndroidRunConfigurationBase)) {
+    if (!(runConfiguration instanceof AndroidRunConfigurationBase androidRunConfiguration)) {
       return null;
     }
-    AndroidRunConfigurationBase androidRunConfiguration = (AndroidRunConfigurationBase)runConfiguration;
 
     List<Device> devices = myDeviceAndSnapshotComboBoxActionGetInstance.get().getSelectedDevices(androidRunConfiguration.getProject());
 
@@ -114,32 +118,77 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
       return myDevice.getAndroidVersion();
     }
 
+    @Override
+    public @NotNull ListenableFuture<@NotNull List<@NotNull Client>> searchClientsForPackageAsync() {
+      var future = myDevice.getDdmlibDeviceAsync();
+
+      // I intend for device -> Deployable.searchClientsForPackage(device, myPackageName) to execute on the EDT. If I use EdtExecutorService
+      // .getInstance() (which does an invokeLater), DeviceAndSnapshotComboBoxDeployableProvider.searchClientsForPackage will block forever
+      // because it'll wait for Deployable.searchClientsForPackage here which has been scheduled for after the wait. Hence, MoreExecutors
+      // .directExecutor().
+
+      // TODO Use EdtExecutorService::getInstance when searchClientsForPackage is deleted
+
+      // noinspection UnstableApiUsage
+      return Futures.transform(future, device -> Deployable.searchClientsForPackage(device, myPackageName), MoreExecutors.directExecutor());
+    }
+
     @NotNull
     @Override
     public List<Client> searchClientsForPackage() {
-      IDevice iDevice = myDevice.getDdmlibDevice();
-      if (iDevice == null) {
-        return Collections.emptyList();
+      if (EventQueue.isDispatchThread()) {
+        Loggers.errorConditionally(DeviceAndSnapshotComboBoxDeployableProvider.class,
+                                   "Blocking Future::get call on the EDT http://b/261492787");
       }
-      return Deployable.searchClientsForPackage(iDevice, myPackageName);
+
+      return Futures.getUnchecked(searchClientsForPackageAsync());
+    }
+
+    @Override
+    public @NotNull ListenableFuture<@NotNull Boolean> isOnlineAsync() {
+      if (!myDevice.getAndroidDevice().isRunning()) {
+        return Futures.immediateFuture(false);
+      }
+
+      // TODO Use EdtExecutorService::getInstance when isOnline is deleted
+
+      // noinspection UnstableApiUsage
+      return Futures.transform(myDevice.getDdmlibDeviceAsync(), IDevice::isOnline, MoreExecutors.directExecutor());
     }
 
     @Override
     public boolean isOnline() {
-      IDevice iDevice = myDevice.getDdmlibDevice();
-      if (iDevice == null) {
-        return false;
+      if (EventQueue.isDispatchThread()) {
+        Loggers.errorConditionally(DeviceAndSnapshotComboBoxDeployableProvider.class,
+                                   "Blocking Future::get call on the EDT http://b/261756103");
       }
-      return iDevice.isOnline();
+
+      return Futures.getUnchecked(isOnlineAsync());
+    }
+
+    @Override
+    public @NotNull ListenableFuture<@NotNull Boolean> isUnauthorizedAsync() {
+      if (!myDevice.getAndroidDevice().isRunning()) {
+        return Futures.immediateFuture(false);
+      }
+
+      var future = myDevice.getDdmlibDeviceAsync();
+
+      // TODO Use EdtExecutorService::getInstance when isUnauthorized is deleted
+      var executor = MoreExecutors.directExecutor();
+
+      // noinspection UnstableApiUsage
+      return Futures.transform(future, device -> Objects.equals(device.getState(), DeviceState.UNAUTHORIZED), executor);
     }
 
     @Override
     public boolean isUnauthorized() {
-      IDevice iDevice = myDevice.getDdmlibDevice();
-      if (iDevice == null) {
-        return false;
+      if (EventQueue.isDispatchThread()) {
+        Loggers.errorConditionally(DeviceAndSnapshotComboBoxDeployableProvider.class,
+                                   "Blocking Future::get call on the EDT http://b/261768533");
       }
-      return iDevice.getState() == IDevice.DeviceState.UNAUTHORIZED;
+
+      return Futures.getUnchecked(isUnauthorizedAsync());
     }
 
     @Override
@@ -149,11 +198,10 @@ public class DeviceAndSnapshotComboBoxDeployableProvider implements DeployablePr
 
     @Override
     public boolean equals(@Nullable Object object) {
-      if (!(object instanceof DeployableDevice)) {
+      if (!(object instanceof DeployableDevice device)) {
         return false;
       }
 
-      DeployableDevice device = (DeployableDevice)object;
       return myDevice.equals(device.myDevice) && myPackageName.equals(device.myPackageName);
     }
   }

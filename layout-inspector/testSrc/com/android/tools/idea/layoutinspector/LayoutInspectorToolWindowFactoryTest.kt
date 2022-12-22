@@ -27,7 +27,6 @@ import com.android.tools.idea.appinspection.ide.ui.RecentProcess
 import com.android.tools.idea.appinspection.internal.AppInspectionTarget
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.concurrency.waitForCondition
-import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcessDetection
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
 import com.android.tools.idea.layoutinspector.tree.InspectorTreeSettings
 import com.android.tools.idea.layoutinspector.ui.DeviceViewContentPanel
@@ -61,15 +60,12 @@ import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
+import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.mockito.Mockito.anyString
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
-import org.mockito.Mockito.verifyNoMoreInteractions
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.util.concurrent.TimeUnit
@@ -121,16 +117,22 @@ class LayoutInspectorToolWindowFactoryTest {
     }
   }
 
-  private val disposableRule = DisposableRule()
-
   private val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
-  private val inspectionRule = AppInspectionInspectorRule(disposableRule.disposable, projectRule)
-  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider(disposableRule.disposable)), projectRule) {
+  private val inspectionRule = AppInspectionInspectorRule(projectRule)
+  private val inspectorRule = LayoutInspectorRule(listOf(LegacyClientProvider({ projectRule.testRootDisposable })), projectRule) {
     it.name == LEGACY_PROCESS.name
   }
 
   @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule).around(disposableRule)!!
+  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule)!!
+
+  @Before
+  fun setUp() {
+    val devices = listOf(MODERN_DEVICE, OLDER_LEGACY_DEVICE, LEGACY_DEVICE)
+    devices.forEach { device ->
+      inspectorRule.adbRule.attachDevice(device.serial, device.manufacturer, device.model, device.version, device.apiLevel.toString())
+    }
+  }
 
   @Test
   fun clientOnlyLaunchedIfWindowIsNotMinimized() {

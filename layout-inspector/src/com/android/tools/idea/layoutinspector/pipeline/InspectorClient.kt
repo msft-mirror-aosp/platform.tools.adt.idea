@@ -34,7 +34,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import java.nio.file.Path
 import java.util.EnumSet
-import java.util.concurrent.CompletableFuture
 
 /**
  * Client for communicating with the agent.
@@ -94,6 +93,12 @@ interface InspectorClient: Disposable {
   fun registerErrorCallback(callback: (String) -> Unit)
 
   /**
+   * Register a handler that is triggered when this client receives an event containing the changed
+   * window roots for this device.
+   */
+  fun registerRootsEventCallback(callback: (List<*>) -> Unit)
+
+  /**
    * Register a handler that is triggered when this client receives an event containing layout tree
    * data about this device.
    *
@@ -114,7 +119,7 @@ interface InspectorClient: Disposable {
    *
    * You are only supposed to call this once.
    */
-  fun connect(project: Project)
+  suspend fun connect(project: Project)
 
   fun updateProgress(state: AttachErrorState)
 
@@ -141,7 +146,7 @@ interface InspectorClient: Disposable {
    * If this client does not have the [Capability.SUPPORTS_CONTINUOUS_MODE] capability, then this
    * method should not be called, and doing so is undefined.
    */
-  fun startFetching(): CompletableFuture<Unit>
+  suspend fun startFetching()
 
   /**
    * Stop fetching information off the device.
@@ -151,7 +156,7 @@ interface InspectorClient: Disposable {
    * If this client does not have the [Capability.SUPPORTS_CONTINUOUS_MODE] capability, then this
    * method should not be called, and doing so is undefined.
    */
-  fun stopFetching(): CompletableFuture<Unit>
+  suspend fun stopFetching()
 
   /**
    * Refresh the content of the inspector.
@@ -229,18 +234,19 @@ interface InspectorClient: Disposable {
 }
 
 object DisconnectedClient : InspectorClient {
-  override fun connect(project: Project) {}
+  override suspend fun connect(project: Project) {}
   override fun updateProgress(state: AttachErrorState) {}
 
   override fun disconnect() {}
 
   override fun registerStateCallback(callback: (InspectorClient.State) -> Unit) = Unit
   override fun registerErrorCallback(callback: (String) -> Unit) = Unit
+  override fun registerRootsEventCallback(callback: (List<*>) -> Unit) = Unit
   override fun registerTreeEventCallback(callback: (Any) -> Unit) = Unit
   override fun registerConnectionTimeoutCallback(callback: (AttachErrorState) -> Unit) = Unit
 
-  override fun startFetching(): CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
-  override fun stopFetching(): CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
+  override suspend fun startFetching() { }
+  override suspend fun stopFetching() { }
   override fun refresh() {}
   override fun saveSnapshot(path: Path) {}
 

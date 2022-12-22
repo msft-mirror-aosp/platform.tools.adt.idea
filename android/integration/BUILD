@@ -32,7 +32,7 @@ open_project_data = select({
 }) + [
     ":minapp",
     ":openproject_deps",
-    "//tools/base/build-system:gradle-distrib",
+    "//tools/base/build-system:gradle-distrib-7.5",
 ]
 
 iml_test(
@@ -88,10 +88,10 @@ iml_test(
     }) + [
         ":buildproject_deps",
         ":minapp",
-        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/base/build-system:gradle-distrib-7.2",
+        "//tools/base/build-system:gradle-distrib-7.5",
         "@system_image_android-29_default_x86_64//:x86_64-android-29-images",
     ],
     module = ":intellij.android.core.integration",
@@ -194,7 +194,7 @@ iml_test(
     }) + [
         ":live_edit_project_deps",
         ":liveeditproject",
-        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//tools/base/build-system:gradle-distrib-7.3.3",
@@ -224,10 +224,10 @@ build_and_run_test_data = select({
 }) + [
     ":buildproject_deps",
     ":minapp",
-    "//prebuilts/studio/sdk:build-tools/latest",
+    "//prebuilts/studio/sdk:build-tools/30.0.3",
     "//prebuilts/studio/sdk:emulator",
     "//prebuilts/studio/sdk:platform-tools",
-    "//tools/base/build-system:gradle-distrib",
+    "//tools/base/build-system:gradle-distrib-7.5",
     "@system_image_android-29_default_x86_64//:x86_64-android-29-images",
 ]
 
@@ -260,12 +260,15 @@ iml_test(
         ],
     }) + [
         ":createproject_deps",
-        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
         "//tools/base/build-system:gradle-distrib-7.3.3",
     ],
     module = ":intellij.android.core.integration",
     tags_linux = ["block-network"],
-    tags_windows = ["block-network"],
+    tags_windows = [
+        "block-network",
+        "manual",  # b/262914373 - ~12% failures due to incredibly long syncs
+    ],
     test_class = "com.android.tools.idea.CreateProjectTest",
 )
 
@@ -314,10 +317,10 @@ maven_repository(
     # keep sorted: for buildifier
     artifacts = [
         "@maven//:com.android.tools.build.gradle_7.1.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.0-Beta",
     ],
 )
 
@@ -337,13 +340,47 @@ iml_test(
     }) + [
         ":buildproject_deps",
         ":minapp",
-        "//prebuilts/studio/sdk:build-tools/latest",
-        "//tools/base/build-system:gradle-distrib",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
+        "//tools/base/build-system:gradle-distrib-7.5",
     ],
     module = ":intellij.android.core.integration",
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.BuildProjectTest",
+)
+
+iml_test(
+    name = "RunApkTest",
+    timeout = "long",
+    data = select({
+        "@platforms//os:linux": [
+            "//tools/adt/idea/studio:android-studio.linux.zip",
+        ],
+        "@platforms//os:macos": [
+            "//tools/adt/idea/studio:android-studio.mac.zip",
+        ],
+        "@platforms//os:windows": [
+            "//tools/adt/idea/studio:android-studio.win.zip",
+        ],
+        "//conditions:default": [],
+    }) + [
+        ":helloworldapk",
+        "//prebuilts/studio/sdk:platforms/android-31",
+        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:emulator",
+        "//prebuilts/studio/sdk:platform-tools",
+        "//tools/base/build-system:gradle-distrib-7.2",
+        "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
+    ],
+    module = ":intellij.android.core.integration",
+    tags = ["manual"],  # Flaky due to b/260867011
+    tags_linux = ["block-network"],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.RunApkTest",
 )
 
 maven_repository(
@@ -352,10 +389,10 @@ maven_repository(
     artifacts = [
         "@maven//:com.android.tools.build.aapt2_7.1.0-7984345",
         "@maven//:com.android.tools.build.gradle_7.1.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20-Beta",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.0-Beta",
     ],
 )
 
@@ -390,4 +427,9 @@ filegroup(
 filegroup(
     name = "liveeditproject",
     srcs = glob(["testData/liveedit/**"]),
+)
+
+filegroup(
+    name = "helloworldapk",
+    srcs = glob(["testData/helloworldapk/**"]),
 )

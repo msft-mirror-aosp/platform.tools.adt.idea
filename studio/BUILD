@@ -288,6 +288,7 @@ studio_plugin(
             "//tools/base/profiler/transform:profilers-transform",
             "//tools/base/profiler/app:perfa",
             "//tools/base/profiler/app:perfa_okhttp",
+            "//tools/base/threading-agent:threading_agent.jar",
             "//tools/base/tracer:trace_agent.jar",  # TODO(b/149320690): remove in 4.1 final release.
             "//tools/base/transport:transport-bundle",
             "//prebuilts/tools:simpleperf-bundle",
@@ -875,25 +876,6 @@ iml_test(
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
-)
-
-iml_test(
-    name = "StartUpAswbTest",
-    data = select({
-        "@platforms//os:linux": [
-            "//tools/vendor/google/aswb:aswb.linux.zip",
-        ],
-        "@platforms//os:macos": [
-            "//tools/vendor/google/aswb:aswb.mac.zip",
-        ],
-        "@platforms//os:windows": [
-            "//tools/vendor/google/aswb:aswb.win.zip",
-        ],
-    }),
-    module = ":intellij.android.studio.integration",
-    tags_linux = ["block-network"],
-    tags_windows = ["block-network"],
-    test_class = "com.android.tools.idea.StartUpAswbTest",
 )
 
 iml_test(

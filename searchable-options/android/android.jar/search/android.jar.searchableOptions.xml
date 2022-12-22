@@ -242,8 +242,6 @@
     <option name="bundle" path="ActionManager" hit="Generate Signed Bundle / APK…" />
     <option name="generate" path="ActionManager" hit="Generate Signed Bundle / APK…" />
     <option name="signed" path="ActionManager" hit="Generate Signed Bundle / APK…" />
-    <option name="hard" path="ActionManager" hit="Hard Refresh" />
-    <option name="refresh" path="ActionManager" hit="Hard Refresh" />
     <option name="help" path="ActionManager" hit="Help" />
     <option name="connection" path="ActionManager" hit="Help debug device connection" />
     <option name="debug" path="ActionManager" hit="Help debug device connection" />
@@ -668,11 +666,6 @@
     <option name="resource" path="ActionManager" hit="Trace Resource Updates" />
     <option name="trace" path="ActionManager" hit="Trace Resource Updates" />
     <option name="updates" path="ActionManager" hit="Trace Resource Updates" />
-    <option name="composable" path="ActionManager" hit="Trigger @Composable recompose via LiveEDit" />
-    <option name="liveedit" path="ActionManager" hit="Trigger @Composable recompose via LiveEDit" />
-    <option name="recompose" path="ActionManager" hit="Trigger @Composable recompose via LiveEDit" />
-    <option name="trigger" path="ActionManager" hit="Trigger @Composable recompose via LiveEDit" />
-    <option name="via" path="ActionManager" hit="Trigger @Composable recompose via LiveEDit" />
     <option name="connections" path="ActionManager" hit="Troubleshoot Device Connections" />
     <option name="device" path="ActionManager" hit="Troubleshoot Device Connections" />
     <option name="troubleshoot" path="ActionManager" hit="Troubleshoot Device Connections" />
@@ -1134,12 +1127,23 @@
     <option name="from" hit="Add filters from history to autocomplete" />
     <option name="history" hit="Add filters from history to autocomplete" />
     <option name="to" hit="Add filters from history to autocomplete" />
+    <option name="active" hit="Completions are available if there are active Logcat panels open" />
+    <option name="are" hit="Completions are available if there are active Logcat panels open" />
+    <option name="available" hit="Completions are available if there are active Logcat panels open" />
+    <option name="completions" hit="Completions are available if there are active Logcat panels open" />
+    <option name="if" hit="Completions are available if there are active Logcat panels open" />
+    <option name="logcat" hit="Completions are available if there are active Logcat panels open" />
+    <option name="open" hit="Completions are available if there are active Logcat panels open" />
+    <option name="panels" hit="Completions are available if there are active Logcat panels open" />
+    <option name="there" hit="Completions are available if there are active Logcat panels open" />
     <option name="default" hit="Default filter for new Logcat windows:" />
     <option name="filter" hit="Default filter for new Logcat windows:" />
     <option name="for" hit="Default filter for new Logcat windows:" />
     <option name="logcat" hit="Default filter for new Logcat windows:" />
     <option name="new" hit="Default filter for new Logcat windows:" />
     <option name="windows" hit="Default filter for new Logcat windows:" />
+    <option name="ignore" hit="Ignore tags:" />
+    <option name="tags" hit="Ignore tags:" />
     <option name="logcat" hit="Logcat" />
     <option name="buffer" hit="Logcat cycle buffer size:" />
     <option name="cycle" hit="Logcat cycle buffer size:" />

@@ -80,7 +80,11 @@ import java.nio.channels.ClosedChannelException
 import java.util.function.Consumer
 import kotlin.text.Charsets.UTF_8
 
-internal class VideoDecoder(private val videoChannel: SuspendingSocketChannel, @Volatile var maxOutputSize: Dimension) {
+internal class VideoDecoder(
+  private val videoChannel: SuspendingSocketChannel,
+  private val coroutineScope: CoroutineScope,
+  @Volatile var maxOutputSize: Dimension,
+) {
 
   private val imageLock = Any()
   @GuardedBy("imageLock")
@@ -106,7 +110,7 @@ internal class VideoDecoder(private val videoChannel: SuspendingSocketChannel, @
    * Starts the decoder and returns. The decoder will continue to run until the video channel
    * is disconnected or [coroutineScope] is cancelled.
    */
-  fun start(coroutineScope: CoroutineScope) {
+  fun start() {
     firstPacketArrival = 0L
     coroutineScope.launch {
       val header = ByteBuffer.allocate(CHANNEL_HEADER_LENGTH)
@@ -289,8 +293,9 @@ internal class VideoDecoder(private val videoChannel: SuspendingSocketChannel, @
     private fun processDataPacket(packet: AVPacket, header: PacketHeader) {
       val outData = BytePointer()
       val outLen = IntPointer(0)
-      val r = av_parser_parse2(parserContext, codecContext, outData, outLen, packet.data(), packet.size(), AV_NOPTS_VALUE, AV_NOPTS_VALUE, -1)
-      assert(r == packet.size()) // Due to PARSER_FLAG_COMPLETE_FRAMES.
+      val ret =
+          av_parser_parse2(parserContext, codecContext, outData, outLen, packet.data(), packet.size(), AV_NOPTS_VALUE, AV_NOPTS_VALUE, -1)
+      assert(ret == packet.size()) // Due to PARSER_FLAG_COMPLETE_FRAMES.
       assert(outLen.get() == packet.size())
       if (parserContext.key_frame() == 1) {
         packet.flags(packet.flags() or AV_PKT_FLAG_KEY)

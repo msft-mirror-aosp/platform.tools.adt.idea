@@ -32,7 +32,6 @@ import com.android.tools.deployer.AdbInstaller;
 import com.android.tools.deployer.Installer;
 import com.android.tools.deployer.MetricsRecorder;
 import com.android.tools.deployer.tasks.LiveUpdateDeployer;
-import com.android.tools.idea.editors.literals.EditEvent;
 import com.android.tools.idea.editors.literals.EditState;
 import com.android.tools.idea.editors.literals.EditStatus;
 import com.android.tools.idea.editors.literals.LiveEditService;
@@ -40,15 +39,11 @@ import com.android.tools.idea.editors.literals.LiveLiteralsMonitorHandler;
 import com.android.tools.idea.editors.literals.LiveLiteralsService;
 import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration;
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration;
-import com.android.tools.idea.execution.common.AndroidExecutionTarget;
-import com.android.tools.idea.execution.common.AndroidSessionInfo;
-import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler;
 import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.util.StudioPathManager;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.LiveEditEvent;
 import com.intellij.concurrency.JobScheduler;
-import com.intellij.execution.executors.DefaultDebugExecutor;
 import com.intellij.ide.ActivityTracker;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.PathManager;
@@ -62,17 +57,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -82,7 +73,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * Helper to set up Live Literal deployment monitoring.
@@ -155,7 +145,8 @@ import org.jetbrains.annotations.VisibleForTesting;
  * originating from the same file, and performs de-duplication logic to
  * ensure that the same file is not re-compiled multiple times.
  */
-public class AndroidLiveEditDeployMonitor {
+public class AndroidLiveEditDeployMonitor implements Disposable {
+
   // TODO: The logging is overly excessive for now given we have no UI to provide feedback to the user
   // when things go wrong. This will be changed in the final product.
   private static final LogWrapper LOGGER = new LogWrapper(Logger.getInstance(AndroidLiveEditDeployMonitor.class));
@@ -168,8 +159,6 @@ public class AndroidLiveEditDeployMonitor {
 
   private static final EditStatus OUT_OF_DATE = new EditStatus(EditState.OUT_OF_DATE, "Refresh to view the latest Live Edit Changes. App state may be reset.", LiveEditService.getPIGGYBACK_ACTION_ID());
 
-  private static final EditStatus RECOMPOSE_NEEDED = new EditStatus(EditState.RECOMPOSE_NEEDED, "Hard refresh must occur for all changes to be applied. App state will be reset.", "android.deploy.livedit.recompose");
-
   private static final EditStatus RECOMPOSE_ERROR = new EditStatus(EditState.RECOMPOSE_ERROR, "Error during recomposition.", null);
 
   private static final EditStatus DEBUGGER_ATTACHED = new EditStatus(EditState.RECOMPOSE_ERROR, "The app is currently running in debugging or profiling mode. These modes are not compatible with Live Edit.", ToolWindowId.RUN);
@@ -178,13 +167,13 @@ public class AndroidLiveEditDeployMonitor {
 
   private final @NotNull Project project;
 
-  private final @NotNull LinkedHashMap<String, SourceInlineCandidate> sourceInlineCandidateCache;
-
   private @Nullable String applicationId;
 
   private final ScheduledExecutorService methodChangesExecutor = Executors.newSingleThreadScheduledExecutor();
 
-  private final @NotNull Map<IDevice, EditStatus> editStatus = new ConcurrentHashMap<>();
+  private final DeviceStatusManager deviceStatusManager = new DeviceStatusManager();
+
+  private final DeviceEventWatcher deviceWatcher = new DeviceEventWatcher();
 
   // In manual mode, we buffer events until user triggers a LE push.
   private final ArrayList<EditEvent> bufferedEvents = new ArrayList<>();
@@ -195,159 +184,110 @@ public class AndroidLiveEditDeployMonitor {
 
   private AtomicReference<Long> gradleTimeSync = new AtomicReference<>(Integer.toUnsignedLong(0));
 
+  private final LiveEditCompiler compiler;
+
   public void resetState() {
     bufferedEvents.clear();
     filesWithCompilationErrors.clear();
+    compiler.resetState();
   }
 
   @NotNull
-  public EditStatus status(@NotNull IDevice device) {
-    if (StringUtil.isEmpty(applicationId)) {
-      return LiveEditService.DISABLED_STATUS;
+  public Set<IDevice> devices() {
+    return deviceStatusManager.devices();
+  }
+
+  @NotNull
+  public EditStatus status(IDevice device) {
+    EditStatus status = deviceStatusManager.get(device);
+    return status == null ? DISABLED_STATUS : status;
+  }
+
+  // Care should be given when modifying this field to preserve atomicity.
+  private final ConcurrentLinkedQueue<EditEvent> changedMethodQueue = new ConcurrentLinkedQueue<>();
+
+
+  // This method is invoked on the listener executor thread in LiveEditService and does not block the UI thread.
+  public void onPsiChanged(EditEvent event) {
+    if (!LiveEditApplicationConfiguration.getInstance().isLiveEdit()) {
+      return;
     }
 
-    return editStatus.compute(device, (d, s) -> {
-      EditStatus result;
-      if (!device.isOnline()) {
-        result = DISABLED_STATUS;
-      }
-      else {
-        List<AndroidSessionInfo> info = AndroidSessionInfo.findActiveSession(project);
-        if (info != null &&
-            info.stream()
-              .filter(i -> DefaultDebugExecutor.getDebugExecutorInstance().getId().equals(i.getExecutorId()))
-              .map(AndroidSessionInfo::getProcessHandler)
-              .filter(p -> p instanceof AndroidRemoteDebugProcessHandler)
-              .map(p -> (AndroidRemoteDebugProcessHandler)p)
-              .anyMatch(p -> !(p.isProcessTerminating() || p.isProcessTerminated()) && p.isPackageRunning(d, applicationId))) {
-          result = DEBUGGER_ATTACHED;
-        }
-        else {
-          boolean appAlive = Arrays.stream(device.getClients()).anyMatch(c -> applicationId.equals(c.getClientData().getPackageName()));
-          if (s == null) {
-            // Monitor for this device not initialized yet.
-            result = DISABLED_STATUS;
-          }
-          else if (s == LOADING && appAlive) {
-            // App has came online, so flip state to UP_TO_DATE.
-            result = UP_TO_DATE;
-          }
-          else if (s != LOADING && !appAlive) {
-            // App was running and has been terminated (or this was in disabled state already - this saves extra check), hide the indicator.
-            result = DISABLED_STATUS;
-          }
-          else {
-            result = s;
-          }
-        }
-      }
-      return result;
+    if (StringUtil.isEmpty(applicationId)) {
+      return;
+    }
+
+    if (deviceStatusManager.hasAny(EditState.ERROR)) {
+      return;
+    }
+
+    if (GradleSyncState.getInstance(project).isSyncNeeded() != ThreeState.NO ||
+        gradleTimeSync.get().compareTo(GradleSyncState.getInstance(project).getLastSyncFinishedTimeStamp()) != 0) {
+      updateEditStatus(GRADLE_SYNC_ERROR);
+      return;
+    }
+
+    changedMethodQueue.add(event);
+    methodChangesExecutor.schedule(this::processQueuedChanges, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(),
+                                   TimeUnit.MILLISECONDS);
+  }
+
+  private void processQueuedChanges() {
+    if (changedMethodQueue.isEmpty()) {
+      return;
+    }
+
+    List<EditEvent> copy = new ArrayList<>();
+    changedMethodQueue.removeIf(e -> {
+      copy.add(e);
+      return true;
     });
-  }
 
-  @NotNull
-  public Map<IDevice, EditStatus> status() {
-    if (StringUtil.isEmpty(applicationId)) {
-      return Collections.emptyMap();
-    }
-    // Get all devices that are running our app.
-    Set<IDevice> devices = deviceIterator(project)
-      .filter(
-        d -> Arrays.stream(d.getClients()).anyMatch(c -> applicationId.equals(c.getClientData().getPackageName())))
-      .collect(Collectors.toSet());
-
-    // Find all devices that were deployed by us (and not user-started).
-    return editStatus.keySet().stream().filter(devices::contains).collect(Collectors.toMap(d -> d, this::status));
-  }
-
-  @VisibleForTesting
-  public class EditsListener implements Disposable {
-    // Care should be given when modifying this field to preserve atomicity.
-    private final ConcurrentLinkedQueue<EditEvent> changedMethodQueue = new ConcurrentLinkedQueue<>();
-
-
-    public EditsListener(){
-      gradleTimeSync.set(GradleSyncState.getInstance(project).getLastSyncFinishedTimeStamp());
-    }
-
-    @Override
-    public void dispose() {
-      editStatus.clear();
-      methodChangesExecutor.shutdownNow();
-    }
-
-    // This method is invoked on the listener executor thread in LiveEditService and does not block the UI thread.
-    public void onLiteralsChanged(EditEvent event) {
-      if (!LiveEditApplicationConfiguration.getInstance().isLiveEdit()) {
-        return;
+    deviceStatusManager.update(status -> {
+      switch (status.getEditState()) {
+        case PAUSED:
+        case UP_TO_DATE:
+        case LOADING:
+        case IN_PROGRESS:
+        case RECOMPOSE_ERROR:
+          return UPDATE_IN_PROGRESS;
+        default:
+          return status;
       }
+    });
 
-      if (StringUtil.isEmpty(applicationId)) {
-        return;
-      }
-
-      if (mergeStatuses(editStatus).getEditState() == EditState.ERROR) {
-        return;
-      }
-
-      if (GradleSyncState.getInstance(project).isSyncNeeded() != ThreeState.NO || gradleTimeSync.get().compareTo(GradleSyncState.getInstance(project).getLastSyncFinishedTimeStamp()) != 0 ){
-        updateEditStatus(GRADLE_SYNC_ERROR);
-        return;
-      }
-
-      changedMethodQueue.add(event);
-      methodChangesExecutor.schedule(this::processChanges, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(), TimeUnit.MILLISECONDS);
-    }
-
-    private void processChanges() {
-      if (changedMethodQueue.isEmpty()) {
-        return;
-      }
-
-      List<EditEvent> copy = new ArrayList<>();
-      changedMethodQueue.removeIf(e -> {
-        copy.add(e);
-        return true;
-      });
-
-      editStatus.replaceAll((key, status) -> {
-        switch (status.getEditState()) {
-          case PAUSED:
-          case UP_TO_DATE:
-          case LOADING:
-          case IN_PROGRESS:
-          case RECOMPOSE_ERROR:
-            return UPDATE_IN_PROGRESS;
-          default:
-            return status;
-        }
-      });
-
-      if (!handleChangedMethods(project, copy)) {
-        changedMethodQueue.addAll(copy);
-        methodChangesExecutor.schedule(this::processChanges, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(), TimeUnit.MILLISECONDS);
-      }
+    if (!handleChangedMethods(project, copy)) {
+      changedMethodQueue.addAll(copy);
+      methodChangesExecutor.schedule(this::processQueuedChanges, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(),
+                                     TimeUnit.MILLISECONDS);
     }
   }
 
   public AndroidLiveEditDeployMonitor(@NotNull LiveEditService liveEditService, @NotNull Project project) {
     this.project = project;
-    this.sourceInlineCandidateCache = liveEditService.getInlineCandidateCache();
-    EditsListener editsListener = new EditsListener();
-    liveEditService.addOnEditListener(editsListener::onLiteralsChanged);
-    Disposer.register(liveEditService, editsListener);
+    this.compiler = new LiveEditCompiler(project);
+    gradleTimeSync.set(GradleSyncState.getInstance(project).getLastSyncFinishedTimeStamp());
+    Disposer.register(liveEditService, this);
+
+    deviceWatcher.addListener(this::handleAdbEvents);
+    liveEditService.getDeviceConnection().addClientChangeListener(deviceWatcher);
+    liveEditService.getDeviceConnection().addDeviceChangeListener(deviceWatcher);
+
+    deviceStatusManager.addListener(this::handleDeviceStatusChange);
   }
 
-  public void notifyDebug(String applicationId, IDevice device) {
-    updateEditStatus(device, DEBUGGER_ATTACHED);
+  @Override
+  public void dispose() {
+    deviceStatusManager.clear();
+    deviceWatcher.clearListeners();
+    methodChangesExecutor.shutdownNow();
+  }
+
+  public LiveEditCompiler getCompiler() {
+    return compiler;
   }
 
   public Callable<?> getCallback(String applicationId, IDevice device) {
-    String deviceId = device.getSerialNumber();
-
-    // TODO: Don't use Live Literal's reporting
-    LiveLiteralsService.getInstance(project).liveLiteralsMonitorStopped(deviceId + "#" + applicationId);
-
     if (!LiveEditApplicationConfiguration.getInstance().isLiveEdit()) {
       LOGGER.info("Live Edit on device disabled via settings.");
       return null;
@@ -361,7 +301,7 @@ public class AndroidLiveEditDeployMonitor {
     LOGGER.info("Creating monitor for project %s targeting app %s", project.getName(), applicationId);
 
     // Initialize EditStatus for current device.
-    updateEditStatus(device, LOADING);
+    deviceStatusManager.addDevice(device, LOADING);
 
     return () -> methodChangesExecutor
       .schedule(
@@ -369,16 +309,7 @@ public class AndroidLiveEditDeployMonitor {
           this.applicationId = applicationId;
           this.gradleTimeSync.set(GradleSyncState.getInstance(project).getLastSyncFinishedTimeStamp());
           LiveEditService.getInstance(project).resetState();
-
-          LiveLiteralsMonitorHandler.DeviceType deviceType;
-          if (device.isEmulator()) {
-            deviceType = LiveLiteralsMonitorHandler.DeviceType.EMULATOR;
-          }
-          else {
-            deviceType = LiveLiteralsMonitorHandler.DeviceType.PHYSICAL;
-          }
-
-          LiveLiteralsService.getInstance(project).liveLiteralsMonitorStarted(deviceId + "#" + applicationId, deviceType);
+          deviceWatcher.setApplicationId(applicationId);
         },
         0L,
         TimeUnit.NANOSECONDS)
@@ -442,15 +373,15 @@ public class AndroidLiveEditDeployMonitor {
     long start = System.nanoTime();
     long compileFinish, pushFinish;
 
-    ArrayList<AndroidLiveEditCodeGenerator.CodeGeneratorOutput> compiled = new ArrayList<>();
+    ArrayList<LiveEditCompilerOutput> compiled = new ArrayList<>();
 
     try {
       PrebuildChecks(project, changes);
-      List<AndroidLiveEditCodeGenerator.CodeGeneratorInput> inputs = changes.stream().map(
+      List<LiveEditCompilerInput> inputs = changes.stream().map(
         change ->
-          new AndroidLiveEditCodeGenerator.CodeGeneratorInput(change.getFile(), change.getOrigin(), change.getParentGroup()))
+          new LiveEditCompilerInput(change.getFile(), change.getOrigin(), change.getParentGroup()))
         .collect(Collectors.toList());
-      if (!new AndroidLiveEditCodeGenerator(project, sourceInlineCandidateCache).compile(inputs, compiled, !LiveEditService.isLeTriggerManual())) {
+      if (!compiler.compile(inputs, compiled, !LiveEditService.isLeTriggerManual())) {
         return false;
       }
       // Remove files successfully compiled from the error set.
@@ -468,13 +399,13 @@ public class AndroidLiveEditDeployMonitor {
 
     // Ignore FunctionType.NONE, since those are changes to non-function elements. Counting any change to a non-function as a non-compose
     // change might make the data useless, as a lot of "noisy" class-level/file-level PSI events are generated along with function edits.
-    event.setHasNonCompose(compiled.stream().anyMatch(c -> c.getFunctionType() == AndroidLiveEditCodeGenerator.FunctionType.KOTLIN));
+    event.setHasNonCompose(compiled.stream().anyMatch(c -> c.getFunctionType() == LiveEditFunctionType.KOTLIN));
 
     compileFinish = System.nanoTime();
     event.setCompileDurationMs(TimeUnit.NANOSECONDS.toMillis(compileFinish - start));
     LOGGER.info("LiveEdit compile completed in %dms", event.getCompileDurationMs());
 
-    Optional<LiveUpdateDeployer.UpdateLiveEditError> error = deviceIterator(project)
+    Optional<LiveUpdateDeployer.UpdateLiveEditError> error = deviceIterator()
       .map(device -> pushUpdatesToDevice(applicationId, device, compiled))
       .flatMap(List::stream)
       .findFirst();
@@ -541,57 +472,44 @@ public class AndroidLiveEditDeployMonitor {
   }
 
   private void updateEditStatus(@NotNull IDevice device, @NotNull EditStatus status) {
-    editStatus.put(device, status);
-    // Force the UI to redraw with the new status. See com.intellij.openapi.actionSystem.AnAction#update().
-    ActivityTracker.getInstance().inc();
+    deviceStatusManager.update(device, status);
   }
 
   private void updateEditStatus(@NotNull EditStatus status) {
-    editStatus.replaceAll((device, oldStatus) -> status);
+    deviceStatusManager.update(status);
+  }
+
+  private void handleDeviceStatusChange(Map<IDevice, EditStatus> map) {
     // Force the UI to redraw with the new status. See com.intellij.openapi.actionSystem.AnAction#update().
     ActivityTracker.getInstance().inc();
   }
 
-  @NotNull
-  public EditStatus mergeStatuses(@NotNull Map<IDevice, EditStatus> editStatus) {
-    if (StringUtil.isEmpty(applicationId)) {
-      return DISABLED_STATUS;
+  private void handleAdbEvents(IDevice device, DeviceEvent event) {
+    if (!deviceStatusManager.devices().contains(device)) {
+      return;
     }
 
-    Set<IDevice> devices = deviceIterator(project)
-      .filter(
-        d -> Arrays.stream(d.getClients()).anyMatch(c -> applicationId.equals(c.getClientData().getPackageName())))
-      .collect(Collectors.toSet());
-    Set<IDevice> keys = new HashSet<>(editStatus.keySet());
-    keys.retainAll(devices);
-    List<EditStatus> statuses = editStatus
-      .entrySet()
-      .stream()
-      .filter(e -> keys.contains(e.getKey())).map(Map.Entry::getValue)
-      .collect(Collectors.toList());
-
-    EditStatus mergedStatus = DISABLED_STATUS;
-    for (EditStatus status : statuses) {
-      if (status.getEditState().ordinal() < mergedStatus.getEditState().ordinal()) {
-        mergedStatus = status;
-      }
+    switch(event) {
+      case DEVICE_DISCONNECT:
+      case APPLICATION_DISCONNECT:
+        deviceStatusManager.update(device, DISABLED_STATUS);
+        break;
+      case APPLICATION_CONNECT:
+        // If the device was previously in LOADING state, we are now ready to receive live edits.
+        deviceStatusManager.update(device, status -> status == LOADING ? UP_TO_DATE : status);
+        break;
+      case DEBUGGER_CONNECT:
+        deviceStatusManager.update(device, DEBUGGER_ATTACHED);
+        break;
+      case DEBUGGER_DISCONNECT:
+        // Don't return to up-to-date state if another state transition has taken place since.
+        deviceStatusManager.update(device, status -> status == DEBUGGER_ATTACHED ? UP_TO_DATE : status);
+        break;
     }
-    return mergedStatus;
   }
 
-  private static Stream<IDevice> deviceIterator(Project project) {
-    List<AndroidSessionInfo> sessions = AndroidSessionInfo.findActiveSession(project);
-    if (sessions == null) {
-      LOGGER.info("No running session found for %s", project.getName());
-      return Stream.empty();
-    }
-
-    return sessions
-      .stream()
-      .map(AndroidSessionInfo::getExecutionTarget)
-      .filter(t -> t instanceof AndroidExecutionTarget)
-      .flatMap(t -> ((AndroidExecutionTarget)t).getRunningDevices().stream())
-      .filter(AndroidLiveEditDeployMonitor::supportLiveEdits);
+  private Stream<IDevice> deviceIterator() {
+    return deviceStatusManager.devices().stream().filter(IDevice::isOnline);
   }
 
   private static Installer newInstaller(IDevice device) {
@@ -600,29 +518,8 @@ public class AndroidLiveEditDeployMonitor {
     return  new AdbInstaller(getLocalInstaller(), adb, metrics.getDeployMetrics(), LOGGER, AdbInstaller.Mode.DAEMON);
   }
 
-  public void sendRecomposeRequest() {
-    updateEditStatus(UPDATE_IN_PROGRESS);
-    methodChangesExecutor.schedule(this::doSendRecomposeRequest, 0 , TimeUnit.MILLISECONDS);
-  }
-
-  private void doSendRecomposeRequest() {
-    try {
-      deviceIterator(project).forEach(device -> sendRecomposeRequests(device));
-    } finally {
-      updateEditStatus(UP_TO_DATE);
-    }
-  }
-
-  private void sendRecomposeRequests(IDevice device) {
-    LiveUpdateDeployer deployer = new LiveUpdateDeployer(LOGGER);
-    Installer installer = newInstaller(device);
-    AdbClient adb = new AdbClient(device, LOGGER);
-    deployer.recompose(installer, adb, applicationId);
-    scheduleErrorPolling(deployer, installer, adb, applicationId);
-  }
-
   private List<LiveUpdateDeployer.UpdateLiveEditError> pushUpdatesToDevice(
-      String applicationId, IDevice device, List<AndroidLiveEditCodeGenerator.CodeGeneratorOutput> updates) {
+      String applicationId, IDevice device, List<LiveEditCompilerOutput> updates) {
     LiveUpdateDeployer deployer = new LiveUpdateDeployer(LOGGER);
     Installer installer = newInstaller(device);
     AdbClient adb = new AdbClient(device, LOGGER);
@@ -630,18 +527,11 @@ public class AndroidLiveEditDeployMonitor {
     // TODO: Batch multiple updates in one LiveEdit operation; listening to all PSI events means multiple class events can be
     //  generated from a single keystroke, leading to multiple LEs and multiple recomposes.
     List<LiveUpdateDeployer.UpdateLiveEditError> results = new ArrayList<>();
-    boolean recomposeNeeded = false;
-    for (AndroidLiveEditCodeGenerator.CodeGeneratorOutput update : updates) {
+    for (LiveEditCompilerOutput update : updates) {
       boolean useDebugMode = LiveEditAdvancedConfiguration.getInstance().getUseDebugMode();
       boolean usePartialRecompose = LiveEditAdvancedConfiguration.getInstance().getUsePartialRecompose() &&
-                                    (update.getFunctionType() == AndroidLiveEditCodeGenerator.FunctionType.COMPOSABLE ||
+                                    (update.getFunctionType() == LiveEditFunctionType.COMPOSABLE ||
                                      update.getHasGroupId());
-
-      // In manual mode we don't recompose automatically if priming happened.
-      // Last minute change, we don't want user to have to perform "hard-refresh" is a class was primed.
-      // TODO: Delete if it turns our we don't need Hard-refresh trigger.
-      //boolean recomposeAfterPriming = !LiveEditService.Companion.isLeTriggerManual();
-      boolean recomposeAfterPriming = true;
 
       LiveUpdateDeployer.UpdateLiveEditsParam param =
         new LiveUpdateDeployer.UpdateLiveEditsParam(
@@ -649,8 +539,7 @@ public class AndroidLiveEditDeployMonitor {
           usePartialRecompose,
           update.getGroupId(),
           update.getClassData(),
-          update.getSupportClasses(), useDebugMode,
-          recomposeAfterPriming);
+          update.getSupportClasses(), useDebugMode);
 
 
       if (useDebugMode) {
@@ -662,27 +551,17 @@ public class AndroidLiveEditDeployMonitor {
       }
 
       LiveUpdateDeployer.UpdateLiveEditResult result = deployer.updateLiveEdit(installer, adb, applicationId, param);
-      if (LiveEditService.Companion.isLeTriggerManual()) {
-        // In manual mode, we need to let the user know that recompose was not called if classes were Primed.
-        if (result.recomposeType == Deploy.AgentLiveEditResponse.RecomposeType.RESET_SKIPPED) {
-          recomposeNeeded = true;
-        }
-      }
       results.addAll(result.errors);
     }
 
-    if (recomposeNeeded) {
-      updateEditStatus(device, RECOMPOSE_NEEDED);
+    if (filesWithCompilationErrors.isEmpty()) {
+      updateEditStatus(device, UP_TO_DATE);
     } else {
-      if (filesWithCompilationErrors.isEmpty()) {
-        updateEditStatus(device, UP_TO_DATE);
-      } else {
-        Optional<String> errorFilename = filesWithCompilationErrors.stream().sequential().findFirst();
-        String errorMsg = ErrorReporterKt.leErrorMessage(LiveEditUpdateException.Error.COMPILATION_ERROR, errorFilename.get());
-        updateEditStatus(device, new EditStatus(EditState.PAUSED, errorMsg, null));
-      }
-      scheduleErrorPolling(deployer, installer, adb, applicationId);
+      Optional<String> errorFilename = filesWithCompilationErrors.stream().sequential().findFirst();
+      String errorMsg = ErrorReporterKt.leErrorMessage(LiveEditUpdateException.Error.COMPILATION_ERROR, errorFilename.get());
+      updateEditStatus(device, new EditStatus(EditState.PAUSED, errorMsg, null));
     }
+    scheduleErrorPolling(deployer, installer, adb, applicationId);
 
     if (!results.isEmpty()) {
       LiveUpdateDeployer.UpdateLiveEditError firstProblem = results.get(0);
