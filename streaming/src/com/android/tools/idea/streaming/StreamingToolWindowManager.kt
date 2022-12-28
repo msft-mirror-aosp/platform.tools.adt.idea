@@ -95,6 +95,7 @@ internal class StreamingToolWindowManager @AnyThread private constructor(
 
   private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
   private var contentCreated = false
+  private var mirroringConfirmationDialogShowing = false
   private var physicalDeviceWatcher: PhysicalDeviceWatcher? = null
   private val panels = arrayListOf<RunningDevicePanel>()
   private var selectedPanel: RunningDevicePanel? = null
@@ -720,9 +721,11 @@ internal class StreamingToolWindowManager @AnyThread private constructor(
         if (deviceMirroringSettings.confirmationDialogShown) {
           startMirroring(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
         }
-        else {
-          val dialog = MirroringConfirmationDialog(deviceName)
-          val dialogWrapper = dialog.createWrapper(project).apply { show() }
+        else if (!mirroringConfirmationDialogShowing) { // Ignore a recursive call inside the dialog's event loop.
+          mirroringConfirmationDialogShowing = true
+          val title = "About to Start Mirroring of ${deviceName}"
+          val dialogWrapper = MirroringConfirmationDialog(title).createWrapper(project).apply { show() }
+          mirroringConfirmationDialogShowing = false
           when (dialogWrapper.exitCode) {
             MirroringConfirmationDialog.ACCEPT_EXIT_CODE -> startMirroring(deviceSerialNumber, deviceAbi, deviceName, deviceProperties)
             MirroringConfirmationDialog.REJECT_EXIT_CODE -> deviceMirroringSettings.deviceMirroringEnabled = false

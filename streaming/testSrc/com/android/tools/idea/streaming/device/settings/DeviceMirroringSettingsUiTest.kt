@@ -16,7 +16,10 @@
 package com.android.tools.idea.streaming.device.settings
 
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.idea.streaming.DeviceMirroringSettings
+import com.android.tools.idea.streaming.device.dialogs.MirroringConfirmationDialog
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
@@ -35,7 +38,7 @@ import javax.swing.JTextField
 @RunsInEdt
 class DeviceMirroringSettingsUiTest {
   @get:Rule
-  val ruleChain = RuleChain(AndroidProjectRule.inMemory(), EdtRule())
+  val ruleChain = RuleChain(AndroidProjectRule.inMemory(), HeadlessDialogRule(), EdtRule())
 
   private val settings by lazy { DeviceMirroringSettings.getInstance() }
 
@@ -67,7 +70,11 @@ class DeviceMirroringSettingsUiTest {
     assertThat(maxSyncedClipboardLengthTextField.isEnabled).isFalse()
     assertThat(turnOffDisplayWhileMirroringCheckBox.isEnabled).isFalse()
 
-    deviceMirroringEnabledCheckBox.isSelected = true
+    createModalDialogAndInteractWithIt({ deviceMirroringEnabledCheckBox.doClick() }) { dialog ->
+      assertThat(dialog.title).isEqualTo("Privacy Notice")
+      dialog.close(MirroringConfirmationDialog.ACCEPT_EXIT_CODE)
+    }
+    assertThat(deviceMirroringEnabledCheckBox.isSelected).isTrue()
     assertThat(synchronizeClipboardCheckBox.isEnabled).isTrue()
     assertThat(maxSyncedClipboardLengthTextField.isEnabled).isTrue()
     assertThat(turnOffDisplayWhileMirroringCheckBox.isEnabled).isTrue()
