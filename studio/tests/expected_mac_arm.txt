@@ -620,6 +620,7 @@ Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/allopen-compiler-
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/android-extensions-compiler.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/android-extensions-runtime.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/annotations-13.0.jar
+Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/assignment-compiler-plugin.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/js.engines.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/jvm-abi-gen.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-cli.jar
@@ -699,7 +700,6 @@ Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/l
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/maven_LICENSE.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/mocha-teamcity-reporter_LICENSE.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/okhttp_license.txt
-Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/pcollections_LICENSE.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/prototype_license.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/qunit_license.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/license/third_party/rhino_LICENSE.txt
