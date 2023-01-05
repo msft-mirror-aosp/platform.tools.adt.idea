@@ -465,7 +465,6 @@ class PlatformIntegrationTest {
       """.trimMargin())
   }
 
-
   @Test
   fun testSimpleApplicationReopened() {
     val preparedProject = projectRule.prepareTestProject(TestProject.SIMPLE_APPLICATION)

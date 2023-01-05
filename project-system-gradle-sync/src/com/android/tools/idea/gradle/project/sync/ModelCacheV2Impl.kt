@@ -506,8 +506,7 @@ internal fun modelCacheV2Impl(
       buildName: String,
       artifact: ArtifactRef
     ) {
-      if (!visited.contains(artifactAddress)) {
-        visited.add(artifactAddress)
+      if (visited.add(artifactAddress)) {
         librariesById.computeIfAbsent(artifactAddress) {
           val buildId = buildNameToBuildId(buildName)
           IdeDependencyCoreImpl(
@@ -605,25 +604,13 @@ internal fun modelCacheV2Impl(
       }
     }
 
-    fun getOptionalBootClasspathLibraries(bootClasspath: Collection<String>): Collection<File> {
-      val androidJar = bootClasspath.asSequence().map { File(it) }.firstOrNull { it.name == "android.jar" } ?: return emptyList()
-      val optionalDir = androidJar.parentFile.resolve("optional")
-      return bootClasspath.asSequence()
-        .map { File(it) }
-        .filter {
-          it.parentFile.path == optionalDir.path // Assumes 'optional` won't be created as `Optional` etc.
-        }
-        .toList()
-    }
-
     fun populateJavaLibraries(
       javaLibraries: Collection<Library>,
       visited: MutableSet<String>
     ) {
       for (javaLibrary in javaLibraries) {
         val address = javaLibrary.artifact!!.path
-        if (!visited.contains(address)) {
-          visited.add(address)
+        if (visited.add(address)) {
           librariesById.computeIfAbsent(address) {
             IdeDependencyCoreImpl(javaLibraryFrom(javaLibrary))
           }
@@ -632,12 +619,14 @@ internal fun modelCacheV2Impl(
     }
 
     fun populateOptionalSdkLibrariesLibraries(
+      bootClasspath: Collection<String>,
       visited: MutableSet<String>
     ) {
       getOptionalBootClasspathLibraries(bootClasspath).forEach { jarFile ->
-        visited.add(jarFile.path) // Any unique keyidentifying the library  is suitable.
-        librariesById.computeIfAbsent(jarFile.path) {
-          IdeDependencyCoreImpl(javaLibraryFromJarFile(jarFile))
+        if (visited.add(jarFile.path)) { // Any unique key identifying the library  is suitable.
+          librariesById.computeIfAbsent(jarFile.path) {
+            IdeDependencyCoreImpl(javaLibraryFromJarFile(jarFile))
+          }
         }
       }
     }
@@ -704,8 +693,7 @@ internal fun modelCacheV2Impl(
     ) {
       for (androidLibrary in androidLibraries) {
         val address = androidLibrary.key
-        if (!visited.contains(address)) {
-          visited.add(address)
+        if (visited.add(address)) {
           librariesById.computeIfAbsent(address) {
             IdeDependencyCoreImpl(androidLibraryFrom(androidLibrary))
           }
@@ -716,8 +704,7 @@ internal fun modelCacheV2Impl(
     fun populateUnknownDependencies(libraries: List<Library>, visited: MutableSet<String>) {
       for (identifier in libraries) {
         val address = identifier.key
-        if (!visited.contains(address)) {
-          visited.add(address)
+        if (visited.add(address)) {
           librariesById.computeIfAbsent(identifier.key) {
             IdeDependencyCoreImpl(internedModels.getOrCreate(IdeUnknownLibraryImpl(identifier.key)))
           }
@@ -739,7 +726,7 @@ internal fun modelCacheV2Impl(
       val typedLibraries = getTypedLibraries(dependencyList)
       populateAndroidLibraries(typedLibraries.androidLibraries, visited)
       populateJavaLibraries(typedLibraries.javaLibraries, visited)
-      populateOptionalSdkLibrariesLibraries(visited)
+      populateOptionalSdkLibrariesLibraries(bootClasspath, visited)
       populateProjectDependencies(typedLibraries.projectLibraries, visited)
       populateUnknownDependencies(typedLibraries.unknownLibraries, visited)
       return createIdeDependencies(visited)

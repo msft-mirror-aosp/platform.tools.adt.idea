@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.device.settings
 
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.streaming.DeviceMirroringSettings
+import com.android.tools.idea.streaming.device.dialogs.MirroringConfirmationDialog
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SearchableConfigurable
@@ -37,6 +38,9 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
 
   private lateinit var deviceMirroringEnabledCheckBox: JBCheckBox
   private lateinit var synchronizeClipboardCheckBox: JBCheckBox
+  private lateinit var activateOnConnectionCheckBox: JBCheckBox
+  private lateinit var activateOnAppLaunchCheckBox: JBCheckBox
+  private lateinit var activateOnTestLaunchCheckBox: JBCheckBox
   private lateinit var maxSyncedClipboardLengthTextField: JBTextField
   private lateinit var turnOffDisplayWhileMirroringCheckBox: JBCheckBox
 
@@ -51,8 +55,32 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
           .comment("Causes displays of connected Android devices to be mirrored in the&nbsp;Running&nbsp;Devices tool window. " +
                    "<a href='https://d.android.com/r/studio-ui/device-mirroring/help'>Learn&nbsp;more</a>")
           .bindSelected(state::deviceMirroringEnabled)
-          .component
+          .component.apply {
+            addActionListener {
+              if (isSelected) {
+                onMirroringEnabled()
+              }
+            }
+          }
     }
+    row {
+      activateOnConnectionCheckBox =
+        checkBox("Open the Running Devices tool window when a physical device is connected")
+          .bindSelected(state::activateOnConnection)
+          .component
+    }.topGap(TopGap.SMALL).enabledIf(deviceMirroringEnabledCheckBox.selected)
+    row {
+      activateOnAppLaunchCheckBox =
+        checkBox("Open the Running Devices tool window when launching an app")
+          .bindSelected(state::activateOnAppLaunch)
+          .component
+    }.enabledIf(deviceMirroringEnabledCheckBox.selected)
+    row {
+      activateOnTestLaunchCheckBox =
+        checkBox("Open the Running Devices tool window when launching a test")
+          .bindSelected(state::activateOnTestLaunch)
+          .component
+    }.enabledIf(deviceMirroringEnabledCheckBox.selected)
     row {
       synchronizeClipboardCheckBox =
         checkBox("Enable clipboard sharing")
@@ -77,6 +105,9 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
 
   override fun isModified(): Boolean {
     return deviceMirroringEnabledCheckBox.isSelected != state.deviceMirroringEnabled ||
+           activateOnConnectionCheckBox.isSelected != state.activateOnConnection ||
+           activateOnAppLaunchCheckBox.isSelected != state.activateOnAppLaunch ||
+           activateOnTestLaunchCheckBox.isSelected != state.activateOnTestLaunch ||
            synchronizeClipboardCheckBox.isSelected != state.synchronizeClipboard ||
            maxSyncedClipboardLengthTextField.text.trim() != state.maxSyncedClipboardLength.toString() ||
            turnOffDisplayWhileMirroringCheckBox.isSelected != state.turnOffDisplayWhileMirroring
@@ -86,6 +117,9 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
   override fun apply() {
     maxSyncedClipboardLengthTextField.validate()
     state.deviceMirroringEnabled = deviceMirroringEnabledCheckBox.isSelected
+    state.activateOnConnection = activateOnConnectionCheckBox.isSelected
+    state.activateOnAppLaunch = activateOnAppLaunchCheckBox.isSelected
+    state.activateOnTestLaunch = activateOnTestLaunchCheckBox.isSelected
     state.synchronizeClipboard = synchronizeClipboardCheckBox.isSelected
     state.maxSyncedClipboardLength = maxSyncedClipboardLengthTextField.text.trim().toInt()
     state.turnOffDisplayWhileMirroring = turnOffDisplayWhileMirroringCheckBox.isSelected
@@ -93,6 +127,9 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
 
   override fun reset() {
     deviceMirroringEnabledCheckBox.isSelected = state.deviceMirroringEnabled
+    activateOnConnectionCheckBox.isSelected = state.activateOnConnection
+    activateOnAppLaunchCheckBox.isSelected = state.activateOnAppLaunch
+    activateOnTestLaunchCheckBox.isSelected = state.activateOnTestLaunch
     synchronizeClipboardCheckBox.isSelected = state.synchronizeClipboard
     maxSyncedClipboardLengthTextField.text = state.maxSyncedClipboardLength.toString()
     turnOffDisplayWhileMirroringCheckBox.isSelected = state.turnOffDisplayWhileMirroring
@@ -100,4 +137,17 @@ class DeviceMirroringSettingsUi : SearchableConfigurable, Configurable.NoScroll 
 
   @Nls
   override fun getDisplayName() = if (IdeInfo.getInstance().isAndroidStudio) "Device Mirroring" else "Android Device Mirroring"
+
+  private fun onMirroringEnabled() {
+    if (!state.confirmationDialogShown && !state.deviceMirroringEnabled) {
+      val title = "Privacy Notice"
+      val dialogWrapper = MirroringConfirmationDialog(title).createWrapper(parent = deviceMirroringEnabledCheckBox).apply { show() }
+      if (dialogWrapper.exitCode == MirroringConfirmationDialog.ACCEPT_EXIT_CODE) {
+        state.confirmationDialogShown = true
+      }
+      else {
+        deviceMirroringEnabledCheckBox.isSelected = false // Revert mirroring enablement.
+      }
+    }
+  }
 }

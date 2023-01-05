@@ -23,6 +23,7 @@ import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.internal.avd.AvdInfo;
+import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType;
 import com.android.tools.idea.avdmanager.AvdManagerConnection;
 import com.android.tools.idea.devicemanager.CountDownLatchAssert;
 import com.android.tools.idea.devicemanager.CountDownLatchFutureCallback;
@@ -42,7 +43,6 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableModel;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -55,7 +55,7 @@ import org.mockito.Mockito;
 public final class VirtualDeviceTableModelTest {
   private final @NotNull AvdManagerConnection myConnection = Mockito.mock(AvdManagerConnection.class);
   private final @NotNull AvdInfo myAvd = Mockito.mock(AvdInfo.class);
-  private final @NotNull Collection<@NotNull VirtualDevice> myDevices = List.of(TestVirtualDevices.pixel5Api31(myAvd));
+  private final @NotNull Collection<VirtualDevice> myDevices = List.of(TestVirtualDevices.pixel5Api31(myAvd));
   private final @NotNull TableModelListener myListener = Mockito.mock(TableModelListener.class);
 
   @Test
@@ -85,7 +85,7 @@ public final class VirtualDeviceTableModelTest {
     Mockito.verify(myListener).tableChanged(ArgumentMatchers.argThat(new TableModelEventArgumentMatcher(new TableModelEvent(model, 0))));
   }
 
-  private static @NotNull FutureCallback<@NotNull Boolean> newSetOnline(@NotNull VirtualDeviceTableModel model,
+  private static @NotNull FutureCallback<Boolean> newSetOnline(@NotNull VirtualDeviceTableModel model,
                                                                         @NotNull Key key,
                                                                         @NotNull CountDownLatch latch) {
     return new CountDownLatchFutureCallback<>(VirtualDeviceTableModel.newSetOnline(model, key), latch);
@@ -151,7 +151,7 @@ public final class VirtualDeviceTableModelTest {
   @Test
   public void setValueAtStartAvdSucceeded() {
     // Arrange
-    Mockito.when(myConnection.startAvd(null, myAvd)).thenReturn(Futures.immediateFuture(Mockito.mock(IDevice.class)));
+    Mockito.when(myConnection.startAvd(null, myAvd, RequestType.DIRECT)).thenReturn(Futures.immediateFuture(Mockito.mock(IDevice.class)));
 
     TableModel model = new VirtualDeviceTableModel(null,
                                                    myDevices,
@@ -189,7 +189,7 @@ public final class VirtualDeviceTableModelTest {
     // Arrange
     CountDownLatch latch = new CountDownLatch(1);
     Throwable throwable = new RuntimeException();
-    Mockito.when(myConnection.startAvd(null, myAvd)).thenReturn(Futures.immediateFailedFuture(throwable));
+    Mockito.when(myConnection.startAvd(null, myAvd, RequestType.DIRECT)).thenReturn(Futures.immediateFailedFuture(throwable));
 
     @SuppressWarnings("unchecked")
     BiConsumer<Throwable, Project> showErrorDialog = Mockito.mock(BiConsumer.class);
@@ -332,7 +332,7 @@ public final class VirtualDeviceTableModelTest {
     inOrder.verify(console).close();
   }
 
-  private static @NotNull FutureCallback<@Nullable Object> newSetAllOnline(@NotNull VirtualDeviceTableModel model,
+  private static @NotNull FutureCallback<Object> newSetAllOnline(@NotNull VirtualDeviceTableModel model,
                                                                            @NotNull CountDownLatch latch) {
     return new CountDownLatchFutureCallback<>(new SetAllOnline(model), latch);
   }

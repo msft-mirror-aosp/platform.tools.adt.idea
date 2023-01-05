@@ -55,6 +55,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.wm.ToolWindow
@@ -106,24 +107,31 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private val project
     @AnyThread get() = toolWindow.project
+  private val emulatorSettings = EmulatorSettings.getInstance()
   private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
   private var contentCreated = false
   private var mirroringConfirmationDialogShowing = false
   private var physicalDeviceWatcher: PhysicalDeviceWatcher? = null
   private val panels = arrayListOf<RunningDevicePanel>()
   private var selectedPanel: RunningDevicePanel? = null
+
   /** When the tool window is hidden, the ID of the last selected device, otherwise null. */
   private var lastSelectedDeviceId: DeviceId? = null
+
   /** When the tool window is hidden, the state of the UI for all emulators, otherwise empty. */
   private val savedUiState = hashMapOf<DeviceId, UiState>()
   private val emulators = hashSetOf<EmulatorController>()
+
   /** Clients for mirrorable devices keyed by serial numbers. */
   private var deviceClients = mutableMapOf<String, DeviceClient>()
+
   /** Serial numbers of mirrored devices. */
   private var mirroredDevices = mutableSetOf<String>()
   private val properties = PropertiesComponent.getInstance(project)
+
   // Serial numbers of devices that recently requested attention.
   private val recentAttentionRequests = CacheBuilder.newBuilder().expireAfterWrite(ATTENTION_REQUEST_EXPIRATION).build<String, String>()
+
   // IDs of recently launched AVDs keyed by themselves.
   private val recentEmulatorLaunches = CacheBuilder.newBuilder().expireAfterWrite(ATTENTION_REQUEST_EXPIRATION).build<String, String>()
   private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
@@ -203,23 +211,19 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     })
 
     messageBusConnection.subscribe(AvdLaunchListener.TOPIC,
-                                   AvdLaunchListener { avd, commandLine, project ->
+                                   AvdLaunchListener { avd, commandLine, requestType, project ->
                                      if (project == toolWindow.project && isEmbeddedEmulator(commandLine)) {
                                        RunningEmulatorCatalog.getInstance().updateNow()
                                        EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
-                                         onEmulatorHeadsUp(avd.name)
+                                         showLiveIndicator()
+                                         if (requestType == AvdLaunchListener.RequestType.DIRECT) {
+                                           onEmulatorHeadsUp(avd.name)
+                                         }
                                        }
                                      }
                                    })
 
-    messageBusConnection.subscribe(DeviceHeadsUpListener.TOPIC,
-                                   DeviceHeadsUpListener { deviceSerialNumber, project ->
-                                     if (project == toolWindow.project) {
-                                       UIUtil.invokeLaterIfNeeded {
-                                         onDeviceHeadsUp(deviceSerialNumber)
-                                       }
-                                     }
-                                   })
+    messageBusConnection.subscribe(DeviceHeadsUpListener.TOPIC, MyDeviceHeadsUpListener())
 
     messageBusConnection.subscribe(DeviceMirroringSettingsListener.TOPIC, this)
 
@@ -239,7 +243,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     else {
       recentAttentionRequests.put(deviceSerialNumber, deviceSerialNumber)
       alarm.addRequest(recentAttentionRequests::cleanUp, ATTENTION_REQUEST_EXPIRATION.toMillis())
-      if (deviceSerialNumber.startsWith("emulator-")) {
+      if (isEmulator(deviceSerialNumber)) {
         val future = RunningEmulatorCatalog.getInstance().updateNow()
         future.addCallback(EdtExecutorService.getInstance(),
                            success = { emulators ->
@@ -321,12 +325,14 @@ internal class StreamingToolWindowManager @AnyThread constructor(
           addEmulatorPanel(activeEmulator)
         }
       }
+
       is DeviceId.PhysicalDeviceId -> {
         val deviceClient = deviceClients[activeDeviceId.serialNumber]
         if (deviceClient != null) {
           physicalDeviceWatcher?.deviceConnected(activeDeviceId.serialNumber, deviceClient)
         }
       }
+
       else -> {}
     }
 
@@ -451,7 +457,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun removePhysicalDevicePanel(panel: DeviceToolWindowPanel) {
-    deviceClients.remove(panel.id.serialNumber)?.let { Disposer.dispose(it)}
+    deviceClients.remove(panel.id.serialNumber)?.let { Disposer.dispose(it) }
     removePanel(panel)
   }
 
@@ -572,6 +578,33 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     destroyContent()
   }
 
+  private inner class MyDeviceHeadsUpListener : DeviceHeadsUpListener {
+
+    override fun userInvolvementRequired(deviceSerialNumber: String, project: Project) {
+      if (project == toolWindow.project) {
+        UIUtil.invokeLaterIfNeeded {
+          onDeviceHeadsUp(deviceSerialNumber)
+        }
+      }
+    }
+
+    override fun launchingApp(deviceSerialNumber: String, project: Project) {
+      val activate =
+          if (isEmulator(deviceSerialNumber)) emulatorSettings.activateOnAppLaunch else deviceMirroringSettings.activateOnAppLaunch
+      if (activate) {
+        userInvolvementRequired(deviceSerialNumber, project)
+      }
+    }
+
+    override fun launchingTest(deviceSerialNumber: String, project: Project) {
+      val activate =
+        if (isEmulator(deviceSerialNumber)) emulatorSettings.activateOnTestLaunch else deviceMirroringSettings.activateOnTestLaunch
+      if (activate) {
+        userInvolvementRequired(deviceSerialNumber, project)
+      }
+    }
+  }
+
   private inner class ToggleDeviceFrameAction : ToggleAction("Show Device Frame"), DumbAware {
 
     override fun update(event: AnActionEvent) {
@@ -629,7 +662,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       for (device in removed) {
         removePhysicalDevicePanel(device)
       }
-      if (!toolWindow.isVisible && deviceClients.isEmpty() && emulators.isEmpty()) {
+      if (!toolWindow.isVisible && deviceClients.isEmpty() && emulators.isEmpty() && removed.isNotEmpty()) {
         hideLiveIndicator()
       }
       for (deviceSerialNumber in onlineDevices) {
@@ -658,7 +691,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
           if (contentCreated) {
             deviceConnected(deviceSerialNumber, deviceClient)
           }
-          else if (recentAttentionRequests.getIfPresent(deviceSerialNumber) != null) {
+          else if (deviceMirroringSettings.activateOnConnection || recentAttentionRequests.getIfPresent(deviceSerialNumber) != null) {
             recentAttentionRequests.invalidate(deviceSerialNumber)
             lastSelectedDeviceId = DeviceId.ofPhysicalDevice(deviceSerialNumber)
             toolWindow.showAndActivate()
@@ -674,7 +707,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         }
         else if (!mirroringConfirmationDialogShowing) { // Ignore a recursive call inside the dialog's event loop.
           mirroringConfirmationDialogShowing = true
-          val dialogWrapper = MirroringConfirmationDialog(deviceClient.deviceName).createWrapper(project).apply { show() }
+          val title = "About to Start Mirroring of ${deviceClient.deviceName}"
+          val dialogWrapper = MirroringConfirmationDialog(title).createWrapper(project).apply { show() }
           mirroringConfirmationDialogShowing = false
           when (dialogWrapper.exitCode) {
             MirroringConfirmationDialog.ACCEPT_EXIT_CODE -> startMirroring(deviceSerialNumber, deviceClient)
@@ -697,7 +731,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     /** Returns properties of the device if it supports mirroring. Otherwise, returns null. */
     @AnyThread
     private suspend fun getMirrorableDeviceProperties(deviceSerialNumber: String): Map<String, String>? {
-      if (deviceSerialNumber.startsWith("emulator-")) {
+      if (isEmulator(deviceSerialNumber)) {
         if (!StudioFlags.DEVICE_MIRRORING_STANDALONE_EMULATORS.get()) {
           return null
         }
@@ -732,6 +766,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     }
   }
 }
+
+@AnyThread
+private fun isEmulator(deviceSerialNumber: String) =
+    deviceSerialNumber.startsWith("emulator-")
 
 @AnyThread
 private fun isEmbeddedEmulator(commandLine: GeneralCommandLine) =

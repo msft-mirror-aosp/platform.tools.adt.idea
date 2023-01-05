@@ -201,7 +201,10 @@ iml_test(
         "@system_image_android-30_default_x86_64//:x86_64-android-30-images",
     ],
     module = ":intellij.android.core.integration",
-    tags_linux = ["block-network"],
+    tags_linux = [
+        "block-network",
+        "very_flaky",  # b/263397644
+    ],
     tags_mac = [],
     tags_windows = [
         "block-network",
@@ -265,10 +268,7 @@ iml_test(
     ],
     module = ":intellij.android.core.integration",
     tags_linux = ["block-network"],
-    tags_windows = [
-        "block-network",
-        "manual",  # b/262914373 - ~12% failures due to incredibly long syncs
-    ],
+    tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.CreateProjectTest",
 )
 
@@ -292,7 +292,7 @@ maven_repository(
         "@maven//:androidx.compose.ui.ui-tooling_1.3.0",
         "@maven//:androidx.compose.ui.ui_1.3.0",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
-        "@maven//:androidx.core.core-ktx_1.8.0",
+        "@maven//:androidx.core.core-ktx_1.9.0",
         "@maven//:androidx.databinding.viewbinding_7.2.0",
         "@maven//:androidx.navigation.navigation-fragment-ktx_2.4.1",
         "@maven//:androidx.navigation.navigation-ui-ktx_2.4.1",
@@ -407,7 +407,7 @@ maven_repository(
         "@maven//:androidx.compose.ui.ui-tooling-preview_1.3.0",
         "@maven//:androidx.compose.ui.ui-tooling_1.3.0",
         "@maven//:androidx.compose.ui.ui_1.3.0",
-        "@maven//:androidx.core.core-ktx_1.8.0",
+        "@maven//:androidx.core.core-ktx_1.9.0",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.4.0",
         "@maven//:androidx.lifecycle.lifecycle-runtime-ktx_2.3.1",
         "@maven//:com.android.tools.build.aapt2_7.1.0-7984345",

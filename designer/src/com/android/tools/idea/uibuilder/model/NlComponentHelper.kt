@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.model
 
+import com.android.AndroidXConstants.CLASS_CONSTRAINT_LAYOUT_HELPER
 import com.android.SdkConstants.ANDROIDX_PKG_PREFIX
 import com.android.SdkConstants.ANDROID_NS_NAME_PREFIX
 import com.android.SdkConstants.ANDROID_URI
@@ -31,9 +32,7 @@ import com.android.SdkConstants.TAG_GROUP
 import com.android.SdkConstants.TAG_ITEM
 import com.android.SdkConstants.TAG_MENU
 import com.android.SdkConstants.TAG_SELECTOR
-import com.android.SdkConstants.TOOLS_URI
 import com.android.SdkConstants.VALUE_WRAP_CONTENT
-import com.android.SdkConstants.VIEW
 import com.android.SdkConstants.VIEW_INCLUDE
 import com.android.SdkConstants.VIEW_MERGE
 import com.android.ide.common.rendering.api.ResourceNamespace
@@ -53,6 +52,7 @@ import com.android.tools.idea.uibuilder.api.PaletteComponentHandler
 import com.android.tools.idea.uibuilder.api.ViewGroupHandler
 import com.android.tools.idea.uibuilder.api.ViewHandler
 import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager
+import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintHelperHandler
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ImmutableSet
 import com.intellij.openapi.application.ApplicationManager
@@ -278,7 +278,7 @@ fun NlComponent.isOrHasSuperclass(className: String): Boolean {
   }
   val viewInfo = viewInfo
   if (viewInfo != null) {
-    val viewObject = viewInfo.viewObject ?: return ApplicationManager.getApplication().isUnitTestMode && tagName == className
+    val viewObject = viewInfo.viewObject ?: return ApplicationManager.getApplication().isUnitTestMode && isOrHasSuperclassInTest(className)
     var viewClass: Class<*> = viewObject.javaClass
     while (viewClass != Any::class.java) {
       if (className == viewClass.name) {
@@ -300,6 +300,20 @@ fun NlComponent.isOrHasSuperclass(className: String): Boolean {
  */
 fun NlComponent.isOrHasSuperclass(className: AndroidxName): Boolean {
   return isOrHasSuperclass(className.oldName()) || isOrHasSuperclass(className.newName())
+}
+
+/**
+ * Return true if this NlComponent's class is derived from the specified [className].
+ *
+ * In tests the classes from ConstraintLayout may not be available on the classpath and the
+ * viewObject check in [isOrHasSuperclass] will not work.
+ * 
+ * Instead check the [NlComponent.getTagName] or if this is a constraint helper.
+ */
+private fun NlComponent.isOrHasSuperclassInTest(className: String): Boolean = when (className) {
+  CLASS_CONSTRAINT_LAYOUT_HELPER.newName(),
+  CLASS_CONSTRAINT_LAYOUT_HELPER.oldName() -> viewHandler is ConstraintHelperHandler
+  else -> className == tagName
 }
 
 /**
@@ -342,10 +356,19 @@ fun NlComponent.getMostSpecificClass(classNames: Set<String>): String? {
   return null
 }
 
+/**
+ * Return the [ViewHandler] for the current [NlComponent].
+ */
 val NlComponent.viewHandler: ViewHandler?
   get() = if (!model.project.isDisposed) ViewHandlerManager.get(model.project).getHandler(this) else null
 
-val NlComponent.viewGroupHandler: ViewGroupHandler?
+/**
+ * Return the [ViewGroupHandler] for the nearest layout starting with the current [NlComponent].
+ *
+ * If the current [NlComponent] is a ViewGroup then return the view handler for the current [NlComponent].
+ * Otherwise a view handler for a parent component is returned (if such a view handler exists).
+ */
+val NlComponent.layoutHandler: ViewGroupHandler?
   get() = if (!model.project.isDisposed) ViewHandlerManager.get(model.project).findLayoutHandler(this, false) else null
 
 /**
@@ -506,10 +529,10 @@ class NlComponentMixin(component: NlComponent)
 
   override fun afterMove(insertType: InsertType, previousParent: NlComponent?, receiver: NlComponent) {
     if (previousParent != receiver) {
-      previousParent?.viewGroupHandler?.onChildRemoved(previousParent, component, insertType)
+      previousParent?.layoutHandler?.onChildRemoved(previousParent, component, insertType)
     }
 
-    receiver.viewGroupHandler?.onChildInserted(receiver, component, insertType)
+    receiver.layoutHandler?.onChildInserted(receiver, component, insertType)
   }
 
   override fun postCreate(insertType: InsertType): Boolean {

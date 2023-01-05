@@ -18,7 +18,6 @@ package com.android.tools.idea.transport.faketransport.commands
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.profiler.proto.Commands.Command
 import com.android.tools.profiler.proto.Common
-import com.android.tools.profiler.proto.Memory
 import com.android.tools.profiler.proto.Trace
 
 /**
@@ -46,15 +45,18 @@ class MemoryNativeSampling(timer: FakeTimer) : CommandHandler(timer) {
       events.add(Common.Event.newBuilder().apply {
         pid = command.pid
         commandId = command.commandId
-        kind = Common.Event.Kind.MEMORY_NATIVE_SAMPLE_CAPTURE
+        kind = Common.Event.Kind.MEMORY_TRACE
         timestamp = timer.currentTimeNs
         groupId = startCommandTimestamp
-        memoryNativeSample = Memory.MemoryNativeSampleData.newBuilder().apply {
-          startTime = timer.currentTimeNs
-          endTime = Long.MAX_VALUE
+        traceData = Trace.TraceData.newBuilder().apply {
+          traceStarted = Trace.TraceData.TraceStarted.newBuilder().apply {
+            traceInfo = Trace.TraceInfo.newBuilder().apply {
+              fromTimestamp = timer.currentTimeNs
+              toTimestamp = Long.MAX_VALUE
+            }.build()
+          }.build()
         }.build()
       }.build())
-
     }
     else {
       events.add(Common.Event.newBuilder().apply {
@@ -72,15 +74,18 @@ class MemoryNativeSampling(timer: FakeTimer) : CommandHandler(timer) {
       events.add(Common.Event.newBuilder().apply {
         pid = command.pid
         commandId = command.commandId
-        kind = Common.Event.Kind.MEMORY_NATIVE_SAMPLE_CAPTURE
+        kind = Common.Event.Kind.MEMORY_TRACE
         timestamp = timer.currentTimeNs
         groupId = startCommandTimestamp
-        memoryNativeSample = Memory.MemoryNativeSampleData.newBuilder().apply {
-          startTime = startCommandTimestamp
-          endTime = timer.currentTimeNs
+        traceData = Trace.TraceData.newBuilder().apply {
+          traceEnded = Trace.TraceData.TraceEnded.newBuilder().apply {
+            traceInfo = Trace.TraceInfo.newBuilder().apply {
+              fromTimestamp = startCommandTimestamp
+              toTimestamp = timer.currentTimeNs
+            }.build()
+          }.build()
         }.build()
       }.build())
     }
-
   }
 }

@@ -35,6 +35,7 @@ import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
@@ -101,7 +102,7 @@ class DeviceToolWindowPanelTest {
     // Check appearance.
     fakeUi.updateToolbars()
     waitForFrame()
-    assertAppearance("AppearanceAndToolbarActions1", maxPercentDifferent = 0.08)
+    assertAppearance("AppearanceAndToolbarActions1", maxPercentDifferentMac = 0.06, maxPercentDifferentWindows = 0.06)
     assertThat(panel.preferredFocusableComponent).isEqualTo(panel.deviceView)
     assertThat(panel.isClosable).isFalse()
     assertThat(panel.icon).isNotNull()
@@ -148,7 +149,7 @@ class DeviceToolWindowPanelTest {
       return
     }
     device = agentRule.connectDevice("Pixel Watch", 30, Dimension(454, 454), "arm64-v8a",
-                                     mapOf(RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
+                                     additionalDeviceProperties = mapOf(RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
     panel.createContent(false)
     assertThat(panel.deviceView).isNotNull()
 
@@ -303,10 +304,18 @@ class DeviceToolWindowPanelTest {
   }
 
   @Suppress("SameParameterValue")
-  private fun assertAppearance(goldenImageName: String, maxPercentDifferent: Double = 0.0) {
+  private fun assertAppearance(goldenImageName: String,
+                               maxPercentDifferentLinux: Double = 0.0,
+                               maxPercentDifferentMac: Double = 0.0,
+                               maxPercentDifferentWindows: Double = 0.0) {
     fakeUi.layoutAndDispatchEvents()
     fakeUi.updateToolbars()
     val image = fakeUi.render()
+    val maxPercentDifferent = when {
+      SystemInfo.isMac -> maxPercentDifferentMac
+      SystemInfo.isWindows -> maxPercentDifferentWindows
+      else -> maxPercentDifferentLinux
+    }
     ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), image, maxPercentDifferent)
   }
 

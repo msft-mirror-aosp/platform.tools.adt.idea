@@ -28,6 +28,7 @@ import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.swing.enableHeadlessDialogs
 import com.android.tools.idea.avdmanager.AvdLaunchListener
+import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.protobuf.TextFormat
@@ -92,7 +93,6 @@ class StreamingToolWindowManagerTest {
   private val contentManager: ContentManager by lazy { toolWindow.contentManager }
 
   private val deviceMirroringSettings: DeviceMirroringSettings by lazy { DeviceMirroringSettings.getInstance() }
-  private var savedMirroringEnabledState = false
 
   private val project get() = agentRule.project
   private val testRootDisposable get() = agentRule.testRootDisposable
@@ -111,7 +111,6 @@ class StreamingToolWindowManagerTest {
     whenever(mockLafManager.currentLookAndFeel).thenReturn(UIManager.LookAndFeelInfo("IntelliJ Light", "Ignored className"))
     ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, testRootDisposable)
 
-    savedMirroringEnabledState = DeviceMirroringSettings.getInstance().deviceMirroringEnabled
     deviceMirroringSettings.deviceMirroringEnabled = true
     deviceMirroringSettings.confirmationDialogShown = true
   }
@@ -120,8 +119,7 @@ class StreamingToolWindowManagerTest {
   fun tearDown() {
     toolWindow.hide()
     dispatchAllEventsInIdeEventQueue() // Finish asynchronous processing triggered by hiding the tool window.
-    deviceMirroringSettings.deviceMirroringEnabled = savedMirroringEnabledState
-    deviceMirroringSettings.confirmationDialogShown = false
+    deviceMirroringSettings.loadState(DeviceMirroringSettings()) // Reset device mirroring settings to defaults.
   }
 
   @Test
@@ -144,11 +142,15 @@ class StreamingToolWindowManagerTest {
     // Send notification that the emulator has been launched.
     val avdInfo = AvdInfo(emulator1.avdId, emulator1.avdFolder.resolve("config.ini"), emulator1.avdFolder, mock(), null)
     val commandLine = GeneralCommandLine("/emulator_home/fake_emulator", "-avd", emulator1.avdId, "-qt-hide-window")
-    project.messageBus.syncPublisher(AvdLaunchListener.TOPIC).avdLaunched(avdInfo, commandLine, project)
+    project.messageBus.syncPublisher(AvdLaunchListener.TOPIC).avdLaunched(avdInfo, commandLine, RequestType.INDIRECT, project)
     dispatchAllInvocationEvents()
+    assertThat(toolWindow.isVisible).isFalse() // Indirect AVD launches don't open the Running Devices tool window.
 
-    // The Emulator tool window becomes visible when a headless emulator is launched from Studio.
+    project.messageBus.syncPublisher(AvdLaunchListener.TOPIC).avdLaunched(avdInfo, commandLine, RequestType.DIRECT, project)
+    dispatchAllInvocationEvents()
+    // The Running Devices tool is opened when an embedded emulator is launched by a direct request.
     assertThat(toolWindow.isVisible).isTrue()
+
     waitForCondition(2, TimeUnit.SECONDS) { contentManager.contents.isNotEmpty() }
     assertThat(contentManager.contents).hasLength(1)
     waitForCondition(2, TimeUnit.SECONDS) { RunningEmulatorCatalog.getInstance().emulators.isNotEmpty() }
@@ -167,7 +169,7 @@ class StreamingToolWindowManagerTest {
     assertThat(contentManager.contents[1].isSelected).isTrue()
 
     for (emulator in listOf(emulator2, emulator3)) {
-      project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).deviceNeedsAttention("emulator-${emulator.serialPort}", project)
+      project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired("emulator-${emulator.serialPort}", project)
     }
 
     // Deploying an app activates the corresponding emulator panel.
@@ -329,6 +331,26 @@ class StreamingToolWindowManagerTest {
   }
 
   @Test
+  fun testPhysicalDeviceActivateOnConnection() {
+    if (!isFFmpegAvailableToTest()) {
+      return
+    }
+    createToolWindowContent()
+    assertThat(contentManager.contents).isEmpty()
+    assertThat(toolWindow.isVisible).isFalse()
+
+    deviceMirroringSettings.activateOnConnection = true
+    val device = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280), "arm64-v8a")
+
+    waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
+    assertThat(contentManager.contents[0].displayName).isEqualTo("Pixel 4 API 30")
+
+    agentRule.disconnectDevice(device)
+    waitForCondition(2, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName == null }
+    waitForCondition(2, TimeUnit.SECONDS) { !device.agent.isRunning }
+  }
+
+  @Test
   fun testPhysicalDeviceRequestsAttention() {
     if (!isFFmpegAvailableToTest()) {
       return
@@ -339,7 +361,7 @@ class StreamingToolWindowManagerTest {
 
     val device1 = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280), "arm64-v8a")
     val device2 = agentRule.connectDevice("Pixel 6", 32, Dimension(1080, 2400), "arm64-v8a")
-    requestAttention(device2.serialNumber)
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device2.serialNumber, project)
 
     waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 2 }
     assertThat(contentManager.contents[0].displayName).isEqualTo("Pixel 4 API 30")
@@ -347,7 +369,12 @@ class StreamingToolWindowManagerTest {
     assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 6 API 32")
     assertThat(toolWindow.isVisible).isTrue()
 
-    requestAttention(device1.serialNumber)
+    deviceMirroringSettings.activateOnTestLaunch = true
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingTest(device1.serialNumber, project)
+    assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 4 API 30")
+
+    deviceMirroringSettings.activateOnAppLaunch = false
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device2.serialNumber, project)
     assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 4 API 30")
 
     agentRule.disconnectDevice(device1)
@@ -366,7 +393,7 @@ class StreamingToolWindowManagerTest {
     assertThat(toolWindow.isVisible).isFalse()
 
     val device1 = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280), "arm64-v8a")
-    requestAttention(device1.serialNumber)
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired(device1.serialNumber, project)
 
     dispatchAllEventsInIdeEventQueue()
     awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, TimeUnit.SECONDS)
@@ -452,7 +479,7 @@ class StreamingToolWindowManagerTest {
     assertThat(toolWindow.isVisible).isFalse()
 
     agentRule.connectDevice("LG Watch Sport", 29, Dimension(480, 480), "armeabi-v7a",
-                            mapOf(DevicePropertyNames.RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
+                            additionalDeviceProperties = mapOf(DevicePropertyNames.RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
     toolWindow.show()
 
     dispatchAllEventsInIdeEventQueue()
@@ -509,10 +536,6 @@ class StreamingToolWindowManagerTest {
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, emulatorView: EmulatorView): Int {
     fakeUi.render() // The frame number may get updated as a result of rendering.
     return emulatorView.frameNumber
-  }
-
-  private fun requestAttention(deviceSerialNumber: String) {
-    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).deviceNeedsAttention(deviceSerialNumber, project)
   }
 
   private class TestToolWindowManager(project: Project) : ToolWindowHeadlessManagerImpl(project) {

@@ -33,7 +33,7 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.fileClasses.javaFileFacadeFqName
-import org.jetbrains.kotlin.idea.project.languageVersionSettings
+import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
 import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
 import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.kotlin.name.FqName
@@ -238,8 +238,6 @@ class LiveEditCompiler(val project: Project) {
 
   private fun getGeneratedMethodCode(compilerOutput: List<OutputFile>, targetFunction: KtFunction, groupId: Int?, generationState: GenerationState) : LiveEditCompilerOutput {
     val desc = generationState.bindingContext[BindingContext.FUNCTION, targetFunction]!!
-    val methodSignature = remapFunctionSignatureIfNeeded(desc, generationState.typeMapper)
-    val isCompose = desc.hasComposableAnnotation()
 
     var elem: PsiElement = targetFunction
     while (elem.getKotlinFqName() == null || elem !is KtNamedFunction) {
@@ -263,21 +261,12 @@ class LiveEditCompiler(val project: Project) {
       className = grandParent.javaFileFacadeFqName.toString()
     }
 
-    if (className.isEmpty() || methodSignature.isEmpty()) {
-      throw internalError("Empty class name / method signature.", function.containingFile)
-    }
-
     val internalClassName = getInternalClassName(desc.containingPackage(), className, function.containingFile)
     val (primaryClass, supportClasses) = getCompiledClasses(internalClassName, elem.containingFile as KtFile, compilerOutput)
 
-    val idx = methodSignature.indexOf('(')
-
     val result = LiveEditCompilerOutput.Builder()
       .className(internalClassName)
-      .methodName(methodSignature.substring(0, idx))
-      .methodDesc(methodSignature.substring(idx))
       .classData(primaryClass)
-      .functionType(if (isCompose) LiveEditFunctionType.COMPOSABLE else LiveEditFunctionType.KOTLIN)
       .supportClasses(supportClasses)
     groupId?.let {result.groupId(groupId)}
 

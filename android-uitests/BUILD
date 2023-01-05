@@ -144,7 +144,7 @@ maven_repository(
         "@maven//:androidx.core.core-ktx_1.3.0",
         "@maven//:androidx.core.core-ktx_1.3.2",
         "@maven//:androidx.core.core-ktx_1.6.0",
-        "@maven//:androidx.core.core-ktx_1.8.0",
+        "@maven//:androidx.core.core-ktx_1.9.0",
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
         "@maven//:androidx.fragment.fragment_1.3.0",
@@ -1337,6 +1337,22 @@ java_test(
 )
 
 java_test(
+    name = "APKDebuggingProjTest",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/ApkDebug/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.APKDebuggingProjTest"],
+    tags = COMMON_TAGS + [
+        "no-remote",
+        "requires-fakeroot",
+        "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
     name = "ImportSampleProjectTest",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
@@ -1690,6 +1706,7 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.NewComposeProjectTest"],
     tags = COMMON_TAGS + [
         "ui_test",
+        "very_flaky",  # b/255152721, b/263061905, b/263957563
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1742,6 +1759,20 @@ java_test(
         "testData/CodeGeneration/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.GotoDeclarationTest"],
+    tags = COMMON_TAGS + [
+        "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "FindUsagesTest",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/CodeGeneration/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.FindUsagesTest"],
     tags = COMMON_TAGS + [
         "qa_smoke",
     ],

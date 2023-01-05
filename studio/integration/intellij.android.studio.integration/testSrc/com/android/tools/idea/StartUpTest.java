@@ -42,6 +42,12 @@ public class StartUpTest {
     AndroidStudioInstallation install = AndroidStudioInstallation.fromZip(fileSystem);
     try (Display display = Display.createDefault();
          AndroidStudio studio = install.run(display)) {
+      // Check that AndroidStudioApplicationInfo.xml was patched properly, and that it is not overridden by
+      // ApplicationNamesInfo.getAppInfoData (see org.jetbrains.intellij.build.tasks.injectAppInfo and Change Id51ff2663).
+      String version = studio.version();
+      assertThat(version).startsWith("Android Studio");
+      assertThat(version).doesNotContain("dev");
+
       // Wait for plugin manager to load all plugins
       Matcher matcher = install.getIdeaLog().waitForMatchingLine(".*PluginManager - Loaded bundled plugins:(.*)", 10, TimeUnit.SECONDS);
       String[] plugins = matcher.group(1).split(",");
@@ -95,8 +101,8 @@ public class StartUpTest {
         "Kotlin",
         "Machine Learning Code Completion",
         "Machine Learning Code Completion Models",
-        "Machine Learning Local Models",
         "Markdown",
+        "Maven server api classes",
         "Mercurial",
         "NetBeans Keymap",
         "Plugin DevKit",

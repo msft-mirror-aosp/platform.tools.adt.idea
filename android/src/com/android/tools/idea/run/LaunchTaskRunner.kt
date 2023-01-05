@@ -42,26 +42,31 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultDebugExecutor
+import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.containers.ContainerUtil
+import org.jetbrains.android.util.AndroidBuildCommonUtils.isInstrumentationTestConfiguration
+import org.jetbrains.android.util.AndroidBuildCommonUtils.isTestConfiguration
 import org.jetbrains.android.util.AndroidBundle
+import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.concurrency.Promise
-import org.jetbrains.concurrency.resolvedPromise
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -198,20 +203,27 @@ class LaunchTaskRunner(
             session.runContentDescriptor
           }
       }
-      var descriptor: RunContentDescriptor? = null
-      if (isSwap) {
-        // If we're hotswapping, we want to use the currently-running ContentDescriptor,
-        // instead of making a new one (which "show"RunContent actually does).
-        val manager = RunContentManager.getInstance(project)
-        // Note we may still end up with a null descriptor since the user could close the tool tab after starting a hotswap.
-        descriptor = manager.findContentDescriptor(myEnv.executor, myProcessHandler)
+      val descriptorPromise = AsyncPromise<RunContentDescriptor>()
+
+      runInEdt {
+        var descriptor: RunContentDescriptor? = null
+        if (isSwap) {
+          // If we're hot swapping, we want to use the currently-running ContentDescriptor,
+          // instead of making a new one (which showRunContent actually does).
+          val manager = RunContentManager.getInstance(project)
+          // Note we may still end up with a null descriptor since the user could close the tool tab after starting a hotswap.
+          descriptor = manager.findContentDescriptor(myEnv.executor, myProcessHandler)
+        }
+        if (descriptor?.attachedContent == null) {
+          val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+          Disposer.register(project, console)
+          createRunContentDescriptor(myProcessHandler, console, myEnv).processed(descriptorPromise)
+        }
+        else {
+          descriptorPromise.setResult(descriptor)
+        }
       }
-      return if (descriptor == null || descriptor.attachedContent == null) {
-        createRunContentDescriptor(myProcessHandler, myConsole, myEnv)
-      }
-      else {
-        resolvedPromise(descriptor)
-      }
+      return descriptorPromise
     }
     finally {
       myStats.endLaunchTasks()
@@ -254,7 +266,7 @@ class LaunchTaskRunner(
         if (result != LaunchResult.Result.SUCCESS) {
           myError = launchResult.message
           launchContext.consolePrinter.stderr(launchResult.consoleMessage)
-          if (!launchResult.message.isEmpty()) {
+          if (launchResult.message.isNotEmpty()) {
             if (result == LaunchResult.Result.ERROR) {
               notifyError(project, configuration.name, launchResult.message)
             }
@@ -280,7 +292,12 @@ class LaunchTaskRunner(
         }
 
         // Notify listeners of the deployment.
-        project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).deviceNeedsAttention(device.serialNumber, project)
+        if (isLaunchingTest()) {
+          project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingTest(device.serialNumber, project)
+        }
+        else {
+          project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device.serialNumber, project)
+        }
       }
 
       // Update the indicator progress.
@@ -311,6 +328,11 @@ class LaunchTaskRunner(
     return true
   }
 
+  private fun isLaunchingTest(): Boolean {
+    val configTypeId = myEnv.runnerAndConfigurationSettings?.type?.id ?: return false
+    return isTestConfiguration(configTypeId) || isInstrumentationTestConfiguration(configTypeId)
+  }
+
   private fun detachDevice(device: IDevice?) {
     if (!isSwap && myProcessHandler is AndroidProcessHandler) {
       myProcessHandler.detachDevice(device!!)
@@ -319,7 +341,7 @@ class LaunchTaskRunner(
 
   private fun printLaunchTaskStartedMessage(consolePrinter: ConsolePrinter) {
     val launchString = StringBuilder("\n")
-    val dateFormat: DateFormat = SimpleDateFormat("MM/dd HH:mm:ss")
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
     launchString.append(dateFormat.format(Date())).append(": ")
     launchString.append(launchVerb).append(" ")
     launchString.append("'").append(configuration.name).append("'")
@@ -380,7 +402,7 @@ class LaunchTaskRunner(
      * Checks if the launch is still alive and good to continue. Upon cancellation request, it updates a given `launchStatus` to
      * be terminated state. The associated process will be forcefully destroyed if `destroyProcess` is true.
      *
-     * @param indicator      an progress indicator to check the user cancellation request
+     * @param indicator      a progress indicator to check the user cancellation request
      * @param launchStatus   a launch status to be checked and updated upon the cancellation request
      * @param destroyProcess true to destroy the associated process upon cancellation, false to detach the process instead
      * @return true if the launch is still good to go, false otherwise.

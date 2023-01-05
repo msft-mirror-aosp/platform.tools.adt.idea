@@ -17,13 +17,13 @@ package com.android.tools.idea.compose.preview
 
 import com.android.flags.ifEnabled
 import com.android.tools.adtui.actions.DropDownAction
-import com.android.tools.idea.actions.SetColorBlindModeAction
 import com.android.tools.idea.actions.SetScreenViewProviderAction
 import com.android.tools.idea.common.actions.ActionButtonWithToolTipDescription
 import com.android.tools.idea.common.editor.ToolbarActionGroups
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.compose.preview.actions.ComposeNotificationGroup
+import com.android.tools.idea.compose.preview.actions.ComposeViewControlAction
 import com.android.tools.idea.compose.preview.actions.GroupSwitchAction
 import com.android.tools.idea.compose.preview.actions.ShowDebugBoundaries
 import com.android.tools.idea.compose.preview.actions.StopAnimationInspectorAction
@@ -41,13 +41,11 @@ import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.representation.CommonRepresentationEditorFileType
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
-import com.android.tools.idea.uibuilder.actions.SwitchSurfaceLayoutManagerAction
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationProvider
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -76,7 +74,7 @@ private class ComposePreviewToolbar(private val surface: DesignSurface<*>) :
         StopInteractivePreviewAction(),
         StopAnimationInspectorAction(),
         GroupSwitchAction().visibleOnlyInComposeStaticPreview(),
-        SwitchSurfaceLayoutManagerAction(
+        ComposeViewControlAction(
             layoutManagerSwitcher = surface.sceneViewLayoutManager as LayoutManagerSwitcher,
             layoutManagers = PREVIEW_LAYOUT_MANAGER_OPTIONS
           ) { !isAnyPreviewRefreshing(it.dataContext) }
@@ -99,32 +97,16 @@ private class ComposePreviewToolbar(private val surface: DesignSurface<*>) :
       // Surface'
       StudioIcons.LayoutEditor.Toolbar.VIEW_MODE
     ) {
+
     private val disabledIcon =
       IconLoader.getDisabledIcon(StudioIcons.LayoutEditor.Toolbar.VIEW_MODE)
 
     init {
       templatePresentation.isHideGroupIfEmpty = true
       val blueprintEnabled = StudioFlags.COMPOSE_BLUEPRINT_MODE.get()
-      val colorBlindEnabled = StudioFlags.COMPOSE_COLORBLIND_MODE.get()
-      if (blueprintEnabled || colorBlindEnabled) {
-        addAction(SetScreenViewProviderAction(COMPOSE_SCREEN_VIEW_PROVIDER, surface))
-      }
       if (blueprintEnabled) {
+        addAction(SetScreenViewProviderAction(COMPOSE_SCREEN_VIEW_PROVIDER, surface))
         addAction(SetScreenViewProviderAction(COMPOSE_BLUEPRINT_SCREEN_VIEW_PROVIDER, surface))
-      }
-      if (colorBlindEnabled) {
-        addAction(
-          DefaultActionGroup.createPopupGroup {
-            message("action.scene.mode.colorblind.dropdown.title")
-          }
-            .apply {
-              addAction(SetColorBlindModeAction(ColorBlindMode.PROTANOPES, surface))
-              addAction(SetColorBlindModeAction(ColorBlindMode.PROTANOMALY, surface))
-              addAction(SetColorBlindModeAction(ColorBlindMode.DEUTERANOPES, surface))
-              addAction(SetColorBlindModeAction(ColorBlindMode.DEUTERANOMALY, surface))
-              addAction(SetColorBlindModeAction(ColorBlindMode.TRITANOPES, surface))
-            }
-        )
       }
     }
 

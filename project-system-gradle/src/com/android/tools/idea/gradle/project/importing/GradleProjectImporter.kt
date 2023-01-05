@@ -86,28 +86,13 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
       importProjectNoSync(Request(newProject))
       return ProjectManagerEx.getInstanceEx().openProject(
         projectFolderPath.toPath(),
-        OpenProjectTask(
-          forceOpenInNewFrame = forceOpenInNewFrame,
-          projectToClose = projectToClose,
-          isNewProject = false,
-          useDefaultProjectAsTemplate = false,
-          project = newProject,
-          projectName = null,
-          showWelcomeScreen = true,
-          callback = null,
-          line = -1,
-          column = -1,
-          isRefreshVfsNeeded = true,
-          runConfigurators = false,
-          runConversionBeforeOpen = true,
-          projectWorkspaceId = null,
-          isProjectCreatedWithWizard = false,
-          beforeInit = null,
-          // Note that `beforeOpen` does not work with already created projects (i.e. project = newProject) and thus it cannot be used
-          // to replace `beforeOpen(project)` inside `createProject` method.
-          beforeOpen = null,
-          preparedToOpen = null
-        )
+        OpenProjectTask {
+          this.forceOpenInNewFrame = forceOpenInNewFrame
+          this.projectToClose = projectToClose
+          isNewProject = false
+          useDefaultProjectAsTemplate = false
+          project = newProject
+        }
       )
     }
     catch (e: Throwable) {
@@ -177,9 +162,9 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
     GradleProjectInfo.beginInitializingGradleProjectAt(projectFolderPath).use { ignored ->
       val newProject = ProjectManagerEx.getInstanceEx().newProject(
         Path.of(projectFolderPath.path),
-        OpenProjectTask(
-          projectName = projectName
-        )
+        OpenProjectTask {
+          this.projectName = projectName
+        }
       ) ?: throw NullPointerException("Failed to create a new project")
       configureNewProject(newProject)
       return newProject

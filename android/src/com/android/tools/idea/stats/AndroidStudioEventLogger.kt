@@ -46,6 +46,14 @@ object AndroidStudioEventLogger : StatisticsEventLogger {
     return CompletableFuture.completedFuture(null)
   }
 
+  override fun logAsync(group: EventLogGroup,
+                        eventId: String,
+                        dataProvider: () -> Map<String, Any>?,
+                        isState: Boolean): CompletableFuture<Void> {
+    val data = dataProvider() ?: return CompletableFuture.completedFuture(null)
+    return logAsync(group, eventId, data, isState)
+  }
+
   override fun rollOver() {}
 
   private fun logFileType(eventId: String, data: Map<String, Any>) {
@@ -103,6 +111,7 @@ object AndroidStudioEventLogger : StatisticsEventLogger {
         (data["plugin_type"] as? String?)?.let { pluginType = it }
         (data["platform"] as? String?)?.let { platform = it }
         (data["isMPP"] as? String?)?.toBoolean()?.let { isMultiplatform = it }
+        (data["eventFlags"] as? Long?)?.let { eventFlags = it }
         eventType = when (eventId) {
           "Build" -> KotlinProjectConfiguration.EventType.BUILD
           else -> KotlinProjectConfiguration.EventType.TYPE_UNKNOWN

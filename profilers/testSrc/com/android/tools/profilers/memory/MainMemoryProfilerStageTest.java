@@ -506,15 +506,16 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     Common.Session session1 = manager.getSelectedSession();
 
     long nativeHeapTimestamp = 30L;
-    Memory.MemoryNativeSampleData nativeHeapInfo = Memory.MemoryNativeSampleData.newBuilder().setStartTime(nativeHeapTimestamp).setEndTime(
-      nativeHeapTimestamp + 1).build();
+    Trace.TraceData nativeHeapInfo = Trace.TraceData.newBuilder().setTraceStarted(Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(
+      Trace.TraceInfo.newBuilder().setFromTimestamp(nativeHeapTimestamp).setToTimestamp(
+        nativeHeapTimestamp + 1))).build();
     Common.Event.Builder nativeHeapData =
-      ProfilersTestData.generateMemoryNativeSampleData(nativeHeapTimestamp, nativeHeapTimestamp + 1, nativeHeapInfo);
+      ProfilersTestData.generateMemoryTraceData(nativeHeapTimestamp, nativeHeapTimestamp + 1, nativeHeapInfo);
     myTransportService.addEventToStream(device.getDeviceId(), nativeHeapData.setPid(session1.getPid()).build());
     manager.update();
 
     // Makes sure native memory allocation artifact proto is implicitly selected after recording
-    assertThat(manager.getSelectedArtifactProto()).isInstanceOf(Memory.MemoryNativeSampleData.class);
+    assertThat(manager.getSelectedArtifactProto()).isInstanceOf(Trace.TraceInfo.class);
   }
 
   @Test

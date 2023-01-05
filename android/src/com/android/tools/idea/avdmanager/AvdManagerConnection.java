@@ -69,6 +69,7 @@ import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.sdklib.repository.IdDisplay;
 import com.android.sdklib.repository.targets.SystemImage;
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution.SolutionCode;
+import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType;
 import com.android.tools.idea.avdmanager.emulatorcommand.BootWithSnapshotEmulatorCommandBuilder;
 import com.android.tools.idea.avdmanager.emulatorcommand.ColdBootEmulatorCommandBuilder;
 import com.android.tools.idea.avdmanager.emulatorcommand.ColdBootNowEmulatorCommandBuilder;
@@ -172,10 +173,10 @@ public class AvdManagerConnection {
   };
 
   private static final Map<Path, AvdManagerConnection> ourAvdCache = new WeakHashMap<>();
-  private static final @NotNull Map<@NotNull Path, @NotNull AvdManagerConnection> ourGradleAvdCache = new WeakHashMap<>();
+  private static final @NotNull Map<Path, AvdManagerConnection> ourGradleAvdCache = new WeakHashMap<>();
   private static long ourMemorySize = -1;
 
-  private static @NotNull BiFunction<@Nullable AndroidSdkHandler, @Nullable Path, @NotNull AvdManagerConnection> ourConnectionFactory =
+  private static @NotNull BiFunction<AndroidSdkHandler, Path, AvdManagerConnection> ourConnectionFactory =
     AvdManagerConnection::new;
 
   // A map from hardware config name to its belonging hardware property.
@@ -257,7 +258,7 @@ public class AvdManagerConnection {
    */
   @VisibleForTesting
   protected synchronized static void setConnectionFactory(
-    @NotNull BiFunction<@Nullable AndroidSdkHandler, @Nullable Path, @NotNull AvdManagerConnection> factory) {
+    @NotNull BiFunction<AndroidSdkHandler, Path, AvdManagerConnection> factory) {
     ourAvdCache.clear();
     ourGradleAvdCache.clear();
     ourConnectionFactory = factory;
@@ -486,13 +487,13 @@ public class AvdManagerConnection {
     });
   }
 
-  public @NotNull ListenableFuture<@NotNull Boolean> isAvdRunningAsync(@NotNull AvdInfo info) {
+  public @NotNull ListenableFuture<Boolean> isAvdRunningAsync(@NotNull AvdInfo info) {
     ListeningExecutorService service = MoreExecutors.listeningDecorator(AppExecutorUtil.getAppExecutorService());
 
     return service.submit(() -> isAvdRunning(info));
   }
 
-  public final @NotNull ListenableFuture<@Nullable Void> stopAvdAsync(@NotNull AvdInfo avd) {
+  public final @NotNull ListenableFuture<Void> stopAvdAsync(@NotNull AvdInfo avd) {
     // noinspection UnstableApiUsage
     return Futures.submit(() -> stopAvd(avd), AppExecutorUtil.getAppExecutorService());
   }
@@ -503,31 +504,30 @@ public class AvdManagerConnection {
     myAvdManager.stopAvd(info);
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> coldBoot(@NotNull Project project, @NotNull AvdInfo avd) {
-    return startAvd(project, avd, ColdBootEmulatorCommandBuilder::new);
+  public @NotNull ListenableFuture<IDevice> coldBoot(@NotNull Project project, @NotNull AvdInfo avd, @NotNull RequestType requestType) {
+    return startAvd(project, avd, requestType, ColdBootEmulatorCommandBuilder::new);
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> quickBoot(@NotNull Project project, @NotNull AvdInfo avd) {
-    return startAvd(project, avd, EmulatorCommandBuilder::new);
+  public @NotNull ListenableFuture<IDevice> quickBoot(@NotNull Project project, @NotNull AvdInfo avd, @NotNull RequestType requestType) {
+    return startAvd(project, avd, requestType, EmulatorCommandBuilder::new);
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> bootWithSnapshot(@NotNull Project project,
-                                                                      @NotNull AvdInfo avd,
-                                                                      @NotNull String snapshot) {
-    return startAvd(project, avd, (emulator, a) -> new BootWithSnapshotEmulatorCommandBuilder(emulator, a, snapshot));
+  public @NotNull ListenableFuture<IDevice> bootWithSnapshot(
+      @NotNull Project project, @NotNull AvdInfo avd, @NotNull String snapshot, @NotNull RequestType requestType) {
+    return startAvd(project, avd, requestType, (emulator, a) -> new BootWithSnapshotEmulatorCommandBuilder(emulator, a, snapshot));
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> startAvd(@Nullable Project project, @NotNull AvdInfo info) {
-    return startAvd(project, info, new DefaultEmulatorCommandBuilderFactory());
+  public @NotNull ListenableFuture<IDevice> startAvd(@Nullable Project project, @NotNull AvdInfo info, @NotNull RequestType requestType) {
+    return startAvd(project, info, requestType, new DefaultEmulatorCommandBuilderFactory());
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> startAvdWithColdBoot(@Nullable Project project, @NotNull AvdInfo info) {
-    return startAvd(project, info, ColdBootNowEmulatorCommandBuilder::new);
+  public @NotNull ListenableFuture<IDevice> startAvdWithColdBoot(
+      @Nullable Project project, @NotNull AvdInfo info, @NotNull RequestType requestType) {
+    return startAvd(project, info, requestType, ColdBootNowEmulatorCommandBuilder::new);
   }
 
-  public @NotNull ListenableFuture<@NotNull IDevice> startAvd(@Nullable Project project,
-                                                              @NotNull AvdInfo info,
-                                                              @NotNull EmulatorCommandBuilderFactory factory) {
+  public @NotNull ListenableFuture<IDevice> startAvd(
+      @Nullable Project project, @NotNull AvdInfo info, @NotNull RequestType requestType, @NotNull EmulatorCommandBuilderFactory factory) {
     if (!initIfNecessary()) {
       return Futures.immediateFailedFuture(new RuntimeException("No Android SDK Found"));
     }
@@ -541,43 +541,46 @@ public class AvdManagerConnection {
     // noinspection ConstantConditions, UnstableApiUsage
     return Futures.transformAsync(
       checkAccelerationAsync(),
-      code -> continueToStartAvdIfAccelerationErrorIsNotBlocking(code, project, info, factory),
+      code -> continueToStartAvdIfAccelerationErrorIsNotBlocking(code, project, info, requestType, factory),
       MoreExecutors.directExecutor());
   }
 
-  private @NotNull ListenableFuture<IDevice> continueToStartAvdIfAccelerationErrorIsNotBlocking(@NotNull AccelerationErrorCode code,
-                                                                                                @Nullable Project project,
-                                                                                                @NotNull AvdInfo info,
-                                                                                                @NotNull EmulatorCommandBuilderFactory factory) {
+  private @NotNull ListenableFuture<IDevice> continueToStartAvdIfAccelerationErrorIsNotBlocking(
+      @NotNull AccelerationErrorCode code,
+      @Nullable Project project,
+      @NotNull AvdInfo info,
+      @NotNull RequestType requestType,
+      @NotNull EmulatorCommandBuilderFactory factory) {
     switch (code) {
       case ALREADY_INSTALLED:
-        return continueToStartAvd(project, info, factory);
+        return continueToStartAvd(project, info, requestType, factory);
       case TOOLS_UPDATE_REQUIRED:
       case PLATFORM_TOOLS_UPDATE_ADVISED:
       case SYSTEM_IMAGE_UPDATE_ADVISED:
         // Launch the virtual device with possibly degraded performance even if there are updates
         // noinspection DuplicateBranchesInSwitch
-        return continueToStartAvd(project, info, factory);
+        return continueToStartAvd(project, info, requestType, factory);
       case NO_EMULATOR_INSTALLED:
-        return handleAccelerationError(project, info, code);
+        return handleAccelerationError(project, info, requestType, code);
       default:
         Abi abi = Abi.getEnum(info.getAbiType());
 
         if (abi == null) {
-          return continueToStartAvd(project, info, factory);
+          return continueToStartAvd(project, info, requestType, factory);
         }
 
         if (abi.equals(Abi.X86) || abi.equals(Abi.X86_64)) {
-          return handleAccelerationError(project, info, code);
+          return handleAccelerationError(project, info, requestType, code);
         }
 
         // Let ARM and MIPS virtual devices launch without hardware acceleration
-        return continueToStartAvd(project, info, factory);
+        return continueToStartAvd(project, info, requestType, factory);
     }
   }
 
   private @NotNull ListenableFuture<IDevice> continueToStartAvd(@Nullable Project project,
                                                                 @NotNull AvdInfo avd,
+                                                                @NotNull RequestType requestType,
                                                                 @NotNull EmulatorCommandBuilderFactory factory) {
     Path emulatorBinary = getEmulatorBinary();
     if (emulatorBinary == null) {
@@ -643,7 +646,7 @@ public class AvdManagerConnection {
 
     // Send notification that the device has been launched.
     MessageBus messageBus = project != null ? project.getMessageBus() : ApplicationManager.getApplication().getMessageBus();
-    messageBus.syncPublisher(AvdLaunchListener.TOPIC).avdLaunched(avd, commandLine, project);
+    messageBus.syncPublisher(AvdLaunchListener.TOPIC).avdLaunched(avd, commandLine, requestType, project);
 
     return EmulatorConnectionListener.getDeviceForEmulator(project, avd.getName(), processHandler, 5, TimeUnit.MINUTES);
   }
@@ -696,7 +699,7 @@ public class AvdManagerConnection {
   /**
    * Write HTTP Proxy information to a temporary file.
    */
-  private @NotNull Optional<@NotNull Path> writeParameterFile() {
+  private @NotNull Optional<Path> writeParameterFile() {
     if (!emulatorVersionIsAtLeast(EMULATOR_REVISION_SUPPORTS_STUDIO_PARAMS)) {
       // Older versions of the emulator don't accept this information.
       return Optional.empty();
@@ -801,6 +804,7 @@ public class AvdManagerConnection {
   @NotNull
   private ListenableFuture<IDevice> handleAccelerationError(@Nullable Project project,
                                                             @NotNull AvdInfo info,
+                                                            @NotNull RequestType requestType,
                                                             @NotNull AccelerationErrorCode code) {
     if (code.getSolution().equals(SolutionCode.NONE)) {
       return Futures.immediateFailedFuture(new RuntimeException(code.getProblem() + "\n\n" + code.getSolutionMessage() + '\n'));
@@ -809,7 +813,7 @@ public class AvdManagerConnection {
     // noinspection ConstantConditions, UnstableApiUsage
     return Futures.transformAsync(
       showAccelerationErrorDialog(code, project),
-      result -> tryFixingAccelerationError(result, project, info, code),
+      result -> tryFixingAccelerationError(result, project, info, requestType, code),
       MoreExecutors.directExecutor());
   }
 
@@ -835,6 +839,7 @@ public class AvdManagerConnection {
   private ListenableFuture<IDevice> tryFixingAccelerationError(int result,
                                                                @Nullable Project project,
                                                                @NotNull AvdInfo info,
+                                                               @NotNull RequestType requestType,
                                                                @NotNull AccelerationErrorCode code) {
     if (result == Messages.CANCEL) {
       return Futures.immediateFailedFuture(new RuntimeException("Could not start AVD"));
@@ -842,7 +847,7 @@ public class AvdManagerConnection {
 
     SettableFuture<IDevice> future = SettableFuture.create();
 
-    Runnable setFuture = () -> future.setFuture(startAvd(project, info));
+    Runnable setFuture = () -> future.setFuture(startAvd(project, info, requestType));
 
     Runnable setException = () -> future.setException(new RuntimeException("Retry after fixing problem by hand"));
     ApplicationManager.getApplication().invokeLater(AccelerationErrorSolution.getActionForFix(code, project, setFuture, setException));
@@ -1126,7 +1131,7 @@ public class AvdManagerConnection {
     }
   }
 
-  public final @NotNull ListenableFuture<@NotNull Boolean> wipeUserDataAsync(@NotNull AvdInfo avd) {
+  public final @NotNull ListenableFuture<Boolean> wipeUserDataAsync(@NotNull AvdInfo avd) {
     return Futures.submit(() -> wipeUserData(avd), AppExecutorUtil.getAppExecutorService());
   }
 

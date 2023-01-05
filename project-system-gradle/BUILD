@@ -1,5 +1,7 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
+load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "old_agp_test")
+load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_7_4", "AGP_DATA")
 
 # managed by go/iml_to_build
 iml_module(
@@ -142,6 +144,33 @@ iml_module(
     ],
 )
 
+old_agp_test(
+    name = "MultipleGradleRootsSyncUpdatesProjectJdkIntegrationTest",
+    timeout = "long",
+    agp_version = AGP_7_4,
+    data = [
+        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:platforms/android-32",
+        "//tools/adt/idea/android/testData",
+        "//tools/adt/idea/project-system-gradle/testData",
+        "//tools/base/build-system:gradle-distrib",
+    ],
+    gradle_version = "7.5",
+    ignore_other_tests = True,
+    iml_module = ":intellij.android.projectSystem.gradle.tests",
+    maven_deps = [
+        "//tools/base/build-system/previous-versions:7.4.0",
+        "//tools/base/build-system/previous-versions:kgp1.3.72",
+        ":test_deps",
+    ],
+    tags = [
+        "block-network",
+        "no_test_mac",
+        "no_test_windows",
+    ],
+    test_class = "com.android.tools.idea.projectsystem.GradleProjectSystemOldAgpTestSuite",
+)
+
 maven_repository(
     name = "test_deps",
     # keep sorted: for buildifier
@@ -156,7 +185,7 @@ maven_repository(
         "@maven//:androidx.core.core-ktx_1.0.1",
         "@maven//:androidx.core.core-ktx_1.2.0",
         "@maven//:androidx.core.core-ktx_1.6.0",
-        "@maven//:androidx.core.core-ktx_1.8.0",
+        "@maven//:androidx.core.core-ktx_1.9.0",
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
         "@maven//:androidx.legacy.legacy-support-v4_1.0.0",

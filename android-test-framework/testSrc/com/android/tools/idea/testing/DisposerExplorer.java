@@ -19,8 +19,10 @@ import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -33,7 +35,14 @@ import org.jetbrains.annotations.TestOnly;
  */
 @TestOnly
 public class DisposerExplorer {
-  private static final Object treeLock = getTreeLock();
+  private static final Map<Class<?>, Map<String, Field>> fieldCache = new HashMap<>();
+  /** For simplicity supports only non-overloaded methods. */
+  private static final Map<Class<?>, Map<String, Method>> methodCache = new HashMap<>();
+  @SuppressWarnings("UnstableApiUsage")
+  private static final Object tree = Disposer.getTree();
+  private static final Map<Disposable, Object> object2ParentNode = getFieldValue(tree, "myObject2ParentNode");
+  private static final Object rootNode = getFieldValue(tree, "myRootNode");
+  private static final Object treeLock = rootNode;
 
   /**
    * Checks if the given disposable is referenced by the Disposer's tree.
@@ -52,8 +61,7 @@ public class DisposerExplorer {
   /**
    * Returns the roots of the Disposer's tree. The order of the returned roots is not guaranteed.
    */
-  @NotNull
-  public static Collection<Disposable> getTreeRoots() {
+  public static @NotNull Collection<Disposable> getTreeRoots() {
     synchronized (treeLock) {
       return getTreeRootsInternal();
     }
@@ -62,21 +70,14 @@ public class DisposerExplorer {
   /**
    * The same as {@link #getTreeRoots()} but without locking. Must be called while holding the disposer tree lock.
    */
-  @NotNull
-  private static Collection<Disposable> getTreeRootsInternal() {
-    return getObjectNodeDisposableChildren(getFieldValue(Disposer.getTree(), "ROOT_NODE"));
-  }
-
-  @NotNull
-  private static Object getTreeLock() {
-    return getFieldValue(Disposer.getTree(), "treeLock");
+  private static @NotNull Collection<Disposable> getTreeRootsInternal() {
+    return getObjectNodeDisposableChildren(rootNode);
   }
 
   /**
    * Returns immediate children of the given disposable.
    */
-  @NotNull
-  public static List<Disposable> getChildren(@NotNull Disposable disposable) {
+  public static @NotNull List<Disposable> getChildren(@NotNull Disposable disposable) {
     synchronized (treeLock) {
       Object objectNode = getObjectNode(disposable);
       if (objectNode == null) {
@@ -86,9 +87,8 @@ public class DisposerExplorer {
     }
   }
 
-  @NotNull
-  private static ImmutableList<Disposable> getObjectNodeDisposableChildren(@NotNull Object objectNode) {
-    List<?> childNodes = getObjectNodeChildren(objectNode);
+  private static @NotNull ImmutableList<Disposable> getObjectNodeDisposableChildren(@NotNull Object objectNode) {
+    Collection<?> childNodes = getObjectNodeChildren(objectNode);
     if (childNodes.isEmpty()) {
       return ImmutableList.of();
     }
@@ -102,8 +102,7 @@ public class DisposerExplorer {
   /**
    * Returns the parent of the given disposable, or null if the disposable doesn't have parent.
    */
-  @Nullable
-  public static Disposable getParent(@NotNull Disposable disposable) {
+  public static @Nullable Disposable getParent(@NotNull Disposable disposable) {
     synchronized (treeLock) {
       Object objectNode = getObjectNode(disposable);
       if (objectNode != null) {
@@ -119,7 +118,7 @@ public class DisposerExplorer {
   /**
    * Checks if the given disposable has children.
    */
-  public static boolean hasChildren(@NotNull Disposable disposable) {
+  static boolean hasChildren(@NotNull Disposable disposable) {
     synchronized (treeLock) {
       Object objectNode = getObjectNode(disposable);
       return objectNode != null && !getObjectNodeChildren(objectNode).isEmpty();
@@ -127,11 +126,10 @@ public class DisposerExplorer {
   }
 
   /**
-   * If Disposer.isDebugMode() is true and the given disposable is a root, then this returns
-   * the trace from when the disposable was first registered. Otherwise it returns null.
+   * Returns the stack trace from when the disposable was first registered, if Disposer.isDebugMode()
+   * is true and the given disposable is a root. Otherwise returns null.
    */
-  @Nullable
-  public static Throwable getTrace(@NotNull Disposable disposable) {
+  public static @Nullable Throwable getTrace(@NotNull Disposable disposable) {
     synchronized (treeLock) {
       Object objectNode = getObjectNode(disposable);
       return objectNode != null ? getObjectNodeTrace(objectNode) : null;
@@ -144,8 +142,7 @@ public class DisposerExplorer {
    * @param filter the predicate determining what objects are returned
    * @return the objects, for which the {@code filter.test} method returned true
    */
-  @NotNull
-  public static List<Disposable> findAll(@NotNull Predicate<Disposable> filter) {
+  public static @NotNull List<Disposable> findAll(@NotNull Predicate<Disposable> filter) {
     List<Disposable> result = new ArrayList<>();
     visitTree(disposable -> {
       if (filter.test(disposable)) {
@@ -162,8 +159,7 @@ public class DisposerExplorer {
    * @param filter the predicate determining whether an object should be returned or not
    * @return the first object, for which the {@code filter.test} method returned true, or null if there are no such objects
    */
-  @Nullable
-  public static Disposable findFirst(@NotNull Predicate<Disposable> filter) {
+  public static @Nullable Disposable findFirst(@NotNull Predicate<Disposable> filter) {
     Disposable[] result = new Disposable[1];
     visitTree(disposable -> {
       if (filter.test(disposable)) {
@@ -184,18 +180,9 @@ public class DisposerExplorer {
    * @return VisitResult.ABORT if the visiting was terminated the {@link Visitor#visit(Disposable)} method
    *     returning VisitResult.ABORT, otherwise VisitResult.CONTINUE
    */
-  @NotNull
-  public static VisitResult visitTree(@NotNull Visitor visitor) {
+  public static @NotNull VisitResult visitTree(@NotNull Visitor visitor) {
     synchronized (treeLock) {
-      Map<Disposable, ?> objectToNodeMap = getObjectToNodeMap();
-      for (Disposable root : getTreeRootsInternal()) {
-        Object rootNode = objectToNodeMap.get(root);
-        VisitResult result = visitSubtree(rootNode, visitor);
-        if (result == VisitResult.ABORT) {
-          return result;
-        }
-      }
-      return VisitResult.CONTINUE;
+      return visitDescendantsOfNode(getFieldValue(tree, "myRootNode"), visitor);
     }
   }
 
@@ -210,22 +197,20 @@ public class DisposerExplorer {
    * @return VisitResult.ABORT if the visiting was terminated the {@link Visitor#visit(Disposable)} method
    *     returning VisitResult.ABORT, otherwise VisitResult.CONTINUE
    */
-  @NotNull
-  public static VisitResult visitDescendants(@NotNull Disposable disposable, @NotNull Visitor visitor) {
+  public static @NotNull VisitResult visitDescendants(@NotNull Disposable disposable, @NotNull Visitor visitor) {
     synchronized (treeLock) {
       Object objectNode = getObjectNode(disposable);
       if (objectNode != null) {
-        return visitDescendants(objectNode, visitor);
+        return visitDescendantsOfNode(objectNode, visitor);
       }
       return VisitResult.CONTINUE;
     }
   }
 
-  @NotNull
-  private static VisitResult visitSubtree(@NotNull Object objectNode, @NotNull Visitor visitor) {
+  private static @NotNull VisitResult visitSubtree(@NotNull Object objectNode, @NotNull Visitor visitor) {
     VisitResult result = visitor.visit(getObjectNodeDisposable(objectNode));
     if (result == VisitResult.CONTINUE) {
-      result = visitDescendants(objectNode, visitor);
+      result = visitDescendantsOfNode(objectNode, visitor);
       if (result == VisitResult.ABORT) {
         return result;
       }
@@ -233,10 +218,8 @@ public class DisposerExplorer {
     return result == VisitResult.SKIP_CHILDREN ? VisitResult.CONTINUE : result;
   }
 
-  @NotNull
-  private static VisitResult visitDescendants(@NotNull Object objectNode, @NotNull Visitor visitor) {
-    List<?> childNodes = getObjectNodeChildren(objectNode);
-    for (Object child : childNodes) {
+  private static @NotNull VisitResult visitDescendantsOfNode(@NotNull Object objectNode, @NotNull Visitor visitor) {
+    for (Object child : getObjectNodeChildren(objectNode)) {
       VisitResult result = visitSubtree(child, visitor);
       if (result == VisitResult.ABORT) {
         return result;
@@ -245,50 +228,94 @@ public class DisposerExplorer {
     return VisitResult.CONTINUE;
   }
 
-  @NotNull
-  private static Map<Disposable, ?> getObjectToNodeMap() {
-    return getFieldValue(Disposer.getTree(), "myObject2NodeMap");
+  private static @Nullable Object getObjectNode(@NotNull Disposable disposable) {
+    Object parent = object2ParentNode.get(disposable);
+    if (parent == null) {
+      parent = rootNode;
+    }
+    return findChildNode(parent, disposable);
   }
 
-  @Nullable
-  private static Object getObjectNode(@NotNull Disposable disposable) {
-    return getObjectToNodeMap().get(disposable);
+  private static @Nullable Object findChildNode(Object objectNode, Disposable disposable) {
+    Object childrenObject = getFieldValue(objectNode, "myChildren");
+    if (childrenObject == null) {
+      return null;
+    }
+    Method method = getMethod(childrenObject.getClass(), "findChildNode", Disposable.class);
+    return invokeMethod(childrenObject, method, disposable);
   }
 
-  @Nullable
-  private static Object getObjectNodeParent(@NotNull Object objectNode) {
-    return getFieldValue(objectNode, "myParent");
+  private static @Nullable Object getObjectNodeParent(@NotNull Object objectNode) {
+    return object2ParentNode.get(getObjectNodeDisposable(objectNode));
   }
 
-  @NotNull
-  private static List<?> getObjectNodeChildren(@NotNull Object objectNode) {
-    Object childNodes = getFieldValue(objectNode, "myChildren");
-    return childNodes == null ? ImmutableList.of() : (List<?>)childNodes;
+  private static @NotNull Collection<?> getObjectNodeChildren(@NotNull Object objectNode) {
+    Object childrenObject = getFieldValue(objectNode, "myChildren");
+    if (childrenObject == null) {
+      return ImmutableList.of();
+    }
+    Method method = getMethod(childrenObject.getClass(), "getAllNodes");
+    return invokeMethod(childrenObject, method);
   }
 
-  @NotNull
-  private static Disposable getObjectNodeDisposable(@NotNull Object objectNode) {
+  private static @NotNull Disposable getObjectNodeDisposable(@NotNull Object objectNode) {
     return getFieldValue(objectNode, "myObject");
   }
 
-  @Nullable
-  private static Throwable getObjectNodeTrace(@NotNull Object objectNode) {
+  private static @Nullable Throwable getObjectNodeTrace(@NotNull Object objectNode) {
     return getFieldValue(objectNode, "myTrace");
   }
 
-  // TODO: Replace reflection by a test-only class in the same package as Disposer.
   @SuppressWarnings("unchecked")
-  @Nullable
   private static <T> T getFieldValue(@NotNull Object object, @NotNull String fieldName) {
-    // If performance becomes an issue, we can cache Field objects.
+    Field field = getField(object.getClass(), fieldName);
     try {
-      Field field = object.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
       return (T)field.get(object);
     }
-    catch (ReflectiveOperationException e) {
-      throw new Error(e); // Should not happen unless there is a bug in this class.
+    catch (IllegalAccessException e) {
+      throw new Error(e);
     }
+  }
+
+  private static @NotNull Field getField(Class<?> clazz, @NotNull String fieldName) {
+    Map<String, Field> fieldsByName = fieldCache.computeIfAbsent(clazz, cls -> new HashMap<>());
+    return fieldsByName.computeIfAbsent(fieldName, name -> {
+      try {
+        Field field = clazz.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field;
+      }
+      catch (NoSuchFieldException e) {
+        throw new Error(e);
+      }
+    });
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> T invokeMethod(@NotNull Object object, @NotNull Method method, @Nullable Object... args) {
+    try {
+      return (T)method.invoke(object, args);
+    }
+    catch (ReflectiveOperationException e) {
+      throw new Error(e);
+    }
+  }
+
+  /**
+   * For simplicity supports only non-overloaded methods.
+   */
+  private static @NotNull Method getMethod(Class<?> clazz, @NotNull String methodName, @NotNull Class<?>... parameterTypes) {
+    Map<String, Method> methodsByName = methodCache.computeIfAbsent(clazz, cls -> new HashMap<>());
+    return methodsByName.computeIfAbsent(methodName, name -> {
+      try {
+        Method method= clazz.getMethod(methodName, parameterTypes);
+        method.setAccessible(true);
+        return method;
+      }
+      catch (NoSuchMethodException e) {
+        throw new Error(e);
+      }
+    });
   }
 
   /** Do not instantiate. All methods are static. */
@@ -309,7 +336,6 @@ public class DisposerExplorer {
      *     to continue visit from the next sibling of the currently visited disposable, or
      *     VisitResult.ABORT to not visit any more disposables.
      */
-    @NotNull
-    VisitResult visit(@NotNull Disposable disposable);
+    @NotNull VisitResult visit(@NotNull Disposable disposable);
   }
 }

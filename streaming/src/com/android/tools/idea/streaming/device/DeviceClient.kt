@@ -41,7 +41,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.kotlin.idea.util.projectStructure.allModules
@@ -310,6 +309,8 @@ internal class DeviceClient(
       initialDisplayOrientation: Int,
       startVideoStream: Boolean) {
     startAgentTime = System.currentTimeMillis()
+    val maxSizeArg =
+        if (maxVideoSize.width > 0 && maxVideoSize.height > 0) " --max_size=${maxVideoSize.width},${maxVideoSize.height}" else ""
     val orientationArg = if (initialDisplayOrientation == UNKNOWN_ORIENTATION) "" else " --orientation=$initialDisplayOrientation"
     val flags = (if (startVideoStream) START_VIDEO_STREAM else 0) or
                 (if (DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring) TURN_OFF_DISPLAY_WHILE_MIRRORING else 0)
@@ -324,7 +325,7 @@ internal class DeviceClient(
     val command = "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process $DEVICE_PATH_BASE" +
                   " com.android.tools.screensharing.Main" +
                   " --socket=$socketName" +
-                  " --max_size=${maxVideoSize.width},${maxVideoSize.height}" +
+                  maxSizeArg +
                   orientationArg +
                   flagsArg +
                   maxBitRateArg +

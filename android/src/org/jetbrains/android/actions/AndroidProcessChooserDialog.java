@@ -590,7 +590,7 @@ public class AndroidProcessChooserDialog extends DialogWrapper {
   private static void collectProcessNames(XmlElement xmlElement, final Set<String> result) {
     xmlElement.accept(new XmlRecursiveElementVisitor() {
       @Override
-      public void visitXmlAttribute(XmlAttribute attribute) {
+      public void visitXmlAttribute(@NotNull XmlAttribute attribute) {
         if ("process".equals(attribute.getLocalName())) {
           final String value = attribute.getValue();
 
@@ -717,7 +717,7 @@ public class AndroidProcessChooserDialog extends DialogWrapper {
       myDeviceNamePropertiesFetcher = deviceNamePropertiesFetcher;
     }
 
-    private void setShowSerial(@NotNull List<@NotNull IDevice> devices) {
+    private void setShowSerial(@NotNull List<IDevice> devices) {
       myShowSerial = DeviceRenderer.shouldShowSerialNumbers(devices, myDeviceNamePropertiesFetcher);
     }
 

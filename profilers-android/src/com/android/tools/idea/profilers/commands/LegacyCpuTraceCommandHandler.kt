@@ -23,7 +23,6 @@ import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.transport.TransportProxy
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
-import com.android.tools.profiler.proto.Cpu
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profiler.proto.TransportServiceGrpc
 import com.intellij.openapi.diagnostic.Logger
@@ -62,11 +61,11 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
     // We only handle ART traces in the proxy layer. ATraces are handled via the device daemon and all other trace options are unsupported
     // in pre-O devices.
     return when (command.type) {
-      Commands.Command.CommandType.START_CPU_TRACE -> {
-        TraceType.from(command.startCpuTrace.configuration) == TraceType.ART
+      Commands.Command.CommandType.START_TRACE -> {
+        TraceType.from(command.startTrace.configuration) == TraceType.ART
       }
-      Commands.Command.CommandType.STOP_CPU_TRACE -> {
-        TraceType.from(command.stopCpuTrace.configuration) == TraceType.ART
+      Commands.Command.CommandType.STOP_TRACE -> {
+        TraceType.from(command.stopTrace.configuration) == TraceType.ART
       }
       else -> false
     }
@@ -74,15 +73,15 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
 
   override fun execute(command: Commands.Command): Transport.ExecuteResponse {
     when (command.type) {
-      Commands.Command.CommandType.START_CPU_TRACE -> startTrace(command)
-      Commands.Command.CommandType.STOP_CPU_TRACE -> stopTrace(command)
+      Commands.Command.CommandType.START_TRACE -> startTrace(command)
+      Commands.Command.CommandType.STOP_TRACE -> stopTrace(command)
     }
 
     return Transport.ExecuteResponse.getDefaultInstance()
   }
 
   private fun startTrace(command: Commands.Command) {
-    val traceConfiguration = command.startCpuTrace.configuration
+    val traceConfiguration = command.startTrace.configuration
     assert(traceConfiguration.hasArtOptions())
     val artOptions = traceConfiguration.artOptions
 
@@ -145,7 +144,7 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
             sendStartStatusEvent(command, status)
 
             // Create a corresponding CpuTraceInfo for the trace start event.
-            val traceInfo = Cpu.CpuTraceInfo.newBuilder().apply {
+            val traceInfo = Trace.TraceInfo.newBuilder().apply {
               traceId = requestTimeNs
               configuration = traceConfiguration
               fromTimestamp = requestTimeNs
@@ -170,7 +169,7 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
   }
 
   private fun stopTrace(command: Commands.Command) {
-    val traceConfiguration = command.stopCpuTrace.configuration
+    val traceConfiguration = command.stopTrace.configuration
     assert(traceConfiguration.hasArtOptions())
     val artOptions = traceConfiguration.artOptions
 
@@ -250,14 +249,14 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
     eventQueue.offer(statusEvent)
   }
 
-  private fun sendStartTraceEvent(command: Commands.Command, traceInfo: Cpu.CpuTraceInfo) {
+  private fun sendStartTraceEvent(command: Commands.Command, traceInfo: Trace.TraceInfo) {
     val traceStartEvent = Common.Event.newBuilder().apply {
       pid = command.pid
       kind = Common.Event.Kind.CPU_TRACE
       timestamp = traceInfo.fromTimestamp
       groupId = traceInfo.traceId
-      cpuTrace = Cpu.CpuTraceData.newBuilder()
-        .setTraceStarted(Cpu.CpuTraceData.TraceStarted.newBuilder().setTraceInfo(traceInfo)).build()
+      traceData = Trace.TraceData.newBuilder()
+        .setTraceStarted(Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(traceInfo)).build()
     }.build()
     eventQueue.offer(traceStartEvent)
   }
@@ -272,14 +271,14 @@ class LegacyCpuTraceCommandHandler(val device: IDevice,
     eventQueue.offer(statusEvent)
   }
 
-  private fun sendStopTraceEvent(command: Commands.Command, traceInfo: Cpu.CpuTraceInfo) {
+  private fun sendStopTraceEvent(command: Commands.Command, traceInfo: Trace.TraceInfo) {
     val traceStartEvent = Common.Event.newBuilder().apply {
       pid = command.pid
       kind = Common.Event.Kind.CPU_TRACE
       timestamp = traceInfo.toTimestamp
       groupId = traceInfo.traceId
-      cpuTrace = Cpu.CpuTraceData.newBuilder()
-        .setTraceEnded(Cpu.CpuTraceData.TraceEnded.newBuilder().setTraceInfo(traceInfo)).build()
+      traceData = Trace.TraceData.newBuilder()
+        .setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(traceInfo)).build()
     }.build()
     eventQueue.offer(traceStartEvent)
   }
