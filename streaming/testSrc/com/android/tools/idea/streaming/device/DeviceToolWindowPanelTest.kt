@@ -34,6 +34,8 @@ import com.android.tools.idea.ui.screenrecording.ScreenRecordingSupportedCache
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
@@ -50,6 +52,8 @@ import org.mockito.Mockito
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.event.InputEvent
+import java.awt.event.KeyEvent
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import javax.swing.JViewport
@@ -130,6 +134,13 @@ class DeviceToolWindowPanelTest {
       fakeUi.mouseRelease()
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0))
     }
+
+    // Check EmulatorPowerButtonAction invoked by a keyboard shortcut.
+    val powerAction = ActionManager.getInstance().getAction("android.device.power.button")
+    val keyEvent = KeyEvent(panel, KeyEvent.KEY_RELEASED, System.currentTimeMillis(), InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_P, 0.toChar())
+    val dataContext = DataManager.getInstance().getDataContext(panel.deviceView)
+    powerAction.actionPerformed(AnActionEvent.createFromAnAction(powerAction, keyEvent, "", dataContext))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0))
 
     // Check keypress actions.
     val keypressCases = listOf(
