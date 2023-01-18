@@ -38,6 +38,7 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.TransportErrorListener
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.stopInspector
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
+import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.tree.InspectorTreeSettings
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
@@ -180,7 +181,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
     processesModel: ProcessesModel,
     deviceModel: DeviceModel,
   ): ForegroundProcessDetection? {
-    return if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED.get()) {
+    return if (LayoutInspectorSettings.getInstance().autoConnectEnabled) {
       ForegroundProcessDetectionInitializer.initialize(
         project = project,
         processModel = processesModel,
