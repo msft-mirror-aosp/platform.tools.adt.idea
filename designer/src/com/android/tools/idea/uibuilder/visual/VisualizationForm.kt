@@ -525,7 +525,7 @@ class VisualizationForm(private val project: Project, parentDisposable: Disposab
     }
   }
 
-  override fun resourcesChanged(reasons: Set<ResourceNotificationManager.Reason>) {
+  override fun resourcesChanged(reasons: ImmutableSet<ResourceNotificationManager.Reason>) {
     var needsRenderModels = false
     for (reason in reasons) {
       when (reason) {

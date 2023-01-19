@@ -29,11 +29,14 @@ import com.android.tools.idea.databinding.util.DataBindingUtil;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager;
 import com.android.utils.HashCodes;
+import com.google.common.collect.ImmutableSet;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ModificationTracker;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
@@ -57,7 +60,6 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -271,7 +273,7 @@ public class ResourceNotificationManager {
       if (moduleEventObserver != null) {
         moduleEventObserver.removeListener(listener);
         if (!moduleEventObserver.hasListeners()) {
-          myModuleToObserverMap.remove(module);
+          Disposer.dispose(moduleEventObserver);
           if (myModuleToObserverMap.isEmpty() && myProjectPsiTreeObserver != null) {
             myProjectBuildObserver.stopListening();
             myProjectPsiTreeObserver = null;
@@ -349,14 +351,14 @@ public class ResourceNotificationManager {
 
   private void scheduleFinalNotification() {
     ApplicationManager.getApplication().invokeLater(() -> {
-      EnumSet<Reason> reason = myEvents;
+      ImmutableSet<Reason> reason = ImmutableSet.copyOf(myEvents);
       myEvents = EnumSet.noneOf(Reason.class);
       notifyListeners(reason);
       myEvents.clear();
     });
   }
 
-  private void notifyListeners(@NotNull EnumSet<Reason> reason) {
+  private void notifyListeners(@NotNull ImmutableSet<Reason> reason) {
     ApplicationManager.getApplication().assertIsDispatchThread();
 
     List<ModuleEventObserver> observers;
@@ -373,7 +375,7 @@ public class ResourceNotificationManager {
    * A {@linkplain ModuleEventObserver} registers listeners for various module-specific events (such as
    * resource folder manager changes) and then notifies {@link #notice(Reason, VirtualFile)} when it sees an event.
    */
-  private class ModuleEventObserver implements ModificationTracker, ResourceFolderManager.ResourceFolderListener {
+  private class ModuleEventObserver implements ModificationTracker, ResourceFolderManager.ResourceFolderListener, Disposable {
     private final AndroidFacet myFacet;
     private long myGeneration;
     private final Object myListenersLock = new Object();
@@ -385,6 +387,7 @@ public class ResourceNotificationManager {
     private ModuleEventObserver(@NotNull AndroidFacet facet) {
       myFacet = facet;
       myGeneration = getAppResourcesModificationCount();
+      Disposer.register(facet, this);
     }
 
     @Override
@@ -432,7 +435,7 @@ public class ResourceNotificationManager {
       }
     }
 
-    private void notifyListeners(@NotNull EnumSet<Reason> reason) {
+    private void notifyListeners(@NotNull ImmutableSet<Reason> reason) {
       if (myFacet.isDisposed()) {
         return;
       }
@@ -481,6 +484,13 @@ public class ResourceNotificationManager {
       if (facet.getModule() == myFacet.getModule()) {
         myModificationCount++;
         notice(Reason.GRADLE_SYNC, null);
+      }
+    }
+
+    @Override
+    public void dispose() {
+      synchronized (myObserverLock) {
+        myModuleToObserverMap.remove(myFacet.getModule());
       }
     }
   }
@@ -872,7 +882,7 @@ public class ResourceNotificationManager {
      *
      * @param reason the set of reasons that the resources have changed since the last notification
      */
-    void resourcesChanged(@NotNull Set<Reason> reason);
+    void resourcesChanged(@NotNull ImmutableSet<Reason> reason);
   }
 
   /**

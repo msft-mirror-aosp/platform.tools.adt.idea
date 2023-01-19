@@ -327,6 +327,7 @@ interface AndroidProjectStubBuilder {
 
   fun androidModuleDependencies(variant: String): List<AndroidModuleDependency>?
   fun androidLibraryDependencies(variant: String): List<AndroidLibraryDependency>?
+  fun applicationId(variant: String): String
   fun mainArtifact(variant: String): IdeAndroidArtifactCoreImpl
   fun androidTestArtifact(variant: String, applicationId: String?): IdeAndroidArtifactCoreImpl?
   fun unitTestArtifact(variant: String): IdeJavaArtifactCoreImpl?
@@ -376,6 +377,7 @@ data class AndroidProjectBuilder(
   val viewBindingOptions: AndroidProjectStubBuilder.() -> IdeViewBindingOptionsImpl = { buildViewBindingOptions() },
   val dependenciesInfo: AndroidProjectStubBuilder.() -> IdeDependenciesInfoImpl = { buildDependenciesInfo() },
   val supportsBundleTask: AndroidProjectStubBuilder.() -> Boolean = { true },
+  val applicationIdFor: AndroidProjectStubBuilder.(variant: String) -> String = { "applicationId" },
   val productFlavorsStub: AndroidProjectStubBuilder.(dimension: String) -> List<IdeProductFlavorImpl> = { dimension -> emptyList() },
   val productFlavorSourceProviderStub: AndroidProjectStubBuilder.(flavor: String) -> IdeSourceProviderImpl =
     { flavor -> sourceProvider(flavor) },
@@ -525,6 +527,7 @@ data class AndroidProjectBuilder(
         override val viewBindingOptions: IdeViewBindingOptionsImpl = viewBindingOptions()
         override val dependenciesInfo: IdeDependenciesInfoImpl = dependenciesInfo()
         override val supportsBundleTask: Boolean = supportsBundleTask()
+        override fun applicationId(variant: String): String = applicationIdFor(variant)
         override fun productFlavors(dimension: String): List<IdeProductFlavorImpl> = productFlavorsStub(dimension)
         override fun productFlavorSourceProvider(flavor: String): IdeSourceProviderImpl = productFlavorSourceProviderStub(flavor)
         override fun productFlavorContainers(dimension: String): List<IdeProductFlavorContainerImpl> = productFlavorContainersStub(
@@ -783,7 +786,7 @@ fun AndroidProjectStubBuilder.buildMainArtifactStub(
     compileClasspathCore = dependenciesStub,
     runtimeClasspathCore = dependenciesStub,
     unresolvedDependencies = emptyList(),
-    applicationId = "applicationId",
+    applicationId = applicationId(variant),
     signingConfigName = "defaultConfig",
     isSigned = false,
     generatedResourceFolders = listOfNotNull(
@@ -959,7 +962,7 @@ fun AndroidProjectStubBuilder.buildTestFixturesArtifactStub(
     compileClasspathCore = dependenciesStub,
     runtimeClasspathCore = dependenciesStub,
     unresolvedDependencies = emptyList(),
-    applicationId = "applicationId",
+    applicationId = null, // Test fixtures do not get application id.
     signingConfigName = "defaultConfig",
     isSigned = false,
     generatedResourceFolders = listOf(),
