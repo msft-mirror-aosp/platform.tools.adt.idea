@@ -25,7 +25,8 @@ import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.Att
  */
 class AttachStatistics(
   private val clientType: ClientType,
-  private val multipleProjectsOpen: () -> Boolean
+  private val multipleProjectsOpen: () -> Boolean,
+  private val isAutoConnectEnabled: () -> Boolean
 ) {
   private var success = false
   private var error = false
@@ -51,6 +52,7 @@ class AttachStatistics(
       }
       it.composeErrorCode = composeErrorCode
       it.multipleProjectsOpen = multipleProjectsOpen.invoke()
+      it.autoConnectEnabled = isAutoConnectEnabled()
     }
   }
 
