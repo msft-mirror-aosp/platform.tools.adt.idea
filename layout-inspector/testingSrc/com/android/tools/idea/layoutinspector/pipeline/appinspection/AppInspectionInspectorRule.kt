@@ -16,7 +16,6 @@
 package com.android.tools.idea.layoutinspector.pipeline.appinspection
 
 import com.android.flags.junit.SetFlagRule
-import com.android.testutils.MockitoKt.mock
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.app.inspection.AppInspection
 import com.android.tools.idea.appinspection.api.AppInspectionApiServices
@@ -26,6 +25,7 @@ import com.android.tools.idea.appinspection.test.createResponse
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.InspectorClientProvider
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
+import com.android.tools.idea.layoutinspector.pipeline.AbstractInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMonitor
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COMPOSE_LAYOUT_INSPECTOR_ID
@@ -54,7 +54,7 @@ import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol as Comp
  */
 fun AppInspectionClientProvider(
   getApiServices: () -> AppInspectionApiServices,
-  getMonitor: () -> InspectorClientLaunchMonitor,
+  getMonitor: (AbstractInspectorClient) -> InspectorClientLaunchMonitor,
   getClientSettings: () -> InspectorClientSettings,
   parentDisposable: Disposable
 ) = InspectorClientProvider { params, inspector ->
@@ -69,7 +69,7 @@ fun AppInspectionClientProvider(
     inspectorClientSettings = getClientSettings(),
     parentDisposable = parentDisposable,
     apiServices = apiServices).apply {
-    launchMonitor = getMonitor()
+    launchMonitor = getMonitor(this)
   }
 }
 
@@ -142,14 +142,14 @@ class AppInspectionInspectorRule(
    * Convenience method so users don't have to manually create an [AppInspectionClientProvider].
    */
   fun createInspectorClientProvider(
-    getMonitor: () -> InspectorClientLaunchMonitor = { defaultMonitor() },
-    getClientSettings: () -> InspectorClientSettings = { defaultInspectorClientSettings() }
+    getMonitor: (AbstractInspectorClient) -> InspectorClientLaunchMonitor = { defaultMonitor(it) },
+    getClientSettings: () -> InspectorClientSettings = { defaultInspectorClientSettings() },
   ): InspectorClientProvider {
     return AppInspectionClientProvider({ inspectionService.apiServices }, getMonitor, getClientSettings, parentDisposable)
   }
 
-  private fun defaultMonitor(): InspectorClientLaunchMonitor {
-    return InspectorClientLaunchMonitor(projectRule.project, ListenerCollection.createWithDirectExecutor(), mock())
+  private fun defaultMonitor(client: AbstractInspectorClient): InspectorClientLaunchMonitor {
+    return InspectorClientLaunchMonitor(projectRule.project, ListenerCollection.createWithDirectExecutor(), client.stats)
   }
 
   private fun defaultInspectorClientSettings(): InspectorClientSettings {
