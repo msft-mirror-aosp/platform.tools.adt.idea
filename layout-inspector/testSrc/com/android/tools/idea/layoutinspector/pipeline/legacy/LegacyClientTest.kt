@@ -60,7 +60,8 @@ class LegacyClientTest {
     val loader = mock(LegacyTreeLoader::class.java)
     doAnswer { windowIds }.whenever(loader).getAllWindowIds(ArgumentMatchers.any())
     val client = LegacyClientProvider(disposableRule.disposable, loader).create(params, inspector) as LegacyClient
-    client.launchMonitor = InspectorClientLaunchMonitor(projectRule.project, ListenerCollection.createWithDirectExecutor(), scheduler)
+    client.launchMonitor =
+      InspectorClientLaunchMonitor(projectRule.project, ListenerCollection.createWithDirectExecutor(), client.stats, scheduler)
     client
   }
   private val inspectorRule = LayoutInspectorRule(listOf(legacyClientProvider), projectRule)

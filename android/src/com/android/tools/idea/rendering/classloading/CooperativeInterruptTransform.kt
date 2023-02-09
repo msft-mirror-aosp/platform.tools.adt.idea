@@ -34,7 +34,7 @@ class CooperativeInterruptTransform @JvmOverloads constructor(
   delegate: ClassVisitor,
   private val checkPercentage: Int = 1,
   private val shouldInstrument: (String, String) -> Boolean = { _, _ -> true }) :
-  ClassVisitor(Opcodes.ASM7, delegate), ClassVisitorUniqueIdProvider {
+  ClassVisitor(Opcodes.ASM9, delegate), ClassVisitorUniqueIdProvider {
   init {
     if (checkPercentage !in 1..100) throw IllegalArgumentException("checkPercentage must be in [1, 100]")
   }
@@ -58,7 +58,7 @@ class CooperativeInterruptTransform @JvmOverloads constructor(
                            exceptions: Array<out String>?): MethodVisitor {
     val delegate = super.visitMethod(access, name, descriptor, signature, exceptions)
     return if (shouldInstrument(className, name ?: "")) {
-      object : GeneratorAdapter(Opcodes.ASM7, delegate, access, name, descriptor) {
+      object : GeneratorAdapter(Opcodes.ASM9, delegate, access, name, descriptor) {
         override fun visitJumpInsn(opcode: Int, label: Label?) {
           val skipCheck = Label()
           // Min random value
