@@ -21,9 +21,11 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 
+const val NETWORK_INSPECTOR_RULES = "NetworkInspectorRules"
+
 @Service
-@State(name = "NetworkInspectorRules", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
-class RulesPersistentStateComponent: PersistentStateComponent<RuleDataState> {
+@State(name = NETWORK_INSPECTOR_RULES, storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
+class RulesPersistentStateComponent : PersistentStateComponent<RuleDataState> {
   var myRuleDataState: RuleDataState = RuleDataState()
 
   override fun getState(): RuleDataState = myRuleDataState
