@@ -638,12 +638,12 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
-    version_micro_patch = "1.16",
+    version_micro_patch = "1.17",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 5,
-    version_type = "Beta",
-    version_update_message = "<html>A new Android Studio Flamingo | 2022.2.1 Beta 5 is available in the Beta channel. <p> Android Studio Flamingo | 2022.2.1 Beta 5 offers new functionality, bug fixes, and performance improvements.<br/> <br/>Beta builds include all of our new features with additional testing. We try to release updates weekly to address bugs and introduce new features. They are still subject to bugs, but we want people to see what's new as soon as possible while limiting the risk of a regression. </p> </html>",
+    version_release_number = 1,
+    version_type = "RC",
+    version_update_message = "<html>A new Android Studio Flamingo | 2022.2.1 RC 1 is available in the Beta channel. <p> Android Studio Flamingo | 2022.2.1 RC 1 offers new functionality, bug fixes, and performance improvements.<br/> <br/>Beta builds include all of our new features with additional testing. We try to release updates weekly to address bugs and introduce new features. They are still subject to bugs, but we want people to see what's new as soon as possible while limiting the risk of a regression. </p> </html>",
     visibility = ["//visibility:public"],
 )
 
