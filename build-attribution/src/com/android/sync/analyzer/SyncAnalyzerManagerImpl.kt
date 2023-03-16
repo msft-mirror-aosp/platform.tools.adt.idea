@@ -19,9 +19,11 @@ import com.android.build.attribution.analytics.transformDownloadsAnalyzerData
 import com.android.build.attribution.analyzers.DownloadsAnalyzer
 import com.android.build.output.DownloadsInfoUIModelNotifier
 import com.android.build.output.DownloadsInfoPresentableEvent
+import com.android.build.output.LongDownloadsNotifier
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.SyncAnalyzerManager
 import com.android.tools.idea.gradle.util.GradleUtil
+import com.android.tools.idea.gradle.util.GradleVersions
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.GradleSyncStats
 import com.intellij.build.SyncViewManager
@@ -56,6 +58,7 @@ class SyncAnalyzerManagerImpl(
     val data = project.getService(SyncAnalyzerDataManager::class.java).getOrCreateDataForTask(id)
     //TODO (b/231146116): if we are running with Gradle<7.3 we will not get events, view will be misleadingly empty.
     project.setUpDownloadsInfoNodeOnBuildOutput(id, data.buildDisposable)
+    LongDownloadsNotifier(id, project, data.buildDisposable)
   }
 
   override fun onSyncFinished(id: ExternalSystemTaskId?) {
@@ -65,7 +68,8 @@ class SyncAnalyzerManagerImpl(
 
   private fun Project.setUpDownloadsInfoNodeOnBuildOutput(id: ExternalSystemTaskId, buildDisposable: CheckedDisposable) {
     if (!StudioFlags.BUILD_OUTPUT_DOWNLOADS_INFORMATION.get()) return
-    val rootDownloadEvent = DownloadsInfoPresentableEvent(id, buildDisposable, System.currentTimeMillis())
+    val gradleVersion = GradleVersions.getInstance().getGradleVersion(this)
+    val rootDownloadEvent = DownloadsInfoPresentableEvent(id, buildDisposable, System.currentTimeMillis(), gradleVersion)
     val viewManager = getService(SyncViewManager::class.java)
     viewManager.onEvent(id, rootDownloadEvent)
   }
