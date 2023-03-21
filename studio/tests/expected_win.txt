@@ -1802,7 +1802,6 @@ android-studio/plugins/cidr-base-plugin/lib/LICENSE.txt/CIDR_LICENSE.txt
 android-studio/plugins/cidr-base-plugin/lib/cidr-base-plugin.jar
 android-studio/plugins/cidr-debugger-plugin/lib/cidr-debugger-plugin.jar
 android-studio/plugins/completionMlRanking/lib/completionMlRanking.jar
-android-studio/plugins/completionMlRankingModels/lib/completionMlRankingModels.jar
 android-studio/plugins/configurationScript/lib/configurationScript.jar
 android-studio/plugins/copyright/lib/copyright.jar
 android-studio/plugins/coverage/lib/coverage.jar
@@ -2106,7 +2105,6 @@ android-studio/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 android-studio/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
 android-studio/plugins/markdown/lib/markdown.jar
 android-studio/plugins/maven-model/lib/maven-model.jar
-android-studio/plugins/ml-models-local/lib/ml-models-local.jar
 android-studio/plugins/platform-images/lib/platform-images.jar
 android-studio/plugins/properties/lib/properties.jar
 android-studio/plugins/repository-search/lib/repository-search.jar
