@@ -25,7 +25,7 @@
     <tutorial
         key="whats-new"
         label=" What's New in Flamingo"
-        icon="preview/product-icon.svg"
+        icon="stable/whats_new_icon.png"
         remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/preview-release-notes/2022-2-1"
         remoteLinkLabel="Read in a browser">
       <description>
