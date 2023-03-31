@@ -638,12 +638,12 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     version_code_name = "Flamingo",
-    version_micro_patch = "1.17",
+    version_micro_patch = "1.18",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
     version_release_number = 1,
-    version_type = "RC",
-    version_update_message = "<html>A new Android Studio Flamingo | 2022.2.1 RC 1 is available in the Beta channel. <p> Android Studio Flamingo | 2022.2.1 RC 1 offers new functionality, bug fixes, and performance improvements.<br/> <br/>Beta builds include all of our new features with additional testing. We try to release updates weekly to address bugs and introduce new features. They are still subject to bugs, but we want people to see what's new as soon as possible while limiting the risk of a regression. </p> </html>",
+    version_type = "Stable",
+    version_update_message = "<html>A new Android Studio Flamingo | 2022.2.1 is available in the Stable channel. <p> Android Studio Flamingo | 2022.2.1 offers new functionality, bug fixes, and performance improvements.<br/> <br/>Stable builds include all of our new features with additional testing.<ul><li>Themed app icons and dynamic color</li><li>Compose Tracing</li><li>Physical Devices Mirroring</li><li>App Quality Insights Window</li><li>Updates to the New Project and New Module wizards</li><li>Network Inspector traffic interception</li><li>Auto-connnect to foreground process in Layout Inspector</li><li>Updates to App Quality Insights</li><li>Build Analyzer task categories</li><li>One-click automated profileable build and run</li><li>New settings plugin</li><li>Breaking changes: R class defaults</li><li>Breaking changes: build feature default values changed</li><li>Lint support for SDK extensions</li><li>IntelliJ IDEA 2022.2 platform update</li><li>Android Studio bundled with JDK 17</li><li>JDK 17 required to run AGP 8.0</li></ul></p><p><b>Important </b>After updating, you need to restart Android Studio to apply any<br/>memory settings you migrate from an earlier version of the IDE.</p><a href='https://d.android.com/r/studio-ui/stable-release-notes'>Release Notes</a><br/></html>",
     visibility = ["//visibility:public"],
 )
 
@@ -817,8 +817,8 @@ iml_module(
     test_data = [
         ":android-studio.linux.zip",
         ":android-studio.mac.zip",
-        ":android-studio.win.zip",
         ":android-studio.plugin.lst",
+        ":android-studio.win.zip",
     ],
     test_srcs = ["tests/testSrc"],
     visibility = ["//visibility:public"],

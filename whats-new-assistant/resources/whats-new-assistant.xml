@@ -25,7 +25,7 @@
     <tutorial
         key="whats-new"
         label=" What's New in Flamingo"
-        icon="preview/product-icon.svg"
+        icon="stable/whats_new_icon.png"
         remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/preview-release-notes/2022-2-1"
         remoteLinkLabel="Read in a browser">
       <description>
@@ -37,234 +37,321 @@
           from the main menu.
           ]]>
       </description>
-      <step label="New Logcat">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-logs.png"/>
-             <br /><br />
-              <p>
-                Logcat has been updated to make it easier to parse, query, and keep track of logs.
-                This represents the most significant update to the tool since its introduction, and
-                we welcome you to <a href="http://issuetracker.google.com/createIssue?title=%5BLogcatV2%5D+Title&cc=adarshf%40google.com%2Crpaquay%40google.com&format=PLAIN&component=192708&type=BUG&priority=P1&severity=S2&assignee=aalbert%40google.com&inProd=true">provide
-                feedback</a>.
-            </p>
-            <br />
-            <p>
-              <b>New formatter:</b> Logcat now formats logs to make it easier to scan useful
-              information, such as tags and messages, and identify different types of logs, such as
-              warnings and errors.
-            </p>
-            <br />
-            <p>
-              <b>Create multiple Logcat windows:</b> You can now create multiple tabs within Logcat,
-              so that you can easily switch between different devices or queries. Right-clicking a
-              tab allows you to rename it, and you can click and drag to rearrange the tabs.
-              Additionally, to help you more easily compare between two sets of logs, you can now
-              split the view within a tab by right-clicking in the log view and selecting either
-              <b>Split Right</b> or <b>Split Down</b>.
-            </p>
-            <br />
-            <p>
-              <b>Switch between view presets:</b> Logcat now allows you to quickly switch between
-                different view modes (<b>Standard</b>, <b>Compact</b>, and <b>Custom</b>) by clicking
-                <img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-view-modes-button.png">.
-                Each view mode provides a different default setting for showing you more or less
-                information, such as timestamps, tags, and process IDs (PID). You can also customize each of
-                these default view modes, as well as a custom view mode, by selecting <b>Modify View</b>.
-            </p>
-              <br><img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-view-selection.png"></p>
-              <br><br>
-            <p>
-              <b>New key-value search:</b> We've now simplified the search experience by introducing
-              key-value searches right from the main query field, complete with suggestions, history,
-              and the ability to favourite queries.
-            </p>
-              <br><img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-query-auto-complete.png"></p>
-              <br><br>
-            <p>
-              Here are some examples of how to use the new query system, but you can also simply
-              start typing in the query field to see suggestions:
-            </p>
-            <br />
-            <ul>
-              <li><b>PIDs for the local app project:</b> <code>package:mine</code>
-              </li>
-              <li><b>Specific values:</b> <code>package:my-package-ID</code>, <code>tag:my-tag</code>,
-              <code>level:ERROR</code>, and more.
-              </li>
-              <li><b>Exclude a specific value</b> by preceding the key with <code>-</code>:
-              <code>-tag:exclude-this-tag</code>.
-              </li>
-              <li><b>Use regular expressions</b> with a given key by placing a <code>~</code> after the key:
-              <code>tag~:regex-tag</code> or <code>-tag~:exclude-this-regex-tag</code>.
-              </li>
-            </ul>
-            <br />
-            <p>You can also see a history of queries by clicking
-            <img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-query-history.png">
-            in the query field and selecting them from the drop down. To favorite a query so that it
-            stays at the top of the list across all your studio projects, click the
-            <img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-favourite.png">
-            at the end of the query field.
-            </p>
-              <br><img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-history.png"></p>
-              <br><br>
-            <p><b>Track logs across app crashes/restarts:</b> The new Logcat now makes it easier to
-            track logs from your app across app crashes and restarts, so that you don't miss important
-            logs across these events. When a Logcat notices that your app process has stopped and
-            restarted you'll see a message in the output similar to below:
-            </p>
-              <br><img src="https://d.android.com/studio/releases/assistant/2021.3.1/logcat-app-restart.png"></p>
-              <br><br>
-              <a href="https://d.android.com/studio/preview/features#logcat">Learn more</a>
-              <br><br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Live Edit for composables">
+      <step label="Themed app icons and dynamic color">
         <stepElement>
           <section>
             <![CDATA[
             <p>
-            Make code changes to composables in Android Studio and see those changes reflected
-            immediately in the Compose Preview and your emulator or physical device. You don't have
-            to wait for builds or deployments to be completed, so you can make faster progress in
-            the creation of your app's experience.
+               Starting with Android Studio Flamingo Beta 1, you can create layouts or launcher
+               icons that are tinted to inherit the coloring of the user's chosen wallpaper. This
+               feature uses dynamic color, from Material 3, and themed app icons, from Android 13.
             </p>
             <br>
-            <a href="https://d.android.com/r/studio-ui/compose/live-edit">Learn more</a>
+            <img
+              src="https://d.android.com/studio/releases/assistant/2022.2.1/preview-themed-app-icons-wna.gif"
+              width="428"
+              alt="Preview themed app icons across different wallpapers.">
             <br>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/layout/themed-app-icons-dynamic-color">Learn more</a>
             <br>
             ]]>
           </section>
         </stepElement>
       </step>
-      <step label="SDK insights">
+      <step label="Live Edit">
         <stepElement>
           <section>
             <![CDATA[
             <p>
-            Get Lint warnings for SDKs or libraries that have been marked as outdated by their
-            authors in the Google Play SDK Index. Update outdated dependency versions during
-            development to avoid issues when your app is submitted to the Play Console.
+              Live Edit is an optional experimental feature in Android Studio Flamingo that lets you
+              update composables in emulators and physical devices in real time. This functionality
+              minimizes context switches between writing and building your app, allowing you to
+              focus on writing code longer without interruption. Live Edit works for a wide range of
+              use cases (with some
+              <a href="https://d.android.com/studio/run#limitations">limitations</a>) but we are
+              making it available as opt-in experimental to gather additional feedback and to ensure
+              coverage for corner cases.
             </p>
             <br>
-            <a href="https://d.android.com/r/studio-ui/build/sdk-insights">Learn more</a>
-            <br>
+            <a href="https://d.android.com/r/studio-ui/ide/live-edit">Learn more</a>
             <br>
             ]]>
           </section>
         </stepElement>
       </step>
-      <step label="App Quality Insights from Firebase Crashlytics">
+      <step label="Compose Tracing">
         <stepElement>
           <section>
             <![CDATA[
             <p>
-            Discover, investigate, and resolve issues reported by Crashlytics in Android Studio and
-            within the context of your local source code. This integration helps you quickly
-            navigate from crashes to code (and from code to crash), and surfaces important
-            contextual data about each crash to help you reproduce issues locally. If your app
-            project already includes the Crashlytics SDK, get started by selecting
-            <b>View &gt; Tool windows &gt; App Quality Insights<b> from the main menu.
+               View your Compose functions in the System Trace profiler to understand which Compose
+               functions are being recomposed.
             </p>
             <br>
-            <a href="https://d.android.com/r/studio-ui/debug/aqi">Learn more</a>
+            <img
+              src="https://d.android.com/studio/releases/assistant/2022.2.1/composition-tracing-preview-wna.png"
+              width="428"
+              alt="">
             <br>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/profile/compose-tracing">Learn more</a>
             <br>
             ]]>
           </section>
         </stepElement>
       </step>
-      <step label="Resizable Emulator">
+      <step label="Updates to the New Project and New Module wizards">
         <stepElement>
           <section>
             <![CDATA[
             <p>
-            Rapidly toggle between representative reference devices to quickly test various
-            application layout states with a single running emulator instance. You can create these
-            emulators by selecting the "Resizable" type in the Device Manager's "Create device"
-            flow.
+              Android Studio Flamingo includes new templates for creating a project or module. By
+              default, templates use Compose Material 3 unless they are specified as a Views
+              template. We recommend using the Compose Material 3 templates (for example, <b>Empty
+              Activity</b>) as the best practice for creating an Android app.
             </p>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/run/resizable-emulator">Learn more</a>
-            <br>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Visual Linting">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>
-            Discover and fix your layout issues across different devices by opening the Layout
-            Validation panel. We automatically run your layout to check for Visual Lint issues
-            across different screen sizes.
-            </p>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/layout/visual-linting">Learn more</a>
-            <br>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Emulated Bluetooth">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>
-            You can now discover and connect two phone emulators using virtual Bluetooth. With
-            virtual Bluetooth, you can test that your app can recognize and gain access to the
-            Bluetooth adapter in a scalable way.
-            </p>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/run/emulated-bluetooth">Learn more</a>
-            <br>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Device Mirroring">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>
-               Minimize the number of interruptions when developing by streaming your device display
-               directly to Android Studio. Device Mirroring gives you the ability to interact with a
-               physical device using the <b>Running Devices</b> window in Studio. To enable this feature,
-               go to <b>Preferences > Experimental</b> and check the box next to <b>Device Mirroring</b>.
-               Once enabled, connect your device and either deploy your app or open the
-               <b>Running Devices</b> window to begin streaming the device's display and interacting
-               with it from the IDE.
-            </p><br><br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="New Wear OS run configurations">
-        <stepElement>
-          <section>
-            <![CDATA[
-              <p>
-                New run configurations have been added to quickly run and debug surfaces specific
-                to <a href="https://d.android.com/training/wearables">Wear OS</a> like watch faces, Tiles, and complications.
-                You can create these new configurations from the <b>Run/Debug Configurations</b> dialog
-                when running your application.
-              </p>
-              <img src="https://d.android.com/studio/preview/features/images/dolphin/wearos_launch_configurations.png"/>
 
+            <p>
+              To view the templates, go to open the <b>New Project</b> or <b>Create New Module</b>
+              wizard by selecting <b>File</b> &gt; <b>New</b> &gt; <b>New Project</b> or <b>New
+              Module</b> from the main menu.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/ide/updates-to-npw-nmw">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Network Inspector traffic interception">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               The Network Inspector shows all traffic data for the full timeline by default. You
+               can select a range within the timeline to see only the traffic in that range. You
+               can also create and manage rules that help test how your app behaves when
+               encountering different responses such as status codes, response headers, and bodies.
+               The rules determine what responses to intercept and how to modify these responses
+               before they reach the app.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/profile/network-inspector">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Auto-connnect to foreground process in Layout Inspector">
+        <stepElement>
+          <section>
+            <![CDATA[
               <p>
-                Alternatively, you can also run these surfaces from the gutter icon that is
-                located next to the declaration of the surface, as shown in the following image.
-             </p>
-             <img src="https://d.android.com/studio/preview/features/images/dolphin/wearos_os_gutter_run.png"/>
-           ]]>
+              The Layout Inspector now automatically connects to apps on virtual or physical
+              devices. Specifically, the Layout Inspector automatically connects to debuggable
+              processes running in the foreground of a connected device.
+              </p>
+              <br>
+              <a href="https://d.android.com/r/studio-ui/ide/autoconnect-layout-inspector">Learn more</a>
+              <br>
+              <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+        <step label="Updates to App Quality Insights">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               Starting with Android Studio Flamingo Canary 5, the App Quality Insights tool window
+               includes new searchable filters as well as the ability to annotate and close issues
+               directly from the IDE.
+            </p>
+            <br>
+            <img
+              src="https://d.android.com/studio/releases/assistant/2022.2.1/aqi-signal-filter-wna.png"
+              width="428"
+              alt="Crashlytics Signals in the App Quality Insights tool window.">
+            <br>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/ide/aqi-improvements">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Build Analyzer task categories">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               Build Analyzer has a new default view for tasks that impact build duration. If your
+               project uses AGP 8.0 or higher, instead of displaying tasks individually, Build
+               Analyzer groups them by category.
+            </p>
+            <br>
+            <img
+              src="https://d.android.com/studio/releases/assistant/2022.2.1/ba-task-categories-wna.png"
+              width="428"
+              alt="Build Analyzer task categories.">
+            <br>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/build-analyzer-task-categories">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="One-click automated profileable build and run">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               You can now configure a profileable app and profile it with just one click. To
+               profile your app using partial or complete data, click on the <b>Profile app</b> icon
+               and choose <b>Profile 'app' with low overhead</b> or
+               <b>Profile 'app' with complete data</b>.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/profile/automated-profileable-build">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="New settings plugin">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               AGP 8.0.0-alpha09 introduces the new settings plugin. The settings plugin lets you
+               centralize global configurations in one place so you don't need to copy and paste the
+               configurations in multiple modules. In addition, you can use the settings plugin to
+               create tool execution profiles, or different instructions for how to run a tool, and
+               switch among them.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/settings-plugin">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Breaking change: namespace required in module-level build.gradle file">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               Starting with AGP 8.0.0-alpha03, you must set the namespace in the module-level
+               <code>build.gradle</code> file, rather than the manifest file. To get help moving to
+               the new namespace DSL, use the AGP Upgrade Assistant
+               (<b>Tools > AGP Upgrade Assistant</b>).
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/namespace-dsl">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Breaking changes: R class defaults">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               <code>R</code> classes are now non-transitive by default. Also, <code>R</code> class
+               values in <code>R</code> classes are now non-constant by default.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/r-class-defaults">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Breaking changes: build feature default values changed">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               The default values for the <code>buildFeatures.renderScript</code>,
+               <code>buildFeatures.aidl</code>, and <code>buildFeatures.buildConfig</code> flags
+               have changed from <code>true</code> to <code>false</code>. If you need to enable
+               these features, make sure that they're explicitly set to <code>true</code>. These
+               build features should be enabled only in the modules that use them.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/default-value-changes">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Lint support for SDK extensions">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               Android Studio Flamingo has lint support for SDK extensions. This new feature allows
+               you to update the lint tool's API check to correctly enforce API access in the
+               presence of API backports and for new API surfaces like the Android Privacy Sandbox.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/settings-plugin">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="IntelliJ IDEA 2022.2 platform update">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+            Android Studio Flamingo Canary 1 includes the IntelliJ IDEA 2022.2 updates, which improve
+            the IDE experience.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/ide/intellij-idea-2022-2">Learn more</a>
+            <br><br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Android Studio bundled with JDK 17">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               Starting from Android Studio Flamingo Canary 3, the Studio IDE is bundled with JDK
+               17. If Android Studio is configured to use the embedded JDK, new projects will use
+               the latest stable version of the Android Gradle plugin and JDK 17; however, existing
+               projects might break and you might have to manually set the JDK to a compatible
+               version.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/jdk-17">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="JDK 17 required to run AGP 8.0">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>
+               When using Android Gradle Plugin 8.0 to build your app, JDK 17 is now required to run
+               Gradle. Android Studio Flamingo bundles JDK 17 and configures Gradle to use it by
+               default, so most users don't have to make configuration changes to their project.
+               However, if you need to set the JDK manually you need to use JDK 17 or higher.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/jdk-17-agp">Learn more</a>
+            <br>
+            ]]>
           </section>
         </stepElement>
       </step>
@@ -272,7 +359,7 @@
         <stepElement>
           <section>
             <![CDATA[
-              <br><em>Last updated 7/06/2022</em><br><br>
+              <br><em>Last updated 3/23/2023</em><br><br>
             ]]>
           </section>
         </stepElement>
