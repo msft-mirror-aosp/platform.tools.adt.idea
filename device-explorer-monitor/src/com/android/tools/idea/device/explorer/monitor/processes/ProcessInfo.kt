@@ -32,7 +32,12 @@ data class ProcessInfo(
   val pid: Int,
 
   /**
-   * The name of this entry in its parent directory.
+   * The application ID
+   */
+  val packageName: String? = null,
+
+  /**
+   * The name of this process.
    */
   val processName: String? = null,
 
@@ -46,8 +51,6 @@ data class ProcessInfo(
   val abi: String? = null,
 
   val debuggerStatus: ClientData.DebuggerStatus = ClientData.DebuggerStatus.DEFAULT,
-
-  val supportsNativeDebugging: Boolean = false,
 
   val killAction: (() -> Unit)? = null
 )

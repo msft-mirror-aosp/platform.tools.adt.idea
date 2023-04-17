@@ -22,9 +22,9 @@ import com.android.tools.adtui.device.FormFactor
 import com.android.tools.adtui.validation.Validator
 import com.android.tools.adtui.validation.createValidator
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.help.AndroidWebHelpProvider
 import com.android.tools.idea.npw.contextLabel
 import com.android.tools.idea.npw.model.NewProjectModel.Companion.getSuggestedProjectPackage
+import com.android.tools.idea.npw.module.AndroidApiLevelComboBox
 import com.android.tools.idea.npw.module.ConfigureModuleStep
 import com.android.tools.idea.npw.template.components.ModuleComboProvider
 import com.android.tools.idea.npw.validator.ModuleSelectedValidator
@@ -35,7 +35,6 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.module.Module
 import com.intellij.ui.ContextHelpLabel
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.gridLayout.HorizontalAlign
 import org.jetbrains.android.util.AndroidBundle
@@ -43,7 +42,7 @@ import javax.swing.JComboBox
 import javax.swing.JPanel
 
 
-private const val BASELINE_PROFILES_AGP_MIN_VERSION = "8.1.0"
+private const val BASELINE_PROFILES_AGP_MIN_VERSION = "8.0.0"
 private const val GMD_LINK = "https://d.android.com/r/studio-ui/testing/gradle-managed-devices"
 
 class ConfigureBaselineProfilesModuleStep(
@@ -100,6 +99,14 @@ class ConfigureBaselineProfilesModuleStep(
   }
 
   override fun createMainPanel(): JPanel = panel {
+    row {
+      comment("<strong>" + AndroidBundle.message("android.wizard.module.new.baselineprofiles.module.description") + "</strong>")
+    }
+
+    row {
+      comment(AndroidBundle.message("android.wizard.module.new.baselineprofiles.module.description.extra"))
+    }
+
     row(
       contextLabel("Target application", AndroidBundle.message("android.wizard.module.help.baselineprofiles.target.module.description"))) {
       cell(targetModuleCombo).horizontalAlign(HorizontalAlign.FILL)
@@ -115,10 +122,6 @@ class ConfigureBaselineProfilesModuleStep(
 
     row("Language") {
       cell(languageCombo).horizontalAlign(HorizontalAlign.FILL)
-    }
-
-    row("Minimum SDK") {
-      cell(apiLevelCombo).horizontalAlign(HorizontalAlign.FILL)
     }
 
     if (StudioFlags.NPW_SHOW_KTS_GRADLE_COMBO_BOX.get()) {
@@ -138,4 +141,23 @@ class ConfigureBaselineProfilesModuleStep(
       ).horizontalAlign(HorizontalAlign.LEFT)
     }
   }
+
+  override fun onEntering() {
+    super.onEntering()
+
+    // Apply before targetModule triggers any change
+    apiLevelCombo.selectSdkLevel(getBaselineProfilesMinSdk(model.targetModule.valueOrNull))
+
+    // Listen for module changes and update min sdk
+    listeners.listen(model.targetModule) { targetModule ->
+      apiLevelCombo.selectSdkLevel(getBaselineProfilesMinSdk(targetModule.orElse(null)))
+    }
+  }
+
+  private fun AndroidApiLevelComboBox.selectSdkLevel(minApiLevel: Int) {
+    (0 until itemCount)
+      .firstOrNull { getItemAt(it)?.minApiLevel == minApiLevel }
+      ?.let { selectedIndex = it }
+  }
 }
+

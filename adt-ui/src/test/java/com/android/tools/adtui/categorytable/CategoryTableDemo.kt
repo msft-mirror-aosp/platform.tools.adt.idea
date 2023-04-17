@@ -17,6 +17,7 @@ package com.android.tools.adtui.categorytable
 
 import com.android.tools.adtui.categorytable.Attribute.Companion.stringAttribute
 import com.android.tools.adtui.categorytable.Column.SizeConstraint
+import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.ui.components.JBScrollPane
 import java.awt.Dimension
 import javax.swing.JButton
@@ -25,7 +26,7 @@ import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.WindowConstants
 
-class CategoryTableDemo {
+object CategoryTableDemo {
   data class Device(val name: String, val api: String, val type: String, val status: String) {}
 
   val devices =
@@ -38,8 +39,9 @@ class CategoryTableDemo {
       Device("Nexus 7", "26", "Tablet", "Online")
     )
   val columns = listOf(Name, Api, Status, Type, Actions)
-  val table = CategoryTable<Device>(columns)
 }
+
+val DEVICE_DATA_KEY = DataKey.create<CategoryTableDemo.Device>("DEVICE")
 
 val Name =
   LabelColumn<CategoryTableDemo.Device>(
@@ -96,17 +98,18 @@ object Actions : Column<CategoryTableDemo.Device, Unit, JPanel> {
 fun main(args: Array<String>) {
   val frame = JFrame()
   frame.defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
-  val demo = CategoryTableDemo()
-  demo.devices.forEach(demo.table::addRow)
+  val table = CategoryTable(CategoryTableDemo.columns)
+
+  CategoryTableDemo.devices.forEach(table::addRow)
   val scroll = JBScrollPane()
   frame.contentPane = scroll
-  demo.table.addToScrollPane(scroll)
+  table.addToScrollPane(scroll)
 
-  demo.table.addGrouping(Status.attribute)
-  demo.table.addGrouping(Api.attribute)
-  demo.table.addGrouping(Type.attribute)
-  demo.table.removeGrouping(Api.attribute)
-  demo.table.removeGrouping(Type.attribute)
+  table.addGrouping(Status.attribute)
+  table.addGrouping(Api.attribute)
+  table.addGrouping(Type.attribute)
+  table.removeGrouping(Api.attribute)
+  table.removeGrouping(Type.attribute)
 
   frame.preferredSize = Dimension(600, 800)
   frame.pack()

@@ -33,4 +33,9 @@
     <extensionPoint qualifiedName="com.android.tools.idea.insights.ui.appInsightsTabProvider"
                     interface="com.android.tools.idea.insights.ui.AppInsightsTabProvider"/>
   </extensionPoints>
+  <actions>
+    <action internal="true" id="Android.EnterOfflineModeInternalAction" class="com.android.tools.idea.insights.events.EnterOfflineModeInternalAction">
+      <add-to-group group-id="Internal.Android"/>
+    </action>
+  </actions>
 </idea-plugin>

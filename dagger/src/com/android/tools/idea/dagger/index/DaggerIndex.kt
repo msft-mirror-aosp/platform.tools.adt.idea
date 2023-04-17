@@ -16,7 +16,10 @@
 package com.android.tools.idea.dagger.index
 
 import com.intellij.ide.highlighter.JavaFileType
-import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.impl.source.JavaFileElementType
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.DataIndexer
 import com.intellij.util.indexing.DefaultFileTypeSpecificInputFilter
@@ -28,7 +31,6 @@ import com.intellij.util.io.DataExternalizer
 import com.intellij.util.io.EnumeratorStringDescriptor
 import com.intellij.util.io.KeyDescriptor
 import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 
 class DaggerIndex : FileBasedIndexExtension<String, Set<IndexValue>>() {
   companion object {
@@ -38,48 +40,32 @@ class DaggerIndex : FileBasedIndexExtension<String, Set<IndexValue>>() {
     internal fun getValues(key: String, scope: GlobalSearchScope): Set<IndexValue> {
       return FileBasedIndex.getInstance().getValues(NAME, key, scope).flatten().toSet()
     }
-
-    /**
-     * Returns the list of index keys to search for a given type in priority order.
-     *
-     * The index stores values using the type name as the key, but that type might be
-     * fully-qualified, just a simple name, or in some cases the "unknown" type represented by an
-     * empty string. Additionally, Kotlin allows type aliases that need to be looked at as well.
-     */
-    internal fun getIndexKeys(
-      fqName: String,
-      project: Project,
-      scope: GlobalSearchScope
-    ): List<String> {
-      val simpleName = fqName.substringAfterLast(".")
-      val aliasFqNames =
-        KotlinTypeAliasByExpansionShortNameIndex.get(simpleName, project, scope).mapNotNull {
-          it.fqName?.asString()
-        }
-
-      return buildList {
-          // All fully-qualified names should go first, since they're most specific.
-          add(fqName)
-          addAll(aliasFqNames)
-
-          // All simple names next.
-          add(simpleName)
-          addAll(aliasFqNames.map { it.substringAfterLast(".") })
-
-          // The unknown type last, since it's most generic.
-          add("")
-        }
-        .distinct()
-    }
   }
 
   override fun getName(): ID<String, Set<IndexValue>> = NAME
   override fun dependsOnFileContent() = true
   override fun getVersion() = 0
-  override fun getInputFilter() =
-    DefaultFileTypeSpecificInputFilter(KotlinFileType.INSTANCE, JavaFileType.INSTANCE)
+  override fun getInputFilter(): FileBasedIndex.InputFilter = DaggerIndexInputFilter
   override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
   override fun getValueExternalizer(): DataExternalizer<Set<IndexValue>> = IndexValue.Externalizer
   override fun getIndexer(): DataIndexer<String, Set<IndexValue>, FileContent> =
     DaggerDataIndexer.INSTANCE
+
+  private object DaggerIndexInputFilter :
+    DefaultFileTypeSpecificInputFilter(KotlinFileType.INSTANCE, JavaFileType.INSTANCE) {
+    override fun acceptInput(file: VirtualFile): Boolean {
+      return when (file.fileType) {
+        JavaFileType.INSTANCE ->
+          super.acceptInput(file) && JavaFileElementType.isInSourceContent(file)
+        KotlinFileType.INSTANCE -> super.acceptInput(file) && file.isInSourceContentOfOpenProject()
+        else -> throw IllegalArgumentException("Unexpected file type ${file.fileType}")
+      }
+    }
+
+    private fun VirtualFile.isInSourceContentOfOpenProject(): Boolean {
+      return ProjectManager.getInstance().openProjects.any {
+        ProjectFileIndex.getInstance(it).isInSourceContent(this)
+      }
+    }
+  }
 }

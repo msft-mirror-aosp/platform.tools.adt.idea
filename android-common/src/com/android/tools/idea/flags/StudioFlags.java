@@ -128,9 +128,9 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> PROFILER_VERBOSE_LOGGING = Flag.create(
-    PROFILER, "verbose.logging", "Enable Profiler verbose logging",
-    "Toggles if profiler verbose logging is enabled for testing.",
+  public static final Flag<Boolean> PROFILER_TESTING_MODE = Flag.create(
+    PROFILER, "testing.mode", "Enable the testing mode in Profiler",
+    "Toggles the testing mode for more logging and Actions to facilitate automatic testing.",
     false
   );
 
@@ -341,6 +341,11 @@ public final class StudioFlags {
     NELE, "visual.lint.atf", "Enable ATF integration in visual linting for layouts",
     "Enable ATF integration in visual linting of layouts.",
     true);
+
+  public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = Flag.create(
+    NELE, "atf.for.compose", "Enable ATF checks for Compose",
+    "Allow running accessibility checks for Compose using ATF.",
+    false);
 
   public static final Flag<Boolean> NELE_WARN_NEW_THREADS = Flag.create(
     NELE, "preview.warn.new.threads", "Enable new threads warning",
@@ -598,15 +603,6 @@ public final class StudioFlags {
     false
   );
 
-  // TODO(b/247842651): Clean up this flag.
-  public static final Flag<Boolean> DEBUG_DEVICE_SDK_SOURCES_ENABLE = Flag.create(
-    RUNDEBUG,
-    "debug.device.sdk.sources.enable",
-    "Enable SDK source resolution using debug device API level.",
-    "Enable SDK source resolution using debug device API level and related fallbacks.",
-    true
-  );
-
   public static final Flag<Boolean> DEBUG_ATTEMPT_SUSPENDED_START = Flag.create(
     RUNDEBUG,
     "debug.app.suspend.upon.start.enable",
@@ -646,14 +642,6 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> LOGCAT_NAMED_FILTERS_ENABLE = Flag.create(
-    LOGCAT,
-    "logcat.named.filters.enable",
-    "Enable Logcat named filters feature",
-    "Enables the named filters feature in the Logcat tool window",
-    false
-  );
-
   public static final Flag<Boolean> LOGCAT_CUSTOM_FORMAT_ACTION = Flag.create(
     LOGCAT,
     "logcat.custom.format.action",
@@ -684,6 +672,32 @@ public final class StudioFlags {
     "Set the max number of messages that are appended to the UI component",
     "Set the max number of messages that are appended to the UI component",
     1000
+  );
+
+  public static final Flag<Boolean> LOGCAT_PANEL_MEMORY_SAVER = Flag.create(
+    LOGCAT,
+    "logcat.panel.memory.saver",
+    "Enable Logcat Panel memory saving feature",
+    "Reduces memory usage of Logcat tool by writing data to a file when the panel is not visible",
+    true
+  );
+
+  public static final Flag<Boolean> LOGCAT_TERMINATE_APP_ACTIONS_ENABLED = Flag.create(
+    LOGCAT,
+    "logcat.terminate.app.actions.enable",
+    "Enable right-click actions for terminating the application",
+    "Enable right-click actions for terminating the application. " +
+    "Note that this feature is only enabled if the flag ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER is also true. " +
+    "Changing the value of this flag requires restarting Android Studio.",
+    true
+  );
+
+  public static final Flag<Boolean> LOGCAT_IGNORE_STUDIO_SPAM_TAGS = Flag.create(
+    LOGCAT,
+    "logcat.ignore.studio.spam.tags",
+    "Ignore tags that Studio itself is responsible for",
+    "Ignore tags that Studio itself is responsible for",
+    true
   );
   //endregion
 
@@ -735,6 +749,13 @@ public final class StudioFlags {
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
     "This option is only respected when running Android Studio internally.", false);
 
+  public static final Flag<Boolean> SUPPORT_FUTURE_AGP_VERSIONS = Flag.create(
+    GRADLE_IDE, "support.future.agp.versions", "Support opening projects that use future AGPs",
+    "Respect the Android Gradle plugin's minimum model consumer version (i.e. minimum required Studio version), " +
+    "if present in AGP, superseding the hardcoded maximum supported version of AGP. " +
+    "This opens the possibility for Studio to open versions of AGP released after it was, if that version of AGP declares " +
+    "that it is compatible.", false);
+
   public static final Flag<Boolean> GRADLE_SYNC_PARALLEL_SYNC_ENABLED = Flag.create(
     GRADLE_IDE, "gradle.sync.parallel.sync.enabled", "Enables parallel sync",
     "This allows the IDE to fetch models in parallel (if supported by Gradle and enabled via org.gradle.parallel=true).", true);
@@ -782,6 +803,13 @@ public final class StudioFlags {
     ""
   );
 
+  public static final Flag<Boolean> GRADLE_SKIP_RUNTIME_CLASSPATH_FOR_LIBRARIES = Flag.create(
+    GRADLE_IDE,
+    "gradle.skip.runtime.classpath.for.libraries",
+    "Skip runtime classpath resolution for libraries",
+    "Skip the runtime classpath resolution for libraries, instead obtain the information from the applications dependency graph.",
+    false
+  );
   public static final Flag<String> GRADLE_LOCAL_DISTRIBUTION_URL = Flag.create(
     GRADLE_IDE, "local.distribution.url", "Local override for distributionUrl",
     "When creating a project, Gradle updates the distributionUrl to point to a server accessible via the internet. When internet egress " +
@@ -812,6 +840,16 @@ public final class StudioFlags {
     "Gradle heap analysis lightweight mode",
     "If set, the analysis will only run after sync once and will only collect the strongly connected object info. This makes the " +
     "analysis faster at the cost of losing some information.",
+    false
+  );
+
+  public static final Flag<Boolean> GRADLE_MULTI_VARIANT_ADDITIONAL_ARTIFACT_SUPPORT = Flag.create(
+    GRADLE_IDE,
+    "gradle.multi.variant.additional.artifact.support",
+    "Gradle multi variant additional artifact support",
+    "Switch to building additional artifacts (javadocs/srcs/samples) inside Gradle rather than an injected model builder. This allows " +
+    "us to support variant specific artifacts and prevents the IDE from having to match by Gradle coordinate. This flag will have no effect " +
+    "if used with a version of AGP before 8.1.0-alpha8.",
     false
   );
 
@@ -912,6 +950,10 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring",
     false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_FOLDING_SUPPORT = Flag.create(
+    DEVICE_MIRRORING, "folding.support", "Simulate Folding/Unfolding",
+    "Support pose control for foldable devices",
+    false);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\"",
@@ -925,6 +967,21 @@ public final class StudioFlags {
     "The name of a video codec, e.g. \"vp8\" or \"vp9\"",
     "vp8");
   //endregion
+
+  // region Device Definition Download Service
+  private static final FlagGroup DEVICE_DEFINITION_DOWNLOAD_SERVICE =
+    new FlagGroup(FLAGS,
+                  "device.definition.download.service",
+                  "Device Definition Download Service");
+
+  @NotNull
+  public static final Flag<String> DEVICE_DEFINITION_DOWNLOAD_SERVICE_URL =
+    Flag.create(DEVICE_DEFINITION_DOWNLOAD_SERVICE,
+                "url",
+                "URL",
+                "The URL to download the device definitions from",
+                "");
+  // endregion
 
   //region Refactorings
   private static final FlagGroup REFACTORINGS = new FlagGroup(FLAGS, "refactor", "Refactor menu");
@@ -1028,7 +1085,7 @@ public final class StudioFlags {
     EDITOR, "dagger.index.enabled",
     "Enable the dagger index",
     "If enabled, the dagger index is used for gutter icon and find usages support.",
-    false
+    true
   );
 
   public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = Flag.create(
@@ -1050,13 +1107,6 @@ public final class StudioFlags {
     "Enable JFR for typing latency",
     "If enabled, allows JFR reports to be generated when typing latency exceeds the defined threshold",
     true
-  );
-
-  public static final Flag<Boolean> SUGGESTED_IMPORTS_WITH_VERSION_CATALOGS_ENABLED = Flag.create(
-    EDITOR, "suggested.imports.with.version.catalogs.enabled",
-    "Enable Suggested Imports with Version Catalogs",
-    "If enabled, allows suggested imports to be shown in projects that are using version catalogs",
-    false
   );
 
   public static final Flag<Boolean> ESSENTIAL_HIGHLIGHTING_ACTION_VISIBLE = Flag.create(
@@ -1098,6 +1148,12 @@ public final class StudioFlags {
     TESTING, "utp.instrumentation.testing", "Run instrumentation tests via UTP",
     "If enabled, a checkbox to opt-in to running instrumentation tests via UTP feature is displayed in the settings.",
     true
+  );
+
+  public static final Flag<Boolean> ENABLE_SCREENSHOT_TESTING = Flag.create(
+    TESTING, "screenshot.testing", "Run screenshot tests",
+    "If enabled, a screenshotTest source set will be added for running screenshot tests",
+    false
   );
 
   public static final Flag<Integer> ANDROID_PLATFORM_TO_AUTOCREATE = Flag.create(
@@ -1212,7 +1268,7 @@ public final class StudioFlags {
     "LiveEdit: Desugar kotlinc outputs with R8",
     "If enabled, the outputs of kotlinc are desugared before being sent to LiveEdit engine. This improves " +
     "the odds of matching what was produced by the Build system",
-    false // False by default until we can gracefully fail if AGP < 8.1.0-alpha
+    true
   );
 
   public static final Flag<Integer> COMPOSE_LIVE_LITERALS_UPDATE_RATE = Flag.create(
@@ -1354,7 +1410,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_ALLOCATION_LIMITER = Flag.create(
     COMPOSE, "allocation.limiter", "If enabled, limits allocations per render",
     "If enabled, limits the number of allocations that user code can do in a single render action",
-    false);
+    java.lang.Boolean.getBoolean("idea.is.internal"));
   public static final Flag<Boolean> COMPOSE_PREVIEW_SELECTION = Flag.create(
     COMPOSE, "compose.preview.selection", "Enable the select/deselect interaction with Previews",
     "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
@@ -1619,6 +1675,22 @@ public final class StudioFlags {
       "Enable the play vitals tool window tab.",
       "Enables the play vitals tab and its associated functionality.",
       false);
+
+  public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
+    Flag.create(
+      APP_INSIGHTS,
+      "play.vitals.grpc.server",
+      "Set Play Vitals gRpc server address",
+      "Set Play Vitals gRpc server address, mainly used for testing purposes.",
+      "playdeveloperreporting.googleapis.com");
+
+  public static final Flag<Boolean> PLAY_VITALS_GRPC_USE_TRANSPORT_SECURITY =
+    Flag.create(
+      APP_INSIGHTS,
+      "play.vitals.grpc.use.transport.security",
+      "Use transport security",
+      "Set Play Vitals gRpc channel to use transport security",
+      true);
   // endregion App Insights
 
   // region App Links Assistant
@@ -1676,6 +1748,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR
@@ -1705,6 +1778,34 @@ public final class StudioFlags {
     true
   );
   // endregion NEW_SEND_FEEDBACK_DIALOG
+
+  // region Play Compatible Wear Screenshots
+  private static final FlagGroup
+    PLAY_COMPATIBLE_WEAR_SCREENSHOTS = new FlagGroup(FLAGS, "play.compatible.wear.screenshots", "Play Compatible Wear Screenshots");
+  public static final Flag<Boolean> PLAY_COMPATIBLE_WEAR_SCREENSHOTS_ENABLED = Flag.create(
+    PLAY_COMPATIBLE_WEAR_SCREENSHOTS, "enable", "Enable Play Compatible Wear Screenshots",
+    "Enable a play compatible screenshot option for wear devices.",
+    false
+  );
+  // endregion
+
+  // region AVD Command Line Options
+  private static final FlagGroup
+    AVD_COMMAND_LINE_OPTIONS = new FlagGroup(FLAGS, "avd.command.line.options", "AVD Command-Line Options");
+  public static final Flag<Boolean> AVD_COMMAND_LINE_OPTIONS_ENABLED = Flag.create(
+    AVD_COMMAND_LINE_OPTIONS, "enable", "Enable the AVD Command-Line Options setting",
+    "Enable the AVD Command-Line Options setting in the AVD advanced settings panel.",
+    true
+  );
+  // endregion
+
+  // region PRIVACY_SANDBOX_SDK
+  private static final FlagGroup PRIVACY_SANDBOX_SDK = new FlagGroup(FLAGS, "privacysandboxsdk", "Privacy Sandbox SDK");
+  public static final Flag<Boolean> LAUNCH_SANDBOX_SDK_PROCESS_WITH_DEBUGGER_ATTACHED_ON_DEBUG = Flag.create(
+    PRIVACY_SANDBOX_SDK, "launch.process.with.debugger.attached.on.debug", "Launch sandbox SDK process with debugger attached on debug",
+    "Whether or not sandbox SDK should launch a process with the debugger attached on debug action.",
+    false);
+  // endregion PRIVACY_SANDBOX_SDK
 
   private StudioFlags() { }
 }

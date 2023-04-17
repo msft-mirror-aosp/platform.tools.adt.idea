@@ -231,6 +231,9 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon MODE_FOLDABLE = load("studio/icons/emulator/menu/mode-foldable.svg", -1830628784, 2);
       /** 16x16 */ public static final @NotNull Icon MODE_PHONE = load("studio/icons/emulator/menu/mode-phone.svg", 1290962538, 2);
       /** 16x16 */ public static final @NotNull Icon MODE_TABLET = load("studio/icons/emulator/menu/mode-tablet.svg", 134067503, 2);
+      /** 16x16 */ public static final @NotNull Icon POSTURE_CLOSED = load("studio/icons/emulator/menu/posture-closed.svg", 570015144, 2);
+      /** 16x16 */ public static final @NotNull Icon POSTURE_HALF_FOLDED = load("studio/icons/emulator/menu/posture-half-folded.svg", 1108886978, 2);
+      /** 16x16 */ public static final @NotNull Icon POSTURE_OPEN = load("studio/icons/emulator/menu/posture-open.svg", -1533173349, 2);
     }
 
     public static final class Snapshots {
@@ -867,6 +870,7 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon ANDROID_THINGS = load("studio/icons/wizards/modules/android-things.svg", 647496706, 2);
       /** 16x16 */ public static final @NotNull Icon ANDROID_TV = load("studio/icons/wizards/modules/android-tv.svg", 1602103522, 2);
       /** 16x16 */ public static final @NotNull Icon AUTOMOTIVE = load("studio/icons/wizards/modules/automotive.svg", 2114519743, 2);
+      /** 16x16 */ public static final @NotNull Icon BASELINE_PROFILE = load("studio/icons/wizards/modules/baseline-profile.svg", -1416648723, 2);
       /** 16x16 */ public static final @NotNull Icon BENCHMARK = load("studio/icons/wizards/modules/benchmark.svg", 1325926364, 2);
       /** 16x16 */ public static final @NotNull Icon DYNAMIC_FEATURE = load("studio/icons/wizards/modules/dynamic-feature.svg", -1186582036, 2);
       /** 16x16 */ public static final @NotNull Icon INSTANT_DYNAMIC_FEATURE = load("studio/icons/wizards/modules/instant-dynamic-feature.svg", 1465805911, 2);

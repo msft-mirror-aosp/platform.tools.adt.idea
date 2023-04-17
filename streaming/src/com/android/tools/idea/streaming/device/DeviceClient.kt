@@ -22,6 +22,7 @@ import com.android.adblib.ShellCommandOutputElement
 import com.android.adblib.SocketSpec
 import com.android.adblib.shellAsLines
 import com.android.adblib.syncSend
+import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
@@ -77,6 +78,7 @@ private const val CONTROL_CHANNEL_MARKER = 'C'.code.toByte()
 // Flag definitions. Keep in sync with flags.h
 internal const val START_VIDEO_STREAM = 0x01
 internal const val TURN_OFF_DISPLAY_WHILE_MIRRORING = 0x02
+internal const val SUPPORT_FOLDING = 0x04
 /** Maximum cumulative length of agent messages to remember. */
 private const val MAX_TOTAL_AGENT_MESSAGE_LENGTH = 10_000
 private const val MAX_ERROR_MESSAGE_AGE_MILLIS = 1000L
@@ -89,6 +91,7 @@ private const val REPORT_FIELD_DEVICE = "device"
 internal class DeviceClient(
   disposableParent: Disposable,
   val deviceSerialNumber: String,
+  val deviceHandle: DeviceHandle,
   val deviceConfig: DeviceConfiguration,
   private val deviceAbi: String,
   private val project: Project
@@ -136,12 +139,9 @@ internal class DeviceClient(
         startAgentAndConnect(maxVideoSize, initialDisplayOrientation, startVideoStream)
         connection.complete(Unit)
       }
-      catch (e: CancellationException) {
-        throw e
-      }
       catch (e: Throwable) {
         connectionState.set(null)
-        connection.completeExceptionally(e)
+        connection.completeExceptionally(adjustException(e))
       }
     }
     connection.await()
@@ -209,9 +209,31 @@ internal class DeviceClient(
     }
   }
 
+  /** Returns the original exception if the device is still connected, or a CancellationException otherwise. */
+  private suspend fun adjustException(e: Throwable): Throwable {
+    return when {
+      e is CancellationException -> e
+      isDeviceConnected() == false -> CancellationException()
+      else -> e
+    }
+  }
+
+  /** Checks if the device is connected. Returns null if it cannot be determined. */
+  private suspend fun isDeviceConnected(): Boolean? {
+    return try {
+      return AdbLibService.getSession(project).hostServices.devices().entries.find { it.serialNumber == deviceSerialNumber } != null
+    }
+    catch (e: CancellationException) {
+      throw e
+    }
+    catch (_: Throwable) {
+      null
+    }
+  }
+
   private suspend fun connectChannels(serverSocketChannel: SuspendingServerSocketChannel) {
-    val channel1 = serverSocketChannel.accept()
-    val channel2 = serverSocketChannel.accept()
+    val channel1 = serverSocketChannel.acceptAndEnsureClosing(this)
+    val channel2 = serverSocketChannel.acceptAndEnsureClosing(this)
     // The channels are distinguished by single-byte markers, 'V' for video and 'C' for control.
     // Read the markers to assign the channels appropriately.
     coroutineScope {
@@ -243,32 +265,6 @@ internal class DeviceClient(
   }
 
   override fun dispose() {
-    // Disconnect socket channels asynchronously.
-    CoroutineScope(Dispatchers.Default).launch { disconnect() }
-  }
-
-  private suspend fun disconnect() {
-    coroutineScope {
-      val videoChannelClosed = async {
-        try {
-          if (::videoChannel.isInitialized) {
-            videoChannel.close()
-          }
-        }
-        catch (e: IOException) {
-          logger.warn(e)
-        }
-      }
-      try {
-        if (::controlChannel.isInitialized) {
-          controlChannel.close()
-        }
-      }
-      catch (e: IOException) {
-        logger.warn(e)
-      }
-      videoChannelClosed.await()
-    }
   }
 
   private suspend fun pushAgent(deviceSelector: DeviceSelector, adb: AdbDeviceServices) {
@@ -332,7 +328,8 @@ internal class DeviceClient(
         if (maxVideoSize.width > 0 && maxVideoSize.height > 0) " --max_size=${maxVideoSize.width},${maxVideoSize.height}" else ""
     val orientationArg = if (initialDisplayOrientation == UNKNOWN_ORIENTATION) "" else " --orientation=$initialDisplayOrientation"
     val flags = (if (startVideoStream) START_VIDEO_STREAM else 0) or
-                (if (DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring) TURN_OFF_DISPLAY_WHILE_MIRRORING else 0)
+                (if (DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring) TURN_OFF_DISPLAY_WHILE_MIRRORING else 0) or
+                (if (StudioFlags.DEVICE_MIRRORING_FOLDING_SUPPORT.get()) SUPPORT_FOLDING else 0)
     val flagsArg = if (flags != 0) " --flags=$flags" else ""
     val maxBitRateArg = when {
       deviceSerialNumber.startsWith("emulator-") -> " --max_bit_rate=$MAX_BIT_RATE_EMULATOR"
@@ -391,6 +388,9 @@ internal class DeviceClient(
           listener.deviceDisconnected()
         }
       }
+      catch (e: Throwable) {
+        throw adjustException(e)
+      }
     }
   }
 
@@ -433,9 +433,27 @@ internal class DeviceClient(
     connectionState.set(null)
   }
 
+  private suspend fun SuspendingServerSocketChannel.acceptAndEnsureClosing(parentDisposable: Disposable): SuspendingSocketChannel =
+      accept().also { Disposer.register(parentDisposable, DisposableCloser(it)) }
+
   interface AgentTerminationListener {
     fun agentTerminated(exitCode: Int)
     fun deviceDisconnected()
+  }
+
+  private class DisposableCloser(private val channel: SuspendingSocketChannel) : Disposable {
+
+    override fun dispose() {
+      // Disconnect the socket channel asynchronously.
+      CoroutineScope(Dispatchers.IO).launch {
+        try {
+          channel.close()
+        }
+        catch (e: IOException) {
+          thisLogger().warn(e)
+        }
+      }
+    }
   }
 
   private class ClosableReverseForwarding(

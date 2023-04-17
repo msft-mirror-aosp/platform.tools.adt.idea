@@ -47,6 +47,7 @@ import com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
 import com.android.tools.idea.gradle.model.impl.IdeCompositeBuildMapImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
@@ -1200,7 +1201,7 @@ fun AndroidProjectStubBuilder.buildNdkModelStub(): V2NdkModel {
 
 fun AndroidProjectStubBuilder.buildDependenciesStub(
   dependencies: List<IdeDependencyCoreImpl> = listOf()
-): IdeDependenciesCoreImpl = IdeDependenciesCoreImpl(dependencies)
+): IdeDependenciesCoreImpl = IdeDependenciesCoreDirect(dependencies)
 
 /**
  * Sets up [project] as a one module project configured in the same way sync would conigure it from the same model.
@@ -2218,17 +2219,17 @@ private fun <T> openPreparedProject(
         val project = GradleProjectImporter.withAfterCreate(afterCreate = { project -> afterCreate(project) }) {
           ProjectUtil.openOrImport(
             projectPath.toPath(),
-            OpenProjectTask(
-              projectToClose = null,
-              forceOpenInNewFrame = true
-            ).copy(
-              beforeOpen = {
-                blockingContext {
-                  afterCreate(it)
-                  true
-                }
-              },
-            )
+            OpenProjectTask.build()
+              .withProjectToClose(null)
+              .withForceOpenInNewFrame(true)
+              .copy(
+                beforeOpen = {
+                  blockingContext {
+                    afterCreate(it)
+                    true
+                  }
+                },
+              )
           )!!
         }
         // Unfortunately we do not have start-up activities run in tests so we have to trigger a refresh here.
@@ -2386,11 +2387,11 @@ private fun setupDataNodesForSelectedVariant(
     moduleNode.setupCompilerOutputPaths(newVariant, false)
     // Then patch in any Kapt generated sources that we need
     val libraryFilePaths = LibraryFilePaths.getInstance(project)
-    moduleNode.setupAndroidDependenciesForMpss({ path: GradleSourceSetProjectPath -> moduleIdToDataMap[path] }, { id ->
+    moduleNode.setupAndroidDependenciesForMpss({ path: GradleSourceSetProjectPath -> moduleIdToDataMap[path] }, { lib ->
       AdditionalArtifactsPaths(
-        libraryFilePaths.getCachedPathsForArtifact(id)?.sources,
-        libraryFilePaths.getCachedPathsForArtifact(id)?.javaDoc,
-        libraryFilePaths.getCachedPathsForArtifact(id)?.sampleSource
+        lib.srcJar,
+        lib.docJar,
+        lib.samplesJar
       )
     }, newVariant)
     moduleNode.setupAndroidContentEntriesPerSourceSet(androidModuleModel)

@@ -15,6 +15,8 @@
  */
 package com.android.tools.adtui.categorytable
 
+import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.ui.JBUI
@@ -35,22 +37,36 @@ import javax.swing.table.JTableHeader
 /** An identifier for a table row, either a value row or a category row. */
 sealed interface RowKey<T> {
   @JvmInline value class ValueRowKey<T>(val key: Any) : RowKey<T>
+
   @JvmInline value class CategoryListRowKey<T>(val categoryList: CategoryList<T>) : RowKey<T>
 }
 
 /** A UI component for a row in a CategoryTable that is either a category or a value. */
-internal sealed class RowComponent<T> : JBPanel<RowComponent<T>>() {
+internal sealed class RowComponent<T> : JBPanel<RowComponent<T>>(), TableComponent {
   init {
     isFocusable = true
+    addFocusListener { updateBorder() }
   }
 
-  var selected: Boolean = false
+  private var rowSelected = false
     set(value) {
       field = value
-      foreground = JBUI.CurrentTheme.Table.foreground(value, true)
-      background = JBUI.CurrentTheme.Table.background(value, true)
       isOpaque = value
+      updateBorder()
     }
+
+  /** Updates the display of the row based on the current selection status. */
+  override fun updateTablePresentation(
+    manager: TablePresentationManager,
+    presentation: TablePresentation
+  ) {
+    rowSelected = presentation.rowSelected
+    manager.defaultApplyPresentation(this, presentation)
+  }
+
+  private fun updateBorder() {
+    border = tableCellBorder(selected = rowSelected, focused = isFocusOwner)
+  }
 
   abstract var indent: Int
 
@@ -59,12 +75,10 @@ internal sealed class RowComponent<T> : JBPanel<RowComponent<T>>() {
 
 internal class CategoryRowComponent<T>(val path: CategoryList<T>) : RowComponent<T>() {
 
-  private val iconLabel = JBLabel(expandedIcon)
+  private val iconLabel = IconLabel(expandedIcon)
 
   init {
-    iconLabel.minimumSize = Dimension(iconWidth, iconHeight)
-    iconLabel.preferredSize = Dimension(iconWidth, iconHeight)
-    iconLabel.maximumSize = Dimension(iconWidth, iconHeight)
+    iconLabel.constrainSize(Dimension(iconWidth, iconHeight))
 
     border = BorderFactory.createEmptyBorder(JBUI.scale(5), 0, JBUI.scale(2), 0)
     layout = BoxLayout(this, BoxLayout.X_AXIS)
@@ -93,33 +107,33 @@ internal class CategoryRowComponent<T>(val path: CategoryList<T>) : RowComponent
     set(value) {
       if (field != value) {
         field = value
-        iconLabel.icon = if (isExpanded) expandedIcon else collapsedIcon
+        iconLabel.baseIcon = if (isExpanded) expandedIcon else collapsedIcon
       }
     }
 
   override val rowKey = RowKey.CategoryListRowKey(path)
 
   companion object {
-    private val expandedIcon = UIManager.get("Tree.expandedIcon", null) as? Icon
-    private val collapsedIcon = UIManager.get("Tree.collapsedIcon", null) as? Icon
-    private val iconWidth: Int =
-      maxOf(expandedIcon?.iconWidth ?: 16, collapsedIcon?.iconWidth ?: 16)
-    private val iconHeight: Int =
-      maxOf(expandedIcon?.iconHeight ?: 16, collapsedIcon?.iconHeight ?: 16)
+    private val expandedIcon = UIManager.get("Tree.expandedIcon", null) as Icon
+    private val collapsedIcon = UIManager.get("Tree.collapsedIcon", null) as Icon
+    private val iconWidth: Int = maxOf(expandedIcon.iconWidth, collapsedIcon.iconWidth)
+    private val iconHeight: Int = maxOf(expandedIcon.iconHeight, collapsedIcon.iconHeight)
   }
 }
 
 /**
  * The UI component of a row in the table representing a value (rather than a category). Contains
- * child components for each column. The value may be mutable; changes to the value will be
- * reflected upon calling [updateValues].
+ * child components for each column. The value may be mutable; however, changes to the value will
+ * only be reflected when the [value] field is updated. Thus, immutable values will generally be
+ * less error-prone.
  */
 internal class ValueRowComponent<T>(
+  val dataProvider: ValueRowDataProvider<T>,
   header: JTableHeader,
   columns: ColumnList<T>,
   initialValue: T,
   primaryKey: Any
-) : RowComponent<T>() {
+) : RowComponent<T>(), DataProvider {
   /** The components of this row, in model order. */
   val componentList: List<ColumnComponent<T, *, *>> =
     columns.map { ColumnComponent(it, initialValue) }
@@ -134,9 +148,11 @@ internal class ValueRowComponent<T>(
 
   override var indent: Int by valueRowLayout::indent
 
-  fun updateValues(value: T) {
-    componentList.forEach { it.updateValue(value) }
-  }
+  var value = initialValue
+    set(value) {
+      field = value
+      componentList.forEach { it.updateValue(value) }
+    }
 
   override val rowKey = RowKey.ValueRowKey<T>(primaryKey)
 
@@ -153,6 +169,18 @@ internal class ValueRowComponent<T>(
       column.updateValue(rowValue, component, column.attribute.value(rowValue))
     }
   }
+
+  override fun getData(dataId: String): Any? = dataProvider(dataId, value)
+}
+
+typealias ValueRowDataProvider<T> = (String, T) -> Any?
+
+object NullValueRowDataProvider : ValueRowDataProvider<Any?> {
+  override fun invoke(p1: String, p2: Any?): Any? = null
+}
+
+class DefaultValueRowDataProvider<T>(private val dataKey: DataKey<T>) : ValueRowDataProvider<T> {
+  override fun invoke(dataId: String, value: T) = value.takeIf { dataKey.`is`(dataId) }
 }
 
 private class ValueRowLayout(val header: JTableHeader) : LayoutManager {

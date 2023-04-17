@@ -16,11 +16,10 @@
 package com.android.tools.idea.layoutinspector.ui
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.HIGHLIGHT_DEFAULT_COLOR
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.DataKey
 import kotlin.properties.Delegates
-
-val DEVICE_VIEW_SETTINGS_KEY = DataKey.create<RenderSettings>(RenderSettings::class.qualifiedName!!)
 
 private const val DRAW_BORDERS_KEY = "live.layout.inspector.draw.borders"
 private const val SHOW_LAYOUT_BOUNDS_KEY = "live.layout.inspector.draw.layout"

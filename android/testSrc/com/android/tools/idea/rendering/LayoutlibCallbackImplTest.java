@@ -27,6 +27,7 @@ import com.android.resources.ResourceType;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
+import com.android.tools.rendering.IRenderLogger;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.module.Module;
@@ -47,6 +48,7 @@ import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget;
 import org.jetbrains.android.uipreview.ModuleClassLoader;
 import org.jetbrains.android.uipreview.StudioModuleClassLoaderManager;
 import org.jetbrains.android.uipreview.ModuleRenderContext;
+import org.jetbrains.android.uipreview.ModuleRenderContexts;
 
 public class LayoutlibCallbackImplTest extends AndroidTestCase {
   /**
@@ -88,7 +90,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
       LayoutLibrary layoutlib = StudioRenderServiceKt.getLayoutLibrary(myModule, StudioEmbeddedRenderTarget.getCompatibilityTarget(
         ConfigurationManager.getOrCreateInstance(myModule).getHighestApiTarget()));
 
-      ModuleRenderContext renderContext = ModuleRenderContext.forFile(psiFile);
+      ModuleRenderContext renderContext = ModuleRenderContexts.forFile(psiFile);
       ModuleClassLoader classLoader = StudioModuleClassLoaderManager.get().getShared(layoutlib.getClassLoader(), renderContext, this);
       RenderModelModule module = new AndroidFacetRenderModelModule(myFacet);
       LayoutlibCallbackImpl layoutlibCallback =
@@ -127,7 +129,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
       LayoutLibrary layoutlib = StudioRenderServiceKt.getLayoutLibrary(myModule, StudioEmbeddedRenderTarget.getCompatibilityTarget(
         ConfigurationManager.getOrCreateInstance(myModule).getHighestApiTarget()));
 
-      ModuleRenderContext renderContext = ModuleRenderContext.forFile(psiFile);
+      ModuleRenderContext renderContext = ModuleRenderContexts.forFile(psiFile);
       ModuleClassLoader classLoader = StudioModuleClassLoaderManager.get().getShared(layoutlib.getClassLoader(), renderContext, this);
       RenderModelModule module = new AndroidFacetRenderModelModule(myFacet);
       LayoutlibCallbackImpl layoutlibCallback =

@@ -22,13 +22,10 @@ import static org.junit.Assert.assertTrue;
 import com.android.tools.idea.run.AndroidDevice;
 import com.android.tools.idea.run.deployment.DevicesSelectedService.PersistentStateComponent;
 import com.android.tools.idea.testing.AndroidProjectRule;
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ValidationInfo;
-import java.nio.file.FileSystem;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -153,11 +150,9 @@ public final class SelectMultipleDevicesDialogTest {
   @Test
   public void doOkAction() {
     // Arrange
-    Key key = new VirtualDevicePath("/home/user/.android/avd/Pixel_4_API_30.avd");
-
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(key)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
       .build();
@@ -170,20 +165,18 @@ public final class SelectMultipleDevicesDialogTest {
     ApplicationManager.getApplication().invokeAndWait(() -> myDialog.getOKAction().actionPerformed(null));
 
     // Assert
-    Mockito.verify(service).setTargetsSelectedWithDialog(Collections.singleton(new QuickBootTarget(key)));
+    Mockito.verify(service).setTargetsSelectedWithDialog(Collections.singleton(new QuickBootTarget(Keys.PIXEL_4_API_30)));
   }
 
   @Test
   public void doValidate() {
     // Arrange
-    FileSystem fileSystem = Jimfs.newFileSystem(Configuration.unix());
-
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(new VirtualDevicePath("/home/user/.android/avd/Pixel_4_API_30.avd"))
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
-      .addSnapshot(new Snapshot(fileSystem.getPath("/home/user/.android/avd/Pixel_4_API_30.avd/snapshots/snap_2020-12-07_16-36-58")))
+      .addSnapshot(new Snapshot(Keys.PIXEL_4_API_30_SNAPSHOT_1))
       .setSelectDeviceSnapshotComboBoxSnapshotsEnabled(true)
       .build();
 

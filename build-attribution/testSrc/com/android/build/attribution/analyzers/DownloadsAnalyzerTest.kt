@@ -20,7 +20,7 @@ import com.android.build.attribution.BuildAnalyzerStorageManager
 import com.android.build.attribution.getSuccessfulResult
 import com.android.build.output.DownloadRequestItem
 import com.android.build.output.DownloadsInfoExecutionConsole
-import com.android.build.output.DownloadsInfoPresentableEvent
+import com.android.build.output.DownloadsInfoPresentableBuildEvent
 import com.android.testutils.TestUtils
 import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.analytics.TestUsageTracker
@@ -97,8 +97,9 @@ class DownloadsAnalyzerTest {
     addBuildSrcFileContent(preparedProject)
 
     preparedProject.runTest(updateOptions = { it.copy(syncViewEventHandler = { event ->
-      if (event is DownloadsInfoPresentableEvent) {
+      if (event is DownloadsInfoPresentableBuildEvent) {
         val downloadsInfoExecutionConsole = event.presentationData.executionConsole as DownloadsInfoExecutionConsole
+        Disposer.register(projectRule.testRootDisposable, downloadsInfoExecutionConsole)
         syncDownloadInfoExecutionConsoles.add(downloadsInfoExecutionConsole)
       }
     })}) {
@@ -184,7 +185,7 @@ class DownloadsAnalyzerTest {
     // Check SyncView content
     // We should see only one event sent to the view.
     Truth.assertThat(syncDownloadInfoExecutionConsoles).hasSize(1)
-    val shownItems = syncDownloadInfoExecutionConsoles.single().uiModel.repositoriesTableModel.summaryItem.requests.values
+    val shownItems = syncDownloadInfoExecutionConsoles.single().uiModel.repositoriesTableModel.summaryItem.requests
 
     // Dump all content to the test output.
     println(shownItems.joinToString(separator = "\n", prefix = "==All presented requests on Sync:\n", postfix = "\n===="))
@@ -206,15 +207,16 @@ class DownloadsAnalyzerTest {
   private fun TestContext.runSecondSyncAndVerifyNoStaleDataIsPresent() {
     project.requestSyncAndWait()
     Truth.assertThat(syncDownloadInfoExecutionConsoles).hasSize(2)
-    Truth.assertThat(syncDownloadInfoExecutionConsoles[1].uiModel.repositoriesTableModel.summaryItem.requests.values)
-      .containsNoneIn(syncDownloadInfoExecutionConsoles[0].uiModel.repositoriesTableModel.summaryItem.requests.values)
+    Truth.assertThat(syncDownloadInfoExecutionConsoles[1].uiModel.repositoriesTableModel.summaryItem.requests)
+      .containsNoneIn(syncDownloadInfoExecutionConsoles[0].uiModel.repositoriesTableModel.summaryItem.requests)
   }
 
   private fun TestContext.invokeBuild() {
     val invocationResult = project.buildAndWait(
       eventHandler = { event ->
-        if (event is DownloadsInfoPresentableEvent) {
+        if (event is DownloadsInfoPresentableBuildEvent) {
           val downloadsInfoExecutionConsole = event.presentationData.executionConsole as DownloadsInfoExecutionConsole
+          Disposer.register(projectRule.testRootDisposable, downloadsInfoExecutionConsole)
           buildDownloadInfoExecutionConsoles.add(downloadsInfoExecutionConsole)
         }
       }
@@ -239,7 +241,7 @@ class DownloadsAnalyzerTest {
       Server2: GET on /example/B/1.0/B-1.0.jar - OK
     """.trimIndent().split("\n"))
     Truth.assertThat(buildDownloadInfoExecutionConsoles).hasSize(1)
-    val shownItems = buildDownloadInfoExecutionConsoles.single().uiModel.repositoriesTableModel.summaryItem.requests.values
+    val shownItems = buildDownloadInfoExecutionConsoles.single().uiModel.repositoriesTableModel.summaryItem.requests
     println(shownItems.joinToString(separator = "\n"))
     Truth.assertThat(shownItems.filterNot { it.completed }).isEmpty()
     Truth.assertThat(shownItems.map { it.toTestString() }).containsExactlyElementsIn("""

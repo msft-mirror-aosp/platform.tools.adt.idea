@@ -367,11 +367,11 @@ internal class DeviceView(
           startTime = 0L
         }
       }
-    }
 
-    if (multiTouchMode) {
-      val displayRect = displayRectangle
-      if (displayRect != null) {
+      paintDecorations(g, displayRect)
+
+      if (multiTouchMode) {
+        // Render multi-touch visual feedback.
         drawMultiTouchFeedback(g, displayRect, lastTouchCoordinates != null)
       }
     }
@@ -379,7 +379,7 @@ internal class DeviceView(
 
   @UiThread
   override fun settingsChanged(settings: DeviceMirroringSettings) {
-    if (deviceController == null) {
+    if (disposed || deviceController == null) {
       return
     }
     if (settings.synchronizeClipboard) {
@@ -544,15 +544,6 @@ internal class DeviceView(
         else if ((modifiers and CTRL_DOWN_MASK) == 0) {
           multiTouchMode = false
         }
-      }
-
-      // The Tab character is passed to the device, but Shift+Tab is converted to Tab and processed locally.
-      if (keyCode == VK_TAB && modifiers == SHIFT_DOWN_MASK) {
-        if (event.id == KEY_PRESSED) {
-          val tabEvent = KeyEvent(event.component, event.id, event.getWhen(), 0, keyCode, event.keyChar, event.keyLocation)
-          traverseFocusLocally(tabEvent)
-        }
-        return
       }
 
       if (!isConnected) {

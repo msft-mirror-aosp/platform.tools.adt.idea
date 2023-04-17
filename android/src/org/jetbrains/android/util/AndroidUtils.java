@@ -27,6 +27,7 @@ import com.android.tools.idea.apk.ApkFacet;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.rendering.AndroidXmlFiles;
+import com.android.tools.idea.rendering.parsers.PsiXmlFile;
 import com.android.tools.idea.res.IdeResourcesUtil;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.TargetSelectionMode;
@@ -679,7 +680,7 @@ public class AndroidUtils extends CommonAndroidUtil {
    */
   @Nullable
   public static String getDeclaredContextFqcn(@NotNull Module module, @NotNull XmlFile xmlFile) {
-    return AndroidXmlFiles.getDeclaredContextFqcn(ProjectSystemUtil.getModuleSystem(module).getPackageName(), xmlFile);
+    return AndroidXmlFiles.getDeclaredContextFqcn(ProjectSystemUtil.getModuleSystem(module).getPackageName(), new PsiXmlFile(xmlFile));
   }
 
   /**
@@ -696,25 +697,6 @@ public class AndroidUtils extends CommonAndroidUtil {
     if (fqn != null) {
       Project project = module.getProject();
       return JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project));
-    }
-    return null;
-  }
-
-  /**
-   * Returns the root tag for the given {@link PsiFile}, if any, acquiring the read
-   * lock to do so if necessary
-   *
-   * @param file the file to look up the root tag for
-   * @return the corresponding root tag, if any
-   */
-  @Nullable
-  public static String getRootTagName(@NotNull PsiFile file) {
-    ResourceFolderType folderType = IdeResourcesUtil.getFolderType(file);
-    if (folderType == ResourceFolderType.XML || folderType == ResourceFolderType.MENU || folderType == ResourceFolderType.DRAWABLE) {
-      if (file instanceof XmlFile) {
-        XmlTag rootTag = AndroidPsiUtils.getRootTagSafely(((XmlFile)file));
-        return rootTag == null ? null : rootTag.getName();
-      }
     }
     return null;
   }

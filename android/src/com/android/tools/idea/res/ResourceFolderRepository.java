@@ -142,7 +142,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatforms;
-import org.jetbrains.android.sdk.AndroidTargetData;
+import com.android.tools.sdk.AndroidTargetData;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -1962,11 +1962,11 @@ public final class ResourceFolderRepository extends LocalResourceRepository impl
     if (file.isDirectory()) {
       for (var iterator = mySources.entrySet().iterator(); iterator.hasNext(); ) {
         var entry = iterator.next();
-        iterator.remove();
         VirtualFile sourceFile = entry.getKey();
         if (VfsUtilCore.isAncestor(file, sourceFile, true)) {
           ResourceItemSource<?> source = entry.getValue();
           removeSource(sourceFile, source);
+          iterator.remove();
         }
       }
     }

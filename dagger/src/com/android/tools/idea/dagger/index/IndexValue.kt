@@ -16,18 +16,26 @@
 package com.android.tools.idea.dagger.index
 
 import com.android.tools.idea.dagger.concepts.AllConcepts
+import com.android.tools.idea.dagger.concepts.AssistedFactoryMethodDaggerElement
+import com.android.tools.idea.dagger.concepts.AssistedInjectConstructorDaggerElement
+import com.android.tools.idea.dagger.concepts.BindsOptionalOfProviderDaggerElement
+import com.android.tools.idea.dagger.concepts.ComponentDaggerElement
+import com.android.tools.idea.dagger.concepts.ComponentProvisionMethodDaggerElement
+import com.android.tools.idea.dagger.concepts.ConsumerDaggerElement
 import com.android.tools.idea.dagger.concepts.DaggerConcept
 import com.android.tools.idea.dagger.concepts.DaggerElement
 import com.android.tools.idea.dagger.concepts.DaggerElementIdentifiers
-import com.android.tools.idea.dagger.concepts.getPsiType
-import com.android.tools.idea.dagger.unboxed
+import com.android.tools.idea.dagger.concepts.EntryPointMethodDaggerElement
+import com.android.tools.idea.dagger.concepts.ModuleDaggerElement
+import com.android.tools.idea.dagger.concepts.ProviderDaggerElement
+import com.android.tools.idea.dagger.concepts.SubcomponentDaggerElement
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiType
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.io.DataExternalizer
 import java.io.DataInput
 import java.io.DataOutput
+import kotlin.reflect.KClass
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
@@ -43,62 +51,55 @@ abstract class IndexValue {
    * Type of value being stored. This is required to be centralized to ensure that each type has a
    * unique integer representation that can be used for serialization and storage.
    */
-  enum class DataType(val daggerElementType: DaggerElement.Type) {
-    INJECTED_CONSTRUCTOR(DaggerElement.Type.PROVIDER),
-    INJECTED_CONSTRUCTOR_PARAMETER(DaggerElement.Type.CONSUMER),
-    PROVIDES_METHOD(DaggerElement.Type.PROVIDER),
-    PROVIDES_METHOD_PARAMETER(DaggerElement.Type.CONSUMER),
-    INJECTED_FIELD(DaggerElement.Type.CONSUMER),
-    COMPONENT_WITH_MODULE(DaggerElement.Type.COMPONENT),
-    COMPONENT_WITH_DEPENDENCY(DaggerElement.Type.COMPONENT),
-    SUBCOMPONENT_WITH_MODULE(DaggerElement.Type.SUBCOMPONENT),
-    MODULE_WITH_INCLUDE(DaggerElement.Type.MODULE),
-    MODULE_WITH_SUBCOMPONENT(DaggerElement.Type.MODULE),
+  enum class DataType(val daggerElementType: KClass<out DaggerElement>) {
+    INJECTED_CONSTRUCTOR(ProviderDaggerElement::class),
+    INJECTED_CONSTRUCTOR_PARAMETER(ConsumerDaggerElement::class),
+    PROVIDES_METHOD(ProviderDaggerElement::class),
+    PROVIDES_METHOD_PARAMETER(ConsumerDaggerElement::class),
+    INJECTED_FIELD(ConsumerDaggerElement::class),
+    COMPONENT_WITH_MODULE(ComponentDaggerElement::class),
+    COMPONENT_WITH_DEPENDENCY(ComponentDaggerElement::class),
+    SUBCOMPONENT_WITH_MODULE(SubcomponentDaggerElement::class),
+    MODULE_WITH_INCLUDE(ModuleDaggerElement::class),
+    MODULE_WITH_SUBCOMPONENT(ModuleDaggerElement::class),
+    COMPONENT_PROVISION_METHOD(ComponentProvisionMethodDaggerElement::class),
+    COMPONENT_PROVISION_PROPERTY(ComponentProvisionMethodDaggerElement::class),
+    BINDS_OPTIONAL_OF_METHOD(BindsOptionalOfProviderDaggerElement::class),
+    BINDS_INSTANCE_BUILDER_METHOD(ProviderDaggerElement::class),
+    BINDS_INSTANCE_FACTORY_METHOD_PARAMETER(ProviderDaggerElement::class),
+    ASSISTED_INJECT_CONSTRUCTOR(AssistedInjectConstructorDaggerElement::class),
+    ASSISTED_INJECT_CONSTRUCTOR_UNASSISTED_PARAMETER(ConsumerDaggerElement::class),
+    ASSISTED_FACTORY_CLASS(ProviderDaggerElement::class),
+    ASSISTED_FACTORY_METHOD(AssistedFactoryMethodDaggerElement::class),
+    ENTRY_POINT_METHOD(EntryPointMethodDaggerElement::class),
   }
 
   abstract fun save(output: DataOutput)
 
   /**
    * Resolve the Dagger element represented by this [IndexValue] into one or more [DaggerElement]s.
-   *
-   * @param indexKeyPsiType the related type of the Dagger element being resolved.
-   * @return a list of valid [DaggerElement]s, or the empty list when no elements can be found that
-   *   match the given type.
    */
-  fun resolveToDaggerElements(
-    indexKeyPsiType: PsiType,
-    project: Project,
-    scope: GlobalSearchScope
-  ): List<DaggerElement> {
-    val unboxedIndexKeyPsiType = indexKeyPsiType.unboxed
-    return getResolveCandidates(project, scope)
-      .filter { resolveCandidate ->
-        getMatchingIndexKeyPsiTypes(resolveCandidate).any { type ->
-          type.unboxed == unboxedIndexKeyPsiType
-        }
+  fun resolveToDaggerElements(project: Project, scope: GlobalSearchScope): List<DaggerElement> {
+    val candidates =
+      getResolveCandidates(project, scope).mapNotNull {
+        daggerElementIdentifiers.getDaggerElement(it.navigationElement)
       }
-      .mapNotNull { daggerElementIdentifiers.getDaggerElement(it.navigationElement) }
+
+    // Validate that the type of [DaggerElement] specified by this [IndexValue] matches what was
+    // resolved.
+    candidates.forEach { assert(dataType.daggerElementType.isInstance(it)) }
+
+    return candidates
   }
 
   /**
-   * Find any [PsiElement]s represented by this [IndexValue] that match the given [PsiType].
+   * Find any [PsiElement]s represented by this [IndexValue].
    *
    * The elements may or may not represent valid Dagger elements; it's not the responsibility of
    * this method to determine that. Rather, this method is just searching for elements based on
    * whatever data it has from the index. This method is used by [resolveToDaggerElements] to get a
    * candidate set of elements, and that method will then filter based upon which elements are valid
    * Dagger items.
-   *
-   * However, this method may choose to do further filtering of candidates if the information is
-   * quick and readily available. An example is checking for an attribute on a [PsiClass]; that
-   * information is quickly available on the stub returned by [JavaPsiFacade], and so it's okay for
-   * this method to check for a required annotation on a class and filter out candidates that don't
-   * have it.
-   *
-   * On the flip side, checking for an annotation on a [PsiMethod] method coming from Kotlin
-   * actually *can't* be done quickly, since it requires resolving to the navigation element first.
-   * Therefore, that type of check should not be done here, in order to keep this method as
-   * lightweight as possible.
    */
   protected abstract fun getResolveCandidates(
     project: Project,
@@ -106,20 +107,13 @@ abstract class IndexValue {
   ): List<PsiElement>
 
   /**
-   * Returns the set of [PsiType]s for a given resolve candidate element that can match a
-   * corresponding index key.
-   *
-   * The default implementation assumes that the [PsiType] of the candidate itself should match the
-   * key's [PsiType]. This is not the case for all [IndexValue]s (see
-   * [com.android.tools.idea.dagger.concepts.ClassIndexValue] for a counterexample), but it is
-   * common to enough other cases that it is the default implementation.
-   */
-  protected open fun getMatchingIndexKeyPsiTypes(resolveCandidate: PsiElement): Set<PsiType> =
-    setOf(resolveCandidate.getPsiType())
-
-  /**
    * Identifiers that search specifically for the types of [DaggerElement]s represented by this
-   * [IndexValue].
+   * [IndexValue]. The identifiers are responsible for validating that necessary conditions for
+   * defining a [DaggerElement] are met.
+   *
+   * As an example, this method would be responsible for checking that a Component has the correct
+   * `@Component` annotation, since the results returned from the index may have had a different
+   * `@Component` annotation.
    */
   protected abstract val daggerElementIdentifiers: DaggerElementIdentifiers
 

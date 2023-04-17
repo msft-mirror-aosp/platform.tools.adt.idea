@@ -16,15 +16,19 @@
 package com.android.tools.idea.ui.screenshot;
 
 import static com.android.SdkConstants.EXT_PNG;
+import static com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.DEVICE_SCREENSHOT_EVENT;
 import static com.intellij.openapi.components.StoragePathMacros.NON_ROAMABLE_FILE;
 
+import com.android.tools.analytics.UsageTracker;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.ui.AndroidAdbUiBundle;
 import com.android.tools.pixelprobe.color.Colors;
 import com.android.utils.HashCodes;
 import com.google.common.base.Preconditions;
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
+import com.google.wireless.android.sdk.stats.DeviceScreenshotEvent;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.util.PropertiesComponent;
-import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
@@ -51,11 +55,11 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileWrapper;
 import com.intellij.openapi.wm.IdeFocusManager;
-import com.intellij.ui.JBColor;
 import com.intellij.util.xmlb.XmlSerializerUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.color.ICC_ColorSpace;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -105,6 +109,9 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
 
   private static final String HELP_PREFIX = "org.jetbrains.android.";
 
+  // The minimum size is for both the width and the height as the screenshot ratio needs to be 1:1
+  public static final int MINIMUM_WEAR_PLAY_COMPATIBLE_SCREENSHOT_SIZE_PIXELS = 384;
+
   private final @NotNull SimpleDateFormat myTimestampFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT);
 
   private final @NotNull Project myProject;
@@ -129,6 +136,8 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
       new DecorationOption(AndroidAdbUiBundle.message("screenshot.dialog.decoration.rectangular"));
     private static final DecorationOption DISPLAY_SHAPE_CLIP =
       new DecorationOption(AndroidAdbUiBundle.message("screenshot.dialog.decoration.display.shape"));
+    private static final DecorationOption PLAY_COMPATIBLE =
+      new DecorationOption(AndroidAdbUiBundle.message("screenshot.dialog.decoration.display.play-compatible"));
 
     private final @Nullable String myClipAction;
     private final @Nullable FramingOption myFramingOption;
@@ -249,12 +258,16 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
       hideComponent(myDecorationComboBox);
     }
     else {
-      // Clipping is only available for round device screenshots.
-      boolean canClipDeviceMask = screenshotImage.isRoundDisplay();
       DefaultComboBoxModel<DecorationOption> decorationOptions = new DefaultComboBoxModel<>();
       decorationOptions.addElement(DecorationOption.RECTANGULAR);
+      // Clipping is available when the postprocessor supports it and for round devices.
+      boolean canClipDeviceMask = screenshotPostprocessor.getCanClipToDisplayShape() || screenshotImage.isRoundDisplay();
       if (canClipDeviceMask) {
         decorationOptions.addElement(DecorationOption.DISPLAY_SHAPE_CLIP);
+      }
+      boolean isPlayCompatibleWearScreenshot = StudioFlags.PLAY_COMPATIBLE_WEAR_SCREENSHOTS_ENABLED.get() && screenshotImage.isWear();
+      if (isPlayCompatibleWearScreenshot) {
+        decorationOptions.addElement(DecorationOption.PLAY_COMPATIBLE);
       }
       int frameOptionStartIndex = decorationOptions.getSize();
       for (FramingOption framingOption : framingOptions) {
@@ -266,9 +279,13 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
         myDecorationComboBox.setSelectedIndex(defaultFramingOption + frameOptionStartIndex); // Select the default framing option.
       }
       else {
-        // DEVICE_SHAPED or RECTANGULAR (if DEVICE_SHAPED is not available).
-        myDecorationComboBox.setSelectedItem(
-          canClipDeviceMask ? DecorationOption.DISPLAY_SHAPE_CLIP : DecorationOption.RECTANGULAR);
+        if (canClipDeviceMask) {
+          myDecorationComboBox.setSelectedItem(DecorationOption.DISPLAY_SHAPE_CLIP);
+        } else if (isPlayCompatibleWearScreenshot) {
+          myDecorationComboBox.setSelectedItem(DecorationOption.PLAY_COMPATIBLE);
+        } else {
+          myDecorationComboBox.setSelectedItem(DecorationOption.RECTANGULAR);
+        }
       }
 
       ActionListener decorationListener = event -> {
@@ -292,13 +309,10 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
     myCopyButton.addActionListener(event -> {
       BufferedImage currentImage = myImageFileEditor.getImageEditor().getDocument().getValue();
       CopyPasteManager.getInstance().setContents(new BufferedImageTransferable(currentImage));
-      String groupId = NotificationGroup.createIdWithTitle("Screen Capture", AndroidAdbUiBundle.message("screenshot.notification.title"));
-      Notifications.Bus.notify(
-        new Notification(
-          groupId,
-          AndroidAdbUiBundle.message("screenshot.notification.title"),
-          AndroidAdbUiBundle.message("screenshot.notification.copied.to.clipboard"),
-          NotificationType.INFORMATION), myProject);
+      NotificationGroup group = NotificationGroup.findRegisteredGroup("Screen Capture");
+      assert group != null;
+      Notifications.Bus.notify(group.createNotification(AndroidAdbUiBundle.message("screenshot.notification.copied.to.clipboard"), NotificationType.INFORMATION), project);
+      logScreenshotUsage();
     });
 
     updateEditorImage();
@@ -366,19 +380,8 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
   }
 
   private void processScreenshot(int rotationQuadrants) {
-    FramingOption framingOption = null;
-    Color backgroundColor = null;
-    if (myScreenshotPostprocessor != null) {
-      framingOption = ((DecorationOption)Objects.requireNonNull(myDecorationComboBox.getSelectedItem())).getFramingOption();
-      if (myDecorationComboBox.getSelectedItem().equals(DecorationOption.RECTANGULAR)) {
-        backgroundColor = JBColor.BLACK;
-      }
-    }
-
     ScreenshotImage rotatedImage = mySourceImageRef.get().rotated(rotationQuadrants);
-
-    BufferedImage processedImage = myScreenshotPostprocessor == null ?
-        rotatedImage.getImage() : myScreenshotPostprocessor.addFrame(rotatedImage, framingOption, backgroundColor);
+    BufferedImage processedImage = processImage(rotatedImage);
 
     // Update the backing file, this is necessary for operations that read the backing file from the editor,
     // such as: Right click image -> Open in external editor
@@ -395,6 +398,34 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
     mySourceImageRef.set(rotatedImage);
     myDisplayedImageRef.set(processedImage);
     updateEditorImage();
+  }
+
+  private BufferedImage processImage(ScreenshotImage sourceImage) {
+    if (myScreenshotPostprocessor == null) {
+      return sourceImage.getImage();
+    }
+
+    DecorationOption selectedDecoration = (DecorationOption)Objects.requireNonNull(myDecorationComboBox.getSelectedItem());
+    FramingOption framingOption = selectedDecoration.getFramingOption();
+    Color backgroundColor = null;
+    if (selectedDecoration.equals(DecorationOption.RECTANGULAR) ||
+        selectedDecoration.equals(DecorationOption.PLAY_COMPATIBLE)) {
+      //noinspection UseJBColor - we want the actual color Black, JBColor will be grey in dark modes.
+      backgroundColor = Color.BLACK;
+    }
+
+    int width = sourceImage.getImage().getWidth();
+    int height = sourceImage.getImage().getHeight();
+    boolean isOneToOneRatio = width == height;
+    boolean isPlayCompatible = isOneToOneRatio && width >= MINIMUM_WEAR_PLAY_COMPATIBLE_SCREENSHOT_SIZE_PIXELS;
+    if (selectedDecoration.equals(DecorationOption.PLAY_COMPATIBLE) && !isPlayCompatible) {
+      // fix the dimensions to be compatible with the play store requirements
+      int outputSize = Math.max(Math.max(width, height), MINIMUM_WEAR_PLAY_COMPATIBLE_SCREENSHOT_SIZE_PIXELS);
+      return myScreenshotPostprocessor.addFrame(sourceImage, framingOption, backgroundColor, new Dimension(outputSize, outputSize));
+    }
+    else {
+      return myScreenshotPostprocessor.addFrame(sourceImage, framingOption, backgroundColor);
+    }
   }
 
   @VisibleForTesting
@@ -464,6 +495,7 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
     myScreenshotFile = fileWrapper.getFile().toPath();
     try {
       writePng(myDisplayedImageRef.get(), myScreenshotFile);
+      logScreenshotUsage();
     }
     catch (IOException e) {
       Messages.showErrorDialog(myProject, AndroidAdbUiBundle.message("screenshot.dialog.error", e),
@@ -499,21 +531,16 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
     try (ImageOutputStream stream = ImageIO.createImageOutputStream(Files.newOutputStream(outFile))) {
       pngWriter.setOutput(stream);
 
-      if (image.getColorModel().getColorSpace() instanceof ICC_ColorSpace) {
+      if (image.getColorModel().getColorSpace() instanceof ICC_ColorSpace colorSpace) {
         ImageTypeSpecifier type = ImageTypeSpecifier.createFromRenderedImage(image);
         ImageWriteParam writeParams = pngWriter.getDefaultWriteParam();
         IIOMetadata metadata = pngWriter.getDefaultImageMetadata(type, writeParams);
-
-        ICC_ColorSpace colorSpace = (ICC_ColorSpace)image.getColorModel().getColorSpace();
-        byte[] data = deflate(colorSpace.getProfile().getData());
-
         Node node = metadata.getAsTree("javax_imageio_png_1.0");
         IIOMetadataNode metadataNode = new IIOMetadataNode("iCCP");
-        metadataNode.setUserObject(data);
+        metadataNode.setUserObject(deflate(colorSpace.getProfile().getData()));
         metadataNode.setAttribute("profileName", Colors.getIccProfileDescription(colorSpace.getProfile()));
         metadataNode.setAttribute("compressionMethod", "deflate");
         node.appendChild(metadataNode);
-
         metadata.setFromTree("javax_imageio_png_1.0", node);
 
         pngWriter.write(new IIOImage(image, null, metadata));
@@ -524,7 +551,7 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
       pngWriter.dispose();
     }
     catch (IOException e) {
-      Files.delete(outFile);
+      Files.deleteIfExists(outFile);
     }
   }
 
@@ -572,6 +599,39 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
     return Logger.getInstance(ScreenshotViewer.class);
   }
 
+  private void logScreenshotUsage() {
+    var event = DeviceScreenshotEvent.newBuilder()
+      .setDeviceType(getUsageDeviceType())
+      .setDecorationOption(getUsageDecorationOption());
+
+    UsageTracker.log(
+      AndroidStudioEvent.newBuilder()
+        .setKind(DEVICE_SCREENSHOT_EVENT)
+        .setDeviceScreenshotEvent(event));
+  }
+
+  private @NotNull DeviceScreenshotEvent.DeviceType getUsageDeviceType() {
+    return switch (mySourceImageRef.get().getDeviceType()) {
+      case WEAR -> DeviceScreenshotEvent.DeviceType.WEAR;
+      case PHONE -> DeviceScreenshotEvent.DeviceType.PHONE;
+      case TV -> DeviceScreenshotEvent.DeviceType.TV;
+    };
+  }
+
+  private @NotNull DeviceScreenshotEvent.DecorationOption getUsageDecorationOption() {
+    DecorationOption selectedDecoration = (DecorationOption)Objects.requireNonNull(myDecorationComboBox.getSelectedItem());
+    if (DecorationOption.RECTANGULAR.equals(selectedDecoration)) {
+      return DeviceScreenshotEvent.DecorationOption.RECTANGULAR;
+    }
+    if (DecorationOption.DISPLAY_SHAPE_CLIP.equals(selectedDecoration)) {
+      return DeviceScreenshotEvent.DecorationOption.DISPLAY_SHAPE_CLIP;
+    }
+    if (DecorationOption.PLAY_COMPATIBLE.equals(selectedDecoration)) {
+      return DeviceScreenshotEvent.DecorationOption.PLAY_COMPATIBLE;
+    }
+    return DeviceScreenshotEvent.DecorationOption.FRAMED;
+  }
+
   private static class BufferedImageTransferable implements Transferable {
     private final @NotNull BufferedImage myImage;
 
@@ -581,7 +641,7 @@ public class ScreenshotViewer extends DialogWrapper implements DataProvider {
 
     @Override
     public @NotNull DataFlavor[] getTransferDataFlavors() {
-      return new DataFlavor[]{DataFlavor.imageFlavor};
+      return new DataFlavor[] { DataFlavor.imageFlavor };
     }
 
     @Override

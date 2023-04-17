@@ -51,6 +51,7 @@ import com.intellij.openapi.ui.popup.PopupChooserBuilder
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.ExperimentalUI.isNewUI
 import com.intellij.ui.GotItTooltip
 import com.intellij.ui.GotItTooltip.Companion.BOTTOM_LEFT
 import com.intellij.ui.SimpleColoredComponent
@@ -143,7 +144,7 @@ internal class FilterTextField(
   private val filterParser: LogcatFilterParser,
   initialText: String,
   androidProjectDetector: AndroidProjectDetector = AndroidProjectDetectorImpl(),
-) : BorderLayoutPanel(), FilterTextComponent {
+) : BorderLayoutPanel() {
   private val filterHistory = AndroidLogcatFilterHistory.getInstance()
 
   @TestOnly
@@ -161,13 +162,11 @@ internal class FilterTextField(
       favoriteButton.icon = if (isFavorite) FAVORITE_FILLED else FAVORITE_OUTLINE
     }
 
-  override var text: String
+  var text: String
     get() = textField.text
     set(value) {
       textField.text = value
     }
-
-  override val component: Component get() = this
 
   init {
     text = initialText
@@ -276,7 +275,7 @@ internal class FilterTextField(
   }
 
   @UiThread
-  override fun addDocumentListener(listener: DocumentListener) {
+  fun addDocumentListener(listener: DocumentListener) {
     documentChangedListeners.add(listener)
   }
 
@@ -397,7 +396,7 @@ internal class FilterTextField(
   @UiThread
   internal inner class HistoryList(
     parentDisposable: Disposable,
-    coroutineContext: CoroutineContext = EmptyCoroutineContext,
+    parentContext: CoroutineContext = EmptyCoroutineContext,
   ) : JBList<FilterHistoryItem>() {
     private val listModel = CollectionListModel<FilterHistoryItem>()
     private val inactiveColor = String.format("%06x", NamedColorUtil.getInactiveTextColor().rgb and 0xffffff)
@@ -427,14 +426,14 @@ internal class FilterTextField(
       cellRenderer = HistoryListCellRenderer()
 
       // In a background thread, calculate the count of all the items and update the model.
-      AndroidCoroutineScope(parentDisposable, coroutineContext).launch {
+      AndroidCoroutineScope(parentDisposable, parentContext).launch {
         val application = ApplicationManager.getApplication()
         listModel.items.forEachIndexed { index, item ->
           if (item is Item) {
             launch {
               val count = application.runReadAction<Int> { logcatPresenter.countFilterMatches(filters[index]) }
               // Replacing an item in the model will remove the selection. Save the selected index, so we can restore it after.
-              withContext(uiThread) {
+              withContext(uiThread + parentContext) {
                 val selected = selectedIndex
                 listModel.setElementAt(Item(item.filter, item.isFavorite, count, filterParser), index)
                 if (selected >= 0) {
@@ -663,8 +662,8 @@ internal class FilterTextField(
       override fun getComponent(isSelected: Boolean, list: JList<out FilterHistoryItem>): JComponent {
         // This can be mico optimized, but it's more readable like this
         favoriteLabel.icon = when {
-          isFavoriteHovered && isFavorite -> ColoredIconGenerator.generateWhiteIcon(FAVORITE_FILLED)
-          isFavoriteHovered && !isFavorite -> ColoredIconGenerator.generateWhiteIcon(FAVORITE_OUTLINE)
+          isFavoriteHovered && isFavorite -> whiteIconForOldUI(FAVORITE_FILLED)
+          isFavoriteHovered && !isFavorite -> whiteIconForOldUI(FAVORITE_OUTLINE)
           !isFavoriteHovered && isFavorite -> FAVORITE_FILLED
           else -> blankIcon
         }
@@ -687,6 +686,9 @@ internal class FilterTextField(
 
         return component
       }
+
+      private fun whiteIconForOldUI(icon: Icon): Icon =
+        if (isNewUI()) icon else ColoredIconGenerator.generateWhiteIcon(icon)
 
       // Items have unique text, so we only need to check the "filter" field. We MUST ignore the "count" field because we do not yet know
       // the count when we set the selected item.

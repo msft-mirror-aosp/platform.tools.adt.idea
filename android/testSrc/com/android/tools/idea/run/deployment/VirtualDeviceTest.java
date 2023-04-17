@@ -27,8 +27,6 @@ import static org.junit.Assert.assertEquals;
 import com.android.testutils.ImageDiffUtil;
 import com.android.tools.idea.run.AndroidDevice;
 import com.android.tools.idea.run.LaunchCompatibility;
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
 import com.intellij.execution.runners.ExecutionUtil;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.IconManager;
@@ -38,8 +36,6 @@ import com.intellij.util.IconUtil;
 import com.intellij.util.ui.ImageUtil;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -53,8 +49,6 @@ import org.mockito.Mockito;
 
 @RunWith(JUnit4.class)
 public final class VirtualDeviceTest {
-  private static final Key DEVICE_KEY = new VirtualDevicePath("/home/user/.android/avd/Pixel_4_API_30.avd");
-
   private void assertIconSimilar(Icon expectedIcon, Icon actualIcon) throws IOException {
     BufferedImage expectedIconImage = ImageUtil.toBufferedImage(IconUtil.toImage(expectedIcon, ScaleContext.createIdentity()));
     BufferedImage actualIconImage = ImageUtil.toBufferedImage(IconUtil.toImage(actualIcon, ScaleContext.createIdentity()));
@@ -78,7 +72,7 @@ public final class VirtualDeviceTest {
     // Arrange
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
       .setSelectDeviceSnapshotComboBoxSnapshotsEnabled(false)
@@ -88,7 +82,7 @@ public final class VirtualDeviceTest {
     Object target = device.getDefaultTarget();
 
     // Assert
-    assertEquals(new QuickBootTarget(DEVICE_KEY), target);
+    assertEquals(new QuickBootTarget(Keys.PIXEL_4_API_30), target);
   }
 
   @Test
@@ -96,7 +90,7 @@ public final class VirtualDeviceTest {
     // Arrange
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
       .setSelectDeviceSnapshotComboBoxSnapshotsEnabled(false)
@@ -106,7 +100,7 @@ public final class VirtualDeviceTest {
     Object targets = device.getTargets();
 
     // Assert
-    assertEquals(Collections.singletonList(new QuickBootTarget(DEVICE_KEY)), targets);
+    assertEquals(Collections.singletonList(new QuickBootTarget(Keys.PIXEL_4_API_30)), targets);
   }
 
   @Test
@@ -114,7 +108,7 @@ public final class VirtualDeviceTest {
     // Arrange
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setConnectionTime(Instant.parse("2018-11-28T01:15:27Z"))
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
@@ -124,21 +118,18 @@ public final class VirtualDeviceTest {
     Object targets = device.getTargets();
 
     // Assert
-    assertEquals(Collections.singletonList(new RunningDeviceTarget(DEVICE_KEY)), targets);
+    assertEquals(Collections.singletonList(new RunningDeviceTarget(Keys.PIXEL_4_API_30)), targets);
   }
 
   @Test
   public void getTargets() {
     // Arrange
-    FileSystem fileSystem = Jimfs.newFileSystem(Configuration.unix());
-    Path snapshotKey = fileSystem.getPath("/home/user/.android/avd/Pixel_4_API_30.avd/snapshots/snap_2020-12-17_12-26-30");
-
     Device device = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(Mockito.mock(AndroidDevice.class))
       .setType(Device.Type.PHONE)
-      .addSnapshot(new Snapshot(snapshotKey))
+      .addSnapshot(new Snapshot(Keys.PIXEL_4_API_30_SNAPSHOT_2))
       .setSelectDeviceSnapshotComboBoxSnapshotsEnabled(true)
       .build();
 
@@ -146,9 +137,9 @@ public final class VirtualDeviceTest {
     Object actualTargets = device.getTargets();
 
     // Assert
-    Object expectedTargets = Arrays.asList(new ColdBootTarget(DEVICE_KEY),
-                                           new QuickBootTarget(DEVICE_KEY),
-                                           new BootWithSnapshotTarget(DEVICE_KEY, snapshotKey));
+    Object expectedTargets = Arrays.asList(new ColdBootTarget(Keys.PIXEL_4_API_30),
+                                           new QuickBootTarget(Keys.PIXEL_4_API_30),
+                                           new BootWithSnapshotTarget(Keys.PIXEL_4_API_30, Keys.PIXEL_4_API_30_SNAPSHOT_2));
 
     assertEquals(expectedTargets, actualTargets);
   }
@@ -159,7 +150,7 @@ public final class VirtualDeviceTest {
 
     Device connectedPhoneWithoutErrorOrWarning = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setConnectionTime(Instant.parse("2018-11-28T01:15:27Z"))
       .setAndroidDevice(phoneAndroidDevice)
       .setType(Device.Type.PHONE)
@@ -175,7 +166,7 @@ public final class VirtualDeviceTest {
 
     Device notConnectedWear = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(wearAndroidDevice)
       .setType(Device.Type.WEAR)
       .build();
@@ -190,7 +181,7 @@ public final class VirtualDeviceTest {
 
     Device connectedWearWithError = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setConnectionTime(Instant.parse("2018-11-28T01:15:27Z"))
       .setAndroidDevice(wearAndroidDevice)
       .setType(Device.Type.WEAR)
@@ -210,7 +201,7 @@ public final class VirtualDeviceTest {
 
     Device notConnectedTvWithWarning = new VirtualDevice.Builder()
       .setName("Pixel 4 API 30")
-      .setKey(DEVICE_KEY)
+      .setKey(Keys.PIXEL_4_API_30)
       .setAndroidDevice(tvAndroidDevice)
       .setType(Device.Type.TV)
       .setLaunchCompatibility(new LaunchCompatibility(LaunchCompatibility.State.WARNING, "warning"))

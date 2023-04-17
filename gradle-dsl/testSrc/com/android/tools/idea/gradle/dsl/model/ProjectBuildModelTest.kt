@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.model
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.BOOLEAN_TYPE
@@ -648,19 +647,19 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
 
     val pbm = projectBuildModel
     val buildModel = pbm.projectBuildModel!!
-    val app = pbm.versionCatalogsModel.plugins("libs").findProperty("app")
+    val app = pbm.versionCatalogsModel.plugins("libs")!!.findProperty("app")
     buildModel.applyPlugin(ReferenceTo(app, buildModel), null).also { pluginModel ->
       assertEquals("com.android.application", pluginModel.name().forceString())
       assertEquals("7.1.0", pluginModel.version().forceString())
       assertMissingProperty(pluginModel.apply())
     }
-    val lib = pbm.versionCatalogsModel.plugins("libs").findProperty("lib")
+    val lib = pbm.versionCatalogsModel.plugins("libs")!!.findProperty("lib")
     buildModel.applyPlugin(ReferenceTo(lib, buildModel), true).also { pluginModel ->
       assertEquals("com.android.library", pluginModel.name().forceString())
       assertEquals("7.1.0", pluginModel.version().forceString())
       assertEquals("true", pluginModel.apply().forceString())
     }
-    val com = pbm.versionCatalogsModel.plugins("libs").findProperty("com")
+    val com = pbm.versionCatalogsModel.plugins("libs")!!.findProperty("com")
     buildModel.applyPlugin(ReferenceTo(com, buildModel), false).also { pluginModel ->
       assertEquals("com.android.dynamic-feature", pluginModel.name().forceString())
       assertEquals("7.1.0", pluginModel.version().forceString())
@@ -832,7 +831,7 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
 
     val pbm = projectBuildModel
     val vcModel = pbm.versionCatalogsModel
-    val versions = vcModel.getVersionCatalogModel("libs").versions()!!
+    val versions = vcModel.getVersionCatalogModel("libs")!!.versions()
     val foo = versions.findProperty("foo")
     assertEquals("1.1.1", foo.toString())
     foo.setValue("1.2.3")
@@ -869,33 +868,27 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
 
   @Test
   fun testUpdateFromMultipleVCModels() {
-    StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.override(true)
-    try {
-      writeToBuildFile("")
-      writeToVersionCatalogFile("""
+    writeToBuildFile("")
+    writeToVersionCatalogFile("""
         [libraries]
         foo = { version = "1.2.3", group = "com.example", name = "foo" }
       """.trimIndent())
 
-      val pbm = projectBuildModel
-      val vcModel = pbm.versionCatalogsModel
-      val lib1 = vcModel.libraries("libs")!!
-      val lib2 = vcModel.libraries("libs")!!
-      val foo1 = lib1.findProperty("foo")
-      val foo2 = lib2.findProperty("foo")
-      foo1.getMapValue("group")!!.delete()
-      // models are not in sync
-      Assert.assertNotNull(foo2.getMapValue ("group"))
-      foo2.getMapValue("version")!!.delete()
-      applyChanges(pbm)
-      verifyVersionCatalogFileContents(myVersionCatalogFile, """
+    val pbm = projectBuildModel
+    val vcModel = pbm.versionCatalogsModel
+    val lib1 = vcModel.libraries("libs")!!
+    val lib2 = vcModel.libraries("libs")!!
+    val foo1 = lib1.findProperty("foo")
+    val foo2 = lib2.findProperty("foo")
+    foo1.getMapValue("group")!!.delete()
+    // models are not in sync
+    Assert.assertNotNull(foo2.getMapValue("group"))
+    foo2.getMapValue("version")!!.delete()
+    applyChanges(pbm)
+    verifyVersionCatalogFileContents(myVersionCatalogFile, """
          [libraries]
         foo = { name = "foo" }
       """.trimIndent())
-    }
-    finally {
-      StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.clearOverride()
-    }
   }
 
   @Test
@@ -1036,16 +1029,14 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
 
   @Test
   fun testTwoTomlFilesVisibility() {
-    StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.override(true)
-    try {
-      val gradlePath = myProjectBasePath.findChild("gradle")!!
-      var myVersionCatalogFile: VirtualFile? = null
-        runWriteAction<Unit, IOException> { myVersionCatalogFile = gradlePath.createChildData(this, "testLibs.versions.toml") }
-      saveFileUnderWrite(myVersionCatalogFile!!, """
+    val gradlePath = myProjectBasePath.findChild("gradle")!!
+    var myVersionCatalogFile: VirtualFile? = null
+    runWriteAction<Unit, IOException> { myVersionCatalogFile = gradlePath.createChildData(this, "testLibs.versions.toml") }
+    saveFileUnderWrite(myVersionCatalogFile!!, """
       [libraries]
         fooTest = { version = "2.3.4", group = "com.example", name = "fooTest" }
       """.trimIndent())
-      writeToSettingsFile("""
+    writeToSettingsFile("""
         dependencyResolutionManagement {
           versionCatalogs {
              testLibs {
@@ -1054,33 +1045,29 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
           }
         }
       """.trimIndent())
-      writeToBuildFile("")
-      writeToVersionCatalogFile("""
+    writeToBuildFile("")
+    writeToVersionCatalogFile("""
         [libraries]
         foo = { version = "1.2.3", group = "com.example", name = "foo" }
       """.trimIndent())
 
-      val pbm = projectBuildModel
-      val vcModel = pbm.versionCatalogsModel
-      assertContainsElements(vcModel.catalogNames(), "libs", "testLibs")
-      val libraries = vcModel.libraries("libs")!!
-      val foo = libraries.findProperty("foo")
-      assertEquals("1.2.3", foo.getMapValue("version")!!.toString())
+    val pbm = projectBuildModel
+    val vcModel = pbm.versionCatalogsModel
+    assertContainsElements(vcModel.catalogNames(), "libs", "testLibs")
+    val libraries = vcModel.libraries("libs")!!
+    val foo = libraries.findProperty("foo")
+    assertEquals("1.2.3", foo.getMapValue("version")!!.toString())
 
-      val testLibs = vcModel.libraries("testLibs")!!
-      val fooTest = testLibs.findProperty("fooTest")
-      assertEquals("2.3.4", fooTest.getMapValue("version")!!.toString())
+    val testLibs = vcModel.libraries("testLibs")!!
+    val fooTest = testLibs.findProperty("fooTest")
+    assertEquals("2.3.4", fooTest.getMapValue("version")!!.toString())
 
-      fooTest.getMapValue("version")!!.setValue("3.3.3")
-      applyChanges(pbm)
-      verifyFileContents(myVersionCatalogFile!!, """
+    fooTest.getMapValue("version")!!.setValue("3.3.3")
+    applyChanges(pbm)
+    verifyFileContents(myVersionCatalogFile!!, """
         [libraries]
         fooTest = { version = "3.3.3", group = "com.example", name = "fooTest" }
       """.trimIndent())
-    }
-    finally {
-      StudioFlags.GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT.clearOverride()
-    }
   }
 
   @Test
@@ -1616,10 +1603,10 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     val buildModel = pbm.projectBuildModel!!
     val dependencies = buildModel.dependencies()
     val versionCatalog = pbm.versionCatalogsModel
-    ReferenceTo(versionCatalog.libraries("libs").findProperty("a_dep-endency"), dependencies).let { reference ->
+    ReferenceTo(versionCatalog.libraries("libs")!!.findProperty("a_dep-endency"), dependencies).let { reference ->
       dependencies.addArtifact("api", reference)
     }
-    ReferenceTo(versionCatalog.libraries("libs").findProperty("a_nother-dep_endency"), dependencies).let { reference ->
+    ReferenceTo(versionCatalog.libraries("libs")!!.findProperty("a_nother-dep_endency"), dependencies).let { reference ->
       dependencies.addArtifact("implementation", reference)
     }
     applyChangesAndReparse(pbm)
@@ -1636,10 +1623,10 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     val buildModel = pbm.projectBuildModel!!
     val dependencies = buildModel.dependencies()
     val versionCatalog = pbm.versionCatalogsModel
-    ReferenceTo(versionCatalog.libraries("libs").findProperty("a_dep-endency"), dependencies).let { reference ->
+    ReferenceTo(versionCatalog.libraries("libs")!!.findProperty("a_dep-endency"), dependencies).let { reference ->
       dependencies.addPlatformArtifact("api", reference, false)
     }
-    ReferenceTo(versionCatalog.libraries("libs").findProperty("a_nother-dep_endency"), dependencies).let { reference ->
+    ReferenceTo(versionCatalog.libraries("libs")!!.findProperty("a_nother-dep_endency"), dependencies).let { reference ->
       dependencies.addPlatformArtifact("implementation", reference, true)
     }
     applyChangesAndReparse(pbm)
@@ -1656,7 +1643,7 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     val buildModel = pbm.projectBuildModel!!
     val dependencies = buildModel.dependencies()
     val versionCatalog = pbm.versionCatalogsModel
-    ReferenceTo(versionCatalog.bundles("libs").findProperty("dep_endencies"), dependencies).let { reference ->
+    ReferenceTo(versionCatalog.bundles("libs")!!.findProperty("dep_endencies"), dependencies).let { reference ->
       dependencies.addArtifact("api", reference)
     }
     applyChangesAndReparse(pbm)

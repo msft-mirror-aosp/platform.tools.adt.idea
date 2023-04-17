@@ -21,7 +21,7 @@ import com.android.tools.adtui.actions.ZoomOutAction
 import com.android.tools.adtui.actions.ZoomToFitAction
 import com.android.tools.idea.layoutinspector.ui.DeviceViewContentPanel
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
-import com.android.tools.idea.layoutinspector.ui.Toggle3dAction
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.Toggle3dAction
 import com.android.tools.idea.tests.gui.framework.GuiTests
 import com.android.tools.idea.tests.gui.framework.fixture.ActionButtonFixture
 import com.android.tools.idea.tests.gui.framework.fixture.JComponentFixture
@@ -52,7 +52,7 @@ class DeviceViewPanelFixture(
 
   val mode3DActionButton: ActionButtonFixture
     get() = ActionButtonFixture.findByActionInstance(
-      Toggle3dAction, robot(), target())
+      Toggle3dAction { contentPanel.renderModel}, robot(), target())
 
   val zoomInButton: ActionButtonFixture
     get() = ActionButtonFixture.findByActionClass(

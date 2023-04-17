@@ -16,7 +16,7 @@
 package com.android.tools.idea.logcat
 
 import com.android.annotations.concurrency.UiThread
-import com.android.ddmlib.AndroidDebugBridge
+import com.android.processmonitor.monitor.ProcessNameMonitor
 import com.android.tools.adtui.toolwindow.splittingtabs.state.SplittingTabsStateProvider
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -28,6 +28,7 @@ import com.android.tools.idea.logcat.LogcatMainPanel.LogcatServiceEvent.StopLogc
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Custom
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Preset
+import com.android.tools.idea.logcat.LogcatPresenter.Companion.CONNECTED_DEVICE
 import com.android.tools.idea.logcat.LogcatPresenter.Companion.LOGCAT_PRESENTER_ACTION
 import com.android.tools.idea.logcat.ProjectApplicationIdsProvider.Companion.PROJECT_APPLICATION_IDS_CHANGED_TOPIC
 import com.android.tools.idea.logcat.ProjectApplicationIdsProvider.ProjectApplicationIdsListener
@@ -44,6 +45,7 @@ import com.android.tools.idea.logcat.actions.NextOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.PauseLogcatAction
 import com.android.tools.idea.logcat.actions.PreviousOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.RestartLogcatAction
+import com.android.tools.idea.logcat.actions.TerminateAppActions
 import com.android.tools.idea.logcat.actions.ToggleFilterAction
 import com.android.tools.idea.logcat.devices.Device
 import com.android.tools.idea.logcat.filters.LogcatFilter
@@ -58,27 +60,32 @@ import com.android.tools.idea.logcat.message.LogcatMessage
 import com.android.tools.idea.logcat.messages.AndroidLogcatFormattingOptions
 import com.android.tools.idea.logcat.messages.DocumentAppender
 import com.android.tools.idea.logcat.messages.FormattingOptions
-import com.android.tools.idea.logcat.messages.LOGCAT_FILTER_HINT_KEY
 import com.android.tools.idea.logcat.messages.LogcatColors
 import com.android.tools.idea.logcat.messages.MessageBacklog
 import com.android.tools.idea.logcat.messages.MessageFormatter
 import com.android.tools.idea.logcat.messages.MessageProcessor
 import com.android.tools.idea.logcat.messages.ProcessThreadFormat
 import com.android.tools.idea.logcat.messages.TextAccumulator
-import com.android.tools.idea.logcat.messages.TextAccumulator.FilterHint
 import com.android.tools.idea.logcat.messages.TimestampFormat
 import com.android.tools.idea.logcat.service.LogcatService
+import com.android.tools.idea.logcat.service.ProjectAppMonitor
 import com.android.tools.idea.logcat.settings.AndroidLogcatSettings
 import com.android.tools.idea.logcat.util.AndroidProjectDetector
 import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
+import com.android.tools.idea.logcat.util.FilterHint
 import com.android.tools.idea.logcat.util.LOGGER
+import com.android.tools.idea.logcat.util.LogcatEvent.LogcatMessagesEvent
+import com.android.tools.idea.logcat.util.LogcatEvent.LogcatPanelVisibility
 import com.android.tools.idea.logcat.util.LogcatUsageTracker
 import com.android.tools.idea.logcat.util.MostRecentlyAddedSet
+import com.android.tools.idea.logcat.util.consume
 import com.android.tools.idea.logcat.util.createLogcatEditor
 import com.android.tools.idea.logcat.util.getDefaultFilter
+import com.android.tools.idea.logcat.util.getFilterHint
 import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
 import com.android.tools.idea.logcat.util.toggleFilterTerm
+import com.android.tools.idea.logcat.util.trackVisibility
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncReason.Companion.USER_REQUEST
 import com.android.tools.idea.run.ClearLogcatListener
@@ -103,6 +110,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys.EDITOR
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.diagnostic.debug
@@ -125,6 +133,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -260,7 +270,7 @@ internal class LogcatMainPanel @TestOnly constructor(
   private var ignoreCaretAtBottom = false // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
   private val connectedDevice = AtomicReference<Device?>()
   private val logcatServiceChannel = Channel<LogcatServiceEvent>(1)
-  private val clientListener = ProjectAppMonitor(this, packageNamesProvider)
+  private val projectAppMonitor = ProjectAppMonitor(project.getService(ProcessNameMonitor::class.java), packageNamesProvider)
 
   @VisibleForTesting
   internal var logcatServiceJob: Job? = null
@@ -394,9 +404,6 @@ internal class LogcatMainPanel @TestOnly constructor(
         }
       }
     }
-
-    AndroidDebugBridge.addDeviceChangeListener(clientListener)
-    AndroidDebugBridge.addClientChangeListener(clientListener)
   }
 
   private fun getPopupActionGroup(actions: Array<AnAction>): ActionGroup {
@@ -410,6 +417,12 @@ internal class LogcatMainPanel @TestOnly constructor(
       add(CreateScratchFileAction())
       add(Separator.create())
       actions.forEach { add(it) }
+      if (StudioFlags.ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER.get() && StudioFlags.LOGCAT_TERMINATE_APP_ACTIONS_ENABLED.get()) {
+        add(Separator.getInstance())
+        add(TerminateAppActions.ForceStopAppAction())
+        add(TerminateAppActions.KillAppAction())
+        add(TerminateAppActions.CrashAppAction())
+      }
       add(Separator.create())
       add(ClearLogcatAction())
     }
@@ -500,8 +513,6 @@ internal class LogcatMainPanel @TestOnly constructor(
 
   override fun dispose() {
     EditorFactory.getInstance().releaseEditor(editor)
-    AndroidDebugBridge.removeDeviceChangeListener(clientListener)
-    AndroidDebugBridge.removeClientChangeListener(clientListener)
   }
 
   override fun applyLogcatSettings(logcatSettings: AndroidLogcatSettings) {
@@ -598,11 +609,26 @@ internal class LogcatMainPanel @TestOnly constructor(
   }
 
 
-  override fun isSoftWrapEnabled(): Boolean  = isSoftWrapEnabled
+  override fun isSoftWrapEnabled(): Boolean = isSoftWrapEnabled
 
   override fun setSoftWrapEnabled(state: Boolean) {
     isSoftWrapEnabled = state
     reloadMessages()
+  }
+
+  override fun getBacklogMessages(): List<LogcatMessage> {
+    return messageBacklog.get().messages
+  }
+
+  override suspend fun enterInvisibleMode() {
+    messageBacklog.set(MessageBacklog(logcatSettings.bufferSize))
+    tags.clear()
+    packages.clear()
+    processNames.clear()
+    documentAppender.reset()
+    withContext(uiThread) {
+      document.setText("")
+    }
   }
 
   override fun clearMessageView() {
@@ -650,6 +676,11 @@ internal class LogcatMainPanel @TestOnly constructor(
 
   override fun isLogcatEmpty() = messageBacklog.get().messages.isEmpty()
 
+  override fun isShowing(): Boolean {
+    // Return true in tests, so we can test the LogcatEvent flow
+    return if (ApplicationManager.getApplication().isUnitTestMode) true else super.isShowing()
+  }
+
   override fun getData(dataId: String): Any? {
     val device = connectedDevice.get()
     return when (dataId) {
@@ -658,7 +689,7 @@ internal class LogcatMainPanel @TestOnly constructor(
       ScreenRecorderAction.SCREEN_RECORDER_PARAMETERS_KEY.name -> device?.let {
         ScreenRecorderAction.Parameters(it.name, it.serialNumber, it.sdk, if (it.isEmulator) it.deviceId else null, this)
       }
-
+      CONNECTED_DEVICE.name -> device
       EDITOR.name -> editor
       else -> null
     }
@@ -681,11 +712,22 @@ internal class LogcatMainPanel @TestOnly constructor(
     messageBacklog.get().clear()
 
     return coroutineScope.launch(Dispatchers.IO) {
-      logcatService.readLogcat(device).also {
-        // Set the device after we start the service so that the service will be running when we
-        // are reporting an active device.
-        connectedDevice.set(device)
-        it.collect { message -> processMessages(message) }
+      val logcatFlow = logcatService.readLogcat(device).transform { emit(LogcatMessagesEvent(it)) }
+      val processMonitorFlow = projectAppMonitor.monitorDevice(device.serialNumber).transform {
+        emit(LogcatMessagesEvent(listOf(it)))
+      }
+
+      connectedDevice.set(device)
+
+      if (StudioFlags.LOGCAT_PANEL_MEMORY_SAVER.get()) {
+        val panelVisibilityFlow = trackVisibility().transform {
+          emit(LogcatPanelVisibility(it))
+        }
+        val flow = merge(logcatFlow, processMonitorFlow, panelVisibilityFlow)
+        flow.consume(this@LogcatMainPanel, device.serialNumber, logcatSettings.bufferSize)
+      }
+      else {
+        merge(logcatFlow, processMonitorFlow).collect { processMessages(it.messages) }
       }
     }
   }
@@ -703,12 +745,7 @@ internal class LogcatMainPanel @TestOnly constructor(
   private fun MouseEvent.getFilterHint(): FilterHint? {
     val position = editor.xyToLogicalPosition(Point(x, y))
     val offset = editor.logicalPositionToOffset(position)
-    var filterHint: FilterHint? = null
-    document.processRangeMarkersOverlappingWith(offset, offset) {
-      filterHint = it.getUserData(LOGCAT_FILTER_HINT_KEY)
-      filterHint == null
-    }
-    return filterHint
+    return editor.getFilterHint(offset, formattingOptions)
   }
 
   override fun getFilter(): String = headerPanel.filter

@@ -19,11 +19,14 @@ import static com.android.SdkConstants.CONSTRUCTOR_NAME;
 import static com.android.SdkConstants.DOT_PNG;
 import static com.android.SdkConstants.VIEW_FRAGMENT;
 import static com.android.SdkConstants.WIDGET_PKG_PREFIX;
-import static com.android.tools.idea.rendering.ProblemSeverity.ERROR;
-import static com.android.tools.idea.rendering.ProblemSeverity.WARNING;
+import static com.android.tools.rendering.ProblemSeverity.ERROR;
+import static com.android.tools.rendering.ProblemSeverity.WARNING;
 
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.ide.common.rendering.api.ILayoutLog;
+import com.android.tools.rendering.HtmlLinkManager;
+import com.android.tools.rendering.IRenderLogger;
+import com.android.tools.rendering.RenderProblem;
 import com.android.utils.HtmlBuilder;
 import com.android.utils.XmlUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -49,6 +52,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
@@ -157,23 +161,26 @@ public class RenderLogger implements IRenderLogger {
 
   private final RenderProblem.RunnableFixFactory myFixFactory;
 
+  private final Supplier<HtmlLinkManager> myHtmlLinkManagerFactory;
+
   public RenderLogger(
     @Nullable Project project,
     @Nullable Object credential,
     boolean logFramework,
-    @NotNull RenderProblem.RunnableFixFactory fixFactory) {
+    @NotNull RenderProblem.RunnableFixFactory fixFactory,
+    @NotNull Supplier<HtmlLinkManager> linkManagerFactory) {
     myProject = project;
     myCredential = credential;
     myLogFramework = logFramework;
     myFixFactory = fixFactory;
+    myHtmlLinkManagerFactory = linkManagerFactory;
   }
 
   /**
    * Construct a logger for the given named layout. Don't call this method directly; obtain via {@link RenderService}.
    */
-  @VisibleForTesting
-  public RenderLogger(@Nullable Project module) {
-    this(module, null, false, RenderProblem.NOOP_RUNNABLE_FIX_FACTORY);
+  public RenderLogger(@Nullable Project project) {
+    this(project, null, false, RenderProblem.NOOP_RUNNABLE_FIX_FACTORY, () -> HtmlLinkManager.NOOP_LINK_MANAGER);
   }
 
   @VisibleForTesting
@@ -668,7 +675,7 @@ public class RenderLogger implements IRenderLogger {
   @NotNull
   public HtmlLinkManager getLinkManager() {
     if (myLinkManager == null) {
-      myLinkManager = new HtmlLinkManager();
+      myLinkManager = myHtmlLinkManagerFactory.get();
     }
     return myLinkManager;
   }

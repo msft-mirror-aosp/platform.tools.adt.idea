@@ -524,8 +524,7 @@ public class IdeSdks {
       return false;
     }
     Path jdkPath = doGetJdkPath(false);
-    Path embeddedJdkPath = getEmbeddedJdkPath();
-    return jdkPath != null && embeddedJdkPath != null && FileUtil.pathsEqual(jdkPath.toString(), embeddedJdkPath.toString());
+    return jdkPath != null && FileUtil.pathsEqual(jdkPath.toString(), getEmbeddedJdkPath().toString());
   }
 
   /**
@@ -533,15 +532,11 @@ public class IdeSdks {
    */
   public void setUseEmbeddedJdk() {
     checkState(myIdeInfo.isAndroidStudio(), "This method is for use in Android Studio only.");
-    Path embeddedJdkPath = getEmbeddedJdkPath();
-    setJdkPath(embeddedJdkPath);
+    setJdkPath(getEmbeddedJdkPath());
   }
 
-  @Nullable
+  @NotNull
   public Path getEmbeddedJdkPath() {
-    if (!myIdeInfo.isAndroidStudio()) {
-      return null;
-    }
     return myEmbeddedDistributionPaths.getEmbeddedJdkPath();
   }
 
@@ -707,7 +702,7 @@ public class IdeSdks {
       if (SystemInfo.isLinux) {
         for (File child : notNullize(jdkPath.listFiles())) {
           if (child.isDirectory() && checkForJdk(child.toPath())) {
-            Sdk jdk = myJdks.createJdk(child.getPath());
+            Sdk jdk = myJdks.createAndAddJdk(child.getPath());
             if (isJdkCompatible(jdk, preferredVersion)) {
               return jdk;
             }
@@ -810,7 +805,7 @@ public class IdeSdks {
         return jdk;
       }
     }
-    return myJdks.createJdk(homeDirectory.toString());
+    return myJdks.createAndAddJdk(homeDirectory.toString());
   }
 
   @NotNull

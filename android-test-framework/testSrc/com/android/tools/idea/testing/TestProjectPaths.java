@@ -37,6 +37,7 @@ public final class TestProjectPaths {
   public static final String INSTANT_APP_WITH_DYNAMIC_FEATURES = "projects/instantAppWithDynamicFeatures";
   public static final String INSTRUMENTATION_RUNNER = "projects/instrumentationRunner";
   public static final String INSTRUMENTATION_RUNNER_ANDROID_TEST_ORCHESTRATOR = "projects/instrumentationRunnerAndroidTestOrchestrator";
+  public static final String KOTLIN_WITH_VERSION_CATALOG = "projects/kotlinWithVersionCatalog";
   public static final String KOTLIN_GRADLE_DSL = "projects/kotlinGradleDsl";
   public static final String KOTLIN_KAPT = "projects/kotlinKapt";
   public static final String LOCAL_AARS_AS_MODULES = "projects/localAarsAsModules";
@@ -96,6 +97,8 @@ public final class TestProjectPaths {
   public static final String SIMPLE_APPLICATION_PLUGINS_DSL = "projects/simpleApplicationPluginsDsl";
   public static final String SIMPLE_APPLICATION_PLUGIN_MANAGEMENT_DSL = "projects/simpleApplicationPluginManagementDsl";
   public static final String SIMPLE_APPLICATION_VERSION_CATALOG = "projects/simpleApplicationVersionCatalog";
+  public static final String SIMPLE_APPLICATION_MULTI_VERSION_CATALOG = "projects/simpleApplicationMultiVersionCatalog";
+  public static final String SIMPLE_APPLICATION_VERSION_CATALOG_KTS = "projects/simpleApplicationVersionCatalogKts";
   public static final String SIMPLE_APPLICATION_WITH_DUPLICATES = "projects/simpleApplicationWithDuplicates";
   public static final String SIMPLE_APPLICATION_UNRESOLVED_DEPENDENCY = "projects/simpleApplicationUnresolvedDependency";
   public static final String SIMPLE_APP_WITH_OLDER_SUPPORT_LIB = "projects/simpleAppWithOlderSupportLib";

@@ -20,11 +20,12 @@ import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.surface.DesignSurfaceSettings
 import com.android.tools.idea.common.surface.Layer
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
-import com.android.tools.idea.uibuilder.surface.BorderLayer
+import com.android.tools.idea.uibuilder.surface.layer.BorderLayer
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.ScreenView
 import com.android.tools.idea.uibuilder.surface.ScreenViewLayer
 import com.android.tools.idea.uibuilder.surface.ScreenViewProvider
+import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -88,6 +89,7 @@ private class SetScreenViewProviderAction(name: String, description: String, pri
  * Provide the custom [ScreenView] to the current [NlDesignSurface] for the drawable files.
  */
 class DrawableScreenViewProvider(private val defaultType: DrawableBackgroundType) : ScreenViewProvider {
+  override var colorBlindFilter: ColorBlindMode = ColorBlindMode.NONE
   override val displayName: String = "Drawable Mode"
   private var myDrawableBackgroundLayer: DrawableBackgroundLayer? = null
 
@@ -106,8 +108,8 @@ class DrawableScreenViewProvider(private val defaultType: DrawableBackgroundType
   private fun createScreenLayer(screenView: ScreenView): ImmutableList<Layer> {
     val backgroundLayer = DrawableBackgroundLayer(screenView, defaultType)
     myDrawableBackgroundLayer = backgroundLayer
-    val borderLayer = BorderLayer(screenView)
-    val screenViewLayer = ScreenViewLayer(screenView)
+    val borderLayer = BorderLayer(screenView,  isRotating = { screenView.surface.isRotating } )
+    val screenViewLayer = ScreenViewLayer(screenView, colorBlindFilter)
     return ImmutableList.of(backgroundLayer, borderLayer, screenViewLayer)
   }
 }

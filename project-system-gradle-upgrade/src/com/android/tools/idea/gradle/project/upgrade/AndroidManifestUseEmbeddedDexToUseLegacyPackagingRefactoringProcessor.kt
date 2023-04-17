@@ -76,18 +76,17 @@ class AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor : Ag
     projectBuildModel.allIncludedBuildModels.forEach model@{ model ->
       val modelPsiElement = model.psiElement ?: return@model
       val moduleDirectory = model.moduleRootDirectory
-      val manifestValue = moduleDirectory.computeUseEmbeddedDexWith { attribute ->
-        val wrappedPsiElement = WrappedPsiElement(attribute, this, REMOVE_MANIFEST_USE_EMBEDDED_DEX)
-        val usageInfo = AndroidManifestUseEmbeddedDexInfo(wrappedPsiElement)
-        usages.add(usageInfo)
+      val manifestValue = moduleDirectory.computeUseEmbeddedDexWith {
+
       }
       manifestValue?.let {
-        if (model.android().packagingOptions().dex().useLegacyPackaging().valueType != GradlePropertyModel.ValueType.NONE) return@let
-        val psiElement = model.android().packagingOptions().dex().psiElement
-                         ?: model.android().packagingOptions().psiElement
+        if (model.android().packaging().dex().useLegacyPackaging().valueType != GradlePropertyModel.ValueType.NONE) return@let
+        if (!it) return@let
+        val psiElement = model.android().packaging().dex().psiElement
+                         ?: model.android().packaging().psiElement
                          ?: model.android().psiElement ?: modelPsiElement
         val wrappedPsiElement = WrappedPsiElement(psiElement, this, ADD_DSL_USE_LEGACY_PACKAGING)
-        val usageInfo = AddDexUseLegacyPackagingInfo(wrappedPsiElement, model, !manifestValue)
+        val usageInfo = AddDexUseLegacyPackagingInfo(wrappedPsiElement, model, false)
         usages.add(usageInfo)
       }
     }
@@ -106,24 +105,9 @@ class AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor : Ag
   }
 
   companion object {
-    val REMOVE_MANIFEST_USE_EMBEDDED_DEX = UsageType(AndroidBundle.messagePointer(
-      "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.removeUseEmbeddedDex.usageType"))
     val ADD_DSL_USE_LEGACY_PACKAGING = UsageType(AndroidBundle.messagePointer(
       "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.addUseLegacyPackaging.usageType"))
   }
-}
-
-class AndroidManifestUseEmbeddedDexInfo(element: WrappedPsiElement) : GradleBuildModelUsageInfo(element) {
-  override fun performBuildModelRefactoring(processor: GradleBuildModelRefactoringProcessor) {
-    element?.let {
-      val containingFile = it.containingFile
-      it.delete()
-      otherAffectedFiles.add(containingFile)
-    }
-  }
-
-  override fun getTooltipText(): String = AndroidBundle.message(
-    "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.removeUseEmbeddedDex.tooltipText")
 }
 
 class AddDexUseLegacyPackagingInfo(
@@ -132,7 +116,7 @@ class AddDexUseLegacyPackagingInfo(
   val value: Boolean
 ) : GradleBuildModelUsageInfo(element) {
   override fun performBuildModelRefactoring(processor: GradleBuildModelRefactoringProcessor) {
-    model.android().packagingOptions().dex().useLegacyPackaging().setValue(value)
+    model.android().packaging().dex().useLegacyPackaging().setValue(value)
   }
 
   override fun getTooltipText(): String = AndroidBundle.message(

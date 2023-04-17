@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.rendering
 
+import com.android.tools.rendering.IRenderLogger
 import com.intellij.psi.PsiClass
 
 /** Information about module dependencies required for rendering. */
@@ -22,6 +23,8 @@ interface RenderModuleDependencies {
   val dependsOnAppCompat: Boolean
 
   val dependsOnAndroidXAppCompat: Boolean
+
+  val dependsOnAndroidX: Boolean
 
   fun reportMissingSdkDependency(logger: IRenderLogger)
 

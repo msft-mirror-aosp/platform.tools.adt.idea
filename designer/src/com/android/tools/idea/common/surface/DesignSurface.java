@@ -469,15 +469,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     return myViewport;
   }
 
-  /**
-   * When true, the surface will autoscroll when the mouse gets near the edges. See {@link JScrollPane#setAutoscrolls(boolean)}
-   */
-  protected void setSurfaceAutoscrolls(boolean enabled) {
-    if (myScrollPane != null) {
-      myScrollPane.setAutoscrolls(enabled);
-    }
-  }
-
   @SurfaceScreenScalingFactor
   @Override
   public double getScreenScalingFactor() {
@@ -518,11 +509,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @NotNull
   public SelectionModel getSelectionModel() {
-    return mySelectionModel;
-  }
-
-  @NotNull
-  public SecondarySelectionModel getSecondarySelectionModel() {
     return mySelectionModel;
   }
 
@@ -1870,11 +1856,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     }
     return null;
   }
-
-  /**
-   * Returns true we shouldn't currently try to relayout our content (e.g. if some other operations is in progress).
-   */
-  public abstract boolean isLayoutDisabled();
 
   @NotNull
   @Override

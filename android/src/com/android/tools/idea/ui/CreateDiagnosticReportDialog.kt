@@ -38,10 +38,11 @@ import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
 import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
-import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.event.ActionEvent
@@ -56,7 +57,6 @@ import javax.swing.Action
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
-import javax.swing.JScrollPane
 import javax.swing.JTree
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.TreeSelectionModel
@@ -122,10 +122,8 @@ class CreateDiagnosticReportDialog(private val project: Project?, files: List<Fi
 
       fileTree = buildTree(files)
 
-      val treeScrollPane = JScrollPane(fileTree).apply {
-        preferredSize = Dimension(300, 300)
-        verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
-        horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+      val treeScrollPane = JBScrollPane(fileTree).apply {
+        preferredSize = JBDimension(300, 300)
       }
 
       constraints.apply {
@@ -145,8 +143,8 @@ class CreateDiagnosticReportDialog(private val project: Project?, files: List<Fi
         })
       }
 
-      val contentsScrollPane = JScrollPane(contents).apply {
-        preferredSize = Dimension(800, 300)
+      val contentsScrollPane = JBScrollPane(contents).apply {
+        preferredSize = JBDimension(800, 300)
       }
 
       constraints.apply {

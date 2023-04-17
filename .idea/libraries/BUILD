@@ -131,13 +131,6 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "baksmali",
-    jars = ["//prebuilts/tools/common/m2:baksmali_files"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "zxing-core",
     jars = ["//prebuilts/tools/common/m2:zxing-core_files"],
     visibility = ["//visibility:public"],
@@ -315,5 +308,19 @@ jvm_import(
 jvm_import(
     name = "oauth2",
     jars = ["//prebuilts/tools/common/m2:oauth2_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "google-dexlib2",
+    jars = ["//prebuilts/tools/common/m2:google-dexlib2_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "google-baksmali",
+    jars = ["//prebuilts/tools/common/m2:google-baksmali_files"],
     visibility = ["//visibility:public"],
 )

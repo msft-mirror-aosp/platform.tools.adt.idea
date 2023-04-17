@@ -16,9 +16,9 @@
 package com.android.tools.idea.rendering.errors
 
 import com.android.ide.common.rendering.api.ILayoutLog
-import com.android.tools.idea.rendering.HtmlLinkManager
 import com.android.tools.idea.rendering.RenderLogger
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel
+import com.android.tools.rendering.HtmlLinkManager
 import com.android.utils.HtmlBuilder
 import com.intellij.lang.annotation.HighlightSeverity
 import javax.swing.event.HyperlinkListener
@@ -81,7 +81,6 @@ object ComposeRenderErrorContributor {
                           linkManager: HtmlLinkManager,
                           linkHandler: HyperlinkListener): List<RenderErrorModel.Issue> =
     logger.messages
-      .filter { it.tag == ILayoutLog.TAG_INFLATE }
       .mapNotNull {
         when {
           isViewModelStackTrace(it.throwable) -> {

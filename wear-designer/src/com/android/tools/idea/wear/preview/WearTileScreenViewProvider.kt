@@ -21,12 +21,13 @@ import com.android.tools.idea.common.surface.SceneLayer
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
-import com.android.tools.idea.uibuilder.surface.ClassLoadingDebugLayer
-import com.android.tools.idea.uibuilder.surface.DiagnosticsLayer
+import com.android.tools.idea.uibuilder.surface.layer.ClassLoadingDebugLayer
+import com.android.tools.idea.uibuilder.surface.layer.DiagnosticsLayer
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.ScreenView
 import com.android.tools.idea.uibuilder.surface.ScreenViewLayer
 import com.android.tools.idea.uibuilder.surface.ScreenViewProvider
+import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 
@@ -34,6 +35,7 @@ import com.google.wireless.android.sdk.stats.LayoutEditorState
 internal val WEAR_TILE_SCREEN_VIEW_PROVIDER =
   object : ScreenViewProvider {
     override val displayName: String = "Wear Tile"
+    override var colorBlindFilter: ColorBlindMode = ColorBlindMode.NONE
 
     override fun createPrimarySceneView(
       surface: NlDesignSurface,
@@ -43,12 +45,12 @@ internal val WEAR_TILE_SCREEN_VIEW_PROVIDER =
         .withLayersProvider {
           ImmutableList.builder<Layer>()
             .apply {
-              add(ScreenViewLayer(it))
+              add(ScreenViewLayer(it, colorBlindFilter))
               add(SceneLayer(it.surface, it, false).apply { isShowOnHover = true })
               StudioFlags.NELE_CLASS_PRELOADING_DIAGNOSTICS.ifEnabled {
                 add(ClassLoadingDebugLayer(surface.models.first().facet.module))
               }
-              StudioFlags.NELE_RENDER_DIAGNOSTICS.ifEnabled { add(DiagnosticsLayer(surface)) }
+              StudioFlags.NELE_RENDER_DIAGNOSTICS.ifEnabled { add(DiagnosticsLayer(surface, surface.project)) }
             }
             .build()
         }

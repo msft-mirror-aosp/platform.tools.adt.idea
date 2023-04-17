@@ -90,6 +90,7 @@ import com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
 import com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeFilterDataImpl
@@ -452,6 +453,9 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         renderscriptFolder = androidLibrary.renderscriptFolder.path,
         proguardRules = androidLibrary.proguardRules.path,
         lintJar = androidLibrary.lintJar.path,
+        srcJar = null,
+        docJar = null,
+        samplesJar = null,
         externalAnnotations = androidLibrary.externalAnnotations.path,
         publicResources = androidLibrary.publicResources.path,
         artifact = androidLibrary.bundle,
@@ -474,7 +478,10 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       val unnamedLibrary = IdeJavaLibraryImpl(
         artifactAddress = artifactAddress,
         name = "",
-        artifact = javaLibrary.jarFile
+        artifact = javaLibrary.jarFile,
+        srcJar = null,
+        docJar = null,
+        samplesJar = null
       )
       val isProvided = copyNewProperty(javaLibrary::isProvided, false)
 
@@ -484,7 +491,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
 
   fun libraryFrom(jarFile: File): IdeDependencyCoreAndIsProvided {
     val artifactAddress = "${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified"
-    val unnamedLibrary = IdeJavaLibraryImpl(artifactAddress, "", jarFile)
+    val unnamedLibrary = IdeJavaLibraryImpl(artifactAddress, "", jarFile, null, null, null)
     return makeDependency(internedModels.getOrCreate(unnamedLibrary), false)
   }
 
@@ -625,6 +632,9 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
             renderscriptFolder = aarLibraryDir.resolve("rs").absolutePath,
             proguardRules = aarLibraryDir.resolve("proguard.txt").absolutePath,
             lintJar = null,
+            srcJar = null,
+            docJar = null,
+            samplesJar = null,
             externalAnnotations = aarLibraryDir.resolve("annotations.zip").absolutePath,
             publicResources = aarLibraryDir.resolve("public.txt").absolutePath,
             artifact = null,
@@ -634,7 +644,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         )
       } else {
         // NOTE: [artifactAddress] needs to be in this form to meet LintModelFactory expectations.
-        internedModels.getOrCreate(IdeJavaLibraryImpl("$LOCAL_JARS:" + jarFile.path + ":unspecified", "", jarFile))
+        internedModels.getOrCreate(IdeJavaLibraryImpl("$LOCAL_JARS:" + jarFile.path + ":unspecified", "", jarFile, null, null, null))
       }
     }
 
@@ -643,7 +653,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       runtimeOnlyClasses: Collection<File>
     ): IdeModelWithPostProcessor<IdeDependenciesCoreImpl> {
       return IdeModelWithPostProcessor(
-        IdeDependenciesCoreImpl(
+        IdeDependenciesCoreDirect(
           dependencies = artifactAddresses.map { address -> dependenciesById[address]!!.dependency }
         ),
         postProcessor = fun(): IdeDependenciesCoreImpl {
@@ -675,7 +685,8 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
                 IdeDependencyCoreImpl(it, null)
               }
 
-          return IdeDependenciesCoreImpl(regularRuntimeNotProvidedLibraryDependencies + runtimeDependenciesRecoveredFromRuntimeOnlyClasses)
+          return IdeDependenciesCoreDirect(
+            regularRuntimeNotProvidedLibraryDependencies + runtimeDependenciesRecoveredFromRuntimeOnlyClasses)
         }
       )
     }
@@ -1519,5 +1530,5 @@ internal fun LegacyApplicationIdModel?.getProblemsAsSyncIssues(): List<IdeSyncIs
   }
 }
 
-private fun Throwable.stackTraceAsMultiLineMessage(): List<String> =
+public fun Throwable.stackTraceAsMultiLineMessage(): List<String> =
   StringWriter().use { stringWriter -> PrintWriter(stringWriter).use { printStackTrace(it) }; stringWriter.toString().split(System.lineSeparator()) }

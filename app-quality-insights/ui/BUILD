@@ -14,6 +14,10 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-test-framework[test]",
+        "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito[test]",
     ],
 )
 
@@ -23,7 +27,7 @@ iml_module(
     iml_files = ["intellij.android.app-quality-insights.ui.tests.iml"],
     test_class = "com.android.tools.idea.insights.ui.InsightsUiTestSuite",
     test_data = glob(["testData/**"]),
-    test_srcs = ["tests"],
+    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [

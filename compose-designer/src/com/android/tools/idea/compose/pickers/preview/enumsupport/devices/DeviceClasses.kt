@@ -74,7 +74,7 @@ internal val ReferenceDesktopConfig: DeviceConfig by
 
 /** The different types of devices that'll be available on the picker 'Device' DropDown. */
 internal enum class DeviceClass(val display: String, val icon: Icon? = null) {
-  Canonical("Reference Devices", StudioIcons.Wizards.Modules.PHONE_TABLET),
+  ReferenceDevice("Reference Devices", StudioIcons.Wizards.Modules.PHONE_TABLET),
   Phone("Phone", StudioIcons.LayoutEditor.Toolbar.DEVICE_PHONE),
   Tablet("Tablet", StudioIcons.LayoutEditor.Toolbar.DEVICE_TABLET),
   Desktop(
@@ -99,7 +99,7 @@ internal enum class DeviceClass(val display: String, val icon: Icon? = null) {
 internal class DeviceEnumValueBuilder {
   private val deviceEnumValues =
     mapOf<DeviceClass, MutableList<PsiEnumValue>>(
-      Pair(DeviceClass.Canonical, mutableListOf()),
+      Pair(DeviceClass.ReferenceDevice, mutableListOf()),
       Pair(DeviceClass.Phone, mutableListOf()),
       Pair(DeviceClass.Tablet, mutableListOf()),
       Pair(DeviceClass.Desktop, mutableListOf()),
@@ -109,7 +109,7 @@ internal class DeviceEnumValueBuilder {
       Pair(DeviceClass.Generic, mutableListOf())
     )
 
-  private fun addCanonical(
+  private fun addReferenceDevice(
     name: String,
     description: String?,
     immutableDeviceConfig: DeviceConfig,
@@ -117,7 +117,7 @@ internal class DeviceEnumValueBuilder {
   ): DeviceEnumValueBuilder = apply {
     val deviceSpec = immutableDeviceConfig.deviceSpec()
     val enumValue = PsiEnumValue.withTooltip(deviceSpec, name, description, trackableValue)
-    deviceEnumValues[DeviceClass.Canonical]?.add(enumValue)
+    deviceEnumValues[DeviceClass.ReferenceDevice]?.add(enumValue)
   }
 
   private fun addDevicePx(
@@ -133,7 +133,7 @@ internal class DeviceEnumValueBuilder {
         val dpiCalc = sqrt((1.0 * widthPx * widthPx) + (1.0 * heightPx * heightPx)) / diagonalIn
         round(dpiCalc * 100) / 100.0
       }
-    val density = AvdScreenData.getScreenDensity(null, true, dpi, heightPx)
+    val density = AvdScreenData.getScreenDensity(true, dpi, heightPx)
     val deviceSpec =
       DeviceConfig(
           width = widthPx.toFloat(),
@@ -154,7 +154,7 @@ internal class DeviceEnumValueBuilder {
     chinSizePx: Int,
     displayName: String
   ): DeviceEnumValueBuilder = apply {
-    val density = AvdScreenData.getScreenDensity(null, false, 224.0, 300)
+    val density = AvdScreenData.getScreenDensity(false, 224.0, 300)
     val shape = if (isRound) Shape.Round else Shape.Normal
     val deviceSpec =
       DeviceConfig(
@@ -257,28 +257,28 @@ internal class DeviceEnumValueBuilder {
 
   private fun addDefaultsIfMissing() {
     if (
-      !deviceEnumValues.contains(DeviceClass.Canonical) ||
-        deviceEnumValues[DeviceClass.Canonical]?.isEmpty() == true
+      !deviceEnumValues.contains(DeviceClass.ReferenceDevice) ||
+        deviceEnumValues[DeviceClass.ReferenceDevice]?.isEmpty() == true
     ) {
-      addCanonical(
-        "Phone",
+      addReferenceDevice(
+        "Medium Phone",
         DEVICE_CLASS_PHONE_TOOLTIP,
         ReferencePhoneConfig,
         PreviewPickerValue.DEVICE_REF_PHONE
       )
-      addCanonical(
+      addReferenceDevice(
         "Foldable",
         DEVICE_CLASS_FOLDABLE_TOOLTIP,
         ReferenceFoldableConfig,
         PreviewPickerValue.DEVICE_REF_FOLDABLE
       )
-      addCanonical(
-        "Tablet",
+      addReferenceDevice(
+        "Medium Tablet",
         DEVICE_CLASS_TABLET_TOOLTIP,
         ReferenceTabletConfig,
         PreviewPickerValue.DEVICE_REF_TABLET
       )
-      addCanonical(
+      addReferenceDevice(
         "Desktop",
         DEVICE_CLASS_DESKTOP_TOOLTIP,
         ReferenceDesktopConfig,

@@ -48,9 +48,6 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
   @get:Rule
   val myMockitoRule = MockitoJUnit.rule()
 
-  @get:Rule
-  val myFlagRule = FlagRule(StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE)
-
   @Mock
   lateinit var myFileEditor: FileEditor
 
@@ -61,8 +58,6 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
 
   @Before
   fun setup() {
-    StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE.override(true)
-    whenever(myModelWizardDialog.showAndGet()).thenReturn(true)
     myProvider = TestAttachAndroidSdkSourcesNotificationProvider(myAndroidProjectRule.project)
   }
 
@@ -82,7 +77,7 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
 
   @Test
   fun createNotificationPanel_javaClassNotInAndroidSdk_returnsNull() {
-    val javaClassFile = myAndroidProjectRule.fixture.createFile("someclass.class", "file contents")
+    val javaClassFile = myAndroidProjectRule.fixture.createFile("someclass.class", "")
 
     assertThat(javaClassFile.fileType).isEqualTo(JavaClassFileType.INSTANCE)
     val panel = invokeCreateNotificationPanel(javaClassFile)
@@ -112,28 +107,10 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
   }
 
   @Test
-  fun createNotificationPanel_flagOff_panelHasCorrectLabel() {
-    StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE.override(false)
-
-    val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
-    assertThat(panel).isNotNull()
-    assertThat(panel!!.text).isEqualTo("Sources for 'SDK' not found.")
-  }
-
-  @Test
   fun createNotificationPanel_panelHasCorrectLabel() {
     val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
     assertThat(panel).isNotNull()
     assertThat(panel!!.text).isEqualTo("Android SDK sources for API 33 not found.")
-  }
-
-  @Test
-  fun createNotificationPanel_flagOff_panelHasDownloadAndRefreshLinks() {
-    StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE.override(false)
-
-    val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
-    val links: Map<String, Runnable> = panel!!.links
-    assertThat(links.keys).containsExactly("Download", "Refresh (if already downloaded)")
   }
 
   @Test
@@ -144,25 +121,8 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
   }
 
   @Test
-  fun createNotificationPanel_flagOff_downloadLinkDownloadsSources() {
-    StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE.override(false)
-
-    val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
-
-    val rootProvider = AndroidSdks.getInstance().allAndroidSdks[0].rootProvider
-    assertThat(rootProvider.getFiles(OrderRootType.SOURCES)).hasLength(0)
-
-    // Invoke the "Download" link, which is first in the components.
-    ApplicationManager.getApplication().invokeAndWait { panel!!.links["Download"]!!.run() }
-
-    // Check that the link requested the correct paths, and that then sources became available.
-    assertThat(myProvider.requestedPaths).isNotNull()
-    assertThat(myProvider.requestedPaths).containsExactly("sources;android-33")
-    assertThat(rootProvider.getFiles(OrderRootType.SOURCES).size).isGreaterThan(0)
-  }
-
-  @Test
   fun createNotificationPanel_downloadLinkDownloadsSources() {
+    whenever(myModelWizardDialog.showAndGet()).thenReturn(true)
     val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
 
     val rootProvider = AndroidSdks.getInstance().allAndroidSdks[0].rootProvider
@@ -188,20 +148,6 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
     // Check that the link requested the correct paths, and that then sources became available.
     assertThat(myProvider.requestedPaths).isNotNull()
     assertThat(myProvider.requestedPaths).containsExactly("sources;android-30")
-  }
-
-  @Test
-  fun createNotificationPanel_flagOff_refreshLinkUpdatesSources() {
-    StudioFlags.DEBUG_DEVICE_SDK_SOURCES_ENABLE.override(false)
-
-    val panel = invokeCreateNotificationPanel(androidSdkClassWithoutSources)
-
-    val rootProvider = AndroidSdks.getInstance().allAndroidSdks[0].rootProvider
-    assertThat(rootProvider.getFiles(OrderRootType.SOURCES)).hasLength(0)
-
-    // Invoke the "Refresh" link, which is second in the components.
-    ApplicationManager.getApplication().invokeAndWait { panel!!.links["Refresh (if already downloaded)"]!!.run() }
-    assertThat(rootProvider.getFiles(OrderRootType.SOURCES).size).isGreaterThan(0)
   }
 
   private fun invokeCreateNotificationPanel(virtualFile: VirtualFile): AttachAndroidSdkSourcesNotificationProvider.MyEditorNotificationPanel? {

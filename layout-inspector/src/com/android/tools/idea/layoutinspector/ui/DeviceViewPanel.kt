@@ -23,46 +23,27 @@ import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.common.AdtPrimaryPanel
 import com.android.tools.adtui.common.AdtUiCursorType
 import com.android.tools.adtui.common.AdtUiCursorsProvider
-import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
-import com.android.tools.idea.layoutinspector.model.REBOOT_FOR_LIVE_INSPECTOR_MESSAGE_KEY
-import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
-import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
-import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
-import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.ForegroundProcess
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.matchToProcessDescriptor
-import com.android.tools.idea.layoutinspector.snapshots.SnapshotAction
 import com.android.tools.idea.layoutinspector.ui.toolbar.FloatingToolbarProvider
-import com.android.tools.idea.layoutinspector.ui.toolbar.TargetSelectionActionFactory
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.INITIAL_LAYER_SPACING
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.TargetSelectionActionFactory
+import com.android.tools.idea.layoutinspector.ui.toolbar.createLayoutInspectorMainToolbar
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo
-import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.actionSystem.Separator
-import com.intellij.openapi.actionSystem.ToggleAction
-import com.intellij.openapi.actionSystem.ex.TooltipDescriptionProvider
-import com.intellij.openapi.actionSystem.ex.TooltipLinkProvider
 import com.intellij.openapi.actionSystem.impl.ActionButton
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.components.JBLoadingPanel
-import com.intellij.ui.components.JBLoadingPanelListener
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
-import icons.StudioIcons.LayoutInspector.LIVE_UPDATES
-import kotlinx.coroutines.launch
-import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.annotations.TestOnly
 import java.awt.BorderLayout
 import java.awt.Container
@@ -76,7 +57,6 @@ import java.awt.event.KeyEvent.VK_SPACE
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors.newSingleThreadExecutor
 import javax.swing.BorderFactory
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
@@ -90,13 +70,10 @@ private const val MIN_ZOOM = 10
 
 private const val TOOLBAR_INSET = 14
 
-@TestOnly
-const val DEVICE_VIEW_ACTION_TOOLBAR_NAME = "DeviceViewPanel.ActionToolbar"
-
 const val PERFORMANCE_WARNING_3D = "performance.warning.3d"
 const val PERFORMANCE_WARNING_HIDDEN = "performance.warning.hidden"
 
-val TOGGLE_3D_ACTION_BUTTON_KEY = DataKey.create<ActionButton?>("$DEVICE_VIEW_ACTION_TOOLBAR_NAME.FloatingToolbar")
+val TOGGLE_3D_ACTION_BUTTON_KEY = DataKey.create<ActionButton?>("Toggle3DActionButtonKey")
 
 /**
  * Panel that shows the device screen in the layout inspector.
@@ -123,6 +100,8 @@ class DeviceViewPanel(
 
   private val targetSelectedAction = TargetSelectionActionFactory.getAction(layoutInspector)
 
+  private val layoutInspectorLoadingObserver = LayoutInspectorLoadingObserver(layoutInspector)
+
   private val contentPanel = DeviceViewContentPanel(
     inspectorModel = layoutInspector.inspectorModel,
     deviceModel = layoutInspector.deviceModel,
@@ -131,7 +110,7 @@ class DeviceViewPanel(
     pannable = this,
     selectTargetAction = targetSelectedAction,
     disposableParent = disposableParent,
-    isLoading = { isLoading },
+    isLoading = { layoutInspectorLoadingObserver.isLoading },
     isCurrentForegroundProcessDebuggable = { isCurrentForegroundProcessDebuggable },
     hasForegroundProcess = { hasForegroundProcess },
     renderLogic = layoutInspector.renderLogic,
@@ -204,9 +183,8 @@ class DeviceViewPanel(
   private val viewportLayoutManager = MyViewportLayoutManager(scrollPane.viewport, { contentPanel.renderModel.layerSpacing },
                                                               { contentPanel.rootLocation })
 
-  private val actionToolbar: ActionToolbar = createToolbar(targetSelectedAction?.dropDownAction)
+  private val actionToolbar = createLayoutInspectorMainToolbar(this, layoutInspector, targetSelectedAction?.dropDownAction)
 
-  private var isLoading = false
   private var isCurrentForegroundProcessDebuggable = false
   private var hasForegroundProcess = false
 
@@ -226,9 +204,15 @@ class DeviceViewPanel(
   }
 
   init {
-    layoutInspector.stopInspectorListeners.add {
-      loadingPane.stopLoading()
-    }
+    layoutInspectorLoadingObserver.listeners.add(object : LayoutInspectorLoadingObserver.Listener {
+      override fun onStartLoading() {
+        loadingPane.startLoading()
+      }
+
+      override fun onStopLoading() {
+        loadingPane.stopLoading()
+      }
+    })
 
     layoutInspector.deviceModel?.newSelectedDeviceListeners?.add { _ ->
       // as soon as a new device is connected default to the process not being debuggable.
@@ -236,16 +220,6 @@ class DeviceViewPanel(
       // and protects us against cases when the device has no foreground process (eg. is locked)
       hasForegroundProcess = false
     }
-
-    loadingPane.addListener(object : JBLoadingPanelListener {
-      override fun onLoadingStart() {
-        isLoading = true
-      }
-
-      override fun onLoadingFinish() {
-        isLoading = false
-      }
-    })
 
     scrollPane.viewport.layout = viewportLayoutManager
     contentPanel.isFocusable = true
@@ -318,19 +292,6 @@ class DeviceViewPanel(
       }
     }
 
-    layoutInspector.processModel?.addSelectedProcessListeners(newSingleThreadExecutor()) {
-      if (layoutInspector.processModel.selectedProcess?.isRunning == true) {
-          loadingPane.startLoading()
-      }
-      if (layoutInspector.processModel.selectedProcess == null) {
-          loadingPane.stopLoading()
-      }
-    }
-    model.modificationListeners.add { old, new, _ ->
-      if (old == null && new != null) {
-        loadingPane.stopLoading()
-      }
-    }
     contentPanel.renderModel.modificationListeners.add {
       ApplicationManager.getApplication().invokeLater {
         actionToolbar.updateActionsImmediately()
@@ -367,24 +328,25 @@ class DeviceViewPanel(
     layeredPane.add(floatingToolbarProvider.floatingToolbar)
     layeredPane.add(scrollPane, BorderLayout.CENTER)
 
-    // Zoom to fit on initial connect
-    model.modificationListeners.add { _, new, _ ->
-      if (contentPanel.renderModel.maxWidth == 0) {
+    var shouldZoomToFit = true
+    layoutInspector.processModel?.addSelectedProcessListeners {
+      shouldZoomToFit = true
+    }
+
+    model.modificationListeners.add { oldWindow, newWindow, _ ->
+      if (oldWindow == null && newWindow != null) {
+        // TODO(b/265150325) move to a more generic place
         layoutInspector.currentClient.stats.recompositionHighlightColor = renderSettings.highlightColor
-        contentPanel.renderModel.refresh()
-        if (!zoom(ZoomType.FIT)) {
-          // If we didn't change the zoom, we need to refresh explicitly. Otherwise the zoom listener will do it.
-          new?.refreshImages(renderSettings.scaleFraction)
-          contentPanel.renderModel.refresh()
+
+        if (shouldZoomToFit) {
+          // Zoom to fit each time a new window shows up immediately after a process change
+          // we should do this only after a process change, because the new window showing up could be a dialog being open, in which case
+          // we don't want to change the zoom.
+          // And we should do it only if the new window is different from null, so we know the view is available and we can scroll to
+          // center it.
+          zoom(ZoomType.FIT)
+          shouldZoomToFit = false
         }
-      }
-      else {
-        // refreshImages is done here instead of by the model itself so that we can be sure to zoom to fit first before trying to render
-        // images upon first connecting.
-        if (layoutInspector.currentClient.isConnected) {
-          new?.refreshImages(renderSettings.scaleFraction)
-        }
-        contentPanel.renderModel.refresh()
       }
     }
     var prevZoom = renderSettings.scalePercent
@@ -416,27 +378,22 @@ class DeviceViewPanel(
 
   override fun zoom(type: ZoomType): Boolean {
     var newZoom = renderSettings.scalePercent
-    if (layoutInspector.inspectorModel.isEmpty) {
-      newZoom = 100
-      scrollPane.viewport.revalidate()
+    viewportLayoutManager.currentZoomOperation = type
+    when (type) {
+      ZoomType.FIT -> newZoom = getFitZoom()
+      ZoomType.ACTUAL -> newZoom = 100
+      ZoomType.IN -> newZoom += 10
+      ZoomType.OUT -> newZoom -= 10
     }
-    else {
-      viewportLayoutManager.currentZoomOperation = type
-      when (type) {
-        ZoomType.FIT -> newZoom = getFitZoom()
-        ZoomType.ACTUAL -> newZoom = 100
-        ZoomType.IN -> newZoom += 10
-        ZoomType.OUT -> newZoom -= 10
-      }
-      newZoom = newZoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
-    }
-    if (newZoom != renderSettings.scalePercent) {
+    newZoom = newZoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+    return if (newZoom != renderSettings.scalePercent) {
       renderSettings.scalePercent = newZoom
       contentPanel.revalidate()
-      return true
+      true
     }
-
-    return false
+    else {
+      false
+    }
   }
 
   private fun getFitZoom(): Int {
@@ -445,8 +402,12 @@ class DeviceViewPanel(
     val availableHeight = scrollPane.height - scrollPane.horizontalScrollBar.height
     val desiredWidth = (size.width).toDouble()
     val desiredHeight = (size.height).toDouble()
-    return if (desiredHeight == 0.0 || desiredWidth == 0.0) 100
-    else (90 * min(availableHeight / desiredHeight, availableWidth / desiredWidth)).toInt()
+    return if (desiredHeight == 0.0 || desiredWidth == 0.0) {
+      100
+    }
+    else {
+      (90 * min(availableHeight / desiredHeight, availableWidth / desiredWidth)).toInt()
+    }
   }
 
   private fun getScreenSize(): Dimension {
@@ -475,12 +436,6 @@ class DeviceViewPanel(
     if (ZOOMABLE_KEY.`is`(dataId) || PANNABLE_KEY.`is`(dataId)) {
       return this
     }
-    if (DEVICE_VIEW_MODEL_KEY.`is`(dataId)) {
-      return contentPanel.renderModel
-    }
-    if (DEVICE_VIEW_SETTINGS_KEY.`is`(dataId)) {
-      return renderSettings
-    }
     if (TOGGLE_3D_ACTION_BUTTON_KEY.`is`(dataId)) {
       return floatingToolbarProvider.toggle3dActionButton
     }
@@ -493,84 +448,14 @@ class DeviceViewPanel(
     get() = scrollPane.viewport.viewPosition
     set(_) {}
 
-  private fun createToolbar(selectProcessAction: AnAction?): ActionToolbar {
-    val leftGroup = DefaultActionGroup()
-    selectProcessAction?.let { leftGroup.add(it) }
-    leftGroup.add(Separator.getInstance())
-    leftGroup.add(ViewMenuAction)
-    leftGroup.add(ToggleOverlayAction)
-    if (!layoutInspector.isSnapshot) {
-      leftGroup.add(SnapshotAction)
-    }
-    leftGroup.add(AlphaSliderAction)
-    if (!layoutInspector.isSnapshot) {
-      leftGroup.add(Separator.getInstance())
-      leftGroup.add(PauseLayoutInspectorAction(layoutInspector.inspectorClientSettings))
-      leftGroup.add(RefreshAction)
-    }
-    leftGroup.add(Separator.getInstance())
-    leftGroup.add(LayerSpacingSliderAction)
-    val actionToolbar = ActionManager.getInstance().createActionToolbar("DynamicLayoutInspectorLeft", leftGroup, true)
-    ActionToolbarUtil.makeToolbarNavigable(actionToolbar)
-    actionToolbar.component.name = DEVICE_VIEW_ACTION_TOOLBAR_NAME
-    actionToolbar.component.putClientProperty(ActionToolbarImpl.IMPORTANT_TOOLBAR_KEY, true)
-    actionToolbar.targetComponent = this
-    actionToolbar.updateActionsImmediately()
-    return actionToolbar
-  }
-
   private fun createToolbarPanel(actionToolbar: ActionToolbar): JComponent {
     val panel = AdtPrimaryPanel(BorderLayout())
-    panel.border = BorderFactory.createMatteBorder(0, 0, 1, 0, com.android.tools.adtui.common.border)!!
+    panel.border = BorderFactory.createMatteBorder(0, 0, 1, 0, com.android.tools.adtui.common.border)
 
     val leftPanel = AdtPrimaryPanel(BorderLayout())
     leftPanel.add(actionToolbar.component, BorderLayout.CENTER)
     panel.add(leftPanel, BorderLayout.CENTER)
     return panel
-  }
-
-  inner class PauseLayoutInspectorAction(
-    private val inspectorClientSettings: InspectorClientSettings
-  ) : ToggleAction({ "Live Updates" }, LIVE_UPDATES), TooltipDescriptionProvider, TooltipLinkProvider {
-
-    override fun update(event: AnActionEvent) {
-      val currentClient = client(event)
-      val isLiveInspector = !currentClient.isConnected || currentClient.capabilities.contains(Capability.SUPPORTS_CONTINUOUS_MODE)
-      val isLowerThenApi29 = currentClient.isConnected && currentClient.process.device.apiLevel < 29
-      event.presentation.isEnabled = isLiveInspector || !currentClient.isConnected
-      super.update(event)
-      event.presentation.description = when {
-        isLowerThenApi29 -> "Live updates not available for devices below API 29"
-        !isLiveInspector -> AndroidBundle.message(REBOOT_FOR_LIVE_INSPECTOR_MESSAGE_KEY)
-        else -> "Stream updates to your app's layout from your device in realtime. Enabling live updates consumes more device " +
-                "resources and might impact runtime performance."
-      }
-    }
-
-    @Suppress("DialogTitleCapitalization")
-    override fun getTooltipLink(owner: JComponent?) = TooltipLinkProvider.TooltipLink("Learn More") {
-      BrowserUtil.browse("https://d.android.com/r/studio-ui/layout-inspector-live-updates")
-    }
-
-    // When disconnected: display the default value after the inspector is connected to the device.
-    override fun isSelected(event: AnActionEvent): Boolean {
-      return inspectorClientSettings.isCapturingModeOn
-    }
-
-    override fun setSelected(event: AnActionEvent, state: Boolean) {
-      event.getData(DEVICE_VIEW_MODEL_KEY)?.fireModified()
-      val currentClient = client(event)
-      if (currentClient.capabilities.contains(Capability.SUPPORTS_CONTINUOUS_MODE)) {
-        when (state) {
-          true -> layoutInspector.coroutineScope.launch { currentClient.startFetching() }
-          false -> layoutInspector.coroutineScope.launch { currentClient.stopFetching() }
-        }
-      }
-      inspectorClientSettings.isCapturingModeOn = state
-    }
-
-    private fun client(event: AnActionEvent): InspectorClient =
-      LayoutInspector.get(event)?.currentClient ?: DisconnectedClient
   }
 }
 

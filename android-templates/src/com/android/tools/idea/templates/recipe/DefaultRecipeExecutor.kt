@@ -95,8 +95,7 @@ import com.android.tools.idea.templates.mergeXml as mergeXmlUtil
  */
 class DefaultRecipeExecutor(
   private val context: RenderingContext,
-  private val versionCatalogDetector: GradleVersionCatalogDetector = GradleVersionCatalogDetector.getInstance(
-    context.project)) : RecipeExecutor {
+  private val useVersionCatalog: Boolean = false) : RecipeExecutor {
   private val project: Project get() = context.project
   private val referencesExecutor: FindReferencesRecipeExecutor = FindReferencesRecipeExecutor(context)
   private val io: RecipeIO = if (context.dryRun) DryRunRecipeIO() else RecipeIO()
@@ -122,9 +121,6 @@ class DefaultRecipeExecutor(
   }
   private val versionCatalogModel: GradleVersionCatalogModel? by lazy {
     projectBuildModel?.versionCatalogsModel?.getVersionCatalogModel("libs")
-  }
-  private val useVersionCatalog: Boolean by lazy {
-    determineVersionCatalogUseForNewModule(project, projectTemplateData.isNewProject, versionCatalogDetector)
   }
 
   override fun hasDependency(mavenCoordinate: String, moduleDir: File?): Boolean {
@@ -563,7 +559,7 @@ class DefaultRecipeExecutor(
     }
 
     buildModel.android().defaultConfig().vectorDrawables().useSupportLibrary().setValue(true)
-    buildModel.android().packagingOptions().resources().excludes().setValueIfNone("/META-INF/{AL2.0,LGPL2.1}")
+    buildModel.android().packaging().resources().excludes().setValueIfNone("/META-INF/{AL2.0,LGPL2.1}")
   }
 
   /**

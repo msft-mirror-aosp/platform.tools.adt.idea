@@ -49,6 +49,8 @@ import com.android.tools.idea.rendering.errors.ComposeRenderErrorContributor;
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel;
 import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.tools.idea.ui.designer.EditorDesignSurface;
+import com.android.tools.rendering.HtmlLinkManager;
+import com.android.tools.rendering.RenderProblem;
 import com.android.utils.HtmlBuilder;
 import com.android.xml.AndroidManifest;
 import com.google.common.annotations.VisibleForTesting;
@@ -99,14 +101,14 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLFrameHyperlinkEvent;
-import org.jetbrains.android.dom.attrs.AttributeDefinition;
-import org.jetbrains.android.dom.attrs.AttributeDefinitions;
+import com.android.tools.dom.attrs.AttributeDefinition;
+import com.android.tools.dom.attrs.AttributeDefinitions;
 import org.jetbrains.android.dom.manifest.Application;
 import org.jetbrains.android.dom.manifest.Manifest;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.refactoring.MigrateToAndroidxUtil;
 import com.android.tools.sdk.AndroidPlatform;
-import org.jetbrains.android.sdk.AndroidTargetData;
+import com.android.tools.sdk.AndroidTargetData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -361,7 +363,22 @@ public class RenderErrorContributor {
 
   @VisibleForTesting
   public void performClick(@NotNull String url) {
-    myLinkManager.handleUrl(url, myModule, mySourceFile, myDataContext, true, myDesignSurface);
+    myLinkManager.handleUrl(url, myModule, mySourceFile, true, new HtmlLinkManager.RefreshableSurface() {
+      @Override
+      public void handleRefreshRenderUrl() {
+        if (myDesignSurface != null) {
+          RenderUtils.clearCache(myDesignSurface.getConfigurations());
+          myDesignSurface.forceUserRequestedRefresh();
+        }
+      }
+
+      @Override
+      public void requestRender() {
+        if (myDesignSurface != null) {
+          myDesignSurface.forceUserRequestedRefresh();
+        }
+      }
+    });
   }
 
   private void reportRelevantCompilationErrors(@NotNull RenderLogger logger) {
@@ -580,7 +597,7 @@ public class RenderErrorContributor {
       String text = Throwables.getStackTraceAsString(throwable);
       try {
         CopyPasteManager.getInstance().setContents(new StringSelection(text));
-        HtmlLinkManager.showNotification("Stack trace copied to clipboard");
+        StudioHtmlLinkManager.showNotification("Stack trace copied to clipboard");
       }
       catch (Exception ignore) {
       }
@@ -984,13 +1001,13 @@ public class RenderErrorContributor {
                                          GoogleMavenArtifactId.ANDROIDX_CONSTRAINT_LAYOUT :
                                          GoogleMavenArtifactId.CONSTRAINT_LAYOUT;
         builder.addLink("Add constraint-layout library dependency to the project",
-                        myLinkManager.createAddDependencyUrl(artifact));
+                        myLinkManager.createAddDependencyUrl(artifact.toString()));
         builder.add(", ");
       }
       if (CLASS_FLEXBOX_LAYOUT.equals(className)) {
         builder.newline().addNbsps(3);
         builder.addLink("Add flexbox layout library dependency to the project",
-                        myLinkManager.createAddDependencyUrl(GoogleMavenArtifactId.FLEXBOX_LAYOUT));
+                        myLinkManager.createAddDependencyUrl(GoogleMavenArtifactId.FLEXBOX_LAYOUT.toString()));
         builder.add(", ");
       }
 

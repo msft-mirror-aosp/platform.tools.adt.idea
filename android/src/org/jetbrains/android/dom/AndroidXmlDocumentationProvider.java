@@ -16,13 +16,12 @@ import static com.intellij.psi.xml.XmlTokenType.XML_ATTRIBUTE_VALUE_TOKEN;
 import static com.intellij.psi.xml.XmlTokenType.XML_DATA_CHARACTERS;
 
 import com.android.ide.common.rendering.api.AttributeFormat;
-import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
-import com.android.tools.idea.databinding.util.DataBindingUtil;
 import com.android.tools.idea.javadoc.AndroidJavaDocRenderer;
 import com.android.tools.idea.res.psi.ResourceReferencePsiElement;
+import com.android.utils.DataBindingUtils;
 import com.android.utils.Pair;
 import com.intellij.lang.Language;
 import com.intellij.lang.documentation.DocumentationProvider;
@@ -61,9 +60,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.jetbrains.android.AndroidAnnotatorUtil;
-import org.jetbrains.android.dom.attrs.AttributeDefinition;
-import org.jetbrains.android.dom.attrs.AttributeDefinitions;
+import com.android.tools.dom.attrs.AttributeDefinition;
+import com.android.tools.dom.attrs.AttributeDefinitions;
 import org.jetbrains.android.dom.converters.AttributeValueDocumentationProvider;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers;
@@ -459,7 +457,7 @@ public class AndroidXmlDocumentationProvider implements DocumentationProvider {
     }
     Converter converter = domValue.getConverter();
 
-    if ((value.startsWith(PREFIX_RESOURCE_REF) || value.startsWith(PREFIX_THEME_REF)) && !DataBindingUtil.isBindingExpression(value)) {
+    if ((value.startsWith(PREFIX_RESOURCE_REF) || value.startsWith(PREFIX_THEME_REF)) && !DataBindingUtils.isBindingExpression(value)) {
       return new ResourceReferenceCompletionElement(element, value);
     }
 

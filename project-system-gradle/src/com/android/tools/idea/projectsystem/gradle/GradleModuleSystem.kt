@@ -15,12 +15,12 @@
  */
 package com.android.tools.idea.projectsystem.gradle
 
+import com.android.ide.common.repository.AgpVersion
 import com.android.ide.common.repository.GradleCoordinate
 import com.android.manifmerger.ManifestSystemProperty
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
-import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeAndroidLibraryDependency
@@ -523,16 +523,22 @@ class GradleModuleSystem(
   override val submodules: Collection<Module>
     get() = moduleHierarchyProvider.submodules
 
+  override val desugarLibraryConfigFilesKnown: Boolean
+    get() = GradleAndroidModel.get(module)?.agpVersion?.let {it >= (DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION) } ?: false
+  override val desugarLibraryConfigFilesNotKnownUserMessage: String?
+    get() = when {
+      GradleAndroidModel.get(module) == null -> "Not supported for non-Android modules"
+      !desugarLibraryConfigFilesKnown -> "Only supported for projects using Android Gradle plugin '$DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION' and above"
+      else -> null
+    }
   override val desugarLibraryConfigFiles: List<Path>
     get() = GradleAndroidModel.get(module)?.androidProject?.desugarLibraryConfigFiles?.map { it.toPath() } ?: emptyList()
-
-  override val usesVersionCatalogs: Boolean
-    get() = ProjectBuildModel.get(module.project).versionCatalogsModel.catalogNames().isNotEmpty()
 
   companion object {
     private val AGP_GLOBAL_FLAGS_DEFAULTS = AgpBuildGlobalFlags(
       useAndroidX = true
     )
+    private val DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION = AgpVersion.parse("8.1.0-alpha05")
   }
 }
 

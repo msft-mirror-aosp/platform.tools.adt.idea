@@ -16,11 +16,11 @@
 package com.android.tools.idea.logcat
 
 import com.android.processmonitor.monitor.ProcessNameMonitor
+import com.android.processmonitor.monitor.testing.FakeProcessNameMonitor
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.idea.IdeInfo
-import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig
 import com.android.tools.idea.logcat.devices.Device
 import com.android.tools.idea.logcat.devices.DeviceComboBoxDeviceTrackerFactory
@@ -29,6 +29,7 @@ import com.android.tools.idea.logcat.devices.FakeDeviceComboBoxDeviceTracker
 import com.android.tools.idea.logcat.messages.FormattingOptions
 import com.android.tools.idea.logcat.messages.TagFormat
 import com.android.tools.idea.logcat.service.LogcatService
+import com.android.tools.idea.logcat.util.waitForCondition
 import com.android.tools.idea.run.ShowLogcatListener
 import com.android.tools.idea.run.ShowLogcatListener.DeviceInfo.PhysicalDeviceInfo
 import com.android.tools.idea.testing.ProjectServiceRule
@@ -50,7 +51,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
-import java.util.concurrent.TimeUnit
 
 
 @RunsInEdt
@@ -69,7 +69,6 @@ class LogcatToolWindowFactoryTest {
 
   private val project get() = projectRule.project
   private val disposable get() = disposableRule.disposable
-  private val mockProcessNameMonitor = mock<ProcessNameMonitor>()
   private val fakeLogcatService = FakeLogcatService()
 
   @Before
@@ -137,6 +136,8 @@ class LogcatToolWindowFactoryTest {
 
   @Test
   fun startsProcessNameMonitor() {
+    val mockProcessNameMonitor = mock<ProcessNameMonitor>()
+
     logcatToolWindowFactory(mockProcessNameMonitor).init(MockToolWindow(project))
 
     verify(mockProcessNameMonitor).start()
@@ -167,11 +168,9 @@ class LogcatToolWindowFactoryTest {
   }
 
   private fun logcatToolWindowFactory(
-    processNameMonitor: ProcessNameMonitor = mockProcessNameMonitor,
+    processNameMonitor: ProcessNameMonitor = FakeProcessNameMonitor(),
   ): LogcatToolWindowFactory {
     project.registerOrReplaceServiceInstance(ProcessNameMonitor::class.java, processNameMonitor, disposable)
     return LogcatToolWindowFactory()
   }
 }
-
-private fun waitForCondition(condition: () -> Boolean) = waitForCondition(TIMEOUT_SEC, TimeUnit.SECONDS, condition)

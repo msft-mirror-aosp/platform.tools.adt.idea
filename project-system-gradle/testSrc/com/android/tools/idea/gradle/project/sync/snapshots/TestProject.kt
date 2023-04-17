@@ -17,7 +17,7 @@ package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.builder.model.v2.ide.SyncIssue
 import com.android.testutils.AssumeUtil.assumeNotWindows
-import com.android.testutils.junit4.OldAgpTest
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -34,7 +34,6 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.util.PathUtil
 import org.jetbrains.android.AndroidTestBase
 import org.junit.Rule
-import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
@@ -320,6 +319,17 @@ enum class TestProject(
   SIMPLE_APPLICATION_VERSION_CATALOG(TestProjectToSnapshotPaths.SIMPLE_APPLICATION_VERSION_CATALOG),
   CUSTOM_SOURCE_TYPE(TestProjectToSnapshotPaths.CUSTOM_SOURCE_TYPE),
   LIGHT_SYNC_REFERENCE(TestProjectToSnapshotPaths.LIGHT_SYNC_REFERENCE),
+  NON_TRANSITIVE_R_CLASS_SYMBOL(TestProjectToSnapshotPaths.NON_TRANSITIVE_R_CLASS_SYMBOL),
+  NON_TRANSITIVE_R_CLASS_SYMBOL_TRUE(
+    TestProjectToSnapshotPaths.NON_TRANSITIVE_R_CLASS_SYMBOL,
+    testName = "_non_transitive_r_class_symbol_true",
+    patch = { projectRoot ->
+      projectRoot.resolve("gradle.properties").replaceContent { content ->
+        content.replace("android.nonTransitiveRClass=false", "android.nonTransitiveRClass=true")
+      }
+    }
+  ),
+  MIGRATE_TO_NON_TRANSITIVE_R_CLASSES(TestProjectToSnapshotPaths.MIGRATE_TO_NON_TRANSITIVE_R_CLASSES),
   PURE_JAVA_PROJECT(TestProjectToSnapshotPaths.PURE_JAVA_PROJECT),
   BUILDSRC_WITH_COMPOSITE(TestProjectToSnapshotPaths.BUILDSRC_WITH_COMPOSITE),
   PRIVACY_SANDBOX_SDK(
@@ -327,6 +337,19 @@ enum class TestProject(
     isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
   ),
   APP_WITH_BUILD_FEATURES_ENABLED(TestProjectToSnapshotPaths.APP_WITH_BUILD_FEATURES_ENABLED),
+  DEPENDENT_MODULES_ONLY_APP_RUNTIME(
+    TestProjectToSnapshotPaths.DEPENDENT_MODULES,
+    testName = "noLibraryRuntime",
+    setup =
+    fun(): () -> Unit {
+      StudioFlags.GRADLE_SKIP_RUNTIME_CLASSPATH_FOR_LIBRARIES.override(true)
+
+      return fun() {
+        StudioFlags.GRADLE_SKIP_RUNTIME_CLASSPATH_FOR_LIBRARIES.clearOverride()
+      }
+    },
+    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
+    ),
   ;
 
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"

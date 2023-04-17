@@ -75,6 +75,7 @@ import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeTestOptions
 import com.android.tools.idea.gradle.model.IdeUnresolvedLibrary
 import com.android.tools.idea.gradle.model.LibraryReference
+import com.android.tools.idea.gradle.model.impl.DependencyReference
 import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
@@ -88,6 +89,7 @@ import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
 import com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl
 import com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
@@ -135,7 +137,8 @@ internal fun modelCacheV2Impl(
   internedModels: InternedModels,
   lock: ReentrantLock,
   agpVersion: AgpVersion,
-  syncTestMode: SyncTestMode
+  syncTestMode: SyncTestMode,
+  multiVariantAdditionalArtifactSupport: Boolean,
 ): ModelCache.V2 {
   fun String.deduplicate() = internedModels.intern(this)
   fun List<String>.deduplicateStrings(): List<String> = this.map { it.deduplicate() }
@@ -146,6 +149,13 @@ internal fun modelCacheV2Impl(
   fun File.deduplicateFile(): File = File(path.deduplicate())
   fun List<File>.deduplicateFiles() = map { it.deduplicateFile() }
   fun Collection<File>.deduplicateFiles() = map { it.deduplicateFile() }
+
+  /**
+   * Sources, JavaDocs and Samples are only provided in libraries after AGP version 8.1.0-alpha8.
+   * Any attempt to read these values from a version prior to this will result in an exception.
+   */
+  val isAGPVersion8dot1dot0alpha8orLater = agpVersion.isAtLeast(8, 1, 0, "alpha", 8, false)
+  val useAdditionalArtifactsFromLibraries = isAGPVersion8dot1dot0alpha8orLater && multiVariantAdditionalArtifactSupport
 
   fun sourceProviderFrom(provider: SourceProvider): IdeSourceProviderImpl {
     val folder: File? = provider.manifestFile.parentFile?.deduplicateFile()
@@ -421,10 +431,11 @@ internal fun modelCacheV2Impl(
       artifactAddress = artifactAddress,
       name = "",
       folder = androidLibraryData.resFolder.parentFile.deduplicateFile(),
-
       artifact = androidLibrary.artifact ?: File(""),
       lintJar = androidLibrary.lintJar?.path,
-
+      srcJar = if (useAdditionalArtifactsFromLibraries) androidLibrary.srcJar?.path else null,
+      docJar = if (useAdditionalArtifactsFromLibraries) androidLibrary.docJar?.path else null,
+      samplesJar = if (useAdditionalArtifactsFromLibraries) androidLibrary.samplesJar?.path else null,
       manifest = androidLibraryData.manifest.path ?: "",
       compileJarFiles = androidLibraryData.compileJarFiles.map { it.path },
       runtimeJarFiles = androidLibraryData.runtimeJarFiles.map { it.path },
@@ -453,13 +464,16 @@ internal fun modelCacheV2Impl(
     val unnamed = IdeJavaLibraryImpl(
       artifactAddress = artifactAddress,
       name = "",
-      artifact = javaLibrary.artifact!!
+      artifact = javaLibrary.artifact!!,
+      srcJar = if (useAdditionalArtifactsFromLibraries) javaLibrary.srcJar else null,
+      docJar = if (useAdditionalArtifactsFromLibraries) javaLibrary.docJar else null,
+      samplesJar = if (useAdditionalArtifactsFromLibraries) javaLibrary.samplesJar else null,
     )
     return internedModels.getOrCreate(unnamed)
   }
 
   fun javaLibraryFromJarFile(jarFile: File): LibraryReference {
-    return internedModels.getOrCreate(IdeJavaLibraryImpl("${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified", "", jarFile))
+    return internedModels.getOrCreate(IdeJavaLibraryImpl("${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified", "", jarFile, null, null, null))
   }
 
   fun moduleLibraryFrom(
@@ -753,16 +767,17 @@ internal fun modelCacheV2Impl(
 
       artifactAddressesAndDependencies.forEach { (key, deps) ->
         val libraryReference = librariesById[key]!!
-        dependencyList.add(IdeDependencyCoreImpl(libraryReference, deps.mapNotNull { indexed[it] }))
+        dependencyList.add(IdeDependencyCoreImpl(libraryReference, deps.mapNotNull { indexed[it] }.map(::DependencyReference)))
       }
 
-      return IdeDependenciesCoreImpl(dependencyList)
+      return IdeDependenciesCoreDirect(dependencyList)
     }
 
     fun createIdeDependenciesInstance(): IdeDependenciesCoreImpl {
       val seenDependencies = mutableMapOf<String, List<String>>()
       val dependencyList = dependencies?.toFlatLibraryList()
       val typedLibraries = getTypedLibraries(dependencyList)
+
       populateAndroidLibraries(typedLibraries.androidLibraries, seenDependencies)
       populateJavaLibraries(typedLibraries.javaLibraries, seenDependencies)
       populateOptionalSdkLibrariesLibraries(bootClasspath, seenDependencies)
@@ -938,8 +953,8 @@ internal fun modelCacheV2Impl(
       ).recordAndGet()
 
       artifact.copy(
-        compileClasspathCore = compileClasspathCore ?: IdeDependenciesCoreImpl(emptyList()),
-        runtimeClasspathCore = runtimeClasspathCore ?: IdeDependenciesCoreImpl(emptyList()),
+        compileClasspathCore = compileClasspathCore ?: IdeDependenciesCoreDirect(emptyList()),
+        runtimeClasspathCore = runtimeClasspathCore ?: IdeDependenciesCoreDirect(emptyList()),
         unresolvedDependencies = artifactDependencies.unresolvedDependencies.unresolvedDependenciesFrom(),
       )
     }
@@ -999,8 +1014,8 @@ internal fun modelCacheV2Impl(
       ).recordAndGet()
 
       artifact.copy(
-        compileClasspathCore = compileClasspathCore ?: IdeDependenciesCoreImpl(emptyList()),
-        runtimeClasspathCore = runtimeClasspathCore ?: IdeDependenciesCoreImpl(emptyList()),
+        compileClasspathCore = compileClasspathCore ?: IdeDependenciesCoreDirect(emptyList()),
+        runtimeClasspathCore = runtimeClasspathCore ?: IdeDependenciesCoreDirect(emptyList()),
         unresolvedDependencies = variantDependencies.unresolvedDependencies.unresolvedDependenciesFrom(),
       )
     }

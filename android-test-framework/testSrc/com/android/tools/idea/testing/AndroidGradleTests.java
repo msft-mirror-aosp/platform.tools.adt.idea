@@ -16,6 +16,7 @@
 package com.android.tools.idea.testing;
 
 import static com.android.SdkConstants.DOT_GRADLE;
+import static com.android.SdkConstants.DOT_VERSIONS_DOT_TOML;
 import static com.android.SdkConstants.EXT_GRADLE_KTS;
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
@@ -31,7 +32,6 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static com.intellij.ide.impl.NewProjectUtil.applyJdkToProject;
 import static com.intellij.openapi.application.ActionsKt.invokeAndWaitIfNeeded;
-import static com.intellij.openapi.application.ActionsKt.runWriteAction;
 import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
 import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
@@ -54,6 +54,7 @@ import com.android.tools.idea.gradle.util.GradleProperties;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.projectsystem.ModuleSystemUtil;
+import com.android.tools.idea.sdk.AndroidSdkPathStore;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.sdk.Jdks;
 import com.android.tools.idea.util.StudioPathManager;
@@ -68,9 +69,9 @@ import com.intellij.openapi.externalSystem.service.project.manage.SourceFolderMa
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -290,6 +291,36 @@ public class AndroidGradleTests {
           Files.writeString(path.toPath(), contents);
         }
       }
+      else if (path.getPath().endsWith(DOT_VERSIONS_DOT_TOML)) {
+        String contentsOrig = Files.readString(path.toPath());
+        String contents = contentsOrig;
+
+        contents = updateVersionInCatalog(contents, "com.android.application", pluginVersion);
+        contents = updateVersionInCatalog(contents, "org.jetbrains.kotlin.android", kotlinVersion);
+        contents = updateVersionInCatalog(contents, "com.android.library", pluginVersion);
+
+        if (!contents.equals(contentsOrig)) {
+          Files.writeString(path.toPath(), contents);
+        }
+      }
+    }
+  }
+
+  public static String updateVersionInCatalog(@NotNull String contents, @NotNull String pluginId, @NotNull String version) {
+    // need to find out alias for version if it's there
+    Pattern pattern = Pattern.compile("id\\s*=\\s*\"" + pluginId + "\",\\s*version.ref\\s*=\\s*\"(.*)\"");
+    Matcher matcher = pattern.matcher(contents);
+    if (matcher.find()) {
+      String key = matcher.group(1);
+      return replaceRegexGroup(contents, key + " *= *\"(.*)\"", version);
+    } else {
+      // handle map notation with version literal
+      String result = replaceRegexGroup(contents, "id\\s*=\\s*\"" + pluginId + "\",\\s*version\\s*=\\s*\"(.*)\"", version);
+      if(result.equals(contents)){
+        // handle literal notation
+        result = replaceRegexGroup(contents, "=\\s*\"" + pluginId + ":(.*)\"", version);
+      }
+      return result;
     }
   }
 
@@ -560,7 +591,13 @@ public class AndroidGradleTests {
       }
 
       Sdks.allowAccessToSdk(projectDisposable);
+      final var oldAndroidSdkPath = ideSdks.getAndroidSdkPath();
       ideSdks.setAndroidSdkPath(androidSdkPath);
+      Disposer.register(projectDisposable, () -> {
+        WriteAction.runAndWait(() -> {
+            AndroidSdkPathStore.getInstance().setAndroidSdkPath(oldAndroidSdkPath != null ? oldAndroidSdkPath.toPath() : null);
+        });
+      });
       IdeSdks.removeJdksOn(projectDisposable);
 
       LOG.info("Set IDE Sdk Path to " + androidSdkPath);
@@ -691,12 +728,7 @@ public class AndroidGradleTests {
 
   public static void addJdk8ToTableButUseCurrent() throws IOException {
     String jdk8Path = getEmbeddedJdk8Path();
-    Sdk jdk = Jdks.getInstance().createJdk(jdk8Path);
-    assertThat(jdk).isNotNull();
-    runWriteAction(() -> {
-      ProjectJdkTable.getInstance().addJdk(jdk);
-      return null;
-    });
+    Jdks.getInstance().createAndAddJdk(jdk8Path);
     overrideJdkToCurrentJdk();
   }
 

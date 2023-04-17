@@ -15,6 +15,11 @@
  */
 package com.android.tools.idea.rendering
 
+import com.android.ide.common.rendering.api.RenderResources
+import com.android.ide.common.resources.ResourceResolver
+import com.android.ide.common.util.PathString
+import com.android.tools.rendering.RenderProblem
+import com.android.tools.rendering.parsers.RenderXmlFile
 import com.intellij.openapi.Disposable
 
 /**
@@ -29,4 +34,12 @@ interface EnvironmentContext {
   fun hasLayoutlibCrash(): Boolean
 
   val runnableFixFactory: RenderProblem.RunnableFixFactory
+
+  fun createIncludeReference(xmlFile: RenderXmlFile, resolver: RenderResources): IncludeReference
+
+  fun getFileText(fileName: String): String?
+
+  fun getXmlFile(filePath: PathString): RenderXmlFile?
+
+  fun getNavGraphResolver(resourceResolver: ResourceResolver): NavGraphResolver
 }

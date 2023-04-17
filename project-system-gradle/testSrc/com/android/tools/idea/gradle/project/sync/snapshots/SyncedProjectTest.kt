@@ -231,6 +231,9 @@ abstract class SyncedProjectTest(
   fun testLightSyncReference() = testProject(TestProject.LIGHT_SYNC_REFERENCE)
 
   @Test
+  fun testMigrateToNonTransitiveRClasses() = testProject(TestProject.MIGRATE_TO_NON_TRANSITIVE_R_CLASSES)
+
+  @Test
   fun testPureJavaProject() = testProject(TestProject.PURE_JAVA_PROJECT)
 
   @Test
@@ -241,6 +244,15 @@ abstract class SyncedProjectTest(
 
   @Test
   fun testAppWithBuildFeaturesEnabled() = testProject(TestProject.APP_WITH_BUILD_FEATURES_ENABLED)
+
+  @Test
+  fun testNonTransitiveRClassSymbol() = testProject(TestProject.NON_TRANSITIVE_R_CLASS_SYMBOL)
+
+  @Test
+  fun testNonTransitiveRClassSymbolTrue() = testProject(TestProject.NON_TRANSITIVE_R_CLASS_SYMBOL_TRUE)
+
+  @Test
+  fun testDependentModulesOnlyAppRuntime() = testProject(TestProject.DEPENDENT_MODULES_ONLY_APP_RUNTIME);
 
   override fun getTestDefs(testProject: TestProject): List<SyncedProjectTestDef> {
     return tests[testProject].orEmpty()

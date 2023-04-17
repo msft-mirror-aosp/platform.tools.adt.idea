@@ -24,6 +24,7 @@ import com.android.tools.idea.common.surface.InteractionHandlerBase
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.uibuilder.graphics.NlConstants
 import com.android.tools.idea.uibuilder.model.layoutHandler
+import com.android.tools.idea.uibuilder.surface.interaction.MarqueeInteraction
 import org.intellij.lang.annotations.JdkConstants
 import java.awt.Cursor
 import java.awt.Rectangle
@@ -105,7 +106,7 @@ open class NlInteractionHandler(private val surface: DesignSurface<*>): Interact
                                        @JdkConstants.InputEventMask modifiersEx: Int): Interaction? {
     if (surface.getSceneViewAt(mouseX, mouseY) == null) {
       val focusedSceneView = surface.focusedSceneView ?: return null
-      return MarqueeInteraction(focusedSceneView)
+      return MarqueeInteraction(focusedSceneView) { surface.repaint() }
     }
     return null
   }

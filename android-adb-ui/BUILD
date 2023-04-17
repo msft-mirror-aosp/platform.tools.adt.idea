@@ -17,8 +17,11 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/adt/idea/android:intellij.android.core[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
+        "//tools/analytics-library/tracker:analytics-tracker[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-platform-images",
         "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
     ],
 )
 
@@ -27,6 +30,9 @@ iml_module(
     name = "intellij.android.adb.ui.tests",
     iml_files = ["intellij.android.adb.ui.tests.iml"],
     test_class = "com.android.tools.idea.ui.AdbUiTestSuite",
+    test_data = [
+        "//tools/adt/idea/artwork:device-art-resources",
+    ],
     test_friends = ["//tools/adt/idea/android-adb-ui:intellij.android.adb.ui"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
@@ -42,10 +48,13 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
+        "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test[test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-platform-images[test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing[module, test]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
     ],
 )

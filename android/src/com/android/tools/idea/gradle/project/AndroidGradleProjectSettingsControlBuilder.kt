@@ -20,11 +20,13 @@ import com.android.tools.idea.gradle.ui.GradleJdkComboBox
 import com.android.tools.idea.gradle.util.GradleJdkComboBoxUtil
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.sdk.IdeSdks.JDK_LOCATION_ENV_VARIABLE_NAME
+import com.android.tools.idea.sdk.DefaultAndroidGradleJvmNames.ANDROID_STUDIO_DEFAULT_JDK_NAME
+import com.android.tools.idea.sdk.DefaultAndroidGradleJvmNames.ANDROID_STUDIO_JAVA_HOME_NAME
+import com.android.tools.idea.sdk.DefaultAndroidGradleJvmNames.EMBEDDED_JDK_NAME
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.JAVA_HOME
-import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.USE_PROJECT_JDK
 import com.intellij.openapi.externalSystem.util.ExternalSystemUiUtil
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
@@ -155,11 +157,6 @@ class AndroidGradleProjectSettingsControlBuilder(
     if (IdeSdks.getInstance().isUsingEnvVariableJdk) {
       selectedSdk = JDK_LOCATION_ENV_VARIABLE_NAME
     }
-    if (selectedSdk == USE_PROJECT_JDK) {
-      val resolvedJdk = myGradleJdkComboBox!!.getProjectSdk()
-      if (resolvedJdk != null)
-        selectedSdk = resolvedJdk.name
-    }
     myInitialJdkName = selectedSdk
     myGradleJdkComboBox!!.selectedGradleJvmReference = selectedSdk
   }
@@ -176,10 +173,11 @@ class AndroidGradleProjectSettingsControlBuilder(
       // Remove any invalid JDK
       ideSdks.removeInvalidJdksFromTable()
       // Add embedded
-      ideSdks.embeddedJdkPath?.let {
+      ideSdks.embeddedJdkPath.let {
         val embeddedJdkName = JavaSdk.getInstance().suggestSdkName(null, it.absolutePathString())
         addJdkIfNotPresent(sdksModel, embeddedJdkName, it)
       }
+
       // ADD JDK_LOCATION_ENV_VARIABLE_NAME
       if (ideSdks.isJdkEnvVariableValid) {
         addJdkIfNotPresent(sdksModel, JDK_LOCATION_ENV_VARIABLE_NAME, ideSdks.jdkPath!!)
@@ -223,6 +221,7 @@ class AndroidGradleProjectSettingsControlBuilder(
     var resolvedProjectSdk = projectSdk
     sdksModel.reset(project)
     deduplicateSdkNames(sdksModel)
+    removeHardcodedSdkNames(sdksModel)
     if (resolvedProjectSdk == null) {
       resolvedProjectSdk = sdksModel.projectSdk
       // Find real sdk
@@ -251,6 +250,15 @@ class AndroidGradleProjectSettingsControlBuilder(
         sdkModificator.commitChanges()
       }
       processedNames.add(sdk.name)
+    }
+  }
+
+  private fun removeHardcodedSdkNames(sdksModel: ProjectSdksModel) {
+    sdksModel.sdks.filter {
+      val undesiredHardcodedNaming = listOf(EMBEDDED_JDK_NAME, ANDROID_STUDIO_JAVA_HOME_NAME, ANDROID_STUDIO_DEFAULT_JDK_NAME)
+      undesiredHardcodedNaming.contains(it.name)
+    }.forEach {
+      sdksModel.removeSdk(it)
     }
   }
 
