@@ -27,11 +27,12 @@ import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.scene.draw.ColorSet;
 import com.android.tools.idea.common.surface.Layer;
 import com.android.tools.idea.common.surface.SceneLayer;
+import com.android.tools.idea.uibuilder.surface.interaction.CanvasResizeInteraction;
 import com.android.tools.idea.uibuilder.surface.layer.DiagnosticsLayer;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.rendering.RenderResult;
-import com.android.tools.idea.rendering.imagepool.ImagePool;
+import com.android.tools.rendering.imagepool.ImagePool;
 import com.android.tools.idea.uibuilder.handlers.constraint.drawing.AndroidColorSet;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.surface.layer.BorderLayer;
@@ -162,7 +163,7 @@ public class ScreenView extends ScreenViewBase {
     builder.add(sceneLayer);
 
     if(StudioFlags.NELE_OVERLAY_PROVIDER.get()) {
-      builder.add(new OverlayLayer(screenView));
+      builder.add(new OverlayLayer(screenView, surface::getOverlayConfiguration));
     }
 
     if (screenView.myIsResizeable && screenView.getSceneManager().getModel().getType().isEditable()) {

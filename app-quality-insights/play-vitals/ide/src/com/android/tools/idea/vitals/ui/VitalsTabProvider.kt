@@ -19,6 +19,8 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsModel
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.insights.ui.AppInsightsTabProvider
 import com.google.gct.login.GoogleLogin
@@ -51,7 +53,12 @@ class VitalsTabProvider : AppInsightsTabProvider {
           }
           is AppInsightsModel.Authenticated -> {
             tabPanel.setComponent(
-              VitalsTab(appInsightsModel.controller, project, Clock.systemDefaultZone())
+              VitalsTab(
+                appInsightsModel.controller,
+                project,
+                Clock.systemDefaultZone(),
+                AppInsightsTrackerImpl(project, AppInsightsTracker.ProductType.PLAY_VITALS)
+              )
             )
           }
         }
@@ -60,6 +67,9 @@ class VitalsTabProvider : AppInsightsTabProvider {
   }
 
   override fun isApplicable() = StudioFlags.PLAY_VITALS_ENABLED.get()
+
+  override fun getConfigurationManager(project: Project) =
+    project.service<VitalsConfigurationManager>()
 
   // TODO(b/274775776): implement 0 state screen
   private fun placeholderContent(): JPanel =
@@ -95,14 +105,14 @@ class VitalsTabProvider : AppInsightsTabProvider {
             null
           )
           appendLine(
-            "See real-world app quality insights here",
+            "See insights from Play Console with Android Vitals",
             SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES,
             null
           )
           appendLine("Log in", SimpleTextAttributes.LINK_ATTRIBUTES) {
             GoogleLogin.instance.logIn()
           }
-          appendText(" to Android Studio to connect to your Play Store account.")
+          appendText(" to Android Studio to connect to your Play Console account.")
           appendLine("")
           appendLine(
             AllIcons.General.ContextHelp,

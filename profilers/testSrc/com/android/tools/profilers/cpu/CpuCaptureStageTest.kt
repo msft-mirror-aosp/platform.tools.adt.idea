@@ -208,8 +208,8 @@ class CpuCaptureStageTest {
   @Test
   fun trackGroupModelsAreSetForPerfettoWithPower() {
     services.enableJankDetectionUi(false)
-    // Enable power rail and battery counter tracks in min-max and zero-based display mode respectively.
-    services.setSystemTracePowerProfilerDisplayMode(PowerProfilerDisplayMode.MINMAX)
+    // Enable power rail and battery counter tracks by using a non-HIDE flag value.
+    services.setSystemTracePowerProfilerDisplayMode(PowerProfilerDisplayMode.CUMULATIVE)
     val stage = CpuCaptureStage.create(profilers, ProfilersTestData.DEFAULT_CONFIG,
                                        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage_with_power.trace"), SESSION_ID)
     profilers.stage = stage
@@ -245,7 +245,7 @@ class CpuCaptureStageTest {
 
     val powerRailTrackGroup = stage.trackGroupModels[4]
     assertThat(powerRailTrackGroup.title).isEqualTo("Power Rails")
-    assertThat(powerRailTrackGroup.size).isEqualTo(10)
+    assertThat(powerRailTrackGroup.size).isEqualTo(7)
 
     val batteryDrainTrackGroup = stage.trackGroupModels[5]
     assertThat(batteryDrainTrackGroup.title).isEqualTo("Battery")

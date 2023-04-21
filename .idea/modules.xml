@@ -150,6 +150,7 @@
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.tests.iml" filepath="$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.tests.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-vitals/model/intellij.android.app-quality-insights.play-vitals.model.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-vitals/model/intellij.android.app-quality-insights.play-vitals.model.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-vitals/view/intellij.android.app-quality-insights.play-vitals.view.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-vitals/view/intellij.android.app-quality-insights.play-vitals.view.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/ui/intellij.android.app-quality-insights.ui.iml" filepath="$PROJECT_DIR$/app-quality-insights/ui/intellij.android.app-quality-insights.ui.iml" />
@@ -282,6 +283,7 @@
       <module fileurl="file://$PROJECT_DIR$/project-system-integration-tests/intellij.android.projectSystem.integration.tests.iml" filepath="$PROJECT_DIR$/project-system-integration-tests/intellij.android.projectSystem.integration.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/project-system/intellij.android.projectSystem.tests.iml" filepath="$PROJECT_DIR$/project-system/intellij.android.projectSystem.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/render-resources/intellij.android.render-resources.iml" filepath="$PROJECT_DIR$/render-resources/intellij.android.render-resources.iml" />
+      <module fileurl="file://$PROJECT_DIR$/render-resources/intellij.android.render-resources.tests.iml" filepath="$PROJECT_DIR$/render-resources/intellij.android.render-resources.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/rendering/intellij.android.rendering.iml" filepath="$PROJECT_DIR$/rendering/intellij.android.rendering.iml" />
       <module fileurl="file://$PROJECT_DIR$/rendering/intellij.android.rendering.tests.iml" filepath="$PROJECT_DIR$/rendering/intellij.android.rendering.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/room/intellij.android.room.iml" filepath="$PROJECT_DIR$/room/intellij.android.room.iml" />

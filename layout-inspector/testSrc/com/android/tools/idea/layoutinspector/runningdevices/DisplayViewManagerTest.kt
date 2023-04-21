@@ -31,10 +31,11 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
-import java.awt.Dimension
+import org.mockito.Mockito
+import org.mockito.Mockito.spy
+import org.mockito.Mockito.verify
 import java.awt.Rectangle
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -63,34 +64,28 @@ class DisplayViewManagerTest {
 
     renderModel = RenderModel(inspectorModel, treeSettings)
     val renderLogic = RenderLogic(renderModel, FakeRenderSettings())
-    displayView = displayViewRule.newEmulatorView()
+    displayView = spy(displayViewRule.newEmulatorView())
     displayViewManager = DisplayViewManager(renderModel, renderLogic, displayView)
   }
 
   @Test
-  @Ignore("b/265150325 test fails only on presubmit. Re enable once we have a better way of dealing with EmulatorViewRule")
   fun testDisplayViewRepaintOnModelModifications() {
-    var viewPainted = false
-    displayView.addDecorationRenderer { _, _, _, _ -> viewPainted = true }
-
-    val fakeUi = FakeUi(displayView)
-
-    displayView.size = Dimension(200, 300)
-    fakeUi.layoutAndDispatchEvents()
-
     displayViewManager.startRendering()
 
     // invoke the modification listener added by DisplayViewManager
     renderModel.modificationListeners.first().invoke()
 
-    getStreamScreenshotCallAndWaitForFrame(fakeUi, displayView, 1)
-    fakeUi.render()
-
-    assertThat(viewPainted).isTrue()
+    verify(displayView, Mockito.times(1)).repaint()
 
     displayViewManager.stopRendering()
 
     assertThat(renderModel.modificationListeners).isEmpty()
+  }
+
+  @Test
+  fun testRepaint() {
+    displayViewManager.refreshRendering()
+    verify(displayView, Mockito.times(1)).repaint()
   }
 
   private fun getStreamScreenshotCallAndWaitForFrame(fakeUi: FakeUi, view: EmulatorView, frameNumber: Int): FakeEmulator.GrpcCallRecord {

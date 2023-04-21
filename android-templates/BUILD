@@ -46,9 +46,17 @@ iml_module(
             ],
             "test_filter": "com.android.tools.idea.templates.TemplateTest",
         },
+        "TemplateDiffTest": {
+            "shard_count": 1,
+            "data": [
+                "//tools/adt/idea/android/testData",
+            ],
+            "test_filter": "com.android.tools.idea.templates.diff.TemplateDiffTest",
+            # TODO(b/278606589) unable to delete temporary files
+            "tags": ["no_test_windows"],
+        },
         "other": {
             "data": [
-                "//prebuilts/studio/sdk:build-tools/latest",
                 "//tools/adt/idea/android/testData",
             ],
             # TODO(b/234749894) restore after fixing flakes
@@ -59,7 +67,7 @@ iml_module(
     test_data = [
         ":test_deps",
         "//prebuilts/studio/jdk/jdk11",
-        "//prebuilts/studio/sdk:build-tools/33.0.1",
+        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData:projects",
         "//tools/base/build-system:android_gradle_plugin.zip",

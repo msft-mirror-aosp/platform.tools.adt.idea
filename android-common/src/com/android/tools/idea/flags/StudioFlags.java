@@ -157,7 +157,7 @@ public final class StudioFlags {
     "When set to HIDE, hides power and battery data track groups in the system trace. " +
     "When set to MINMAX, shows the power rail tracks in a min-max view and keep the battery counter rails in a zero-based view. " +
     "When set to DELTA, shows the power rail tracks in a delta view and keeps the battery counter rails in a zero-based view.",
-    PowerProfilerDisplayMode.HIDE);
+    PowerProfilerDisplayMode.DELTA);
 
   // TODO(b/211154220): Pending user's feedback, either completely remove the keyboard event functionality in
   // Event Timeline or find a proper way to support it for Android S and newer.
@@ -190,18 +190,6 @@ public final class StudioFlags {
     true);
   //endregion
 
-  //region Asset Studio
-  private static final FlagGroup ASSET = new FlagGroup(FLAGS, "asset", "Asset Studio");
-  public static final Flag<Boolean> ASSET_COPY_MATERIAL_ICONS = Flag.create(
-    ASSET, "copy.material.icons", "Allow copying icons to Sdk folder",
-    "Allow the IconPickerDialog in Asset Studio to copy bundled material icons in to the Android/Sdk folder",
-    true);
-  public static final Flag<Boolean> ASSET_DOWNLOAD_MATERIAL_ICONS = Flag.create(
-    ASSET, "download.material.icons", "Allow downloading icons to Sdk folder",
-    "Allow the IconPickerDialog in Asset Studio to download any new material icons in to the Android/Sdk folder",
-    true);
-  //endregion
-
   //region Design Tools
   private static final FlagGroup DESIGN_TOOLS = new FlagGroup(FLAGS, "design.tools", "Design Tools");
   public static final Flag<Boolean> DESIGN_TOOLS_POWER_SAVE_MODE_SUPPORT = Flag.create(
@@ -209,30 +197,18 @@ public final class StudioFlags {
     "If enabled, the the Layout Editor and Compose Preview will respect the Power Save mode and avoid auto-refresh, reduce FPS, etc.",
     true);
 
-  public static final Flag<Integer> PROJECT_SYSTEM_CLASS_LOADER_CACHE_LIMIT = Flag.create(
+  public static final Flag<Long> PROJECT_SYSTEM_CLASS_LOADER_CACHE_LIMIT = Flag.create(
     DESIGN_TOOLS,
     "project.system.class.loader.cache.max.size",
     "Configure the max size of the cache used by ProjectSystemClassLoader",
     "Allow configuring the maximum size (in bytes) of the cache used by the ProjectSystemClassLoader to load classes from JAR files. " +
     "Files larger than the cache limit will cause a file miss and the file will need to be read again.",
-    1_000_000
+    1_000_000L
   );
   //endregion
 
   //region Layout Editor
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
-  public static final Flag<Boolean> NELE_ANIMATIONS_PREVIEW = Flag.create(
-    NELE, "animated.preview", "Show preview animations toolbar",
-    "Show an animations bar that allows playback of vector drawable animations.",
-    true);
-  public static final Flag<Boolean> NELE_ANIMATED_SELECTOR_PREVIEW = Flag.create(
-    NELE, "animated.selector.preview", "Show preview animations toolbar for animated selector",
-    "Show an animations bar that allows playback of transitions in animated selector.",
-    true);
-  public static final Flag<Boolean> NELE_ANIMATIONS_LIST_PREVIEW = Flag.create(
-    NELE, "animated.list.preview", "Show preview animations toolbar for animation list",
-    "Show an animations bar that allows playback of animation list files.",
-    true);
   public static final Flag<Boolean> NELE_MOTION_AREA_GRAPH = Flag.create(
     NELE, "motion.area.graph", "Show area graph in Timeline panel",
     "Show area graph in Timeline panel for Motion Editor.",
@@ -265,11 +241,6 @@ public final class StudioFlags {
     NELE, "property.panel.actionbar", "Property Panel Actionbar",
     "Support Actionbar in property panel",
     false);
-
-  public static final Flag<Boolean> NELE_NEW_DEVICE_MENU = Flag.create(
-    NELE, "new.device.menu", "New Device Menu in Layout Editor",
-    "Use the new designed device menu to support device classes",
-    true);
 
   public static final Flag<Boolean> NELE_SOURCE_CODE_EDITOR = Flag.create(
     NELE, "show.source.code.editor", "New Source Code Editor",
@@ -320,11 +291,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_OVERLAY_PROVIDER = Flag.create(
     NELE, "toggle.overlay.provider.extension.point", "Toggle overlay provider extension point.",
     "Enable the overlay provider extension point",
-    true);
-
-  public static final Flag<Boolean> NELE_CLASS_BINARY_CACHE = Flag.create(
-    NELE, "toggle.layout.editor.class.binary.cache", "Enable binary cache",
-    "Enable binary cache of classes used in preview",
     true);
 
   public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = Flag.create(
@@ -407,7 +373,7 @@ public final class StudioFlags {
   //region Run/Debug
   private static final FlagGroup RUNDEBUG = new FlagGroup(FLAGS, "rundebug", "Run/Debug");
   public static final Flag<Boolean> RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED = Flag.create(
-    RUNDEBUG, "logcat.console.output.enabled", "Show logcat process output in Run/Debug console window",
+    RUNDEBUG, "console.output.enabled", "Show logcat process output in Run/Debug console window",
     "When running or debugging an Android process, output the logcat output of the process in the console window.",
     false);
 
@@ -624,27 +590,9 @@ public final class StudioFlags {
   //region Logcat
   private static final FlagGroup LOGCAT = new FlagGroup(FLAGS, "logcat", "Logcat");
 
-  // Deprecated: Old logcat tool window
-  public static final Flag<Boolean> LOGCAT_EXPRESSION_FILTER_ENABLE = Flag.create(
-    LOGCAT,
-    "logcat.expression.filter.enable",
-    "Enable expression filter in Logcat (deprecated)",
-    "Enables the expression filter in Logcat",
-    false
-  );
-
-  // Deprecated: Old logcat tool window
-  public static final Flag<Boolean> LOGCAT_SUPPRESSED_TAGS_ENABLE = Flag.create(
-    LOGCAT,
-    "logcat.suppressed.tags.enable",
-    "Enable Suppressed Tags Dialog in Logcat (deprecated)",
-    "Enables a dialog that allows the user to maintain a global set of tags to be suppressed in Logcat",
-    false
-  );
-
   public static final Flag<Boolean> LOGCAT_CUSTOM_FORMAT_ACTION = Flag.create(
     LOGCAT,
-    "logcat.custom.format.action",
+    "custom.format.action",
     "Enable Logcat custom format action",
     "Enables the custom format action in the Logcat tool window action bar",
     false
@@ -652,7 +600,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> LOGCAT_CLICK_TO_ADD_FILTER = Flag.create(
     LOGCAT,
-    "logcat.click.to.add.filter",
+    "click.to.add.filter",
     "Enable Logcat click to add/remove filter feature",
     "Enable Logcat click to add/remove filter feature",
     true
@@ -660,7 +608,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> LOGCAT_IS_FILTER = Flag.create(
     LOGCAT,
-    "logcat.is.filter",
+    "is.filter",
     "Enable Logcat 'is:...' filter",
     "Enables a Logcat filter using the 'is' keyword for example 'is:stacktrace'is:crash' etc",
     true
@@ -668,7 +616,7 @@ public final class StudioFlags {
 
   public static final Flag<Integer> LOGCAT_MAX_MESSAGES_PER_BATCH = Flag.create(
     LOGCAT,
-    "logcat.max.messages.per.batch",
+    "max.messages.per.batch",
     "Set the max number of messages that are appended to the UI component",
     "Set the max number of messages that are appended to the UI component",
     1000
@@ -676,7 +624,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> LOGCAT_PANEL_MEMORY_SAVER = Flag.create(
     LOGCAT,
-    "logcat.panel.memory.saver",
+    "panel.memory.saver",
     "Enable Logcat Panel memory saving feature",
     "Reduces memory usage of Logcat tool by writing data to a file when the panel is not visible",
     true
@@ -684,7 +632,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> LOGCAT_TERMINATE_APP_ACTIONS_ENABLED = Flag.create(
     LOGCAT,
-    "logcat.terminate.app.actions.enable",
+    "terminate.app.actions.enable",
     "Enable right-click actions for terminating the application",
     "Enable right-click actions for terminating the application. " +
     "Note that this feature is only enabled if the flag ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER is also true. " +
@@ -692,9 +640,9 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> LOGCAT_IGNORE_STUDIO_SPAM_TAGS = Flag.create(
+  public static final Flag<Boolean> LOGCAT_IGNORE_STUDIO_TAGS = Flag.create(
     LOGCAT,
-    "logcat.ignore.studio.spam.tags",
+    "ignore.studio.tags",
     "Ignore tags that Studio itself is responsible for",
     "Ignore tags that Studio itself is responsible for",
     true
@@ -1749,6 +1697,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
+  public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR

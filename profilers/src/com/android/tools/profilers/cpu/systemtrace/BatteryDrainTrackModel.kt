@@ -26,7 +26,7 @@ import com.android.tools.adtui.model.formatter.SingleUnitAxisFormatter
 import com.android.tools.profilers.cpu.LazyDataSeries
 import kotlin.math.abs
 
-class BatteryDrainTrackModel(dataSeries: List<SeriesData<Long>>, viewRange: Range, trackName: String) : LineChartModel() {
+class BatteryDrainTrackModel(dataSeries: List<SeriesData<Long>>, viewRange: Range, unit: String) : LineChartModel() {
   val batteryDrainCounterSeries: RangedContinuousSeries
   val axisComponentModel: AxisComponentModel
 
@@ -34,7 +34,6 @@ class BatteryDrainTrackModel(dataSeries: List<SeriesData<Long>>, viewRange: Rang
     val maxValue = dataSeries.asSequence().map { it.value }.maxOrNull() ?: 0
     val minValue = dataSeries.asSequence().map { it.value }.minOrNull() ?: 0
 
-    val unit = getUnitFromTrackName(trackName)
     val negValuePresent = minValue < 0 || maxValue < 0
 
     val axisFormatter = when (unit) {
@@ -47,6 +46,7 @@ class BatteryDrainTrackModel(dataSeries: List<SeriesData<Long>>, viewRange: Rang
 
     val absLargestValue = abs(minValue.toDouble()).coerceAtLeast(abs(maxValue.toDouble()))
     val yRange = when (unit) {
+      "%" -> Range(0.0, 100.0)
       // We use the range of [-max, max] if there is a negative value present to coerce the 0 axis label (clarifies negative values).
       "µa" -> if (negValuePresent) Range(-absLargestValue, absLargestValue) else Range(0.0, maxValue.toDouble())
       else -> Range(0.0, maxValue.toDouble())
@@ -60,6 +60,20 @@ class BatteryDrainTrackModel(dataSeries: List<SeriesData<Long>>, viewRange: Rang
   }
 
   companion object {
+    /**
+     * This method returns a more human-readable version of a battery drain counter name.
+     */
+    @JvmStatic
+    fun getFormattedBatteryDrainName(batteryDrainCounterName: String): String {
+      return when (val formattedBatteryDrainCounterName = batteryDrainCounterName.replace("batt.", "")) {
+        "capacity_pct" -> "Capacity"
+        "charge_uah" -> "Charge"
+        "current_ua" -> "Current"
+        else -> formattedBatteryDrainCounterName
+      }
+    }
+
+    @JvmStatic
     fun getUnitFromTrackName(trackName: String): String {
       return if (trackName.contains("pct")) "%"
       else if (trackName.contains("uah")) "µah"

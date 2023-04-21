@@ -194,8 +194,7 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
               .apply {
                 addVersions(filters.versions)
                 addFailureTypes(filters.eventTypes)
-                // addDevices(filters.devices) // TODO: INVALID_ARGUMENT: Field not defined:
-                // deviceModel
+                addDevices(filters.devices)
                 addOperatingSystems(filters.operatingSystems)
               }
               .build()
@@ -240,7 +239,6 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
             .apply {
               if (StudioFlags.PLAY_VITALS_GRPC_USE_TRANSPORT_SECURITY.get()) useTransportSecurity()
               else usePlaintext()
-              maxInboundMessageSize(1024 * 1024) // 1MB
             }
             .build()
             .also {

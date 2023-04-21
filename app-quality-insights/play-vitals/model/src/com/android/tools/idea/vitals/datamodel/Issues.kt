@@ -18,10 +18,10 @@ package com.android.tools.idea.vitals.datamodel
 import com.android.tools.idea.insights.Device
 import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.EventData
+import com.android.tools.idea.insights.IssueAnnotation
 import com.android.tools.idea.insights.IssueDetails
 import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.OperatingSystemInfo
-import com.android.tools.idea.insights.StacktraceGroup
 import com.android.tools.idea.insights.client.toJavaInstant
 import com.google.play.developer.reporting.ErrorIssue
 import com.google.play.developer.reporting.ErrorReport
@@ -39,7 +39,8 @@ internal fun ErrorIssue.toIssueDetails(): IssueDetails {
     eventsCount = errorReportCount,
     signals = emptySet(),
     uri = issueUri,
-    notesCount = 0L
+    notesCount = 0L,
+    annotations = annotationsList.map { IssueAnnotation.fromProto(it) }
   )
 }
 
@@ -48,15 +49,15 @@ internal fun ErrorReport.toSampleEvent(): Event {
     eventData =
       EventData(
         device = Device.fromProto(deviceModel),
-        operatingSystemInfo =
-          OperatingSystemInfo(
-            displayVersion = "",
-            displayName = ""
-          ), // TODO: update this once API is updated.
+        operatingSystemInfo = OperatingSystemInfo.fromProto(osVersion),
         eventTime = eventTime.toJavaInstant()
       ),
-    stacktraceGroup =
-      StacktraceGroup() // TODO: need to parse reportText or we introduce a new string blob field to
-    // at least print traces in our stacktrace panel.
+    stacktraceGroup = reportText.extract()
   )
+}
+
+internal fun IssueAnnotation.Companion.fromProto(
+  proto: com.google.play.developer.reporting.IssueAnnotation
+): IssueAnnotation {
+  return IssueAnnotation(category = proto.category, title = proto.title, body = proto.body)
 }

@@ -30,6 +30,7 @@ import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.tasks.LaunchContext
 import com.android.tools.idea.run.tasks.LaunchTask
+import com.android.tools.idea.run.tasks.clearAppStorage
 import com.android.tools.idea.run.tasks.getBaseDebuggerTask
 import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.run.util.SwapInfo
@@ -88,6 +89,9 @@ class LaunchTaskRunner(
       if (configuration.CLEAR_LOGCAT) {
         project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(it.serialNumber)
       }
+      if (configuration.CLEAR_APP_STORAGE) {
+        clearAppStorage(project, it, packageName)
+      }
       LaunchUtils.initiateDismissKeyguard(it)
     }
 
@@ -100,6 +104,9 @@ class LaunchTaskRunner(
           project.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device, packageName)
         }
       }
+      if (configuration.SHOW_LOGCAT_AUTOMATICALLY) {
+        project.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device, packageName)
+      }
     }
 
     createRunContentDescriptor(processHandler, console, env)
@@ -110,31 +117,29 @@ class LaunchTaskRunner(
                             indicator: ProgressIndicator,
                             console: ConsoleView,
                             isDebug: Boolean) = coroutineScope {
-    val launchTasksProvider = AndroidLaunchTasksProvider(configuration, env, facet, applicationIdProvider, apkProvider,
+    val packageName = applicationIdProvider.packageName
+    val launchTasksProvider = AndroidLaunchTasksProvider(configuration, env, facet, packageName, apkProvider,
                                                          configuration.launchOptions.build(), isDebug)
+    val stat = RunStats.from(env).apply { setPackage(packageName) }
 
-    val applicationId = applicationIdProvider.packageName
-    val stat = RunStats.from(env).apply { setPackage(applicationId) }
+    printLaunchTaskStartedMessage(console)
+    launchTasksProvider.fillStats(stat)
 
-      printLaunchTaskStartedMessage(console)
-      launchTasksProvider.fillStats(stat)
+    // Create launch tasks for each device.
+    indicator.text = "Getting task for devices"
+    val launchTaskMap = devices.keysToMap { launchTasksProvider.getTasks(it) }
 
-      // Create launch tasks for each device.
-      indicator.text = "Getting task for devices"
-      val launchTaskMap = devices.keysToMap { launchTasksProvider.getTasks(it) }
-
-      // A list of devices that we have launched application successfully.
-      indicator.text = "Launching on devices"
-      launchTaskMap.entries.map { (device, tasks) ->
-        async {
-          LOG.info("Launching on device ${device.name}")
-          val launchContext = LaunchContext(env, device, console, processHandler, indicator)
-          runLaunchTasks(tasks, launchContext)
-          // Notify listeners of the deployment.
-          project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device.serialNumber, project)
-        }
-      }.awaitAll()
-
+    // A list of devices that we have launched application successfully.
+    indicator.text = "Launching on devices"
+    launchTaskMap.entries.map { (device, tasks) ->
+      async {
+        LOG.info("Launching on device ${device.name}")
+        val launchContext = LaunchContext(env, device, console, processHandler, indicator)
+        runLaunchTasks(tasks, launchContext)
+        // Notify listeners of the deployment.
+        project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device.serialNumber, project)
+      }
+    }.awaitAll()
   }
 
   private suspend fun waitPreviousProcessTermination(devices: List<IDevice>,
@@ -148,38 +153,42 @@ class LaunchTaskRunner(
   }
 
   override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
-    val applicationId = applicationIdProvider.packageName
+    val packageName = applicationIdProvider.packageName
 
     val devices = getDevices(deviceFutures, indicator, RunStats.from(env))
 
     if (devices.size != 1) {
       throw ExecutionException("Cannot launch a debug session on more than 1 device.")
     }
-    RunStats.from(env).apply { setPackage(applicationId) }
+    RunStats.from(env).apply { setPackage(packageName) }
 
     settings.getProcessHandlersForDevices(project, devices).forEach { it.destroyProcess() }
 
     RunStats.from(env).runCustomTask("waitForProcessTermination") {
-      waitPreviousProcessTermination(devices, applicationId, indicator)
+      waitPreviousProcessTermination(devices, packageName, indicator)
     }
 
     val processHandler = NopProcessHandler()
     val console = createConsole()
-    doRun(devices, processHandler, indicator, console, true)
-
     val device = devices.single()
 
     if (configuration.CLEAR_LOGCAT) {
       project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device.serialNumber)
     }
-
+    if (configuration.CLEAR_APP_STORAGE) {
+      clearAppStorage(project, device, packageName)
+    }
     LaunchUtils.initiateDismissKeyguard(device)
+
     doRun(devices, processHandler, indicator, console, true)
 
     indicator.text = "Connecting debugger"
     val session = RunStats.from(env).runCustomTask("startDebuggerSession") {
       val debuggerTask = getBaseDebuggerTask(configuration.androidDebuggerContext, facet, env)
-      debuggerTask.perform(device, applicationId, env, indicator, console)
+      debuggerTask.perform(device, packageName, env, indicator, console)
+    }
+    if (configuration.SHOW_LOGCAT_AUTOMATICALLY) {
+      project.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device, packageName)
     }
     session.runContentDescriptor
   }
@@ -195,34 +204,23 @@ class LaunchTaskRunner(
      */
     val processHandlers = settings.getProcessHandlersForDevices(project, devices).distinct()
 
-    if (processHandlers.size > 1) {
-      throw ExecutionException("Can't perform applying changes. Devices associated with more than one running process")
-    }
-
-    val existingProcessHandler = processHandlers.firstOrNull()
-
-    val existingRunContentDescriptor = existingProcessHandler?.let {
+    /**
+     * Searching for first not hidden [RunContentDescriptor].
+     */
+    val existingRunContentDescriptor = processHandlers.mapNotNull {
       withContext(uiThread) {
-        RunContentManager.getInstance(project).findContentDescriptor(env.executor, existingProcessHandler)
+        RunContentManager.getInstance(project).findContentDescriptor(env.executor, it)?.takeIf { !it.isHiddenContent }
       }
-    }
+    }.firstOrNull()
 
     val packageName = applicationIdProvider.packageName
-    val processHandler = existingProcessHandler ?: AndroidProcessHandler(project, packageName)
+    val processHandler = existingRunContentDescriptor?.processHandler ?: AndroidProcessHandler(project, packageName).apply {
+      devices.forEach { addTargetDevice(it) }
+    }
+
     val console = existingRunContentDescriptor?.executionConsole as? ConsoleView ?: createConsole()
 
     doRun(devices, processHandler, indicator, console, false)
-
-    if (processHandler is AndroidProcessHandler) {
-      devices.forEach { device ->
-        processHandler.addTargetDevice(device)
-        if (!StudioFlags.RUNDEBUG_LOGCAT_CONSOLE_OUTPUT_ENABLED.get()) {
-          console.printHyperlink(getShowLogcatLinkText(device)) { project ->
-            project.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device, applicationIdProvider.packageName)
-          }
-        }
-      }
-    }
 
     withContext(uiThread) {
       val attachedContent = existingRunContentDescriptor?.attachedContent
@@ -230,23 +228,18 @@ class LaunchTaskRunner(
         createRunContentDescriptor(processHandler, console, env)
       }
       else {
-        if (existingRunContentDescriptor.isHiddenContent) {
-          existingRunContentDescriptor
-        }
-        else {
-          object : RunContentDescriptor(existingRunContentDescriptor.executionConsole,
-                                        existingRunContentDescriptor.processHandler,
-                                        existingRunContentDescriptor.component,
-                                        existingRunContentDescriptor.displayName,
-                                        existingRunContentDescriptor.icon, null as Runnable?,
-                                        existingRunContentDescriptor.restartActions) {
-            override fun isHiddenContent() = true
-          }.apply {
+        object : RunContentDescriptor(existingRunContentDescriptor.executionConsole,
+                                      existingRunContentDescriptor.processHandler,
+                                      existingRunContentDescriptor.component,
+                                      existingRunContentDescriptor.displayName,
+                                      existingRunContentDescriptor.icon, null as Runnable?,
+                                      existingRunContentDescriptor.restartActions) {
+          override fun isHiddenContent() = true
+        }.apply {
             setAttachedContent(attachedContent)
             // Same as [RunContentBuilder.showRunContent]
             Disposer.register(project, this)
           }
-        }
       }
     }
   }

@@ -130,6 +130,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
   override fun getExecutor(env: ExecutionEnvironment, facet: AndroidFacet, deployFutures: DeviceFutures): AndroidConfigurationExecutor {
     val applicationIdProvider = applicationIdProvider ?: throw RuntimeException("Cannot get ApplicationIdProvider")
     val apkProvider = apkProvider ?: throw RuntimeException("Cannot get ApkProvider")
+    env.putCopyableUserData(AppRunConfiguration.KEY, this)
     return LaunchTaskRunner(applicationIdProvider, env, deployFutures, apkProvider)
   }
 
@@ -211,7 +212,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
 
   @Throws(ExecutionException::class)
   open fun getApplicationLaunchTask(
-    applicationIdProvider: ApplicationIdProvider,
+    packageName: String,
     facet: AndroidFacet,
     contributorsAmStartOptions: String,
     waitForDebugger: Boolean,
@@ -238,15 +239,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
         extraFlags
       )
     }
-    return try {
-      state.getLaunchTask(
-        applicationIdProvider.packageName, facet, startActivityFlagsProvider, profilerState,
-        apkProvider
-      )
-    }
-    catch (e: ApkProvisionException) {
-      throw ExecutionException("Unable to identify application id :$e")
-    }
+    return state.getLaunchTask(packageName, facet, startActivityFlagsProvider, profilerState, apkProvider)
   }
 
   /**
