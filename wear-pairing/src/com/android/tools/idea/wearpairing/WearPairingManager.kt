@@ -74,7 +74,7 @@ private val LOG get() = logger<WearPairingManager>()
 @Service(
   Service.Level.APP
 )
-class WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
+class WearPairingManager : AndroidDebugBridge.IDeviceChangeListener, ObservablePairedDevicesList {
   enum class PairingState {
     UNKNOWN,
     OFFLINE, // One or both device are offline/disconnected
@@ -212,7 +212,7 @@ class WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   }
 
   @Synchronized
-  fun addDevicePairingStatusChangedListener(listener: PairingStatusChangedListener) {
+  override fun addDevicePairingStatusChangedListener(listener: PairingStatusChangedListener) {
     pairingStatusListeners.addIfAbsent(listener)
     if (pairingStatusListeners.size > 2) { // We should have no more than two pairing details panels listening
       LOG.error("Memory leak adding listeners")
@@ -222,7 +222,7 @@ class WearPairingManager : AndroidDebugBridge.IDeviceChangeListener {
   }
 
   @Synchronized
-  fun removeDevicePairingStatusChangedListener(listener: PairingStatusChangedListener) {
+  override fun removeDevicePairingStatusChangedListener(listener: PairingStatusChangedListener) {
     pairingStatusListeners.remove(listener)
   }
 
@@ -553,15 +553,21 @@ private fun IDevice.getDeviceName(unknown: String): String {
 
 private val WIFI_DEVICE_SERIAL_PATTERN = Pattern.compile("adb-(.*)-.*\\._adb-tls-connect\\._tcp\\.?")
 
+private fun normalizeAvdId(avdId: String) = try {
+  Path(avdId.trim()).normalize().toString()
+} catch (_: Throwable) {
+  avdId
+}
+
 private fun IDevice.getDeviceID(): String {
   return when {
-    // Path.normalize is applied to the returned path from the AVD data to remove any .. in the path.
+    // normalizeAvdId is applied to the returned path from the AVD data to remove any .. in the path.
     // They were added in https://r.android.com/2441481 and, since we use the path as an ID, the .. does
     // not match the path information we have in Studio.
     // We intentionally use normalize since it does not access disk and will just normalize the path removing
     // the ..
-    isEmulator && avdData?.isDone == true -> avdData.get()?.path?.let { Path(it).normalize().toString() } ?: name
-    isEmulator -> EmulatorConsole.getConsole(this)?.avdPath?.let { Path(it).normalize().toString() } ?: name
+    isEmulator && avdData?.isDone == true -> avdData.get()?.path?.let { normalizeAvdId(it) } ?: name
+    isEmulator -> EmulatorConsole.getConsole(this)?.avdPath?.let { normalizeAvdId(it) } ?: name
     else -> {
       val matcher = WIFI_DEVICE_SERIAL_PATTERN.matcher(this.serialNumber)
       if (matcher.matches()) matcher.group(1) else this.serialNumber
@@ -625,4 +631,9 @@ fun WearPairingManager.removePairedDevicesAsync(phoneWearPair: WearPairingManage
   GlobalScope.launch(Dispatchers.IO) {
     removePairedDevices(phoneWearPair, restartWearGmsCore)
   }
+}
+
+interface ObservablePairedDevicesList {
+  fun addDevicePairingStatusChangedListener(listener: WearPairingManager.PairingStatusChangedListener)
+  fun removeDevicePairingStatusChangedListener(listener: WearPairingManager.PairingStatusChangedListener)
 }

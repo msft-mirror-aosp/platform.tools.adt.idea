@@ -155,8 +155,8 @@ public final class StudioFlags {
     "Allows users to customize whether the power rail and battery counter tracks are shown in the system trace UI, " +
     "and if shown, which type of graph displays the tracks. " +
     "When set to HIDE, hides power and battery data track groups in the system trace. " +
-    "When set to MINMAX, shows the power rail tracks in a min-max view and keep the battery counter rails in a zero-based view. " +
-    "When set to DELTA, shows the power rail tracks in a delta view and keeps the battery counter rails in a zero-based view.",
+    "When set to CUMULATIVE, shows power rails and battery counters in their raw view (cumulative counters). " +
+    "When set to DELTA, shows the power rails in a delta view and battery counters in their raw view (cumulative counters).",
     PowerProfilerDisplayMode.DELTA);
 
   // TODO(b/211154220): Pending user's feedback, either completely remove the keyboard event functionality in
@@ -311,6 +311,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = Flag.create(
     NELE, "atf.for.compose", "Enable ATF checks for Compose",
     "Allow running accessibility checks for Compose using ATF.",
+    false);
+
+  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = Flag.create(
+    NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
+    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
     false);
 
   public static final Flag<Boolean> NELE_WARN_NEW_THREADS = Flag.create(
@@ -835,7 +840,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.running.devices", "Enable Layout Inspector in Running Devices",
     "When this flag is enabled, LayoutInspector be integrated in the Running Devices tool window, instead of in its own tool window.",
-    false);
+    true);
 
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.ignore.framework.recompositions", "Ignore recompositions in compose framework",
@@ -904,16 +909,17 @@ public final class StudioFlags {
     false);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
-    "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\"",
-    "info");
+    "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
+    " the default is \"info\"",
+    "");
   public static final Flag<Integer> DEVICE_MIRRORING_MAX_BIT_RATE = Flag.create(
     DEVICE_MIRRORING, "max.bit.rate", "Maximum Bit Rate for Mirroring of Physical Devices",
     "The maximum bit rate of video stream, zero means no limit",
     0);
   public static final Flag<String> DEVICE_MIRRORING_VIDEO_CODEC = Flag.create(
     DEVICE_MIRRORING, "video.codec", "Video Codec Used for Mirroring of Physical Devices",
-    "The name of a video codec, e.g. \"vp8\" or \"vp9\"",
-    "vp8");
+    "The name of a video codec, e.g. \"vp8\" or \"vp9\"; the default is \"vp8\"",
+    "");
   //endregion
 
   // region Device Definition Download Service
@@ -1151,6 +1157,11 @@ public final class StudioFlags {
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_LITE_MODE = Flag.create(
+    COMPOSE, "preview.compose.lite.mode", "Enable Compose Preview Lite Mode",
+    "If enabled, Preview Lite Mode will be enabled.",
+    false);
+
   public static final Flag<Boolean> COMPOSE_PREVIEW_DOUBLE_RENDER = Flag.create(
     COMPOSE, "preview.double.render", "Enable the Compose double render mode",
     "If enabled, preview components will be rendered twice so components depending on a recompose (like tableDecoration) " +
@@ -1161,20 +1172,6 @@ public final class StudioFlags {
     COMPOSE, "preview.scroll.on.caret.move", "Enable the Compose Preview scrolling when the caret moves",
     "If enabled, when moving the caret in the text editor, the Preview will show the preview currently under the cursor.",
     false);
-
-  public static final Flag<Boolean> COMPOSE_CONSTRAINTLAYOUT_COMPLETION = Flag.create(
-    COMPOSE, "editor.completion.constraintlayout.json",
-    "Completion for ConstraintLayout JSON syntax",
-    "If enabled, code completion will be abailable for the JSON syntax of Compose ConstraintLayout.",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_AUTO_DOCUMENTATION = Flag.create(
-    COMPOSE, "editor.auto.documentation",
-    "Show quick documentation automatically for Compose",
-    "If enabled, during code completion popup with documentation shows automatically",
-    true
-  );
 
   public static final Flag<Boolean> COMPOSE_RENDER_SAMPLE_IN_DOCUMENTATION = Flag.create(
     COMPOSE, "editor.render.sample",
@@ -1194,13 +1191,6 @@ public final class StudioFlags {
     COMPOSE, "editor.function.extraction",
     "Enables extracting @Composable function from other composables",
     "If enabled, function extracted from @Composable function will annotated @Composable",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT = Flag.create(
-    COMPOSE, "deploy.live.edit.deploy",
-    "Enable live edit deploy",
-    "If enabled, Live Edit will be visible and available",
     true
   );
 
@@ -1282,25 +1272,11 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_CONSTRAINT_VISUALIZATION = Flag.create(
-    COMPOSE, "constraint.visualization",
-    "Enable ConstraintLayout visualization in Compose previews",
-    "If enabled, constraints from a ConstraintLayout composable will be shown in the preview",
-    true
-  );
-
   public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = Flag.create(
     COMPOSE, "preview.interactive.fps.limit",
     "Interactive Preview FPS limit",
     "Controls the maximum number of frames per second in Compose Interactive Preview",
     30
-  );
-
-  public static final Flag<Boolean> COMPOSE_STATE_OBJECT_CUSTOM_RENDERER = Flag.create(
-    COMPOSE, "custom.renderer.for.compose.state.objects",
-    "Enable custom renderers for compose state objects",
-    "If enabled, a given compose 'StateObject' type object will be rendered by the corresponding custom renderer",
-    true
   );
 
   public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG = Flag.create(
@@ -1335,11 +1311,6 @@ public final class StudioFlags {
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
     false);
 
-  public static final Flag<Boolean> COMPOSE_MULTIPREVIEW = Flag.create(
-    COMPOSE, "preview.multipreview.enabled", "Enable Compose Multipreview",
-    "If enabled, annotation classes annotated with Preview, and its usages, will be considered when finding Previews in a file",
-    true);
-
   public static final Flag<Boolean> COMPOSE_NEW_PREVIEW_LAYOUT = Flag.create(
     COMPOSE, "new.preview.layout", "Enable the new layout options of Compose Preview",
     "If enabled, the options of new layout designs of compose preview will be shown in Compose Preview",
@@ -1358,7 +1329,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_ALLOCATION_LIMITER = Flag.create(
     COMPOSE, "allocation.limiter", "If enabled, limits allocations per render",
     "If enabled, limits the number of allocations that user code can do in a single render action",
-    java.lang.Boolean.getBoolean("idea.is.internal"));
+    true);
   public static final Flag<Boolean> COMPOSE_PREVIEW_SELECTION = Flag.create(
     COMPOSE, "compose.preview.selection", "Enable the select/deselect interaction with Previews",
     "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
@@ -1481,17 +1452,6 @@ public final class StudioFlags {
     false
   );
   // endregion DDMLIB
-
-  // region Deployment
-  private static final FlagGroup DEPLOYMENT = new FlagGroup(FLAGS, "deployment", "Deployment");
-
-  public static final @NotNull Flag<Boolean> LOGGERS_ERRORS_ENABLED =
-    Flag.create(DEPLOYMENT,
-                "loggers.errors.enabled",
-                "Enable the logging of errors from Loggers::errorOrWarn",
-                "Enable the logging of errors from Loggers::errorOrWarn",
-                false);
-  // endregion
 
   //region SERVER_FLAGS
   private static final FlagGroup SERVER_FLAGS = new FlagGroup(FLAGS, "serverflags", "Server Flags");

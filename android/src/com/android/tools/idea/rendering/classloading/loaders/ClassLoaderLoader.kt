@@ -16,7 +16,8 @@
 package com.android.tools.idea.rendering.classloading.loaders
 
 import com.android.SdkConstants
-import com.android.tools.idea.rendering.classloading.fromPackageNameToBinaryName
+import com.android.tools.rendering.classloading.fromPackageNameToBinaryName
+import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.google.common.io.ByteStreams
 
 /**

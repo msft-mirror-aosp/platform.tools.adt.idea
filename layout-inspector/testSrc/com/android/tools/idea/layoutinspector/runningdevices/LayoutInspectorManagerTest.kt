@@ -17,6 +17,7 @@ package com.android.tools.idea.layoutinspector.runningdevices
 
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
+import com.android.tools.adtui.actions.createTestActionEvent
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
@@ -30,6 +31,7 @@ import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
+import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.SingleDeviceSelectProcessAction
@@ -49,8 +51,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.spy
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
 import java.awt.Component
 import java.awt.Container
 import javax.swing.JPanel
@@ -275,16 +275,20 @@ class LayoutInspectorManagerTest {
   @RunsInEdt
   fun testViewIsRefreshedOnSelectionChange() {
     val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
+    var refreshCount = 0
 
     layoutInspectorManager.enableLayoutInspector(tab1.tabId, true)
 
+    val layoutInspectorRenderer = tab1.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>().first()
+    layoutInspectorRenderer.addListener { refreshCount += 1 }
+
     layoutInspector.inspectorModel.setSelection(ViewNode("node1"), SelectionOrigin.COMPONENT_TREE)
-    verify(tab1.displayView, times(1)).repaint()
+    assertThat(refreshCount).isEqualTo(1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.tabId, false)
 
     layoutInspector.inspectorModel.setSelection(ViewNode("node2"), SelectionOrigin.COMPONENT_TREE)
-    verify(tab1.displayView, times(1)).repaint()
+    assertThat(refreshCount).isEqualTo(1)
   }
 
   @Test
@@ -302,7 +306,7 @@ class LayoutInspectorManagerTest {
     assertThat(notifications1.first().message).isEqualTo(
       "(Experimental) Layout Inspector is now embedded within Running Devices window"
     )
-    assertThat(notifications1.first().actions[0].templatePresentation.text).isEqualTo("Learn More")
+    assertThat(notifications1.first().actions[0].templatePresentation.text).isEqualTo("Don't Show Again")
     assertThat(notifications1.first().actions[1].templatePresentation.text).isEqualTo("Opt-out")
 
     layoutInspectorManager.enableLayoutInspector(tab1.tabId, false)
@@ -311,11 +315,49 @@ class LayoutInspectorManagerTest {
 
     assertHasWorkbench(tab1)
     val notifications2 = InspectorBannerService.getInstance(displayViewRule.project)!!.notifications
-    assertThat(notifications2).hasSize(0)
+    assertThat(notifications2).hasSize(1)
+
+    notifications1.first().actions[0].actionPerformed(createTestActionEvent(notifications1.first().actions[0]))
+
+    val notifications3 = InspectorBannerService.getInstance(displayViewRule.project)!!.notifications
+    assertThat(notifications3).hasSize(0)
+
+    layoutInspectorManager.enableLayoutInspector(tab1.tabId, false)
+
+    layoutInspectorManager.enableLayoutInspector(tab1.tabId, true)
+
+    val notifications4 = InspectorBannerService.getInstance(displayViewRule.project)!!.notifications
+    assertThat(notifications4).hasSize(0)
 
     layoutInspectorManager.enableLayoutInspector(tab1.tabId, false)
 
     assertDoesNotHaveWorkbench(tab1)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testDeepInspectEnablesClickIntercept() {
+    val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
+
+    layoutInspectorManager.enableLayoutInspector(tab1.tabId, true)
+
+    val layoutInspectorRenderer = tab1.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>().first()
+
+    val toolbars = tab1.container
+      .allChildren()
+      .filterIsInstance<ActionToolbar>()
+      .first { it.component.name == "LayoutInspector.MainToolbar" }
+
+    val toggleDeepInspectAction = toolbars.actions.filterIsInstance<ToggleDeepInspectAction>().first()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isFalse()
+    assertThat(layoutInspectorRenderer.interceptClicks).isFalse()
+
+    toggleDeepInspectAction.actionPerformed(createTestActionEvent(toggleDeepInspectAction))
+
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isTrue()
+    assertThat(layoutInspectorRenderer.interceptClicks).isTrue()
+
+    layoutInspectorManager.enableLayoutInspector(tab1.tabId, false)
   }
 
   private fun assertHasWorkbench(tabInfo: TabInfo) {
@@ -330,12 +372,15 @@ class LayoutInspectorManagerTest {
     assertThat(toolbars).hasSize(1)
 
     assertThat(toolbars.first().actions.filterIsInstance<SingleDeviceSelectProcessAction>()).hasSize(1)
+    assertThat(toolbars.first().actions.filterIsInstance<ToggleDeepInspectAction>()).hasSize(1)
 
     val inspectorBanner = tabInfo.container
       .allChildren()
       .filterIsInstance<InspectorBanner>()
 
     assertThat(inspectorBanner).hasSize(1)
+
+    assertThat(tabInfo.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>()).hasSize(1)
   }
 
   private fun assertDoesNotHaveWorkbench(tabInfo: TabInfo) {
@@ -355,6 +400,8 @@ class LayoutInspectorManagerTest {
       .filterIsInstance<InspectorBanner>()
 
     assertThat(inspectorBanner).hasSize(0)
+
+    assertThat(tabInfo.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>()).hasSize(0)
   }
 
   private fun Component.parents(): List<Container> {

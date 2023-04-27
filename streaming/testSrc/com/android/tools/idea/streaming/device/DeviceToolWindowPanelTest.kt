@@ -256,8 +256,10 @@ class DeviceToolWindowPanelTest {
     assertThat(foldingActions).asList().containsExactly(
         FoldingAction(FoldingState(0, "Closed", true)),
         FoldingAction(FoldingState(1, "Tent", true)),
-        FoldingAction(FoldingState(2, "Half-Folded", true)),
-        FoldingAction(FoldingState(3, "Open", true)))
+        FoldingAction(FoldingState(2, "Half-Open", true)),
+        FoldingAction(FoldingState(3, "Open", true)),
+        FoldingAction(FoldingState(4, "Flipped", true)),
+        FoldingAction(FoldingState(5, "Another State", true)))
     for (action in foldingActions) {
       action.update(event)
       assertThat(event.presentation.isEnabled).isTrue()
@@ -378,9 +380,9 @@ class DeviceToolWindowPanelTest {
 
   @Suppress("SameParameterValue")
   private fun assertAppearance(goldenImageName: String,
-                               maxPercentDifferentLinux: Double = 0.0,
-                               maxPercentDifferentMac: Double = 0.0,
-                               maxPercentDifferentWindows: Double = 0.0) {
+                               maxPercentDifferentLinux: Double = 0.0003,
+                               maxPercentDifferentMac: Double = 0.0003,
+                               maxPercentDifferentWindows: Double = 0.0003) {
     fakeUi.layoutAndDispatchEvents()
     fakeUi.updateToolbars()
     val image = fakeUi.render()

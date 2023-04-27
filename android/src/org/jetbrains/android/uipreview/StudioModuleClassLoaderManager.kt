@@ -15,14 +15,20 @@
  */
 package org.jetbrains.android.uipreview
 
+import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics
 import com.android.tools.idea.log.LogAnonymizerUtil.anonymize
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.getHolderModule
 import com.android.tools.idea.rendering.AndroidFacetRenderModelModule
-import com.android.tools.idea.rendering.classloading.ClassTransform
-import com.android.tools.idea.rendering.classloading.combine
 import com.android.tools.idea.util.androidFacet
+import com.android.tools.rendering.ModuleRenderContext
+import com.android.tools.rendering.classloading.ClassTransform
+import com.android.tools.rendering.classloading.combine
+import com.android.tools.rendering.classloading.ModuleClassLoadedDiagnosticsImpl
+import com.android.tools.rendering.classloading.ModuleClassLoader
+import com.android.tools.rendering.classloading.ModuleClassLoaderManager
+import com.android.tools.rendering.classloading.preload
 import com.android.utils.reflection.qualifiedName
 import com.google.common.base.Charsets
 import com.google.common.hash.Hashing
@@ -37,12 +43,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.UserDataHolder
+import com.intellij.openapi.util.removeUserData
 import com.intellij.util.concurrency.AppExecutorUtil.getAppExecutorService
 import org.jetbrains.android.uipreview.StudioModuleClassLoader.NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS
 import org.jetbrains.android.uipreview.StudioModuleClassLoader.PROJECT_DEFAULT_TRANSFORMS
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.plugins.groovy.util.removeUserData
 import java.lang.ref.SoftReference
 import java.util.Collections
 import java.util.IdentityHashMap

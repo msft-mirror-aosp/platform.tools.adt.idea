@@ -43,6 +43,7 @@ import com.android.tools.idea.preview.xml.XmlSerializable
 import com.android.tools.idea.projectsystem.isTestFile
 import com.android.tools.idea.projectsystem.isUnitTestFile
 import com.android.tools.idea.uibuilder.model.updateConfigurationScreenSize
+import com.android.tools.rendering.ModuleRenderContext
 import com.android.tools.sdk.CompatibilityRenderTarget
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.diagnostic.Logger
@@ -56,7 +57,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.full.functions
 import kotlin.reflect.jvm.isAccessible
-import org.jetbrains.android.uipreview.ModuleRenderContext
 import org.jetbrains.android.uipreview.StudioModuleClassLoaderManager
 import org.jetbrains.android.uipreview.forFile
 import org.jetbrains.annotations.TestOnly
@@ -158,22 +158,6 @@ fun KtNamedFunction.isValidComposePreview() =
   !isInTestFile() &&
     isValidPreviewLocation() &&
     this.toUElementOfType<UMethod>()?.let { it.hasPreviewElements() } == true
-
-/**
- * Truncates the given dimension value to fit between the [min] and [max] values. If the receiver is
- * null, this will return null.
- */
-private fun Int?.truncate(min: Int, max: Int): Int? {
-  if (this == null) {
-    return null
-  }
-
-  if (this == UNDEFINED_DIMENSION) {
-    return UNDEFINED_DIMENSION
-  }
-
-  return minOf(maxOf(this, min), max)
-}
 
 /** Empty device spec when the user has not specified any. */
 private const val NO_DEVICE_SPEC = ""
@@ -347,8 +331,10 @@ internal constructor(
       PreviewConfiguration(
         apiLevel = apiLevel ?: UNDEFINED_API_LEVEL,
         theme = theme,
-        width = width.truncate(1, MAX_WIDTH) ?: UNDEFINED_DIMENSION,
-        height = height.truncate(1, MAX_HEIGHT) ?: UNDEFINED_DIMENSION,
+        width = width?.takeIf { it != UNDEFINED_DIMENSION }?.coerceIn(1, MAX_WIDTH)
+            ?: UNDEFINED_DIMENSION,
+        height = height?.takeIf { it != UNDEFINED_DIMENSION }?.coerceIn(1, MAX_HEIGHT)
+            ?: UNDEFINED_DIMENSION,
         locale = locale ?: "",
         fontScale = fontScale ?: 1f,
         uiMode = uiMode ?: 0,

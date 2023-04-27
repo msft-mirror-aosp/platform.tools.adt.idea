@@ -20,6 +20,7 @@ import com.android.tools.deployer.DeployerException
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.execution.common.AndroidExecutionException
 import com.android.tools.idea.execution.common.ApplicationTerminator
+import com.android.tools.idea.execution.common.clearAppStorage
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.flags.StudioFlags
@@ -30,7 +31,6 @@ import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.tasks.LaunchContext
 import com.android.tools.idea.run.tasks.LaunchTask
-import com.android.tools.idea.run.tasks.clearAppStorage
 import com.android.tools.idea.run.tasks.getBaseDebuggerTask
 import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.run.util.SwapInfo
@@ -47,7 +47,7 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.runBlockingCancellable
+import com.intellij.openapi.progress.indicatorRunBlockingCancellable
 import com.intellij.openapi.util.Disposer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -72,7 +72,7 @@ class LaunchTaskRunner(
 
   private val LOG = Logger.getInstance(this::class.java)
 
-  override fun run(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
+  override fun run(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(env))
 
     settings.getProcessHandlersForDevices(project, devices).forEach { it.destroyProcess() }
@@ -119,7 +119,7 @@ class LaunchTaskRunner(
                             isDebug: Boolean) = coroutineScope {
     val packageName = applicationIdProvider.packageName
     val launchTasksProvider = AndroidLaunchTasksProvider(configuration, env, facet, packageName, apkProvider,
-                                                         configuration.launchOptions.build(), isDebug)
+                                                         configuration.getLaunchOptions(), isDebug)
     val stat = RunStats.from(env).apply { setPackage(packageName) }
 
     printLaunchTaskStartedMessage(console)
@@ -152,7 +152,7 @@ class LaunchTaskRunner(
     }
   }
 
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
     val packageName = applicationIdProvider.packageName
 
     val devices = getDevices(deviceFutures, indicator, RunStats.from(env))
@@ -193,7 +193,7 @@ class LaunchTaskRunner(
     session.runContentDescriptor
   }
 
-  override fun applyChanges(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
+  override fun applyChanges(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(env))
 
     /**

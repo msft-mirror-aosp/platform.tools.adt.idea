@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.gradle.preview
 
-import com.android.flags.junit.FlagRule
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.error.NlComponentIssueSource
@@ -27,7 +26,6 @@ import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.concurrency.waitForCondition
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.intellij.openapi.actionSystem.AnAction
@@ -48,11 +46,12 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
-import junit.framework.Assert.assertFalse
-import junit.framework.Assert.assertTrue
-import kotlin.test.assertContentEquals
-import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.MatcherAssert.assertThat
+import org.hamcrest.Matchers.`is`
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
@@ -61,7 +60,6 @@ import org.junit.Test
 class RenderErrorTest {
 
   @get:Rule val projectRule = ComposeGradleProjectRule(SIMPLE_COMPOSE_PROJECT_PATH)
-  @get:Rule val flagRule = FlagRule(StudioFlags.NELE_ATF_FOR_COMPOSE, true)
 
   private val project: Project
     get() = projectRule.project
@@ -88,6 +86,7 @@ class RenderErrorTest {
       ComposePreviewRepresentation(psiMainFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
         previewView
       }
+    composePreviewRepresentation.atfChecksEnabled = true
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
     lateinit var fakeUi: FakeUi
@@ -130,8 +129,8 @@ class RenderErrorTest {
     assertTrue(visibleErrorsPanel.isVisible)
 
     val actions = sceneViewPanelWithErrors.getToolbarActions()
-    // 3 actions expected: animation, interactive and deploy to device
-    assertEquals(3, actions.size)
+    // 4 actions expected: ui check, animation, interactive and deploy to device
+    assertEquals(4, actions.size)
     // The visible/invisible state before the update shouldn't affect the final result
     for (visibleBefore in listOf(true, false)) {
       // All actions should be invisible when there are render errors
@@ -184,7 +183,7 @@ class RenderErrorTest {
       offsets.add((navigatable as OpenFileDescriptor).offset)
       assertEquals("RenderError.kt", navigatable.file.name)
     }
-    assertContentEquals(listOf(1521, 1671), offsets.sorted())
+    assertThat(offsets.sorted(), `is`(listOf(1521, 1671)))
   }
 
   private fun countVisibleActions(actions: List<AnAction>, visibleBefore: Boolean): Int {

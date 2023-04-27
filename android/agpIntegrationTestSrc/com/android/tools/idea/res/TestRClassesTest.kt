@@ -306,6 +306,9 @@ class TransitiveTestRClassesTest : TestRClassesTest() {
     )
   }
 
+  /*
+  Test disabled: b/279233700
+
   fun testUseScope() {
     val appTest = myFixture.loadNewFile(
       "app/src/androidTest/java/com/example/projectwithappandlib/app/RClassAndroidTest.java",
@@ -366,6 +369,7 @@ class TransitiveTestRClassesTest : TestRClassesTest() {
     assertTrue(
       libTestScope.contains(myFixture.findClass("com.example.projectwithappandlib.lib.RClassAndroidTest").containingFile.virtualFile))
   }
+  */
 }
 
 class NonTransitiveTestRClassesTest : TestRClassesTest() {

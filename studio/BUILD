@@ -97,10 +97,10 @@ studio_plugin(
             "//tools/adt/idea/jps-model:intellij.android.jps.model",
         ],
         "android-extensions-ide.jar": [
-            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions.common",
         ],
         "android-kotlin.jar": [
+            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.output.parser",
         ],
@@ -162,6 +162,7 @@ studio_plugin(
             "//tools/adt/idea/device-explorer-common:intellij.android.device-explorer-common",
             "//tools/adt/idea/device-manager:intellij.android.device-manager",
             "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
+            "//tools/adt/idea/explainer:intellij.android.explainer",
             "//tools/adt/idea/streaming:intellij.android.streaming",
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
             "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
@@ -479,34 +480,15 @@ studio_plugin(
     directory = "firebase-testing",
     libs = [
         "//prebuilts/tools/common/m2:JSch",
-        "//tools/studio/google/cloud/testing/firebase-testing/lib:google-api-services-storage-v1-rev1-1.18.0-rc",
-        "//tools/studio/google/cloud/testing/firebase-testing/lib:google-api-services-testing-v1-revsnapshot-1.20.0",
-        "//tools/studio/google/cloud/testing/firebase-testing/lib:google-api-services-toolresults-v1beta3-rev20151013-1.20.0",
+        "//prebuilts/tools/common/m2:google-api-services-testing-v1-rev82-1.22.0",
+        "//prebuilts/tools/common/m2:google-api-services-toolresults-v1beta3-rev82-1.22.0",
+        "//prebuilts/tools/common/m2:google-api-services-storage-v1-rev82-1.22.0",
         "//tools/adt/idea/.idea/libraries:tightvnc",
-    ],
-    licenses = [
-        "//tools/studio/google/cloud/testing/firebase-testing/lib:licenses",
     ],
     modules = {"firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"]},
     visibility = ["//visibility:public"],
     deps = [
         ":com.google.gct.core",
-        ":org.jetbrains.android",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
-    ],
-)
-
-studio_plugin(
-    name = "com.google.appindexing",
-    directory = "google-appindexing",
-    libs = ["//tools/studio/google/appindexing/lib:fetchasgoogle"],
-    licenses = [
-        "//tools/studio/google/appindexing/lib:licenses",
-    ],
-    modules = {"google-appindexing.jar": ["//tools/studio/google/appindexing:google-appindexing"]},
-    visibility = ["//visibility:public"],
-    deps = [
-        ":com.google.urlassistant",
         ":org.jetbrains.android",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
     ],
@@ -558,16 +540,6 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.google.cluestick.studioclient",
-    directory = "google-samples",
-    modules = {"google-samples.jar": ["//tools/studio/google/samples:google-samples"]},
-    visibility = ["//visibility:public"],
-    deps = [
-        ":org.jetbrains.android",
-    ],
-)
-
-studio_plugin(
     name = "com.android.tools.idea.smali",
     directory = "smali",
     modules = {"smali.jar": ["//tools/adt/idea/smali:intellij.android.smali"]},
@@ -581,7 +553,7 @@ studio_plugin(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/studio/google/cloud/testing/firebase-testing/lib:google-api-services-testing-v1-revsnapshot-1.20.0",
+        "//prebuilts/tools/common/m2:google-api-services-testing-v1-rev82-1.22.0",
     ],
     modules = {"gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"]},
     visibility = ["//visibility:public"],
@@ -665,10 +637,8 @@ android_studio(
         ":com.google.services.firebase",
         ":com.google.gct.directaccess",
         ":com.google.gct.testing",
-        ":com.google.appindexing",
         ":com.google.gct",
         ":com.google.gct.core",
-        ":com.google.cluestick.studioclient",
         ":com.android.tools.idea.smali",
         ":com.google.gct.test.recorder",
         ":com.google.urlassistant",
@@ -677,10 +647,10 @@ android_studio(
     searchable_options = "//tools/adt/idea/searchable-options",
     update_message_template = ":update_message.html",
     version_code_name = "Hedgehog",
-    version_micro_patch = "1.1",
+    version_micro_patch = "1.2",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 1,
+    version_release_number = 2,
     version_type = "Canary",
     visibility = ["//visibility:public"],
 )
@@ -859,10 +829,8 @@ iml_module(
         "//tools/vendor/google/firebase[module]",
         "//tools/studio/google/cloud/testing/directaccess[module]",
         "//tools/studio/google/cloud/testing/firebase-testing[module]",
-        "//tools/studio/google/appindexing:google-appindexing[module]",
         "//tools/studio/google/cloud/tools/core-plugin:google-cloud-tools-core-as[module]",
         "//tools/studio/google/cloud/tools/google-login-plugin:google-login-as[module]",
-        "//tools/studio/google/samples:google-samples[module]",
         "//tools/adt/idea/smali:intellij.android.smali[module]",
         "//tools/studio/google/cloud/testing/test-recorder[module]",
         "//tools/vendor/google/url-assistant[module]",

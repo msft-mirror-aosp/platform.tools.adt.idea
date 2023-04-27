@@ -267,7 +267,7 @@ class AndroidTestSuiteView @UiThread @JvmOverloads constructor(
                                        look: ActionButtonLook?,
                                        place: String,
                                        presentation: Presentation,
-                                       minimumSize: Dimension): ActionButton {
+                                       minimumSize: Supplier<out Dimension>): ActionButton {
         return super.createToolbarButton(action, look, place, presentation, minimumSize).apply {
           // Toolbar buttons are not accessible by tab key in IntelliJ's default implementation
           // when the screen reader is disabled. We override the behavior here and make it
@@ -575,7 +575,7 @@ class AndroidTestSuiteView @UiThread @JvmOverloads constructor(
           val outputFile = File(TestStateStorage.getTestHistoryRoot(myProject!!), historyFileName)
           FileUtilRt.createParentDirs(outputFile)
 
-          val transformerFactory = TransformerFactory.newInstance() as SAXTransformerFactory
+          val transformerFactory = TransformerFactory.newDefaultInstance() as SAXTransformerFactory
           val transformerHandler = transformerFactory.newTransformerHandler().apply {
             transformer.apply {
               setOutputProperty(OutputKeys.INDENT, "yes")

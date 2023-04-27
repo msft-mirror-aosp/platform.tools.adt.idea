@@ -154,10 +154,10 @@
       <add-to-group group-id="FileOpenGroup" relative-to-action="OpenFile" anchor="after"/>
     </action>
 
-    <action id="ImportTests"
-            class="com.android.tools.idea.testartifacts.instrumented.testsuite.actions.ImportTestGroup"
-            icon="AllIcons.Vcs.History"
-            overrides="true"/>
+    <group id="ImportTests"
+           class="com.android.tools.idea.testartifacts.instrumented.testsuite.actions.ImportTestGroup"
+           icon="AllIcons.Vcs.History"
+           overrides="true"/>
     <action id="ImportTestsFromFile"
             class="com.android.tools.idea.testartifacts.instrumented.testsuite.actions.ImportTestsFromFileAction"
             icon="AllIcons.ToolbarDecorator.Import"
@@ -199,7 +199,14 @@
                     serviceImplementation="com.android.tools.idea.lang.AndroidNullableNotNullManagerImpl"
                     overrides="true"
     />
+
+    <postStartupActivity implementation="com.android.tools.idea.startup.ProjectMetricsInitializer$MyStartupActivity"/>
   </extensions>
+
+  <applicationListeners>
+    <listener class="com.android.tools.idea.startup.ProjectMetricsInitializer"
+              topic="com.intellij.openapi.project.ProjectCloseListener"/>
+  </applicationListeners>
 
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
     <taskManager implementation="com.android.tools.idea.gradle.task.AndroidGradleTaskManager"/>

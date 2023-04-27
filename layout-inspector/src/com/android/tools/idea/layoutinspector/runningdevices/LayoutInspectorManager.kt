@@ -24,6 +24,7 @@ import com.android.tools.idea.layoutinspector.dataProviderForLayoutInspector
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
+import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorConfigurable
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
@@ -34,7 +35,6 @@ import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.DISPLAY_VIEW_KEY
 import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
 import com.android.tools.idea.streaming.STREAMING_CONTENT_PANEL_KEY
-import com.intellij.ide.BrowserUtil
 import com.intellij.ide.DataManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
@@ -238,7 +238,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
    * @param displayView The [AbstractDisplayView] from running devices. Component on which the device display is rendered.
    */
   private class TabComponents(
-    disposable: Disposable,
+    val disposable: Disposable,
     val tabContentPanel: JComponent,
     val tabContentPanelContainer: Container,
     val displayView: AbstractDisplayView
@@ -262,10 +262,12 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     val tabComponents: TabComponents,
     val layoutInspector: LayoutInspector,
     val wrapLogic: WrapLogic = WrapLogic(tabComponents.tabContentPanel, tabComponents.tabContentPanelContainer),
-    val displayViewManager: DisplayViewManager = DisplayViewManager(
-      layoutInspector.renderModel,
+    val layoutInspectorRenderer: LayoutInspectorRenderer = LayoutInspectorRenderer(
+      tabComponents.disposable,
       layoutInspector.renderLogic,
-      tabComponents.displayView
+      layoutInspector.renderModel,
+      { tabComponents.displayView.displayRectangle },
+      { tabComponents.displayView.screenScalingFactor }
     )
   ) {
 
@@ -274,8 +276,13 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         val mainPanel = BorderLayoutPanel()
         val subPanel = BorderLayoutPanel()
 
+        val toggleDeepInspectAction = ToggleDeepInspectAction(
+          { layoutInspectorRenderer.interceptClicks },
+          { layoutInspectorRenderer.interceptClicks = it }
+        )
+
         val processPicker = TargetSelectionActionFactory.getSingleDeviceProcessPicker(layoutInspector, tabId.deviceSerialNumber)
-        val toolbar = createLayoutInspectorMainToolbar(mainPanel, layoutInspector, processPicker)
+        val toolbar = createLayoutInspectorMainToolbar(mainPanel, layoutInspector, processPicker, listOf(toggleDeepInspectAction))
         mainPanel.add(toolbar.component, BorderLayout.NORTH)
         mainPanel.add(subPanel, BorderLayout.CENTER)
 
@@ -284,19 +291,19 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
         createLayoutInspectorWorkbench(project, layoutInspector, mainPanel)
       }
-      displayViewManager.startRendering()
+      tabComponents.displayView.add(layoutInspectorRenderer)
 
       layoutInspector.inspectorModel.selectionListeners.add(selectionChangedListener)
     }
 
     fun disableLayoutInspector() {
       wrapLogic.unwrapComponent()
-      displayViewManager.stopRendering()
+      tabComponents.displayView.remove(layoutInspectorRenderer)
       layoutInspector.inspectorModel.selectionListeners.remove(selectionChangedListener)
     }
 
     private val selectionChangedListener: (old: ViewNode?, new: ViewNode?, origin: SelectionOrigin) -> Unit = { _, _, _ ->
-      displayViewManager.refreshRendering()
+      layoutInspectorRenderer.refresh()
     }
   }
 
@@ -311,19 +318,19 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         text = notificationText,
         sticky = true,
         actions = listOf(
-          object : AnAction(LayoutInspectorBundle.message("learn.more")) {
+          object : AnAction(LayoutInspectorBundle.message("do.not.show.again")) {
             override fun actionPerformed(e: AnActionEvent) {
-              BrowserUtil.browse("https://developer.android.com/studio/preview/features")
+              setValue(false)
+              InspectorBannerService.getInstance(project)?.removeNotification(notificationText)
             }
           },
           object : AnAction(LayoutInspectorBundle.message("opt.out")) {
             override fun actionPerformed(event: AnActionEvent) {
               ShowSettingsUtil.getInstance().showSettingsDialog(project, LayoutInspectorConfigurable::class.java)
             }
-          }
+          },
         )
       )
-      setValue(false)
     }
     else {
       InspectorBannerService.getInstance(project)?.removeNotification(notificationText)

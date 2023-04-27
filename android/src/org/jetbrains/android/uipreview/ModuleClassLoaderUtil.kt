@@ -17,15 +17,15 @@
 package org.jetbrains.android.uipreview
 
 import com.android.annotations.concurrency.GuardedBy
+import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsWrite
+import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.rendering.classloading.ClassTransform
 import com.android.tools.idea.rendering.classloading.PseudoClass
 import com.android.tools.idea.rendering.classloading.PseudoClassLocator
 import com.android.tools.idea.rendering.classloading.loaders.AsmTransformingLoader
 import com.android.tools.idea.rendering.classloading.loaders.ClassBinaryCacheLoader
 import com.android.tools.idea.rendering.classloading.loaders.ClassLoaderLoader
-import com.android.tools.idea.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.idea.rendering.classloading.loaders.FakeSavedStateRegistryLoader
 import com.android.tools.idea.rendering.classloading.loaders.ListeningLoader
 import com.android.tools.idea.rendering.classloading.loaders.MultiLoader
@@ -33,6 +33,7 @@ import com.android.tools.idea.rendering.classloading.loaders.MultiLoaderWithAffi
 import com.android.tools.idea.rendering.classloading.loaders.NameRemapperLoader
 import com.android.tools.idea.rendering.classloading.loaders.ProjectSystemClassLoader
 import com.android.tools.idea.rendering.classloading.loaders.RecyclerViewAdapterLoader
+import com.android.tools.rendering.classloading.ClassTransform
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module

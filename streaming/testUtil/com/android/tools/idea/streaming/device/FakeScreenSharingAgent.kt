@@ -28,6 +28,7 @@ import com.android.utils.Base128InputStream
 import com.android.utils.Base128OutputStream
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.text.Strings.nullize
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
@@ -431,7 +432,7 @@ class FakeScreenSharingAgent(
 
   private inner class DisplayStreamer(private val channel: SuspendingSocketChannel) : Disposable {
 
-    private val codecName = StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()
+    private val codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
     private val encoder: AVCodec by lazy {
       // Use avcodec_find_encoder instead of avcodec_find_encoder_by_name because the names of encoders and decoders don't match.
       val codecId = when (codecName) {
@@ -481,7 +482,8 @@ class FakeScreenSharingAgent(
         return
       }
 
-      val size = getScaledAndRotatedDisplaySize()
+      val size = computeDisplayImageSize()
+      val videoSize = Dimension(size.width, size.height.roundUpToMultipleOf8())
       val encoderContext = avcodec_alloc_context3(encoder)?.apply {
         bit_rate(8000000L)
         time_base(av_make_q(1, 1000))
@@ -489,8 +491,8 @@ class FakeScreenSharingAgent(
         gop_size(2)
         max_b_frames(1)
         pix_fmt(encoder.pix_fmts().get())
-        width(size.width)
-        height(size.height)
+        width(videoSize.width)
+        height(videoSize.height)
       } ?: throw RuntimeException("Could not allocate encoder context")
 
       if (avcodec_open2(encoderContext, encoder, null as AVDictionary?) < 0) {
@@ -498,8 +500,8 @@ class FakeScreenSharingAgent(
       }
       val encodingFrame = av_frame_alloc().apply {
         format(encoderContext.pix_fmt())
-        width(size.width)
-        height(size.height)
+        width(videoSize.width)
+        height(videoSize.height)
       }
       if (av_frame_get_buffer(encodingFrame, 0) < 0) {
         throw RuntimeException("av_frame_get_buffer failed")
@@ -509,12 +511,12 @@ class FakeScreenSharingAgent(
       }
 
       val image = drawDisplayImage(size.rotatedByQuadrants(-displayOrientation), imageFlavor, displayId)
-        .rotatedByQuadrants(displayOrientation)
+          .rotatedByQuadrants(displayOrientation)
 
       val rgbFrame = av_frame_alloc().apply {
         format(AV_PIX_FMT_BGR24)
-        width(size.width)
-        height(size.height)
+        width(videoSize.width)
+        height(videoSize.height)
       }
       if (av_frame_get_buffer(rgbFrame, 1) < 0) {
         throw RuntimeException("Could not allocate the video frame data")
@@ -523,7 +525,13 @@ class FakeScreenSharingAgent(
       // Copy the image to the frame with conversion to the destination format.
       val dataBufferByte = image.raster.dataBuffer as DataBufferByte
       val numBytes = av_image_get_buffer_size(rgbFrame.format(), rgbFrame.width(), rgbFrame.height(), 1)
-      rgbFrame.data(0).asByteBufferOfSize(numBytes).put(dataBufferByte.data)
+      val byteBuffer = rgbFrame.data(0).asByteBufferOfSize(numBytes)
+      val y = (videoSize.height - size.height) / 2
+      // Fill the extra strip at the top with black three bytes per pixel.
+      byteBuffer.fill(0.toByte(), y * rgbFrame.width() * 3)
+      byteBuffer.put(dataBufferByte.data)
+      // Fill the extra strip at the bottom with black three bytes per pixel.
+      byteBuffer.fill(0.toByte(), (videoSize.height - y - size.height) * rgbFrame.width() * 3)
       val swsContext = sws_getContext(rgbFrame.width(), rgbFrame.height(), rgbFrame.format(),
                                       encodingFrame.width(), encodingFrame.height(), encodingFrame.format(),
                                       SWS_BICUBIC, null, null, null as DoublePointer?)!!
@@ -610,15 +618,18 @@ class FakeScreenSharingAgent(
       }
     }
 
-    private fun getScaledAndRotatedDisplaySize(): Dimension {
+    private fun computeDisplayImageSize(): Dimension {
+      // The same logic as in ComputeVideoSize in display_streamer.cc except for rounding of height.
       val rotatedDisplaySize = getFoldedDisplaySize().rotatedByQuadrants(displayOrientation)
-      val width = rotatedDisplaySize.width
-      val height = rotatedDisplaySize.height
+      val displayWidth = rotatedDisplaySize.width.toDouble()
+      val displayHeight = rotatedDisplaySize.height.toDouble()
       val maxResolutionWidth = maxVideoResolution.width.coerceAtMost(maxVideoEncoderResolution)
       val maxResolutionHeight = maxVideoResolution.height.coerceAtMost(maxVideoEncoderResolution)
-      val scale = max(min(1.0, min(maxResolutionWidth.toDouble() / width, maxResolutionHeight.toDouble() / height)),
-                      max(MIN_VIDEO_RESOLUTION / width, MIN_VIDEO_RESOLUTION / height))
-      return Dimension((width * scale).roundToInt().roundUpToMultipleOf8(), (height * scale).roundToInt().roundUpToMultipleOf8())
+      val scale = max(min(1.0, min(maxResolutionWidth / displayWidth, maxResolutionHeight / displayHeight)),
+                      max(MIN_VIDEO_RESOLUTION / displayWidth, MIN_VIDEO_RESOLUTION / displayHeight))
+      val width = (displayWidth * scale).roundToInt().roundUpToMultipleOf8()
+      val height = (width * displayHeight / displayWidth).roundToInt()
+      return Dimension(width, height)
     }
 
     private fun getFoldedDisplaySize(): Dimension {
@@ -679,6 +690,8 @@ class FakeScreenSharingAgent(
                 DeviceState{identifier=1, name='TENT', app_accessible=true},
                 DeviceState{identifier=2, name='HALF_FOLDED', app_accessible=true},
                 DeviceState{identifier=3, name='OPEN', app_accessible=true},
+                DeviceState{identifier=4, name='REAR_DISPLAY_STATE', app_accessible=true},
+                DeviceState{identifier=5, name='ANOTHER_STATE', app_accessible=true},
               ]
               """.trimIndent()
           sendNotification(SupportedDeviceStatesNotification(supportedStates))
@@ -797,6 +810,12 @@ private fun isLostConnection(exception: IOException): Boolean {
     ex = ex.cause
   }
   return false
+}
+
+private fun ByteBuffer.fill(b: Byte, count: Int) {
+  for (i in 0 until count) {
+    put(b)
+  }
 }
 
 private class ColorScheme(val start1: Color, val end1: Color, val start2: Color, val end2: Color)

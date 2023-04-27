@@ -312,15 +312,15 @@ internal class DeviceView(
   private fun computeActualSize(rotationQuadrants: Int): Dimension =
     deviceDisplaySize.rotatedByQuadrants(rotationQuadrants)
 
-  override fun paintComponent(g: Graphics) {
-    super.paintComponent(g)
+  override fun paintComponent(graphics: Graphics) {
+    super.paintComponent(graphics)
 
     if (width == 0 || height == 0) {
       return
     }
 
     val decoder = deviceClient.videoDecoder ?: return
-    g as Graphics2D
+    val g = graphics.create() as Graphics2D
     val physicalToVirtualScale = 1.0 / screenScale
     g.scale(physicalToVirtualScale, physicalToVirtualScale) // Set the scale to draw in physical pixels.
 
@@ -367,8 +367,6 @@ internal class DeviceView(
           startTime = 0L
         }
       }
-
-      paintDecorations(g, displayRect)
 
       if (multiTouchMode) {
         // Render multi-touch visual feedback.

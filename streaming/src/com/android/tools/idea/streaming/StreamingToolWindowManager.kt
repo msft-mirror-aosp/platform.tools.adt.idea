@@ -126,6 +126,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   /** Serial numbers of mirrored devices. */
   private var mirroredDevices = mutableSetOf<String>()
+  /** Serial numbers of devices excluded from mirroring by the user. */
+  private var devicesExcludedFromMirroring = mutableSetOf<String>()
   private val properties = PropertiesComponent.getInstance(project)
 
   // Serial numbers of devices that recently requested attention.
@@ -479,7 +481,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun createEmptyStatePanel() {
-    val panel = EmptyStatePanel(project)
+    val panel = EmptyStatePanel(project, this)
     val contentFactory = ContentFactory.getInstance()
     val content = contentFactory.createContent(panel, null, false).apply {
       isCloseable = false

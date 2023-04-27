@@ -834,18 +834,19 @@ public class CpuCaptureStage extends Stage<Timeline> {
     }
     // The device does not contain ODPM but contains a coulomb counter.
     else if (!containsODPM) {
-      compatibilityMessage = "You are currently using a device which does not support On Device Power Monitor (ODPM). " +
-                             "To view additional power rails (such as Modem, CPU, GPU, GPS, etc), " +
-                             "we recommend using a device which supports ODPM, such as Pixel 6, Pixel 6 Pro, " +
-                             "Pixel 7, Pixel 7 Pro and beyond.";
+      compatibilityMessage = "You are currently using a device that does not support On Device Power " +
+                             "Rails Monitor (ODPM), which measures power consumption per hardware component. " +
+                             "To view power rail data, we recommend using a device which supports ODPM, such " +
+                             "as Pixel 6a, Pixel 6, Pixel 6 Pro, Pixel 7a, Pixel 7, Pixel 7 Pro and beyond. " +
+                             "Battery info is available on devices running Android Q+.";
     }
 
     TrackGroupModel battery = TrackGroupModel.newBuilder()
       .setTitle("Battery")
-      .setTitleHelpText("This section shows the device's battery consumption in three contexts (in order): " +
-                        "<ol><li>Remaining battery percentage (%)</li>" +
-                        "<li>Remaining battery charge in microampere-hours (µAh)</li>" +
-                        "<li>Instantaneous current in microampere (µA)</li></ol>" +
+      .setTitleHelpText("This section shows the device's battery consumption in three contexts: " +
+                        "<ul><li>Capacity: remaining battery percentage (%)</li>" +
+                        "<li>Charge: remaining battery charge in microampere-hours (µAh)</li>" +
+                        "<li>Current: instantaneous current in microampere (µA)</li></ul>" +
                         "<b>" + compatibilityMessage + "</b>"
                         )
       .setCollapsedInitially(false)

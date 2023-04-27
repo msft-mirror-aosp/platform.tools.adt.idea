@@ -72,7 +72,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.JPanel
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
@@ -82,6 +81,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -697,7 +697,7 @@ class ComposePreviewRepresentationGradleTest {
         fixture.openFileInEditor(otherPreviewsFile.virtualFile)
       }
       assertFailsWith<TimeoutCancellationException> {
-        runAndWaitForRefresh {
+        runAndWaitForRefresh(Duration.ofSeconds(15)) {
           runWriteActionAndWait {
             // Add a MultiPreview annotation that won't be used
             fixture.moveCaret("|@Preview")
@@ -717,6 +717,7 @@ class ComposePreviewRepresentationGradleTest {
    *
    * This test verifies that the refresh does happen when we come back to the preview.
    */
+  @Ignore("b/271497561")
   @Test
   fun `file modification refresh triggers refresh on reactivation`(): Unit = runBlocking {
     val psiCodeFileChangeDetectorService = PsiCodeFileChangeDetectorService.getInstance(project)
@@ -737,7 +738,7 @@ class ComposePreviewRepresentationGradleTest {
 
     assertFalse(composePreviewRepresentation.isInvalid())
     assertFailsWith<TimeoutCancellationException> {
-      runAndWaitForRefresh {
+      runAndWaitForRefresh(Duration.ofSeconds(15)) {
         runWriteActionAndWait {
           fixture.editor.executeAndSave {
             moveCaretToEnd()

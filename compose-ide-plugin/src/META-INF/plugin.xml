@@ -78,7 +78,7 @@
 
     <completion.contributor language="kotlin"
                             id="ComposeAlignmentCompletionContributor"
-                            implementationClass="com.android.tools.compose.code.completion.ComposeImplementationsCompletionContributor"
+                            implementationClass="com.android.tools.compose.code.completion.ComposePositioningCompletionContributor"
                             order="first, before KotlinCompletionContributor"/>
 
     <completion.contributor language="kotlin"
@@ -92,6 +92,11 @@
     <weigher key="completion"
              implementationClass="com.android.tools.compose.code.completion.ComposeCompletionWeigher"
              id="android.compose"
+             order="first"/>
+
+    <weigher key="completion"
+             implementationClass="com.android.tools.compose.code.completion.ComposePositioningCompletionWeigher"
+             id="ComposePositioningCompletionWeigher"
              order="first"/>
 
     <weigher key="proximity"
@@ -148,6 +153,7 @@
     <codeInsight.lineMarkerProvider language="kotlin"
                                     implementationClass="com.android.tools.compose.code.ComposeLineMarkerProviderDescriptor" />
 
+    <usageGroupingRuleProvider implementation="com.android.tools.compose.ComposeUsageGroupingRuleProvider" />
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin.extensions.internal">

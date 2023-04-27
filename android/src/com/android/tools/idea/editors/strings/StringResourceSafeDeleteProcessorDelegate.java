@@ -50,14 +50,14 @@ final class StringResourceSafeDeleteProcessorDelegate extends SafeDeleteProcesso
   @Override
   public Collection<? extends PsiElement> getElementsToSearch(@NotNull PsiElement element,
                                                               @Nullable Module module,
-                                                              @NotNull Collection<PsiElement> elementsToDelete) {
+                                                              @NotNull Collection<? extends PsiElement> elementsToDelete) {
     return Collections.singletonList(element);
   }
 
   @NotNull
   @Override
   public Collection<PsiElement> getAdditionalElementsToDelete(@NotNull PsiElement element,
-                                                              @NotNull Collection<PsiElement> elementsToDelete,
+                                                              @NotNull Collection<? extends PsiElement> elementsToDelete,
                                                               boolean askUser) {
     return Collections.emptyList();
   }
@@ -66,7 +66,7 @@ final class StringResourceSafeDeleteProcessorDelegate extends SafeDeleteProcesso
   @Override
   public NonCodeUsageSearchInfo findUsages(@NotNull PsiElement element,
                                            @NotNull PsiElement[] elementsToDelete,
-                                           @NotNull List<UsageInfo> result) {
+                                           @NotNull List<? super UsageInfo> result) {
     Collection<PsiElement> elements = new ArrayList<>();
 
     XmlTag tag = (XmlTag)element;

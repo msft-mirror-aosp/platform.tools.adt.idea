@@ -25,40 +25,8 @@ import javax.swing.Icon;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class Device {
-  @NotNull
-  private final Key myKey;
-
-  private final @NotNull Type myType;
-
-  @NotNull
-  private final LaunchCompatibility myLaunchCompatibility;
-
-  @Nullable
-  private final Instant myConnectionTime;
-
-  @NotNull
-  private final String myName;
-
-  @NotNull
-  private final AndroidDevice myAndroidDevice;
-
-  Device(@NotNull Builder builder) {
-    assert builder.myKey != null;
-    myKey = builder.myKey;
-
-    myType = builder.myType;
-    myLaunchCompatibility = builder.myLaunchCompatibility;
-    myConnectionTime = builder.myConnectionTime;
-
-    assert builder.myName != null;
-    myName = builder.myName;
-
-    assert builder.myAndroidDevice != null;
-    myAndroidDevice = builder.myAndroidDevice;
-  }
-
-  static abstract class Builder {
+interface Device {
+  abstract class Builder {
     @Nullable
     Key myKey;
 
@@ -81,64 +49,108 @@ public abstract class Device {
     abstract Device build();
   }
 
+  @NotNull
+  Key key();
+
   /**
    * A physical device will always return a serial number. A virtual device will usually return a virtual device path. But if Studio doesn't
    * know about the virtual device (it's outside the scope of the AVD Manager because it uses a locally built system image, for example) it
    * can return a virtual device path (probably not but I'm not going to assume), virtual device name, or serial number depending on what
    * the IDevice returned.
    */
+  @Deprecated
   @NotNull
   @SuppressWarnings("GrazieInspection")
-  public final Key getKey() {
-    return myKey;
+  default Key getKey() {
+    return key();
   }
 
   @NotNull
-  abstract Icon getIcon();
+  Icon icon();
+
+  @Deprecated
+  @NotNull
+  default Icon getIcon() {
+    return icon();
+  }
 
   @NotNull
-  final Type getType() {
-    return myType;
-  }
+  Type type();
 
   enum Type {PHONE, WEAR, TV}
 
   @NotNull
-  final LaunchCompatibility getLaunchCompatibility() {
-    return myLaunchCompatibility;
+  LaunchCompatibility launchCompatibility();
+
+  @Deprecated
+  @NotNull
+  default LaunchCompatibility getLaunchCompatibility() {
+    return launchCompatibility();
   }
 
-  abstract boolean isConnected();
+  boolean connected();
+
+  @Deprecated
+  default boolean isConnected() {
+    return connected();
+  }
 
   @Nullable
-  final Instant getConnectionTime() {
-    return myConnectionTime;
+  Instant connectionTime();
+
+  @Deprecated
+  @Nullable
+  default Instant getConnectionTime() {
+    return connectionTime();
   }
 
   @NotNull
-  final String getName() {
-    return myName;
+  String name();
+
+  @Deprecated
+  @NotNull
+  default String getName() {
+    return name();
   }
 
   @NotNull
-  @Override
-  public final String toString() {
-    return myName;
+  Collection<Snapshot> snapshots();
+
+  @Deprecated
+  @NotNull
+  default Collection<Snapshot> getSnapshots() {
+    return snapshots();
   }
 
   @NotNull
-  abstract Collection<Snapshot> getSnapshots();
+  Target defaultTarget();
 
-  abstract @NotNull Target getDefaultTarget();
-
-  abstract @NotNull Collection<Target> getTargets();
-
+  @Deprecated
   @NotNull
-  final AndroidDevice getAndroidDevice() {
-    return myAndroidDevice;
+  default Target getDefaultTarget() {
+    return defaultTarget();
   }
 
-  final @NotNull ListenableFuture<IDevice> getDdmlibDeviceAsync() {
+  @NotNull
+  Collection<Target> targets();
+
+  @Deprecated
+  @NotNull
+  default Collection<Target> getTargets() {
+    return targets();
+  }
+
+  @NotNull
+  AndroidDevice androidDevice();
+
+  @Deprecated
+  @NotNull
+  default AndroidDevice getAndroidDevice() {
+    return androidDevice();
+  }
+
+  @NotNull
+  default ListenableFuture<IDevice> ddmlibDeviceAsync() {
     AndroidDevice device = getAndroidDevice();
 
     if (!device.isRunning()) {
@@ -146,5 +158,11 @@ public abstract class Device {
     }
 
     return device.getLaunchedDevice();
+  }
+
+  @Deprecated
+  @NotNull
+  default ListenableFuture<IDevice> getDdmlibDeviceAsync() {
+    return ddmlibDeviceAsync();
   }
 }

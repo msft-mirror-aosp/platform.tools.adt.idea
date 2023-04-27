@@ -84,7 +84,7 @@ internal class PreviewIssueNotificationActionTest {
       PreviewIssueNotificationAction(::noPopupFactor).also {
         Disposer.register(projectRule.testRootDisposable, it)
       }
-    val event = TestActionEvent(context)
+    val event = TestActionEvent.createTestEvent(context)
 
     action.update(event)
     assertEquals("Up-to-date (The preview is up to date)", event.presentation.toString())
@@ -135,7 +135,7 @@ internal class PreviewIssueNotificationActionTest {
       PreviewIssueNotificationAction(::noPopupFactor).also {
         Disposer.register(projectRule.testRootDisposable, it)
       }
-    val event = TestActionEvent(context)
+    val event = TestActionEvent.createTestEvent(context)
 
     composePreviewManager.currentStatus =
       originStatus.copy(hasSyntaxErrors = true, hasRuntimeErrors = true, isOutOfDate = true)
@@ -342,12 +342,8 @@ internal class PreviewIssueNotificationActionTest {
           fakePopup
         }
         .also { Disposer.register(projectRule.testRootDisposable, it) }
-    val event =
-      object : TestActionEvent(context) {
-        override fun getInputEvent(): InputEvent =
-          MouseEvent(JPanel(), 0, 0, 0, 0, 0, 1, true, MouseEvent.BUTTON1)
-      }
-
+    val event = TestActionEvent.createTestEvent(action, context,
+          MouseEvent(JPanel(), 0, 0, 0, 0, 0, 1, true, MouseEvent.BUTTON1))
     action.update(event)
     assertEquals(0, popupRequested)
     action.actionPerformed(event)

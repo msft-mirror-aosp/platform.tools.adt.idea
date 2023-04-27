@@ -16,6 +16,7 @@
 package com.android.tools;
 
 import com.android.testutils.JarTestSuiteRunner;
+import com.android.tools.adtui.swing.IconLoaderRule;
 import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
 

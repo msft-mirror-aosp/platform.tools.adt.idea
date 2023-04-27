@@ -340,7 +340,7 @@
     <applicationService serviceImplementation="com.android.tools.idea.sdk.StudioSettingsController"/>
 
     <applicationService serviceImplementation="com.android.tools.idea.diagnostics.crash.StudioCrashReporter" />
-    <applicationService serviceInterface="com.android.tools.idea.fonts.DownloadableFontCacheService"
+    <applicationService serviceInterface="com.android.tools.fonts.DownloadableFontCacheService"
                         serviceImplementation="com.android.tools.idea.fonts.DownloadableFontCacheServiceImpl" />
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder"/>
 
@@ -539,7 +539,7 @@
                    serviceInterface="com.android.tools.idea.psi.TagToClassMapper" />
     <moduleService serviceImplementation="org.jetbrains.android.resourceManagers.ModuleResourceManagers" />
     <moduleService serviceImplementation="org.jetbrains.android.facet.ResourceFolderManager" />
-    <moduleService serviceInterface="com.android.tools.idea.res.ResourceIdManager"
+    <moduleService serviceInterface="com.android.tools.res.ids.ResourceIdManager"
                    serviceImplementation="com.android.tools.idea.res.ResourceIdManagerImpl"
                    testServiceImplementation="com.android.tools.idea.res.TestResourceIdManager" />
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestManager" />
@@ -719,6 +719,7 @@
     <projectService
         serviceInterface="com.android.tools.idea.sdk.sources.SdkSourcePositionFinder"
         serviceImplementation="com.android.tools.idea.sdk.sources.SdkSourcePositionFinderImpl"/>
+
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij.properties">
@@ -808,8 +809,6 @@
   <applicationListeners>
     <listener class="com.android.tools.idea.editors.literals.LiveEditAnActionListener"
               topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
-    <listener class="com.android.tools.idea.startup.ProjectMetricsInitializer"
-              topic="com.intellij.openapi.project.ProjectManagerListener"/>
     <listener class="com.android.tools.idea.stats.ManifestMergerStatsTracker"
               topic="com.android.tools.idea.model.MergedManifestSnapshotComputeListener"/>
   </applicationListeners>

@@ -34,7 +34,7 @@ import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.util.io.exists
+import kotlin.io.path.exists
 import org.jetbrains.annotations.SystemIndependent
 import org.w3c.dom.Document
 import java.io.File
@@ -309,7 +309,7 @@ private fun <T : Any> updateXmlDoc(manifestPath: Path, transform: (Document) -> 
 
   val result = transform(doc) ?: return null
 
-  val transformerFactory = TransformerFactory.newInstance()
+  val transformerFactory = TransformerFactory.newDefaultInstance()
   val transformer: Transformer = transformerFactory.newTransformer()
   val source = DOMSource(doc)
   transformer.transform(source, StreamResult(manifestPath.toFile()))

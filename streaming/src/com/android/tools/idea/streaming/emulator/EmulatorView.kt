@@ -101,9 +101,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.openapi.wm.IdeGlassPane
 import com.intellij.openapi.wm.IdeGlassPaneUtil
-import com.intellij.openapi.wm.impl.IdeGlassPaneImpl
+import com.intellij.openapi.wm.impl.IdeGlassPaneEx
 import com.intellij.util.Alarm
 import com.intellij.util.SofterReference
 import com.intellij.util.containers.ContainerUtil
@@ -438,8 +437,8 @@ class EmulatorView(
     emulatorOutOfDateNotificationShown = true
   }
 
-  override fun paintComponent(g: Graphics) {
-    super.paintComponent(g)
+  override fun paintComponent(graphics: Graphics) {
+    super.paintComponent(graphics)
 
     val screenshot = lastScreenshot ?: return
     val skin = screenshot.skinLayout
@@ -448,7 +447,7 @@ class EmulatorView(
     val displayRect = computeDisplayRectangle(skin)
     displayRectangle = displayRect
 
-    g as Graphics2D
+    val g = graphics.create() as Graphics2D
     val physicalToVirtualScale = 1.0 / screenScale
     g.scale(physicalToVirtualScale, physicalToVirtualScale) // Set the scale to draw in physical pixels.
 
@@ -464,8 +463,6 @@ class EmulatorView(
 
     frameNumber = screenshotShape.frameNumber
     notifyFrameListeners(displayRect, screenshot.image)
-
-    paintDecorations(g, displayRect)
 
     if (multiTouchMode) {
       // Draw multi-touch visual feedback.
@@ -586,7 +583,7 @@ class EmulatorView(
   private fun startOperatingVirtualSceneCamera() {
     val keys = EmulatorSettings.getInstance().cameraVelocityControls.keys
     showVirtualSceneCameraPrompt("Move camera with $keys keys, rotate with mouse or arrow keys")
-    val glass = IdeGlassPaneUtil.find(this)
+    val glass = IdeGlassPaneUtil.find(this) as IdeGlassPaneEx
     val cursor = AdtUiCursorsProvider.getInstance().getCursor(AdtUiCursorType.MOVE)
     val rootPane = glass.rootPane
     val scale = PI / min(rootPane.width, rootPane.height)
@@ -620,7 +617,7 @@ class EmulatorView(
     virtualSceneCameraVelocityController?.let(Disposer::dispose)
     virtualSceneCameraVelocityController = null
     showVirtualSceneCameraPrompt()
-    val glass = IdeGlassPaneUtil.find(this)
+    val glass = IdeGlassPaneUtil.find(this) as IdeGlassPaneEx
     glass.setCursor(null, this)
     UIUtil.setCursor(glass.rootPane, null)
   }
@@ -646,9 +643,6 @@ class EmulatorView(
     val displayMode = emulatorConfig.displayModes.firstOrNull { it.displayModeId == displayModeId } ?: return
     requestScreenshotFeed(displayMode.displaySize, displayOrientationQuadrants)
   }
-
-  private val IdeGlassPane.rootPane
-    get() = (this as IdeGlassPaneImpl).rootPane
 
   private inner class NotificationReceiver : EmptyStreamObserver<EmulatorNotification>() {
 

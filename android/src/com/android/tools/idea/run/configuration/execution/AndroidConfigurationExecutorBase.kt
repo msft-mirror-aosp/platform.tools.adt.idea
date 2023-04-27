@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.DeployerException
 import com.android.tools.deployer.model.App
+import com.android.tools.idea.execution.common.AppRunConfiguration
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.ApplicationTerminator
@@ -37,7 +38,7 @@ import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.runBlockingCancellable
+import com.intellij.openapi.progress.indicatorRunBlockingCancellable
 import com.intellij.openapi.util.Disposer
 import com.intellij.xdebugger.impl.XDebugSessionImpl
 import kotlinx.coroutines.async
@@ -62,7 +63,7 @@ abstract class AndroidConfigurationExecutorBase(
   protected val isDebug = environment.executor.isDebug
 
   @WorkerThread
-  override fun run(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
+  override fun run(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(environment))
     val console = createConsole()
     val processHandler = AndroidProcessHandler(project, appId, getStopCallback(console, false))
@@ -88,11 +89,16 @@ abstract class AndroidConfigurationExecutorBase(
 
     devices.map { async { onDevice(it) } }.joinAll()
 
+    environment.putCopyableUserData(AppRunConfiguration.KEY, object : AppRunConfiguration {
+      override val appId: String = this@AndroidConfigurationExecutorBase.appId
+    })
+
     createRunContentDescriptor(processHandler, console, environment)
   }
 
   @WorkerThread
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable(indicator) {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable<RunContentDescriptor>(
+    indicator) {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(environment))
     if (devices.size > 1) {
       throw ExecutionException("Debugging is allowed only for single device")
@@ -114,7 +120,7 @@ abstract class AndroidConfigurationExecutorBase(
     launch(device, deployResult.app, console, true, indicator)
 
     try {
-      return@runBlockingCancellable runContentDescriptorDeferred.await()
+      return@indicatorRunBlockingCancellable runContentDescriptorDeferred.await()
     }
     catch (e: ExecutionException) {
       if (!device.isOffline) {

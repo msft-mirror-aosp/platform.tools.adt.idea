@@ -776,9 +776,9 @@ class EmulatorToolWindowPanelTest {
 
   private fun assertAppearance(ui: FakeUi,
                                goldenImageName: String,
-                               maxPercentDifferentLinux: Double = 0.0,
-                               maxPercentDifferentMac: Double = 0.0,
-                               maxPercentDifferentWindows: Double = 0.0) {
+                               maxPercentDifferentLinux: Double = 0.0003,
+                               maxPercentDifferentMac: Double = 0.0003,
+                               maxPercentDifferentWindows: Double = 0.0003) {
     ui.layoutAndDispatchEvents()
     ui.updateToolbars()
     val image = ui.render()

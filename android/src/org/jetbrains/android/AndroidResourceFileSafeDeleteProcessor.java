@@ -32,7 +32,7 @@ public class AndroidResourceFileSafeDeleteProcessor extends SafeDeleteProcessorD
   @Override
   public Collection<? extends PsiElement> getElementsToSearch(@NotNull PsiElement element,
                                                               @Nullable Module module,
-                                                              @NotNull Collection<PsiElement> allElementsToDelete) {
+                                                              @NotNull Collection<? extends PsiElement> allElementsToDelete) {
     return Collections.singletonList(element);
   }
 
@@ -54,7 +54,7 @@ public class AndroidResourceFileSafeDeleteProcessor extends SafeDeleteProcessorD
 
   @Nullable
   @Override
-  public NonCodeUsageSearchInfo findUsages(@NotNull PsiElement element, @NotNull PsiElement[] allElementsToDelete, @NotNull List<UsageInfo> result) {
+  public NonCodeUsageSearchInfo findUsages(@NotNull PsiElement element, @NotNull PsiElement[] allElementsToDelete, @NotNull List<? super UsageInfo> result) {
     SafeDeleteProcessor.findGenericElementUsages(element, result, allElementsToDelete);
 
     if (element instanceof PsiFile) {
@@ -70,7 +70,7 @@ public class AndroidResourceFileSafeDeleteProcessor extends SafeDeleteProcessorD
   @Nullable
   @Override
   public Collection<PsiElement> getAdditionalElementsToDelete(@NotNull PsiElement element,
-                                                              @NotNull Collection<PsiElement> allElementsToDelete,
+                                                              @NotNull Collection<? extends PsiElement> allElementsToDelete,
                                                               boolean askUser) {
     if (allElementsToDelete.size() > 1) {
       // todo: support this case (we should ask once)

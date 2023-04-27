@@ -32,19 +32,8 @@ namespace screensharing {
 using namespace std;
 
 bool DeviceStateManager::InitializeStatics(Jni jni) {
-  if (Agent::api_level() < 30) {
-    return false;  // Support for foldable devices was introduced in API 30.
-  }
-
   if (Agent::api_level() < 31) {
-    // In API < 31 querying device state is done by a shell command.
-    string state = RTrim(ExecuteShellCommand("cmd device_state print-state"));
-    try {
-      scoped_lock lock(state_mutex_);
-      current_state_ = ParseInt(state.c_str(), -1);
-    } catch (const invalid_argument& e) {
-    }
-    return true;
+    return false;  // Support for device states was introduced in API 31.
   }
 
   {
@@ -57,7 +46,9 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
       jmethodID register_callback_method =
           device_state_manager_class.GetMethod("registerCallback", "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V");
       request_state_method_ = device_state_manager_class.GetMethod("requestState", "(Landroid/os/IBinder;II)V");
-      cancel_state_request_method_ = device_state_manager_class.GetMethod("cancelStateRequest", "()V");
+      if (Agent::api_level() >= 32) {
+        cancel_state_request_method_ = device_state_manager_class.GetMethod("cancelStateRequest", "()V");
+      }
       get_device_state_info_method_ =
           device_state_manager_class.GetMethod("getDeviceStateInfo", "()Landroid/hardware/devicestate/DeviceStateInfo;");
 
@@ -92,8 +83,8 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
 }
 
 string DeviceStateManager::GetSupportedStates() {
-  if (Agent::api_level() < 30) {
-    return "";  // 'cmd device_state print-states' was introduced in API 30.
+  if (Agent::api_level() < 31) {
+    return "";  // 'cmd device_state print-states' was introduced in API 31.
   }
   return ExecuteShellCommand("cmd device_state print-states");
 }
@@ -110,19 +101,12 @@ void DeviceStateManager::RequestState(Jni jni, int32_t state_id, int32_t flags) 
     return;
   }
   JObject token = binder_class_.NewObject(jni, binder_constructor_);
-  if (request_state_method_ != nullptr) {
-    Log::D("DeviceStateManager::RequestState: requesting state: %d", state_id);
-    // Call IDeviceStateManager.requestState.
-    device_state_manager_.CallVoidMethod(jni, request_state_method_, token.ref(), state_id, flags);
-    {
-      scoped_lock lock(state_mutex_);
-      state_overridden_ = true;
-    }
-  } else {
-    // In API < 31 setting device state is done by a shell command.
-    ExecuteShellCommand(StringPrintf("cmd device_state state %d", state_id));
-    // Notify listeners immediately because state change notifications are not supported before API 31.
-    NotifyListeners(state_id);
+  Log::D("DeviceStateManager::RequestState: requesting state: %d", state_id);
+  // Call IDeviceStateManager.requestState.
+  device_state_manager_.CallVoidMethod(jni, request_state_method_, token.ref(), state_id, flags);
+  {
+    scoped_lock lock(state_mutex_);
+    state_overridden_ = true;
   }
 }
 
@@ -184,7 +168,7 @@ void DeviceStateManager::OnDeviceStateChanged(Jni jni, jobject device_state_info
     NotifyListeners(current_state);
   }
 
-  if (cancel_state_override) {
+  if (cancel_state_override && cancel_state_request_method_ != nullptr) {
     // Call IDeviceStateManager.cancelStateRequest.
     device_state_manager_.CallVoidMethod(jni, cancel_state_request_method_);
   }

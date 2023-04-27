@@ -39,7 +39,7 @@ import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.asJava.toPsiParameters
 import org.jetbrains.kotlin.builtins.PrimitiveType
-import org.jetbrains.kotlin.idea.search.ideaExtensions.KotlinAnnotatedElementsSearcher
+import org.jetbrains.kotlin.idea.base.searching.KotlinAnnotatedElementsSearcher
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -265,7 +265,7 @@ private fun KtTypeReference.equalsToPsiType(unboxedPsiType: PsiType): Boolean {
   allowAnalysisOnEdt {
     analyze(this) {
       val ktType = this@equalsToPsiType.getKtType()
-      val psiType = ktType.asPsiType(this@equalsToPsiType)
+      val psiType = ktType.asPsiType(this@equalsToPsiType, allowErrorTypes = false)
       return psiType == unboxedPsiType
     }
   }

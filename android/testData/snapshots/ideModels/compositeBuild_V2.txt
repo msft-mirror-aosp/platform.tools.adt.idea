@@ -2134,7 +2134,7 @@ MODULE                        : TestCompositeLib1.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2146,6 +2146,7 @@ MODULE                        : TestCompositeLib1.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -2203,7 +2204,7 @@ MODULE                        : TestCompositeLib1.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2215,6 +2216,7 @@ MODULE                        : TestCompositeLib1.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -2272,7 +2274,7 @@ MODULE                        : TestCompositeLib1.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2284,6 +2286,7 @@ MODULE                        : TestCompositeLib1.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
@@ -3460,7 +3463,7 @@ MODULE                        : TestCompositeLib1.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -3472,6 +3475,7 @@ MODULE                        : TestCompositeLib1.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -3528,7 +3532,7 @@ MODULE                        : TestCompositeLib1.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -3540,6 +3544,7 @@ MODULE                        : TestCompositeLib1.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -3596,7 +3601,7 @@ MODULE                        : TestCompositeLib1.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -3608,6 +3613,7 @@ MODULE                        : TestCompositeLib1.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
@@ -5067,7 +5073,7 @@ MODULE                        : TestCompositeLib3.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -5079,6 +5085,7 @@ MODULE                        : TestCompositeLib3.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -5136,7 +5143,7 @@ MODULE                        : TestCompositeLib3.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -5148,6 +5155,7 @@ MODULE                        : TestCompositeLib3.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -5205,7 +5213,7 @@ MODULE                        : TestCompositeLib3.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -5217,6 +5225,7 @@ MODULE                        : TestCompositeLib3.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
@@ -6294,6 +6303,7 @@ MODULE                        : com.test.compositeNest3.compositeNest
                 - artifacts                   : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3/build/libs/compositeNest-1.0.jar [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
             test                          : test (DefaultExternalSourceSet)
                 sources
                     TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -6314,6 +6324,7 @@ MODULE                        : com.test.compositeNest3.compositeNest
                     - files                       : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3/build/resources/test [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
         externalSystemId              : GRADLE
         - artifacts                   : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3/build/libs/compositeNest-1.0.jar [-]
         artifactsByConfiguration
@@ -6379,6 +6390,7 @@ MODULE                        : composite2
                 - artifacts                   : <ROOT>/TestCompositeLib2/build/libs/composite2-1.0.jar [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
             test                          : test (DefaultExternalSourceSet)
                 sources
                     TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -6399,6 +6411,7 @@ MODULE                        : composite2
                     - files                       : <ROOT>/TestCompositeLib2/build/resources/test [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
         externalSystemId              : GRADLE
         - artifacts                   : <ROOT>/TestCompositeLib2/build/libs/composite2-1.0.jar [-]
         artifactsByConfiguration
@@ -6464,6 +6477,7 @@ MODULE                        : composite4
                 - artifacts                   : <ROOT>/TestCompositeLib4/build/libs/composite4-1.0.jar [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
             test                          : test (DefaultExternalSourceSet)
                 sources
                     TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -6484,6 +6498,7 @@ MODULE                        : composite4
                     - files                       : <ROOT>/TestCompositeLib4/build/resources/test [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
         externalSystemId              : GRADLE
         - artifacts                   : <ROOT>/TestCompositeLib4/build/libs/composite4-1.0.jar [-]
         artifactsByConfiguration
@@ -6549,6 +6564,7 @@ MODULE                        : compositeNest
                 - artifacts                   : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1/build/libs/compositeNest-1.0.jar [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
             test                          : test (DefaultExternalSourceSet)
                 sources
                     TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -6569,6 +6585,7 @@ MODULE                        : compositeNest
                     - files                       : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1/build/resources/test [-]
                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
         externalSystemId              : GRADLE
         - artifacts                   : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1/build/libs/compositeNest-1.0.jar [-]
         artifactsByConfiguration
@@ -8184,7 +8201,7 @@ MODULE                        : project.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -8196,6 +8213,7 @@ MODULE                        : project.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -8253,7 +8271,7 @@ MODULE                        : project.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -8265,6 +8283,7 @@ MODULE                        : project.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -8322,7 +8341,7 @@ MODULE                        : project.app
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -8334,6 +8353,7 @@ MODULE                        : project.app
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android
@@ -9477,7 +9497,7 @@ MODULE                        : project.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -9489,6 +9509,7 @@ MODULE                        : project.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -9544,7 +9565,7 @@ MODULE                        : project.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -9556,6 +9577,7 @@ MODULE                        : project.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -9611,7 +9633,7 @@ MODULE                        : project.lib
                     serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
-                    errors                        : ArgumentParseErrors
+                    enableSignatureClashChecks    : true
                     explicitApi                   : disable
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compiler-embeddable/<KOTLIN_VERSION>/kotlin-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -9623,6 +9645,7 @@ MODULE                        : project.lib
                     - pluginClasspaths            : <M2>/net/java/dev/jna/jna/5.6.0/jna-5.6.0.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinTarget                  : kotlin-android

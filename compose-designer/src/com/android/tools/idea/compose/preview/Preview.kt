@@ -23,11 +23,13 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.LayoutlibInteractionHandler
 import com.android.tools.idea.common.util.ControllableTicker
+import com.android.tools.idea.compose.pickers.preview.property.referenceDeviceIds
 import com.android.tools.idea.compose.preview.PreviewGroup.Companion.ALL_PREVIEW_GROUP
 import com.android.tools.idea.compose.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
+import com.android.tools.idea.compose.preview.fast.requestFastPreviewRefreshAndTrack
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeScreenViewProvider
@@ -50,7 +52,6 @@ import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.editors.build.outOfDateKtFiles
 import com.android.tools.idea.editors.fast.CompilationResult
 import com.android.tools.idea.editors.fast.FastPreviewManager
-import com.android.tools.idea.editors.fast.requestFastPreviewRefreshAndTrack
 import com.android.tools.idea.editors.powersave.PreviewPowerSaveManager
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
 import com.android.tools.idea.flags.StudioFlags
@@ -82,6 +83,7 @@ import com.intellij.ide.PowerSaveMode
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataProvider
@@ -340,7 +342,7 @@ class ComposePreviewRepresentation(
     val project = psiFile.project
     /* b/277124475 */
     project.messageBus
-      .connect(this)
+      .connect(this as Disposable)
       .subscribe(
         PowerSaveMode.TOPIC,
         PowerSaveMode.Listener {
@@ -352,7 +354,7 @@ class ComposePreviewRepresentation(
       )
     val essentialsModeMessengingService = service<EssentialModeMessenger>()
     project.messageBus
-      .connect(this)
+      .connect(this as Disposable)
       .subscribe(
         essentialsModeMessengingService.TOPIC,
         EssentialModeMessenger.Listener {
@@ -376,13 +378,21 @@ class ComposePreviewRepresentation(
   /** Whether the preview needs a full refresh or not. */
   private val invalidated = AtomicBoolean(true)
 
-  private val previewElementProvider =
-    PreviewFilters(
-      object : PreviewElementProvider<ComposePreviewElement> {
-        override suspend fun previewElements(): Sequence<ComposePreviewElement> =
-          previewElementsFlow.value.asSequence()
-      }
-    )
+  /**
+   * Default preview element provider based on the previews produced by the [previewElementsFlow].
+   */
+  private val defaultPreviewElementProvider =
+    PreviewFilters(DefaultPreviewElementProvider(previewElementsFlow))
+
+  /**
+   * Preview element provider corresponding to the current state of the Preview. Different modes
+   * might require a different provider to be set, e.g. UI check mode needs a provider that produces
+   * previews with reference devices. When exiting the mode and returning to static preview, the
+   * element provider should be reset to [defaultPreviewElementProvider].
+   */
+  @VisibleForTesting
+  var previewElementProvider = defaultPreviewElementProvider
+    private set
 
   override var groupFilter: PreviewGroup by
     Delegates.observable(ALL_PREVIEW_GROUP) { _, oldValue, newValue ->
@@ -465,6 +475,22 @@ class ComposePreviewRepresentation(
     forceRefresh().invokeOnCompletion {
       interactiveMode = ComposePreviewManager.InteractiveMode.DISABLED
     }
+  }
+
+  override fun startUiCheckPreview(instance: ComposePreviewElementInstance) {
+    atfChecksEnabled = StudioFlags.NELE_ATF_FOR_COMPOSE.get()
+    log.debug("Starting UI check. ATF checks enabled: $atfChecksEnabled.")
+    previewElementProvider = PreviewFilters(UiCheckPreviewElementProvider(instance))
+    surface.background = INTERACTIVE_BACKGROUND_COLOR
+    forceRefresh().invokeOnCompletion { isUiCheckPreview = true }
+  }
+
+  override fun stopUiCheckPreview() {
+    log.debug("Stopping UI check")
+    previewElementProvider = defaultPreviewElementProvider
+    atfChecksEnabled = false
+    onStaticPreviewStart()
+    forceRefresh().invokeOnCompletion { isUiCheckPreview = false }
   }
 
   private fun onStaticPreviewStart() {
@@ -570,7 +596,9 @@ class ComposePreviewRepresentation(
 
   override var isFilterEnabled: Boolean = false
 
-  override var atfChecksEnabled: Boolean = StudioFlags.NELE_ATF_FOR_COMPOSE.get()
+  override var atfChecksEnabled: Boolean = false
+
+  override var isUiCheckPreview: Boolean = false
 
   private val dataProvider = DataProvider {
     when (it) {
@@ -1519,5 +1547,50 @@ class ComposePreviewRepresentation(
   @TestOnly
   suspend fun waitForAnyPreviewToBeAvailable() {
     previewElementsFlow.filter { it.isNotEmpty() }.take(1).collect()
+  }
+
+  /**
+   * [PreviewElementProvider] that provides elements originated from a flow of
+   * [ComposePreviewElement]s.
+   */
+  @VisibleForTesting
+  class DefaultPreviewElementProvider(
+    private val previewElementsFlow: MutableStateFlow<Set<ComposePreviewElement>>
+  ) : PreviewElementProvider<ComposePreviewElement> {
+    override suspend fun previewElements(): Sequence<ComposePreviewElement> =
+      previewElementsFlow.value.asSequence()
+  }
+
+  /**
+   * [PreviewElementProvider] that provides reference devices previews created from a
+   * [ComposePreviewElementInstance].
+   */
+  @VisibleForTesting
+  class UiCheckPreviewElementProvider(private val instance: ComposePreviewElementInstance) :
+    PreviewElementProvider<ComposePreviewElement> {
+    override suspend fun previewElements(): Sequence<ComposePreviewElement> =
+      buildReferenceDevicesPreviewList(instance)
+
+    private fun buildReferenceDevicesPreviewList(
+      base: ComposePreviewElementInstance
+    ): Sequence<ComposePreviewElement> {
+      val baseConfig = base.configuration
+      val baseDisplaySettings = base.displaySettings
+      return referenceDeviceIds.keys.asSequence().map { device ->
+        val config = baseConfig.copy(deviceSpec = device)
+        val displaySettings =
+          baseDisplaySettings.copy(
+            name = "${baseDisplaySettings.name} - ${referenceDeviceIds[device]}",
+            group = message("ui.check.mode.screen.size.group")
+          )
+        SingleComposePreviewElementInstance(
+          base.composableMethodFqn,
+          displaySettings,
+          base.previewElementDefinitionPsi,
+          base.previewBodyPsi,
+          config
+        )
+      }
+    }
   }
 }

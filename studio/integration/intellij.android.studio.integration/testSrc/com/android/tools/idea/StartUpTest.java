@@ -65,15 +65,16 @@ public class StartUpTest {
         "C/C++ Language Support",
         "CIDR Base",
         "CIDR Debugger",
+        "ClangConfig",
         "Clangd Support",
         "Clangd-CLion Bridge",
+        "ClangFormat",
         "Code Coverage for Java",
         "com.intellij.dev",
         "Configuration Script",
         "Copyright",
         "Eclipse Keymap",
         "EditorConfig",
-        "Firebase App Indexing",
         "Firebase Direct Access",
         "Firebase Services",
         "Firebase Testing",
@@ -81,11 +82,11 @@ public class StartUpTest {
         "GitHub",
         "Google Cloud Tools Core",
         "Google Cloud Tools For Android Studio",
-        "Google Developers Samples",
         "Gradle",
         "Gradle managed device code completion",
         "Gradle-Java",
         "Groovy",
+        "HTML Tools",
         "IDEA CORE",
         "Images",
         "IntelliLang",
@@ -105,6 +106,7 @@ public class StartUpTest {
         "Maven server api classes",
         "Mercurial",
         "NetBeans Keymap",
+        "Performance Testing",
         "Plugin DevKit",
         "Properties",
         "Settings Sync",
@@ -124,10 +126,6 @@ public class StartUpTest {
 
       if (SystemUtils.IS_OS_LINUX) {
         expectedPlugins.add("Emoji Picker");
-      }
-
-      if (SystemUtils.IS_OS_WINDOWS) {
-        expectedPlugins.add("Windows 10 Light Theme");
       }
 
       assertThat(plugins).asList().containsExactlyElementsIn(expectedPlugins);

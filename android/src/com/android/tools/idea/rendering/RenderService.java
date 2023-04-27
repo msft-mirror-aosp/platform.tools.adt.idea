@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.rendering;
 
-import static com.android.tools.idea.rendering.RenderAsyncActionExecutor.*;
+import static com.android.tools.rendering.RenderAsyncActionExecutor.*;
 import static com.android.tools.rendering.ProblemSeverity.ERROR;
 
 import com.android.ide.common.rendering.api.MergeCookie;
@@ -26,8 +26,16 @@ import com.android.tools.idea.diagnostics.crash.StudioCrashReporter;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.layoutlib.RenderingException;
 import com.android.tools.idea.layoutlib.UnsupportedJavaRuntimeException;
-import com.android.tools.idea.rendering.classloading.ClassTransform;
+import com.android.tools.idea.rendering.tracking.RenderTaskAllocationTrackerImpl;
+import com.android.tools.idea.rendering.tracking.StackTraceCapture;
 import com.android.tools.layoutlib.LayoutlibFactory;
+import com.android.tools.rendering.RenderAsyncActionExecutor;
+import com.android.tools.rendering.RenderContext;
+import com.android.tools.rendering.RenderExecutor;
+import com.android.tools.rendering.RenderLogger;
+import com.android.tools.rendering.api.RenderConfiguration;
+import com.android.tools.rendering.api.RenderModelModule;
+import com.android.tools.rendering.classloading.ClassTransform;
 import com.android.tools.rendering.imagepool.ImagePool;
 import com.android.tools.rendering.imagepool.ImagePoolFactory;
 import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
@@ -484,7 +492,7 @@ final public class RenderService implements Disposable {
      */
     @NotNull
     public CompletableFuture<RenderTask> build() {
-      StackTraceCapture stackTraceCaptureElement = RenderTaskAllocationTrackerKt.captureAllocationStackTrace();
+      StackTraceCapture stackTraceCaptureElement = RenderTaskAllocationTrackerImpl.INSTANCE.captureAllocationStackTrace();
 
       return CompletableFuture.supplyAsync(() -> {
         RenderModelModule module = myContext.getModule();
@@ -495,7 +503,7 @@ final public class RenderService implements Disposable {
         IAndroidTarget target = myContext.getConfiguration().getTarget();
 
         if (module.getAndroidPlatform() == null) {
-          myContext.getModule().getDependencies().reportMissingSdkDependency(myLogger);
+          myContext.getModule().getEnvironment().reportMissingSdkDependency(myLogger);
           return null;
         }
 

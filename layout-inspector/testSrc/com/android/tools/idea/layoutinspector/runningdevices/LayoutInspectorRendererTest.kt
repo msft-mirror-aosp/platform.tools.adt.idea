@@ -17,9 +17,14 @@ package com.android.tools.idea.layoutinspector.runningdevices
 
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.MockitoKt
+import com.android.testutils.MockitoKt.any
+import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
+import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.imagediff.ImageDiffTestUtil
+import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.idea.layoutinspector.common.SelectViewAction
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.COMPOSE1
 import com.android.tools.idea.layoutinspector.model.ROOT
@@ -29,19 +34,36 @@ import com.android.tools.idea.layoutinspector.ui.RenderLogic
 import com.android.tools.idea.layoutinspector.ui.RenderModel
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPopupMenu
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.replaceService
+import com.intellij.util.ui.components.BorderLayoutPanel
 import com.jetbrains.rd.swing.fillRect
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.Mockito.doAnswer
 import java.awt.Color
-import java.awt.Component
 import java.awt.Dimension
 import java.awt.Rectangle
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import java.nio.file.Path
+import java.util.function.Supplier
 import javax.imageio.ImageIO
-import javax.swing.JPanel
+import javax.swing.JComponent
+import javax.swing.JPopupMenu
 import kotlin.io.path.pathString
 
 private val TEST_DATA_PATH = Path.of("tools", "adt", "idea", "layout-inspector", "testData")
@@ -51,6 +73,15 @@ class LayoutInspectorRendererTest {
 
   @get:Rule
   val testName = TestName()
+
+  @get:Rule
+  val disposableRule = DisposableRule()
+
+  @get:Rule
+  val edtRule = EdtRule()
+
+  @get:Rule
+  val applicationRule = ApplicationRule()
 
   private val inspectorModel = model {
     view(ROOT, 0, 0, 100, 150) {
@@ -71,21 +102,15 @@ class LayoutInspectorRendererTest {
   private val deviceFrameDimension = Dimension(100, 150)
   private val deviceFrame = Rectangle(10, 10, deviceFrameDimension.width, deviceFrameDimension.height)
 
-  private lateinit var component: Component
-
   @Before
   fun setUp() {
     renderModel = RenderModel(inspectorModel, treeSettings) { MockitoKt.mock() }
     renderLogic = RenderLogic(renderModel, renderSettings)
-
-    component = JPanel().apply {
-      size = screenDimension
-    }
   }
 
   @Test
   fun testViewBordersAreRendered() {
-    val layoutInspectorRenderer = LayoutInspectorRenderer(renderLogic, renderModel, component, { deviceFrame }, { 1.0 })
+    val layoutInspectorRenderer = createRenderer()
 
     @Suppress("UndesirableClassUsage")
     val renderImage = BufferedImage(screenDimension.width, screenDimension.height, BufferedImage.TYPE_INT_ARGB)
@@ -95,7 +120,7 @@ class LayoutInspectorRendererTest {
 
   @Test
   fun testOverlayIsRendered() {
-    val layoutInspectorRenderer = LayoutInspectorRenderer(renderLogic, renderModel, component, { deviceFrame }, { 1.0 })
+    val layoutInspectorRenderer = createRenderer()
 
     renderModel.overlay = ImageIO.read(TestUtils.resolveWorkspacePathUnchecked("${TEST_DATA_PATH}/overlay.png").toFile())
 
@@ -107,8 +132,12 @@ class LayoutInspectorRendererTest {
 
   @Test
   fun testMouseHover() {
-    val layoutInspectorRenderer = LayoutInspectorRenderer(renderLogic, renderModel, component, { deviceFrame }, { 1.0 })
-    val fakeUi = FakeUi(component)
+    val parent = BorderLayoutPanel()
+    val layoutInspectorRenderer = createRenderer()
+    parent.add(layoutInspectorRenderer)
+    parent.size = screenDimension
+    layoutInspectorRenderer.size = screenDimension
+    val fakeUi = FakeUi(layoutInspectorRenderer)
 
     assertThat(renderModel.model.hoveredNode).isNull()
 
@@ -127,13 +156,156 @@ class LayoutInspectorRendererTest {
     assertSimilar(renderImage, testName.methodName)
   }
 
+  @Test
+  @RunsInEdt
+  fun testMouseClick() {
+    renderSettings.drawLabel = false
+    val layoutInspectorRenderer = createRenderer()
+    val parent = BorderLayoutPanel()
+    parent.add(layoutInspectorRenderer)
+    parent.size = screenDimension
+    layoutInspectorRenderer.size = screenDimension
+    layoutInspectorRenderer.interceptClicks = true
+
+    val fakeUi = FakeUi(layoutInspectorRenderer)
+
+    fakeUi.render()
+
+    // click mouse above VIEW1.
+    fakeUi.mouse.click(deviceFrame.x + 10, deviceFrame.y + 15)
+
+    fakeUi.render()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(renderModel.model.selection).isEqualTo(renderModel.model[VIEW1])
+
+    renderModel.overlay = ImageIO.read(TestUtils.resolveWorkspacePathUnchecked("${TEST_DATA_PATH}/overlay.png").toFile())
+
+    @Suppress("UndesirableClassUsage")
+    val renderImage = BufferedImage(screenDimension.width, screenDimension.height, BufferedImage.TYPE_INT_ARGB)
+    paint(renderImage, layoutInspectorRenderer)
+    assertSimilar(renderImage, testName.methodName)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testContextMenu() {
+    val layoutInspectorRenderer = createRenderer()
+    val parent = BorderLayoutPanel()
+    parent.add(layoutInspectorRenderer)
+    parent.size = screenDimension
+    layoutInspectorRenderer.size = screenDimension
+    layoutInspectorRenderer.interceptClicks = true
+
+    var latestPopup: FakeActionPopupMenu? = null
+    ApplicationManager.getApplication().replaceService(ActionManager::class.java, MockitoKt.mock(), disposableRule.disposable)
+    doAnswer { invocation ->
+      latestPopup = FakeActionPopupMenu(invocation.getArgument(1))
+      latestPopup
+    }.whenever(ActionManager.getInstance()).createActionPopupMenu(anyString(), any<ActionGroup>())
+
+    val fakeUi = FakeUi(layoutInspectorRenderer)
+    fakeUi.render()
+
+    // Right click on VIEW1 when system views are showing:
+    fakeUi.mouse.click(deviceFrame.x + 10, deviceFrame.y + 15, FakeMouse.Button.RIGHT)
+    latestPopup!!.assertSelectViewAction(ROOT, VIEW1)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testEventsDispatchedToParent() {
+    val fakeMouseListener = FakeMouseListener()
+    val parent = BorderLayoutPanel()
+    parent.addMouseListener(fakeMouseListener)
+    parent.addMouseMotionListener(fakeMouseListener)
+    val layoutInspectorRenderer = createRenderer()
+    parent.addToCenter(layoutInspectorRenderer)
+    parent.size = screenDimension
+    layoutInspectorRenderer.size = screenDimension
+
+    val fakeUi = FakeUi(parent)
+    fakeUi.render()
+
+    // move mouse above VIEW1.
+    fakeUi.mouse.moveTo(deviceFrame.x + 10, deviceFrame.y + 15)
+    fakeUi.mouse.click(deviceFrame.x + 10, deviceFrame.y + 15)
+
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(fakeMouseListener.mouseClickedCount).isEqualTo(1)
+    assertThat(fakeMouseListener.mouseEnteredCount).isEqualTo(1)
+    assertThat(fakeMouseListener.mouseReleasedCount).isEqualTo(1)
+    assertThat(fakeMouseListener.mouseMovedCount).isEqualTo(2)
+    assertThat(fakeMouseListener.mousePressedCount).isEqualTo(1)
+
+    fakeUi.mouse.press(deviceFrame.x + 10, deviceFrame.y + 15)
+    fakeUi.mouse.dragTo(1, 1)
+    fakeUi.mouse.release()
+    fakeUi.mouse.moveTo(-1, -1)
+
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(fakeMouseListener.mouseExitedCount).isEqualTo(1)
+    assertThat(fakeMouseListener.mouseDraggedCount).isEqualTo(1)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testEventsNotDispatchedToParent() {
+    val fakeMouseListener = FakeMouseListener()
+    val parent = BorderLayoutPanel()
+    parent.addMouseListener(fakeMouseListener)
+    parent.addMouseMotionListener(fakeMouseListener)
+    val layoutInspectorRenderer = createRenderer()
+    parent.addToCenter(layoutInspectorRenderer)
+    parent.size = screenDimension
+    layoutInspectorRenderer.size = screenDimension
+
+    layoutInspectorRenderer.interceptClicks = true
+
+    val fakeUi = FakeUi(parent)
+    fakeUi.render()
+
+    fakeUi.mouse.moveTo(deviceFrame.x + 10, deviceFrame.y + 15)
+    fakeUi.mouse.click(deviceFrame.x + 10, deviceFrame.y + 15)
+
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(fakeMouseListener.mouseClickedCount).isEqualTo(0)
+    assertThat(fakeMouseListener.mouseEnteredCount).isEqualTo(0)
+    assertThat(fakeMouseListener.mouseReleasedCount).isEqualTo(0)
+    assertThat(fakeMouseListener.mouseMovedCount).isEqualTo(0)
+    assertThat(fakeMouseListener.mousePressedCount).isEqualTo(0)
+
+    fakeUi.mouse.press(deviceFrame.x + 10, deviceFrame.y + 15)
+    fakeUi.mouse.dragTo(1, 1)
+    fakeUi.mouse.release()
+    fakeUi.mouse.moveTo(-1, -1)
+
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(fakeMouseListener.mouseExitedCount).isEqualTo(0)
+    assertThat(fakeMouseListener.mouseDraggedCount).isEqualTo(0)
+  }
+
   private fun paint(image: BufferedImage, layoutInspectorRenderer: LayoutInspectorRenderer) {
     val graphics = image.createGraphics()
     // add a gray background
     graphics.fillRect(Rectangle(0, 0, screenDimension.width, screenDimension.height), Color(250, 250, 250))
     graphics.font = ImageDiffTestUtil.getDefaultFont()
 
-    layoutInspectorRenderer.paint(graphics, deviceFrame)
+    layoutInspectorRenderer.paint(graphics)
+  }
+
+  private fun createRenderer(): LayoutInspectorRenderer {
+    return LayoutInspectorRenderer(
+      disposableRule.disposable,
+      renderLogic,
+      renderModel,
+      displayRectangleProvider = { deviceFrame },
+      screenScaleProvider = { 1.0 }
+    )
   }
 
   /**
@@ -145,5 +317,62 @@ class LayoutInspectorRendererTest {
     ImageDiffUtil.assertImageSimilar(
       TestUtils.resolveWorkspacePathUnchecked(testDataPath.resolve("$imageName.png").pathString), renderImage, DIFF_THRESHOLD
     )
+  }
+}
+
+private class FakeMouseListener : MouseAdapter() {
+  var mouseClickedCount = 0
+  var mouseDraggedCount = 0
+  var mouseEnteredCount = 0
+  var mouseExitedCount = 0
+  var mouseReleasedCount = 0
+  var mouseMovedCount = 0
+  var mousePressedCount = 0
+
+  override fun mouseClicked(e: MouseEvent) {
+    mouseClickedCount += 1
+  }
+
+  override fun mouseDragged(e: MouseEvent) {
+    mouseDraggedCount += 1
+  }
+
+  override fun mouseEntered(e: MouseEvent) {
+    mouseEnteredCount += 1
+  }
+
+  override fun mouseExited(e: MouseEvent) {
+    mouseExitedCount += 1
+  }
+
+  override fun mouseReleased(e: MouseEvent) {
+    mouseReleasedCount += 1
+  }
+
+  override fun mouseMoved(e: MouseEvent) {
+    mouseMovedCount += 1
+  }
+
+  override fun mousePressed(e: MouseEvent) {
+    mousePressedCount += 1
+  }
+}
+
+private class FakeActionPopupMenu(private val group: ActionGroup): ActionPopupMenu {
+  val popup: JPopupMenu = MockitoKt.mock()
+  override fun getComponent(): JPopupMenu = popup
+  override fun getActionGroup(): ActionGroup = group
+  override fun getPlace(): String = error("Not implemented")
+  override fun setTargetComponent(component: JComponent) = error("Not implemented")
+  override fun setDataContext(dataProvider: Supplier<out DataContext>) = error("Not implemented")
+  fun assertSelectViewAction(vararg expected: Long) {
+    val event: AnActionEvent = MockitoKt.mock()
+    whenever(event.actionManager).thenReturn(ActionManager.getInstance())
+    val actions = group.getChildren(event)
+    assertThat(actions.size).isEqualTo(1)
+    assertThat(actions[0]).isInstanceOf(DropDownAction::class.java)
+    val selectActions = (actions[0] as DropDownAction).getChildren(event)
+    val selectedViewsIds = selectActions.toList().filterIsInstance(SelectViewAction::class.java).map { it.view.drawId }
+    assertThat(selectedViewsIds).containsExactlyElementsIn(expected.toList())
   }
 }

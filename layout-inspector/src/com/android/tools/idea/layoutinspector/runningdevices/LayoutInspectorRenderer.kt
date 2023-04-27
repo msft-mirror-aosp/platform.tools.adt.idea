@@ -15,40 +15,91 @@
  */
 package com.android.tools.idea.layoutinspector.runningdevices
 
-import com.android.tools.adtui.common.primaryPanelBackground
+import com.android.tools.idea.layoutinspector.common.showViewContextMenu
 import com.android.tools.idea.layoutinspector.ui.RenderLogic
 import com.android.tools.idea.layoutinspector.ui.RenderModel
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
+import com.intellij.ui.PopupHandler
 import java.awt.Component
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.event.MouseListener
+import java.awt.event.MouseMotionListener
+import java.awt.event.MouseWheelEvent
+import java.awt.event.MouseWheelListener
 import java.awt.geom.AffineTransform
 import java.awt.geom.Point2D
+import javax.swing.JPanel
 
 /**
- * Class responsible for rendering the [RenderModel] into a [Graphics] object.
- * Renders the borders and the overlay, see [RenderLogic.renderBorders] and [RenderLogic.renderOverlay].
- *
- * @param component The component on which we are rendering.
- * It is used to access swing properties that this class wouldn't know how to access otherwise.
+ * Panel responsible for rendering the [RenderModel] into a [Graphics] object and reacting to mouse and keyboard events.
+ * @param displayRectangleProvider Returns the rectangle of the device screen. In physical pixels.
+ * If used for rendering it needs to be scaled to logical pixels.
+ * A Physical pixel corresponds to a real pixel on the display. A logical pixel corresponds to a physical pixels * screen scale.
+ * For example on a Retina display a logical pixel is a physical pixel * 2.
+ * @param screenScaleProvider Returns the screen scale. For example 1 on a regular display and 2 on a Retina display.
  */
 class LayoutInspectorRenderer(
+  disposable: Disposable,
   private val renderLogic: RenderLogic,
   private val renderModel: RenderModel,
-  private val component: Component,
   private val displayRectangleProvider: () -> Rectangle?,
   private val screenScaleProvider: () -> Double
-) {
+): JPanel(), Disposable {
+
+  var interceptClicks = false
+
+  private val repaintDisplayView = { refresh() }
+
+  fun interface RefreshListener {
+    fun onRefresh()
+  }
+
+  private val listeners = mutableListOf<RefreshListener>()
 
   init {
+    Disposer.register(disposable, this)
+    isOpaque = false
+
     // TODO(b/265150325) when running devices the zoom does not affect the scale. Move this somewhere else.
     renderLogic.renderSettings.scalePercent = 30
 
-    val layoutInspectorMouseListener = LayoutInspectorMouseListener(renderModel)
-    component.addMouseListener(layoutInspectorMouseListener)
-    component.addMouseMotionListener(layoutInspectorMouseListener)
+    // Events are not dispatched to the parent if the child has a mouse listener. So we need to manually forward them.
+    ForwardingMouseListener({ parent }, { !interceptClicks }).also {
+      addMouseListener(it)
+      addMouseMotionListener(it)
+      addMouseWheelListener(it)
+    }
+    LayoutInspectorMouseListener(renderModel).also {
+      addMouseListener(it)
+      addMouseMotionListener(it)
+    }
+    addMouseListener(LayoutInspectorPopupHandler())
+
+    // re-render each time Layout Inspector model changes
+    renderModel.modificationListeners.add(repaintDisplayView)
+  }
+
+  override fun dispose() {
+    renderModel.modificationListeners.remove(repaintDisplayView)
+  }
+
+  fun refresh() {
+    revalidate()
+    repaint()
+    listeners.forEach { it.onRefresh() }
+  }
+
+  fun addListener(listener: RefreshListener) {
+    listeners.add(listener)
+  }
+
+  fun removeListener(listener: RefreshListener) {
+    listeners.remove(listener)
   }
 
   /**
@@ -68,14 +119,21 @@ class LayoutInspectorRenderer(
     }
   }
 
-  fun paint(g: Graphics, displayRectangle: Rectangle) {
-    val g2d = g as Graphics2D
-    g2d.color = primaryPanelBackground
+  override fun paint(g: Graphics) {
+    super.paint(g)
 
-    val transform = getTransform(displayRectangle)
+    val g2d = g.create() as Graphics2D
+
+    val displayRectangle = displayRectangleProvider() ?: return
+
+    // Scale the display rectangle from physical to logical pixels.
+    val physicalToLogicalScale = 1.0 / screenScaleProvider()
+    val scaledDisplayRectangle = displayRectangle.scale(physicalToLogicalScale)
+
+    val transform = getTransform(scaledDisplayRectangle)
     g2d.transform = g2d.transform.apply { concatenate(transform) }
 
-    renderLogic.renderBorders(g2d, component, component.foreground)
+    renderLogic.renderBorders(g2d, this, foreground)
     renderLogic.renderOverlay(g2d)
   }
 
@@ -93,19 +151,63 @@ class LayoutInspectorRenderer(
     return transformedPoint2D
   }
 
-  private inner class LayoutInspectorMouseListener(private val renderModel: RenderModel) : MouseAdapter() {
-    override fun mouseMoved(e: MouseEvent) {
-      if (e.isConsumed) return
+  private inner class LayoutInspectorPopupHandler : PopupHandler() {
+    override fun invokePopup(comp: Component, x: Int, y: Int) {
+      if (!interceptClicks) return
+      val modelCoordinates = toModelCoordinates(Point2D.Double(x.toDouble(), y.toDouble())) ?: return
+      val views = renderModel.findViewsAt(modelCoordinates.x, modelCoordinates.y)
+      showViewContextMenu(views.toList(), renderModel.model, this@LayoutInspectorRenderer, x, y)
+    }
+  }
 
+  private inner class LayoutInspectorMouseListener(
+    private val renderModel: RenderModel
+  ) : MouseAdapter() {
+    override fun mouseClicked(e: MouseEvent) {
+      if (e.isConsumed || !interceptClicks) return
+
+      val modelCoordinates = toModelCoordinates(e.coordinates()) ?: return
+      renderModel.selectView(modelCoordinates.x, modelCoordinates.y)
+
+      refresh()
+    }
+
+    override fun mouseMoved(e: MouseEvent) {
       val modelCoordinates = toModelCoordinates(e.coordinates()) ?: return
 
       val hoveredNodeDrawInfo = renderModel.findDrawInfoAt(modelCoordinates.x, modelCoordinates.y).firstOrNull()
       renderModel.model.hoveredNode = hoveredNodeDrawInfo?.node?.findFilteredOwner(renderModel.treeSettings)
 
-      component.invalidate()
-      component.repaint()
+      refresh()
     }
   }
+}
+
+/**
+ * A mouse listener that forwards its events to the component provided by [componentProvider] if [shouldForward] returns true.
+ */
+private class ForwardingMouseListener(
+  private val componentProvider: () -> Component,
+  private val shouldForward: () -> Boolean
+) : MouseListener, MouseWheelListener, MouseMotionListener {
+  override fun mouseClicked(e: MouseEvent) = forwardEvent(e)
+  override fun mousePressed(e: MouseEvent) = forwardEvent(e)
+  override fun mouseReleased(e: MouseEvent) = forwardEvent(e)
+  override fun mouseEntered(e: MouseEvent) = forwardEvent(e)
+  override fun mouseExited(e: MouseEvent) = forwardEvent(e)
+  override fun mouseWheelMoved(e: MouseWheelEvent) = forwardEvent(e)
+  override fun mouseDragged(e: MouseEvent) = forwardEvent(e)
+  override fun mouseMoved(e: MouseEvent) = forwardEvent(e)
+
+  private fun forwardEvent(e: MouseEvent) {
+    if (shouldForward()) {
+      componentProvider().dispatchEvent(e)
+    }
+  }
+}
+
+private fun Rectangle.scale(physicalToLogicalScale: Double): Rectangle {
+  return Rectangle((x * physicalToLogicalScale).toInt(), (y * physicalToLogicalScale).toInt(), (width * physicalToLogicalScale).toInt(), (height *physicalToLogicalScale).toInt())
 }
 
 private fun Point2D.scale(scale: Double) = Point2D.Double(x * scale, y * scale)

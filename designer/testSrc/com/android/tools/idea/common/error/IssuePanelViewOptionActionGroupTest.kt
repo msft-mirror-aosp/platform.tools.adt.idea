@@ -26,16 +26,12 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.Separator
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.ToolWindow
-import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
-import junit.framework.Assert.assertEquals
-import junit.framework.Assert.assertFalse
-import junit.framework.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -61,7 +57,7 @@ class IssuePanelViewOptionActionGroupTest {
   @Test
   fun testOptions() {
     val group = IssuePanelViewOptionActionGroup()
-    val actionEvent = TestActionEvent(context, group)
+    val actionEvent = TestActionEvent.createTestEvent(group, context)
 
     val options = group.getChildren(actionEvent)
 

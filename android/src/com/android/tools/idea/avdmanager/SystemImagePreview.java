@@ -21,6 +21,7 @@ import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.SdkVersionInfo;
 import com.android.sdklib.repository.IdDisplay;
 import com.android.sdklib.repository.targets.SystemImage;
+import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.IconLoader;
@@ -54,6 +55,7 @@ public class SystemImagePreview {
   private JBLabel myApiLevel;
   private JBLabel myAndroidVersion;
   private JBLabel myAbi;
+  private JBLabel myTagDisplay;
   private HyperlinkLabel myDocumentationLink;
   private JBLabel myVendor;
   private JPanel myRootPanel;
@@ -65,6 +67,8 @@ public class SystemImagePreview {
   private SystemImageDescription myImageDescription;
   private Disposable myDisposable;
   ApiLevelHyperlinkListener myApiLevelListener = new ApiLevelHyperlinkListener();
+
+  private static final ImmutableList TV_DEVICES = ImmutableList.of("android-tv", "google-tv");
 
   private static final String NO_SYSTEM_IMAGE_SELECTED = "No System Image Selected";
   private static final String MAIN_CONTENT = "main";
@@ -83,6 +87,7 @@ public class SystemImagePreview {
     myReleaseName.setFont(AvdWizardUtils.TITLE_FONT);
     myApiLevel.setFont(AvdWizardUtils.TITLE_FONT);
     myAndroidVersion.setFont(AvdWizardUtils.TITLE_FONT);
+    myTagDisplay.setFont(AvdWizardUtils.TITLE_FONT);
     myVendor.setFont(AvdWizardUtils.TITLE_FONT);
     myDocumentationLink.setOpaque(false);
     myAbi.setFont(AvdWizardUtils.TITLE_FONT);
@@ -107,6 +112,13 @@ public class SystemImagePreview {
     return image != null &&
            SystemImage.WEAR_TAG.getId().equals(image.getTag().getId()) &&
            image.getSystemImage().getPackage().getPath().contains(SystemImage.WEAR_CN_DIRECTORY);
+  }
+
+  /**
+   * @return True if the given {@link SystemImagePreview} is a Television device.
+   */
+  private static boolean isTvDevice(@NotNull IdDisplay tag) {
+    return TV_DEVICES.contains(tag.getId());
   }
 
   /**
@@ -149,12 +161,17 @@ public class SystemImagePreview {
       myAndroidVersion.setText(SdkVersionInfo.getVersionString(apiLevel));
       String vendorName;
       IdDisplay tag = myImageDescription.getTag();
-      if (tag.getId().equals("android-wear") || tag.getId().equals("android-tv")) {
+      if (tag.getId().equals("android-wear")) {
         vendorName = "Android";
+      } else if (isTvDevice(tag)) {
+        vendorName = "Google LLC";
       } else {
         vendorName = myImageDescription.getVendor();
       }
       myVendor.setText("<html>" + vendorName + "</html>");
+
+      myTagDisplay.setText("<html>" + tag.getDisplay() + "</html>");
+
       myAbi.setText(myImageDescription.getAbiType());
     }
   }

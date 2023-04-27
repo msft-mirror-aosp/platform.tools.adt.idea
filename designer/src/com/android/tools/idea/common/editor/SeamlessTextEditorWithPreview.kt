@@ -16,8 +16,6 @@
 package com.android.tools.idea.common.editor
 
 import com.android.tools.adtui.TreeWalker
-import com.intellij.openapi.actionSystem.ActionGroup
-import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.SplitEditorToolbar
@@ -48,8 +46,6 @@ open class SeamlessTextEditorWithPreview<P : FileEditor>(textEditor: TextEditor,
   SplitEditor<P>(textEditor, preview, editorName) {
 
   private var toolbarComponent: Component? = null
-
-  private var tabsAction: TabsActionWrapper? = null
 
   override fun getComponent(): JComponent {
     // super.getComponent() initializes toolbar and sets true visibility values for
@@ -87,19 +83,19 @@ open class SeamlessTextEditorWithPreview<P : FileEditor>(textEditor: TextEditor,
     myPreview.component.isVisible = false
   }
 
-  override fun getTabActions(): ActionGroup? {
-    val parentActions = super.getTabActions() ?: return null
-    return tabsAction ?: TabsActionWrapper(parentActions).also { tabsAction = it }
+  override fun isShowActionsInTabs(): Boolean {
+    // TextEditorWithPreview#getTabActions() is a ConditionalActionGroup that shows the actions when isShowActionsInTabs() returns true
+    // and hides them otherwise. This condition is checked on each action group update, which happens every 500ms. We need to override
+    // the TextEditorWithPreview to include a check of isPureTextEditor because we want to hide the actions in text-only mode.
+    return super.isShowActionsInTabs() && !isPureTextEditor
   }
 
   // Even though isPureTextEditor is meant to be persistent this editor delegates keeping the state persistent to the clients
   var isPureTextEditor: Boolean = true
     set(value) {
-      // Toolbar should be hidden if file the file is handled as pure-text, if the split controls are shown in tabs, or if the controls
-      // are shown in a floating toolbar.
-      val shouldHideToolbar = value || isShowActionsInTabs || isShowFloatingToolbar
+      // Toolbar should be hidden if file the file is handled as pure-text, or if the controls are shown in a floating toolbar.
+      val shouldHideToolbar = value || isShowFloatingToolbar
       toolbarComponent?.isVisible = !shouldHideToolbar
-      tabsAction?.setTabsActionVisibility(!value && isShowActionsInTabs)
       if (value) {
         setPureTextEditorVisibility()
         setEditorLayout(Layout.SHOW_EDITOR)
@@ -110,22 +106,4 @@ open class SeamlessTextEditorWithPreview<P : FileEditor>(textEditor: TextEditor,
       }
       field = value
     }
-
-  /**
-   * [DefaultActionGroup] wrapper that controls another [ActionGroup] visibility by adding/removing its actions to the wrapper whenever
-   * [setTabsActionVisibility] is called. Since the wrapper sets its template presentation `isHideGroupIfEmpty` property to true, the group
-   * entry point will be invisible if its children list is empty.
-   */
-  private class TabsActionWrapper(private val originalActionGroup: ActionGroup) : DefaultActionGroup() {
-    init {
-      templatePresentation.isHideGroupIfEmpty = true
-    }
-
-    fun setTabsActionVisibility(visible: Boolean) {
-      removeAll()
-      if (visible) {
-        addAll(originalActionGroup)
-      }
-    }
-  }
 }

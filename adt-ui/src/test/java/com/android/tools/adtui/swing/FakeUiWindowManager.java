@@ -16,6 +16,7 @@
 package com.android.tools.adtui.swing;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.TaskInfo;
 import com.intellij.openapi.project.Project;
@@ -26,7 +27,6 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.StatusBar;
-import com.intellij.openapi.wm.StatusBarCentralWidget;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.openapi.wm.ex.IdeFrameEx;
 import com.intellij.openapi.wm.ex.ProgressIndicatorEx;
@@ -50,6 +50,7 @@ import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.event.HyperlinkListener;
+import kotlin.jvm.functions.Function0;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +61,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class FakeUiWindowManager extends WindowManagerEx {
   private static final Key<StatusBar> STATUS_BAR = Key.create("STATUS_BAR");
-  private final DesktopLayout myLayout = new DesktopLayout();
 
   @Override
   public final void doNotSuggestAsParent(Window window) {}
@@ -201,13 +201,13 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     }
 
     @Override
-    public @Nullable StatusBar createChild(@NotNull IdeFrame frame) {
+    public @Nullable StatusBar createChild(@NotNull IdeFrame frame, @NotNull Function0<? extends FileEditor> editorProvider) {
       return null;
     }
 
     @Override
-    public IdeFrame getFrame() {
-      return null;
+    public @NotNull Function0<FileEditor> getCurrentEditor() {
+      return () -> null;
     }
 
     @Override
@@ -222,12 +222,6 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     public boolean isVisible() {
       return false;
     }
-
-    @Override
-    public void addCustomIndicationComponent(@NotNull JComponent c) {}
-
-    @Override
-    public void removeCustomIndicationComponent(@NotNull JComponent c) {}
 
     @Override
     public void addProgress(@NotNull ProgressIndicatorEx indicator, @NotNull TaskInfo info) {}
@@ -258,12 +252,6 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     public void addWidget(@NotNull StatusBarWidget widget, @NotNull String anchor, @NotNull Disposable parentDisposable) {
       addWidget(widget, parentDisposable);
     }
-
-    @Override
-    public void setCentralWidget(@NotNull StatusBarCentralWidget widget) {}
-
-    @Override
-    public void dispose() {}
 
     @Override
     public void updateWidget(@NotNull String id) {}
@@ -323,6 +311,11 @@ public final class FakeUiWindowManager extends WindowManagerEx {
   @Override
   public void releaseFrame(@NotNull ProjectFrameHelper frameHelper) {
     frameHelper.getFrame().dispose();
+  }
+
+  @Override
+  public boolean isFrameReused(@NotNull ProjectFrameHelper frameHelper) {
+    return false;
   }
 
   @Override

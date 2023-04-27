@@ -49,9 +49,24 @@ import com.android.tools.analytics.crash.CrashReporter;
 import com.android.tools.idea.diagnostics.crash.StudioExceptionReport;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.layoutlib.RenderParamsFlags;
-import com.android.tools.idea.model.ActivityAttributesSnapshot;
-import com.android.tools.idea.rendering.classloading.ClassTransform;
+import com.android.tools.dom.ActivityAttributesSnapshot;
+import com.android.tools.idea.rendering.tracking.RenderTaskAllocationTrackerImpl;
+import com.android.tools.idea.rendering.tracking.StackTraceCapture;
 import com.android.tools.rendering.CachingImageFactory;
+import com.android.tools.rendering.ExecuteCallbacksResult;
+import com.android.tools.rendering.InteractionEventResult;
+import com.android.tools.rendering.ModuleRenderContext;
+import com.android.tools.rendering.RenderAsyncActionExecutor;
+import com.android.tools.rendering.RenderLogger;
+import com.android.tools.rendering.RenderContext;
+import com.android.tools.rendering.api.IncludeReference;
+import com.android.tools.rendering.api.RenderConfiguration;
+import com.android.tools.rendering.api.RenderModelManifest;
+import com.android.tools.rendering.api.RenderModelModule;
+import com.android.tools.rendering.classloading.ClassTransform;
+import com.android.tools.rendering.classloading.ClassLoaderPreloaderKt;
+import com.android.tools.rendering.classloading.ModuleClassLoader;
+import com.android.tools.rendering.classloading.ModuleClassLoaderManager;
 import com.android.tools.rendering.imagepool.ImagePool;
 import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
 import com.android.tools.rendering.parsers.LayoutFilePullParser;
@@ -61,6 +76,7 @@ import com.android.tools.rendering.IRenderLogger;
 import com.android.tools.rendering.RenderProblem;
 import com.android.tools.rendering.parsers.RenderXmlFile;
 import com.android.tools.rendering.parsers.RenderXmlTag;
+import com.android.tools.rendering.security.RenderSecurityManager;
 import com.android.tools.sdk.CompatibilityRenderTarget;
 import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
@@ -90,10 +106,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import org.jetbrains.android.uipreview.ClassLoaderPreloaderKt;
-import org.jetbrains.android.uipreview.ModuleClassLoader;
-import org.jetbrains.android.uipreview.ModuleClassLoaderManager;
-import org.jetbrains.android.uipreview.ModuleRenderContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -371,7 +383,7 @@ public class RenderTask {
       return Futures.immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
     }
 
-    RenderTaskAllocationTrackerKt.captureDisposeStackTrace().bind(this);
+    RenderTaskAllocationTrackerImpl.INSTANCE.captureDisposeStackTrace().bind(this);
 
     return ourDisposeService.submit(() -> {
       try {
@@ -695,7 +707,11 @@ public class RenderTask {
       myLayoutlibCallback.setLogger(myLogger);
 
       RenderSecurityManager securityManager =
-        isSecurityManagerEnabled ? RenderSecurityManagerFactory.create(module.getProject().getBasePath(), context.getModule().getAndroidPlatform()) : null;
+        isSecurityManagerEnabled ?
+        myContext.getModule().getEnvironment().createRenderSecurityManager(
+          module.getProject().getBasePath(),
+          context.getModule().getAndroidPlatform()
+        ) : null;
       if (securityManager != null) {
         securityManager.setActive(true, myCredential);
       }

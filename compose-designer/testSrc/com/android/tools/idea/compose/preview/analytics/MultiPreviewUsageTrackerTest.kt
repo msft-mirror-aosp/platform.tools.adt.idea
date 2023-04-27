@@ -15,23 +15,21 @@
  */
 package com.android.tools.idea.compose.preview.analytics
 
-import com.android.flags.junit.FlagRule
 import com.android.tools.compose.COMPOSABLE_ANNOTATION_NAME
 import com.android.tools.compose.COMPOSABLE_FQ_NAMES
 import com.android.tools.idea.annotations.findAnnotatedMethodsValues
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.preview.AnnotationFilePreviewElementFinder.getPreviewNodes
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.android.tools.idea.util.androidFacet
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposeMultiPreviewEvent
 import com.intellij.openapi.vfs.VirtualFile
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.idea.util.application.runReadAction
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -39,8 +37,6 @@ private const val COMPOSABLE_ANNOTATION_FQN = "androidx.compose.runtime"
 private const val PREVIEW_TOOLING_PACKAGE = "androidx.compose.ui.tooling.preview"
 
 class MultiPreviewUsageTrackerTest {
-
-  @get:Rule val multiPreviewRule = FlagRule(StudioFlags.COMPOSE_MULTIPREVIEW, true)
 
   @get:Rule
   val projectRule =
