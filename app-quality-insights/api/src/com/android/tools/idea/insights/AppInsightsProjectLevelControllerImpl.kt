@@ -41,6 +41,7 @@ import com.android.tools.idea.insights.events.SafeFiltersAdapter
 import com.android.tools.idea.insights.events.SelectedIssueChanged
 import com.android.tools.idea.insights.events.SignalChanged
 import com.android.tools.idea.insights.events.VersionsChanged
+import com.android.tools.idea.insights.events.VisibilityChanged
 import com.android.tools.idea.insights.events.actions.ActionContext
 import com.android.tools.idea.insights.events.actions.ActionDispatcher
 import com.android.tools.idea.insights.events.actions.AppInsightsActionQueue
@@ -77,10 +78,11 @@ private data class ProjectState(
 )
 
 class AppInsightsProjectLevelControllerImpl(
+  override val key: InsightsProviderKey,
   override val coroutineScope: CoroutineScope,
   dispatcher: CoroutineDispatcher,
   appInsightsClient: AppInsightsClient,
-  appConnection: Flow<List<VariantConnection>>,
+  appConnection: Flow<List<Connection>>,
   offlineStatus: Flow<ConnectionMode>,
   private val setOfflineMode: (ConnectionMode) -> Unit,
   @TestOnly private val flowStart: SharingStarted = SharingStarted.Eagerly,
@@ -90,7 +92,6 @@ class AppInsightsProjectLevelControllerImpl(
   private val project: Project,
   queue: AppInsightsActionQueue,
   onErrorAction: (String, HyperlinkListener?) -> Unit,
-  connectionInferrer: ActiveConnectionInferrer,
   private val defaultFilters: Filters,
   cache: AppInsightsCache
 ) : AppInsightsProjectLevelController {
@@ -148,14 +149,12 @@ class AppInsightsProjectLevelControllerImpl(
     state =
       merge(
           eventFlow,
-          appConnection.map {
-            SafeFiltersAdapter(ConnectionsChanged(it, connectionInferrer, defaultFilters))
-          },
+          appConnection.map { SafeFiltersAdapter(ConnectionsChanged(it, defaultFilters)) },
           offlineStatus.map { it.toEvent() }
         )
         .fold(initialState) { (currentState, lastGoodState), event ->
           Logger.getInstance(AppInsightsProjectLevelControllerImpl::class.java)
-            .info("Got event $event for $project.")
+            .debug("Got event $event for $project.")
           val (newState, action) = event.transition(currentState, tracker)
           if (currentState.issues != newState.issues) {
             updateIssueIndex(computeIssuesPerFilename(newState.issues.map { it.value }))
@@ -208,7 +207,7 @@ class AppInsightsProjectLevelControllerImpl(
     emit(SignalChanged(value))
   }
 
-  override fun selectConnection(value: VariantConnection) {
+  override fun selectConnection(value: Connection) {
     emit(ActiveConnectionChanged(value))
   }
 
@@ -234,6 +233,10 @@ class AppInsightsProjectLevelControllerImpl(
 
   override fun deleteNote(note: Note) {
     emit(DeleteNoteRequested(note.id))
+  }
+
+  override fun selectVisibilityType(value: VisibilityType) {
+    emit(VisibilityChanged(value))
   }
 
   override fun selectTimeInterval(value: TimeIntervalFilter) {
@@ -264,7 +267,7 @@ class AppInsightsProjectLevelControllerImpl(
     CrashToLineNaiveMapper(this::issuesForFile) { issue ->
         selectIssue(issue, IssueSelectionSource.INSPECTION)
       }
-      .retrieve(file)
+      .retrieve(file, key)
 
   override fun insightsInFile(
     file: PsiFile,

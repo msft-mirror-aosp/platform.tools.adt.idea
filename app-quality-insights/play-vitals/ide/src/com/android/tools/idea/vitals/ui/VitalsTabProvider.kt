@@ -19,10 +19,12 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsModel
+import com.android.tools.idea.insights.VITALS_KEY
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.insights.ui.AppInsightsTabProvider
+import com.android.tools.idea.vitals.ui.icons.VitalsIcons
 import com.google.gct.login.GoogleLogin
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
@@ -37,10 +39,9 @@ import javax.swing.JPanel
 import kotlinx.coroutines.launch
 
 class VitalsTabProvider : AppInsightsTabProvider {
-  override val tabDisplayName = "Android Vitals"
+  override val displayName = VITALS_KEY.displayName
 
-  // TODO(b/271918057): use real icon.
-  override val tabIcon = StudioIcons.Avd.DEVICE_PLAY_STORE
+  override val icon = StudioIcons.Avd.DEVICE_PLAY_STORE
 
   override fun populateTab(project: Project, tabPanel: AppInsightsTabPanel) {
     tabPanel.setComponent(placeholderContent())
@@ -101,9 +102,8 @@ class VitalsTabProvider : AppInsightsTabProvider {
           override fun isStatusVisible() = true
         }
         .apply {
-          // TODO(b/271918057): use real icon.
           appendLine(
-            StudioIcons.Avd.DEVICE_PLAY_STORE,
+            VitalsIcons.PLAY_CONSOLE_ICON,
             "",
             SimpleTextAttributes.REGULAR_ATTRIBUTES,
             null

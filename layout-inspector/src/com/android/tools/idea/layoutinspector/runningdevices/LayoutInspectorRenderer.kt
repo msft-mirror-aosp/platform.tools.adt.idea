@@ -16,11 +16,15 @@
 package com.android.tools.idea.layoutinspector.runningdevices
 
 import com.android.tools.idea.layoutinspector.common.showViewContextMenu
+import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
+import com.android.tools.idea.layoutinspector.tree.GotoDeclarationAction
 import com.android.tools.idea.layoutinspector.ui.RenderLogic
 import com.android.tools.idea.layoutinspector.ui.RenderModel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
+import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.PopupHandler
+import kotlinx.coroutines.CoroutineScope
 import java.awt.Component
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -45,10 +49,12 @@ import javax.swing.JPanel
  */
 class LayoutInspectorRenderer(
   disposable: Disposable,
+  private val coroutineScope: CoroutineScope,
   private val renderLogic: RenderLogic,
   private val renderModel: RenderModel,
   private val displayRectangleProvider: () -> Rectangle?,
-  private val screenScaleProvider: () -> Double
+  private val screenScaleProvider: () -> Double,
+  private val currentSessionStatistics: () -> SessionStatistics
 ): JPanel(), Disposable {
 
   var interceptClicks = false
@@ -79,6 +85,7 @@ class LayoutInspectorRenderer(
       addMouseMotionListener(it)
     }
     addMouseListener(LayoutInspectorPopupHandler())
+    LayoutInspectorDoubleClickListener().installOn(this)
 
     // re-render each time Layout Inspector model changes
     renderModel.modificationListeners.add(repaintDisplayView)
@@ -107,10 +114,8 @@ class LayoutInspectorRenderer(
    * @param displayRectangle The rectangle on which the device display is rendered.
    */
   private fun getTransform(displayRectangle: Rectangle): AffineTransform {
-    val rootView = renderModel.model.root
-
     // calculate how much we need to scale the Layout Inspector bounds to match the device frame.
-    val scale = displayRectangle.width.toDouble() / rootView.layoutBounds.bounds.width.toDouble()
+    val scale = displayRectangle.width.toDouble() / renderModel.model.screenDimension.width.toDouble()
 
     return AffineTransform().apply {
       // translate to center of panel
@@ -157,6 +162,20 @@ class LayoutInspectorRenderer(
       val modelCoordinates = toModelCoordinates(Point2D.Double(x.toDouble(), y.toDouble())) ?: return
       val views = renderModel.findViewsAt(modelCoordinates.x, modelCoordinates.y)
       showViewContextMenu(views.toList(), renderModel.model, this@LayoutInspectorRenderer, x, y)
+    }
+  }
+
+  private inner class LayoutInspectorDoubleClickListener : DoubleClickListener() {
+    override fun onDoubleClick(e: MouseEvent): Boolean {
+      if (!interceptClicks) return false
+
+      val modelCoordinates = toModelCoordinates(e.coordinates()) ?: return false
+      renderModel.selectView(modelCoordinates.x, modelCoordinates.y)
+      // Navigate to sources on double click.
+      // TODO(b/265150325) move to RenderModel for consistency
+      GotoDeclarationAction.navigateToSelectedView(coroutineScope, renderModel.model)
+      currentSessionStatistics().gotoSourceFromRenderDoubleClick()
+      return true
     }
   }
 

@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.device
 import com.android.annotations.concurrency.AnyThread
 import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.idea.deviceprovisioner.DEVICE_HANDLE_KEY
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.AbstractDisplayPanel
 import com.android.tools.idea.streaming.DISPLAY_VIEW_KEY
 import com.android.tools.idea.streaming.DeviceId
@@ -56,6 +57,21 @@ internal class DeviceToolWindowPanel(
     get() = deviceClient.deviceSerialNumber
   private val deviceConfig
     get() = deviceClient.deviceConfig
+  private val deviceStateListener = object : DeviceController.DeviceStateListener {
+    override fun onSupportedDeviceStatesChanged(deviceStates: List<FoldingState>) {
+      updateMainToolbarLater()
+    }
+
+    override fun onDeviceStateChanged(deviceState: Int) {
+      updateMainToolbarLater()
+    }
+
+    private fun updateMainToolbarLater() {
+      EventQueue.invokeLater {
+        mainToolbar.updateActionsImmediately()
+      }
+    }
+  }
 
   override val title: String
     get() = deviceClient.deviceName
@@ -63,7 +79,7 @@ internal class DeviceToolWindowPanel(
   override val icon
     get() = ICON
 
-  override val isClosable = false
+  override val isClosable = StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()
 
   val component: JComponent
     get() = this
@@ -114,6 +130,11 @@ internal class DeviceToolWindowPanel(
         EventQueue.invokeLater {
           mainToolbar.updateActionsImmediately()
           secondaryToolbar.updateActionsImmediately()
+        }
+        when (connectionState) {
+          ConnectionState.CONNECTED -> deviceClient.deviceController?.addDeviceStateListener(deviceStateListener)
+          ConnectionState.DISCONNECTED -> deviceClient.deviceController?.removeDeviceStateListener(deviceStateListener)
+          else -> {}
         }
       }
     })

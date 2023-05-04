@@ -22,7 +22,9 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.Density
 import com.android.resources.ResourceType
+import com.android.testutils.MockitoKt
 import com.android.testutils.MockitoKt.mock
+import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -54,6 +56,7 @@ import com.android.tools.idea.layoutinspector.model.VIEW3
 import com.android.tools.idea.layoutinspector.model.VIEW4
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.model.WINDOW_MANAGER_FLAG_DIM_BEHIND
+import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
@@ -72,6 +75,7 @@ import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.layoutinspector.window
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.runDispatching
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
@@ -300,6 +304,10 @@ class LayoutInspectorTreePanelTest {
     val bounds = tree.getRowBounds(1)
     val ui = FakeUi(focusComponent)
     ui.mouse.doubleClick(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+
+    runDispatching {
+      GotoDeclarationAction.lastAction?.join()
+    }
 
     fileOpenCaptureRule.checkEditor("demo.xml", 9, "<TextView")
 
@@ -611,7 +619,8 @@ class LayoutInspectorTreePanelTest {
   @RunsInEdt
   @Test
   fun testSystemNodeWithMultipleChildren() {
-    val launcher: InspectorClientLauncher = mock()
+    val mockLauncher = mock<InspectorClientLauncher>()
+    MockitoKt.whenever(mockLauncher.activeClient).thenAnswer { DisconnectedClient }
     val model = InspectorModel(projectRule.project)
     val coroutineScope = AndroidCoroutineScope(projectRule.testRootDisposable)
     val clientSettings = InspectorClientSettings(projectRule.project)
@@ -621,7 +630,7 @@ class LayoutInspectorTreePanelTest {
       mock(),
       null,
       clientSettings,
-      launcher,
+      mockLauncher,
       model,
       FakeTreeSettings(),
       MoreExecutors.directExecutor()
@@ -659,7 +668,8 @@ class LayoutInspectorTreePanelTest {
   @RunsInEdt
   @Test
   fun testSemanticTrees() {
-    val launcher: InspectorClientLauncher = mock()
+    val mockLauncher = mock<InspectorClientLauncher>()
+    whenever(mockLauncher.activeClient).thenAnswer { DisconnectedClient }
     val model = InspectorModel(projectRule.project)
     val coroutineScope = AndroidCoroutineScope(projectRule.testRootDisposable)
     val clientSettings = InspectorClientSettings(projectRule.project)
@@ -669,7 +679,7 @@ class LayoutInspectorTreePanelTest {
       mock(),
       null,
       clientSettings,
-      launcher,
+      mockLauncher,
       model,
       FakeTreeSettings(),
       MoreExecutors.directExecutor()

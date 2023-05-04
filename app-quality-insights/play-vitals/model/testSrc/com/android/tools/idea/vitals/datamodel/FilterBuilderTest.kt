@@ -23,6 +23,7 @@ import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.OperatingSystemInfo
 import com.android.tools.idea.insights.SignalType
 import com.android.tools.idea.insights.Version
+import com.android.tools.idea.insights.VisibilityType
 import com.android.tools.idea.insights.client.Interval
 import com.android.tools.idea.insights.client.QueryFilters
 import com.google.common.truth.Truth.assertThat
@@ -30,8 +31,8 @@ import org.junit.Test
 
 private val VERSION90 = Version(buildVersion = "90")
 private val VERSION120 = Version(buildVersion = "120")
-private val PIXEL_4A = Device(manufacturer = "Google", model = "Pixel 4a")
-private val PIXEL_4 = Device(manufacturer = "Google", model = "Pixel 4")
+private val PIXEL_4A = Device(manufacturer = "Google", model = "Google/Pixel 4a")
+private val PIXEL_4 = Device(manufacturer = "Google", model = "Google/Pixel 4")
 private val ANDROID_12 = OperatingSystemInfo(displayVersion = "12", displayName = "Android (12)")
 private val ANDROID_14 = OperatingSystemInfo(displayVersion = "14", displayName = "Android (14)")
 
@@ -45,16 +46,12 @@ class FilterBuilderTest {
         devices = setOf(Device.ALL),
         operatingSystems = setOf(OperatingSystemInfo.ALL),
         eventTypes = FailureType.values().toList(),
-        signal = SignalType.SIGNAL_UNSPECIFIED
+        signal = SignalType.SIGNAL_UNSPECIFIED,
+        visibilityType = VisibilityType.ALL
       )
     val generated = buildFiltersFromQuery(query)
 
-    assertThat(generated)
-      .isEqualTo(
-        "(appProcessState = BACKGROUND OR appProcessState = FOREGROUND) " +
-          "AND (errorIssueType = ANR OR errorIssueType = CRASH) " +
-          "AND (isUserPerceived)"
-      )
+    assertThat(generated).isEqualTo("(errorIssueType = ANR OR errorIssueType = CRASH)")
   }
 
   @Test
@@ -66,15 +63,17 @@ class FilterBuilderTest {
         devices = setOf(PIXEL_4A, PIXEL_4),
         operatingSystems = setOf(ANDROID_12, ANDROID_14),
         eventTypes = listOf(FailureType.FATAL, FailureType.ANR),
-        signal = SignalType.SIGNAL_UNSPECIFIED
+        signal = SignalType.SIGNAL_UNSPECIFIED,
+        visibilityType = VisibilityType.USER_PERCEIVED
       )
 
     val generated = buildFiltersFromQuery(query)
     assertThat(generated)
       .isEqualTo(
         "(apiLevel = 12 OR apiLevel = 14) " +
-          "AND (deviceModel = Pixel 4 OR deviceModel = Pixel 4a) " +
+          "AND (deviceModel = Google/Pixel 4 OR deviceModel = Google/Pixel 4a) " +
           "AND (errorIssueType = ANR OR errorIssueType = CRASH) " +
+          "AND (isUserPerceived) " +
           "AND (versionCode = 120 OR versionCode = 90)"
       )
   }
@@ -100,6 +99,7 @@ class FilterBuilderTest {
         addFailureTypes(queryFilters.eventTypes)
         addDevices(queryFilters.devices)
         addOperatingSystems(queryFilters.operatingSystems)
+        addVisibilityType(queryFilters.visibilityType)
       }
       .build()
   }

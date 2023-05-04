@@ -25,9 +25,14 @@ import com.android.tools.idea.compose.gradle.activateAndWaitForRender
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
-import com.android.tools.idea.concurrency.waitForCondition
+import com.android.tools.idea.compose.preview.delayUntilCondition
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
+import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.ButtonSizeAnalyzerInspection
+import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.LongTextAnalyzerInspection
+import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.TextFieldSizeAnalyzerInspection
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
@@ -44,8 +49,8 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.`is`
@@ -87,6 +92,14 @@ class RenderErrorTest {
         previewView
       }
     composePreviewRepresentation.atfChecksEnabled = true
+    composePreviewRepresentation.visualLintingEnabled = true
+    val visualLintInspections =
+      arrayOf(
+        ButtonSizeAnalyzerInspection,
+        LongTextAnalyzerInspection,
+        TextFieldSizeAnalyzerInspection
+      )
+    projectRule.fixture.enableInspections(*visualLintInspections)
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
     lateinit var fakeUi: FakeUi
@@ -169,7 +182,7 @@ class RenderErrorTest {
     val sceneViewPanel = panels.single { it.displayName == "PreviewWithContrastError" }
     val issueModel = sceneViewPanel.sceneView.surface.issueModel
     runBlocking {
-      waitForCondition(5, TimeUnit.SECONDS) {
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 5.seconds) {
         issueModel.issues.filter { it.category == "Accessibility" }.size == 2
       }
     }
@@ -183,7 +196,24 @@ class RenderErrorTest {
       offsets.add((navigatable as OpenFileDescriptor).offset)
       assertEquals("RenderError.kt", navigatable.file.name)
     }
-    assertThat(offsets.sorted(), `is`(listOf(1521, 1671)))
+    assertThat(offsets.sorted(), `is`(listOf(1667, 1817)))
+  }
+
+  @Test
+  fun testVisualLintErrors() {
+    val issueModel = VisualLintService.getInstance(project).issueModel
+    runBlocking {
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 10.seconds) {
+        issueModel.issueCount == 2
+      }
+    }
+    issueModel.issues.forEach {
+      assertTrue(it is VisualLintRenderIssue)
+      assertEquals("Visual Lint Issue", it.category)
+      val navigatable = (it as VisualLintRenderIssue).components[0].navigatable
+      assertTrue(navigatable is OpenFileDescriptor)
+      assertEquals("RenderError.kt", (navigatable as OpenFileDescriptor).file.name)
+    }
   }
 
   private fun countVisibleActions(actions: List<AnAction>, visibleBefore: Boolean): Int {

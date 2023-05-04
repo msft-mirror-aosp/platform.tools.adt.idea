@@ -19,18 +19,18 @@ import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.ConnectionMode
-import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.Selection
+import com.android.tools.idea.insights.VisibilityType
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.selectionOf
 import com.android.tools.idea.insights.ui.ActionToolbarListenerForOfflineBalloon
-import com.android.tools.idea.insights.ui.AppInsightsModuleSelector
 import com.android.tools.idea.insights.ui.Timestamp
 import com.android.tools.idea.insights.ui.actions.AppInsightsDisplayRefreshTimestampAction
 import com.android.tools.idea.insights.ui.actions.AppInsightsDropDownAction
-import com.android.tools.idea.insights.ui.actions.AppInsightsToggleAction
 import com.android.tools.idea.insights.ui.actions.TreeDropDownAction
 import com.android.tools.idea.insights.ui.offlineModeIcon
 import com.android.tools.idea.insights.ui.toTimestamp
+import com.android.tools.idea.vitals.datamodel.VitalsConnection
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -49,6 +49,7 @@ import javax.swing.JPanel
 import javax.swing.SwingConstants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -86,20 +87,15 @@ class VitalsTab(
     projectController.state
       .map { state -> state.filters.timeInterval }
       .stateIn(scope, SharingStarted.Eagerly, Selection.emptySelection())
+  private val visibilityTypes =
+    projectController.state
+      .map { state -> state.filters.visibilityType }
+      .stateIn(scope, SharingStarted.Eagerly, selectionOf(VisibilityType.ALL))
 
   private val timestamp: Flow<Timestamp> =
     projectController.state.toTimestamp(clock).distinctUntilChanged()
 
   private val offlineStateFlow = projectController.state.map { it.mode }.distinctUntilChanged()
-
-  private val failureTypeToggles =
-    projectController.state
-      .map { state -> state.filters.failureTypeToggles.selected }
-      .distinctUntilChanged()
-  private val userPerceivedToggle =
-    failureTypeToggles.map { it.contains(FailureType.USER_PERCEIVED_ONLY) }
-  private val foregroundToggle = failureTypeToggles.map { it.contains(FailureType.FOREGROUND) }
-  private val backgroundToggle = failureTypeToggles.map { it.contains(FailureType.BACKGROUND) }
 
   init {
     add(createToolbar().component, BorderLayout.NORTH)
@@ -107,53 +103,15 @@ class VitalsTab(
   }
 
   private fun createToolbar(): ActionToolbar {
+    @Suppress("UNCHECKED_CAST")
     val actionGroups =
       DefaultActionGroup().apply {
         add(
-          AppInsightsModuleSelector(
-            "Module Selector",
-            null,
-            null,
-            connections,
+          VitalsConnectionSelectorAction(
+            connections as StateFlow<Selection<VitalsConnection>>,
+            scope,
             projectController::selectConnection
           )
-        )
-        addSeparator()
-        add(
-          AppInsightsToggleAction(
-            "User-perceived",
-            null,
-            // TODO(b/271918057): update icon
-            StudioIcons.AppQualityInsights.FATAL,
-            userPerceivedToggle,
-            scope
-          ) {
-            projectController.toggleFailureType(FailureType.USER_PERCEIVED_ONLY)
-          }
-        )
-        add(
-          AppInsightsToggleAction(
-            "Foreground",
-            null,
-            // TODO(b/271918057): update icon
-            StudioIcons.AppQualityInsights.NON_FATAL,
-            foregroundToggle,
-            scope
-          ) {
-            projectController.toggleFailureType(FailureType.FOREGROUND)
-          }
-        )
-        add(
-          AppInsightsToggleAction(
-            "Background",
-            null,
-            // TODO(b/271918057): update icon
-            StudioIcons.AppQualityInsights.ANR,
-            backgroundToggle,
-            scope
-          ) {
-            projectController.toggleFailureType(FailureType.BACKGROUND)
-          }
         )
         addSeparator()
         add(
@@ -164,6 +122,16 @@ class VitalsTab(
             intervals,
             null,
             projectController::selectTimeInterval
+          )
+        )
+        add(
+          AppInsightsDropDownAction(
+            "Visibility types",
+            null,
+            null,
+            visibilityTypes,
+            null,
+            projectController::selectVisibilityType
           )
         )
         add(
@@ -189,7 +157,7 @@ class VitalsTab(
             flow = devices,
             scope = scope,
             groupNameSupplier = { it.manufacturer },
-            nameSupplier = { it.model },
+            nameSupplier = { it.model.substringAfter("/") },
             onSelected = projectController::selectDevices
           )
         )
@@ -210,7 +178,7 @@ class VitalsTab(
             private val offlineState =
               offlineStateFlow.stateIn(scope, SharingStarted.Eagerly, ConnectionMode.ONLINE)
             override fun actionPerformed(e: AnActionEvent) {
-              // TODO
+              projectController.refresh()
             }
             override fun getActionUpdateThread() = ActionUpdateThread.EDT
             override fun displayTextInToolbar() = true

@@ -18,8 +18,10 @@ package com.android.tools.idea.imports
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
+import com.android.tools.idea.imports.MavenClassRegistryBase.LibraryImportData
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Duration
@@ -43,6 +45,14 @@ class MavenClassRegistryTest {
               "fqcns": [
                 "androidx.activity.ComponentActivity",
                 "androidx.activity.Fake"
+              ],
+              "ktlfns": [
+                {
+                  "fqn": "androidx.activity.result.PickVisualMediaRequestKt.PickVisualMediaRequest"
+                },
+                {
+                  "fqn": "androidx.activity.FakeFunctionKt.FakeFunction"
+                }
               ]
             },
             {
@@ -62,6 +72,14 @@ class MavenClassRegistryTest {
               "fqcns": [
                 "androidx.annotation.AnimRes",
                 "androidx.annotation.Fake"
+              ],
+              "ktlfns": [
+                {
+                  "fqn": "androidx.annotation.FacadeFileKt.AnnotationFunction"
+                },
+                {
+                  "fqn": "androidx.annotation.FakeFunctionKt.FakeFunction"
+                }
               ]
             }
           ]
@@ -74,31 +92,70 @@ class MavenClassRegistryTest {
     assertThat(mavenClassRegistry.lookup.classNameMap).containsExactlyEntriesIn(
       mapOf(
         "ComponentActivity" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.activity:activity",
-            packageName = "androidx.activity",
+            importedItemFqName = "androidx.activity.ComponentActivity",
+            importedItemPackageName = "androidx.activity",
             version = "1.1.0"
           )
         ),
         "Fake" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.activity:activity",
-            packageName = "androidx.activity",
+            importedItemFqName = "androidx.activity.Fake",
+            importedItemPackageName = "androidx.activity",
             version = "1.1.0"
           ),
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.annotation:annotation",
-            packageName = "androidx.annotation",
+            importedItemFqName = "androidx.annotation.Fake",
+            importedItemPackageName = "androidx.annotation",
             version = "1.1.0"
           )
         ),
         "AnimRes" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.annotation:annotation",
-            packageName = "androidx.annotation",
+            importedItemFqName = "androidx.annotation.AnimRes",
+            importedItemPackageName = "androidx.annotation",
             version = "1.1.0"
           )
         )
+      )
+    )
+
+    assertThat(mavenClassRegistry.lookup.topLevelFunctionsMap).containsExactlyEntriesIn(
+      mapOf(
+        "PickVisualMediaRequest" to listOf(
+          LibraryImportData(
+            artifact = "androidx.activity:activity",
+            importedItemFqName = "androidx.activity.result.PickVisualMediaRequest",
+            importedItemPackageName = "androidx.activity.result",
+            version = "1.1.0"
+          )
+        ),
+        "FakeFunction" to listOf(
+          LibraryImportData(
+            artifact = "androidx.activity:activity",
+            importedItemFqName = "androidx.activity.FakeFunction",
+            importedItemPackageName = "androidx.activity",
+            version = "1.1.0"
+          ),
+          LibraryImportData(
+            artifact = "androidx.annotation:annotation",
+            importedItemFqName = "androidx.annotation.FakeFunction",
+            importedItemPackageName = "androidx.annotation",
+            version = "1.1.0"
+          )
+        ),
+        "AnnotationFunction" to listOf(
+          LibraryImportData(
+            artifact = "androidx.annotation:annotation",
+            importedItemFqName = "androidx.annotation.AnnotationFunction",
+            importedItemPackageName = "androidx.annotation",
+            version = "1.1.0"
+          )
+        ),
       )
     )
 
@@ -264,6 +321,69 @@ class MavenClassRegistryTest {
   }
 
   @Test
+  fun parseJsonFile_topLevelFunctionsPropertyIsOptional() {
+    val gMavenIndexRepositoryMock: GMavenIndexRepository = mock()
+    whenever(gMavenIndexRepositoryMock.loadIndexFromDisk()).thenReturn(
+      """
+        {
+          "Index": [
+            {
+              "groupId": "group1",
+              "artifactId": "artifact1",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [
+                "class1"
+              ]
+            },
+            {
+              "groupId": "group2",
+              "artifactId": "artifact2",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [
+                "class2"
+              ],
+              "ktlfns": []
+            },
+            {
+              "groupId": "group3",
+              "artifactId": "artifact3",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [
+                "class3"
+              ],
+              "ktlfns": [
+                {
+                  "fqn": "FacadeFileKt.someFqn",
+                  "unrecognized": "should be ignored"
+                },
+                {
+                  "has_no_fqn": "should be ignored"
+                }
+              ]
+            }
+          ]
+        }
+      """.trimIndent().byteInputStream(UTF_8)
+    )
+
+    val mavenClassRegistry = MavenClassRegistry(gMavenIndexRepositoryMock)
+
+    assertThat(mavenClassRegistry.lookup.topLevelFunctionsMap).containsExactlyEntriesIn(
+      mapOf(
+        "someFqn" to listOf(LibraryImportData(
+          artifact = "group3:artifact3",
+          importedItemFqName = "someFqn",
+          importedItemPackageName = "",
+          version = "1"
+        ))
+      )
+    )
+  }
+
+  @Test
   fun parseJsonFile_skipUnknownKey() {
     val gMavenIndexRepositoryMock: GMavenIndexRepository = mock()
     whenever(gMavenIndexRepositoryMock.loadIndexFromDisk()).thenReturn(
@@ -323,28 +443,32 @@ class MavenClassRegistryTest {
     assertThat(mavenClassRegistry.lookup.classNameMap).containsExactlyEntriesIn(
       mapOf(
         "ComponentActivity" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.activity:activity",
-            packageName = "androidx.activity",
+            importedItemFqName = "androidx.activity.ComponentActivity",
+            importedItemPackageName = "androidx.activity",
             version = "1.1.0"
           )
         ),
         "Fake" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.activity:activity",
-            packageName = "androidx.activity",
+            importedItemFqName = "androidx.activity.Fake",
+            importedItemPackageName = "androidx.activity",
             version = "1.1.0"
           ),
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.annotation:annotation",
-            packageName = "androidx.annotation",
+            importedItemFqName = "androidx.annotation.Fake",
+            importedItemPackageName = "androidx.annotation",
             version = "1.1.0"
           )
         ),
         "AnimRes" to listOf(
-          MavenClassRegistryBase.Library(
+          LibraryImportData(
             artifact = "androidx.annotation:annotation",
-            packageName = "androidx.annotation",
+            importedItemFqName = "androidx.annotation.AnimRes",
+            importedItemPackageName = "androidx.annotation",
             version = "1.1.0"
           )
         )
@@ -383,20 +507,22 @@ class MavenClassRegistryTest {
         assertThat(it).containsEntry(
           "ComponentActivity",
           listOf(
-            MavenClassRegistryBase.Library(
+            LibraryImportData(
               artifact = "androidx.activity:activity",
-              packageName = "androidx.activity",
-              version = "1.6.1"
+              importedItemFqName = "androidx.activity.ComponentActivity",
+              importedItemPackageName = "androidx.activity",
+              version = "1.7.1"
             )
           )
         )
         assertThat(it).containsEntry(
           "OnBackPressedDispatcher",
           listOf(
-            MavenClassRegistryBase.Library(
+            LibraryImportData(
               artifact = "androidx.activity:activity",
-              packageName = "androidx.activity",
-              version = "1.6.1"
+              importedItemFqName = "androidx.activity.OnBackPressedDispatcher",
+              importedItemPackageName = "androidx.activity",
+              version = "1.7.1"
             )
           )
         )
@@ -411,5 +537,28 @@ class MavenClassRegistryTest {
     finally {
       Disposer.dispose(repository)
     }
+  }
+
+  @Test
+  fun kotlinTopLevelFunction_fromJvmQualifiedName() {
+    with(KotlinTopLevelFunction.fromJvmQualifiedName("com.example.FileFacadeKt.foo")) {
+      assertThat(simpleName).isEqualTo("foo")
+      assertThat(packageName).isEqualTo("com.example")
+      assertThat(kotlinFqName.asString()).isEqualTo("com.example.foo")
+    }
+  }
+
+  @Test
+  fun kotlinTopLevelFunction_fromJvmQualifiedName_noPackageName() {
+    with(KotlinTopLevelFunction.fromJvmQualifiedName("FileFacadeKt.foo")) {
+      assertThat(simpleName).isEqualTo("foo")
+      assertThat(packageName).isEqualTo("")
+      assertThat(kotlinFqName.asString()).isEqualTo("foo")
+    }
+  }
+
+  @Test
+  fun kotlinTopLevelFunction_fromJvmQualifiedName_noFacadeFile() {
+    assertThrows(IllegalArgumentException::class.java) { KotlinTopLevelFunction.fromJvmQualifiedName("foo") }
   }
 }

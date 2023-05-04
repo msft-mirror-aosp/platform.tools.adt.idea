@@ -47,6 +47,7 @@ public class StartUpTest {
       String version = studio.version();
       assertThat(version).startsWith("Android Studio");
       assertThat(version).doesNotContain("dev");
+      assertThat(studio.getSystemProperty("java.home")).isEqualTo(install.getStudioDir().resolve("jbr").toString());
 
       // Wait for plugin manager to load all plugins
       Matcher matcher = install.getIdeaLog().waitForMatchingLine(".*PluginManager - Loaded bundled plugins:(.*)", 10, TimeUnit.SECONDS);
@@ -112,6 +113,7 @@ public class StartUpTest {
         "Settings Sync",
         "Shell Script",
         "Smali Support",
+        "Studio Bot",
         "Subversion",
         "Task Management",
         "Terminal",

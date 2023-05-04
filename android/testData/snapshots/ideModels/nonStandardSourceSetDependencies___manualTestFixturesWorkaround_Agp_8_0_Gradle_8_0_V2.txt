@@ -1049,7 +1049,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         - artifacts                   : <ROOT>/desktop/build/libs/desktop.jar [-]
                         sourceCompatibility           : 1.7
                         targetCompatibility           : 1.7
-                        jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                     test                          : test (DefaultExternalSourceSet)
                         sources
                             TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -1091,7 +1090,6 @@ MODULE                        : NonStandardSourceSetDependencies
                             - files                       : <ROOT>/desktop/build/resources/main [-]
                         sourceCompatibility           : 1.7
                         targetCompatibility           : 1.7
-                        jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                 externalSystemId              : GRADLE
                 - artifacts                   : <ROOT>/desktop/build/libs/desktop.jar [-]
                 artifactsByConfiguration
@@ -1754,7 +1752,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         - artifacts                   : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                         sourceCompatibility           : 1.7
                         targetCompatibility           : 1.7
-                        jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                     test                          : test (DefaultExternalSourceSet)
                         sources
                             TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -1802,7 +1799,6 @@ MODULE                        : NonStandardSourceSetDependencies
                             - files                       : <ROOT>/javaLibrary/build/resources/main [-]
                         sourceCompatibility           : 1.7
                         targetCompatibility           : 1.7
-                        jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                     testEnv                       : testEnv (DefaultExternalSourceSet)
                         sources
                             RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
@@ -1828,7 +1824,6 @@ MODULE                        : NonStandardSourceSetDependencies
                             - files                       : <ROOT>/javaLibrary/build/resources/testEnv [-]
                         sourceCompatibility           : 1.7
                         targetCompatibility           : 1.7
-                        jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                 externalSystemId              : GRADLE
                 - artifacts                   : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                 artifactsByConfiguration
@@ -1939,7 +1934,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                 - artifacts                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                             test                          : test (DefaultExternalSourceSet)
                                 sources
                                     TEST                          : alljava (DefaultExternalSourceDirectorySet)
@@ -1977,7 +1971,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                     - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
                                 sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                jdkInstallationPath           : <DEV>/prebuilts/studio/jdk/jdk17/linux
                         externalSystemId              : GRADLE
                         - artifacts                   : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                         - artifacts                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]

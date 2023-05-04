@@ -32,6 +32,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.command.undo.GlobalUndoableAction
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
@@ -80,12 +81,11 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
   }
 
   private class Resolvable private constructor(
-    val text: String,
-    val libraries: Collection<MavenClassRegistryBase.Library>
+    val libraries: Collection<MavenClassRegistryBase.LibraryImportData>
   ) {
     companion object {
-      fun createNewOrNull(text: String, libraries: Collection<MavenClassRegistryBase.Library>): Resolvable? {
-        return if (libraries.isEmpty()) null else Resolvable(text, libraries)
+      fun createNewOrNull(libraries: Collection<MavenClassRegistryBase.LibraryImportData>): Resolvable? {
+        return if (libraries.isEmpty()) null else Resolvable(libraries)
       }
     }
   }
@@ -99,15 +99,14 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
    */
   fun perform(project: Project, editor: Editor, element: PsiElement, sync: Boolean) {
     val resolvable = findResolvable(element, editor.caretModel.offset) { text ->
-      Resolvable.createNewOrNull(text, findLibraryData(project, text))
+      Resolvable.createNewOrNull(findLibraryData(project, text, element.containingFile?.fileType))
     } ?: return
 
     val suggestions = resolvable.libraries
       .asSequence()
       .map {
         val artifact = resolveArtifact(project, element.language, it.artifact)
-        val resolvedText = resolvable.text.substringAfterLast('.')
-        val importSymbol = resolveImport(project, "${it.packageName}.$resolvedText")
+        val importSymbol = resolveImport(project, it.importedItemFqName)
         AutoImportVariant(artifact, importSymbol, it.version)
       }
       .toSortedSet()
@@ -251,7 +250,7 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
     if (!module.getModuleSystem().canRegisterDependency().isSupported()) return false
 
     val resolvable = findResolvable(element, editor?.caretModel?.offset ?: -1) { text ->
-      Resolvable.createNewOrNull(text, findLibraryData(project, text))
+      Resolvable.createNewOrNull(findLibraryData(project, text, element.containingFile?.fileType))
     } ?: return false
 
     val foundLibraries = resolvable.libraries
@@ -404,8 +403,9 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
     return null
   }
 
-  private fun findLibraryData(project: Project, text: String): Collection<MavenClassRegistryBase.Library> {
-    return getMavenClassRegistry().findLibraryData(text, project.isAndroidx())
+  private fun findLibraryData(project: Project, text: String, completionFileType: FileType?)
+      : Collection<MavenClassRegistryBase.LibraryImportData> {
+    return getMavenClassRegistry().findLibraryData(text, project.isAndroidx(), completionFileType)
   }
 
   private fun resolveArtifact(project: Project, language: Language, artifact: String): String {

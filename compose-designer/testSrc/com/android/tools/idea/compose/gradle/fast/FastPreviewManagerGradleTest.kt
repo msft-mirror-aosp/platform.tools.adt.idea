@@ -20,6 +20,7 @@ import com.android.tools.idea.compose.gradle.ComposeGradleProjectRule
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.SingleComposePreviewElementInstance
+import com.android.tools.idea.compose.preview.delayUntilCondition
 import com.android.tools.idea.compose.preview.fast.OutOfProcessCompilerDaemonClientImpl
 import com.android.tools.idea.compose.preview.renderer.renderPreviewElement
 import com.android.tools.idea.concurrency.AndroidDispatchers.diskIoThread
@@ -33,7 +34,6 @@ import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.run.deployment.liveedit.LiveEditCompiler
 import com.android.tools.idea.run.deployment.liveedit.LiveEditCompilerInput
-import com.android.tools.idea.run.deployment.liveedit.LiveEditCompilerOutput
 import com.android.tools.idea.testing.moveCaret
 import com.android.tools.idea.testing.replaceText
 import com.android.tools.idea.util.toIoFile
@@ -59,8 +59,8 @@ import java.nio.file.Paths
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
@@ -286,7 +286,6 @@ class FastPreviewManagerGradleTest(private val useEmbeddedCompiler: Boolean) {
 
     val deviceCompilations = AtomicLong(0)
     val deviceThread = thread {
-      val output = mutableListOf<LiveEditCompilerOutput>()
       val function = runReadAction {
         psiMainFile.collectDescendantsOfType<KtNamedFunction>().first {
           it.name?.contains("TwoElementsPreview") ?: false
@@ -308,9 +307,9 @@ class FastPreviewManagerGradleTest(private val useEmbeddedCompiler: Boolean) {
 
     // Wait for both threads to run the iterations.
     runBlocking {
-      while (deviceCompilations.get() < iterations || previewCompilations.get() < iterations) delay(
-        200
-      )
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 60.seconds) {
+        deviceCompilations.get() >= iterations && previewCompilations.get() >= iterations
+      }
       compile = false
     }
 

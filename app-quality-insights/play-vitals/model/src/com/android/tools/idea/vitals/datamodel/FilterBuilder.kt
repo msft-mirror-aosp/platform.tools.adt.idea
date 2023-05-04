@@ -20,6 +20,7 @@ import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.OperatingSystemInfo
 import com.android.tools.idea.insights.Version
+import com.android.tools.idea.insights.VisibilityType
 import com.intellij.openapi.diagnostic.Logger
 
 /**
@@ -35,16 +36,16 @@ private const val API_LEVEL = "apiLevel"
 private const val VERSION_CODE = "versionCode"
 
 /**
+ * `deviceBrand`: Matches error issues that occurred in the requested device brands. Example:
+ * `deviceBrand = "Google".
+ */
+private const val DEVICE_BRAND = "deviceBrand"
+
+/**
  * `deviceModel`: Matches error issues that occurred in the requested devices. Example: `deviceModel
  * = "walleye" OR deviceModel = "marlin"`.
  */
 private const val DEVICE_MODEL = "deviceModel"
-
-/**
- * `deviceType`: Matches error issues that occurred in the requested device types. Example:
- * `deviceType = "PHONE"`.
- */
-private const val DEVICE_TYPE = "deviceType"
 
 /**
  * `errorIssueType`: Matches error issues of the requested types only. Valid candidates: `CRASH`,
@@ -112,9 +113,6 @@ class FilterBuilder {
         FailureType.ANR -> rawFilters.add(Filter(ERROR_ISSUE_TYPE, "ANR"))
         FailureType.FATAL,
         FailureType.NON_FATAL -> rawFilters.add(Filter(ERROR_ISSUE_TYPE, "CRASH"))
-        FailureType.FOREGROUND -> rawFilters.add(Filter(APP_PROCESS_STATE, "FOREGROUND"))
-        FailureType.BACKGROUND -> rawFilters.add(Filter(APP_PROCESS_STATE, "BACKGROUND"))
-        FailureType.USER_PERCEIVED_ONLY -> rawFilters.add(Filter(IS_USER_PERCEIVED, ""))
         else -> {
           LOG.warn("Unrecognized failure type: $it.")
           null
@@ -123,6 +121,15 @@ class FilterBuilder {
     }
   }
 
+  /** Filter by visibility types. */
+  fun addVisibilityType(visibilityType: VisibilityType) {
+    when (visibilityType) {
+      VisibilityType.USER_PERCEIVED -> rawFilters.add(Filter(IS_USER_PERCEIVED, ""))
+      VisibilityType.ALL -> Unit
+    }
+  }
+
+  /** Filter by device model name (e.g. samsung/hlte). */
   fun addDevices(devices: Collection<Device>) {
     devices.filterNot { it == Device.ALL }.onEach { rawFilters.add(Filter(DEVICE_MODEL, it.model)) }
   }

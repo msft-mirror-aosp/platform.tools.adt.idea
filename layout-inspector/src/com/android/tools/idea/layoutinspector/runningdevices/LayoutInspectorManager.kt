@@ -264,10 +264,12 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     val wrapLogic: WrapLogic = WrapLogic(tabComponents.tabContentPanel, tabComponents.tabContentPanelContainer),
     val layoutInspectorRenderer: LayoutInspectorRenderer = LayoutInspectorRenderer(
       tabComponents.disposable,
+      layoutInspector.coroutineScope,
       layoutInspector.renderLogic,
       layoutInspector.renderModel,
       { tabComponents.displayView.displayRectangle },
-      { tabComponents.displayView.screenScalingFactor }
+      { tabComponents.displayView.screenScalingFactor },
+      { layoutInspector.currentClient.stats }
     )
   ) {
 

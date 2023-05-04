@@ -21,8 +21,10 @@ import com.intellij.psi.PsiFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
-/** Provides lifecycle and App Insights state data. */
+/** The source-based controller which provides lifecycle and App Insights state data. */
 interface AppInsightsProjectLevelController {
+  /** The source of insights data this controller is for. */
+  val key: InsightsProviderKey
 
   /**
    * This flow represents the App Insights state of a host Android app module.
@@ -66,9 +68,10 @@ interface AppInsightsProjectLevelController {
 
   fun revertToSnapshot(state: AppInsightsState)
   fun selectSignal(value: SignalType)
-  fun selectConnection(value: VariantConnection)
+  fun selectConnection(value: Connection)
   fun openIssue(issue: AppInsightsIssue)
   fun closeIssue(issue: AppInsightsIssue)
   fun addNote(issue: AppInsightsIssue, message: String)
   fun deleteNote(note: Note)
+  fun selectVisibilityType(value: VisibilityType)
 }

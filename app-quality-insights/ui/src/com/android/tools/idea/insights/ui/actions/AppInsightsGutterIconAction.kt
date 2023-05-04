@@ -18,6 +18,8 @@ package com.android.tools.idea.insights.ui.actions
 import com.android.tools.adtui.common.ColoredIconGenerator.generateColoredIcon
 import com.android.tools.adtui.ui.DynamicRendererList
 import com.android.tools.idea.insights.AppInsight
+import com.android.tools.idea.insights.ui.JListSimpleColoredComponent
+import com.android.tools.idea.insights.ui.ResizedSimpleColoredComponent
 import com.android.tools.idea.insights.ui.getDisplayTitle
 import com.android.tools.idea.insights.ui.ifZero
 import com.intellij.openapi.actionSystem.AnAction
@@ -26,7 +28,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.PopupChooserBuilder
 import com.intellij.ui.CollectionListModel
-import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
@@ -35,10 +36,8 @@ import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Cursor
-import java.awt.Dimension
 import java.awt.event.MouseEvent
 import javax.swing.DefaultListSelectionModel
-import javax.swing.Icon
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JSeparator
@@ -47,16 +46,16 @@ import javax.swing.ListSelectionModel
 import org.jetbrains.annotations.VisibleForTesting
 
 class AppInsightsGutterIconAction(
-  private val insightsByGroup: Map<String, List<AppInsight>>,
-  private val itemChosenCallback: (AppInsight, String) -> Unit
+  private val insights: List<AppInsight>,
+  private val itemChosenCallback: (AppInsight) -> Unit
 ) : AnAction() {
   private val logger: Logger
     get() = Logger.getInstance(javaClass)
 
   override fun actionPerformed(e: AnActionEvent) {
-    if (insightsByGroup.isEmpty()) return
+    if (insights.isEmpty()) return
 
-    val renderItems = generateRenderInstructions(insightsByGroup)
+    val renderItems = generateRenderInstructions(insights)
     val list = createGroupedJList(renderItems)
 
     lateinit var popup: JBPopup
@@ -71,7 +70,7 @@ class AppInsightsGutterIconAction(
             if (chosenInsight is InsightInstruction) {
               logger.debug("Gutter icon click for issue $chosenInsight")
               popup.closeOk(null)
-              itemChosenCallback(chosenInsight.insight, chosenInsight.tabName)
+              itemChosenCallback(chosenInsight.insight)
             }
           }
           setCloseOnEnter(false)
@@ -86,10 +85,9 @@ class AppInsightsGutterIconAction(
             }
           panel.add(hintText, BorderLayout.WEST)
 
-          if (insightsByGroup.size == 1) {
-            val flattenedInsights = insightsByGroup.flatMap { it.value }
-            val eventsTotal = flattenedInsights.sumOf { it.issue.issueDetails.eventsCount }
-            val usersTotal = flattenedInsights.sumOf { it.issue.issueDetails.impactedDevicesCount }
+          if (insights.groupBy { it.provider }.size == 1) {
+            val eventsTotal = insights.sumOf { it.issue.issueDetails.eventsCount }
+            val usersTotal = insights.sumOf { it.issue.issueDetails.impactedDevicesCount }
             val eventsComponent =
               ResizedSimpleColoredComponent().apply {
                 icon =
@@ -156,21 +154,22 @@ class AppInsightsGutterIconAction(
     return variableHeightJList
   }
 
-  private fun generateRenderInstructions(insightsByGroup: Map<String, List<AppInsight>>) =
-    insightsByGroup
-      .mapValues { entry ->
+  private fun generateRenderInstructions(insights: List<AppInsight>) =
+    insights
+      .groupBy { it.provider }
+      .toSortedMap()
+      .mapValues { (provider, insights) ->
         // Map each insight to a RenderItem and insert a HeaderItem at the head of the list.
-        listOf(HeaderInstruction(entry.key)) +
-          entry.value.map { insight -> InsightInstruction(insight, entry.key) }
+        listOf(HeaderInstruction(provider.displayName)) +
+          insights.map { insight -> InsightInstruction(insight) }
       }
       .toList()
-      .sortedBy { it.first }
-      .fold(emptyList<RenderInstruction>()) { acc, groupedItems ->
+      .fold(emptyList<RenderInstruction>()) { acc, (provider, insightsByProvider) ->
         // Insert a divider item when there are two or more categories.
         if (acc.isEmpty()) {
-          groupedItems.second
+          insightsByProvider
         } else {
-          acc + listOf(SeparatorInstruction) + groupedItems.second
+          acc + listOf(SeparatorInstruction) + insightsByProvider
         }
       }
 }
@@ -188,7 +187,7 @@ data class HeaderInstruction(val name: String) : RenderInstruction()
 
 @VisibleForTesting
 /** A row for an app insight. */
-data class InsightInstruction(val insight: AppInsight, val tabName: String) : RenderInstruction()
+data class InsightInstruction(val insight: AppInsight) : RenderInstruction()
 
 private class AppInsightsGutterListCellRenderer : ListCellRenderer<RenderInstruction> {
   override fun getListCellRendererComponent(
@@ -262,36 +261,6 @@ private class AppInsightsGutterListCellRenderer : ListCellRenderer<RenderInstruc
         renderer.background = if (hasFocus) list.selectionBackground else list.background
         renderer
       }
-    }
-  }
-}
-
-@VisibleForTesting
-open class ResizedSimpleColoredComponent : SimpleColoredComponent() {
-  init {
-    isOpaque = false
-    isTransparentIconBackground = true
-    font = UIUtil.getListFont()
-  }
-
-  override fun getPreferredSize(): Dimension {
-    return UIUtil.updateListRowHeight(super.getPreferredSize())
-  }
-}
-
-@VisibleForTesting
-class JListSimpleColoredComponent<T>(icon: Icon?, list: JList<T>, hasFocus: Boolean) :
-  ResizedSimpleColoredComponent() {
-  init {
-    font = list.font
-    foreground =
-      if (hasFocus) {
-        list.selectionForeground
-      } else {
-        list.foreground
-      }
-    if (icon != null) {
-      this.icon = if (hasFocus) generateColoredIcon(icon, foreground) else icon
     }
   }
 }

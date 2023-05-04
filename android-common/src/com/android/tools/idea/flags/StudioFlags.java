@@ -318,6 +318,11 @@ public final class StudioFlags {
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
     false);
 
+  public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = Flag.create(
+    NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
+    "Enable so that visual lint runs on previews in the Compose Preview.",
+    false);
+
   public static final Flag<Boolean> NELE_WARN_NEW_THREADS = Flag.create(
     NELE, "preview.warn.new.threads", "Enable new threads warning",
     "Display a warning if user code creates new threads in the preview",
@@ -903,10 +908,14 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring",
     false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_ADVANCED_TAB_CONTROL = Flag.create(
+    DEVICE_MIRRORING, "advanced.tab.control", "Enable closing/opening of Running Devices tabs",
+    "Support closing/opening of Running Devices tabs",
+    false);
   public static final Flag<Boolean> DEVICE_MIRRORING_FOLDING_SUPPORT = Flag.create(
     DEVICE_MIRRORING, "folding.support", "Simulate Folding/Unfolding",
     "Support pose control for foldable devices",
-    false);
+    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -1528,6 +1537,14 @@ public final class StudioFlags {
       "Use gutter icons rather than code highlight to display insights in the editor",
       true);
 
+  public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
+    Flag.create(
+      APP_INSIGHTS,
+      "insights.vcs",
+      "VCS Support",
+      "Enhance code navigation to aid crash investigation with the recorded VCS info",
+      false);
+
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     Flag.create(
       APP_INSIGHTS,
@@ -1582,7 +1599,7 @@ public final class StudioFlags {
       "enable.play.vitals",
       "Enable the play vitals tool window tab.",
       "Enables the play vitals tab and its associated functionality.",
-      false);
+      true);
 
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
     Flag.create(
@@ -1694,7 +1711,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> PLAY_COMPATIBLE_WEAR_SCREENSHOTS_ENABLED = Flag.create(
     PLAY_COMPATIBLE_WEAR_SCREENSHOTS, "enable", "Enable Play Compatible Wear Screenshots",
     "Enable a play compatible screenshot option for wear devices.",
-    false
+    true
   );
   // endregion
 
@@ -1704,7 +1721,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> AVD_COMMAND_LINE_OPTIONS_ENABLED = Flag.create(
     AVD_COMMAND_LINE_OPTIONS, "enable", "Enable the AVD Command-Line Options setting",
     "Enable the AVD Command-Line Options setting in the AVD advanced settings panel.",
-    true
+    false
   );
   // endregion
 
@@ -1715,6 +1732,12 @@ public final class StudioFlags {
     "Whether or not sandbox SDK should launch a process with the debugger attached on debug action.",
     false);
   // endregion PRIVACY_SANDBOX_SDK
+
+  // region STUDIO_BOT
+  private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
+  public static final Flag<Boolean> STUDIOBOT_ENABLED =
+    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
+  // endregion STUDIO_BOT
 
   private StudioFlags() { }
 }

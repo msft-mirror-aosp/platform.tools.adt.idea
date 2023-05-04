@@ -46,6 +46,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import javax.swing.JComponent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
@@ -118,6 +119,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether we support profileable builds.
    */
   private boolean myProfileablsBuildsEnabled = true;
+
+  /**
+   * Whether the task-based UX should be visible.
+   */
+  private boolean myTaskBasedUxEnabled = false;
 
   /**
    * Whether power and battery data tracks should be visible in system trace and if shown,
@@ -270,7 +276,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
       @Override
       public boolean isTaskBasedUxEnabled() {
-        return false;
+        return myTaskBasedUxEnabled;
       }
     };
   }
@@ -397,6 +403,9 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return myTraceProcessorService;
   }
 
+  @Override
+  public void buildAndLaunchAction(boolean profileableMode, @NotNull JComponent component) { }
+
   @Nullable
   public Notification getNotification() {
     return myNotification;
@@ -418,5 +427,9 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void setSystemTracePowerProfilerDisplayMode(PowerProfilerDisplayMode mode) {
     mySystemTracePowerProfilerDisplayMode = mode;
+  }
+
+  public void enableTaskBasedUx(boolean enabled) {
+    myTaskBasedUxEnabled = enabled;
   }
 }

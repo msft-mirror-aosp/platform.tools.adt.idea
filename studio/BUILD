@@ -1,5 +1,5 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
-load("//tools/adt/idea/studio:studio.bzl", "android_studio", "studio_plugin")
+load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
 
 studio_plugin(
     name = "org.jetbrains.android",
@@ -59,7 +59,6 @@ studio_plugin(
         "//tools/adt/idea/android:libstudio.android-test-plugin-host-retention-proto",
         "//tools/adt/idea/android/lib:android-sdk-tools-jps",
         "//tools/adt/idea/android/lib:instantapps-api",
-        "//tools/adt/idea/android/lib:spantable",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:background-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:workmanager-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:background-inspector-proto",
@@ -552,7 +551,6 @@ studio_plugin(
     libs = [
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-        "//tools/adt/idea/.idea/libraries:mockito",
         "//prebuilts/tools/common/m2:google-api-services-testing-v1-rev82-1.22.0",
     ],
     modules = {"gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"]},
@@ -606,6 +604,28 @@ studio_plugin(
     ],
 )
 
+studio_plugin(
+    name = "com.android.tools.studiobot",
+    directory = "studio-bot",
+    libs = [
+        "//tools/vendor/google/ml/sml-core:aida_grpc",
+        "//tools/vendor/google/ml/sml-core:aida_proto",
+        "//tools/vendor/google/ml/sml-core:aida_protobuf",
+        "//tools/vendor/google/ml/sml-core:studio_bot_proto",
+        "//prebuilts/tools/common/m2:commonmark-0.20.0",
+    ],
+    modules = {
+        "sml.jar": [
+            "//tools/vendor/google/ml/sml-core:ml.sml-core",
+            "//tools/vendor/google/ml/sml-android:ml.sml-android",
+        ],
+    },
+    deps = [
+        ":org.jetbrains.android",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+    ],
+)
+
 exports_files([
     "codesign/entitlements.xml",
 ])
@@ -630,6 +650,7 @@ android_studio(
     plugins = [
         ":org.jetbrains.android",
         ":com.android.gmdcodecompletion",
+        ":com.android.tools.studiobot",
         ":com.android.tools.apk",
         ":com.android.tools.ndk",
         ":com.android.tools.design",
@@ -647,10 +668,10 @@ android_studio(
     searchable_options = "//tools/adt/idea/searchable-options",
     update_message_template = ":update_message.html",
     version_code_name = "Hedgehog",
-    version_micro_patch = "1.2",
+    version_micro_patch = "1.3",
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 2,
+    version_release_number = 3,
     version_type = "Canary",
     visibility = ["//visibility:public"],
 )
@@ -880,6 +901,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-svn",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-webp",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion[module]",
+        "//tools/vendor/google/ml/sml-android:ml.sml-android[module]",
     ],
 )
 
@@ -926,44 +948,32 @@ iml_module(
     deps = [
         "//prebuilts/tools/common/m2:junit-4.12[test]",
         "//tools/adt/idea/as-driver:as-driver.utils[module, test]",
+        "//tools/base/common:studio.android.sdktools.common[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
     ],
 )
 
-iml_test(
+iml_studio_test(
     name = "StartUpTest",
-    data = select({
-        "@platforms//os:linux": [
-            "//tools/adt/idea/studio:android-studio.linux.zip",
-        ],
-        "@platforms//os:macos": [
-            "//tools/adt/idea/studio:android-studio.mac.zip",
-        ],
-        "@platforms//os:windows": [
-            "//tools/adt/idea/studio:android-studio.win.zip",
-        ],
-    }),
     module = ":intellij.android.studio.integration",
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
 )
 
-iml_test(
+iml_studio_test(
+    name = "StartUpCustomJvmTest",
+    module = ":intellij.android.studio.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.StartUpCustomJvmTest",
+)
+
+iml_studio_test(
     name = "UpdateTest",
-    data = select({
-        "@platforms//os:linux": [
-            ":android-studio.linux.zip",
-        ],
-        "@platforms//os:macos": [
-            ":android-studio.mac.zip",
-        ],
-        "@platforms//os:windows": [
-            ":android-studio.win.zip",
-        ],
-    }) + [
+    data = [
         ":updater",
         ":updater.jar",
     ],

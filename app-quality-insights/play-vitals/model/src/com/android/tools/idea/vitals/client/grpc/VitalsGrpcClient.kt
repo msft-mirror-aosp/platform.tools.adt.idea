@@ -20,6 +20,7 @@ import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.IssueDetails
 import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.Version
+import com.android.tools.idea.insights.client.AppConnection
 import com.android.tools.idea.insights.client.QueryFilters
 import com.android.tools.idea.vitals.datamodel.DimensionType
 import com.android.tools.idea.vitals.datamodel.DimensionsAndMetrics
@@ -28,12 +29,14 @@ import com.android.tools.idea.vitals.datamodel.MetricType
 
 /** TODO: maybe move the below to a common place. */
 private const val DEFAULT_MAX_APPS_PER_CALL = 1000
-private const val DEFAULT_MAX_DATA_POINTS_PER_CALL = 1000
+private const val DEFAULT_MAX_DATA_POINTS_PER_CALL = 10000
 private const val DEFAULT_MAX_OPEN_ISSUES_PER_CALL = 50
 
 interface VitalsGrpcClient {
   /** Returns a list of [Connection]s (App IDs) that are accessible. */
-  suspend fun listAccessibleApps(maxNumResults: Int = DEFAULT_MAX_APPS_PER_CALL): List<Connection>
+  suspend fun listAccessibleApps(
+    maxNumResults: Int = DEFAULT_MAX_APPS_PER_CALL
+  ): List<AppConnection>
 
   /**
    * Returns freshness info (query period granularity & valid end-time) which is required for the

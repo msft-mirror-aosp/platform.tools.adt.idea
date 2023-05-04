@@ -23,12 +23,12 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.KotlinFileType
 
-fun CodeInsightTestFixture.stubComposableAnnotation(composableAnnotationPackage: String = "androidx.compose", modulePath: String = "") {
+fun CodeInsightTestFixture.stubComposableAnnotation(modulePath: String = "") {
   addFileToProject(
-    "$modulePath/src/${composableAnnotationPackage.replace(".", "/")}/Composable.kt",
+    "$modulePath/src/androidx/compose/runtime/Composable.kt",
     // language=kotlin
     """
-    package $composableAnnotationPackage
+    package androidx.compose.runtime
 
     annotation class Composable
     """.trimIndent()
@@ -149,30 +149,12 @@ fun CodeInsightTestFixture.stubKotlinStdlib() {
   )
 }
 
-fun CodeInsightTestFixture.stubComposeFoundation() {
+fun CodeInsightTestFixture.stubPreviewAnnotation(modulePath: String = "") {
   addFileToProject(
-    "src/androidx/compose/foundation/text/BasicText.kt",
+    "$modulePath/src/androidx/compose/ui/tooling/preview/Preview.kt",
     // language=kotlin
     """
-    package androidx.compose.foundation.text
-
-    import androidx.compose.Composable
-
-    @Composable
-    @ComposableTarget("UI Composable")
-    fun BasicText(
-        text: String
-    ) { }
-    """.trimIndent()
-  )
-}
-
-fun CodeInsightTestFixture.stubPreviewAnnotation(previewAnnotationPackage: String = "androidx.compose.ui.tooling.preview", modulePath: String = "") {
-  addFileToProject(
-    "$modulePath/src/${previewAnnotationPackage.replace(".", "/")}/Preview.kt",
-    // language=kotlin
-    """
-    package $previewAnnotationPackage
+    package androidx.compose.ui.tooling.preview
 
     import kotlin.reflect.KClass
 
@@ -192,7 +174,7 @@ fun CodeInsightTestFixture.stubPreviewAnnotation(previewAnnotationPackage: Strin
       val theme: String = "",
       val widthDp: Int = -1,
       val heightDp: Int = -1,
-      val locale: String = ""
+      val locale: String = "",
       val fontScale: Float = 1f,
       val showDecoration: Boolean = false,
       val showBackground: Boolean = false,

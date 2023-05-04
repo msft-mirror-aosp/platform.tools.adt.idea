@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 class FakeAppInsightsProjectLevelController(
+  override val key: InsightsProviderKey = InsightsProviderKey("Fake provider"),
   override val state: Flow<AppInsightsState> = emptyFlow(),
   override val coroutineScope: CoroutineScope = CoroutineScope(EmptyCoroutineContext),
   private val retrieveInsights: (PsiFile) -> List<AppInsight> = { _ -> emptyList() }
@@ -53,7 +54,7 @@ class FakeAppInsightsProjectLevelController(
 
   override fun selectSignal(value: SignalType) {}
 
-  override fun selectConnection(value: VariantConnection) {}
+  override fun selectConnection(value: Connection) {}
 
   override fun openIssue(issue: AppInsightsIssue) {}
 
@@ -62,4 +63,5 @@ class FakeAppInsightsProjectLevelController(
   override fun addNote(issue: AppInsightsIssue, message: String) {}
 
   override fun deleteNote(note: Note) {}
+  override fun selectVisibilityType(value: VisibilityType) {}
 }
