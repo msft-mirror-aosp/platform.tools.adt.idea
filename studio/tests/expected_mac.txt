@@ -416,6 +416,7 @@ Android Studio Preview.app/Contents/jbr/Contents/Home/lib/tzdb.dat
 Android Studio Preview.app/Contents/jbr/Contents/Home/release
 Android Studio Preview.app/Contents/jbr/Contents/Info.plist
 Android Studio Preview.app/Contents/jbr/Contents/MacOS/libjli.dylib
+Android Studio Preview.app/Contents/lib/3rd-party-native.jar
 Android Studio Preview.app/Contents/lib/3rd-party-rt.jar
 Android Studio Preview.app/Contents/lib/annotations.jar
 Android Studio Preview.app/Contents/lib/ant/CONTRIBUTORS
@@ -2023,6 +2024,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/backgroundtask_inspector
 Android Studio Preview.app/Contents/plugins/android/lib/build-analysis-results-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/commons-lang-2.6.jar
+Android Studio Preview.app/Contents/plugins/android/lib/common_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
 Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
 Android Studio Preview.app/Contents/plugins/android/lib/core-3.5.0.jar
@@ -2728,6 +2730,7 @@ Android Studio Preview.app/Contents/plugins/firebase-testing/lib/tightvnc.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/firebase.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/google-api-services-cloudresourcemanager-v1beta1-rev12-1.21.0.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/google-api-services-mobilesdk-v1.jar
+Android Studio Preview.app/Contents/plugins/git4insights/lib/git4insights.jar
 Android Studio Preview.app/Contents/plugins/gmd-code-completion/lib/gmd-code-completion.jar
 Android Studio Preview.app/Contents/plugins/gmd-code-completion/lib/google-api-services-testing-v1-rev82-1.22.0.jar
 Android Studio Preview.app/Contents/plugins/google-cloud-tools-as/lib/google-api-services-source.jar

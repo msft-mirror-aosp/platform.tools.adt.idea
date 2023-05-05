@@ -22,6 +22,7 @@ import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.LayoutInspectorProjectService
 import com.android.tools.idea.layoutinspector.dataProviderForLayoutInspector
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
+import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
@@ -38,13 +39,12 @@ import com.android.tools.idea.streaming.STREAMING_CONTENT_PANEL_KEY
 import com.intellij.ide.DataManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.ui.EditorNotificationPanel.Status
 import com.intellij.ui.content.Content
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
@@ -318,18 +318,15 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     if (shouldShowWarning()) {
       InspectorBannerService.getInstance(project)?.addNotification(
         text = notificationText,
+        status = Status.Info,
         sticky = true,
         actions = listOf(
-          object : AnAction(LayoutInspectorBundle.message("do.not.show.again")) {
-            override fun actionPerformed(e: AnActionEvent) {
-              setValue(false)
-              InspectorBannerService.getInstance(project)?.removeNotification(notificationText)
-            }
+          StatusNotificationAction(LayoutInspectorBundle.message("do.not.show.again")) { notification ->
+            setValue(false)
+            InspectorBannerService.getInstance(project)?.removeNotification(notification.message)
           },
-          object : AnAction(LayoutInspectorBundle.message("opt.out")) {
-            override fun actionPerformed(event: AnActionEvent) {
-              ShowSettingsUtil.getInstance().showSettingsDialog(project, LayoutInspectorConfigurable::class.java)
-            }
+          StatusNotificationAction(LayoutInspectorBundle.message("opt.out")) {
+            ShowSettingsUtil.getInstance().showSettingsDialog(project, LayoutInspectorConfigurable::class.java)
           },
         )
       )

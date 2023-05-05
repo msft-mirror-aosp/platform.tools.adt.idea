@@ -811,6 +811,15 @@ public final class StudioFlags {
     false
   );
 
+  public static final Flag<Boolean> USE_NEW_DEPENDENCY_GRAPH_MODEL = Flag.create(
+    GRADLE_IDE,
+    "use.new.dependency.graph.model",
+    "Switches to a new dependency graph model that reduces memory use",
+    "Switches to a new dependency graph model that reduces memory use. This Flag is introduced as a killswitch in case there" +
+    "unexpected issues with the new model.",
+    true
+  );
+
   //endregion
 
   //region Database Inspector
@@ -1129,14 +1138,6 @@ public final class StudioFlags {
     "If this value is -1, then the platform will be automatically created with the latest version.",
     0
   );
-  //endregion
-
-  //region Memory
-  private static final FlagGroup MEMORY_SETTINGS = new FlagGroup(FLAGS, "memory.settings", "Memory Settings");
-  public static final Flag<Boolean> LOW_IDE_XMX_CAP = Flag.create(
-    MEMORY_SETTINGS, "low.ide.xmx.cap", "Set low IDE Xmx cap in memory settings",
-    "If set, IDE Xmx is capped at 4GB in the configuration dialog. Otherwise, the cap is 8GB",
-    true);
   //endregion
 
   //region System Health
@@ -1521,21 +1522,6 @@ public final class StudioFlags {
 
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
-  public static final Flag<Boolean> APP_INSIGHTS_ENABLED =
-    Flag.create(
-      APP_INSIGHTS,
-      "enabled",
-      "Enabled",
-      "Enable App Insights tool window and highlighting support.",
-      true);
-
-  public static final Flag<Boolean> APP_INSIGHTS_GUTTER_SUPPORT =
-    Flag.create(
-      APP_INSIGHTS,
-      "insights.gutter",
-      "Gutter Support",
-      "Use gutter icons rather than code highlight to display insights in the editor",
-      true);
 
   public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
     Flag.create(
@@ -1543,7 +1529,7 @@ public final class StudioFlags {
       "insights.vcs",
       "VCS Support",
       "Enhance code navigation to aid crash investigation with the recorded VCS info",
-      false);
+      true);
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     Flag.create(
@@ -1559,38 +1545,6 @@ public final class StudioFlags {
       "crashlytics.grpc.use.transport.security",
       "Use transport security",
       "Set Crashlytics gRpc channel to use transport security",
-      true);
-
-  public static final Flag<Boolean> OPEN_CLOSE_ISSUES_ENABLED =
-    Flag.create(
-      APP_INSIGHTS,
-      "enable.open.close.issues",
-      "Enable open/close issue functionality.",
-      "Add open/close button to App Quality Insights panel.",
-      true);
-
-  public static final Flag<Boolean> ADDITIONAL_FILTERS_ENABLED =
-    Flag.create(
-      APP_INSIGHTS,
-      "enable.issue.filters",
-      "Enable additional issue filters.",
-      "Add device, OS, Play Track filters to App Quality Insights panel.",
-      true);
-
-  public static final Flag<Boolean> OFFLINE_MODE_SUPPORT_ENABLED =
-    Flag.create(
-      APP_INSIGHTS,
-      "enable.offline.mode.support",
-      "Enable offline mode support.",
-      "Show previously cached data when network has issues.",
-      true);
-
-  public static final Flag<Boolean> NOTES_ENABLED =
-    Flag.create(
-      APP_INSIGHTS,
-      "enable.notes",
-      "Enable read/write notes functionality.",
-      "Add notes tab to App Quality Insights panel.",
       true);
 
   public static final Flag<Boolean> PLAY_VITALS_ENABLED =

@@ -46,10 +46,10 @@ import com.android.resources.ScreenOrientation;
 import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.devices.Device;
 import com.android.tools.analytics.crash.CrashReporter;
-import com.android.tools.idea.diagnostics.crash.StudioExceptionReport;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.layoutlib.RenderParamsFlags;
 import com.android.tools.dom.ActivityAttributesSnapshot;
+import com.android.tools.idea.rendering.tracking.RenderTaskAllocationTracker;
 import com.android.tools.idea.rendering.tracking.RenderTaskAllocationTrackerImpl;
 import com.android.tools.idea.rendering.tracking.StackTraceCapture;
 import com.android.tools.rendering.CachingImageFactory;
@@ -149,6 +149,7 @@ public class RenderTask {
   private static final ExecutorService ourDisposeService =
     AppExecutorUtil.createBoundedApplicationPoolExecutor("RenderTask Dispose Thread", 1);
 
+  @NotNull RenderTaskAllocationTracker myTracker;
   @NotNull private final ImagePool myImagePool;
   @NotNull private final RenderContext myContext;
 
@@ -205,6 +206,7 @@ public class RenderTask {
              boolean isSecurityManagerEnabled,
              float quality,
              @NotNull StackTraceCapture stackTraceCaptureElement,
+             @NotNull RenderTaskAllocationTracker tracker,
              boolean privateClassLoader,
              @NotNull ClassTransform additionalProjectTransform,
              @NotNull ClassTransform additionalNonProjectTransform,
@@ -213,6 +215,7 @@ public class RenderTask {
              boolean reportOutOfDateUserClasses,
              @NotNull RenderAsyncActionExecutor.RenderingPriority priority,
              float minDownscalingFactor) throws NoDeviceException {
+    myTracker = tracker;
     myImagePool = imagePool;
     myContext = renderContext;
     myClassLoaderManager = classLoaderManager;
@@ -383,7 +386,7 @@ public class RenderTask {
       return Futures.immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
     }
 
-    RenderTaskAllocationTrackerImpl.INSTANCE.captureDisposeStackTrace().bind(this);
+    myTracker.captureDisposeStackTrace().bind(this);
 
     return ourDisposeService.submit(() -> {
       try {
@@ -880,8 +883,9 @@ public class RenderTask {
           if (message == null) {
             message = ex.toString();
           }
-          RenderProblem.RunnableFixFactory fixFactory = myContext.getModule().getEnvironment().getRunnableFixFactory();
-          myLogger.addMessage(RenderProblem.createPlain(ERROR, message, myLogger.getProject(), myLogger.getLinkManager(), ex, fixFactory));
+          RenderModelModule module = myContext.getModule();
+          RenderProblem.RunnableFixFactory fixFactory = module.getEnvironment().getRunnableFixFactory();
+          myLogger.addMessage(RenderProblem.createPlain(ERROR, message, module.getProject(), myLogger.getLinkManager(), ex, fixFactory));
         }
 
         if (result != null) {
@@ -1003,7 +1007,7 @@ public class RenderTask {
       return;
     }
     // This in an unhandled layoutlib exception, pass it to the crash reporter
-    myCrashReporter.submit(new StudioExceptionReport.Builder().setThrowable(e, false, true).build());
+    myCrashReporter.submit(myContext.getModule().getEnvironment().createCrashReport(e));
   }
 
   /**
@@ -1074,9 +1078,10 @@ public class RenderTask {
         if (message == null) {
           message = e.toString();
         }
-        RenderProblem.RunnableFixFactory fixFactory = myContext.getModule().getEnvironment().getRunnableFixFactory();
-        myLogger.addMessage(RenderProblem.createPlain(ERROR, message, myLogger.getProject(), myLogger.getLinkManager(), e, fixFactory));
-        return CompletableFuture.completedFuture(RenderResult.createRenderTaskErrorResult(myContext.getModule(), xmlFile.getPsiFile(), e));
+        RenderModelModule module = myContext.getModule();
+        RenderProblem.RunnableFixFactory fixFactory = module.getEnvironment().getRunnableFixFactory();
+        myLogger.addMessage(RenderProblem.createPlain(ERROR, message, module.getProject(), myLogger.getLinkManager(), e, fixFactory));
+        return CompletableFuture.completedFuture(RenderResult.createRenderTaskErrorResult(module, xmlFile.getPsiFile(), e));
       }
     });
   }

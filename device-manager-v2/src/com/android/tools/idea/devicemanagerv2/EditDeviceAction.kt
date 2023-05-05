@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.devicemanagerv2
 
+import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.tools.idea.deviceprovisioner.DEVICE_HANDLE_KEY
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent
 import com.intellij.icons.AllIcons
@@ -28,11 +29,7 @@ class EditDeviceAction : AnAction("Edit", "Edit this device", AllIcons.Actions.E
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
   override fun update(e: AnActionEvent) {
-    val handle = DEVICE_HANDLE_KEY.getData(e.dataContext)
-    when (val editAction = handle?.editAction) {
-      null -> e.presentation.isEnabledAndVisible = false
-      else -> e.presentation.isEnabled = editAction.presentation.value.enabled
-    }
+    e.updateFromDeviceAction(DeviceHandle::editAction)
   }
 
   override fun actionPerformed(e: AnActionEvent) {

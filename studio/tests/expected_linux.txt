@@ -407,6 +407,7 @@ android-studio/jbr/lib/server/libjsig.so
 android-studio/jbr/lib/server/libjvm.so
 android-studio/jbr/lib/tzdb.dat
 android-studio/jbr/release
+android-studio/lib/3rd-party-native.jar
 android-studio/lib/3rd-party-rt.jar
 android-studio/lib/annotations.jar
 android-studio/lib/ant/CONTRIBUTORS
@@ -2002,6 +2003,7 @@ android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
+android-studio/plugins/android/lib/common_proto.jar
 android-studio/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
 android-studio/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
 android-studio/plugins/android/lib/core-3.5.0.jar
@@ -2709,6 +2711,7 @@ android-studio/plugins/firebase-testing/lib/tightvnc.jar
 android-studio/plugins/firebase/lib/firebase.jar
 android-studio/plugins/firebase/lib/google-api-services-cloudresourcemanager-v1beta1-rev12-1.21.0.jar
 android-studio/plugins/firebase/lib/google-api-services-mobilesdk-v1.jar
+android-studio/plugins/git4insights/lib/git4insights.jar
 android-studio/plugins/gmd-code-completion/lib/gmd-code-completion.jar
 android-studio/plugins/gmd-code-completion/lib/google-api-services-testing-v1-rev82-1.22.0.jar
 android-studio/plugins/google-cloud-tools-as/lib/google-api-services-source.jar

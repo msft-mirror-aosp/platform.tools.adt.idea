@@ -16,28 +16,18 @@
 package com.android.tools.idea.layoutinspector.ui
 
 import com.android.tools.idea.layoutinspector.model.StatusNotification
-import com.android.tools.idea.layoutinspector.model.StatusNotificationImpl
+import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
 import com.intellij.ide.BrowserUtil
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.project.Project
+import com.intellij.ui.EditorNotificationPanel
 import com.jetbrains.rd.util.AtomicReference
 
-val NOTIFICATION_KEY = DataKey.create<StatusNotification>(StatusNotification::class.java.name)
+fun learnMoreAction(url: String) = StatusNotificationAction("Learn More") { BrowserUtil.browse(url) }
 
 class InspectorBannerService {
-  val DISMISS_ACTION = object : AnAction("Dismiss") {
-    override fun actionPerformed(event: AnActionEvent) {
-      val notification = event.getData(NOTIFICATION_KEY) ?: return
-      removeNotification(notification.message)
-    }
-  }
 
-  class LearnMoreAction(private val url: String): AnAction("Learn More") {
-    override fun actionPerformed(event: AnActionEvent) {
-      BrowserUtil.browse(url)
-    }
+  val dismissAction = StatusNotificationAction("Dismiss") { notification ->
+    removeNotification(notification.message)
   }
 
   /**
@@ -69,14 +59,20 @@ class InspectorBannerService {
   /**
    * Adds a new notification.
    * @param text the text of the notification.
-   * @param sticky if true the notification will stay until explicitly dismissed with [removeNotification].
+   * @param status the kind of notification (error, warning, info)
    * @param actions the list of actions to show with this notification.
+   * @param sticky if true the notification will stay until explicitly dismissed with [removeNotification].
    */
-  fun addNotification(text: String, actions: List<AnAction> = listOf(DISMISS_ACTION), sticky: Boolean = false) {
+  fun addNotification(
+    text: String,
+    status: EditorNotificationPanel.Status = EditorNotificationPanel.Status.Warning,
+    actions: List<StatusNotificationAction> = listOf(dismissAction),
+    sticky: Boolean = false
+  ) {
     if (notificationData.any { it.message == text }) {
       return
     }
-    notificationData.add(StatusNotificationImpl(text, sticky, actions))
+    notificationData.add(StatusNotification(status, text, sticky, actions))
     notifyChanges()
   }
 

@@ -101,25 +101,12 @@ public class AndroidEditorSettings implements PersistentStateComponent<AndroidEd
   }
 
   public static class GlobalState {
-    private boolean myVisible = true;
-    private boolean myPreferXmlEditor = false;
     private EditorMode myPreferredEditorMode;
     private EditorMode myPreferredDrawableEditorMode;
     private EditorMode myPreferredComposableEditorMode;
     private EditorMode myPreferredKotlinEditorMode;
     private double myMagnifySensitivity = DEFAULT_MAGNIFY_SENSITIVITY;
-
-    public boolean isVisible() {
-      return myVisible;
-    }
-
-    public void setVisible(boolean visible) {
-      myVisible = visible;
-    }
-
-    public boolean isPreferXmlEditor() {
-      return myPreferXmlEditor;
-    }
+    private boolean myComposePreviewLiteModeEnabled = false;
 
     public EditorMode getPreferredEditorMode() {
       return myPreferredEditorMode;
@@ -159,6 +146,14 @@ public class AndroidEditorSettings implements PersistentStateComponent<AndroidEd
 
     public void setMagnifySensitivity(double magnifySensitivity) {
       myMagnifySensitivity = magnifySensitivity;
+    }
+
+    public boolean isComposePreviewLiteModeEnabled() {
+      return myComposePreviewLiteModeEnabled;
+    }
+
+    public void setComposePreviewLiteModeEnabled(boolean composePreviewLiteModeEnabled) {
+      myComposePreviewLiteModeEnabled = composePreviewLiteModeEnabled;
     }
   }
 }

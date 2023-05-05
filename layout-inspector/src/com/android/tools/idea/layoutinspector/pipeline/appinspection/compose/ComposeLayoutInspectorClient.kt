@@ -33,6 +33,7 @@ import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescrip
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model.InspectorModel
+import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
 import com.android.tools.idea.layoutinspector.pipeline.ErrorInfo
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
@@ -40,6 +41,7 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMoni
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.errorCode
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.ui.InspectorBannerService
+import com.android.tools.idea.layoutinspector.ui.learnMoreAction
 import com.android.tools.idea.protobuf.CodedInputStream
 import com.android.tools.idea.transport.TransportException
 import com.android.tools.idea.util.StudioPathManager
@@ -47,9 +49,9 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorCode
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorState
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.ui.EditorNotificationPanel
 import com.intellij.util.text.nullize
 import kotlinx.coroutines.cancel
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Command
@@ -255,7 +257,7 @@ class ComposeLayoutInspectorClient(
       isRunningFromSourcesInTests: Boolean?,
       error: ErrorInfo
     ): ComposeLayoutInspectorClient? {
-      val actions = mutableListOf<AnAction>()
+      val actions = mutableListOf<StatusNotificationAction>()
       val message: String = when (error.code) {
         AttachErrorCode.APP_INSPECTION_MISSING_LIBRARY -> {
           // This is not an error we want to report.
@@ -267,7 +269,7 @@ class ComposeLayoutInspectorClient(
         AttachErrorCode.APP_INSPECTION_INCOMPATIBLE_VERSION ->
           LayoutInspectorBundle.message(INCOMPATIBLE_LIBRARY_MESSAGE_KEY)
         AttachErrorCode.APP_INSPECTION_PROGUARDED_APP -> {
-          actions.add(InspectorBannerService.LearnMoreAction(PROGUARD_LEARN_MORE))
+          actions.add(learnMoreAction(PROGUARD_LEARN_MORE))
           LayoutInspectorBundle.message(PROGUARDED_LIBRARY_MESSAGE_KEY)
         }
         AttachErrorCode.APP_INSPECTION_SNAPSHOT_NOT_SPECIFIED ->
@@ -286,8 +288,8 @@ class ComposeLayoutInspectorClient(
         }
       }
       val banner = InspectorBannerService.getInstance(project) ?: return null
-      actions.add(banner.DISMISS_ACTION)
-      banner.addNotification(message, actions)
+      actions.add(banner.dismissAction)
+      banner.addNotification(message, EditorNotificationPanel.Status.Warning, actions)
       logErrorToMetrics(error.code)
       return null
     }
@@ -303,7 +305,8 @@ class ComposeLayoutInspectorClient(
       if (version >= Version.parse("1.3.0-alpha03") || version.minor == 2 && version >= Version.parse("1.2.1")) return
       val versionUpgrade = if (version.minor == 3) "1.3.0" else "1.2.1"
       val banner = InspectorBannerService.getInstance(project) ?: return
-      banner.addNotification(LayoutInspectorBundle.message(COMPOSE_MAY_CAUSE_APP_CRASH_KEY, versionString, versionUpgrade))
+      banner.addNotification(LayoutInspectorBundle.message(COMPOSE_MAY_CAUSE_APP_CRASH_KEY, versionString, versionUpgrade),
+                             EditorNotificationPanel.Status.Warning)
       // Allow the user to connect and inspect compose elements because:
       // - b/235526153 is uncommon
       // - b/237987764 only happens if the kotlin compiler version is at least 1.6.20 (which we cannot reliably detect)
