@@ -111,8 +111,7 @@ fun RenderSession.dispose(classLoader: LayoutlibCallbackImpl): CompletableFuture
 
   disposeMethod.ifPresent { m: Method -> m.isAccessible = true }
   val finalDisposeMethod = disposeMethod
-  return RenderService.getRenderAsyncActionExecutor().runAsyncAction(
-    RenderAsyncActionExecutor.RenderingTopic.CLEAN) {
+  return RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingPriority.HIGH) {
     finalDisposeMethod.ifPresent { m: Method? ->
       this@dispose.execute(
         Runnable {
@@ -228,8 +227,7 @@ fun clearGapWorkerCache(classLoader: LayoutlibCallbackImpl) {
     gapWorkerField.isAccessible = true
 
     // Because we are clearing-up a ThreadLocal, the code must run on the Layoutlib Thread
-    RenderService.getRenderAsyncActionExecutor().runAsyncAction(
-      RenderAsyncActionExecutor.RenderingTopic.CLEAN) {
+    RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingPriority.HIGH) {
       try {
         val gapWorkerFieldValue = gapWorkerField[null] as ThreadLocal<*>
         gapWorkerFieldValue.set(null)

@@ -92,7 +92,7 @@ class FakeJBPopupFactory : JBPopupFactory() {
   /**
    * Returns the oldest balloon that was created using this factory and removes it from the factory.
    */
-  fun getNextBalloon(): FakeBalloon = balloons.removeFirst()
+  fun getNextBalloon(i: Int): FakeBalloon = balloons.removeFirst()
 
   internal fun <T> addPopup(popup: FakeJBPopup<T>) {
     popups.add(popup)

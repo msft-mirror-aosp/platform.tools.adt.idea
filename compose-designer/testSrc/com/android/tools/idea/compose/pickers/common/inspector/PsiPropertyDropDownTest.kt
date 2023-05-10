@@ -18,6 +18,7 @@ package com.android.tools.idea.compose.pickers.common.inspector
 import com.android.tools.adtui.stdui.CommonComboBox
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.stdui.registerActionKey
+import com.android.tools.adtui.swing.FakeKeyboard
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.compose.pickers.base.property.PsiPropertyItem
 import com.android.tools.idea.compose.pickers.common.enumsupport.PsiEnumValueCellRenderer
@@ -28,11 +29,7 @@ import com.android.tools.property.panel.impl.model.util.FakeComboBoxUI
 import com.android.tools.property.panel.impl.model.util.FakeEnumSupport
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
-import java.awt.event.KeyEvent.VK_DOWN
-import java.awt.event.KeyEvent.VK_ENTER
-import java.awt.event.KeyEvent.VK_ESCAPE
-import java.awt.event.KeyEvent.VK_SHIFT
-import java.awt.event.KeyEvent.VK_TAB
+import java.awt.event.KeyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 import org.junit.Assert.assertEquals
@@ -57,9 +54,9 @@ internal class PsiPropertyDropDownTest {
     val dropDown = createDropDown(property, enumSupport)
     val ui = createFakeUiForComboBoxWrapper(dropDown)
     getWrappedComboBox(dropDown).showPopup()
-    ui.keyboard.pressAndRelease(VK_DOWN)
-    ui.keyboard.pressAndRelease(VK_DOWN)
-    ui.keyboard.pressAndRelease(VK_ENTER)
+    ui.keyboard.pressAndRelease(KeyEvent.VK_DOWN)
+    ui.keyboard.pressAndRelease(KeyEvent.VK_DOWN)
+    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
     assertEquals("invisible", property.value)
     assertFalse(isPopupVisible(dropDown))
   }
@@ -75,8 +72,8 @@ internal class PsiPropertyDropDownTest {
     with(ui.keyboard) {
       setFocus(wrappedComboBox)
       wrappedComboBox.showPopup()
-      pressAndRelease(VK_DOWN)
-      pressAndRelease(VK_TAB)
+      pressAndRelease(KeyEvent.VK_DOWN)
+      pressAndRelease(KeyEvent.VK_TAB)
     }
     assertEquals("", property.value)
     assertFalse(isPopupVisible(dropDown))
@@ -84,10 +81,10 @@ internal class PsiPropertyDropDownTest {
     with(ui.keyboard) {
       setFocus(wrappedComboBox)
       wrappedComboBox.showPopup()
-      pressAndRelease(VK_DOWN)
-      press(VK_SHIFT)
-      pressAndRelease(VK_TAB)
-      release(VK_SHIFT)
+      pressAndRelease(KeyEvent.VK_DOWN)
+      press(FakeKeyboard.Key.SHIFT)
+      pressAndRelease(FakeKeyboard.Key.TAB)
+      release(FakeKeyboard.Key.SHIFT)
     }
     assertEquals("", property.value)
     assertFalse(isPopupVisible(dropDown))
@@ -104,11 +101,11 @@ internal class PsiPropertyDropDownTest {
 
     with(ui.keyboard) {
       wrappedComboBox.showPopup()
-      pressAndRelease(VK_ESCAPE)
+      pressAndRelease(FakeKeyboard.Key.ESC)
     }
     assertFalse(isPopupVisible(dropDown))
     assertEquals(0, keyConsumer.keyCount)
-    ui.keyboard.pressAndRelease(VK_ESCAPE)
+    ui.keyboard.pressAndRelease(FakeKeyboard.Key.ESC)
     assertEquals(1, keyConsumer.keyCount)
   }
 
@@ -138,7 +135,7 @@ internal class PsiPropertyDropDownTest {
     assertEquals(0, wrappedComboBox.selectedIndex)
 
     wrappedComboBox.showPopup()
-    ui.keyboard.pressAndRelease(VK_ESCAPE)
+    ui.keyboard.pressAndRelease(FakeKeyboard.Key.ESC)
 
     // Index is updated once the full list is loaded
     assertEquals("invisible", wrappedComboBox.selectedItem?.toString())

@@ -17,16 +17,15 @@ package com.android.tools.adtui.chart.hchart
 
 import com.android.tools.adtui.model.DefaultHNode
 import com.android.tools.adtui.model.Range
+import com.android.tools.adtui.swing.FakeKeyboard
 import com.android.tools.adtui.swing.FakeUi
-import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.util.SystemInfo.isMac
 import org.junit.Before
 import org.junit.Test
-import java.awt.Color
-import java.awt.Dimension
-import java.awt.FontMetrics
-import java.awt.event.KeyEvent.VK_CONTROL
-import java.awt.event.KeyEvent.VK_META
+
+import java.awt.*
+
+import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.util.SystemInfo.isMac
 import java.awt.geom.Rectangle2D
 
 class HTreeChartTest {
@@ -83,8 +82,8 @@ class HTreeChartTest {
   }
 
   private fun getFakeActionKey() = when (isMac) {
-    true -> VK_META
-    false -> VK_CONTROL
+    true -> FakeKeyboard.Key.META
+    false -> FakeKeyboard.Key.CTRL
   }
 
   @Test

@@ -36,7 +36,6 @@ import java.time.Duration
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import java.util.regex.PatternSyntaxException
-import kotlin.text.RegexOption.IGNORE_CASE
 
 private const val STUDIO_SPAM_PREFIX = "studio."
 
@@ -60,7 +59,6 @@ internal class LogcatMasterFilter(private val logcatFilter: LogcatFilter?) {
   private fun LogcatMessage.isSpam() =
     settings.ignoredTags.contains(header.tag) || (ignoreSpam && header.tag.startsWith(STUDIO_SPAM_PREFIX))
 }
-
 /**
  * Matches a [LogcatMessage]
  */
@@ -154,47 +152,42 @@ internal abstract class FieldFilter(
 internal data class StringFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key") {
-  override fun matches(message: LogcatMessageWrapper) = field.getValue(message).contains(string, ignoreCase = !matchCase)
+  override fun matches(message: LogcatMessageWrapper) = field.getValue(message).contains(string, ignoreCase = true)
 }
 
 internal data class NegatedStringFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key.negated") {
-  override fun matches(message: LogcatMessageWrapper) = !field.getValue(message).contains(string, ignoreCase = !matchCase)
+  override fun matches(message: LogcatMessageWrapper) = !field.getValue(message).contains(string, ignoreCase = true)
 }
 
 internal data class ExactStringFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key.exact") {
-  override fun matches(message: LogcatMessageWrapper) = field.getValue(message).equals(string, !matchCase)
+  override fun matches(message: LogcatMessageWrapper) = field.getValue(message) == string
 }
 
 internal data class NegatedExactStringFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key.exact.negated") {
-  override fun matches(message: LogcatMessageWrapper) = !field.getValue(message).equals(string, !matchCase)
+  override fun matches(message: LogcatMessageWrapper) = field.getValue(message) != string
 }
 
 internal data class RegexFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key.regex") {
   private val regex = try {
-    if (matchCase) string.toRegex() else string.toRegex(IGNORE_CASE)
+    string.toRegex()
   }
   catch (e: PatternSyntaxException) {
     throw LogcatFilterParseException(PsiErrorElementImpl("Invalid regular expression: $string"))
@@ -206,11 +199,10 @@ internal data class RegexFilter(
 internal data class NegatedRegexFilter(
   val string: String,
   val field: LogcatFilterField,
-  val matchCase: Boolean,
   override val textRange: TextRange,
 ) : FieldFilter(string, field, textRange, "logcat.filter.completion.hint.key.regex.negated") {
   private val regex = try {
-    if (matchCase) string.toRegex() else string.toRegex(IGNORE_CASE)
+    string.toRegex()
   }
   catch (e: PatternSyntaxException) {
     throw LogcatFilterParseException(PsiErrorElementImpl("Invalid regular expression: $string"))
@@ -350,7 +342,7 @@ internal data class StackTraceFilter(override val textRange: TextRange) : Logcat
   override fun matches(message: LogcatMessageWrapper): Boolean = exceptionLinePattern.find(message.logcatMessage.message) != null
 }
 
-internal object EmptyFilter : LogcatFilter(EMPTY_RANGE) {
+internal object EmptyFilter: LogcatFilter(EMPTY_RANGE) {
   override val displayText: String = ""
 
   override fun matches(message: LogcatMessageWrapper): Boolean = true

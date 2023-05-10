@@ -19,6 +19,7 @@ import com.android.ide.common.gradle.Version
 import com.android.ide.common.repository.GradleCoordinate
 import com.android.manifmerger.ManifestSystemProperty
 import com.android.sdklib.SdkVersionInfo
+import com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.model.AndroidModel
@@ -26,7 +27,6 @@ import com.android.tools.idea.projectsystem.DependencyScopeType.ANDROID_TEST
 import com.android.tools.idea.projectsystem.DependencyScopeType.MAIN
 import com.android.tools.idea.projectsystem.DependencyScopeType.UNIT_TEST
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.gradleModule
 import com.google.common.truth.Expect
@@ -34,7 +34,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
 import java.io.File
 
-data class GradleProjectSystemIntegrationTest(
+data class GradleModuleSystemIntegrationTest(
   override val name: String,
   override val testProject: TestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
@@ -44,7 +44,7 @@ data class GradleProjectSystemIntegrationTest(
   companion object {
     val tests =
       listOf(
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "manifestOverrides",
           testProject = TestProject.MULTI_FLAVOR
         ) { project, expect ->
@@ -66,7 +66,7 @@ data class GradleProjectSystemIntegrationTest(
           expect.that(overrides[ManifestSystemProperty.Application.TEST_ONLY]).isNull()
           expect.that(ManifestSystemProperty.values.size).isEqualTo(15)
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "manifestOverrides_firstXyzSecondXyzRelease",
           testProject = TestProject.MULTI_FLAVOR_SWITCH_VARIANT
         ) { project, expect ->
@@ -88,7 +88,7 @@ data class GradleProjectSystemIntegrationTest(
           expect.that(overrides[ManifestSystemProperty.Application.TEST_ONLY]).isNull()
           expect.that(ManifestSystemProperty.values.size).isEqualTo(15)
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "manifestOverridesInLibrary",
           testProject = TestProject.INCLUDE_FROM_LIB
         ) { project, expect ->
@@ -103,7 +103,7 @@ data class GradleProjectSystemIntegrationTest(
             )
           )
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "manifestOverridesInSeparateTest",
           testProject = TestProject.TEST_ONLY_MODULE
         ) { project, expect ->
@@ -116,54 +116,21 @@ data class GradleProjectSystemIntegrationTest(
             )
           )
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "packageName",
           testProject = TestProject.MULTI_FLAVOR
         ) { project, expect ->
           val packageName = project.gradleModule(":app")!!.getModuleSystem().getPackageName()
           expect.that(packageName).isEqualTo("com.example.multiflavor")
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "packageName_firstXyzSecondXyzRelease",
           testProject = TestProject.MULTI_FLAVOR_SWITCH_VARIANT
         ) { project, expect ->
           val packageName = project.gradleModule(":app")!!.getModuleSystem().getPackageName()
           expect.that(packageName).isEqualTo("com.example.multiflavor")
         },
-        GradleProjectSystemIntegrationTest(
-          name = "isValidAndroidManifestPackage",
-          testProject = TestProject.TRANSITIVE_DEPENDENCIES
-        ) { project, expect ->
-          val projectSystem = project.getProjectSystem()
-          // All namespaces and superpackages of namespaces should resolve
-          listOf(
-            "com",
-            "com.example",
-            "com.example.alruiz",
-            "com.example.alruiz.transitive_dependencies",
-            "com.example.library1",
-            "com.example.library2",
-          ).forEach { packageName ->
-            expect.that(projectSystem.isNamespaceOrParentPackage(packageName))
-              .named("projectSystem.isValidAndroidManifestPackage(\"$packageName\")")
-              .isTrue()
-          }
-          listOf(
-            // R classes have to have a package
-            "",
-            // Substrings of valid packages should not resolve
-            "co",
-            "com.exampl",
-            // Nor should subpackages
-            "com.example.library1.other",
-            "com.example.library3",
-          ).forEach { packageName ->
-            expect.that(projectSystem.isNamespaceOrParentPackage(packageName))
-              .named("projectSystem.isValidAndroidManifestPackage(\"$packageName\")")
-              .isFalse()
-          }
-        },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "allApplicationIds",
           testProject = TestProject.MULTI_FLAVOR
         ) { project, expect ->
@@ -181,7 +148,7 @@ data class GradleProjectSystemIntegrationTest(
             )
           )
         },
-        GradleProjectSystemIntegrationTest(
+        GradleModuleSystemIntegrationTest(
           name = "getResolvedDependency",
           testProject = TestProject.SIMPLE_APPLICATION
         ) { project, expect ->

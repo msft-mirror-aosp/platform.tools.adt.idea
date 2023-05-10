@@ -1291,9 +1291,6 @@ fun setupTestProjectFromAndroidModel(
     override fun getAndroidFacetsWithPackageName(project: Project, packageName: String): Collection<AndroidFacet> =
       gradleProjectSystem.getAndroidFacetsWithPackageName(project, packageName)
 
-    override fun isNamespaceOrParentPackage(packageName: String): Boolean =
-      gradleProjectSystem.isNamespaceOrParentPackage(packageName)
-
     override fun getBootClasspath(module: Module): Collection<String> {
       return emptyList()
     }

@@ -45,8 +45,7 @@ internal class AndroidLogcatFilterHistory(
   fun add(filterParser: LogcatFilterParser, filter: String, isFavorite: Boolean) {
     remove(filter)
 
-    // matchCase is unused so just pass in `true`
-    fun isNamed() = filterParser.parse(filter, matchCase = true)?.filterName != null
+    fun isNamed() = filterParser.parse(filter)?.filterName != null
     when {
       isFavorite -> favorites.add(0, filter)
       isNamed() -> named.add(0, filter)

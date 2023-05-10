@@ -65,11 +65,6 @@ import perfetto.protos.PerfettoTrace
 import java.awt.Cursor
 import java.awt.HeadlessException
 import java.awt.Point
-import java.awt.event.KeyEvent.VK_A
-import java.awt.event.KeyEvent.VK_D
-import java.awt.event.KeyEvent.VK_S
-import java.awt.event.KeyEvent.VK_SPACE
-import java.awt.event.KeyEvent.VK_W
 import javax.swing.JLabel
 import javax.swing.SwingUtilities
 
@@ -318,22 +313,22 @@ class CpuCaptureStageViewTest {
 
     // Press W to zoom in.
     ui.keyboard.setFocus(stageView.trackGroupList.component)
-    ui.keyboard.press(VK_W)
-    ui.keyboard.release(VK_W)
+    ui.keyboard.press(FakeKeyboard.Key.W)
+    ui.keyboard.release(FakeKeyboard.Key.W)
     assertThat(selectionRange.length).isLessThan(rangeLength)
 
     // Press S to zoom out.
     rangeLength = selectionRange.length
-    ui.keyboard.press(VK_S)
-    ui.keyboard.release(VK_S)
+    ui.keyboard.press(FakeKeyboard.Key.S)
+    ui.keyboard.release(FakeKeyboard.Key.S)
     assertThat(selectionRange.length).isGreaterThan(rangeLength)
 
     // Press A to pan left.
     // First select a small range.
     selectionRange.set(selectionRange.min + 100.0, selectionRange.min + 200.0)
     var oldRange = Range(selectionRange)
-    ui.keyboard.press(VK_A)
-    ui.keyboard.release(VK_A)
+    ui.keyboard.press(FakeKeyboard.Key.A)
+    ui.keyboard.release(FakeKeyboard.Key.A)
     assertThat(selectionRange.min).isLessThan(oldRange.min)
     assertThat(selectionRange.max).isLessThan(oldRange.max)
 
@@ -341,8 +336,8 @@ class CpuCaptureStageViewTest {
     // First select a small range.
     selectionRange.set(selectionRange.min + 100.0, selectionRange.min + 200.0)
     oldRange = Range(selectionRange)
-    ui.keyboard.press(VK_D)
-    ui.keyboard.release(VK_D)
+    ui.keyboard.press(FakeKeyboard.Key.D)
+    ui.keyboard.release(FakeKeyboard.Key.D)
     assertThat(selectionRange.min).isGreaterThan(oldRange.min)
     assertThat(selectionRange.max).isGreaterThan(oldRange.max)
   }
@@ -375,12 +370,12 @@ class CpuCaptureStageViewTest {
     selectionRange.set(selectionRange.min + (selectionRange.max - selectionRange.min) / 2, selectionRange.max)
     val oldRange = Range(selectionRange)
     ui.keyboard.setFocus(stageView.trackGroupList.component)
-    ui.keyboard.press(VK_SPACE)
+    ui.keyboard.press(FakeKeyboard.Key.SPACE)
     ui.mouse.press(0, 0)
     // Pan right to shift the range left.
     ui.mouse.dragDelta(10, 0)
     try {
-      ui.keyboard.release(VK_SPACE)
+      ui.keyboard.release(FakeKeyboard.Key.SPACE)
     }
     catch (ignored: HeadlessException) {
       // JList#setDragEnabled doesn't support headless mode but it doesn't matter for this test so we can safely ignore it.

@@ -22,6 +22,8 @@ import com.android.tools.idea.logcat.filters.LogcatFilterParser
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.runInEdt
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.util.ui.JBUI
@@ -44,20 +46,19 @@ internal class LogcatHeaderPanel(
   val logcatPresenter: LogcatPresenter,
   private val filterParser: LogcatFilterParser,
   filter: String,
-  filterMatchCase: Boolean,
   initialDevice: Device?,
 ) : JPanel() {
   private val deviceComboBox = DeviceComboBox(project, initialDevice)
-  private val filterTextField = FilterTextField(project, logcatPresenter, filterParser, filter, filterMatchCase)
+  private val filterTextField = FilterTextField(project, logcatPresenter, filterParser, filter)
   private val helpIcon: JLabel = JLabel(AllIcons.General.ContextHelp)
 
   init {
     filterTextField.apply {
       font = Font.getFont(Font.MONOSPACED)
-      addFilterChangedListener(object : FilterTextField.FilterChangedListener {
-        override fun onFilterChanged(filter: String, matchCase: Boolean) {
+      addDocumentListener(object : DocumentListener {
+        override fun documentChanged(event: DocumentEvent) {
           runInEdt {
-            logcatPresenter.applyFilter(filterParser.parse(filter, matchCase))
+            logcatPresenter.applyFilter(filterParser.parse(text))
           }
         }
       })
@@ -87,8 +88,6 @@ internal class LogcatHeaderPanel(
     set(value) {
       filterTextField.text = value
     }
-
-  val filterMatchCase: Boolean get() = filterTextField.matchCase
 
   fun getSelectedDevice(): Device? = deviceComboBox.selectedItem as? Device
 

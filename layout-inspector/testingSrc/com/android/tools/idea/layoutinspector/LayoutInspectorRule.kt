@@ -222,8 +222,6 @@ class LayoutInspectorRule(
 
   lateinit var inspector: LayoutInspector
     private set
-  lateinit var fakeForegroundProcessDetection: FakeForegroundProcessDetection
-    private set
   lateinit var inspectorClient: InspectorClient
     private set
   lateinit var inspectorModel: InspectorModel
@@ -273,15 +271,13 @@ class LayoutInspectorRule(
       }
     }
 
-    fakeForegroundProcessDetection = FakeForegroundProcessDetection()
-
     // This factory will be triggered when LayoutInspector is created
     val treeSettings = FakeTreeSettings()
     inspector = LayoutInspector(
       coroutineScope = layoutInspectorCoroutineScope,
       processModel = processes,
       deviceModel = deviceModel,
-      foregroundProcessDetection = fakeForegroundProcessDetection,
+      foregroundProcessDetection = null,
       inspectorClientSettings = InspectorClientSettings(project),
       launcher = launcher,
       layoutInspectorModel = inspectorModel,

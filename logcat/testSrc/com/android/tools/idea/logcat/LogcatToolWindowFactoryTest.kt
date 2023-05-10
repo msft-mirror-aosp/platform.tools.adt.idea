@@ -115,7 +115,6 @@ class LogcatToolWindowFactoryTest {
       device = null,
       FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(15))),
       "filter",
-      filterMatchCase = true,
       isSoftWrap = false)
 
     val logcatMainPanel = logcatToolWindowFactory()

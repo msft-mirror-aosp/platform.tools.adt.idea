@@ -219,7 +219,7 @@ maven_repository(
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.support-v4_27.1.1",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
-        "@maven//:com.android.tools.build.bundletool_1.15.0",
+        "@maven//:com.android.tools.build.bundletool_1.14.1",
         "@maven//:com.android.tools.build.gradle_7.1.0",
         "@maven//:com.android.tools.build.gradle_7.2.0",
         "@maven//:com.android.tools.build.gradle_7.3.1",
@@ -1676,7 +1676,7 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.AddAllLayoutItemsFromPaletteTest"],
     tags = COMMON_TAGS + [
         "no_windows",
-        "qa_fast",
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

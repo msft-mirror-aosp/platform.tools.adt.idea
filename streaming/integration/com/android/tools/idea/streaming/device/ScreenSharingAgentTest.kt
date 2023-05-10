@@ -20,6 +20,7 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.TestUtils.getBinPath
 import com.android.testutils.TestUtils.resolveWorkspacePath
+import com.android.tools.adtui.swing.FakeKeyboard
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.asdriver.tests.Adb
 import com.android.tools.asdriver.tests.AndroidSystem
@@ -51,7 +52,6 @@ import java.awt.Component
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.event.KeyEvent
-import java.awt.event.KeyEvent.VK_SHIFT
 import java.nio.file.Files
 import java.util.regex.Pattern
 import javax.swing.JScrollPane
@@ -314,9 +314,9 @@ class ScreenSharingAgentTest {
           for (y in 150..250 step 10) {
             val rotation = (((x + y) / 10) % 10 + 1).let { if (it % 2 == 0) it / 2 else (it + 1) / -2 }
             // Java fakes horizontal scrolling by saying the shift key is down
-            fakeUi.keyboard.press(VK_SHIFT)
+            fakeUi.keyboard.press(FakeKeyboard.Key.SHIFT)
             fakeUi.mouse.wheel(x, y, rotation)
-            fakeUi.keyboard.release(VK_SHIFT)
+            fakeUi.keyboard.release(FakeKeyboard.Key.SHIFT)
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
             waitForLog(Point(x, y).scrollLog(h = rotation * ANDROID_SCROLL_ADJUSTMENT_FACTOR), INPUT_TIMEOUT)

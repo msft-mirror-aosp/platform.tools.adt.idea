@@ -27,12 +27,16 @@ class PairDevicesUsingWiFiAction : AnAction(StudioIcons.Avd.PAIR_OVER_WIFI) {
     super.update(e)
     e.presentation.isEnabledAndVisible = false
     val project = e.project ?: return
-    e.presentation.isEnabledAndVisible = true
+    e.presentation.isEnabledAndVisible = PairDevicesUsingWiFiService.getInstance(project).isFeatureEnabled
   }
 
   @UiThread
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
+    if (!PairDevicesUsingWiFiService.getInstance(project).isFeatureEnabled) {
+      return;
+    }
+
     val controller = PairDevicesUsingWiFiService.getInstance(project).createPairingDialogController()
     controller.showDialog()
   }

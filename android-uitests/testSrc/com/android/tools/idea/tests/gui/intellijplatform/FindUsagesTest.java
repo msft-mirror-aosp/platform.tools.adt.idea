@@ -90,7 +90,7 @@ public class FindUsagesTest {
       .getEditor();
 
     // Search for method usages in java and kotlin
-    editor.open(MAIN_ACTIVITY_FILE)
+    editor.open(MAIN_ACTIVITY_FILE, EditorFixture.Tab.EDITOR)
       .select(String.format("addNewCar()"));
     invokeFindUsages();
     TimeUnit.SECONDS.sleep(5); // Wait for search to complete
@@ -98,7 +98,7 @@ public class FindUsagesTest {
     assertTrue(ideFrame.findToolWindowContains("MainActivity"));
     assertFalse(ideFrame.findToolWindowContains("Inventory"));
 
-    editor.open(INVENTORY_FILE)
+    editor.open(INVENTORY_FILE, EditorFixture.Tab.EDITOR)
       .select(String.format("fun (addNewCar)"));
     invokeFindUsages();
     TimeUnit.SECONDS.sleep(5);
@@ -107,7 +107,7 @@ public class FindUsagesTest {
     assertTrue(ideFrame.findToolWindowContains("MainActivity"));
 
     // Search for class usages in Java/Kotlin classes
-    editor.open(CAR_FILE)
+    editor.open(CAR_FILE, EditorFixture.Tab.EDITOR)
       .select(String.format("public class (Car)"));
     invokeFindUsages();
     TimeUnit.SECONDS.sleep(5); // Wait for search to complete

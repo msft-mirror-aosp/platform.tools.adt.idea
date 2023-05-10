@@ -44,7 +44,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.random.Random
 
 private class TestSingleThreadExecutorService(private val delegate: ExecutorService): AbstractExecutorService(), SingleThreadExecutorService {
   override val isBusy: Boolean = false
@@ -59,26 +58,13 @@ private class TestSingleThreadExecutorService(private val delegate: ExecutorServ
   override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = delegate.awaitTermination(timeout, unit)
 }
 
-fun getRandomTopic(): RenderingTopic =
-  RenderingTopic.values()[Random.nextInt(0, RenderingTopic.values().size)]
-
-fun getLowPriorityRenderingTopicForTest(): RenderingTopic {
-  return RenderingTopic.values().minByOrNull { it.priority }!!
-}
-
-fun getHighPriorityRenderingTopicForTest(): RenderingTopic {
-  return RenderingTopic.values().maxByOrNull { it.priority }!!
-}
-
-// The topic should only affect cancellations, so by default use random topics to
-// verify that the tests that are not related with cancellations are not affected by them.
 private fun RenderExecutor.runAsyncActionWithTestDefault(queueingTimeout: Long = 1,
                                                          queueingTimeoutUnit: TimeUnit = TimeUnit.SECONDS,
                                                          actionTimeout: Long = 1,
                                                          actionTimeoutUnit: TimeUnit = TimeUnit.SECONDS,
-                                                         topic: RenderingTopic = getRandomTopic(),
+                                                         priority: RenderingPriority = RenderingPriority.HIGH,
                                                          runnable: () -> Unit): CompletableFuture<Void> =
-  runAsyncActionWithTimeout(queueingTimeout, queueingTimeoutUnit, actionTimeout, actionTimeoutUnit, topic, Callable<Void> {
+  runAsyncActionWithTimeout(queueingTimeout, queueingTimeoutUnit, actionTimeout, actionTimeoutUnit, priority, Callable<Void> {
     runnable()
     null
   })
@@ -91,20 +77,20 @@ class RenderExecutorTest {
     val actionIsRunningLatch = CountDownLatch(4)
     val order = mutableListOf<Int>()
     try {
-      executor.runAsyncActionWithTestDefault(topic = getHighPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault {
         actionIsRunningLatch.countDown()
         Thread.sleep(500)
         order.add(1)
       }
-      executor.runAsyncActionWithTestDefault(topic = getLowPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault(priority = RenderingPriority.LOW) {
         order.add(3)
         actionIsRunningLatch.countDown()
       }
-      executor.runAsyncActionWithTestDefault(topic = getLowPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault(priority = RenderingPriority.LOW) {
         order.add(4)
         actionIsRunningLatch.countDown()
       }
-      executor.runAsyncActionWithTestDefault(topic = getHighPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault() {
         order.add(2)
         actionIsRunningLatch.countDown()
       }
@@ -175,11 +161,11 @@ class RenderExecutorTest {
     val lastToExecute = AtomicInteger(0)
 
     repeat(50) {
-      executor.runAsyncActionWithTestDefault(topic = getHighPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault {
         counterHighPriority.incrementAndGet()
         lastToExecute.set(2 * it + 1)
       }
-      executor.runAsyncActionWithTestDefault(topic = getLowPriorityRenderingTopicForTest()) {
+      executor.runAsyncActionWithTestDefault(priority = RenderingPriority.LOW) {
         counterLowPriority.incrementAndGet()
         lastToExecute.set(2 * it + 2)
       }
@@ -254,7 +240,7 @@ class RenderExecutorTest {
       val future = executor.runAsyncActionWithTimeout(
         queueingTimeout = 0, queueingTimeoutUnit = TimeUnit.SECONDS,
         actionTimeout = 10, actionTimeoutUnit = TimeUnit.SECONDS,
-        renderingTopic = getRandomTopic()) {
+        priority = RenderingPriority.HIGH) {
         actionIsRunningLatch.countDown()
         completeActionLatch.await()
       }
@@ -351,7 +337,7 @@ class RenderExecutorTest {
 
     val future = executor.runAsyncActionWithTimeout(
       queueingTimeout = 10, queueingTimeoutUnit = TimeUnit.SECONDS,
-      actionTimeout = 10, actionTimeoutUnit = TimeUnit.SECONDS, renderingTopic = getRandomTopic()) {
+      actionTimeout = 10, actionTimeoutUnit = TimeUnit.SECONDS, priority = RenderingPriority.HIGH) {
       runBlocking {
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
           throw IllegalArgumentException()
@@ -364,156 +350,27 @@ class RenderExecutorTest {
   }
 
   @Test
-  fun testCancelLowerPriority() {
+  fun testCancelLowPriority() {
     val actionExecutor = OnDemandExecutorService()
     val timeoutExecutorProvider = VirtualTimeScheduler()
     val executor = RenderExecutor.createForTests(executorService = TestSingleThreadExecutorService(actionExecutor),
                                                  scheduledExecutorService = timeoutExecutorProvider)
-    val highPriorityTopic = getHighPriorityRenderingTopicForTest()
-    val lowPriorityTopic = getLowPriorityRenderingTopicForTest()
-    var counterHighPriority = AtomicInteger(0)
-    var counterLowPriority = AtomicInteger(0)
+    val counterHighPriority = AtomicInteger(0)
+    val counterLowPriority = AtomicInteger(0)
 
-    // Cancelling low priority only
     repeat(10) {
-      executor.runAsyncActionWithTestDefault(topic = highPriorityTopic) {
+      executor.runAsyncActionWithTestDefault {
         counterHighPriority.incrementAndGet()
       }
-      executor.runAsyncActionWithTestDefault(topic = lowPriorityTopic) {
+      executor.runAsyncActionWithTestDefault(priority = RenderingPriority.LOW) {
         counterLowPriority.incrementAndGet()
       }
     }
-    var cancellationCount = executor.cancelLowerPriorityActions(lowPriorityTopic.priority, false)
-    var numActions = actionExecutor.runAll()
+    executor.cancelLowerPriorityActions(RenderingPriority.LOW)
+    val numActions = actionExecutor.runAll()
     assertEquals(20, numActions)
-    assertEquals(10, cancellationCount)
+    // Only high priority tasks will run, as the low priority ones have been cancelled
     assertEquals(10, counterHighPriority.get())
     assertEquals(0, counterLowPriority.get())
-
-    // Cancelling high priority should cancel everything
-    counterHighPriority = AtomicInteger(0)
-    counterLowPriority = AtomicInteger(0)
-    repeat(10) {
-      executor.runAsyncActionWithTestDefault(topic = highPriorityTopic) {
-        counterHighPriority.incrementAndGet()
-      }
-      executor.runAsyncActionWithTestDefault(topic = lowPriorityTopic) {
-        counterLowPriority.incrementAndGet()
-      }
-    }
-    cancellationCount = executor.cancelLowerPriorityActions(highPriorityTopic.priority, false)
-    numActions = actionExecutor.runAll()
-    assertEquals(20, numActions)
-    assertEquals(20, cancellationCount)
-    assertEquals(0, counterHighPriority.get())
-    assertEquals(0, counterLowPriority.get())
-  }
-
-  @Test
-  fun testCancelByTopic() {
-    val actionExecutor = OnDemandExecutorService()
-    val timeoutExecutorProvider = VirtualTimeScheduler()
-    val executor = RenderExecutor.createForTests(executorService = TestSingleThreadExecutorService(actionExecutor),
-                                                 scheduledExecutorService = timeoutExecutorProvider)
-
-    val highPriorityTopic = getHighPriorityRenderingTopicForTest()
-    val lowPriorityTopic = getLowPriorityRenderingTopicForTest()
-    var counterHighPriority = AtomicInteger(0)
-    var counterLowPriority = AtomicInteger(0)
-
-    // Cancelling low priority only
-    repeat(10) {
-      executor.runAsyncActionWithTestDefault(topic = highPriorityTopic) {
-        counterHighPriority.incrementAndGet()
-      }
-      executor.runAsyncActionWithTestDefault(topic = lowPriorityTopic) {
-        counterLowPriority.incrementAndGet()
-      }
-    }
-    var cancellationCount = executor.cancelActionsByTopic(listOf(lowPriorityTopic), false)
-    var numActions = actionExecutor.runAll()
-    assertEquals(20, numActions)
-    assertEquals(10, cancellationCount)
-    assertEquals(10, counterHighPriority.get())
-    assertEquals(0, counterLowPriority.get())
-
-    // Cancelling high priority only
-    counterHighPriority = AtomicInteger(0)
-    counterLowPriority = AtomicInteger(0)
-    repeat(10) {
-      executor.runAsyncActionWithTestDefault(topic = highPriorityTopic) {
-        counterHighPriority.incrementAndGet()
-      }
-      executor.runAsyncActionWithTestDefault(topic = lowPriorityTopic) {
-        counterLowPriority.incrementAndGet()
-      }
-    }
-    cancellationCount = executor.cancelActionsByTopic(listOf(highPriorityTopic), false)
-    numActions = actionExecutor.runAll()
-    assertEquals(20, numActions)
-    assertEquals(10, cancellationCount)
-    assertEquals(0, counterHighPriority.get())
-    assertEquals(10, counterLowPriority.get())
-  }
-
-  @Test
-  fun testCancelAndInterrupt() {
-    val executor = RenderExecutor.create()
-
-    lateinit var actionIsRunningLatch: CountDownLatch
-    lateinit var completeActionLatch: CountDownLatch
-    var completedWithoutInterruption: Boolean = false
-
-    val doRunAsync: (RenderingTopic) -> Unit = { topic ->
-      completedWithoutInterruption = false
-      actionIsRunningLatch = CountDownLatch(1)
-      completeActionLatch = CountDownLatch(1)
-      executor.runAsyncActionWithTestDefault(actionTimeout = 3, topic = topic) {
-        actionIsRunningLatch.countDown()
-        try {
-          Thread.sleep(1500)
-          completedWithoutInterruption = true
-        } finally {
-          completeActionLatch.countDown()
-        }
-      }
-    }
-
-    try {
-      doRunAsync(getHighPriorityRenderingTopicForTest())
-      assertTrue(actionIsRunningLatch.await(5, TimeUnit.SECONDS))
-      var cancellationCount = executor.cancelLowerPriorityActions(getHighPriorityRenderingTopicForTest().priority, true)
-      assertEquals(1, cancellationCount)
-      assertTrue(completeActionLatch.await(5, TimeUnit.SECONDS))
-      // Action should have been interrupted
-      assertFalse(completedWithoutInterruption)
-
-      doRunAsync(getHighPriorityRenderingTopicForTest())
-      assertTrue(actionIsRunningLatch.await(5, TimeUnit.SECONDS))
-      cancellationCount =  executor.cancelActionsByTopic(listOf(getHighPriorityRenderingTopicForTest()), true)
-      assertEquals(1, cancellationCount)
-      assertTrue(completeActionLatch.await(5, TimeUnit.SECONDS))
-      // Action should have been interrupted
-      assertFalse(completedWithoutInterruption)
-
-      doRunAsync(getHighPriorityRenderingTopicForTest())
-      assertTrue(actionIsRunningLatch.await(5, TimeUnit.SECONDS))
-      cancellationCount = executor.cancelLowerPriorityActions(getLowPriorityRenderingTopicForTest().priority, true)
-      assertEquals(0, cancellationCount)
-      assertTrue(completeActionLatch.await(5, TimeUnit.SECONDS))
-      // Cancellation's priority was lower than the action's priority
-      assertTrue(completedWithoutInterruption)
-
-      doRunAsync(getLowPriorityRenderingTopicForTest())
-      assertTrue(actionIsRunningLatch.await(5, TimeUnit.SECONDS))
-      cancellationCount =  executor.cancelActionsByTopic(listOf(getHighPriorityRenderingTopicForTest()), true)
-      assertEquals(0, cancellationCount)
-      assertTrue(completeActionLatch.await(5, TimeUnit.SECONDS))
-      // Cancellation's topic was different from the action's topic
-      assertTrue(completedWithoutInterruption)
-    }
-    finally {
-      executor.shutdown()
-    }
   }
 }

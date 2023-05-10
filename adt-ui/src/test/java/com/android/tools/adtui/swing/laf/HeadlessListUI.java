@@ -17,16 +17,15 @@ package com.android.tools.adtui.swing.laf;
 
 import com.android.tools.adtui.swing.FakeKeyboard;
 import com.android.tools.adtui.swing.FakeMouse;
-import java.awt.HeadlessException;
-import java.awt.List;
+
+import javax.swing.*;
+import javax.swing.plaf.basic.BasicGraphicsUtils;
+import javax.swing.plaf.basic.BasicListUI;
+import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import javax.swing.ListModel;
-import javax.swing.ListSelectionModel;
-import javax.swing.plaf.basic.BasicGraphicsUtils;
-import javax.swing.plaf.basic.BasicListUI;
 
 /**
  * A stubbed {@link BasicListUI} for use in headless unit tests, where some functionality is
@@ -35,7 +34,7 @@ import javax.swing.plaf.basic.BasicListUI;
  * {@link FakeKeyboard}.
  *
  * To use, you must remember to call {@code someList.setUI(new HeadlessListUI()} before calling
- * methods like {@link FakeMouse#click(int, int)} or {@link FakeKeyboard#press}.
+ * methods like {@link FakeMouse#click(int, int)} or {@link FakeKeyboard#press(FakeKeyboard.Key)}.
  *
  * NOTE: Changing the UI of a component can subtly change its behavior! This class may need to be
  * updated in the future to add more functionality, so it more closely matches its parent class.

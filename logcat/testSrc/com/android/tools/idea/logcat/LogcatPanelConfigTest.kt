@@ -52,7 +52,7 @@ class LogcatPanelConfigTest {
   }
 
   @Test
-  fun restoreDeviceStateFromPreviousVersion_physicalDevice() {
+  fun restoreDeviceStateFromPreviousVersion_phisicalDevice() {
     val state = """
         {
           'device': {
@@ -160,6 +160,5 @@ private fun logcatPanelConfig(
   device: Device? = null,
   formattingConfig: FormattingConfig = FormattingConfig.Preset(STANDARD),
   filter: String = "",
-  filterMatchCase: Boolean = false,
   isSoftWrap: Boolean = false,
-) = LogcatPanelConfig(device, formattingConfig, filter, filterMatchCase, isSoftWrap)
+) = LogcatPanelConfig(device, formattingConfig, filter, isSoftWrap)

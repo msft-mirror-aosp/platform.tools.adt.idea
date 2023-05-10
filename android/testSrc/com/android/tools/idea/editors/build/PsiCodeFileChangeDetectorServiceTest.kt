@@ -5,14 +5,14 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.executeAndSave
 import com.android.tools.idea.testing.insertText
 import com.android.tools.idea.testing.replaceText
-import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Semaphore
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -100,26 +100,20 @@ class PsiCodeFileChangeDetectorServiceTest {
     // New files are not part of the existing build so they can not immediately be used for previews. Because of this, we do not want
     // to mark them as out of date until the user modifies them.
 
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles).isEmpty()
+    assertTrue(psiCodeFileChangeDetectorService.outOfDateFiles.isEmpty())
   }
 
   @Test
   fun `file changes are detected in relevant languages`() = runBlocking {
-    val flowUpdates: MutableList<List<String>> = mutableListOf()
-
-    // Make sure that each change is collected before we move onto the next one. Otherwise, some changes are coalesced and may be skipped.
-    val semaphore = Semaphore(permits = 1, acquiredPermits = 1)
-
+    val flowUpdates = StringBuilder()
     val flowJob = launch(workerThread) {
       psiCodeFileChangeDetectorService.fileUpdatesFlow
         .take(6) // We expect 6 changes
         .collect {
-          flowUpdates.add(it.map(PsiFile::toString))
-          semaphore.release()
+          flowUpdates.appendLine(it)
         }
     }
 
-    semaphore.acquire()
     WriteCommandAction.runWriteCommandAction(projectRule.project) {
       fixture.openFileInEditor(kotlinFile.virtualFile)
       fixture.editor.executeAndSave {
@@ -130,59 +124,44 @@ class PsiCodeFileChangeDetectorServiceTest {
         """.trimIndent())
       }
     }
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles.map { it.name }).containsExactly("test.kt")
-
-    semaphore.acquire()
+    assertEquals("test.kt", psiCodeFileChangeDetectorService.outOfDateFiles.joinToString { it.name })
     psiCodeFileChangeDetectorService.markAsUpToDate(setOf(kotlinFile))
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles).isEmpty()
+    assertTrue(psiCodeFileChangeDetectorService.outOfDateFiles.isEmpty())
 
-    // The XML file should not trigger an update, since only Java and Kotlin files are tracked. Don't acquire the semaphore, since it won't
-    // be released above. (And if it does trigger an update, verifications below should catch it.)
-    WriteCommandAction.runWriteCommandAction(projectRule.project) {
-      fixture.openFileInEditor(xmlFile.virtualFile)
-      fixture.editor.executeAndSave {
-        replaceText("<!--INSERT XML-->", "<a></a>")
-      }
-    }
-
-    semaphore.acquire()
     WriteCommandAction.runWriteCommandAction(projectRule.project) {
       fixture.openFileInEditor(kotlinFile.virtualFile)
       fixture.editor.executeAndSave {
         insertText("\nfun newMethod() {}")
       }
-    }
-
-    semaphore.acquire()
-    WriteCommandAction.runWriteCommandAction(projectRule.project) {
       fixture.openFileInEditor(secondKotlinFile.virtualFile)
       fixture.editor.executeAndSave {
         insertText("\nfun newMethod() {}")
       }
-    }
-
-    semaphore.acquire()
-    WriteCommandAction.runWriteCommandAction(projectRule.project) {
       fixture.openFileInEditor(javaFile.virtualFile)
       fixture.editor.executeAndSave {
         replaceText("// INSERT METHOD", "public void test() {}")
       }
+      fixture.openFileInEditor(xmlFile.virtualFile)
+      fixture.editor.executeAndSave {
+        replaceText("<!--INSERT XML-->", "<a></a>")
+      }
     }
-
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles.map { it.name })
-      .containsExactly("MyClass.java", "otherFile.kt", "test.kt")
+    assertEquals("""
+      MyClass.java
+      otherFile.kt
+      test.kt
+    """.trimIndent(), psiCodeFileChangeDetectorService.outOfDateFiles.map { it.name }.sorted().joinToString("\n"))
 
     // Wait for all the changes to have been collected
     flowJob.join()
-    assertThat(flowUpdates)
-      .containsExactly(
-        listOf<String>(),
-        listOf("KtFile: test.kt"),
-        listOf<List<String>>(),
-        listOf("KtFile: test.kt"),
-        listOf("KtFile: test.kt", "KtFile: otherFile.kt"),
-        listOf("KtFile: test.kt", "KtFile: otherFile.kt", "PsiJavaFile:MyClass.java"),
-      ).inOrder()
+    assertEquals("""
+      []
+      [KtFile: test.kt]
+      []
+      [KtFile: test.kt]
+      [KtFile: test.kt, KtFile: otherFile.kt]
+      [KtFile: test.kt, KtFile: otherFile.kt, PsiJavaFile:MyClass.java]
+    """.trimIndent(), flowUpdates.toString().trim())
   }
 
   @Test
@@ -200,7 +179,7 @@ class PsiCodeFileChangeDetectorServiceTest {
         replaceText("// INSERT METHOD", "// INSERT METHOD MORE COMMENT")
       }
     }
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles).isEmpty()
+    assertTrue(psiCodeFileChangeDetectorService.outOfDateFiles.isEmpty())
   }
 
   @Test
@@ -211,7 +190,7 @@ class PsiCodeFileChangeDetectorServiceTest {
         replaceText("primary = 1", "primary = 2")
       }
     }
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles.map { it.name }).containsExactly("test.kt")
+    assertEquals("test.kt",  psiCodeFileChangeDetectorService.outOfDateFiles.map { it.name }.sorted().joinToString("\n"))
   }
 
   @Test
@@ -222,6 +201,6 @@ class PsiCodeFileChangeDetectorServiceTest {
         replaceText("AnnotationContent", "AnnotationContent2")
       }
     }
-    assertThat(psiCodeFileChangeDetectorService.outOfDateFiles).isEmpty()
+    assertTrue(psiCodeFileChangeDetectorService.outOfDateFiles.isEmpty())
   }
 }

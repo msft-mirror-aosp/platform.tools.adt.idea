@@ -28,7 +28,7 @@ import com.android.tools.adtui.ImageUtils;
 import com.android.testutils.ImageDiffUtil;
 import com.android.tools.idea.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.rendering.RenderAsyncActionExecutor;
+import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingPriority;
 import com.android.tools.rendering.RenderLogger;
 import com.android.tools.rendering.RenderResult;
 import com.google.common.util.concurrent.Futures;
@@ -42,8 +42,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -165,7 +163,7 @@ public class RenderTestUtil {
                                              @NotNull VirtualFile file,
                                              @NotNull Configuration configuration,
                                              @NotNull RenderLogger logger,
-                                             @NotNull RenderAsyncActionExecutor.RenderingTopic topic) {
+                                             @NotNull RenderingPriority priority) {
     Module module = facet.getModule();
     XmlFile xmlFile = (XmlFile)ReadAction.compute(() -> PsiManager.getInstance(module.getProject()).findFile(file));
     assertNotNull(xmlFile);
@@ -173,7 +171,7 @@ public class RenderTestUtil {
     final CompletableFuture<RenderTask> taskFuture = taskBuilder(renderService, facet, configuration, logger)
       .withPsiFile(xmlFile)
       .disableSecurityManager()
-      .withTopic(topic)
+      .withPriority(priority)
       .build();
     RenderTask task = Futures.getUnchecked(taskFuture);
     assertNotNull(task);
@@ -186,7 +184,7 @@ public class RenderTestUtil {
                                        @NotNull RenderLogger logger,
                                        @NotNull Consumer<RenderTask> f,
                                        boolean layoutScannerEnabled) {
-    final RenderTask task = createRenderTask(facet, file, configuration, logger, RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED);
+    final RenderTask task = createRenderTask(facet, file, configuration, logger, RenderingPriority.HIGH);
     task.setEnableLayoutScanner(layoutScannerEnabled);
     try {
       f.accept(task);
@@ -218,7 +216,7 @@ public class RenderTestUtil {
                                     @NotNull VirtualFile file,
                                     @NotNull Configuration configuration) {
     RenderService renderService = StudioRenderService.getInstance(facet.getModule().getProject());
-    return createRenderTask(facet, file, configuration, StudioRenderServiceKt.createLogger(renderService, facet.getModule().getProject()), RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED);
+    return createRenderTask(facet, file, configuration, StudioRenderServiceKt.createLogger(renderService, facet.getModule().getProject()), RenderingPriority.HIGH);
   }
 
   public static void withRenderTask(@NotNull AndroidFacet facet,
@@ -264,22 +262,6 @@ public class RenderTestUtil {
     image = ImageUtils.scale(image, scale, scale);
 
     checkRenderedImage(image, thumbnailPath.replace('/', separatorChar));
-  }
-
-  @NotNull
-  public static RenderAsyncActionExecutor.RenderingTopic getLowPriorityRenderingTopicForTest() {
-    return Arrays
-      .stream(RenderAsyncActionExecutor.RenderingTopic.values())
-      .min(Comparator.comparingInt(RenderAsyncActionExecutor.RenderingTopic::getPriority))
-      .get();
-  }
-
-  @NotNull
-  public static RenderAsyncActionExecutor.RenderingTopic getHighPriorityRenderingTopicForTest() {
-    return Arrays
-      .stream(RenderAsyncActionExecutor.RenderingTopic.values())
-      .max(Comparator.comparingInt(RenderAsyncActionExecutor.RenderingTopic::getPriority))
-      .get();
   }
 
   @NotNull

@@ -101,7 +101,6 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   private final ButtonDragListener<T> myButtonDragListener;
   private final PropertyChangeListener myMyPropertyChangeListener = this::handlePropertyEvent;
   private FileEditor myFileEditor;
-  private boolean isDisposed = false;
 
   @NotNull private String myContext = "";
 
@@ -158,9 +157,7 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     mySplitter.setLastSize(getInitialSideWidth(Side.RIGHT));
     myModel.setContext(context);
     addToolsToModel(minimizedWindows);
-    if (!isDisposed) {
-      myWorkBenchManager.register(this);
-    }
+    myWorkBenchManager.register(this);
     KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", myMyPropertyChangeListener);
   }
 
@@ -270,7 +267,6 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   @Override
   public void dispose() {
     LOG.debug("dispose");
-    isDisposed = true;
     myWorkBenchManager.unregister(this);
     myDetachedToolWindowManager.unregister(myFileEditor);
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", myMyPropertyChangeListener);

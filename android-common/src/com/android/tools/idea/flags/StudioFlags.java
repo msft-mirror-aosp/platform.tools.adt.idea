@@ -203,7 +203,7 @@ public final class StudioFlags {
     "Configure the max size of the cache used by ProjectSystemClassLoader",
     "Allow configuring the maximum size (in bytes) of the cache used by the ProjectSystemClassLoader to load classes from JAR files. " +
     "Files larger than the cache limit will cause a file miss and the file will need to be read again.",
-    20_000_000L
+    1_000_000L
   );
   //endregion
 
@@ -487,6 +487,13 @@ public final class StudioFlags {
     "Enable and Show ADB Connection Widget",
     "Enables and shows the ADB connection status widget in the status bar",
     false);
+
+  public static final Flag<Boolean> ADB_WIRELESS_PAIRING_ENABLED = Flag.create(
+    RUNDEBUG,
+    "adb.wireless.enabled",
+    "Enable pairing devices through ADB wireless",
+    "Allow pairing new physical device through QR Code pairing via ADB wireless",
+    true);
 
   public static final Flag<Boolean> ADB_SERVER_MANAGEMENT_MODE_SETTINGS_VISIBLE = Flag.create(
     RUNDEBUG,
@@ -910,10 +917,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring;" +
     " not intended for production use due to slowness of video encoding in emulated mode",
-    false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_EMULATORS = Flag.create(
-    DEVICE_MIRRORING, "allow.remote.emulators", "Allow Mirroring of Remote Emulators",
-    "Treats remote emulators the same as physical devices for the purpose of display mirroring",
     false);
   public static final Flag<Boolean> DEVICE_MIRRORING_ADVANCED_TAB_CONTROL = Flag.create(
     DEVICE_MIRRORING, "advanced.tab.control", "Enable closing/opening of Running Devices tabs",
@@ -1537,13 +1540,13 @@ public final class StudioFlags {
       "Set Crashlytics gRpc server address, mainly used for testing purposes.",
       "firebasecrashlytics.googleapis.com");
 
-  public static final Flag<Boolean> CRASHLYTICS_INTEGRATION_TEST_MODE =
+  public static final Flag<Boolean> CRASHLYTICS_GRPC_USE_TRANSPORT_SECURITY =
     Flag.create(
       APP_INSIGHTS,
-      "crashlytics.integration.test.mode",
-      "Crashlytics Integration Test Mode",
-      "Set Crashlytics to be in integration test mode.",
-      false);
+      "crashlytics.grpc.use.transport.security",
+      "Use transport security",
+      "Set Crashlytics gRpc channel to use transport security",
+      true);
 
   public static final Flag<Boolean> PLAY_VITALS_ENABLED =
     Flag.create(

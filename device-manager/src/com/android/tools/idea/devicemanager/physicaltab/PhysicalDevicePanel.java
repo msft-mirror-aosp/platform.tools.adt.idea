@@ -121,6 +121,11 @@ public final class PhysicalDevicePanel extends DevicePanel {
     }
 
     PairDevicesUsingWiFiService service = myPairDevicesUsingWiFiServiceGetInstance.apply(myProject);
+
+    if (!service.isFeatureEnabled()) {
+      return;
+    }
+
     myPairUsingWiFiButton = new JButton("Pair using Wi-Fi");
     myPairUsingWiFiButton.addActionListener(event -> service.createPairingDialogController().showDialog());
   }

@@ -50,6 +50,10 @@ import javax.swing.text.html.HTML
 import javax.swing.text.html.HTMLDocument
 
 class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
+  /** Ensures feature flag is reset after test */
+  @get:Rule
+  val flagRule = FlagRule(StudioFlags.ADB_WIRELESS_PAIRING_ENABLED)
+
   @get:Rule
   val portableUiFontRule = PortableUiFontRule()
 

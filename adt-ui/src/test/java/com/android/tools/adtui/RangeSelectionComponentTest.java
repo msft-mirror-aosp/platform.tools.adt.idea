@@ -16,11 +16,6 @@
 package com.android.tools.adtui;
 
 import static com.google.common.truth.Truth.assertThat;
-import static java.awt.event.KeyEvent.VK_ALT;
-import static java.awt.event.KeyEvent.VK_ESCAPE;
-import static java.awt.event.KeyEvent.VK_LEFT;
-import static java.awt.event.KeyEvent.VK_RIGHT;
-import static java.awt.event.KeyEvent.VK_SHIFT;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -37,6 +32,7 @@ import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.RangeSelectionListener;
 import com.android.tools.adtui.model.RangeSelectionModel;
 import com.android.tools.adtui.model.RangedSeries;
+import com.android.tools.adtui.swing.FakeKeyboard;
 import com.android.tools.adtui.swing.FakeUi;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.EmptyRunnable;
@@ -118,7 +114,7 @@ public class RangeSelectionComponentTest {
     assertThat(model.getSelectionRange().getMax()).isWithin(DELTA).of(60);
     FakeUi ui = new FakeUi(component);
     ui.keyboard.setFocus(component);
-    ui.keyboard.press(VK_ESCAPE);
+    ui.keyboard.press(FakeKeyboard.Key.ESC);
     assertThat(model.getSelectionRange().isEmpty()).isTrue();
   }
 
@@ -326,16 +322,16 @@ public class RangeSelectionComponentTest {
     FakeUi ui = new FakeUi(component);
     ui.keyboard.setFocus(component);
     // Test no modifier keys shifts the entire model left.
-    shiftAndValidateShift(ui, model, VK_LEFT, 9, 19);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.LEFT, 9, 19);
 
     // Test shift expands the selection by shifting the min range but not the max.
-    ui.keyboard.press(VK_SHIFT);
-    shiftAndValidateShift(ui, model, VK_LEFT, 8, 19);
-    ui.keyboard.release(VK_SHIFT);
+    ui.keyboard.press(FakeKeyboard.Key.SHIFT);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.LEFT, 8, 19);
+    ui.keyboard.release(FakeKeyboard.Key.SHIFT);
 
     // Test alt shrinks the selection by shifting the max range but not the min.
-    ui.keyboard.press(VK_ALT);
-    shiftAndValidateShift(ui, model, VK_LEFT, 8,18);
+    ui.keyboard.press(FakeKeyboard.Key.ALT);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.LEFT, 8,18);
   }
 
   @Test
@@ -347,16 +343,16 @@ public class RangeSelectionComponentTest {
     ui.keyboard.setFocus(component);
 
     // Test no modifier keys shifts the entire model right.
-    shiftAndValidateShift(ui, model, VK_RIGHT, 11, 21);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.RIGHT, 11, 21);
 
     // Test shift expands the selection by shifting the max range but not the min.
-    ui.keyboard.press(VK_SHIFT);
-    shiftAndValidateShift(ui, model, VK_RIGHT, 11, 22);
-    ui.keyboard.release(VK_SHIFT);
+    ui.keyboard.press(FakeKeyboard.Key.SHIFT);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.RIGHT, 11, 22);
+    ui.keyboard.release(FakeKeyboard.Key.SHIFT);
 
     // Test alt shrinks the selection by shifting the min range but not the max.
-    ui.keyboard.press(VK_ALT);
-    shiftAndValidateShift(ui, model, VK_RIGHT, 12,22);
+    ui.keyboard.press(FakeKeyboard.Key.ALT);
+    shiftAndValidateShift(ui, model, FakeKeyboard.Key.RIGHT, 12,22);
   }
 
   @Test
@@ -484,7 +480,7 @@ public class RangeSelectionComponentTest {
     assertThat(component.getCursor()).isEqualTo(Cursor.getDefaultCursor());
   }
 
-  private static void shiftAndValidateShift(FakeUi ui, RangeSelectionModel model, int key, int min, int max) {
+  private static void shiftAndValidateShift(FakeUi ui, RangeSelectionModel model, FakeKeyboard.Key key, int min, int max) {
     ui.keyboard.press(key);
     assertThat(model.getSelectionRange().getMin()).isWithin(DELTA).of(min);
     assertThat(model.getSelectionRange().getMax()).isWithin(DELTA).of(max);

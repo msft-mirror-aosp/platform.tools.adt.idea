@@ -246,7 +246,6 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
    */
   internal class GradleProjectCensus(
     val packageToAndroidFacets: Map<String, List<AndroidFacet>>,
-    val namespacesWithPrefixes: Set<String>,
   )
 
   private fun getGradleProjectCensus(project: Project): GradleProjectCensus {
@@ -257,17 +256,8 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
         val namespace = GradleAndroidModel.get(androidFacet)?.androidProject?.namespace ?: continue
         packageToAndroidFacets.getOrPut(namespace) { mutableListOf() }.add(androidFacet)
       }
-      val namespacesWithPrefixes = HashSet<String>()
-      for (namespace in packageToAndroidFacets.keys) {
-        var packageName = namespace
-        while (true) {
-          if (!namespacesWithPrefixes.add(packageName)) break
-          val lastDot = packageName.lastIndexOf('.').takeIf { it > 0 } ?: break
-          packageName = packageName.substring(0, lastDot)
-        }
-      }
       return@CachedValueProvider CachedValueProvider.Result(
-        GradleProjectCensus(packageToAndroidFacets, namespacesWithPrefixes), ProjectSyncModificationTracker.getInstance(project)
+        GradleProjectCensus(packageToAndroidFacets), ProjectSyncModificationTracker.getInstance(project)
       )
     })
   }
@@ -275,11 +265,6 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
   override fun getAndroidFacetsWithPackageName(project: Project, packageName: String): List<AndroidFacet> {
     val census = getGradleProjectCensus(project)
     return census.packageToAndroidFacets[packageName] ?: emptyList()
-  }
-
-  override fun isNamespaceOrParentPackage(packageName: String): Boolean {
-    val census = getGradleProjectCensus(project)
-    return census.namespacesWithPrefixes.contains(packageName)
   }
 
   override fun getKnownApplicationIds(project: Project): Set<String> {

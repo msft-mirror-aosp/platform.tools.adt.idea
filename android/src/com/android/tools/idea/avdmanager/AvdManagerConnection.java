@@ -20,6 +20,14 @@ import static com.android.SdkConstants.FD_EMULATOR;
 import static com.android.SdkConstants.FD_LIB;
 import static com.android.SdkConstants.FN_HARDWARE_INI;
 import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_DISPLAY_SETTINGS_FILE;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_FOLD_AT_POSTURE;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_ANGLES_POSTURE_DEFINITIONS;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_AREAS;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_COUNT;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_DEFAULTS;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_RANGES;
+import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_SUB_TYPE;
 import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_HINGE_TYPE;
 import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_POSTURE_LISTS;
 import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_RESIZABLE_CONFIG;
@@ -593,8 +601,7 @@ public class AvdManagerConnection {
       return Futures.immediateFailedFuture(new AvdIsAlreadyRunningException(avd));
     }
 
-    GeneralCommandLine commandLine =
-        newEmulatorCommand(project, emulatorBinary, avd, requestType == RequestType.DIRECT_RUNNING_DEVICES, factory);
+    GeneralCommandLine commandLine = newEmulatorCommand(project, emulatorBinary, avd, factory);
     EmulatorRunner runner = new EmulatorRunner(commandLine, avd);
 
     ProcessHandler processHandler;
@@ -646,7 +653,6 @@ public class AvdManagerConnection {
   protected @NotNull GeneralCommandLine newEmulatorCommand(@Nullable Project project,
                                                            @NotNull Path emulator,
                                                            @NotNull AvdInfo avd,
-                                                           boolean forceLaunchInToolWindow,
                                                            @NotNull EmulatorCommandBuilderFactory factory) {
     ProgressIndicator indicator = new StudioLoggerProgressIndicator(AvdManagerConnection.class);
     ILogger logger = new LogWrapper(Logger.getInstance(AvdManagerConnection.class));
@@ -656,7 +662,7 @@ public class AvdManagerConnection {
       .setAvdHome(myAvdManager.getBaseAvdFolder())
       .setEmulatorSupportsSnapshots(EmulatorAdvFeatures.emulatorSupportsFastBoot(mySdkHandler, indicator, logger))
       .setStudioParams(writeParameterFile().orElse(null))
-      .setLaunchInToolWindow(forceLaunchInToolWindow || shouldLaunchInToolWindow(project))
+      .setLaunchInToolWindow(shouldLaunchInToolWindow(project))
       .addAllStudioEmuParams(params.orElse(Collections.emptyList()))
       .build();
   }

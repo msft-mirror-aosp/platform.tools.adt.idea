@@ -28,6 +28,10 @@ import org.junit.Rule
 import org.junit.Test
 
 class PairDevicesUsingWiFiActionTest : LightPlatform4TestCase() {
+  /** Ensures feature flag is reset after test */
+  @get:Rule
+  val FlagRule = FlagRule(StudioFlags.ADB_WIRELESS_PAIRING_ENABLED)
+
   @get:Rule
   val portableUiFontRule = PortableUiFontRule()
 
@@ -39,6 +43,7 @@ class PairDevicesUsingWiFiActionTest : LightPlatform4TestCase() {
   @Test
   fun actionShouldBeEnabledIfFlagIsSet() {
     // Prepare
+    StudioFlags.ADB_WIRELESS_PAIRING_ENABLED.override(true)
     val action = PairDevicesUsingWiFiAction()
     val event = TestActionEvent.createTestEvent(action)
 
@@ -51,8 +56,24 @@ class PairDevicesUsingWiFiActionTest : LightPlatform4TestCase() {
   }
 
   @Test
+  fun actionShouldBeDisabledIfFlagIsNotSet() {
+    // Prepare
+    StudioFlags.ADB_WIRELESS_PAIRING_ENABLED.override(false)
+    val action = PairDevicesUsingWiFiAction()
+    val event = TestActionEvent.createTestEvent(action)
+
+    // Act
+    action.update(event)
+
+    // Assert
+    Truth.assertThat(event.presentation.isEnabled).isFalse()
+    Truth.assertThat(event.presentation.isVisible).isFalse()
+  }
+
+  @Test
   fun dialogShouldShowWhenInvokingAction() {
     // Prepare
+    StudioFlags.ADB_WIRELESS_PAIRING_ENABLED.override(true)
     val action = PairDevicesUsingWiFiAction()
     val event = TestActionEvent.createTestEvent(action)
 

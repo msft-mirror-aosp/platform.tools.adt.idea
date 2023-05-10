@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.cpu
 
+import com.android.tools.adtui.swing.FakeKeyboard
 import com.android.tools.adtui.swing.FakeUi
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.SystemInfo
@@ -26,7 +27,6 @@ import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.awt.BorderLayout
-import java.awt.event.KeyEvent.VK_SHIFT
 import javax.swing.JPanel
 
 class CpuListScrollPaneTest {
@@ -88,7 +88,7 @@ class CpuListScrollPaneTest {
     assertThat(dispatchComponentConsumedWheelEvent).isFalse()
 
     // If we're pressing a modifier key, such as shift, the event is going to be consumed by dispatchComponent.
-    fakeUi.keyboard.press(VK_SHIFT)
+    fakeUi.keyboard.press(FakeKeyboard.Key.SHIFT)
     fakeUi.mouse.wheel(50, 50, -2)
     assertThat(dispatchComponentConsumedWheelEvent).isTrue()
   }

@@ -23,7 +23,6 @@ import com.intellij.psi.*;
 import com.intellij.refactoring.BaseRefactoringProcessor;
 import com.intellij.refactoring.safeDelete.SafeDeleteHandler;
 import org.jetbrains.android.AndroidTestCase;
-import org.junit.Ignore;
 
 public class AndroidSafeDeleteTest extends AndroidTestCase {
   private static final String TEST_FOLDER = "/createComponent/";
@@ -33,7 +32,6 @@ public class AndroidSafeDeleteTest extends AndroidTestCase {
     return true;
   }
 
-  /* b/281709998
   public void testDeleteComponent() {
     myFixture.copyFileToProject(TEST_FOLDER + "f1.xml", "AndroidManifest.xml");
     final VirtualFile activityFile = myFixture.copyFileToProject(TEST_FOLDER + "MyActivity.java", "src/p1/p2/MyActivity.java");
@@ -50,8 +48,6 @@ public class AndroidSafeDeleteTest extends AndroidTestCase {
       assertEquals("class <b><code>p1.p2.MyActivity</code></b> has 1 usage that is not safe to delete.", e.getMessage());
     }
   }
-  b/281709998
-  */
 
   public void testDeleteResourceFile() throws Exception {
     createManifest();
