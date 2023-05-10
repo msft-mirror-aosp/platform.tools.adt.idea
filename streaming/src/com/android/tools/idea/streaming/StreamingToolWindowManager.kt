@@ -42,6 +42,8 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.EmulatorId
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
+import com.android.utils.FlightRecorder
+import com.android.utils.TraceUtils
 import com.google.common.cache.CacheBuilder
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.runners.ExecutionUtil
@@ -58,6 +60,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -93,8 +96,10 @@ import java.time.Duration
 
 private const val DEVICE_FRAME_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.emulator.frame.visible"
 private const val DEVICE_FRAME_VISIBLE_DEFAULT = true
-private const val ZOOM_TOOLBAR_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.emulator.zoom.toolbar.visible"
+private const val ZOOM_TOOLBAR_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.zoom.toolbar.visible"
 private const val ZOOM_TOOLBAR_VISIBLE_DEFAULT = true
+/** The value of the property is a comma separated list of normalized device serial numbers. */
+private const val DEVICES_EXCLUDED_FROM_MIRRORING_PROPERTY = "com.android.tools.idea.streaming.devices.excluded.from.mirroring"
 private const val EMULATOR_DISCOVERY_INTERVAL_MILLIS = 1000
 
 private val ID_KEY = Key.create<DeviceId>("device-id")
@@ -117,6 +122,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private val project
     @AnyThread get() = toolWindow.project
+  private val properties = PropertiesComponent.getInstance(project)
   private val emulatorSettings = EmulatorSettings.getInstance()
   private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
   private var initialized = false
@@ -141,7 +147,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   private var mirroredDevices = mutableSetOf<String>()
   /** Handles of devices excluded from mirroring keyed by serial numbers. */
   private var devicesExcludedFromMirroring = mutableMapOf<String, DeviceDescription>()
-  private val properties = PropertiesComponent.getInstance(project)
+  private var persistentDevicesExcludedFromMirroring = PersistentLruStringList(properties, DEVICES_EXCLUDED_FROM_MIRRORING_PROPERTY, 100)
 
   // Serial numbers of devices that recently requested attention.
   private val recentAttentionRequests = CacheBuilder.newBuilder().expireAfterWrite(ATTENTION_REQUEST_EXPIRATION).build<String, String>()
@@ -162,6 +168,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         is DeviceToolWindowPanel -> stopMirroring(panel.deviceSerialNumber)
       }
 
+      FlightRecorder.log {
+        "${TraceUtils.currentTime()} StreamingToolWindowManager.ContentManagerListener.contentRemoveQuery:" +
+        " removing panel with id ${panel.id}"
+      }
       panels.remove(panel)
       savedUiState.remove(panel.id)
       if (panels.isEmpty()) {
@@ -170,16 +180,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         }
         hideLiveIndicator()
       }
-    }
-  }
-
-  private fun stopMirroring(serialNumber: String) {
-    mirroredDevices.remove(serialNumber)
-    val deviceClient = deviceClients.remove(serialNumber)
-    if (deviceClient != null) {
-      devicesExcludedFromMirroring[serialNumber] =
-          DeviceDescription(deviceClient.deviceName, serialNumber, deviceClient.deviceHandle, deviceClient.deviceConfig)
-      Disposer.dispose(deviceClient)
     }
   }
 
@@ -215,6 +215,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     }
 
   init {
+    FlightRecorder.initialize(10000)
     Disposer.register(toolWindow.disposable, this)
 
     if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
@@ -249,7 +250,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
                                        RunningEmulatorCatalog.getInstance().updateNow()
                                        EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
                                          showLiveIndicator()
-                                         if (requestType == AvdLaunchListener.RequestType.DIRECT) {
+                                         if (requestType != AvdLaunchListener.RequestType.INDIRECT) {
                                            onEmulatorHeadsUp(avd.name)
                                          }
                                        }
@@ -267,6 +268,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         }
       }
     }
+  }
+
+  override fun dispose() {
+    destroyContent()
   }
 
   private fun onDeviceHeadsUp(deviceSerialNumber: String) {
@@ -424,6 +429,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun addEmulatorPanel(emulator: EmulatorController) {
+    FlightRecorder.log {
+      "${TraceUtils.currentTime()} StreamingToolWindowManager.addEmulatorPanel emulatorId: ${emulator.emulatorId}" +
+      "\n${TraceUtils.getCurrentStack()}"
+    }
     emulator.addConnectionStateListener(connectionStateListener)
     addPanel(EmulatorToolWindowPanel(project, emulator))
   }
@@ -433,6 +442,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun addPanel(panel: RunningDevicePanel) {
+    FlightRecorder.log {
+      "${TraceUtils.currentTime()} StreamingToolWindowManager.addPanel(${TraceUtils.getSimpleId(panel)})" +
+      " panel.id: ${panel.id}"
+    }
     val contentManager = toolWindow.contentManager
     var placeholderContent: Content? = null
     if (panels.isEmpty()) {
@@ -459,7 +472,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     panel.zoomToolbarVisible = zoomToolbarIsVisible
 
     val index = panels.binarySearch(panel, PANEL_COMPARATOR).inv()
-    assert(index >= 0)
+    if (index < 0) {
+      val trace = FlightRecorder.getAndClear().joinToString("\n")
+      thisLogger().error("An attempt to add a duplicate panel with id ${panel.id}\n$trace")
+    }
 
     if (index >= 0) {
       panels.add(index, panel)
@@ -622,8 +638,15 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     }
   }
 
-  override fun dispose() {
-    destroyContent()
+  private fun stopMirroring(serialNumber: String) {
+    mirroredDevices.remove(serialNumber)
+    val deviceClient = deviceClients.remove(serialNumber)
+    if (deviceClient != null) {
+      devicesExcludedFromMirroring[serialNumber] =
+          DeviceDescription(deviceClient.deviceName, serialNumber, deviceClient.deviceHandle, deviceClient.deviceConfig)
+      persistentDevicesExcludedFromMirroring.add(normalizeDeviceSerialNumber(serialNumber))
+      Disposer.dispose(deviceClient)
+    }
   }
 
   private fun ToolWindow.showAndActivate() {
@@ -673,6 +696,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private fun startMirroring(serialNumber: String, deviceClient: DeviceClient) {
     devicesExcludedFromMirroring.remove(serialNumber)
+    persistentDevicesExcludedFromMirroring.remove(normalizeDeviceSerialNumber((serialNumber)))
     if (serialNumber in onlineDevices && mirroredDevices.add(serialNumber)) {
       deviceClient.establishAgentConnectionWithoutVideoStreamAsync() // Start the agent and connect to it proactively.
       showLiveIndicator()
@@ -800,6 +824,14 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
     private fun deviceConnected(serialNumber: String, device: ConnectedDevice, config: DeviceConfiguration) {
       if (serialNumber in onlineDevices) {
+        if (normalizeDeviceSerialNumber(serialNumber) in persistentDevicesExcludedFromMirroring) {
+          // The device is excluded from mirroring.
+          devicesExcludedFromMirroring.computeIfAbsent(serialNumber) {
+            DeviceDescription(config.deviceName, serialNumber, device.handle, config)
+          }
+          return
+        }
+
         val deviceClient = getOrCreateDeviceClient(serialNumber, device.handle, config)
         if (contentCreated) {
           activateMirroring(serialNumber, deviceClient)
@@ -885,17 +917,18 @@ private suspend fun DeviceState.Connected.isMirrorable(): Boolean {
   }
 
   val deviceSerialNumber = serialNumber
-  if (isLocalEmulator(deviceSerialNumber) || properties.isVirtual == true) {
+  if (isLocalEmulator(deviceSerialNumber)) {
     if (!StudioFlags.DEVICE_MIRRORING_STANDALONE_EMULATORS.get()) {
       return false
     }
-    if (isLocalEmulator(deviceSerialNumber)) {
-      val emulators = RunningEmulatorCatalog.getInstance().updateNow().suspendingGet()
-      val emulator = emulators.find { "emulator-${it.emulatorId.serialPort}" == deviceSerialNumber }
-      if (emulator == null || emulator.emulatorId.isEmbedded) {
-        return false
-      }
+    val emulators = RunningEmulatorCatalog.getInstance().updateNow().suspendingGet()
+    val emulator = emulators.find { "emulator-${it.emulatorId.serialPort}" == deviceSerialNumber }
+    if (emulator == null || emulator.emulatorId.isEmbedded) {
+      return false
     }
+  }
+  else if (properties.isVirtual == true && !StudioFlags.DEVICE_MIRRORING_REMOTE_EMULATORS.get()) {
+    return false
   }
 
   val apiLevel = properties.androidVersion?.apiLevel ?: SdkVersionInfo.HIGHEST_KNOWN_STABLE_API
