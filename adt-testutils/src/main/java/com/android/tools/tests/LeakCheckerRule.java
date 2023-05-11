@@ -21,31 +21,26 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.psi.stubs.StubIndex;
 import com.intellij.psi.stubs.StubIndexEx;
-import com.intellij.psi.stubs.StubIndexImpl;
+import com.intellij.testFramework.TestApplicationManager;
 import org.junit.rules.ExternalResource;
 
 public class LeakCheckerRule extends ExternalResource {
-  public boolean enabled = true;
 
   @Override
   protected void after() {
-    if (!enabled) {
-      return;
-    }
+    checkForLeaks();
+  }
+
+  public static void checkForLeaks() {
     Application app = ApplicationManager.getApplication();
     if (app == null || app.isDisposed()) {
       // If the app was already disposed, then the leak checker does not work properly.
       // This can happen when multiple LeakCheckerRules are "nested", and the inner LeakCheckerRule has already run.
       return;
     }
-    try {
-      ensureFileUpdatesProcessedByModificationTracker();
-      clearMockitoThreadLocals();
-      Class<?> leakTestClass = Class.forName("_LastInSuiteTest");
-      leakTestClass.getMethod("testProjectLeak").invoke(leakTestClass.newInstance());
-    } catch (Exception e) {
-      throw new AssertionError(e);
-    }
+    ensureFileUpdatesProcessedByModificationTracker();
+    clearMockitoThreadLocals();
+    TestApplicationManager.disposeApplicationAndCheckForLeaks();
   }
 
   /**
