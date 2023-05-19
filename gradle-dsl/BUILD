@@ -20,8 +20,8 @@ iml_module(
     iml_files = ["intellij.android.gradle.dsl.tests.iml"],
     test_class = "com.android.tools.idea.gradle.dsl.GradleDslTestSuite",
     test_data = glob(["testData/**"]),
+    test_shard_count = 12,  # b/278991173
     test_srcs = ["testSrc"],
-    test_tags = ["manual"],  # b/278991173
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -73,5 +73,6 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//prebuilts/tools/common/m2:junit-4.12[test]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
     ],
 )

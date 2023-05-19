@@ -145,9 +145,6 @@ iml_module(
         "apk": {
             "test_filter": "com.android.tools.idea.apk",
         },
-        "avdmanager": {
-            "test_filter": "com.android.tools.idea.avdmanager",
-        },
         "AndroidKotlinCompletionContributorTest": {
             "test_filter": "com.android.tools.idea.completion.AndroidKotlinCompletionContributorTest",
         },
@@ -296,7 +293,6 @@ iml_module(
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
-        # TODO: http://b/281902830
         # TODO: http://b/281905227
         "-Didea.leak.check.enabled=false",
         "-Djdk.attach.allowAttachSelf=true",
@@ -488,9 +484,9 @@ filegroup(
 filegroup(
     name = "directaccess-artifacts",
     srcs = [
-        "//tools/adt/idea/.idea/libraries:adb_proxy_proto",
-        "//tools/adt/idea/.idea/libraries:directaccess_client_proto",
+        "//tools/base/adb-proxy:adb_proxy_proto",
         "//tools/base/adb-proxy/reverse-daemon:daemon",
+        "//tools/vendor/google/directaccess-client:directaccess_client_proto",
     ],
 )
 

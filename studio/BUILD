@@ -1,5 +1,26 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
+load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+
+bool_flag(
+    name = "create-nightly-build",
+    build_setting_default = False,
+)
+
+# Examples of version suffix are
+# Canary 2, RC 1, Patch 1, Nightly 2023-04-10.
+string_flag(
+    name = "version-suffix",
+    build_setting_default = "",
+)
+
+config_setting(
+    name = "nightly-build",
+    flag_values = {
+        ":create-nightly-build": "True",
+    },
+)
 
 studio_plugin(
     name = "org.jetbrains.android",
@@ -9,7 +30,6 @@ studio_plugin(
         "//prebuilts/tools/common/archive-patcher:explainer",
         "//prebuilts/tools/common/archive-patcher:generator",
         "//prebuilts/tools/common/archive-patcher:shared",
-        "//prebuilts/tools/common/google-api-java-client/1.20.0:google-api-java-client",
         "//prebuilts/tools/common/m2:eclipse-layout-kernel",
         "//prebuilts/tools/common/m2:juniversalchardet",
         "//prebuilts/tools/common/m2:commons-lang",
@@ -26,19 +46,20 @@ studio_plugin(
         "//prebuilts/tools/common/m2:compose-desktop-material",
         "//prebuilts/tools/common/m2:compose-desktop-runtime",
         "//prebuilts/tools/common/m2:compose-desktop-ui",
+        "//prebuilts/tools/common/m2:oauth2",
         "//prebuilts/tools/common/m2:skiko",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
-        "//tools/adt/idea/.idea/libraries:aia-proto",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/.idea/libraries:asm-tools",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:ffmpeg",
-        "//tools/adt/idea/.idea/libraries:firebase_java_proto",
+        "//tools/adt/idea/.idea/libraries:google-api-client",
         "//tools/adt/idea/.idea/libraries:google-baksmali",
         "//tools/adt/idea/.idea/libraries:google-dexlib2",
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
         "//tools/adt/idea/.idea/libraries:HdrHistogram",
         "//tools/adt/idea/.idea/libraries:javax-inject",
+        "//tools/adt/idea/.idea/libraries:jetty",
         "//tools/adt/idea/.idea/libraries:kotlinx-coroutines-guava",
         "//tools/adt/idea/.idea/libraries:kxml2",
         "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
@@ -46,7 +67,6 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:libam-instrumentation-data-proto",
         "//tools/adt/idea/.idea/libraries:libapp-processes-proto",
         "//tools/adt/idea/.idea/libraries:network_inspector_java_proto",
-        "//tools/adt/idea/.idea/libraries:oauth2",
         "//tools/adt/idea/.idea/libraries:perfetto-proto",
         "//tools/adt/idea/.idea/libraries:sqlite-inspector-proto",
         "//tools/adt/idea/.idea/libraries:sqlite",
@@ -73,6 +93,7 @@ studio_plugin(
         "//tools/base/deploy/deployer:deploy_java_proto",
         "//tools/base/deploy/deployer:libjava_sites",
         "//tools/base/lint:liblint-checks-proto",
+        "//tools/base/sdk-common:aia-proto",
         "//tools/adt/idea/debuggers:libjava_sites",
         "//tools/base/deploy/deployer:libjava_version",
         "//tools/vendor/google/game-tools/main:game-tools-protos",
@@ -446,8 +467,8 @@ studio_plugin(
     name = "com.google.services.firebase",
     directory = "firebase",
     libs = [
-        "//tools/vendor/google/firebase:google-api-services-mobilesdk-v1",
-        "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-cloudresourcemanager-v1beta1-rev12-1.21.0",
+        "//tools/vendor/google/firebase:firebase_java_proto",
+        "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
     ],
     licenses = [
         "//tools/vendor/google/firebase:licenses",
@@ -466,8 +487,8 @@ studio_plugin(
     name = "com.google.gct.directaccess",
     directory = "directaccess",
     libs = [
-        "//tools/adt/idea/.idea/libraries:directaccess_client_proto",
-        "//tools/adt/idea/.idea/libraries:adb_proxy_proto",
+        "//tools/base/adb-proxy:adb_proxy_proto",
+        "//tools/vendor/google/directaccess-client:directaccess_client_proto",
     ],
     modules = {
         "directaccess.jar": [
@@ -482,6 +503,7 @@ studio_plugin(
     visibility = ["//visibility:public"],
     deps = [
         ":com.google.gct.testing",
+        ":com.google.services.firebase",
         ":org.jetbrains.android",
     ],
 )
@@ -491,10 +513,8 @@ studio_plugin(
     directory = "firebase-testing",
     libs = [
         "//prebuilts/tools/common/m2:JSch",
-        "//prebuilts/tools/common/m2:google-api-services-testing-v1-rev82-1.22.0",
-        "//prebuilts/tools/common/m2:google-api-services-toolresults-v1beta3-rev82-1.22.0",
-        "//prebuilts/tools/common/m2:google-api-services-storage-v1-rev82-1.22.0",
         "//tools/adt/idea/.idea/libraries:tightvnc",
+        "//tools/studio/google/cloud/testing/firebase-testing:google_api_services_testing",
     ],
     modules = {"firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"]},
     visibility = ["//visibility:public"],
@@ -533,10 +553,10 @@ studio_plugin(
     name = "com.google.gct.core",
     directory = "google-cloud-tools-core-as",
     libs = [
-        "//tools/studio/google/cloud/tools/core-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
-        "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-cloudresourcemanager-v1beta1-rev12-1.21.0",
         "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-appengine-v1-rev9-1.22.0",
         "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-source",
+        "//tools/studio/google/cloud/tools/core-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
+        "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
     ],
     licenses = [
         "//tools/studio/google/cloud/tools/core-plugin/lib:licenses",
@@ -563,7 +583,6 @@ studio_plugin(
     libs = [
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-        "//prebuilts/tools/common/m2:google-api-services-testing-v1-rev82-1.22.0",
     ],
     modules = {"gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"]},
     visibility = ["//visibility:public"],
@@ -680,12 +699,21 @@ android_studio(
     ],
     searchable_options = "//tools/adt/idea/searchable-options",
     update_message_template = ":update_message.html",
-    version_code_name = "Hedgehog",
-    version_micro_patch = "1.4",
+    version_code_name = STUDIO_CODENAME,
+    version_micro_patch = STUDIO_MICRO_PATCH,
     # This will get added to the end of the full-version string.
     # TODO(b/240707039): automate this.
-    version_release_number = 4,
-    version_type = "Canary",
+    version_release_number = STUDIO_RELEASE_NUMBER,
+    version_suffix = select({
+        ":nightly-build": ":version-suffix",
+        # The android_studio rule will generate suffixes depending on the
+        # version_type and version_release_number.
+        "//conditions:default": None,
+    }),
+    version_type = select({
+        ":nightly-build": "Nightly",
+        "//conditions:default": STUDIO_VERSION,
+    }),
     visibility = ["//visibility:public"],
 )
 
@@ -908,7 +936,6 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-keymap-visualStudio",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-markdown",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-maven-server",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-settingsSync",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-git",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-github",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-hg",

@@ -81,6 +81,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import org.jetbrains.kotlin.idea.base.plugin.isK2Plugin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -465,6 +466,7 @@ class ComposePreviewRepresentationGradleTest {
     assertTrue(composePreviewRepresentation.status().isOutOfDate)
   }
 
+  @Ignore("b/283057643")
   @Test
   fun `updating different file triggers needs refresh`() = runBlocking {
     // This test only makes sense when fast preview is disabled,
@@ -718,6 +720,12 @@ class ComposePreviewRepresentationGradleTest {
    */
   @Test
   fun `file modification refresh triggers refresh on reactivation`(): Unit = runBlocking {
+    // Fail early to not time out (and not make noises) if running in K2
+    // Otherwise, the lack of [ResolutionFacade] causes [IllegalStateException],
+    // which is not properly propagated / handled, resulting in non-recovered hanging coroutines,
+    // which make all other tests cancelled as well.
+    assertFalse(isK2Plugin())
+
     val psiCodeFileChangeDetectorService = PsiCodeFileChangeDetectorService.getInstance(project)
     val otherPreviewsFile = getPsiFile(SimpleComposeAppPaths.APP_OTHER_PREVIEWS.path)
     val otherPreviewView = TestComposePreviewView(fixture.testRootDisposable, project)

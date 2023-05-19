@@ -354,7 +354,11 @@
 
     <applicationService serviceInterface="com.android.tools.idea.run.NonGradleAndroidArtifactResolver"
                         serviceImplementation="com.android.tools.idea.run.JpsAndroidArtifactResolver"/>
-    <applicationService serviceImplementation="com.android.tools.idea.modes.EssentialModeMessenger"/>
+
+    <registryKey key="ide.essentials.mode"
+                 description="Essentials Mode is a lighter-weight version of the editor, which turns some features off until receiving an explicit SaveAll command"
+                 defaultValue="false"
+                 restartRequired="false"/>
 
     <fileType name="Android 9-Patch"
               implementationClass="com.android.tools.idea.fileTypes.AndroidNinePatchFileType"
@@ -513,6 +517,8 @@
     <usageTypeProvider implementation="org.jetbrains.android.refactoring.AndroidResourceXmlUsageProvider" order="first" />
     <usageTypeProvider implementation="org.jetbrains.android.refactoring.AndroidResourceReferenceInCodeUsageTypeProvider" order="first" />
     <externalAnnotator language="JAVA" implementationClass="org.jetbrains.android.AndroidJavaResourceExternalAnnotator"/>
+    <codeInsight.lineMarkerProvider language=""
+                                    implementationClass="org.jetbrains.android.AndroidResourceExternalAnnotatorBase$LineMarkerProvider"/>
 
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidProjectInfo"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleProjectInfo"/>
@@ -567,8 +573,6 @@
     <overrideImplementsAnnotationsHandler implementation="com.android.tools.idea.editors.AndroidOverrideAnnotationsHandler" />
     <editorTabTitleProvider implementation="com.android.tools.idea.editors.AndroidEditorTitleProvider"/>
     <iconProvider implementation="com.android.tools.idea.fileTypes.AndroidIconProvider" id="androidIcons" order="before javaDirectory" />
-    <refactoring.safeDeleteProcessor id="android_component" order="before javaProcessor"
-                                     implementation="org.jetbrains.android.AndroidComponentSafeDeleteProcessor"/>
     <refactoring.safeDeleteProcessor id="android_resource_file" implementation="org.jetbrains.android.AndroidResourceFileSafeDeleteProcessor"/>
 
     <statusBarWidgetProvider implementation="com.android.tools.idea.widget.AdbConnectionWidgetProvider"/>
@@ -724,6 +728,10 @@
     <projectService
         serviceInterface="com.android.tools.idea.sdk.sources.SdkSourcePositionFinder"
         serviceImplementation="com.android.tools.idea.sdk.sources.SdkSourcePositionFinderImpl"/>
+
+    <daemon.highlightInfoFilter implementation="com.android.tools.idea.sdk.SdkHighlightFilter"/>
+
+    <writingAccessProvider implementation="com.android.tools.idea.sdk.SdkWritingAccessProvider"/>
 
   </extensions>
 

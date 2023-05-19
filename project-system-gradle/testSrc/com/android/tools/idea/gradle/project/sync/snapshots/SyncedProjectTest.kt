@@ -65,6 +65,9 @@ abstract class SyncedProjectTest(
   }
 
   @Test
+  fun testAndroidKotlinMultiplatform() = testProject(TestProject.ANDROID_KOTLIN_MULTIPLATFORM)
+
+  @Test
   fun testSimpleApplication() = testProject(TestProject.SIMPLE_APPLICATION)
 
   @Test
@@ -167,6 +170,10 @@ abstract class SyncedProjectTest(
   @Test
   fun testKotlinMultiplatform_jvm_hierarchical_kmpapp_withintermediate() =
     testProject(TestProject.KOTLIN_MULTIPLATFORM_JVM_HIERARCHICAL_KMPAPP_WITHINTERMEDIATE)
+
+  @Test
+  fun testKotlinMultiplatform_multiple_source_set_per_android_compilation() =
+    testProject(TestProject.KOTLIN_MULTIPLATFORM_MULTIPLE_SOURCE_SET_PER_ANDROID_COMPILATION)
 
   @Test
   fun testMultiFlavor() = testProject(TestProject.MULTI_FLAVOR)

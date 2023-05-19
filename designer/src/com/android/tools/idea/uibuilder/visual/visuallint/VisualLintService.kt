@@ -20,10 +20,10 @@ import com.android.tools.idea.common.error.IssueModel
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.rendering.RenderService
 import com.android.tools.idea.rendering.StudioRenderService
 import com.android.tools.idea.rendering.createLogger
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel
+import com.android.tools.idea.rendering.parsers.PsiXmlFile
 import com.android.tools.idea.rendering.taskBuilder
 import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater.updateHierarchy
 import com.android.tools.idea.uibuilder.visual.WearDeviceModelsProvider
@@ -41,6 +41,7 @@ import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.TextFieldSiz
 import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.WearMarginAnalyzer
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.android.tools.rendering.RenderResult
+import com.android.tools.rendering.RenderService
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.codeInsight.daemon.HighlightDisplayKey
 import com.intellij.codeInspection.InspectionProfile
@@ -58,6 +59,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Pool of 1 thread to trigger background visual linting analysis one at a time, and wait for its completion
@@ -175,12 +177,13 @@ class VisualLintService(val project: Project): Disposable {
         WindowSizeModelsProvider.createNlModels(baseModel, baseModel.file, baseModel.facet)
       }
       val latch = CountDownLatch(modelsToAnalyze.size)
+      val hasTimedOut = AtomicBoolean(false)
       for (model in modelsToAnalyze) {
         val requireRender = StudioFlags.NELE_ATF_IN_VISUAL_LINT.get() && VisualLintErrorType.ATF !in ignoredTypes
         createRenderResult(model, requireRender).handleAsync(
           { result, _ ->
             try {
-              if (result != null) {
+              if (!hasTimedOut.get() && result != null) {
                 updateHierarchy(result, model)
                 analyzeAfterModelUpdate(issueProvider, result, model,
                                         visualLintBaseConfigIssues, true)
@@ -192,7 +195,7 @@ class VisualLintService(val project: Project): Disposable {
             }
           }, visualLintAnalyzerExecutorService)
       }
-      latch.await(visualLintTimeout, TimeUnit.SECONDS)
+      hasTimedOut.set(!latch.await(visualLintTimeout, TimeUnit.SECONDS))
       issueModel.updateErrorsList()
       LOG.debug("Visual Lint analysis finished, ${issueModel.issueCount} ${if (issueModel.issueCount > 1) "errors" else "error"} found")
     }
@@ -206,13 +209,16 @@ class VisualLintService(val project: Project): Disposable {
    */
   private fun runOnPreviewVisualLinting(renderResultsForAnalysis: Map<RenderResult, NlModel>, issueProvider: VisualLintIssueProvider, visualLintBaseConfigIssues: VisualLintBaseConfigIssues) {
     val latch = CountDownLatch(renderResultsForAnalysis.size)
+    val hasTimedOut = AtomicBoolean(false)
     renderResultsForAnalysis.forEach { (result, model) ->
       CompletableFuture.runAsync({
-        analyzeAfterModelUpdate(issueProvider, result, model, visualLintBaseConfigIssues)
+        if (!hasTimedOut.get()) {
+          analyzeAfterModelUpdate(issueProvider, result, model, visualLintBaseConfigIssues)
+        }
         latch.countDown()
       }, visualLintAnalyzerExecutorService)
     }
-    latch.await(visualLintTimeout, TimeUnit.SECONDS)
+    hasTimedOut.set(!latch.await(visualLintTimeout, TimeUnit.SECONDS))
     issueModel.updateErrorsList()
   }
 
@@ -272,7 +278,7 @@ fun createRenderResult(model: NlModel, requireRender: Boolean): CompletableFutur
   val logger = renderService.createLogger(model.project)
 
   return renderService.taskBuilder(model.facet, model.configuration, logger)
-    .withPsiFile(model.file)
+    .withPsiFile(PsiXmlFile(model.file))
     .withLayoutScanner(requireRender)
     .withTopic(RenderingTopic.VISUAL_LINT)
     .withMinDownscalingFactor(0.25f)

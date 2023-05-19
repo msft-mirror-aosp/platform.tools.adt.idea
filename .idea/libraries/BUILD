@@ -109,13 +109,6 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "aia-proto",
-    jars = ["//tools/base/sdk-common/aia-manifest-jar-generator:proto.jar"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "sqlite",
     jars = ["//prebuilts/tools/common/m2:sqlite_files"],
     visibility = ["//visibility:public"],
@@ -262,13 +255,6 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "firebase_java_proto",
-    jars = ["//tools/vendor/google/firebase/src/proto:firebase_java_proto.jar"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "utp-core-proto-jarjar",
     # do not sort: must match IML order
     jars = ["//tools/base/bazel:utp-core-proto-jarjar.jar"],
@@ -277,29 +263,8 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "directaccess_client_proto",
-    jars = ["//tools/vendor/google/directaccess-client/proto:ftl_client_java_proto.jar"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
-    name = "adb_proxy_proto",
-    jars = ["//tools/base/adb-proxy/proto:adb_proxy_studio_proto.jar"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "gson",
     jars = ["//prebuilts/tools/common/m2:gson_files"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
-    name = "oauth2",
-    jars = ["//prebuilts/tools/common/m2:oauth2_files"],
     visibility = ["//visibility:public"],
 )
 
@@ -321,5 +286,26 @@ jvm_import(
 jvm_import(
     name = "gradle-shared-proto",
     jars = ["//tools/base/build-system/gradle-core:common_proto.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "jetty",
+    jars = ["//prebuilts/tools/common/m2:jetty_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "cloudresourcemanager",
+    jars = ["//prebuilts/tools/common/m2:cloudresourcemanager_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "google-api-client",
+    jars = ["//prebuilts/tools/common/m2:google-api-client_files"],
     visibility = ["//visibility:public"],
 )

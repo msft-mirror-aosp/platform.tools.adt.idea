@@ -59,6 +59,10 @@ enum class TestProject(
   // TODO(b/279759255): disabled while https://youtrack.jetbrains.com/issue/IDEA-310919 is active
   // COMPATIBILITY_TESTS_AS_36(TestProjectToSnapshotPaths.COMPATIBILITY_TESTS_AS_36, patch = { updateProjectJdk(it) }),
   COMPATIBILITY_TESTS_AS_36_NO_IML(TestProjectToSnapshotPaths.COMPATIBILITY_TESTS_AS_36_NO_IML, patch = { updateProjectJdk(it) }),
+  ANDROID_KOTLIN_MULTIPLATFORM(
+    TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
+    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
+  ),
   SIMPLE_APPLICATION(TestProjectToSnapshotPaths.SIMPLE_APPLICATION),
   SIMPLE_APPLICATION_NO_PARALLEL_SYNC(
     TestProjectToSnapshotPaths.SIMPLE_APPLICATION,
@@ -257,6 +261,26 @@ enum class TestProject(
         convertAppToKmp = true,
         addJvmTo = listOf("app", "module2"),
         addIntermediateTo = listOf("module2")
+      )
+    }
+  ),
+  KOTLIN_MULTIPLATFORM_MULTIPLE_SOURCE_SET_PER_ANDROID_COMPILATION(
+    TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM,
+    testName = "multiple_source_set_per_android_compilation",
+    isCompatibleWith = { it == AGP_CURRENT },
+    patch = { projectRoot ->
+      patchMppProject(projectRoot, enableHierarchicalSupport = false, convertAppToKmp = true)
+      projectRoot.resolve("app").resolve("build.gradle").replaceInContent(
+        "android()",
+        """
+          android()
+            sourceSets {
+              androidTest
+              androidAndroidTest {
+                dependsOn(androidTest)
+              }
+            }
+        """.trimIndent()
       )
     }
   ),

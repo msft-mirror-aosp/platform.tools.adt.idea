@@ -187,7 +187,13 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     return install.run(display, env, project, sdk.getSourceDir());
   }
 
-  //Temporary method, will be removed after submitting this review and corresponding AppInsightsTest fix.
+  public void runStudio(@NotNull final AndroidProject project,
+                        Consumer<AndroidStudio> callback) throws Exception {
+    try (AndroidStudio studio = runStudio(project)) {
+      callback.accept(studio);
+    }
+  }
+
   public void runStudio(@NotNull final AndroidProject project,
                         @Nullable final String memoryDashboardName,
                         Consumer<AndroidStudio> callback) throws Exception {

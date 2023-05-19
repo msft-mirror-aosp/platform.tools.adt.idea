@@ -23,6 +23,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.explainer.IssueExplainer
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.logcat.LogcatMainPanel.LogcatServiceEvent.LoadLogcatFile
 import com.android.tools.idea.logcat.LogcatMainPanel.LogcatServiceEvent.PauseLogcat
 import com.android.tools.idea.logcat.LogcatMainPanel.LogcatServiceEvent.StartLogcat
 import com.android.tools.idea.logcat.LogcatMainPanel.LogcatServiceEvent.StopLogcat
@@ -31,8 +32,6 @@ import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Custom
 import com.android.tools.idea.logcat.LogcatPanelConfig.FormattingConfig.Preset
 import com.android.tools.idea.logcat.LogcatPresenter.Companion.CONNECTED_DEVICE
 import com.android.tools.idea.logcat.LogcatPresenter.Companion.LOGCAT_PRESENTER_ACTION
-import com.android.tools.idea.logcat.ProjectApplicationIdsProvider.Companion.PROJECT_APPLICATION_IDS_CHANGED_TOPIC
-import com.android.tools.idea.logcat.ProjectApplicationIdsProvider.ProjectApplicationIdsListener
 import com.android.tools.idea.logcat.actions.AskStudioBotAction
 import com.android.tools.idea.logcat.actions.ClearLogcatAction
 import com.android.tools.idea.logcat.actions.CopyMessageTextAction
@@ -47,9 +46,14 @@ import com.android.tools.idea.logcat.actions.NextOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.PauseLogcatAction
 import com.android.tools.idea.logcat.actions.PreviousOccurrenceToolbarAction
 import com.android.tools.idea.logcat.actions.RestartLogcatAction
+import com.android.tools.idea.logcat.actions.SaveLogcatAction
 import com.android.tools.idea.logcat.actions.TerminateAppActions
 import com.android.tools.idea.logcat.actions.ToggleFilterAction
 import com.android.tools.idea.logcat.devices.Device
+import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.DeviceItem
+import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.FileItem
+import com.android.tools.idea.logcat.files.LogcatFileData
+import com.android.tools.idea.logcat.files.LogcatFileIo
 import com.android.tools.idea.logcat.filters.LogcatFilter
 import com.android.tools.idea.logcat.filters.LogcatFilter.Companion.MY_PACKAGE
 import com.android.tools.idea.logcat.filters.LogcatFilterParser
@@ -88,6 +92,9 @@ import com.android.tools.idea.logcat.util.isCaretAtBottom
 import com.android.tools.idea.logcat.util.isScrollAtBottom
 import com.android.tools.idea.logcat.util.toggleFilterTerm
 import com.android.tools.idea.logcat.util.trackVisibility
+import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider
+import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider.Companion.PROJECT_APPLICATION_IDS_CHANGED_TOPIC
+import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider.ProjectApplicationIdsListener
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncReason.Companion.USER_REQUEST
 import com.android.tools.idea.run.ClearLogcatListener
@@ -124,6 +131,7 @@ import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.util.EditorUtil
 import com.intellij.openapi.editor.impl.ContextMenuPopupHandler
+import com.intellij.openapi.keymap.impl.ui.ActionsTreeUtil
 import com.intellij.openapi.project.Project
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.JBColor
@@ -259,6 +267,8 @@ internal class LogcatMainPanel @TestOnly constructor(
     state?.device,
   )
 
+  private val deviceComboBox = headerPanel.deviceComboBox
+
 
   @VisibleForTesting
   internal val messageProcessor = MessageProcessor(
@@ -389,10 +399,28 @@ internal class LogcatMainPanel @TestOnly constructor(
     }
 
     coroutineScope.launch(workerThread) {
-      headerPanel.trackSelectedDevice().collect { device ->
-        when {
-          device.isOnline -> logcatServiceChannel.send(StartLogcat(device))
-          else -> logcatServiceChannel.send(StopLogcat)
+      deviceComboBox.trackSelected().collect { item ->
+        if (item is DeviceItem) {
+          when {
+            item.device.isOnline -> logcatServiceChannel.send(StartLogcat(item.device))
+            else -> logcatServiceChannel.send(StopLogcat)
+          }
+        }
+        else if (item is FileItem) {
+          logcatServiceChannel.send(StopLogcat)
+          val data = withContext(Dispatchers.IO) {
+            try {
+              LogcatFileIo.readLogcat(item.path)
+            }
+            catch (e: Exception) {
+              LOGGER.warn("Failed to load Logcat from file ${item.path}", e)
+              withContext(uiThread) {
+                deviceComboBox.handleItemError(item, LogcatBundle.message("logcat.device.combo.error.load.file", item.path))
+              }
+              null
+            }
+          }
+          logcatServiceChannel.send(LoadLogcatFile(data))
         }
       }
     }
@@ -404,6 +432,7 @@ internal class LogcatMainPanel @TestOnly constructor(
           is StartLogcat -> startLogcat(it.device).also { isLogcatPaused = false }
           StopLogcat -> connectedDevice.set(null).let { null }
           PauseLogcat -> null.also { isLogcatPaused = true }
+          is LoadLogcatFile -> loadLogcatFile(it.logcatFileData).let { null }
         }
       }
     }
@@ -432,6 +461,10 @@ internal class LogcatMainPanel @TestOnly constructor(
       }
       add(Separator.create())
       add(ClearLogcatAction())
+      add(Separator.create())
+      ActionsTreeUtil.getActions("Logcat.PopupActions").forEach {
+        add(it)
+      }
     }
   }
 
@@ -487,7 +520,7 @@ internal class LogcatMainPanel @TestOnly constructor(
     val formattingOptionsStyle = formattingOptions.getStyle()
     return LogcatPanelConfig.toJson(
       LogcatPanelConfig(
-        headerPanel.getSelectedDevice()?.copy(isOnline = false),
+        deviceComboBox.getSelectedDevice()?.copy(isOnline = false),
         if (formattingOptionsStyle == null) Custom(formattingOptions) else Preset(formattingOptionsStyle),
         headerPanel.filter,
         headerPanel.filterMatchCase,
@@ -511,7 +544,7 @@ internal class LogcatMainPanel @TestOnly constructor(
     val startLine = if (endMarker.isValid) document.getLineNumber(endMarker.endOffset) else 0
     endMarker.dispose()
     val endLine = max(0, document.lineCount - 1)
-    hyperlinkDetector.detectHyperlinks(startLine, endLine, headerPanel.getSelectedDevice()?.sdk)
+    hyperlinkDetector.detectHyperlinks(startLine, endLine, deviceComboBox.getSelectedDevice()?.sdk)
     foldingDetector.detectFoldings(startLine, endLine)
 
     if (shouldStickToEnd) {
@@ -569,7 +602,7 @@ internal class LogcatMainPanel @TestOnly constructor(
 
   override fun getConnectedDevice() = connectedDevice.get()
 
-  override fun getSelectedDevice() = headerPanel.getSelectedDevice()
+  override fun getSelectedDevice() = deviceComboBox.getSelectedDevice()
 
   override fun countFilterMatches(filter: LogcatFilter?): Int {
     return LogcatMasterFilter(filter).filter(messageBacklog.get().messages).filter { it.header != SYSTEM_HEADER }.size
@@ -586,6 +619,7 @@ internal class LogcatMainPanel @TestOnly constructor(
       add(ClearLogcatAction())
       add(PauseLogcatAction())
       add(RestartLogcatAction())
+      add(SaveLogcatAction())
       add(LogcatScrollToTheEndToolbarAction(editor))
       add(PreviousOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
       add(NextOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
@@ -741,6 +775,19 @@ internal class LogcatMainPanel @TestOnly constructor(
     }
   }
 
+  private suspend fun loadLogcatFile(data: LogcatFileData?) {
+    val filter = data.safeGetFilter()
+    withContext(uiThread) {
+      document.setText("")
+      setFilter(filter)
+      messageBacklog.get().clear()
+      applyFilter(logcatFilterParser.parse(filter, headerPanel.filterMatchCase))
+    }
+    if (data != null) {
+      processMessages(data.logcatMessages)
+    }
+  }
+
   private fun scrollToEnd() {
     EditorUtil.scrollToTheEnd(editor, true)
     caretLine = document.lineCount
@@ -803,6 +850,7 @@ internal class LogcatMainPanel @TestOnly constructor(
     class StartLogcat(val device: Device) : LogcatServiceEvent()
     object StopLogcat : LogcatServiceEvent()
     object PauseLogcat : LogcatServiceEvent()
+    class LoadLogcatFile(val logcatFileData: LogcatFileData?) : LogcatServiceEvent()
   }
 
   private fun isCaretAtBottom(): Boolean {
@@ -821,6 +869,15 @@ internal class LogcatMainPanel @TestOnly constructor(
       border = BorderFactory.createCompoundBorder(Borders.customLine(JBColor.border(), 1, 1, 0, 0), border)
     }
   }
+}
+
+private fun LogcatFileData?.safeGetFilter(): String {
+  val filter = this?.metadata?.filter ?: return ""
+  if (!filter.contains(MY_PACKAGE) || metadata.projectApplicationIds.isEmpty()) {
+    return filter
+  }
+  val packages = metadata.projectApplicationIds.joinToString(" ") { "package:$it" }
+  return if (filter == MY_PACKAGE) packages else filter.replace(MY_PACKAGE, "(${packages})")
 }
 
 private fun LogcatPanelConfig?.getFormattingOptions(): FormattingOptions =

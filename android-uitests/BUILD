@@ -108,6 +108,7 @@ iml_module(
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools[module]",
         "//tools/adt/idea/execution/common:intellij.android.execution.common[module, test]",
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module, test]",
+        "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
     ],
 )
 
@@ -1479,7 +1480,6 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.LocalApkProjTest"],
     tags = COMMON_TAGS + [
-        "no-remote",
         "no_windows",
         "qa_smoke",
         "requires-fakeroot",
@@ -1496,7 +1496,6 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.APKDebuggingProjTest"],
     tags = COMMON_TAGS + [
-        "no-remote",
         "no_windows",
         "qa_smoke",
         "requires-fakeroot",
@@ -2021,6 +2020,19 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "QuickDocumentationTest",
+    size = "large",
+    data = COMMON_DATA,
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.QuickDocumentationTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2652,7 +2664,6 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.FlavorsEditingTest"],
     tags = COMMON_TAGS + [
-        "no-remote",
         "no_windows",
         "qa_fast",
         "qa_fast_unreliable",  # b/111997969

@@ -205,6 +205,14 @@ public final class StudioFlags {
     "Files larger than the cache limit will cause a file miss and the file will need to be read again.",
     20_000_000L
   );
+
+  public static final Flag<Long> GRADLE_CLASS_FINDER_CACHE_LIMIT = Flag.create(
+    DESIGN_TOOLS,
+    "gradle.class.finder.cache.max.size",
+    "Configure the max size of the cache used by GradleClassFileFinder",
+    "Allow configuring the maximum number of file references to be kept.",
+    150L
+  );
   //endregion
 
   //region Layout Editor
@@ -744,6 +752,10 @@ public final class StudioFlags {
     Flag.create(GRADLE_IDE, "gradle.version.catalog.banners", "IDE banners if Version Catalogs used",
                 "Display banners in Gradle-related tools when Version Catalogs are in use", false);
 
+  public static final Flag<Boolean> DECLARATIVE_PLUGIN_STUDIO_SUPPORT =
+    Flag.create(GRADLE_IDE, "declarative.plugin.studio.support", "Studio support for AGP declarative plugin",
+                "Enable support for gradle.build.toml in PSD and Assistants", false);
+
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = Flag.create(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
@@ -866,6 +878,11 @@ public final class StudioFlags {
     "If APP_INSPECTION_USE_DEV_JAR is enabled use this location to load the inspector jar in releases.",
     ""
   );
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_EXTRA_LOGGING = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.extra.logging", "Add extra logging for problem detection",
+    "When this flag is enabled, LayoutInspector will add extra logging for detection of various problems.",
+    false);
   //endregion
 
   //region Embedded Emulator
@@ -1079,12 +1096,21 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> ESSENTIAL_HIGHLIGHTING_ACTION_VISIBLE = Flag.create(
-    EDITOR, "essential.highlighting.action.visible",
-    "Show Essential Highlighting action",
+  public static final FlagGroup ESSENTIALS_MODE = new FlagGroup(FLAGS, "essentialsmode", "Essentials Mode");
+
+
+  public static final Flag<Boolean> ESSENTIALS_MODE_VISIBLE = Flag.create(
+    ESSENTIALS_MODE, "essentials.mode.action.visible",
+    "Show Essentials Mode visible in File drop down menu",
     "If enabled, makes Essential Highlighting action visible",
     true
   );
+  public static final Flag<Boolean> ESSENTIALS_HIGHLIGHTING_MODE = Flag.create(
+    ESSENTIALS_MODE, "essential.highlighting.in.essentials.mode",
+    "Essential Highlighting mode on in Essentials mode",
+   "When enabled turns on Essential Highlighting mode when in Essentials Mode. Essential Highlighting mode enables " +
+   "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
+   true);
 
   //endregion
 
@@ -1445,6 +1471,13 @@ public final class StudioFlags {
     "Enable unified device manager",
     "Enable new Device Manager UI with unified device list",
     false);
+
+  public static final Flag<Boolean> DUAL_DEVICE_MANAGER_ENABLED = Flag.create(
+    DEVICE_MANAGER,
+    "dual.device.manager.enabled",
+    "Enable unified device manager alongside existing device manager",
+    "Continue showing original Device Manager even with unified device manager enabled",
+    false);
   // endregion
 
   //region DDMLIB
@@ -1481,15 +1514,6 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       false);
 
-  public static final Flag<Boolean> DIRECT_ACCESS_MULTIPLE_DEVICES =
-    Flag.create(
-      FIREBASE_TEST_LAB,
-      "direct.access.multiple.devices",
-      "Multiple devices",
-      "Enables running multiple devices from FTL",
-      false
-    );
-
   public static final Flag<String> DIRECT_ACCESS_PROJECT =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1506,15 +1530,6 @@ public final class StudioFlags {
       "FTL Direct Access endpoint",
       "The URL for FTL Direct Access to connect to, in host:port form (with no protocol specified).",
       "testing.googleapis.com"
-    );
-
-  public static final Flag<String> DIRECT_ACCESS_DEVICE_FILTER =
-    Flag.create(
-      FIREBASE_TEST_LAB,
-      "direct.access.device.filter",
-      "FTL Direct Access enabled devices",
-      "The devices to show in FTL, in the format device1codename/apilevel,device2codename/apilevel,etc.",
-      "cheetah/33,oriole/32,b2q/31,q2q/31,f2q/30,OnePlus5T/28,TC77/27,redfin/30"
     );
   // endregion Firebase Test Lab
 

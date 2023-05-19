@@ -57,7 +57,7 @@ import com.android.tools.idea.editors.powersave.PreviewPowerSaveManager
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LoggerWithFixedInfo
-import com.android.tools.idea.modes.EssentialModeMessenger
+import com.android.tools.idea.modes.essentials.EssentialsModeMessenger
 import com.android.tools.idea.preview.NavigatingInteractionHandler
 import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.PreviewElementProvider
@@ -65,11 +65,9 @@ import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
-import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.needsBuild
 import com.android.tools.idea.projectsystem.setupBuildListener
-import com.android.tools.idea.rendering.RenderService
 import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
@@ -80,6 +78,8 @@ import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
+import com.android.tools.rendering.RenderAsyncActionExecutor
+import com.android.tools.rendering.RenderService
 import com.intellij.ide.ActivityTracker
 import com.intellij.ide.PowerSaveMode
 import com.intellij.notification.Notification
@@ -366,12 +366,12 @@ class ComposePreviewRepresentation(
           if (!PreviewPowerSaveManager.isInPowerSaveMode) requestRefresh()
         }
       )
-    val essentialsModeMessengingService = service<EssentialModeMessenger>()
+    val essentialsModeMessagingService = service<EssentialsModeMessenger>()
     project.messageBus
       .connect(this as Disposable)
       .subscribe(
-        essentialsModeMessengingService.TOPIC,
-        EssentialModeMessenger.Listener {
+        essentialsModeMessagingService.TOPIC,
+        EssentialsModeMessenger.Listener {
           updateFpsForCurrentMode()
           // When getting out of Essential Highlighting mode, request a refresh
           if (!PreviewPowerSaveManager.isInPowerSaveMode) requestRefresh()
@@ -1160,7 +1160,7 @@ class ComposePreviewRepresentation(
     val isRefreshing =
       (refreshCallsCount.get() > 0 ||
         DumbService.isDumb(project) ||
-        UIUtil.invokeAndWaitIfNeeded(Computable { projectBuildStatusManager.isBuilding }))
+        projectBuildStatusManager.isBuilding)
 
     // If we are refreshing, we avoid spending time checking other conditions like errors or if the
     // preview
@@ -1260,12 +1260,10 @@ class ComposePreviewRepresentation(
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
     val showingPreviewElements =
-      surface.updatePreviewsAndRefresh(
+      composeWorkBench.updatePreviewsAndRefresh(
         !quickRefresh,
         previewElementProvider,
-        log,
         psiFile,
-        this,
         progressIndicator,
         this::onAfterRender,
         previewElementModelAdapter,
@@ -1420,6 +1418,11 @@ class ComposePreviewRepresentation(
       log.debug("Completed")
       launch(uiThread) { Disposer.dispose(refreshProgressIndicator) }
       if (it is CancellationException) {
+        RenderService.getRenderAsyncActionExecutor()
+          .cancelActionsByTopic(
+            listOf(RenderAsyncActionExecutor.RenderingTopic.COMPOSE_PREVIEW),
+            true
+          )
         composeWorkBench.onRefreshCancelledByTheUser()
       } else composeWorkBench.onRefreshCompleted()
 

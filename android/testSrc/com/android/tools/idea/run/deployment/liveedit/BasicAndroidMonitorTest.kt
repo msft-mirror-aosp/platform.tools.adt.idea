@@ -22,6 +22,7 @@ import com.android.ddmlib.internal.ClientImpl
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.MockitoKt
 import com.android.tools.idea.editors.literals.LiveEditService
+import com.android.tools.idea.editors.literals.LiveEditServiceImpl
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -82,7 +83,7 @@ class BasicAndroidMonitorTest {
 
     connection = FakeLiveEditAdbListener()
     clients = clients.plus(client)
-    service = LiveEditService(project, MoreExecutors.directExecutor(), connection)
+    service = LiveEditServiceImpl(project, MoreExecutors.directExecutor(), connection)
     monitor = service.getDeployMonitor()
 
     `when`(device.serialNumber).thenReturn("1")
@@ -94,7 +95,7 @@ class BasicAndroidMonitorTest {
     LiveEditApplicationConfiguration.getInstance().leTriggerMode = LiveEditService.Companion.LiveEditTriggerMode.AUTOMATIC
     LiveEditApplicationConfiguration.getInstance().mode = LiveEditApplicationConfiguration.LiveEditMode.LIVE_EDIT
 
-    monitor.notifyAppDeploy(appId, device, LiveEditApp(emptySet(), 24))
+    monitor.notifyAppDeploy(appId, device, LiveEditApp(emptySet(), 24)) { true }
   }
 
   @Test

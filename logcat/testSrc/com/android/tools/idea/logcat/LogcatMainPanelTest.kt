@@ -67,6 +67,7 @@ import com.android.tools.idea.logcat.util.logcatEvents
 import com.android.tools.idea.logcat.util.logcatMessage
 import com.android.tools.idea.logcat.util.onIdle
 import com.android.tools.idea.logcat.util.waitForCondition
+import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider
 import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.ApplicationServiceRule
@@ -189,6 +190,7 @@ class LogcatMainPanelTest {
       "Clear Logcat",
       "Pause Logcat",
       "Restart Logcat",
+      "Save Logcat to a File",
       "Scroll to the End (clicking on a particular line stops scrolling and keeps that line visible)",
       "Previous Occurrence",
       "Next Occurrence",

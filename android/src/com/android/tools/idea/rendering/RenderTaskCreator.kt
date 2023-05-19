@@ -21,6 +21,8 @@ import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.tools.idea.AndroidPsiUtils
 import com.android.tools.idea.configurations.Configuration
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.rendering.parsers.PsiXmlFile
+import com.android.tools.rendering.RenderTask
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.xml.XmlFile
 import org.jetbrains.android.facet.AndroidFacet
@@ -47,14 +49,13 @@ fun createRenderTaskFuture(
   val configuration =
     Configuration.create(
       ConfigurationManager.getOrCreateInstance(facet.module),
-      null,
       FolderConfiguration.createDefault()
     )
   configure(configuration)
 
   val builder = StudioRenderService.getInstance(project)
     .taskBuilder(facet, configuration)
-    .withPsiFile(xmlFile)
+    .withPsiFile(PsiXmlFile(xmlFile))
     .disableDecorations()
     .apply {
       if (privateClassLoader) {
