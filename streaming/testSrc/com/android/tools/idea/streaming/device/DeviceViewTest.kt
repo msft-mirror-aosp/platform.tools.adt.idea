@@ -30,8 +30,8 @@ import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.concurrency.waitForCondition
-import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.DeviceMirroringSettings
+import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
@@ -142,7 +142,7 @@ internal class DeviceViewTest {
   private lateinit var fakeUi: FakeUi
 
   private val testRootDisposable
-    get() = agentRule.testRootDisposable
+    get() = agentRule.disposable
   private val project
     get() = agentRule.project
   private val agent

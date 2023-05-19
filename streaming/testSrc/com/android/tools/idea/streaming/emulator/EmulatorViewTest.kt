@@ -32,7 +32,7 @@ import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.NotificationHolderPanel
+import com.android.tools.idea.streaming.core.NotificationHolderPanel
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
@@ -124,7 +124,7 @@ class EmulatorViewTest {
   private val filesOpened = mutableListOf<VirtualFile>()
 
   private val testRootDisposable
-    get() = emulatorViewRule.testRootDisposable
+    get() = emulatorViewRule.disposable
 
   @Before
   fun setUp() {
@@ -458,7 +458,7 @@ class EmulatorViewTest {
     // Check EmulatorShowFoldingControlsAction.
     val mockLafManager = mock<LafManager>()
     whenever(mockLafManager.currentLookAndFeel).thenReturn(DarculaLookAndFeelInfo())
-    ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.testRootDisposable)
+    ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.disposable)
 
     emulatorViewRule.executeAction("android.emulator.folding.controls", view)
     call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
