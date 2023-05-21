@@ -20,6 +20,7 @@ import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
 
 @RunWith(JarTestSuiteRunner.class)
+@JarTestSuiteRunner.ExcludeClasses(NewProjectWizardTestSuite.class)
 public class NewProjectWizardTestSuite extends IdeaTestSuiteBase {
   static {
     linkIntoOfflineMavenRepo("tools/adt/idea/android-npw/test_deps.manifest");

@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.compose.annotator
 
+import com.intellij.lang.Language
+import com.intellij.lang.LanguageExtension
+import com.intellij.lang.LanguageExtensionPoint
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -22,4 +26,15 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 internal fun CodeInsightTestFixture.findPsiFile(tempDirPath: String): PsiFile {
   val file = checkNotNull(findFileInTempDir(tempDirPath))
   return checkNotNull(PsiManager.getInstance(project).findFile(file))
+}
+
+internal fun <E : Any> CodeInsightTestFixture.registerLanguageExtensionPoint(
+  extension: LanguageExtension<E>,
+  implementation: E,
+  language: Language
+) {
+  ApplicationManager.getApplication()
+    .extensionArea
+    .getExtensionPoint<LanguageExtensionPoint<E>>(extension.name)
+    .registerExtension(LanguageExtensionPoint(language.id, implementation), testRootDisposable)
 }

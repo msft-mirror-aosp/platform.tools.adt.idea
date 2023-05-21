@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.dsl.parser.files;
 import static com.android.tools.idea.gradle.dsl.model.notifications.NotificationTypeReference.CIRCULAR_APPLICATION;
 
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement;
 import com.google.common.base.Charsets;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -148,6 +149,8 @@ public class GradleDslFileCache {
     }
     return dslFile;
   }
+
+
 
   @NotNull
   public List<GradleDslFile> getAllFiles() {

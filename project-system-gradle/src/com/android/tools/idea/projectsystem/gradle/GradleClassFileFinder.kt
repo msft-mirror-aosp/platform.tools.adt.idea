@@ -117,7 +117,7 @@ private fun Module.getNonCachedCompileOutputsIncludingDependencies(
     CompileRoots(
       (listOf(this) + ModuleRootManager.getInstance(this).getDependencies(includeAndroidTests))
         .flatMap {
-          GradleClassFinderUtil.getModuleCompileOutputs(it, includeAndroidTests).toList()
+          GradleClassFinderUtil.getModuleCompileOutputs(this, includeAndroidTests).toList()
         }
         .map { it.toPath() }
         .toList()

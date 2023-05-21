@@ -70,10 +70,10 @@ class ReplaceStringQuickFixTest : JavaCodeInsightFixtureTestCase() {
       """
       package p1.p2;
 
+      import java.util.ArrayList;
+
       import static java.lang.Integer.MAX_VALUE;
       import static java.lang.Math.abs;
-
-      import java.util.ArrayList;
 
       public class ImportTest {
           public void newName() {
@@ -269,8 +269,9 @@ class ReplaceStringQuickFixTest : JavaCodeInsightFixtureTestCase() {
     assertEquals(
       """
       package p1.p2;
-      import static java.lang.Integer.MAX_VALUE;
       import static System.out.println;
+      import static java.lang.Integer.MAX_VALUE;
+
       public class ShortenTest {
           public void test() {
               println(MAX_VALUE);

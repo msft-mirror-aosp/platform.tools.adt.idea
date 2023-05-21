@@ -267,5 +267,5 @@ fun CodeInsightTestFixture.addFileToProjectAndInvalidate(relativePath: String, f
   }
 
 @Suppress("UnstableApiUsage")
-val ProjectRule.disposable: Disposable
+val ProjectRule.testRootDisposable: Disposable
   get() = project.earlyDisposable

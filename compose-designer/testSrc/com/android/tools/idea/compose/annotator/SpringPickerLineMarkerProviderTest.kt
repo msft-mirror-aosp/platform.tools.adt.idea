@@ -22,11 +22,13 @@ import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.Dependencies
+import com.intellij.codeInsight.daemon.LineMarkerProviders
 import com.intellij.codeInsight.daemon.impl.LineMarkersPass
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -50,6 +52,11 @@ internal class SpringPickerLineMarkerProviderTest {
   @Before
   fun setup() {
     (fixture.module.getModuleSystem() as DefaultModuleSystem).usesCompose = true
+    fixture.registerLanguageExtensionPoint(
+      LineMarkerProviders.getInstance(),
+      SpringPickerLineMarkerProvider(),
+      KotlinLanguage.INSTANCE
+    )
 
     fixture.addFileToProject(
       FILE_PATH,

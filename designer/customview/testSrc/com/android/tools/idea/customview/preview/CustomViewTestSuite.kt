@@ -20,6 +20,7 @@ import com.android.tools.tests.IdeaTestSuiteBase
 import org.junit.runner.RunWith
 
 @RunWith(JarTestSuiteRunner::class)
+@JarTestSuiteRunner.ExcludeClasses(CustomViewTestSuite::class)
 class CustomViewTestSuite : IdeaTestSuiteBase() {
   companion object {
     init {

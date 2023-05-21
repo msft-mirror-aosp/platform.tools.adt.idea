@@ -25,6 +25,7 @@ import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.moveCaret
 import com.intellij.codeInsight.daemon.LineMarkerInfo
+import com.intellij.codeInsight.daemon.LineMarkerProviders
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -33,6 +34,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndGet
 import org.apache.commons.lang.StringUtils
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -59,6 +61,11 @@ class PreviewPickerLineMarkerProviderTest {
     StudioFlags.COMPOSE_PREVIEW_ELEMENT_PICKER.override(true)
     ComposeExperimentalConfiguration.getInstance().isPreviewPickerEnabled = true
     (rule.fixture.module.getModuleSystem() as DefaultModuleSystem).usesCompose = true
+    fixture.registerLanguageExtensionPoint(
+      LineMarkerProviders.getInstance(),
+      PreviewPickerLineMarkerProvider(),
+      KotlinLanguage.INSTANCE
+    )
 
     fixture.addFileToProject(
       filePath,

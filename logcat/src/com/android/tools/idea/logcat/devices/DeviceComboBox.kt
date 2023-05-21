@@ -51,8 +51,6 @@ import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 
-private val LOGCAT_FILE_EXTENSIONS = setOf("logcat", "txt")
-
 /**
  * A [ComboBox] for selecting a device.
  *
@@ -168,7 +166,7 @@ internal class DeviceComboBox(
   private fun importItemSelected() {
     val descriptor = FileChooserDescriptor(true, false, false, false, false, false)
       .withTitle(LogcatBundle.message("logcat.device.combo.file.chooser.title"))
-      .withFileFilter { it.name.substringAfterLast('.') in LOGCAT_FILE_EXTENSIONS }
+      .withFileFilter { it.name.endsWith(".logcat") }
     val path = FileChooserFactory.getInstance()
                  .createFileChooser(descriptor, project, this)
                  .choose(project)

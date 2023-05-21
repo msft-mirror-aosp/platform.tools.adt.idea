@@ -23,8 +23,6 @@ import com.android.testutils.MockitoCleanerRule
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.whenever
-import com.android.tools.idea.editors.literals.LiveEditService
-import com.android.tools.idea.editors.literals.LiveEditServiceImpl
 import com.android.tools.idea.execution.common.AndroidExecutionTarget
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler
@@ -32,7 +30,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.snapshots.LightGradleSyncTestProjects
 import com.android.tools.idea.project.AndroidRunConfigurations
 import com.android.tools.idea.run.activity.launch.EmptyTestConsoleView
-import com.android.tools.idea.run.deployment.liveedit.LiveEditApp
 import com.android.tools.idea.run.util.SwapInfo
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.override
@@ -42,10 +39,8 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.ExecutionManager
-import com.intellij.execution.Executor
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
-import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.impl.ExecutionManagerImpl
@@ -80,7 +75,10 @@ class LaunchTaskRunnerTest {
   val cleaner = MockitoCleanerRule()
 
   @get:Rule
-  val chain = RuleChain.outerRule(cleaner).around(projectRule).around(fakeAdb)
+  val chain = RuleChain
+    .outerRule(cleaner)
+    .around(projectRule)
+    .around(fakeAdb)
 
   @Before
   fun setUp() {
@@ -108,16 +106,25 @@ class LaunchTaskRunnerTest {
     (env.runProfile as AndroidRunConfiguration).CLEAR_LOGCAT = true
 
     var logcatCleared = false
-    projectRule.project.messageBus.connect(projectRule.testRootDisposable)
-      .subscribe(ClearLogcatListener.TOPIC, ClearLogcatListener { logcatCleared = true })
+    projectRule.project.messageBus.connect(projectRule.testRootDisposable).subscribe(ClearLogcatListener.TOPIC,
+                                                                                     object : ClearLogcatListener {
+                                                                                       override fun clearLogcat(serialNumber: String) {
+                                                                                         logcatCleared = true
+                                                                                       }
+                                                                                     })
 
-    val runner = LaunchTaskRunner(FakeApplicationIdProvider(), env, deviceFutures, { emptyList<ApkInfo>() })
+    val runner = LaunchTaskRunner(
+      FakeApplicationIdProvider(),
+      env,
+      deviceFutures
+    ) { emptyList<ApkInfo>() }
 
     val runContentDescriptor = runner.run(EmptyProgressIndicator())
     val processHandler = runContentDescriptor.processHandler!!
     processHandler.startNotify()
 
-    assertThat(logcatCleared).isTrue() // comes from [com.android.tools.idea.run.tasks.ClearAppStorageTaskKt.clearAppStorage]
+    assertThat(logcatCleared).isTrue()
+    // comes from [com.android.tools.idea.run.tasks.ClearAppStorageTaskKt.clearAppStorage]
     assertThat(deviceState.pmLogs).contains("list packages applicationId")
     assertThat(processHandler).isInstanceOf(AndroidProcessHandler::class.java)
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo("applicationId")
@@ -127,7 +134,8 @@ class LaunchTaskRunnerTest {
     if (!latch.await(10, TimeUnit.SECONDS)) {
       fail("Activity is not started")
     }
-    deviceState.stopClient(1234) // TODO: flaky test b/273744887
+    deviceState.stopClient(1234)
+    // TODO: flaky test b/273744887
     //if (!processHandler.waitFor(5000)) {
     //  fail("Process handler didn't stop when debug process terminated")
     //}
@@ -135,7 +143,8 @@ class LaunchTaskRunnerTest {
   }
 
   @Test
-  fun debugSucceeded() { //TODO: write handler in fakeAdb for "am capabilities --protobuf"
+  fun debugSucceeded() {
+    //TODO: write handler in fakeAdb for "am capabilities --protobuf"
     StudioFlags.DEBUG_ATTEMPT_SUSPENDED_START.override(false, projectRule.testRootDisposable)
 
     val deviceState = fakeAdb.connectAndWaitForDevice()
@@ -151,7 +160,11 @@ class LaunchTaskRunnerTest {
     val deviceFutures = DeviceFutures.forDevices(listOf(device))
     val env = getExecutionEnvironment(listOf(device), isDebug = true)
     (env.runProfile as AndroidRunConfiguration).setLaunchActivity("MainActivity")
-    val runner = LaunchTaskRunner(FakeApplicationIdProvider(), env, deviceFutures, { emptyList<ApkInfo>() })
+    val runner = LaunchTaskRunner(
+      FakeApplicationIdProvider(),
+      env,
+      deviceFutures
+    ) { emptyList<ApkInfo>() }
 
     val processHandler = (runner.debug(EmptyProgressIndicator()).processHandler as AndroidRemoteDebugProcessHandler)
     assertThat(!processHandler.isProcessTerminating || !processHandler.isProcessTerminated)
@@ -170,24 +183,14 @@ class LaunchTaskRunnerTest {
     val runningProcessHandler = setSwapInfo(env)
     runningProcessHandler.addTargetDevice(device)
 
-    var liveEditServiceNotified = false
-    val liveEditServiceImpl = LiveEditServiceImpl(projectRule.project).apply { Disposer.register(projectRule.testRootDisposable, this) }
-    val liveEditService = object : LiveEditService by liveEditServiceImpl {
-      override fun notifyAppDeploy(
-        runProfile: RunProfile, executor: Executor, packageName: String, device: IDevice, app: LiveEditApp
-      ): Boolean {
-        liveEditServiceNotified = true
-        return true
-      }
-    }
-
     val runner = LaunchTaskRunner(
-      FakeApplicationIdProvider(), env, deviceFutures, { emptyList<ApkInfo>() }, liveEditService
-    )
+      FakeApplicationIdProvider(),
+      env,
+      deviceFutures
+    ) { emptyList<ApkInfo>() }
 
     val runContentDescriptor = runner.applyChanges(EmptyProgressIndicator())
     assertThat(runContentDescriptor.isHiddenContent).isEqualTo(true)
-    assertThat(liveEditServiceNotified).isEqualTo(true)
 
     val processHandler = runContentDescriptor.processHandler
 
@@ -204,12 +207,17 @@ class LaunchTaskRunnerTest {
     val device = DeviceImpl(null, "serial_number", IDevice.DeviceState.ONLINE)
     val deviceFutures = DeviceFutures.forDevices(listOf(device))
     val env = getExecutionEnvironment(listOf(device))
-    val runner = LaunchTaskRunner(FakeApplicationIdProvider(), env, deviceFutures, { throw ExecutionException("Exception") })
+    val runner = LaunchTaskRunner(
+      FakeApplicationIdProvider(),
+      env,
+      deviceFutures)
+    { throw ExecutionException("Exception") }
 
     try {
       runner.run(EmptyProgressIndicator())
       fail("Run should fail")
-    } catch (_: ExecutionException) {
+    }
+    catch (_: ExecutionException) {
 
     }
   }
@@ -221,12 +229,13 @@ class LaunchTaskRunnerTest {
     val env = getExecutionEnvironment(listOf(device))
     val runningProcessHandler = setSwapInfo(env)
     runningProcessHandler.addTargetDevice(device)
-    val runner = LaunchTaskRunner(FakeApplicationIdProvider(), env, deviceFutures, { throw ExecutionException("Exception") })
+    val runner = LaunchTaskRunner(FakeApplicationIdProvider(), env, deviceFutures) { throw ExecutionException("Exception") }
 
     try {
       runner.applyChanges(EmptyProgressIndicator())
       fail("Run should fail")
-    } catch (_: ExecutionException) {
+    }
+    catch (_: ExecutionException) {
     }
 
     assertThat(runningProcessHandler.isAssociated(device)).isEqualTo(true)
@@ -235,22 +244,22 @@ class LaunchTaskRunnerTest {
   }
 
 
-  private fun getExecutionEnvironment(
-    devices: List<IDevice>, isDebug: Boolean = false, settings: RunnerAndConfigurationSettings? = null
-  ): ExecutionEnvironment {
+  private fun getExecutionEnvironment(devices: List<IDevice>,
+                                      isDebug: Boolean = false,
+                                      settings: RunnerAndConfigurationSettings? = null): ExecutionEnvironment {
     val configSettings = settings ?: RunManager.getInstance(projectRule.project).getConfigurationSettingsList(
-      AndroidRunConfigurationType.getInstance()
-    ).first()
+      AndroidRunConfigurationType.getInstance()).first()
     val executor = if (isDebug) DefaultRunExecutor.getRunExecutorInstance() else DefaultDebugExecutor.getDebugExecutorInstance()
-    val executionEnvironment =
-      ExecutionEnvironmentBuilder(projectRule.project, executor).runnerAndSettings(DefaultStudioProgramRunner(), configSettings)
-        .target(object : AndroidExecutionTarget() {
-          override fun getId() = "TestTarget"
-          override fun getDisplayName() = "TestTarget"
-          override fun getIcon() = null
-          override fun getAvailableDeviceCount() = devices.size
-          override fun getRunningDevices() = devices
-        }).build()
+    val executionEnvironment = ExecutionEnvironmentBuilder(projectRule.project, executor)
+      .runnerAndSettings(DefaultStudioProgramRunner(), configSettings)
+      .target(object : AndroidExecutionTarget() {
+        override fun getId() = "TestTarget"
+        override fun getDisplayName() = "TestTarget"
+        override fun getIcon() = null
+        override fun getAvailableDeviceCount() = devices.size
+        override fun getRunningDevices() = devices
+      })
+      .build()
     return executionEnvironment
   }
 

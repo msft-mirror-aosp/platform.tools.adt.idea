@@ -19,8 +19,10 @@ import com.android.tools.idea.databinding.TestDataPaths
 import com.android.tools.idea.databinding.psiclass.LightBindingClass
 import com.android.tools.idea.databinding.util.isViewBindingEnabled
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
+import com.android.tools.idea.projectsystem.getMainModule
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.findClass
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -31,6 +33,11 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.util.ui.UIUtil
+import org.jetbrains.kotlin.descriptors.resolveClassByFqName
+import org.jetbrains.kotlin.idea.caches.project.toDescriptor
+import org.jetbrains.kotlin.incremental.components.NoLookupLocation
+import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
+import org.jetbrains.kotlin.name.FqName
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -75,7 +82,10 @@ class ViewBindingNavigationTest {
   fun navigateLightViewBindingClass() {
     assertThat(editorManager.selectedFiles).isEmpty()
 
-    val context = fixture.findClass("com.android.example.viewbinding.MainActivity")
+    val moduleDescriptor = projectRule.project.findAppModule().getMainModule().toDescriptor()!!
+    val classDescriptor = moduleDescriptor.resolveClassByFqName(FqName("com.android.example.viewbinding.MainActivity"),
+                                                                NoLookupLocation.WHEN_FIND_BY_FQNAME)!!
+    val context = classDescriptor.findPsi()!!
 
     // ActivityMainBinding is in-memory and generated on the fly from activity_main.xml
     val binding = fixture.findClass("com.android.example.viewbinding.databinding.ActivityMainBinding", context) as LightBindingClass
@@ -90,7 +100,10 @@ class ViewBindingNavigationTest {
   fun navigateLightViewBindingField() {
     assertThat(editorManager.selectedFiles).isEmpty()
 
-    val context = fixture.findClass("com.android.example.viewbinding.MainActivity")
+    val moduleDescriptor = projectRule.project.findAppModule().getMainModule().toDescriptor()!!
+    val classDescriptor = moduleDescriptor.resolveClassByFqName(FqName("com.android.example.viewbinding.MainActivity"),
+                                                                NoLookupLocation.WHEN_FIND_BY_FQNAME)!!
+    val context = classDescriptor.findPsi()!!
 
     // ActivityMainBinding is in-memory and generated on the fly from activity_main.xml.
     val binding = fixture

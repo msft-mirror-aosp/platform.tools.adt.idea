@@ -92,7 +92,7 @@ class ManageSnapshotsDialogTest {
     set(value) { nullableEmulatorView = value }
 
   private val testRootDisposable
-    get() = emulatorViewRule.disposable
+    get() = emulatorViewRule.testRootDisposable
 
   @Before
   fun setUp() {

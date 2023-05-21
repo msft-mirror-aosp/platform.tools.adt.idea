@@ -114,7 +114,7 @@ class ComposePreviewViewImplTest {
   private val fixture: CodeInsightTestFixture
     get() = projectRule.fixture
 
-  private val nopDataProvider = DataProvider { null }
+  private val nopDataProvider = DataProvider {}
 
   private val statusManager =
     object : ProjectBuildStatusManager {

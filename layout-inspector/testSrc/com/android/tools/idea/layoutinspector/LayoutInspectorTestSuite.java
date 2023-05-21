@@ -21,6 +21,9 @@ import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
 
 @RunWith(JarTestSuiteRunner.class)
+@JarTestSuiteRunner.ExcludeClasses({
+  LayoutInspectorTestSuite.class,
+})
 public class LayoutInspectorTestSuite extends IdeaTestSuiteBase {
   static {
     IconLoaderRule.enableIconLoading();

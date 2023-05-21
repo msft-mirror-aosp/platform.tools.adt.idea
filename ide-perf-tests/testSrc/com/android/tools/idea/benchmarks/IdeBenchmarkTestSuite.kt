@@ -23,6 +23,7 @@ import org.junit.ClassRule
 import org.junit.runner.RunWith
 
 @RunWith(JarTestSuiteRunner::class)
+@JarTestSuiteRunner.ExcludeClasses(IdeBenchmarkTestSuite::class)
 class IdeBenchmarkTestSuite : IdeaTestSuiteBase() {
   companion object {
     @get:ClassRule

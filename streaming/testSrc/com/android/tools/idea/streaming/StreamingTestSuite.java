@@ -22,6 +22,7 @@ import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
 
 @RunWith(JarTestSuiteRunner.class)
+@JarTestSuiteRunner.ExcludeClasses(StreamingTestSuite.class)  // A suite may not contain itself.
 public class StreamingTestSuite extends IdeaTestSuiteBase {
 
   static {

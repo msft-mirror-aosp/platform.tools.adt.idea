@@ -147,6 +147,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
     return LaunchOptions.builder()
       .setDeploy(DEPLOY)
       .setOpenLogcatAutomatically(SHOW_LOGCAT_AUTOMATICALLY)
+      .setDeployAsInstant(DEPLOY_AS_INSTANT)
       .setClearAppStorage(CLEAR_APP_STORAGE)
       .build()
   }
@@ -154,7 +155,8 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
   var disabledDynamicFeatures: List<String>
     get() = if (StringUtil.isEmpty(DYNAMIC_FEATURES_DISABLED_LIST)) {
       ImmutableList.of()
-    } else StringUtil.split(
+    }
+    else StringUtil.split(
       DYNAMIC_FEATURES_DISABLED_LIST,
       FEATURE_LIST_SEPARATOR
     )
@@ -226,7 +228,8 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
     }
     val startActivityFlagsProvider = if (facet.configuration.projectType == AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP) {
       InstantAppStartActivityFlagsProvider()
-    } else {
+    }
+    else {
       DefaultStartActivityFlagsProvider(
         project,
         waitForDebugger,
@@ -284,7 +287,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
 
   @Throws(InvalidDataException::class)
   override fun readExternal(element: Element) {
-    super.readExternal(element)
+    super<AndroidRunConfigurationBase>.readExternal(element)
     for (state in myLaunchOptionStates.values) {
       DefaultJDOMExternalizer.readExternal(state, element)
     }
@@ -297,7 +300,7 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
 
   @Throws(WriteExternalException::class)
   override fun writeExternal(element: Element) {
-    super.writeExternal(element)
+    super<AndroidRunConfigurationBase>.writeExternal(element)
     for (state in myLaunchOptionStates.values) {
       DefaultJDOMExternalizer.writeExternal(state, element)
     }
@@ -326,7 +329,8 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
     var applicationId: String? = null
     try {
       applicationId = applicationIdProvider?.packageName
-    } catch (ignored: ApkProvisionException) {
+    }
+    catch (ignored: ApkProvisionException) {
     }
     if (applicationId == null) {
       runExecutorIcon = null
@@ -336,7 +340,8 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
       runExecutorIcon = if (isRunning) {
         // Use the system's restart icon for the default run executor if application running on selected target.
         AllIcons.Actions.Restart
-      } else {
+      }
+      else {
         null
       }
     }
@@ -352,7 +357,8 @@ open class AndroidRunConfiguration(project: Project?, factory: ConfigurationFact
     get() = try {
       // Provider could be null if module set to null.
       applicationIdProvider?.packageName
-    } catch (e: ApkProvisionException) {
+    }
+    catch (e: ApkProvisionException) {
       Logger.getInstance(AndroidRunConfiguration::class.java).error(e)
       null
     }

@@ -16,8 +16,11 @@
 package com.android.tools.idea.gradle.dsl.model.repositories;
 
 import com.android.tools.idea.gradle.dsl.api.repositories.GoogleDefaultRepositoryModel;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement;
 import org.jetbrains.annotations.NotNull;
+
+import static com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel.RepositoryType.GOOGLE_DEFAULT;
 
 /**
  * Represents a repository defined with google().

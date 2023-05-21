@@ -3,7 +3,6 @@ package com.android.tools.idea.insights
 import com.android.tools.idea.insights.client.Interval
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.QueryFilters
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -106,7 +105,7 @@ data class AppInsightsState(
     copy(connections = connections.select(value))
 }
 
-fun AppInsightsState.toIssueRequest(clock: Clock): IssueRequest? {
+fun AppInsightsState.toIssueRequest(): IssueRequest? {
   if (connections.selected == null || filters.timeInterval.selected == null) {
     return null
   }
@@ -115,7 +114,7 @@ fun AppInsightsState.toIssueRequest(clock: Clock): IssueRequest? {
     filters =
       QueryFilters(
         interval =
-          clock.instant().let {
+          Instant.now().let {
             Interval(
               startTime = it.minus(Duration.ofDays(filters.timeInterval.selected.numDays)),
               endTime = it

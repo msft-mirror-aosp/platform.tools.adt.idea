@@ -19,4 +19,6 @@ import org.junit.runner.RunWith
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@RunWith(JarTestSuiteRunner::class) class InsightsIdeTestSuite : IdeaTestSuiteBase()
+@RunWith(JarTestSuiteRunner::class)
+@JarTestSuiteRunner.ExcludeClasses(InsightsIdeTestSuite::class)
+class InsightsIdeTestSuite : IdeaTestSuiteBase()

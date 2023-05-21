@@ -83,21 +83,21 @@ class LayoutInspectorManagerTest {
     displayViewRule.project.replaceService(
       ToolWindowManager::class.java,
       fakeToolWindowManager,
-      displayViewRule.disposable
+      displayViewRule.testRootDisposable
     )
 
     val mockLayoutInspectorProjectService = mock<LayoutInspectorProjectService>()
 
     val processModel = ProcessesModel(TestProcessDiscovery())
-    val deviceModel = DeviceModel(displayViewRule.disposable, processModel)
+    val deviceModel = DeviceModel(displayViewRule.testRootDisposable, processModel)
 
-    val coroutineScope = AndroidCoroutineScope(displayViewRule.disposable)
+    val coroutineScope = AndroidCoroutineScope(displayViewRule.testRootDisposable)
     val launcher = InspectorClientLauncher(
       processModel,
       emptyList(),
       displayViewRule.project,
       coroutineScope,
-      displayViewRule.disposable,
+      displayViewRule.testRootDisposable,
     )
 
     layoutInspector = LayoutInspector(
@@ -112,7 +112,7 @@ class LayoutInspectorManagerTest {
     )
 
     whenever(mockLayoutInspectorProjectService.getLayoutInspector()).thenAnswer { layoutInspector }
-    displayViewRule.project.replaceService(LayoutInspectorProjectService::class.java, mockLayoutInspectorProjectService, displayViewRule.disposable)
+    displayViewRule.project.replaceService(LayoutInspectorProjectService::class.java, mockLayoutInspectorProjectService, displayViewRule.testRootDisposable)
 
     RunningDevicesStateObserver.getInstance(displayViewRule.project).update(true)
   }

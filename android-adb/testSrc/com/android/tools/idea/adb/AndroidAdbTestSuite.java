@@ -21,6 +21,7 @@ import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
 
 @RunWith(JarTestSuiteRunner.class)
+@JarTestSuiteRunner.ExcludeClasses(AndroidAdbTestSuite.class)  // a suite mustn't contain itself
 public class AndroidAdbTestSuite extends IdeaTestSuiteBase {
 
   static {

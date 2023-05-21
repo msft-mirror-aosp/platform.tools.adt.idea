@@ -441,7 +441,6 @@ class PreviewApiLevelMustBeValid : BasePreviewAnnotationInspection() {
           ?.targets
           ?.filter { ConfigurationManager.isLayoutLibTarget(it) }
           ?.map { it.version.apiLevel }
-          ?.takeIf { it.isNotEmpty() }
       }
         ?: listOf(SdkVersionInfo.LOWEST_COMPILE_SDK_VERSION, SdkVersionInfo.HIGHEST_SUPPORTED_API)
 

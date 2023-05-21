@@ -18,10 +18,10 @@ package com.android.tools.idea.layoutinspector.runningdevices
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
+import com.android.tools.idea.streaming.AbstractDisplayView
+import com.android.tools.idea.streaming.DISPLAY_VIEW_KEY
 import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
-import com.android.tools.idea.streaming.core.AbstractDisplayView
-import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
-import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
+import com.android.tools.idea.streaming.STREAMING_CONTENT_PANEL_KEY
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.ui.customization.CustomActionsSchema
@@ -66,7 +66,7 @@ class ToggleLayoutInspectorActionTest {
     displayViewRule.project.replaceService(
       ToolWindowManager::class.java,
       FakeToolWindowManager(displayViewRule.project, listOf(tab1)),
-      displayViewRule.disposable
+      displayViewRule.testRootDisposable
     )
 
     displayView = displayViewRule.newEmulatorView()
@@ -74,11 +74,11 @@ class ToggleLayoutInspectorActionTest {
     // replace CustomActionsSchema with mocked one
     val mockCustomActionSchema = mock<CustomActionsSchema>()
     whenever(mockCustomActionSchema.getCorrectedAction(any())).thenAnswer { getFakeAction() }
-    ApplicationManager.getApplication().replaceService(CustomActionsSchema::class.java, mockCustomActionSchema, displayViewRule.disposable)
+    ApplicationManager.getApplication().replaceService(CustomActionsSchema::class.java, mockCustomActionSchema, displayViewRule.testRootDisposable)
 
     // replace LayoutInspectorManager with fake one
     fakeLayoutInspectorManager = FakeLayoutInspectorManager()
-    displayViewRule.project.replaceService(LayoutInspectorManager::class.java, fakeLayoutInspectorManager, displayViewRule.disposable)
+    displayViewRule.project.replaceService(LayoutInspectorManager::class.java, fakeLayoutInspectorManager, displayViewRule.testRootDisposable)
   }
 
   @Test

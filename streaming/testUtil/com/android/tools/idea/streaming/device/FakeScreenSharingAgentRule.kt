@@ -29,7 +29,6 @@ import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.adb.FakeAdbServiceRule
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.util.StudioPathManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.ex.ProjectEx
@@ -83,8 +82,9 @@ class FakeScreenSharingAgentRule : TestRule {
     }
   }
 
-  val disposable: Disposable
-    get() = projectRule.disposable
+  @Suppress("UnstableApiUsage")
+  val testRootDisposable: Disposable
+    get() = projectRule.project.earlyDisposable
 
   val project: ProjectEx
     get() = projectRule.project

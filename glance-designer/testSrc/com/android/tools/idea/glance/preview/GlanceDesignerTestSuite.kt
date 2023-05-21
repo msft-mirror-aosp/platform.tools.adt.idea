@@ -19,4 +19,8 @@ import com.android.testutils.JarTestSuiteRunner
 import com.android.tools.tests.IdeaTestSuiteBase
 import org.junit.runner.RunWith
 
-@RunWith(JarTestSuiteRunner::class) class GlanceDesignerTestSuite : IdeaTestSuiteBase()
+@RunWith(JarTestSuiteRunner::class)
+@JarTestSuiteRunner.ExcludeClasses(
+  GlanceDesignerTestSuite::class
+) // a suite must not contain itself
+class GlanceDesignerTestSuite : IdeaTestSuiteBase()

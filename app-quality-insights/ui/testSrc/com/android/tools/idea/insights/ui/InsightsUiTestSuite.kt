@@ -19,4 +19,6 @@ import com.android.testutils.JarTestSuiteRunner
 import com.android.tools.tests.IdeaTestSuiteBase
 import org.junit.runner.RunWith
 
-@RunWith(JarTestSuiteRunner::class) class InsightsUiTestSuite : IdeaTestSuiteBase()
+@RunWith(JarTestSuiteRunner::class)
+@JarTestSuiteRunner.ExcludeClasses(InsightsUiTestSuite::class)
+class InsightsUiTestSuite : IdeaTestSuiteBase()
