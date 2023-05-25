@@ -17,6 +17,8 @@ package com.android.tools.idea.vitals.ui
 
 import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.insights.AppInsightsModel
+import com.android.tools.idea.insights.CONNECTION2
+import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.client.AppConnection
 import com.android.tools.idea.insights.client.AppInsightsClient
@@ -26,6 +28,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectIndexed
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
@@ -35,8 +38,8 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.mockito.Mockito.`when`
 
-private val CONNECTION1 = AppConnection("app1", "Test App 1")
-private val CONNECTION2 = AppConnection("app2", "Test App 2")
+private val APP_CONNECTION1 = AppConnection("app1", "Test App 1")
+private val APP_CONNECTION2 = AppConnection("app2", "Test App 2")
 
 class VitalsConfigurationManagerTest {
 
@@ -50,7 +53,7 @@ class VitalsConfigurationManagerTest {
   fun getConnections() =
     runBlocking<Unit> {
       val client = mock<AppInsightsClient>()
-      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(CONNECTION1)))
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1)))
       val configManager =
         VitalsConfigurationManager(projectRule.project, { client }, MutableStateFlow(true))
       Disposer.register(projectRule.testRootDisposable, configManager)
@@ -60,8 +63,12 @@ class VitalsConfigurationManagerTest {
       assertThat(model).isInstanceOf(AppInsightsModel.Authenticated::class.java)
       val controller = (model as AppInsightsModel.Authenticated).controller
 
-      assertThat(controller.state.map { state -> state.connections.items.map { it.appId } }.first())
-        .isEqualTo(listOf(CONNECTION1.appId))
+      assertThat(
+          controller.state
+            .map { state -> state.connections.items.map { it.appId } }
+            .first { it.isNotEmpty() }
+        )
+        .isEqualTo(listOf(APP_CONNECTION1.appId))
     }
 
   @Test
@@ -94,7 +101,7 @@ class VitalsConfigurationManagerTest {
   fun refreshConnections_returnsNewConnections() =
     runBlocking<Unit> {
       val client = mock<AppInsightsClient>()
-      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(CONNECTION1)))
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1)))
 
       val configManager =
         VitalsConfigurationManager(projectRule.project, { client }, MutableStateFlow(true))
@@ -106,17 +113,18 @@ class VitalsConfigurationManagerTest {
 
       controller.state
         .map { state -> state.connections.items.map { it.appId } }
+        .filterNot { it.isEmpty() }
         .take(2)
         .collectIndexed { index, value ->
           when (index) {
             0 -> {
-              assertThat(value).containsExactly(CONNECTION1.appId)
+              assertThat(value).containsExactly(APP_CONNECTION1.appId)
               `when`(client.listConnections())
-                .thenReturn(LoadingState.Ready(listOf(CONNECTION1, CONNECTION2)))
+                .thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1, APP_CONNECTION2)))
               configManager.refreshConfiguration()
             }
             1 -> {
-              assertThat(value).containsExactly(CONNECTION1.appId, CONNECTION2.appId)
+              assertThat(value).containsExactly(APP_CONNECTION1.appId, APP_CONNECTION2.appId)
             }
           }
         }
@@ -126,7 +134,7 @@ class VitalsConfigurationManagerTest {
   fun `user log in then out then in, the proper config should be emitted`() =
     runBlocking<Unit> {
       val client = mock<AppInsightsClient>()
-      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(CONNECTION1)))
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1)))
       val loggedInFlow = MutableStateFlow(true)
 
       val configManager = VitalsConfigurationManager(projectRule.project, { client }, loggedInFlow)
@@ -138,5 +146,54 @@ class VitalsConfigurationManagerTest {
       configManager.configuration.first { it is AppInsightsModel.Unauthenticated }
       loggedInFlow.value = true
       configManager.configuration.first { it is AppInsightsModel.Authenticated }
+    }
+
+  @Test
+  fun `network failure in getting connections should cause manager to use cached connections`() =
+    runBlocking<Unit> {
+      val client = mock<AppInsightsClient>()
+      `when`(client.listConnections()).thenReturn(LoadingState.NetworkFailure("error"))
+      val loggedInFlow = MutableStateFlow(true)
+
+      val configManager = VitalsConfigurationManager(projectRule.project, { client }, loggedInFlow)
+      Disposer.register(projectRule.testRootDisposable, configManager)
+
+      configManager.cache.populateConnections(listOf(CONNECTION2))
+
+      configManager.refreshConfiguration()
+      val model = configManager.configuration.first { it is AppInsightsModel.Authenticated }
+      val controller = (model as AppInsightsModel.Authenticated).controller
+
+      controller.state.first {
+        it.connections.items == listOf(CONNECTION2) && it.mode == ConnectionMode.OFFLINE
+      }
+    }
+
+  @Test
+  fun `controller refresh causes manager to refresh app connections, and offline status is updated`() =
+    runBlocking<Unit> {
+      val client = mock<AppInsightsClient>()
+      `when`(client.listConnections()).thenReturn(LoadingState.NetworkFailure("error"))
+      val loggedInFlow = MutableStateFlow(true)
+
+      val configManager = VitalsConfigurationManager(projectRule.project, { client }, loggedInFlow)
+      Disposer.register(projectRule.testRootDisposable, configManager)
+
+      configManager.cache.populateConnections(listOf(CONNECTION2))
+
+      // Connection fails and causes offline mode.
+      configManager.refreshConfiguration()
+      val model = configManager.configuration.first { it is AppInsightsModel.Authenticated }
+      val controller = (model as AppInsightsModel.Authenticated).controller
+
+      controller.state.first { it.mode == ConnectionMode.OFFLINE }
+
+      // Simulate refresh is successfully performed.
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1)))
+      controller.refresh()
+      controller.state.first {
+        it.mode == ConnectionMode.ONLINE &&
+          it.connections.items.single().appId == APP_CONNECTION1.appId
+      }
     }
 }

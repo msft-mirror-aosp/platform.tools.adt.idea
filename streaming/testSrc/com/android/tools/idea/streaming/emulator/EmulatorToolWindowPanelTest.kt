@@ -21,6 +21,7 @@ import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
@@ -28,15 +29,14 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
-import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.editors.liveedit.ui.LiveEditNotificationGroup
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.PRIMARY_DISPLAY_ID
+import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel.MultiDisplayStateStorage
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.streaming.executeStreamingAction
 import com.android.tools.idea.streaming.updateAndGetActionPresentation
-import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.mockStatic
 import com.android.tools.idea.testing.registerServiceInstance
 import com.android.tools.idea.ui.screenrecording.ScreenRecordingSupportedCache
@@ -54,8 +54,10 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TestDataProvider
 import com.intellij.ui.EditorNotificationPanel
 import org.junit.Before
 import org.junit.ClassRule
@@ -96,19 +98,17 @@ import javax.swing.JViewport
  */
 @RunsInEdt
 class EmulatorToolWindowPanelTest {
+
   companion object {
     @JvmField
     @ClassRule
     val iconRule = IconLoaderRule()
   }
 
-  private val projectRule = AndroidProjectRule.inMemory()
+  private val projectRule = ProjectRule()
   private val emulatorRule = FakeEmulatorRule()
   @get:Rule
-  val ruleChain: RuleChain = RuleChain(projectRule, emulatorRule, EdtRule())
-
-  @get:Rule
-  val portableUiFontRule = PortableUiFontRule()
+  val ruleChain: RuleChain = RuleChain(projectRule, emulatorRule, PortableUiFontRule(), EdtRule())
 
   private var nullableEmulator: FakeEmulator? = null
 
@@ -117,12 +117,12 @@ class EmulatorToolWindowPanelTest {
     set(value) { nullableEmulator = value }
 
   private val project get() = projectRule.project
-  private val testRootDisposable get() = projectRule.testRootDisposable
+  private val testRootDisposable get() = projectRule.disposable
 
   @Before
   fun setUp() {
-    // Necessary to properly update toolbar button states.
-    HeadlessDataManager.fallbackToProductionDataManager(testRootDisposable)
+    HeadlessDataManager.fallbackToProductionDataManager(testRootDisposable) // Necessary to properly update toolbar button states.
+    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
     whenever(mockScreenRecordingCache.isScreenRecordingSupported(any(), Mockito.anyInt())).thenReturn(true)
     projectRule.project.registerServiceInstance(ScreenRecordingSupportedCache::class.java, mockScreenRecordingCache, testRootDisposable)
@@ -238,7 +238,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActionsApi30() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 30)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 30)
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
 
@@ -308,7 +308,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActionsApi28() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 28)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 28)
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
 
@@ -342,7 +342,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActionsApi26() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 26)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 26)
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
 
@@ -378,7 +378,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testChangeDisplayMode() {
-    val avdFolder = FakeEmulator.createResizableAvd(emulatorRule.root)
+    val avdFolder = FakeEmulator.createResizableAvd(emulatorRule.avdRoot)
     val panel = createWindowPanel(avdFolder)
     panel.zoomToolbarVisible = false
     val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
@@ -455,7 +455,7 @@ class EmulatorToolWindowPanelTest {
   /** Checks a large container size resulting in a scale greater than 1:1. */
   @Test
   fun testZoomLargeScale() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.root, api = 30)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 30)
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true) // Fake window is necessary for the toolbars to be rendered.
 
@@ -720,7 +720,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   private fun createWindowPanelForPhone(): EmulatorToolWindowPanel {
-    val avdFolder = FakeEmulator.createPhoneAvd(emulatorRule.root)
+    val avdFolder = FakeEmulator.createPhoneAvd(emulatorRule.avdRoot)
     return createWindowPanel(avdFolder)
   }
 

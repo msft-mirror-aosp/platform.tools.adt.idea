@@ -26,6 +26,7 @@ import com.android.testutils.MockitoKt
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.laf.HeadlessTableUI
@@ -35,7 +36,6 @@ import com.android.tools.adtui.workbench.ToolWindowCallback
 import com.android.tools.componenttree.treetable.TreeTableModelImplAdapter
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
@@ -100,6 +100,7 @@ import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
 import javax.swing.JTable
 import javax.swing.event.TreeModelEvent
+import javax.swing.event.TreeModelListener
 import javax.swing.tree.TreeModel
 
 private const val SYSTEM_PKG = -1
@@ -326,9 +327,11 @@ class LayoutInspectorTreePanelTest {
     setToolContext(panel, inspector)
     val tree = panel.tree
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(tree.rowCount).isEqualTo(1)
+    assertThat(tree.rowCount).isEqualTo(2)
     assertThat(tree.getPathForRow(0).lastPathComponent).isEqualTo(model[ROOT]!!.treeNode)
+    assertThat(tree.getPathForRow(1).lastPathComponent).isEqualTo(model[VIEW1]!!.treeNode)
     assertThat(model[ROOT]!!.qualifiedName).isEqualTo(DECOR_VIEW)
+    assertThat(model[VIEW1]!!.qualifiedName).isEqualTo(FQCN_RELATIVE_LAYOUT)
 
     model.update(window(ROOT, ROOT) { view(VIEW4) { view(VIEW1, layout = demo) } }, listOf(ROOT), 0)
     UIUtil.dispatchAllInvocationEvents()
@@ -366,9 +369,13 @@ class LayoutInspectorTreePanelTest {
     setToolContext(panel, inspector)
     val tree = panel.tree
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(tree.rowCount).isEqualTo(1)
+    assertThat(tree.rowCount).isEqualTo(3)
     assertThat(tree.getPathForRow(0).lastPathComponent).isEqualTo(model[VIEW1]!!.treeNode)
+    assertThat(tree.getPathForRow(1).lastPathComponent).isEqualTo(model[VIEW2]!!.treeNode)
+    assertThat(tree.getPathForRow(2).lastPathComponent).isEqualTo(model[VIEW3]!!.treeNode)
     assertThat(model[VIEW1]!!.qualifiedName).isEqualTo(FQCN_RELATIVE_LAYOUT)
+    assertThat(model[VIEW2]!!.qualifiedName).isEqualTo(FQCN_TEXT_VIEW)
+    assertThat(model[VIEW3]!!.qualifiedName).isEqualTo(FQCN_RELATIVE_LAYOUT)
 
     // ROOT & VIEW4 are system views (no layout, android layout)
     model.update(

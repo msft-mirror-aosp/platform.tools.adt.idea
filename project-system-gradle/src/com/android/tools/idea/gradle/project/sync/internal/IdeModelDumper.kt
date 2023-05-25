@@ -59,7 +59,6 @@ import com.android.tools.idea.gradle.project.sync.idea.data.DataNodeCaches
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
-import com.android.tools.idea.projectsystem.gradle.findCompositeBuildMapModel
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.projectsystem.isHolderModule
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -100,7 +99,6 @@ fun ProjectDumper.dumpAndroidIdeModel(
       // build located at the root of the IDE project.
       GradleHolderProjectPath(projectRoot.canonicalPath, ":")
         .resolveIn(project)
-        ?.findCompositeBuildMapModel()
         ?.let { dump(it) }
 
       dumpLibraryTable(project)
@@ -159,16 +157,16 @@ fun ProjectDumper.dumpAndroidIdeModel(
   }
 }
 
-fun ProjectDumper.dumpAllVariantsSyncAndroidModuleModel(androidModuleModel: GradleAndroidModel, projectPath: String) {
+fun ProjectDumper.dumpAllVariantsSyncAndroidModuleModel(gradleAndroidModel: GradleAndroidModel, projectPath: String) {
   nest(File(projectPath), "PROJECT") {
     with(ideModelDumper(this)) {
-      androidModuleModel.let { androidModuleModel ->
-        dump(androidModuleModel.androidProject)
-        dumpLibraryTable(androidModuleModel.project)
+      gradleAndroidModel.let { gradleAndroidModel ->
+        dump(gradleAndroidModel.androidProject)
+        dumpLibraryTable(gradleAndroidModel.project)
         // Dump all the fetched Ide variants.
         head("IdeVariants")
         nest {
-          androidModuleModel.variants.forEach { ideVariant ->
+          gradleAndroidModel.variants.forEach { ideVariant ->
             dump(ideVariant)
           }
         }
@@ -748,6 +746,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
         prop("UseAndroidX") { agpFlags.useAndroidX.toString() }
         prop("UsesCompose") { agpFlags.usesCompose.toString() }
         prop("MlModelBindingEnabled") { agpFlags.mlModelBindingEnabled.toString() }
+        prop("EnableVcsInfo") { agpFlags.enableVcsInfo.toString() }
       }
     }
 

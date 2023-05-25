@@ -19,18 +19,18 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
-import com.android.tools.idea.streaming.PRIMARY_DISPLAY_ID
-import com.android.tools.idea.streaming.constrainInside
-import com.android.tools.idea.streaming.contains
+import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
+import com.android.tools.idea.streaming.core.constrainInside
+import com.android.tools.idea.streaming.core.contains
+import com.android.tools.idea.streaming.core.location
+import com.android.tools.idea.streaming.core.rotatedByQuadrants
+import com.android.tools.idea.streaming.core.scaled
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
 import com.android.tools.idea.streaming.device.DeviceClient.AgentTerminationListener
-import com.android.tools.idea.streaming.location
-import com.android.tools.idea.streaming.rotatedByQuadrants
-import com.android.tools.idea.streaming.scaled
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_COPY
@@ -137,9 +137,6 @@ internal class DeviceView(
 
   /** The difference between [displayOrientationQuadrants] and the orientation according to the DisplayInfo Android data structure. */
   override var displayOrientationQuadrants: Int = 0
-    private set
-
-  internal var displayOrientationCorrectionQuadrants: Int = 0
     private set
 
   private var connectionState = ConnectionState.INITIAL
@@ -515,12 +512,16 @@ internal class DeviceView(
       if (!isConnected) {
         return
       }
+      if (event.isAltDown || event.isControlDown || event.isMetaDown) {
+        return
+      }
       val c = event.keyChar
       if (c == CHAR_UNDEFINED || Character.isISOControl(c)) {
         return
       }
       val message = TextInputMessage(c.toString())
       deviceController?.sendControlMessage(message)
+      event.consume()
     }
 
     override fun keyPressed(event: KeyEvent) {
@@ -554,13 +555,14 @@ internal class DeviceView(
           if (androidKeyCode != AKEYCODE_UNKNOWN) {
             val action = if (event.id == KEY_PRESSED) ACTION_DOWN else ACTION_UP
             deviceController?.sendControlMessage(KeyEventMessage(action, androidKeyCode, modifiersToMetaState(modifiers)))
+            event.consume()
           }
         }
       }
       else if (event.id == KEY_PRESSED) {
         deviceController?.sendKeyStroke(androidKeyStroke)
+        event.consume()
       }
-      event.consume()
     }
 
     private fun hostKeyStrokeToAndroidKeyStroke(hostKeyCode: Int, modifiers: Int): AndroidKeyStroke? {

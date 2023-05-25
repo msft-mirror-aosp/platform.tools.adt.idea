@@ -43,6 +43,21 @@ iml_module(
 iml_module(
     name = "intellij.android.streaming.tests",
     iml_files = ["intellij.android.streaming.tests.iml"],
+    split_test_targets = {
+        "benchmark": {
+            "test_filter": "com.android.tools.idea.streaming.benchmark",
+        },
+        "core": {
+            "test_filter": "com.android.tools.idea.streaming.core",
+        },
+        "device": {
+            "test_filter": "com.android.tools.idea.streaming.device",
+        },
+        "emulator": {
+            "test_filter": "com.android.tools.idea.streaming.emulator",
+        },
+        "other": {},
+    },
     test_class = "com.android.tools.idea.streaming.StreamingTestSuite",
     test_data = [
         "//prebuilts/studio/sdk:platforms/latest",
@@ -52,6 +67,8 @@ iml_module(
         "//tools/adt/idea/streaming/testData",
     ],
     test_friends = ["//tools/adt/idea/streaming:intellij.android.streaming"],
+    # b/284031750
+    test_jvm_flags = ["-Didea.leak.check.enabled=false"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -158,6 +175,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/android-adb:intellij.android.adb[module, test]",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil[module, test]",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",

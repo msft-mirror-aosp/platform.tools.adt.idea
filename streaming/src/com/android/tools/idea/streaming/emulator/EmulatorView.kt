@@ -44,18 +44,18 @@ import com.android.tools.idea.flags.StudioFlags.EMBEDDED_EMULATOR_TRACE_NOTIFICA
 import com.android.tools.idea.flags.StudioFlags.EMBEDDED_EMULATOR_TRACE_SCREENSHOTS
 import com.android.tools.idea.io.grpc.stub.StreamObserver
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.EmulatorSettings
-import com.android.tools.idea.streaming.PRIMARY_DISPLAY_ID
-import com.android.tools.idea.streaming.RUNNING_DEVICES_NOTIFICATION_GROUP
+import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
+import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
+import com.android.tools.idea.streaming.core.isSameAspectRatio
+import com.android.tools.idea.streaming.core.rotatedByQuadrants
+import com.android.tools.idea.streaming.core.scaled
+import com.android.tools.idea.streaming.core.scaledDown
+import com.android.tools.idea.streaming.core.scaledUnbiased
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.DisplayMode
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionStateListener
-import com.android.tools.idea.streaming.isSameAspectRatio
-import com.android.tools.idea.streaming.rotatedByQuadrants
-import com.android.tools.idea.streaming.scaled
-import com.android.tools.idea.streaming.scaledDown
-import com.android.tools.idea.streaming.scaledUnbiased
 import com.google.protobuf.TextFormat.shortDebugString
 import com.intellij.ide.DataManager
 import com.intellij.ide.ui.LafManagerListener
@@ -708,6 +708,10 @@ class EmulatorView(
         return
       }
 
+      if (event.isAltDown || event.isControlDown || event.isMetaDown) {
+        return
+      }
+
       val c = event.keyChar
       if (c == CHAR_UNDEFINED || Character.isISOControl(c)) {
         return
@@ -715,6 +719,7 @@ class EmulatorView(
 
       val keyboardEvent = KeyboardEvent.newBuilder().setText(c.toString()).build()
       emulator.sendKey(keyboardEvent)
+      event.consume()
     }
 
     override fun keyPressed(event: KeyEvent) {
@@ -775,14 +780,15 @@ class EmulatorView(
           val eventType = if (event.id == KEY_PRESSED) KeyEventType.keydown else KeyEventType.keyup
           emulator.sendKey(createKeyboardEvent(keyName, eventType))
           emulator.releaseModifierKeys(modifiers)
+          event.consume()
         }
       }
       else if (event.id == KEY_PRESSED) {
         emulator.pressModifierKeys(emulatorKeyStroke.modifiers)
         emulator.sendKey(KeyboardEvent.newBuilder().setKey(emulatorKeyStroke.keyName).setEventType(KeyEventType.keypress).build())
         emulator.releaseModifierKeys(emulatorKeyStroke.modifiers)
+        event.consume()
       }
-      event.consume()
     }
 
     private fun hostKeyStrokeToEmulatorKeyStroke(hostKeyCode: Int, modifiers: Int): EmulatorKeyStroke? {

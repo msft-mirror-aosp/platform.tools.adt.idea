@@ -125,8 +125,6 @@ import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
-import com.android.tools.idea.projectsystem.gradle.buildNamePrefixedGradleProjectPath
-import com.android.tools.idea.projectsystem.gradle.getBuildAndRelativeGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
@@ -227,6 +225,8 @@ import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
 import org.jetbrains.plugins.gradle.util.GradleConstants
+import org.jetbrains.plugins.gradle.util.gradleIdentityPath
+import org.jetbrains.plugins.gradle.util.gradlePath
 import org.jetbrains.plugins.gradle.util.setBuildSrcModule
 import java.io.File
 import java.io.IOException
@@ -703,6 +703,7 @@ fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePlugin
     mlModelBindingEnabled = mlModelBindingEnabled,
     unifiedTestPlatformEnabled = true,
     useAndroidX = false,
+    enableVcsInfo = false,
   )
 
 fun AndroidProjectStubBuilder.buildDefaultConfigStub() = IdeProductFlavorContainerImpl(
@@ -1414,6 +1415,8 @@ private fun setupTestProjectFromAndroidModelCore(
       object : ExternalProject {
         override fun getExternalSystemId(): String = GRADLE_SYSTEM_ID.id
         override fun getId(): String = projectName
+        override fun getPath(): String = ":"
+        override fun getIdentityPath(): String = ":"
         override fun getName(): String = projectName
         override fun getQName(): String = projectName
         override fun getDescription(): String? = null
@@ -1519,7 +1522,8 @@ private fun setupTestProjectFromAndroidModelCore(
   val resolvedTable = ResolvedLibraryTableBuilder(
     getGradlePathBy = idToPath::get,
     getModuleDataNode = pathToNode::get,
-    resolveArtifact = { null }
+    resolveArtifact = { null },
+    resolveKmpAndroidMainSourceSet = { null }
   ).buildResolvedLibraryTable(unresolvedTable)
   val libraryResolver = IdeLibraryModelResolverImpl.fromLibraryTable(resolvedTable)
   projectDataNode.createChild(
@@ -1853,6 +1857,8 @@ private fun createGradleModuleDataNode(
       imlBasePath.systemIndependentPath,
       moduleBasePath.systemIndependentPath
     ).also {
+      it.gradlePath = gradlePath
+      it.gradleIdentityPath = gradlePath
       it.group = groupId
       it.version = version
     },
@@ -1992,7 +1998,7 @@ private fun mergeModuleContentRoots(weightMap: Map<String, Int>, moduleNode: Dat
 @JvmOverloads
 fun Project.gradleModule(gradlePath: String, sourceSet: IdeModuleSourceSet? = null): Module? =
   ModuleManager.getInstance(this).modules
-    .firstOrNull { it.getBuildAndRelativeGradleProjectPath()?.buildNamePrefixedGradleProjectPath() == gradlePath }
+    .firstOrNull { it.getGradleProjectPath()?.path == gradlePath }
     ?.getHolderModule()
     ?.let {
       if (sourceSet == null) it
@@ -2378,17 +2384,17 @@ fun Project.requestSyncAndWait(
 private fun setupDataNodesForSelectedVariant(
   project: Project,
   buildId: @SystemIndependent String,
-  androidModuleModels: List<GradleAndroidModelData>,
+  gradleAndroidModels: List<GradleAndroidModelData>,
   projectDataNode: DataNode<ProjectData>,
   libraryResolver: IdeLibraryModelResolver
 ) {
   val moduleNodes = ExternalSystemApiUtil.findAll(projectDataNode, ProjectKeys.MODULE)
   val moduleIdToDataMap = createGradleProjectPathToModuleDataMap(buildId, moduleNodes)
-  androidModuleModels.forEach { androidModuleModel ->
-    val newVariant = androidModuleModel.selectedVariant(libraryResolver)
+  gradleAndroidModels.forEach { gradleAndroidModel ->
+    val newVariant = gradleAndroidModel.selectedVariant(libraryResolver)
 
     val moduleNode = moduleNodes.firstOrNull { node ->
-      node.data.internalName == androidModuleModel.moduleName
+      node.data.internalName == gradleAndroidModel.moduleName
     } ?: return@forEach
 
     // Now we need to recreate these nodes using the information from the new variant.
@@ -2402,7 +2408,7 @@ private fun setupDataNodesForSelectedVariant(
         lib.samplesJar
       )
     }, newVariant)
-    moduleNode.setupAndroidContentEntriesPerSourceSet(androidModuleModel)
+    moduleNode.setupAndroidContentEntriesPerSourceSet(gradleAndroidModel)
   }
 }
 

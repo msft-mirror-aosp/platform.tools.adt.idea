@@ -23,6 +23,7 @@ import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeMouse
@@ -30,9 +31,8 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
-import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.NotificationHolderPanel
+import com.android.tools.idea.streaming.core.NotificationHolderPanel
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
@@ -76,6 +76,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.util.ui.UIUtil
 import org.junit.Before
+import org.junit.ClassRule
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyBoolean
@@ -84,11 +85,13 @@ import org.mockito.Mockito.verify
 import java.awt.Component
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Dimension
+import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.KEY_PRESSED
+import java.awt.event.KeyEvent.KEY_RELEASED
 import java.awt.event.KeyEvent.VK_BACK_SPACE
 import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_DELETE
@@ -102,6 +105,7 @@ import java.awt.event.KeyEvent.VK_KP_LEFT
 import java.awt.event.KeyEvent.VK_KP_RIGHT
 import java.awt.event.KeyEvent.VK_KP_UP
 import java.awt.event.KeyEvent.VK_LEFT
+import java.awt.event.KeyEvent.VK_M
 import java.awt.event.KeyEvent.VK_PAGE_DOWN
 import java.awt.event.KeyEvent.VK_PAGE_UP
 import java.awt.event.KeyEvent.VK_RIGHT
@@ -118,13 +122,20 @@ import javax.swing.JScrollPane
  */
 @RunsInEdt
 class EmulatorViewTest {
+
+  companion object {
+    @JvmField
+    @ClassRule
+    val iconLoaderRule = IconLoaderRule()
+  }
+
   private val emulatorViewRule = EmulatorViewRule()
   @get:Rule
-  val ruleChain = RuleChain(IconLoaderRule(), emulatorViewRule, EdtRule())
+  val ruleChain = RuleChain(emulatorViewRule, EdtRule())
   private val filesOpened = mutableListOf<VirtualFile>()
 
   private val testRootDisposable
-    get() = emulatorViewRule.testRootDisposable
+    get() = emulatorViewRule.disposable
 
   @Before
   fun setUp() {
@@ -458,7 +469,7 @@ class EmulatorViewTest {
     // Check EmulatorShowFoldingControlsAction.
     val mockLafManager = mock<LafManager>()
     whenever(mockLafManager.currentLookAndFeel).thenReturn(DarculaLookAndFeelInfo())
-    ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.testRootDisposable)
+    ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.disposable)
 
     emulatorViewRule.executeAction("android.emulator.folding.controls", view)
     call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
@@ -749,6 +760,19 @@ class EmulatorViewTest {
       }
       assertThat(shortDebugString(call.getNextRequest(2, TimeUnit.SECONDS))).isEqualTo("dy: ${-rotation * 120}")
     }
+  }
+
+  @Test
+  fun testKeysForMnemonicsShouldNotBeConsumed() {
+    val view = emulatorViewRule.newEmulatorView()
+
+    val altMPressedEvent = KeyEvent(view, KEY_PRESSED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, VK_M, VK_M.toChar())
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMPressedEvent)
+    assertThat(altMPressedEvent.isConsumed).isFalse()
+
+    val altMReleasedEvent = KeyEvent(view, KEY_RELEASED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, VK_M, VK_M.toChar())
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMReleasedEvent)
+    assertThat(altMReleasedEvent.isConsumed).isFalse()
   }
 
   private fun createScrollPane(view: Component): JScrollPane {

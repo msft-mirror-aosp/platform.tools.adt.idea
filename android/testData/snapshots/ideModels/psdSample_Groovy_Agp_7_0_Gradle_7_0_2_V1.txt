@@ -1,7 +1,27 @@
-CompositeBuildMap             : IdeCompositeBuildMapImpl
-    - builds                      : <ROOT> (IdeBuildImpl)
-        buildName                     : :
-    gradleSupportsDirectTaskInvocation      : true
+MODULE                        : project
+    ExternalModuleGroup           :
+    ExternalModuleVersion         : unspecified
+    LinkedProjectId               : project
+    LinkedProjectPath             : <ROOT>
+    RootProjectPath               : <ROOT>
+    COMPILER_MODULE_EXTENSION
+        compilerSourceOutputPath      : file://<ROOT>/build/classes/production/project [-]
+        compilerTestOutputPath        : file://<ROOT>/build/classes/test/project [-]
+        isCompilerPathInherited       : true
+        isExcludeOutput               : true
+    ModuleFile                    : <ROOT>/.idea/modules/project.iml [-]
+    ModuleTypeName                : JAVA_MODULE
+    CONENT_ENTRY                  : file://<ROOT>
+        EXCLUDE_FOLDER                : file://<ROOT>/.gradle
+        EXCLUDE_FOLDER                : file://<ROOT>/build [-]
+    JDK                           : <NAME_CUT> JavaSDK
+    *isInherited                  : true
+    ORDER_ENTRY                   : <Module source>
+    BUILD_TASKS
+        TEST_COMPILE_MODE             : All
+        TEST_COMPILE_MODE             : Android tests
+        TEST_COMPILE_MODE             : Unit tests
+        TEST_COMPILE_MODE             : None
 LIBRARY_TABLE
     - library                     : ./app/libs/lib1-1.0.aar (IdeAndroidLibraryImpl)
         aidlFolder                    : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lib1-1.0/aidl [-]
@@ -697,11 +717,15 @@ LIBRARY_TABLE
         artifactAddress               : __local_jars__:<ROOT>/jav/build/libs/jav.jar:unspecified
 MODULE                        : project
     externalProject               : project (DefaultExternalProject)
+        path                          : : [-]
+        identityPath                  : : [-]
         name                          : project
         qName                         : project
         version                       : unspecified
         childProjects
             app                           : :app (DefaultExternalProject)
+                path                          : :app [-]
+                identityPath                  : :app [-]
                 name                          : app
                 qName                         : :app
                 group                         : project
@@ -1249,6 +1273,8 @@ MODULE                        : project
                     testWearApp                   : <empty>
                     wearApp                       : <empty>
             dyn_feature                   : :dyn_feature (DefaultExternalProject)
+                path                          : :dyn_feature [-]
+                identityPath                  : :dyn_feature [-]
                 name                          : dyn_feature
                 qName                         : :dyn_feature
                 group                         : project
@@ -1345,6 +1371,8 @@ MODULE                        : project
                     testWearApp                   : <empty>
                     wearApp                       : <empty>
             jav                           : :jav (DefaultExternalProject)
+                path                          : :jav [-]
+                identityPath                  : :jav [-]
                 name                          : jav
                 qName                         : :jav
                 group                         : project
@@ -1418,6 +1446,8 @@ MODULE                        : project
                     testRuntimeClasspath          : <empty>
                     testRuntimeOnly               : <empty>
             lib                           : :lib (DefaultExternalProject)
+                path                          : :lib [-]
+                identityPath                  : :lib [-]
                 name                          : lib
                 qName                         : :lib
                 group                         : project
@@ -1520,6 +1550,8 @@ MODULE                        : project
                     testWearApp                   : <empty>
                     wearApp                       : <empty>
             nested1                       : :nested1 (DefaultExternalProject)
+                path                          : :nested1 [-]
+                identityPath                  : :nested1 [-]
                 name                          : nested1
                 qName                         : :nested1
                 group                         : project
@@ -1528,6 +1560,8 @@ MODULE                        : project
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 childProjects
                     deep                          : :nested1:deep (DefaultExternalProject)
+                        path                          : :nested1:deep [-]
+                        identityPath                  : :nested1:deep [-]
                         name                          : deep
                         qName                         : :nested1:deep
                         group                         : project.nested1
@@ -1725,6 +1759,8 @@ MODULE                        : project
                     testWearApp                   : <empty>
                     wearApp                       : <empty>
             nested2                       : :nested2 (DefaultExternalProject)
+                path                          : :nested2 [-]
+                identityPath                  : :nested2 [-]
                 name                          : nested2
                 qName                         : :nested2
                 group                         : project
@@ -1733,6 +1769,8 @@ MODULE                        : project
                 targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                 childProjects
                     deep                          : :nested2:deep (DefaultExternalProject)
+                        path                          : :nested2:deep [-]
+                        identityPath                  : :nested2:deep [-]
                         name                          : deep
                         qName                         : :nested2:deep
                         group                         : project.nested2
@@ -1835,12 +1873,16 @@ MODULE                        : project
                             testWearApp                   : <empty>
                             wearApp                       : <empty>
                     trans                         : :nested2:trans (DefaultExternalProject)
+                        path                          : :nested2:trans [-]
+                        identityPath                  : :nested2:trans [-]
                         name                          : trans
                         qName                         : :nested2:trans
                         group                         : project.nested2
                         version                       : unspecified
                         childProjects
                             deep2                         : :nested2:trans:deep2 (DefaultExternalProject)
+                                path                          : :nested2:trans:deep2 [-]
+                                identityPath                  : :nested2:trans:deep2 [-]
                                 name                          : deep2
                                 qName                         : :nested2:trans:deep2
                                 group                         : project.nested2.trans
@@ -2229,6 +2271,7 @@ MODULE                        : project.app
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : basicBarDebug
         applicationId                 : com.example.psd.sample.app.defaultSuffix.barSuffix
         testApplicationId             : com.example.psd.sample.app.default.test
@@ -3319,6 +3362,7 @@ MODULE                        : project.dyn_feature
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.dyn_feature.test
     - basicVariant:               : release
@@ -3657,6 +3701,7 @@ MODULE                        : project.lib
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.projectwithappandlib.lib.test
     - basicVariant:               : release
@@ -4179,6 +4224,7 @@ MODULE                        : project.nested1
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.nested1.test
     - basicVariant:               : release
@@ -4500,6 +4546,7 @@ MODULE                        : project.nested1.deep
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.nested1.deep.test
     - basicVariant:               : release
@@ -4831,6 +4878,7 @@ MODULE                        : project.nested2
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : basicDebug
         testApplicationId             : com.example.nested2.test
     - basicVariant:               : paidDebug
@@ -5302,6 +5350,7 @@ MODULE                        : project.nested2.deep
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.nested2.deep.test
     - basicVariant:               : release
@@ -5635,6 +5684,7 @@ MODULE                        : project.nested2.trans.deep2
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        EnableVcsInfo                 : false
     - basicVariant:               : debug
         testApplicationId             : com.example.nested2.trans.deep2.test
     - basicVariant:               : release

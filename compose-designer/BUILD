@@ -44,7 +44,6 @@ iml_module(
 iml_module(
     name = "intellij.android.compose-designer.tests",
     iml_files = ["intellij.android.compose-designer.tests.iml"],
-    resources = ["testSrc/META-INF"],
     split_test_targets = {
         "gradle.fast": {
             "tags": ["cpu:3"],
@@ -158,6 +157,7 @@ iml_module(
         "//tools/adt/idea/execution/common:intellij.android.execution.common[module, test]",
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
         "//tools/adt/idea/.idea/libraries:asm-tools[test]",
+        "//tools/base/deploy/deployer:studio.android.sdktools.deployer[module, test]",
     ],
 )
 

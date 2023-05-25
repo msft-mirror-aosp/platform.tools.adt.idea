@@ -30,6 +30,7 @@ import com.intellij.util.text.nullize
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.plugins.gradle.execution.GradleRunnerUtil
+import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil.getGradleIdentityPathOrNull
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 
@@ -68,38 +69,36 @@ fun GradleProjectPath.toSourceSetPath(sourceSet: IdeModuleSourceSet): GradleSour
 }
 
 internal fun Module.internalGetGradleProjectPath(): GradleProjectPath? {
-  val rootFolder = File(GradleRunnerUtil.resolveProjectPath(this) ?: return null)
+  val buildRootFolder = File(ExternalSystemApiUtil.getExternalRootProjectPath(this) ?: return null)
   // The external system projectId is:
-  // <projectName-uniqualized-by-Gradle> for the root module of a main or only build in a composite build
+  // :<projectName-uniqualized-by-Gradle> for the root module of a main or only build in a composite build
   // :gradle:path for a non-root module of a main or only build in a composite build
-  // <projectName-uniqualized-by-Gradle> for the root module of an included build
-  // <projectName-uniqualized-by-Gradle>:gradle:path for a non-root module of an included build
+  // :<projectName-uniqualized-by-Gradle> for the root module of an included build
+  // :<projectName-uniqualized-by-Gradle>:gradle:path for a non-root module of an included build
   // NOTE: The project name uniqualization is performed by Gradle and may be version dependent. It should not be assumed to match
   //       any Gradle project name or any Gradle included build name.
 
   val isSourceSet = getExternalModuleType(this) == GradleConstants.GRADLE_SOURCE_SET_MODULE_TYPE_KEY
-  val id = ExternalSystemApiUtil.getExternalProjectId(this) ?: return null
-  return createGradleProjectPath(id, isSourceSet, rootFolder)
+  val externalSystemId = ExternalSystemApiUtil.getExternalProjectId(this) ?: return null
+  val gradlePath = getGradleIdentityPathOrNull(this) ?: return null
+  return createGradleProjectPath(gradlePath, externalSystemId, isSourceSet, buildRootFolder)
 }
 
 @VisibleForTesting
 fun createGradleProjectPath(
+  gradlePath: String,
   externalSystemId: String,
   isSourceSet: Boolean,
   buildRootFolder: File
 ): GradleProjectPath? {
-  val idWithoutPrefix = ":" + externalSystemId.substringAfter(':', "")
-
-  val gradleProjectPath =
-    if (isSourceSet) idWithoutPrefix.substringBeforeLast(":").nullize() ?: ":"
-    else idWithoutPrefix
-
   val buildRoot = FileUtils.toSystemIndependentPath(buildRootFolder.path)
+
   return if (isSourceSet) {
     val sourceSetName = externalSystemId.substringAfterLast(':', "").nullize() ?: return null
-    GradleSourceSetProjectPath(buildRoot, gradleProjectPath, IdeModuleSourceSetImpl.wellKnownOrCreate(sourceSetName))
-  } else {
-    GradleHolderProjectPath(buildRoot, gradleProjectPath)
+    GradleSourceSetProjectPath(buildRoot, gradlePath, IdeModuleSourceSetImpl.wellKnownOrCreate(sourceSetName))
+  }
+  else {
+    GradleHolderProjectPath(buildRoot, gradlePath)
   }
 }
 

@@ -23,7 +23,6 @@ import static com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemantics
 import static com.android.tools.idea.gradle.dsl.parser.semantics.ModelSemanticsDescription.CREATE_WITH_VALUE;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.*;
 
-import com.android.tools.idea.gradle.dsl.api.ext.PropertyType;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
@@ -100,9 +99,28 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
   })
     .collect(toModelMap());
 
+  // TODO still need API review
+  @NotNull
+  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
+      {"applicationIdSuffix", property, APPLICATION_ID_SUFFIX, VAR},
+      {"buildConfigField", exactly(3), BUILD_CONFIG_FIELD, AUGMENT_LIST},
+      {"consumerProguardFiles", property, CONSUMER_PROGUARD_FILES, VAR},
+      {"manifestPlaceholders", property, MANIFEST_PLACEHOLDERS, VAR},
+      {"matchingFallbacks", property, MATCHING_FALLBACKS, VAR},
+      {"multiDexEnabled", property, MULTI_DEX_ENABLED, VAR},
+      {"multiDexKeepFile", property, MULTI_DEX_KEEP_FILE, VAR},
+      {"multiDexKeepProguard", property, MULTI_DEX_KEEP_PROGUARD, VAR},
+      {"proguardFiles", property, PROGUARD_FILES, VAR},
+      {"resValue", exactly(3), RES_VALUE, AUGMENT_LIST},
+      {"signingConfig", property, SIGNING_CONFIG, VAR},
+      {"useJack", property, USE_JACK, VAR},
+      {"versionNameSuffix", property, VERSION_NAME_SUFFIX, VAR},
+    })
+    .collect(toModelMap());
+
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
   }
 
   protected AbstractFlavorTypeDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

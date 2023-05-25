@@ -8,29 +8,49 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.sync-memory-tests.iml"],
     split_test_targets = {
-        "Benchmark100": {
+        "Benchmark100Memory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark100MemoryTest",
         },
-        "Benchmark200": {
+        "Benchmark200Memory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark200MemoryTest",
         },
-        "Benchmark200Repeated20Times": {
+        "Benchmark200Repeated20TimesMemory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark200Repeated20TimesMemoryTest",
         },
-        "Benchmark500": {
+        "Benchmark500Memory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark500MemoryTest",
             "exec_properties": LARGE_MACHINE,
         },
-        "Benchmark1000": {
+        "Benchmark1000Memory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark1000MemoryTest",
             "exec_properties": LARGE_MACHINE,
         },
-        "Benchmark2000": {
+        "Benchmark2000Memory": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark2000MemoryTest",
             "exec_properties": LARGE_MACHINE,
         },
-        "BenchmarkXL": {
-            "test_filter": "com.android.tools.idea.gradle.project.sync.memory.BenchmarkXLMemoryTest",
+        "Benchmark4200Memory": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark4200MemoryTest",
+            "exec_properties": LARGE_MACHINE,
+            "tags": ["manual"],
+        },
+        "Benchmark200Cpu": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark200CpuTest",
+        },
+        "Benchmark500Cpu": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark500CpuTest",
+        },
+        "Benchmark1000Cpu": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark1000CpuTest",
+            "exec_properties": LARGE_MACHINE,
+        },
+        "Benchmark2000Cpu": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuTest",
+            "exec_properties": LARGE_MACHINE,
+            "tags": ["manual"],
+        },
+        "Benchmark4200Cpu": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark4200CpuTest",
             "exec_properties": LARGE_MACHINE,
             "tags": ["manual"],
         },

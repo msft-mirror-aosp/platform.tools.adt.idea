@@ -139,20 +139,8 @@ iml_module(
     iml_files = ["intellij.android.core.tests.iml"],
     split_test_targets = {
         # Keep sorted by the test_filter package, with "other" at the end.
-        "actions": {
-            "test_filter": "com.android.tools.idea.actions",
-        },
-        "apk": {
-            "test_filter": "com.android.tools.idea.apk",
-        },
         "AndroidKotlinCompletionContributorTest": {
             "test_filter": "com.android.tools.idea.completion.AndroidKotlinCompletionContributorTest",
-        },
-        "configurations": {
-            "test_filter": "com.android.tools.idea.configurations",
-        },
-        "diagnostics": {
-            "test_filter": "com.android.tools.idea.diagnostics",
         },
         "editors": {
             "test_filter": "com.android.tools.idea.editors",
@@ -190,9 +178,6 @@ iml_module(
             "shard_count": 2,
             "test_filter": "com.android.tools.idea.imports",
         },
-        "instantapp": {
-            "test_filter": "com.android.tools.idea.instantapp",
-        },
         "javadoc": {
             "test_filter": "com.android.tools.idea.javadoc",
         },
@@ -216,9 +201,6 @@ iml_module(
         "rendering": {
             "test_filter": "com.android.tools.idea.rendering",
             "shard_count": 2,
-        },
-        "res": {
-            "test_filter": "com.android.tools.idea.res",
         },
         "run": {
             "shard_count": 5,
@@ -618,8 +600,8 @@ maven_repository(
         "@maven//:org.mockito.mockito-core_4.8.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
-    # Do not change: this target is explicitly marked private to avoid bloat.
-    visibility = ["//visibility:private"],
+    # Do not change: this target is explicitly marked private to subpackages to avoid bloat.
+    visibility = ["//tools/adt/idea/android:__subpackages__"],
 )
 
 # Validates no new gradle project tests are added to intellij.android.core.tests

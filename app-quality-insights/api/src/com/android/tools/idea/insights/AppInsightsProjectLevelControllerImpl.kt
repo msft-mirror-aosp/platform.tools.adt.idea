@@ -83,8 +83,7 @@ class AppInsightsProjectLevelControllerImpl(
   dispatcher: CoroutineDispatcher,
   appInsightsClient: AppInsightsClient,
   appConnection: Flow<List<Connection>>,
-  offlineStatus: Flow<ConnectionMode>,
-  private val setOfflineMode: (ConnectionMode) -> Unit,
+  private val offlineStatusManager: OfflineStatusManager,
   @TestOnly private val flowStart: SharingStarted = SharingStarted.Eagerly,
   private val onIssuesChanged: () -> Unit = {},
   private val tracker: AppInsightsTracker,
@@ -116,7 +115,7 @@ class AppInsightsProjectLevelControllerImpl(
    * Represents a flow that is used by filter selectors and refresh to inject [ChangeEvent]s into
    * the main event flow(below).
    */
-  private val eventFlow: MutableSharedFlow<ChangeEvent> = MutableSharedFlow(extraBufferCapacity = 2)
+  val eventFlow: MutableSharedFlow<ChangeEvent> = MutableSharedFlow(extraBufferCapacity = 2)
 
   /**
    * A view of [AppInsightsIssue]s grouped by the filename they are associated to.
@@ -148,9 +147,9 @@ class AppInsightsProjectLevelControllerImpl(
     @Suppress("RequiredOptIn")
     state =
       merge(
-          eventFlow,
+          eventFlow.map { SafeFiltersAdapter(it) },
           appConnection.map { SafeFiltersAdapter(ConnectionsChanged(it, defaultFilters)) },
-          offlineStatus.map { it.toEvent() }
+          offlineStatusManager.offlineStatus.map { it.toEvent() }
         )
         .fold(initialState) { (currentState, lastGoodState), event ->
           Logger.getInstance(AppInsightsProjectLevelControllerImpl::class.java)
@@ -160,7 +159,7 @@ class AppInsightsProjectLevelControllerImpl(
             updateIssueIndex(computeIssuesPerFilename(newState.issues.map { it.value }))
           }
           if (currentState.mode != newState.mode) {
-            setOfflineMode(newState.mode)
+            offlineStatusManager.enterMode(newState.mode)
           }
           ProjectState(
               currentState = newState,
@@ -260,7 +259,7 @@ class AppInsightsProjectLevelControllerImpl(
   }
 
   private suspend fun doEmit(event: ChangeEvent) {
-    eventFlow.emit(SafeFiltersAdapter(event))
+    eventFlow.emit(event)
   }
 
   override fun retrieveLineMatches(file: PsiFile): List<AppInsight> =

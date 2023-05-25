@@ -22,6 +22,7 @@ import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeUi
@@ -29,9 +30,8 @@ import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
 import com.android.tools.idea.concurrency.AndroidExecutors
-import com.android.tools.idea.concurrency.waitForCondition
-import com.android.tools.idea.streaming.AbstractDisplayView
 import com.android.tools.idea.streaming.DeviceMirroringSettings
+import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
@@ -70,7 +70,6 @@ import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
@@ -88,6 +87,7 @@ import org.mockito.Mockito
 import java.awt.Component
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Dimension
+import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
@@ -129,12 +129,12 @@ import kotlin.time.Duration.Companion.seconds
  */
 @RunsInEdt
 internal class DeviceViewTest {
+
   private val agentRule = FakeScreenSharingAgentRule()
   private val androidExecutorsRule = AndroidExecutorsRule(workerThreadExecutor = Executors.newCachedThreadPool())
   private val crashReporterRule = CrashReporterRule()
   @get:Rule
-  val ruleChain =
-      RuleChain(ApplicationRule(), crashReporterRule, ClipboardSynchronizationDisablementRule(), androidExecutorsRule, agentRule, EdtRule())
+  val ruleChain = RuleChain(crashReporterRule, androidExecutorsRule, agentRule, ClipboardSynchronizationDisablementRule(), EdtRule())
   @get:Rule
   val usageTrackerRule = UsageTrackerRule()
   private lateinit var device: FakeScreenSharingAgentRule.FakeDevice
@@ -142,7 +142,7 @@ internal class DeviceViewTest {
   private lateinit var fakeUi: FakeUi
 
   private val testRootDisposable
-    get() = agentRule.testRootDisposable
+    get() = agentRule.disposable
   private val project
     get() = agentRule.project
   private val agent
@@ -650,6 +650,19 @@ internal class DeviceViewTest {
     agentRule.disconnectDevice(device)
 
     waitForCondition(15.seconds) { !view.isConnected }
+  }
+
+  @Test
+  fun testKeysForMnemonicsShouldNotBeConsumed() {
+    createDeviceView(500, 1000, screenScale = 1.0)
+
+    val altMPressedEvent = KeyEvent(view, KEY_PRESSED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, KeyEvent.VK_M, KeyEvent.VK_M.toChar())
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMPressedEvent)
+    assertThat(altMPressedEvent.isConsumed).isFalse()
+
+    val altMReleasedEvent = KeyEvent(view, KeyEvent.KEY_RELEASED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, KeyEvent.VK_M, KeyEvent.VK_M.toChar())
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMReleasedEvent)
+    assertThat(altMReleasedEvent.isConsumed).isFalse()
   }
 
   private fun createDeviceView(width: Int, height: Int, screenScale: Double = 2.0) {

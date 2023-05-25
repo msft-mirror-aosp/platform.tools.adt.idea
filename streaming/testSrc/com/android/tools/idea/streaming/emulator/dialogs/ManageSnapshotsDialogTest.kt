@@ -17,12 +17,12 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.TestUtils
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.ui.ImagePanel
-import com.android.tools.idea.concurrency.waitForCondition
 import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.streaming.DEFAULT_SNAPSHOT_AUTO_DELETION_POLICY
 import com.android.tools.idea.streaming.EmulatorSettings
@@ -72,10 +72,11 @@ import javax.swing.table.DefaultTableCellRenderer
 @RunsInEdt
 class ManageSnapshotsDialogTest {
   private val emulatorViewRule = EmulatorViewRule()
+  private val headlessDialogRule = HeadlessDialogRule()
   private val timeoutRule = Timeout.builder().withTimeout(60, TimeUnit.SECONDS).withLookingForStuckThread(true).build()
 
   @get:Rule
-  val ruleChain = RuleChain(timeoutRule, emulatorViewRule, EdtRule(), HeadlessDialogRule())
+  val ruleChain = RuleChain(timeoutRule, emulatorViewRule, EdtRule(), headlessDialogRule)
 
   @get:Rule
   val portableUiFontRule = PortableUiFontRule()
@@ -92,7 +93,7 @@ class ManageSnapshotsDialogTest {
     set(value) { nullableEmulatorView = value }
 
   private val testRootDisposable
-    get() = emulatorViewRule.testRootDisposable
+    get() = emulatorViewRule.disposable
 
   @Before
   fun setUp() {
