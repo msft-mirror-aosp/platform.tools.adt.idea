@@ -80,6 +80,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.ui.content.ContentManager
 import com.intellij.util.ConcurrencyUtil.awaitQuiescence
 import com.intellij.util.ui.UIUtil.dispatchAllInvocationEvents
+import icons.StudioIcons
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -385,6 +386,42 @@ class StreamingToolWindowManagerTest {
     if (!isFFmpegAvailableToTest()) {
       return
     }
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
+    deviceMirroringSettings::activateOnAppLaunch.override(true, testRootDisposable)
+    deviceMirroringSettings::activateOnTestLaunch.override(true, testRootDisposable)
+    createToolWindowContent()
+    assertThat(contentManager.contents).isEmpty()
+    assertThat(toolWindow.isVisible).isFalse()
+
+    val device1 = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
+    val device2 = agentRule.connectDevice("Pixel 6", 32, Dimension(1080, 2400))
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device2.serialNumber, project)
+
+    waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
+    assertThat(contentManager.contents[0].displayName).isEqualTo("Pixel 6 API 32")
+    assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 6 API 32")
+    assertThat(toolWindow.isVisible).isTrue()
+
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingTest(device1.serialNumber, project)
+    waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 2 }
+    assertThat(contentManager.contents[0].displayName).isEqualTo("Pixel 4 API 30")
+    assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 4 API 30")
+
+    deviceMirroringSettings.activateOnAppLaunch = false
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device2.serialNumber, project)
+    assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 4 API 30")
+
+    agentRule.disconnectDevice(device1)
+    agentRule.disconnectDevice(device2)
+    waitForCondition(10, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName == null }
+  }
+
+  @Test
+  fun testPhysicalDeviceRequestsAttentionWithoutAdvancedTabControl() {
+    if (!isFFmpegAvailableToTest()) {
+      return
+    }
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(false, testRootDisposable)
     createToolWindowContent()
     assertThat(contentManager.contents).isEmpty()
     assertThat(toolWindow.isVisible).isFalse()
@@ -472,6 +509,7 @@ class StreamingToolWindowManagerTest {
       return
     }
     StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
+    deviceMirroringSettings::activateOnConnection.override(true, testRootDisposable)
     createToolWindowContent()
     assertThat(contentManager.contents).isEmpty()
     assertThat(toolWindow.isVisible).isFalse()
@@ -505,6 +543,8 @@ class StreamingToolWindowManagerTest {
     assertThat(popup.actions.toString()).isEqualTo(
         "[Separator (Connected Devices), Pixel 4 API 30 (null), Pixel 7 API 33 (null), " +
         "Separator (null), Pair Devices Using Wi-Fi (Open the Device Pairing dialog which allows connecting devices over Wi-Fi)]")
+    assertThat(popup.actions[1].templatePresentation.icon).isEqualTo(StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE)
+    assertThat(popup.actions[2].templatePresentation.icon).isEqualTo(StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE)
 
     executeStreamingAction(popup.actions[2], toolWindow.component, project)
     waitForCondition(2, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
@@ -544,6 +584,7 @@ class StreamingToolWindowManagerTest {
     val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(avdRoot))
     val tablet = emulatorRule.newEmulator(FakeEmulator.createTabletAvd(avdRoot))
     tablet.start(standalone = true)
+    RunningEmulatorCatalog.getInstance().updateNow().get()
 
     assertThat(toolWindow.tabActions).isNotEmpty()
     val newTabAction = toolWindow.tabActions[0]
@@ -556,66 +597,14 @@ class StreamingToolWindowManagerTest {
       popup.items.size >= 2
     }
     assertThat(popup.actions.toString()).isEqualTo(
-        "[Separator (Available Devices), ${phone.avdName} (null), " +
+        "[Separator (Virtual Devices), ${phone.avdName} (null), " +
         "Separator (null), Pair Devices Using Wi-Fi (Open the Device Pairing dialog which allows connecting devices over Wi-Fi)]")
+    assertThat(popup.actions[1].templatePresentation.icon).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_PHONE)
 
     executeStreamingAction(popup.actions[1], toolWindow.component, project)
     waitForCondition(2, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
     assertThat(contentManager.contents[0].displayName).isEqualTo(phone.avdName)
     assertThat(contentManager.selectedContent?.displayName).isEqualTo(phone.avdName)
-  }
-
-  @Test
-  fun testMirroringStoppingPersistence() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
-    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
-    createToolWindowContent()
-    assertThat(contentManager.contents).isEmpty()
-    assertThat(toolWindow.isVisible).isFalse()
-    toolWindow.show()
-
-    val device1 = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
-    waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
-    var content = contentManager.contents[0]
-    assertThat(content.displayName).isEqualTo("Pixel 4 API 30")
-    waitForCondition(2, TimeUnit.SECONDS) { (content.component as? DeviceToolWindowPanel)?.deviceClient?.videoDecoder != null }
-    contentManager.removeContent(content, true)
-
-    val device2 = agentRule.connectDevice("Pixel 7", 33, Dimension(1080, 2400))
-    waitForCondition(15, TimeUnit.SECONDS) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
-    content = contentManager.contents[0]
-    assertThat(content.displayName).isEqualTo("Pixel 7 API 33")
-    waitForCondition(2, TimeUnit.SECONDS) { (content.component as? DeviceToolWindowPanel)?.deviceClient?.videoDecoder != null }
-    contentManager.removeContent(content, true)
-
-    waitForCondition(2, TimeUnit.SECONDS) { !device1.agent.isRunning }
-    waitForCondition(2, TimeUnit.SECONDS) { !device2.agent.isRunning }
-
-    // Destroy and recreate the tool window simulating a Studio restart.
-    Disposer.dispose(toolWindow.disposable)
-    nullableToolWindow = null
-    createToolWindowContent()
-    assertThat(contentManager.contents).isEmpty()
-    assertThat(toolWindow.isVisible).isFalse()
-    toolWindow.show()
-    dispatchAllEventsInIdeEventQueue() // Finish asynchronous processing triggered by showing the tool window.
-
-    // None of the devices should be mirrored because they were not mirrored before the simulated Stdio restart.
-    assertThat(device1.agent.isRunning).isFalse()
-    assertThat(device2.agent.isRunning).isFalse()
-    val newTabAction = toolWindow.tabActions[0]
-    val testEvent = createTestEvent(toolWindow.component, project)
-    lateinit var popup: FakeListPopup<Any>
-    waitForCondition(4, TimeUnit.SECONDS) {
-      newTabAction.actionPerformed(testEvent)
-      popup = popupRule.fakePopupFactory.getNextPopup(2, TimeUnit.SECONDS)
-      popup.items.size >= 3
-    }
-    assertThat(popup.actions.toString()).isEqualTo(
-        "[Separator (Connected Devices), Pixel 4 API 30 (null), Pixel 7 API 33 (null), " +
-        "Separator (null), Pair Devices Using Wi-Fi (Open the Device Pairing dialog which allows connecting devices over Wi-Fi)]")
   }
 
   @Test

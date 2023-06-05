@@ -19,13 +19,19 @@ import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
+import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.ui.components.JBScrollPane
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.Rectangle
 import java.util.stream.Collectors
 import javax.swing.JPanel
-import kotlin.test.assertEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
@@ -83,6 +89,54 @@ class GalleryTabsTest {
     }
   }
 
+  @Test
+  fun `toolbar is not updated`() {
+    invokeAndWaitIfNeeded {
+      val keys = setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
+      val tabs = GalleryTabs(rootComponent, keys) {}
+      val ui = FakeUi(tabs).apply { updateToolbars() }
+      val toolbar = findTabs(tabs)
+      // Set exactly same keys
+      tabs.updateKeys(keys)
+      ui.updateToolbars()
+      val updatedToolbar = findTabs(tabs)
+      // Toolbar was not updated, it's same as before.
+      assertEquals(toolbar, updatedToolbar)
+    }
+  }
+
+  @Test
+  fun `toolbar is updated with new key`() {
+    invokeAndWaitIfNeeded {
+      val keys = setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
+      val tabs = GalleryTabs(rootComponent, keys) {}
+      val ui = FakeUi(tabs).apply { updateToolbars() }
+      val toolbar = findTabs(tabs)
+      // Set new set of keys.
+      tabs.updateKeys(keys + TestKey("New Tab"))
+      ui.updateToolbars()
+      val updatedToolbar = findTabs(tabs)
+      // New toolbar was created.
+      assertNotEquals(toolbar, updatedToolbar)
+    }
+  }
+
+  @Test
+  fun `toolbar is updated with removed key`() {
+    invokeAndWaitIfNeeded {
+      val keys = setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
+      val tabs = GalleryTabs(rootComponent, keys + TestKey("Key to remove")) {}
+      val ui = FakeUi(tabs).apply { updateToolbars() }
+      val toolbar = findTabs(tabs)
+      // Set updated set of keys
+      tabs.updateKeys(keys)
+      ui.updateToolbars()
+      val updatedToolbar = findTabs(tabs)
+      // New toolbar was created.
+      assertNotEquals(toolbar, updatedToolbar)
+    }
+  }
+
   @Ignore
   @Test
   /**
@@ -95,7 +149,7 @@ class GalleryTabsTest {
       val tabs =
         GalleryTabs(
           rootComponent,
-          setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
+          setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab")),
         ) {}
       val root = JPanel(BorderLayout()).apply { size = Dimension(400, 400) }
       root.add(tabs, BorderLayout.NORTH)
@@ -113,7 +167,7 @@ class GalleryTabsTest {
       val tabs =
         GalleryTabs(
           rootComponent,
-          setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
+          setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab")),
         ) {
           selectedTab = it
         }
@@ -139,10 +193,73 @@ class GalleryTabsTest {
     }
   }
 
+  @Test
+  fun `selected tab is always visible`() {
+    invokeAndWaitIfNeeded {
+      val tabs =
+        GalleryTabs(
+          rootComponent,
+          setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab")),
+        ) {}
+      // Width is 100, so only first tab is actually visible.
+      val root = JPanel(BorderLayout()).apply { size = Dimension(150, 400) }
+      root.add(tabs, BorderLayout.NORTH)
+
+      FakeUi(root).apply {
+        updateToolbars()
+        layout()
+      }
+      val buttons = findAllActionButtons(root)
+      val scrollPane = findScrollPane(root)
+      // Only first button is visible
+      assertTrue(scrollPane.bounds.contains(buttons[0].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[1].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[2].relativeBounds()))
+      // Only second button is visible
+      buttons[1].click()
+      assertFalse(scrollPane.bounds.contains(buttons[0].relativeBounds()))
+      assertTrue(scrollPane.bounds.contains(buttons[1].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[2].relativeBounds()))
+      // Only third button is visible
+      buttons[2].click()
+      assertFalse(scrollPane.bounds.contains(buttons[0].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[1].relativeBounds()))
+      assertTrue(scrollPane.bounds.contains(buttons[2].relativeBounds()))
+      // Only first button is visible
+      buttons[0].click()
+      assertTrue(scrollPane.bounds.contains(buttons[0].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[1].relativeBounds()))
+      assertFalse(scrollPane.bounds.contains(buttons[2].relativeBounds()))
+    }
+  }
+
+  private fun ActionButtonWithText.relativeBounds(): Rectangle {
+    val bounds = Rectangle(this.bounds)
+    bounds.translate(this.parent.parent.location.x, this.parent.parent.location.y)
+    return bounds
+  }
+
+  private fun findScrollPane(parent: Component): JBScrollPane =
+    TreeWalker(parent)
+      .descendantStream()
+      .filter { it is JBScrollPane }
+      .collect(Collectors.toList())
+      .first() as JBScrollPane
+
   private fun findAllActionButtons(parent: Component): List<ActionButtonWithText> =
     TreeWalker(parent)
       .descendantStream()
       .filter { it is ActionButtonWithText }
       .collect(Collectors.toList())
       .map { it as ActionButtonWithText }
+
+  private fun findTabs(parent: Component) = findToolbar(parent, "Gallery Tabs")
+
+  private fun findToolbar(parent: Component, place: String): ActionToolbarImpl =
+    TreeWalker(parent)
+      .descendantStream()
+      .filter { it is ActionToolbarImpl }
+      .collect(Collectors.toList())
+      .map { it as ActionToolbarImpl }
+      .first { it.place == place }
 }

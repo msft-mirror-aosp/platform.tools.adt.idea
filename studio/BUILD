@@ -61,6 +61,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/.idea/libraries:jetty",
         "//tools/adt/idea/.idea/libraries:kotlinx-coroutines-guava",
+        "//tools/adt/idea/.idea/libraries:kotlin-multiplatform-android-models-proto",
         "//tools/adt/idea/.idea/libraries:kxml2",
         "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
@@ -226,6 +227,7 @@ studio_plugin(
             "//tools/adt/idea/server-flags:intellij.android.server-flags",
             "//tools/adt/idea/codenavigation:codenavigation",
             "//tools/adt/idea/execution/common:intellij.android.execution.common",
+            "//tools/base/kotlin-multiplatform-models:studio.android.kotlin-multiplatform-models",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -445,7 +447,7 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.4.0-SNAPSHOT"],
+    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted-1.4.7"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     visibility = ["//visibility:public"],
     deps = [
@@ -1001,7 +1003,10 @@ iml_studio_test(
     name = "StartUpTest",
     module = ":intellij.android.studio.integration",
     tags_linux = ["block-network"],
-    tags_windows = ["block-network"],
+    tags_windows = [
+        "block-network",
+        "manual",  # Disabled due to b/284516925
+    ],
     test_class = "com.android.tools.idea.StartUpTest",
 )
 

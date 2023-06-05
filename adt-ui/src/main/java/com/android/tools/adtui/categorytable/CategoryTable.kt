@@ -38,6 +38,7 @@ import javax.swing.event.ChangeEvent
 import javax.swing.event.ListSelectionEvent
 import javax.swing.event.TableColumnModelEvent
 import javax.swing.event.TableColumnModelListener
+import kotlin.collections.ArrayList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -63,7 +64,7 @@ import kotlinx.coroutines.launch
 @UiThread
 class CategoryTable<T : Any>(
   val columns: ColumnList<T>,
-  private val primaryKey: (T) -> Any = { it },
+  val primaryKey: (T) -> Any = { it },
   private val coroutineDispatcher: CoroutineDispatcher = defaultCoroutineDispatcher,
   colors: Colors = defaultColors,
   private val rowDataProvider: ValueRowDataProvider<T> = NullValueRowDataProvider,
@@ -79,7 +80,8 @@ class CategoryTable<T : Any>(
    * The values in the table, in display order (considering grouping and sorting). Maintained by
    * [groupAndSortValues].
    */
-  private var values: List<T> = emptyList()
+  var values: List<T> = emptyList()
+    private set
 
   /**
    * All [CategoryRowComponent] and [ValueRowComponent] components in the table, in display order.
@@ -275,9 +277,12 @@ class CategoryTable<T : Any>(
    * Adds the given row to the table. If a row already exists with the same primary key, it is
    * updated to the new value. This may result in addition or deletion of category nodes.
    *
+   * @param beforeKey adds the element before the element with this primary key; if null, adds to
+   *   the end. A stable sort is performed after the element is added. Thus, if the new element is
+   *   equal in sort order to the given key, it will remain in the same position after the sort.
    * @return true if a new row was added
    */
-  fun addOrUpdateRow(rowValue: T): Boolean {
+  fun addOrUpdateRow(rowValue: T, beforeKey: Any? = null): Boolean {
     val key = primaryKey(rowValue)
     val add = !valueRows.contains(key)
     if (add) {
@@ -285,7 +290,7 @@ class CategoryTable<T : Any>(
         ValueRowComponent(rowDataProvider, header, columns, rowValue, key).also {
           addRowComponent(it)
         }
-      updateValues { it + rowValue }
+      updateValues { it.withInsertedItemBefore(beforeKey, rowValue) }
     } else {
       updateValues { currentValues ->
         // Replace the value with the same primary key with the given value.
@@ -299,6 +304,21 @@ class CategoryTable<T : Any>(
     }
     updateComponents()
     return add
+  }
+
+  private fun List<T>.withInsertedItemBefore(beforeKey: Any?, valueToInsert: T): List<T> {
+    val newValues = ArrayList<T>(size + 1)
+    for (v in this) {
+      if (primaryKey(v) == beforeKey) {
+        newValues.add(valueToInsert)
+      }
+      newValues.add(v)
+    }
+    if (newValues.size <= size) {
+      // Didn't find the key; add it to the end
+      newValues.add(valueToInsert)
+    }
+    return newValues
   }
 
   private fun addRowComponent(rowComponent: RowComponent<T>) {
@@ -435,6 +455,8 @@ class CategoryTable<T : Any>(
     rowComponents.forEach { it.invalidate() }
     revalidate()
   }
+
+  fun isRowVisibleByKey(key: Any) = valueRows[key]?.isVisible ?: false
 
   fun setRowVisibleByKey(key: Any, visible: Boolean) {
     when {

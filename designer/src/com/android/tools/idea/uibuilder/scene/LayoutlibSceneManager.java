@@ -706,7 +706,7 @@ public class LayoutlibSceneManager extends SceneManager {
     // TODO See if there's a better way to trigger the NavigationViewSceneView. Perhaps examine the view objects?
     if (tag != null && Objects.equals(tag.getAttributeValue(ATTR_SHOW_IN, TOOLS_URI), NavigationViewSceneView.SHOW_IN_ATTRIBUTE_VALUE)) {
       sceneView = ScreenView.newBuilder(getDesignSurface(), this)
-        .withLayersProvider((sv) -> ImmutableList.of(new ScreenViewLayer(sv)))
+        .withLayersProvider((sv) -> ImmutableList.of(new ScreenViewLayer(sv,getDesignSurface(), getDesignSurface()::getRotateSurfaceDegree)))
         .withContentSizePolicy(NavigationViewSceneView.CONTENT_SIZE_POLICY)
         .withShapePolicy(SQUARE_SHAPE_POLICY)
         .build();
@@ -725,20 +725,20 @@ public class LayoutlibSceneManager extends SceneManager {
   }
 
   public void updateTargets() {
+    Runnable updateAgain = this::updateTargets;
     SceneComponent root = getScene().getRoot();
     if (root != null) {
-      updateTargetProviders(root);
+      updateTargetProviders(root, updateAgain);
       root.updateTargets();
     }
   }
 
-  private static void updateTargetProviders(@NotNull SceneComponent component) {
-    ViewHandler handler = SlowOperations.allowSlowOperations(
-      () -> NlComponentHelperKt.getViewHandler(component.getNlComponent()));
+  private static void updateTargetProviders(@NotNull SceneComponent component, @NotNull Runnable whenUpdated) {
+    ViewHandler handler = NlComponentHelperKt.getViewHandler(component.getNlComponent(), whenUpdated);
     component.setTargetProvider(handler);
 
     for (SceneComponent child : component.getChildren()) {
-      updateTargetProviders(child);
+      updateTargetProviders(child, whenUpdated);
     }
   }
 

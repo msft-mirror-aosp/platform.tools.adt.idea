@@ -40,6 +40,7 @@ public final class NameComparatorTest {
     var expectedDevices = List.of(mockDevice("Resizable (Experimental)"),
                                   mockDevice("7.6\" Fold-in with outer display"),
                                   mockDevice("Pixel"),
+                                  mockDevice("Pixel XL"),
                                   mockDevice("Pixel 2"),
                                   mockDevice("Pixel 2 XL"),
                                   mockDevice("Pixel 3"),
@@ -56,7 +57,6 @@ public final class NameComparatorTest {
                                   mockDevice("Pixel 7"),
                                   mockDevice("Pixel 7 Pro"),
                                   mockDevice("Pixel Fold"),
-                                  mockDevice("Pixel XL"),
                                   mockDevice("Medium Phone"),
                                   mockDevice("Small Phone"));
 
@@ -75,6 +75,55 @@ public final class NameComparatorTest {
     var expectedDevices = List.of(mockDevice("Pixel C"),
                                   mockDevice("Pixel Tablet"),
                                   mockDevice("Medium Tablet"));
+
+    var actualDevices = shuffle(expectedDevices);
+
+    // Act
+    actualDevices.sort(myComparator);
+
+    // Assert
+    assertEquals(expectedDevices, actualDevices);
+  }
+
+  @Test
+  public void compareWearOs() {
+    // Arrange
+    var expectedDevices = List.of(mockDevice("Wear OS Large Round"),
+                                  mockDevice("Wear OS Rectangular"),
+                                  mockDevice("Wear OS Small Round"),
+                                  mockDevice("Wear OS Square"));
+
+    var actualDevices = shuffle(expectedDevices);
+
+    // Act
+    actualDevices.sort(myComparator);
+
+    // Assert
+    assertEquals(expectedDevices, actualDevices);
+  }
+
+  @Test
+  public void compareDesktop() {
+    // Arrange
+    var expectedDevices = List.of(mockDevice("Large Desktop"),
+                                  mockDevice("Medium Desktop"),
+                                  mockDevice("Small Desktop"));
+
+    var actualDevices = shuffle(expectedDevices);
+
+    // Act
+    actualDevices.sort(myComparator);
+
+    // Assert
+    assertEquals(expectedDevices, actualDevices);
+  }
+
+  @Test
+  public void compareTv() {
+    // Arrange
+    var expectedDevices = List.of(mockDevice("Television (1080p)"),
+                                  mockDevice("Television (4K)"),
+                                  mockDevice("Television (720p)"));
 
     var actualDevices = shuffle(expectedDevices);
 

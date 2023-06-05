@@ -17,7 +17,6 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.annotations.Trace
 import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
-import com.intellij.openapi.fileEditor.ClientFileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiTreeChangeEvent
@@ -75,6 +74,11 @@ class PsiListener(val onPsiChanged: (EditEvent) -> Unit) : PsiTreeChangeListener
     }
 
     val file: PsiFile = psiEvent.file!!
+
+    // Ignore file changes that are outside of the project
+    if (!file.manager.isInProject(file)) {
+      return
+    }
 
     // All sort of files might be modified and written during save actions. This is an issue for manual mode where some metadata json file
     // get updated on save. To avoid that, we only Live Edit files that are currently opened by the editor.

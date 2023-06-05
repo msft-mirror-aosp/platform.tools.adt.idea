@@ -215,7 +215,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   @NotNull private final JComponent myContentContainerPane;
   @NotNull private final DesignSurfaceViewport myViewport;
   @NotNull private final JLayeredPane myLayeredPane;
-  @NotNull private final SceneViewPanel mySceneViewPanel;
+  @NotNull protected final SceneViewPanel mySceneViewPanel;
   @NotNull private final MouseClickDisplayPanel myMouseClickDisplayPanel;
   @VisibleForTesting
   private final GuiInputHandler myGuiInputHandler;
@@ -350,6 +350,9 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     mySceneViewPanel = new SceneViewPanel(
       this::getSceneViews,
       () -> getGuiInputHandler().getLayers(),
+      this::getActionManager,
+      this,
+      this::shouldRenderErrorsPanel,
       positionableLayoutManagerProvider.apply(this));
     mySceneViewPanel.setBackground(getBackground());
 
@@ -880,7 +883,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    * Returns the list of SceneViews attached to this surface
    */
   @NotNull
-  protected ImmutableCollection<SceneView> getSceneViews() {
+  public ImmutableCollection<SceneView> getSceneViews() {
     return getSceneManagers().stream()
       .flatMap(sceneManager -> sceneManager.getSceneViews().stream())
       .collect(ImmutableList.toImmutableList());
@@ -891,30 +894,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     for (SceneView sceneView : getSceneViews()) {
       sceneView.onHover(x, y);
     }
-  }
-
-  /**
-   * Gives us a chance to change layers behaviour upon drag and drop interaction starting
-   * <p>
-   * TODO(b/142953949): move this function into {@link DragDropInteraction}
-   */
-  public void startDragDropInteraction() {
-    for (SceneView sceneView : getSceneViews()) {
-      sceneView.onDragStart();
-    }
-    repaint();
-  }
-
-  /**
-   * Gives us a chance to change layers behaviour upon drag and drop interaction ending
-   * <p>
-   * TODO(b/142953949): move this function into {@link DragDropInteraction}
-   */
-  public void stopDragDropInteraction() {
-    for (SceneView sceneView : getSceneViews()) {
-      sceneView.onDragEnd();
-    }
-    repaint();
   }
 
   /**

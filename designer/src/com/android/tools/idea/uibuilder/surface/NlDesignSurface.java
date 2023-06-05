@@ -53,6 +53,7 @@ import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport;
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewportScroller;
 import com.android.tools.idea.common.surface.layout.TopBoundCenterScroller;
 import com.android.tools.idea.common.surface.layout.ZoomCenterScroller;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.build.GradleBuildState;
 import com.android.tools.idea.rendering.RenderErrorModelFactory;
 import com.android.tools.idea.rendering.RenderSettings;
@@ -442,6 +443,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
 
     if (myNavigationHandler != null) {
       Disposer.register(this, myNavigationHandler);
+      mySceneViewPanel.setOnLabelClicked(myNavigationHandler::handleNavigate);
     }
 
     myMinScale = minScale;
@@ -689,7 +691,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
 
   @Override
   public void notifyComponentActivate(@NotNull NlComponent component, int x, int y) {
-    ViewHandler handler = NlComponentHelperKt.getViewHandler(component);
+    ViewHandler handler = NlComponentHelperKt.getViewHandler(component, () -> {});
 
     if (handler != null) {
       handler.onActivateInDesignSurface(component, x, y);
@@ -725,9 +727,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
         if (results.isEmpty()) {
           return;
         }
-        if (myScannerControl != null) {
-          myScannerControl.validateAndUpdateLint(results);
-        }
 
         Project project = getProject();
         if (project.isDisposed()) {
@@ -762,7 +761,9 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
           renderIssueProviders.forEach(renderIssueProvider -> getIssueModel().addIssueProvider(renderIssueProvider));
         });
 
-        if (!VisualizationToolWindowFactory.hasVisibleValidationWindow(project)) {
+        boolean hasLayoutValidationOpen = VisualizationToolWindowFactory.hasVisibleValidationWindow(project);
+        boolean hasRunAtfOnMainPreview = hasLayoutValidationOpen && StudioFlags.NELE_ATF_IN_VISUAL_LINT.get();
+        if (!hasLayoutValidationOpen) {
           List<NlModel> modelsForBackgroundRun = new ArrayList<>();
           Map<RenderResult, NlModel> renderResultsForAnalysis = new HashMap<>();
           results.forEach((manager, result) -> {
@@ -777,11 +778,16 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
                 break;
             }
           });
+          hasRunAtfOnMainPreview = !renderResultsForAnalysis.isEmpty() && StudioFlags.NELE_ATF_IN_VISUAL_LINT.get();
           VisualLintService.getInstance(project).runVisualLintAnalysis(
             NlDesignSurface.this,
             myVisualLintIssueProvider,
             modelsForBackgroundRun,
             renderResultsForAnalysis);
+        }
+
+        if (myScannerControl != null && !hasRunAtfOnMainPreview) {
+          myScannerControl.validateAndUpdateLint(results);
         }
       }
 

@@ -128,6 +128,9 @@ fun NlComponent.containsY(@AndroidCoordinate y: Int): Boolean {
  * `<fragment>` tags **should** specify an id.
 
  * @return true if the component should have a default id
+ *
+ * Note: if this is called on the UI thread this function may return false
+ * for components the ViewHandlerManager need to do a background lookup for.
  */
 fun NlComponent.needsDefaultId(): Boolean {
   if (!hasNlComponentInfo) {
@@ -143,16 +146,8 @@ fun NlComponent.needsDefaultId(): Boolean {
   }
 
   // Assign id's to ViewGroups like ListViews, but not to views like LinearLayout
-  if (viewHandler == null) {
-    if (tagName.endsWith("Layout")) {
-      return false
-    }
-  }
-  else if (viewHandler is ViewGroupHandler) {
-    return false
-  }
-
-  return true
+  val handler = getViewHandler {}
+  return handler !is ViewGroupHandler && !(handler == null && tagName.endsWith("Layout"))
 }
 
 /**
@@ -255,8 +250,8 @@ fun NlComponent.isGroup(): Boolean {
   if (isOrHasSuperclass(CLASS_VIEWGROUP)) {
     return true
   }
-  val handler = viewHandler
-  if (handler is ViewGroupHandler && !handler.holdsReferences()) {
+  val handler = getViewHandler {}
+  if ((handler is ViewGroupHandler && !handler.holdsReferences()) || tagName.endsWith("Layout")) {
     return true
   }
 
@@ -316,7 +311,7 @@ fun NlComponent.isOrHasSuperclass(className: AndroidxName): Boolean {
  */
 private fun NlComponent.isOrHasSuperclassInTest(className: String): Boolean = when (className) {
   CLASS_CONSTRAINT_LAYOUT_HELPER.newName(),
-  CLASS_CONSTRAINT_LAYOUT_HELPER.oldName() -> viewHandler is ConstraintHelperHandler
+  CLASS_CONSTRAINT_LAYOUT_HELPER.oldName() -> getViewHandler {} is ConstraintHelperHandler
   else -> className == tagName
 }
 
@@ -361,25 +356,38 @@ fun NlComponent.getMostSpecificClass(classNames: Set<String>): String? {
 }
 
 /**
- * Return the [ViewHandler] for the current [NlComponent].
+ * Return the [ViewHandler] for the current [NlComponent] or <code>null</code> if the project is disposed or
+ * a handler is not know at this time.
+ * @param handlerUpdated if a component handler lookup require an index lookup, the lookup is
+ *                       performed on a background thread and {@link ViewHandlerManager#TEMP} is returned.
+ *                       This callback is called if the background finds a handler.
  */
-val NlComponent.viewHandler: ViewHandler?
-  get() = if (!model.project.isDisposed) ViewHandlerManager.get(model.project).getHandler(this) else null
+fun NlComponent.getViewHandler(handlerUpdated: Runnable): ViewHandler? =
+  if (!model.project.isDisposed) ViewHandlerManager.get(model.project).getHandler(this, handlerUpdated) else null
 
 /**
- * Return the [ViewGroupHandler] for the current [NlComponent] or <code>null</code> if
+ * Return the [ViewGroupHandler] for the current [NlComponent] or <code>null</code> if the project is disposed,
+ * a handler is not know at this time, or the handler is not a ViewGroupHandler.
+ * @param handlerUpdated if a component handler lookup require an index lookup, the lookup is
+ *                       performed on a background thread and <code>null</code> is returned.
+ *                       This callback is called if the background finds a handler.
  */
-val NlComponent.viewGroupHandler: ViewGroupHandler?
-  get() = viewHandler as? ViewGroupHandler
+fun NlComponent.getViewGroupHandler(handlerUpdated: Runnable): ViewGroupHandler? =
+  getViewHandler(handlerUpdated) as? ViewGroupHandler
 
 /**
- * Return the [ViewGroupHandler] for the nearest layout starting with the current [NlComponent].
+ * Return the [ViewGroupHandler] for the nearest layout starting with the current [NlComponent] or <code>null</code>
+ * if the project is disposed or a handler is not known for that component at this time.
  *
  * If the current [NlComponent] is a ViewGroup then return the view handler for the current [NlComponent].
  * Otherwise a view handler for a parent component is returned (if such a view handler exists).
+ *
+ * @param handlerUpdated if a component handler lookup require an index lookup, the lookup is
+ *                       performed on a background thread and <code>null</code> is returned.
+ *                       This callback is called if the background finds a handler.
  */
-val NlComponent.layoutHandler: ViewGroupHandler?
-  get() = if (!model.project.isDisposed) ViewHandlerManager.get(model.project).findLayoutHandler(this, false) else null
+fun NlComponent.getLayoutHandler(handlerUpdated: Runnable): ViewGroupHandler? =
+  if (!model.project.isDisposed) ViewHandlerManager.get(model.project).findLayoutHandler(this, false, handlerUpdated) else null
 
 /**
  * Creates a new child of the given type, and inserts it before the given sibling (or null to append at the end).
@@ -474,15 +482,8 @@ internal data class NlComponentData(
 class NlComponentMixin(component: NlComponent)
   : NlComponent.XmlModelComponentMixin(component) {
 
-  override fun maybeHandleDeletion(children: Collection<NlComponent>): Boolean {
-    val viewHandlerManager = ViewHandlerManager.get(component.model.facet)
-
-    val handler = viewHandlerManager.getHandler(this.component)
-    if (handler is ViewGroupHandler) {
-      return handler.deleteChildren(component, children)
-    }
-    return false
-  }
+  override fun maybeHandleDeletion(children: Collection<NlComponent>): Boolean =
+    component.getViewGroupHandler {}?.deleteChildren(component, children) ?: false
 
   internal val data: NlComponentData = NlComponentData()
 
@@ -515,18 +516,14 @@ class NlComponentMixin(component: NlComponent)
     if (!receiver.hasNlComponentInfo) {
       return false
     }
-    val parentHandler = receiver.viewHandler as? ViewGroupHandler ?: return false
+    val parentHandler = receiver.getViewGroupHandler {} ?: return false
 
     if (!parentHandler.acceptsChild(receiver, component)) {
       return false
     }
 
-    val handler = ViewHandlerManager.get(component.model.project).getHandler(component)
-
-    if (handler != null && !handler.acceptsParent(receiver, component)) {
-      return false
-    }
-    return true
+    val handler = component.getViewHandler {}
+    return handler != null && handler.acceptsParent(receiver, component)
   }
 
   /**
@@ -534,7 +531,7 @@ class NlComponentMixin(component: NlComponent)
    */
   override fun getDependencies(): Set<String> {
     val artifacts = mutableSetOf<String>()
-    val handler = ViewHandlerManager.get(component.model.project).getHandler(component) ?: return emptySet()
+    val handler = component.getViewHandler {} ?: return emptySet()
     val artifactId = handler.getGradleCoordinateId(component.tagDeprecated.name)
     if (artifactId != PaletteComponentHandler.IN_PLATFORM) {
       artifacts.add(artifactId)
@@ -553,10 +550,10 @@ class NlComponentMixin(component: NlComponent)
 
   override fun afterMove(insertType: InsertType, previousParent: NlComponent?, receiver: NlComponent) {
     if (previousParent != receiver) {
-      previousParent?.layoutHandler?.onChildRemoved(previousParent, component, insertType)
+      previousParent?.getLayoutHandler {}?.onChildRemoved(previousParent, component, insertType)
     }
 
-    receiver.layoutHandler?.onChildInserted(receiver, component, insertType)
+    receiver.getLayoutHandler {}?.onChildInserted(receiver, component, insertType)
   }
 
   override fun postCreate(insertType: InsertType): Boolean {
@@ -581,8 +578,7 @@ class NlComponentMixin(component: NlComponent)
     }
 
     // Notify view handlers
-    val viewHandlerManager = ViewHandlerManager.get(component.model.project)
-    val childHandler = viewHandlerManager.getHandler(component)
+    val childHandler = component.getViewHandler {}
 
     if (childHandler != null) {
       var ok = childHandler.onCreate(component.parent, component, insertType)
@@ -596,8 +592,7 @@ class NlComponentMixin(component: NlComponent)
       }
     }
     component.parent?.let {
-      val parentHandler = viewHandlerManager.getHandler(it)
-      (parentHandler as? ViewGroupHandler)?.onChildInserted(it, component, insertType)
+      it.getViewGroupHandler {}?.onChildInserted(it, component, insertType)
     }
     return true
   }
@@ -607,11 +602,8 @@ class NlComponentMixin(component: NlComponent)
     component.h = dndComponent.height
   }
 
-  override fun getIcon(): Icon {
-    val manager = ViewHandlerManager.get(component.model.project)
-    val handler = manager.getHandler(component) ?: return StudioIcons.LayoutEditor.Palette.VIEW
-    return handler.getIcon(component)
-  }
+  override fun getIcon(): Icon =
+    component.getViewHandler {}?.getIcon(component) ?: StudioIcons.LayoutEditor.Palette.VIEW
 }
 
 /**

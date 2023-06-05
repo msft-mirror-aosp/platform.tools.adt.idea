@@ -15,11 +15,14 @@
  */
 package com.android.tools.idea.configurations
 
+import com.android.sdklib.IAndroidTarget
 import com.android.tools.layoutlib.LayoutlibContext
 import com.android.tools.module.AndroidModuleInfo
 import com.android.tools.module.ModuleDependencies
+import com.android.tools.rendering.ModuleKey
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.sdk.AndroidPlatform
+import com.android.tools.sdk.CompatibilityRenderTarget
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 
@@ -44,4 +47,11 @@ interface ConfigurationModelModule : Disposable {
   val name: String
 
   val dependencies: ModuleDependencies
+
+  /** Key used to invalidate drawable caches in Layoutlib. See [ModuleKeyManager] and [ResourceHelper]. */
+  val moduleKey: ModuleKey
+
+  val resourcePackage: String?
+
+  fun getCompatibilityTarget(target: IAndroidTarget): CompatibilityRenderTarget
 }

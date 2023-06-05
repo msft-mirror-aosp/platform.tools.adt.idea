@@ -15,7 +15,9 @@
  */
 package com.android.tools.adtui.categorytable
 
+import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
+import com.google.common.collect.Range
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.DataManager
 import com.intellij.ide.IdeEventQueue
@@ -85,6 +87,31 @@ class CategoryTableTest {
     assertThat(table.addOrUpdateRow(offlineNexus7)).isTrue()
     assertThat(table.addOrUpdateRow(onlineNexus7)).isFalse()
     assertThat(table.rowComponents).hasSize(2)
+  }
+
+  @Test
+  fun addOrUpdateRow_withPosition() {
+    val table = CategoryTable(CategoryTableDemo.columns, { it.name })
+    val device = CategoryTableDemo.Device("Pixel 4", "33", "Phone", "Offline")
+    table.toggleSortOrder(Api.attribute)
+    listOf(
+        device,
+        device.copy(name = "Pixel 5"),
+        device.copy(name = "Pixel 6"),
+        device.copy(name = "Pixel 7")
+      )
+      .forEach { table.addOrUpdateRow(it) }
+
+    assertThat(table.values.map { it.name })
+      .containsExactly("Pixel 4", "Pixel 5", "Pixel 6", "Pixel 7")
+      .inOrder()
+
+    table.addOrUpdateRow(device.copy(name = "Pixel 4a"), "Pixel 5")
+    table.addOrUpdateRow(device.copy(name = "Pixel 3a", api = "32"), "Pixel 5")
+
+    assertThat(table.values.map { it.name })
+      .containsExactly("Pixel 3a", "Pixel 4", "Pixel 4a", "Pixel 5", "Pixel 6", "Pixel 7")
+      .inOrder()
   }
 
   @Test
@@ -257,6 +284,7 @@ class CategoryTableTest {
     val table = CategoryTable(CategoryTableDemo.columns, colors = colors)
     val scrollPane = createScrollPane(table)
     val fakeUi = FakeUi(scrollPane, createFakeWindow = true)
+    val focusManager = FakeKeyboardFocusManager(disposableRule.disposable)
 
     CategoryTableDemo.devices.forEach { table.addOrUpdateRow(it) }
     fakeUi.layout()
@@ -274,6 +302,7 @@ class CategoryTableTest {
     fakeUi.clickOn(rowToSelect)
 
     assertThat(table.selection.selectedKeys()).contains(rowToSelect.rowKey)
+    assertThat(rowToSelect.isFocusOwner).isTrue()
 
     IdeEventQueue.getInstance().flushQueue()
 
@@ -282,6 +311,27 @@ class CategoryTableTest {
     assertThat(actionColumnComponent.foreground).isEqualTo(colors.selectedForeground)
     assertThat(actionColumnComponent.background).isEqualTo(colors.selectedBackground)
     assertThat(actionButton.foreground).isEqualTo(originalButtonForeground)
+  }
+
+  @Test
+  fun scrollSelection() {
+    val table = CategoryTable(CategoryTableDemo.columns)
+    CategoryTableDemo.devices.forEach { table.addOrUpdateRow(it) }
+
+    val scrollPane = createScrollPane(table)
+    scrollPane.setBounds(0, 0, 800, 100)
+    val fakeUi = FakeUi(scrollPane)
+
+    for (row in CategoryTableDemo.devices.indices) {
+      table.selection.selectNextRow()
+      fakeUi.layout()
+
+      val y = scrollPane.viewport.viewPosition.y
+      val visibleRange = Range.closed(y, y + scrollPane.height)
+      val rowComponent = table.rowComponents[row]
+      assertThat(rowComponent.y).isIn(visibleRange)
+      assertThat(rowComponent.y + rowComponent.height).isIn(visibleRange)
+    }
   }
 
   @Test

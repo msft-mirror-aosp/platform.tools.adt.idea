@@ -26,20 +26,18 @@ import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.concurrency.AndroidExecutors
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.EmulatorSettings
-import com.android.tools.idea.streaming.device.settings.DeviceMirroringSettingsPage
-import com.android.tools.idea.streaming.emulator.settings.EmulatorSettingsPage
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.disposable
+import com.android.tools.idea.testing.flags.override
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ex.ActionManagerEx
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.options.Configurable
-import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
@@ -98,93 +96,102 @@ class EmptyStatePanelTest {
   }
 
   @Test
-  fun testEverythingEnabled() {
-    EmulatorSettings.getInstance().launchInToolWindow = true
+  fun testMirroringEnabledNoTabControl() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(false, testRootDisposable)
     DeviceMirroringSettings.getInstance().deviceMirroringEnabled = true
     val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch a virtual device, use the" +
-                              " <font color=\"589df6\"><a href=\"DeviceManager\">Device Manager</a></font>" +
-                              " or run your app while targeting a virtual device.")
-    assertThat(text).contains("To mirror a physical device, connect it via USB cable or over WiFi.")
+    assertThat(htmlComponent.normalizedText).contains("To mirror a physical device, connect it via USB cable or over WiFi.")
+  }
+
+  @Test
+  fun testMirroringDisabledNoTabControl() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(false, testRootDisposable)
+    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = false
+    val htmlComponent = ui.getComponent<JEditorPane>()
+    assertThat(htmlComponent.normalizedText).contains(
+        "To mirror physical devices, select the <i>Enable mirroring of physical Android devices</i> option" +
+        " in the <font color=\"589df6\"><a href=\"DeviceMirroringSettings\">Device Mirroring settings</a></font>.")
+  }
+
+  @Test
+  fun testLaunchInToolWindowEnabledNoTabControl() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(false, testRootDisposable)
+    EmulatorSettings.getInstance().launchInToolWindow = true
+    val htmlComponent = ui.getComponent<JEditorPane>()
+    assertThat(htmlComponent.normalizedText).contains(
+        "To launch a virtual device, use the" +
+        " <font color=\"589df6\"><a href=\"DeviceManager\">Device Manager</a></font>" +
+        " or run your app while targeting a virtual device.")
     htmlComponent.clickOnHyperlink("DeviceManager")
-    assertThat(executedActions).containsExactly("Android.DeviceManager")
+    assertThat(executedActions).containsAnyOf("Android.DeviceManager", "Android.DeviceManager2")
+    assertThat(executedActions).hasSize(1)
   }
 
   @Test
-  fun testEverythingDisabled() {
+  fun testLaunchInToolWindowDisabledNoTabControl() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(false, testRootDisposable)
     EmulatorSettings.getInstance().launchInToolWindow = false
-    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = false
     val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch virtual devices in this window, select the <i>Launch in a tool window</i> option" +
-                              " in the <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>.")
-    assertThat(text).contains("To mirror physical devices, select the <i>Enable mirroring of physical Android devices</i> option" +
-                              " in the <font color=\"589df6\"><a href=\"DeviceMirroringSettings\">Device Mirroring settings</a></font>.")
-
-    val shownSettings = mutableListOf<Class<Configurable>>()
-    val mockSettings = mock<ShowSettingsUtil>()
-    whenever(mockSettings.showSettingsDialog(any(), any<Class<Configurable>>())).thenAnswer { shownSettings.add(it.getArgument(1)) }
-    ApplicationManager.getApplication().replaceService(ShowSettingsUtil::class.java, mockSettings, testRootDisposable)
-
-    htmlComponent.clickOnHyperlink("EmulatorSettings")
-    assertThat(shownSettings).containsExactly(EmulatorSettingsPage::class.java)
-    shownSettings.clear()
-    htmlComponent.clickOnHyperlink("DeviceMirroringSettings")
-    assertThat(shownSettings).containsExactly(DeviceMirroringSettingsPage::class.java)
+    assertThat(htmlComponent.normalizedText).contains(
+        "To launch virtual devices in this window, select the <i>Launch in a tool window</i> option" +
+        " in the <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>.")
   }
 
   @Test
-  fun testLaunchInToolWindowDisabled() {
-    EmulatorSettings.getInstance().launchInToolWindow = false
-    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = true
+  fun testActivateOnConnectionEnabled() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
+    DeviceMirroringSettings.getInstance().activateOnConnection = true
     val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch virtual devices in this window, select the <i>Launch in a tool window</i> option" +
-                              " in the <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>.")
-    assertThat(text).contains("To mirror a physical device, connect it via USB cable or over WiFi.")
+    assertThat(htmlComponent.normalizedText).contains("To mirror a physical device, connect it via USB cable or over WiFi.")
   }
 
   @Test
-  fun testMirroringDisabled() {
+  fun testActivateOnConnectionDisabled() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
+    DeviceMirroringSettings.getInstance().activateOnConnection = false
+    val htmlComponent = ui.getComponent<JEditorPane>()
+    assertThat(htmlComponent.normalizedText).contains(
+        "To mirror a physical device, connect it via USB cable or over WiFi, click" +
+        " <font color=\"6c707e\" size=\"+1\"><b>&#65291;</b></font> and select the device from the list." +
+        " You may also select the <i>Activate mirroring when a new physical device is connected</i> option in the" +
+        " <font color=\"589df6\"><a href=\"DeviceMirroringSettings\">Device Mirroring settings</a></font>.")
+  }
+
+  @Test
+  fun testEmulatorTooOld() {
     EmulatorSettings.getInstance().launchInToolWindow = true
-    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = false
-    val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch a virtual device, use the" +
-                              " <font color=\"589df6\"><a href=\"DeviceManager\">Device Manager</a></font>" +
-                              " or run your app while targeting a virtual device.")
-    assertThat(text).contains("To mirror physical devices, select the <i>Enable mirroring of physical Android devices</i> option" +
-                              " in the <font color=\"589df6\"><a href=\"DeviceMirroringSettings\">Device Mirroring settings</a></font>.")
-  }
-
-  @Test
-  fun testEmulatorIsTooOldMirroringEnabled() {
-    EmulatorSettings.getInstance().launchInToolWindow = true
-    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = true
     emulatorPackage.setRevision(Revision(30, 6))
     val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch virtual devices in this window, install Android Emulator 31.3.10 or higher." +
-                              " Please <font color=\"589df6\"><a href=\"CheckForUpdate\">check for updates</a></font>" +
-                              " and install the latest version of the Android Emulator.")
-    assertThat(text).contains("To mirror a physical device, connect it via USB cable or over WiFi.")
+    assertThat(htmlComponent.normalizedText).contains(
+        "To launch virtual devices in this window, install Android Emulator 31.3.10 or higher." +
+        " Please <font color=\"589df6\"><a href=\"CheckForUpdate\">check for updates</a></font>" +
+        " and install the latest version of the Android Emulator.")
     htmlComponent.clickOnHyperlink("CheckForUpdate")
     assertThat(executedActions).containsExactly("CheckForUpdate")
   }
 
   @Test
-  fun testEmulatorIsTooOldMirroringDisabled() {
+  fun testLaunchInToolWindowEnabled() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
     EmulatorSettings.getInstance().launchInToolWindow = true
-    DeviceMirroringSettings.getInstance().deviceMirroringEnabled = false
-    emulatorPackage.setRevision(Revision(30, 6))
     val htmlComponent = ui.getComponent<JEditorPane>()
-    val text = htmlComponent.text.replace(Regex("&#160;|\\s+"), " ")
-    assertThat(text).contains("To launch virtual devices in this window, install Android Emulator 31.3.10 or higher." +
-                              " Please <font color=\"589df6\"><a href=\"CheckForUpdate\">check for updates</a></font>" +
-                              " and install the latest version of the Android Emulator.")
-    assertThat(text).contains("To mirror physical devices, select the <i>Enable mirroring of physical Android devices</i> option" +
-                              " in the <font color=\"589df6\"><a href=\"DeviceMirroringSettings\">Device Mirroring settings</a></font>.")
+    assertThat(htmlComponent.normalizedText).contains(
+        "To launch a virtual device, click <font color=\"6c707e\" size=\"+1\"><b>&#65291;</b></font> and select the device from the list," +
+        " or use the <font color=\"589df6\"><a href=\"DeviceManager\">Device Manager</a></font>.")
+    htmlComponent.clickOnHyperlink("DeviceManager")
+    assertThat(executedActions).containsAnyOf("Android.DeviceManager", "Android.DeviceManager2")
+    assertThat(executedActions).hasSize(1)
+  }
+
+  @Test
+  fun testLaunchInToolWindowDisabled() {
+    StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.override(true, testRootDisposable)
+    EmulatorSettings.getInstance().launchInToolWindow = false
+    val htmlComponent = ui.getComponent<JEditorPane>()
+    assertThat(htmlComponent.normalizedText).contains(
+        "To launch a virtual device, click <font color=\"6c707e\" size=\"+1\"><b>&#65291;</b></font> and select a virtual device," +
+        " or select the <i>Launch in a tool window</i> option in the" +
+        " <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>.")
   }
 
   private fun createEmptyStatePanel(): EmptyStatePanel {
@@ -200,6 +207,9 @@ class EmptyStatePanelTest {
   private fun JEditorPane.clickOnHyperlink(hyperlink: String) {
     fireHyperlinkUpdate(HyperlinkEvent(this, HyperlinkEvent.EventType.ACTIVATED, null, hyperlink))
   }
+
+  private val JEditorPane.normalizedText: String
+    get() = text.replace(Regex("&#160;|\\s+"), " ")
 
   private inner class TestAction(val id: String) : DumbAwareAction() {
     override fun actionPerformed(event: AnActionEvent) {

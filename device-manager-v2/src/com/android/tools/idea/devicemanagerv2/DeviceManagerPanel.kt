@@ -28,6 +28,7 @@ import com.android.sdklib.deviceprovisioner.trackSetChanges
 import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.categorytable.CategoryTable
 import com.android.tools.adtui.categorytable.IconButton
+import com.android.tools.adtui.categorytable.RowKey
 import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -35,6 +36,7 @@ import com.android.tools.idea.devicemanagerv2.DeviceTableColumns.columns
 import com.android.tools.idea.devicemanagerv2.details.DeviceDetailsPanel
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.wearpairing.WearPairingManager
+import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ConcurrentHashMultiset
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ActivityTracker
@@ -54,8 +56,12 @@ import com.intellij.ui.components.JBScrollPane
 import icons.StudioIcons
 import java.awt.BorderLayout
 import javax.swing.JPanel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -65,14 +71,33 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.android.AndroidPluginDisposable
 
 /** The main Device Manager panel, containing a table of devices and a toolbar of buttons above. */
-internal class DeviceManagerPanel(
+internal class DeviceManagerPanel
+@VisibleForTesting
+constructor(
   val project: Project,
-  private val deviceProvisioner: DeviceProvisioner =
-    project.service<DeviceProvisionerService>().deviceProvisioner
+  val panelScope: CoroutineScope,
+  val uiDispatcher: CoroutineDispatcher,
+  private val devices: StateFlow<List<DeviceHandle>>,
+  private val templates: StateFlow<List<DeviceTemplate>>,
+  createDeviceActions: List<CreateDeviceAction>,
+  createTemplateActions: List<CreateDeviceTemplateAction>,
+  pairedDevicesFlow: Flow<Map<String, List<PairingStatus>>>,
 ) : JPanel(), DataProvider {
 
-  internal val panelScope =
-    AndroidCoroutineScope(AndroidPluginDisposable.getProjectInstance(project))
+  constructor(
+    project: Project,
+    deviceProvisioner: DeviceProvisioner =
+      project.service<DeviceProvisionerService>().deviceProvisioner
+  ) : this(
+    project,
+    AndroidCoroutineScope(AndroidPluginDisposable.getProjectInstance(project)),
+    uiThread,
+    deviceProvisioner.devices,
+    deviceProvisioner.templates,
+    deviceProvisioner.createDeviceActions(),
+    deviceProvisioner.createTemplateActions(),
+    WearPairingManager.getInstance().pairedDevicesFlow()
+  )
 
   private val splitter = JBSplitter(true)
   private val scrollPane = JBScrollPane()
@@ -80,16 +105,14 @@ internal class DeviceManagerPanel(
     CategoryTable(
       columns(project, panelScope),
       DeviceRowData::key,
-      uiThread,
+      uiDispatcher,
       rowDataProvider = ::provideRowData
     )
 
   private val templateInstantiationCount = ConcurrentHashMultiset.create<DeviceTemplate>()
 
   private val pairedDevicesFlow =
-    WearPairingManager.getInstance()
-      .pairedDevicesFlow()
-      .stateIn(panelScope, SharingStarted.Lazily, emptyMap())
+    pairedDevicesFlow.stateIn(panelScope, SharingStarted.Lazily, emptyMap())
 
   init {
     layout = BorderLayout()
@@ -106,8 +129,8 @@ internal class DeviceManagerPanel(
         // TODO: Group by Device groups, OEM, Source
       }
 
-    val createDeviceActions = deviceProvisioner.createDeviceActions().map { it.toAnAction() }
-    val createTemplateActions = deviceProvisioner.createTemplateActions().map { it.toAnAction() }
+    val createDeviceActions = createDeviceActions.map { it.toAnAction() }
+    val createTemplateActions = createTemplateActions.map { it.toAnAction() }
     val createActions = createDeviceActions + createTemplateActions
 
     val addDevice =
@@ -136,12 +159,12 @@ internal class DeviceManagerPanel(
     // second component will be the details panel if/when it's created
     add(splitter, BorderLayout.CENTER)
 
-    panelScope.launch(uiThread) { trackDevices() }
-    panelScope.launch(uiThread) { trackDeviceTemplates() }
+    panelScope.launch(uiDispatcher) { trackDevices() }
+    panelScope.launch(uiDispatcher) { trackDeviceTemplates() }
   }
 
   private suspend fun trackDevices() {
-    deviceProvisioner.devices
+    devices
       .map { it.toSet() }
       .trackSetChanges()
       .collect { change ->
@@ -153,7 +176,7 @@ internal class DeviceManagerPanel(
   }
 
   private suspend fun trackDeviceTemplates() {
-    deviceProvisioner.templates
+    templates
       .map { it.toSet() }
       .trackSetChanges()
       .collect { change ->
@@ -166,14 +189,6 @@ internal class DeviceManagerPanel(
 
   @OptIn(ExperimentalCoroutinesApi::class)
   private suspend fun trackDevice(handle: DeviceHandle) {
-    deviceTable.addOrUpdateRow(DeviceRowData.create(handle, emptyList()))
-
-    handle.sourceTemplate?.let {
-      if (templateInstantiationCount.add(it, 1) == 0) {
-        withContext(uiThread) { deviceTable.setRowVisibleByKey(it, false) }
-      }
-    }
-
     panelScope.launch {
       // As long as the device scope is active, update its state in the table.
       // When it completes, remove it from the table.
@@ -191,11 +206,24 @@ internal class DeviceManagerPanel(
                 .distinctUntilChanged()
                 .map { pairedDevices -> DeviceRowData.create(handle, pairedDevices) }
             }
-            .collect { withContext(uiThread) { deviceTable.addOrUpdateRow(it) } }
+            .collect {
+              withContext(uiDispatcher) {
+                if (deviceTable.addOrUpdateRow(it, beforeKey = handle.sourceTemplate)) {
+                  handle.sourceTemplate?.let {
+                    if (templateInstantiationCount.add(it, 1) == 0) {
+                      if (deviceTable.selection.selectedKeys().contains(RowKey.ValueRowKey(it))) {
+                        deviceTable.selection.selectRow(RowKey.ValueRowKey(handle))
+                      }
+                      deviceTable.setRowVisibleByKey(it, false)
+                    }
+                  }
+                }
+              }
+            }
         }
         .join()
 
-      withContext(uiThread) {
+      withContext(uiDispatcher) {
         deviceTable.removeRowByKey(handle)
         handle.sourceTemplate?.let {
           if (templateInstantiationCount.remove(it, 1) == 1) {
@@ -266,9 +294,14 @@ internal class DeviceManagerPanel(
   }
 
   private fun createDetailsPanel(handle: DeviceHandle): DeviceDetailsPanel =
-    DeviceDetailsPanel.create(panelScope.createChildScope(isSupervisor = true), handle).apply {
-      addCloseActionListener { deviceDetailsPanel = null }
-    }
+    DeviceDetailsPanel.create(
+        project,
+        panelScope.createChildScope(isSupervisor = true),
+        handle,
+        devices,
+        pairedDevicesFlow
+      )
+      .apply { addCloseActionListener { deviceDetailsPanel = null } }
 
   override fun getData(dataId: String): Any? =
     when {

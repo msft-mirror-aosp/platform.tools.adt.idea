@@ -15,17 +15,23 @@
  */
 package com.android.tools.idea.configurations
 
+import com.android.sdklib.IAndroidTarget
 import com.android.tools.idea.model.StudioAndroidModuleInfo
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.rendering.StudioLayoutlibContext
 import com.android.tools.idea.rendering.StudioModuleDependencies
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.layoutlib.LayoutlibContext
 import com.android.tools.module.AndroidModuleInfo
 import com.android.tools.module.ModuleDependencies
+import com.android.tools.rendering.ModuleKey
+import com.android.tools.rendering.ModuleKeyManager
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.sdk.AndroidPlatform
+import com.android.tools.sdk.CompatibilityRenderTarget
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget
 import org.jetbrains.android.sdk.getInstance
 
 /** Studio-specific [ConfigurationModelModule] constructed using Android module. */
@@ -42,6 +48,12 @@ class StudioConfigurationModelModule(val module: Module): ConfigurationModelModu
   override val name: String = module.name
   override val layoutlibContext: LayoutlibContext = StudioLayoutlibContext(module.project)
   override val dependencies: ModuleDependencies = StudioModuleDependencies(module)
+  override fun getCompatibilityTarget(target: IAndroidTarget): CompatibilityRenderTarget = StudioEmbeddedRenderTarget.getCompatibilityTarget(target)
+
+  override val moduleKey: ModuleKey
+    get() = ModuleKeyManager.getKey(module)
+  override val resourcePackage: String?
+    get() = module.getModuleSystem().getPackageName()
 
   override fun dispose() {
   }

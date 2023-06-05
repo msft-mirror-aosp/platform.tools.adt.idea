@@ -15,72 +15,160 @@
  */
 package com.android.tools.idea.devicemanagerv2
 
+import com.android.adblib.utils.createChildScope
+import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceHandle
-import com.android.sdklib.deviceprovisioner.testing.DeviceProvisionerRule
-import com.android.tools.idea.deviceprovisioner.DEVICE_HANDLE_KEY
-import com.android.tools.idea.testing.AndroidExecutorsRule
+import com.android.sdklib.deviceprovisioner.DeviceProperties
+import com.android.sdklib.deviceprovisioner.DeviceState
+import com.android.sdklib.deviceprovisioner.DeviceTemplate
+import com.android.sdklib.deviceprovisioner.TemplateActivationAction
+import com.android.tools.adtui.categorytable.CategoryTable
+import com.android.tools.adtui.categorytable.RowKey
 import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ProjectRule
-import com.intellij.testFramework.RuleChain
-import kotlinx.coroutines.isActive
+import icons.StudioIcons
+import java.time.Duration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DeviceManagerPanelTest {
-  private val deviceProvisionerRule = DeviceProvisionerRule()
-  private val androidExecutorsRule = AndroidExecutorsRule()
-  private val projectRule = ProjectRule()
 
-  @get:Rule val ruleChain = RuleChain(projectRule, androidExecutorsRule, deviceProvisionerRule)
+  @get:Rule val projectRule = ProjectRule()
 
+  /**
+   * When a template is activated, the resulting handle should be just above the (hidden) template,
+   * and selected if the template was.
+   */
   @Test
-  fun viewDetails() {
-    val device1 = deviceProvisionerRule.deviceProvisionerPlugin.addNewDevice()
-    val device2 = deviceProvisionerRule.deviceProvisionerPlugin.addNewDevice()
+  fun activateTemplate() = runTestWithFixture {
+    val pixel5Template = createTemplate("Pixel 5")
+    val pixel5Handle = createHandle("Pixel 5", pixel5Template)
+    val pixel5Emulator = createHandle("Pixel 5")
+    val pixel6 = createHandle("Pixel 6")
 
-    val deviceManager =
-      DeviceManagerPanel(projectRule.project, deviceProvisionerRule.deviceProvisioner)
+    deviceHandles.send(listOf(pixel5Emulator, pixel6))
+    deviceTemplates.send(listOf(pixel5Template))
 
-    deviceProvisionerRule.deviceProvisionerPlugin.addDevice(device1)
-    deviceProvisionerRule.deviceProvisionerPlugin.addDevice(device2)
+    deviceTable.selection.selectRow(RowKey.ValueRowKey(pixel5Template))
 
-    // Select device 1
-    ViewDetailsAction().actionPerformed(actionEvent(deviceManager, device1))
+    assertThat(deviceTable.values).hasSize(3)
+    val originalValues = deviceTable.values.map { it.key() }
 
-    assertThat(deviceManager.deviceDetailsPanel?.handle).isEqualTo(device1)
+    deviceHandles.send(listOf(pixel5Emulator, pixel6, pixel5Handle))
 
-    // Select device 2
-    ViewDetailsAction().actionPerformed(actionEvent(deviceManager, device2))
+    val valuesAfterActivation =
+      originalValues.toMutableList().apply { add(indexOf(pixel5Template), pixel5Handle) }
+    assertThat(deviceTable.values.map { it.key() })
+      .containsExactlyElementsIn(valuesAfterActivation)
+      .inOrder()
 
-    assertThat(deviceManager.deviceDetailsPanel?.handle).isEqualTo(device2)
-
-    // Close panel
-    val scope = deviceManager.deviceDetailsPanel?.scope
-    deviceManager.deviceDetailsPanel?.closeButton?.doClick()
-
-    assertThat(deviceManager.deviceDetailsPanel).isNull()
-    assertThat(scope!!.isActive).isFalse()
+    assertThat(deviceTable.selection.selectedKeys())
+      .containsExactly(RowKey.ValueRowKey<DeviceRowData>(pixel5Handle))
   }
 
-  private fun actionEvent(deviceManager: DeviceManagerPanel, device: DeviceHandle) =
-    AnActionEvent(
-      null,
-      dataContext(deviceManager, device),
-      "",
-      Presentation(),
-      ActionManager.getInstance(),
-      0
-    )
+  @Test
+  fun templateVisibility() = runTestWithFixture {
+    val pixel4 = createHandle("Pixel 4")
+    val pixel5Template = createTemplate("Pixel 5")
+    val pixel5Handle = createHandle("Pixel 5", pixel5Template)
+    val pixel6 = createHandle("Pixel 6")
 
-  private fun dataContext(deviceManager: DeviceManagerPanel, device: DeviceHandle) = DataContext {
-    when {
-      DEVICE_HANDLE_KEY.`is`(it) -> device
-      DEVICE_MANAGER_PANEL_KEY.`is`(it) -> deviceManager
-      else -> null
+    deviceHandles.send(listOf(pixel4, pixel6))
+    deviceTemplates.send(listOf(pixel5Template))
+
+    assertThat(deviceTable.visibleKeys()).containsExactly(pixel4, pixel5Template, pixel6)
+
+    deviceHandles.send(listOf(pixel4, pixel6, pixel5Handle))
+    // Send an update to the state to be more realistic
+    pixel5Handle.stateFlow.update {
+      DeviceState.Disconnected(
+        DeviceProperties.build {
+          manufacturer = "Google"
+          model = "Pixel 5"
+        }
+      )
     }
+    assertThat(deviceTable.visibleKeys()).containsExactly(pixel4, pixel5Handle, pixel6)
+
+    deviceHandles.send(listOf(pixel4, pixel6))
+    pixel5Handle.scope.cancel()
+
+    assertThat(deviceTable.visibleKeys()).containsExactly(pixel4, pixel5Template, pixel6)
+  }
+
+  fun <T : Any> CategoryTable<T>.visibleKeys() =
+    values.mapNotNull { primaryKey(it).takeIf { isRowVisibleByKey(it) } }
+
+  private fun runTestWithFixture(block: suspend Fixture.() -> Unit) = runTest {
+    val fixture = Fixture(projectRule.project, this)
+    fixture.block()
+    fixture.scope.cancel()
+  }
+
+  private class Fixture(project: Project, testScope: TestScope) {
+    val deviceHandles = Channel<List<DeviceHandle>>(Channel.UNLIMITED)
+    val deviceTemplates = Channel<List<DeviceTemplate>>(Channel.UNLIMITED)
+    val pairedDevices = Channel<Map<String, List<PairingStatus>>>(Channel.UNLIMITED)
+
+    // UnconfinedTestDispatcher is extremely useful here to cause actions to run to completion.
+    val dispatcher = UnconfinedTestDispatcher(testScope.testScheduler)
+
+    val scope = testScope.createChildScope(context = dispatcher)
+
+    val panel =
+      DeviceManagerPanel(
+        project,
+        scope,
+        dispatcher,
+        deviceHandles.consumeAsFlow().stateIn(scope, SharingStarted.Lazily, emptyList()),
+        deviceTemplates.consumeAsFlow().stateIn(scope, SharingStarted.Lazily, emptyList()),
+        emptyList(),
+        emptyList(),
+        pairedDevices.consumeAsFlow().stateIn(scope, SharingStarted.Lazily, emptyMap()),
+      )
+    val deviceTable = panel.deviceTable
+
+    fun createHandle(name: String, sourceTemplate: DeviceTemplate? = null) =
+      FakeDeviceHandle(scope.createChildScope(isSupervisor = true), name, sourceTemplate)
+    fun createTemplate(name: String) = FakeDeviceTemplate(name)
+  }
+
+  private class FakeDeviceHandle(
+    override val scope: CoroutineScope,
+    val name: String,
+    override val sourceTemplate: DeviceTemplate?,
+  ) : DeviceHandle {
+    override val stateFlow =
+      MutableStateFlow<DeviceState>(
+        DeviceState.Disconnected(DeviceProperties.build { model = name })
+      )
+  }
+
+  private class FakeDeviceTemplate(
+    val name: String,
+  ) : DeviceTemplate {
+    override val properties = DeviceProperties.build { model = name }
+    override val activationAction =
+      object : TemplateActivationAction {
+        override suspend fun activate(duration: Duration?) = throw UnsupportedOperationException()
+        override val durationUsed = false
+        override val presentation =
+          MutableStateFlow(DeviceAction.Presentation("", StudioIcons.Avd.RUN, true))
+      }
+    override val editAction = null
   }
 }

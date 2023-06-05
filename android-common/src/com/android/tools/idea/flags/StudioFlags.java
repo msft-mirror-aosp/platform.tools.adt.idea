@@ -511,6 +511,14 @@ public final class StudioFlags {
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
+    RUNDEBUG,
+    "adb.device.explorer.package.filter.enable",
+    "Enable package filtering for the \"Device Explorer\" tool window",
+    "Enable package filtering for the \"Device Explorer\" tool window, which allows users to filter processes by app package ids.\n" +
+    "Changing the value of this flag requires restarting Android Studio.",
+    true);
+
   public static final Flag<Boolean> ADBLIB_MIGRATION_DEVICE_EXPLORER = Flag.create(
     RUNDEBUG,
     "adblib.migration.device.explorer",
@@ -801,8 +809,8 @@ public final class StudioFlags {
     GRADLE_IDE,
     "gradle.heap.analysis.lightweight.mode",
     "Gradle heap analysis lightweight mode",
-    "If set, the analysis will only run after sync once and will only collect the strongly connected object info. This makes the " +
-    "analysis faster at the cost of losing some information.",
+    "If set, the analysis will just get a histogram using standard JVM APIs. It's suggested to use -XX:SoftRefLRUPolicyMSPerMB=0 in gradle " +
+    "jvm args to reduce the variance in these readings.",
     false
   );
 
@@ -936,10 +944,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "advanced.tab.control", "Enable closing/opening of Running Devices tabs",
     "Support closing/opening of Running Devices tabs",
     false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_FOLDING_SUPPORT = Flag.create(
-    DEVICE_MIRRORING, "folding.support", "Simulate Folding/Unfolding",
-    "Support pose control for foldable devices",
-    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -1470,7 +1474,7 @@ public final class StudioFlags {
     "unified.device.manager.enabled",
     "Enable unified device manager",
     "Enable new Device Manager UI with unified device list",
-    false);
+    true);
 
   public static final Flag<Boolean> DUAL_DEVICE_MANAGER_ENABLED = Flag.create(
     DEVICE_MANAGER,
@@ -1595,21 +1599,6 @@ public final class StudioFlags {
 
   // region GOOGLE_PLAY_SDK_INDEX
   private static final FlagGroup GOOGLE_PLAY_SDK_INDEX = new FlagGroup(FLAGS, "google.play.sdk.index", "Google Play SDK Index");
-  public static final Flag<Boolean> SHOW_SDK_INDEX_MESSAGES = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.messages", "Show SDK Index messages",
-    "Show messages related to Google Play SDK Index",
-    true
-  );
-  public static final Flag<Boolean> INCLUDE_LINKS_TO_SDK_INDEX = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "include.links.to.sdk.index", "Include links to SDK Index",
-    "Whether or not links to Google Play SDK Index should be included in the SDK Index messages",
-    true
-  );
-  public static final Flag<Boolean> SHOW_SDK_INDEX_CRITICAL_ISSUES = Flag.create(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.critical.issues", "Show SDK Index critical issues",
-    "Whether or not critical issues from library authors should be shown",
-    true
-  );
   public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = Flag.create(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
     "Whether or not show issues when libraries are not policy complaint",

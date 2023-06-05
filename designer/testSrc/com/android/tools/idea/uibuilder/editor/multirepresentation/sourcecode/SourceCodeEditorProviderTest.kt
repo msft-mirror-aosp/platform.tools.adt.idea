@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode
 
+import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.Facets
@@ -197,9 +198,12 @@ class SourceCodeEditorProviderTest {
     dumbService.waitForSmartMode()
 
     runBlocking {
-      preview.awaitForRepresentationsUpdated()
+      // The representations update can be scheduled at some point in the future after the smart mode switch so we wait for them to update.
+      delayUntilCondition(delayPerIterationMs = 250) {
+        preview.awaitForRepresentationsUpdated()
+        preview.representationNames.singleOrNull() == "Representation1"
+      }
     }
-    assertThat(preview.representationNames).containsExactly("Representation1")
   }
 
   // Regression test for b/232045613
