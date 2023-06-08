@@ -47,7 +47,7 @@ iml_module(
         "Benchmark2000Cpu": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuTest",
             "exec_properties": LARGE_MACHINE,
-            "tags": ["manual"],
+            "additional_jvm_args": ["-Xmx6g"],
         },
         "Benchmark4200Cpu": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark4200CpuTest",
@@ -56,6 +56,7 @@ iml_module(
         },
     },
     test_data = [
+        "testSrc/com/android/tools/idea/gradle/project/sync/gradle/MeasurementPlugin.kt",
         "//prebuilts/studio/buildbenchmarks:ExtraLarge2022_project",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
@@ -97,6 +98,8 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
         "//tools/adt/idea/memory-usage[module, test]",
+        "//tools/adt/idea/.idea/libraries:javax-inject[test]",
+        "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync[module, test]",
     ],
 )
 

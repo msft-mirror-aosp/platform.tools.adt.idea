@@ -51,10 +51,7 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.DesignSurfaceHelper;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.surface.SinglePositionableContentLayoutManager;
-import com.android.tools.idea.configurations.Configuration;
-import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.idea.configurations.ConfigurationStateManager;
-import com.android.tools.idea.configurations.StudioConfigurationStateManager;
+import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.naveditor.analytics.NavUsageTracker;
 import com.android.tools.idea.naveditor.editor.NavActionManager;
 import com.android.tools.idea.naveditor.model.ActionType;
@@ -92,7 +89,6 @@ import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.reference.SoftReference;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.ui.UIUtil;
@@ -105,7 +101,6 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
-import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -133,8 +128,6 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> {
   @VisibleForTesting
   AtomicReference<Future<?>> myScheduleRef = new AtomicReference<>();
   private DesignerEditorPanel myEditorPanel;
-
-  private static final WeakHashMap<AndroidFacet, SoftReference<ConfigurationManager>> ourConfigurationManagers = new WeakHashMap<>();
 
   private static final List<GradleCoordinate> NAVIGATION_DEPENDENCIES = ImmutableList.of(
     GoogleMavenArtifactId.NAVIGATION_FRAGMENT.getCoordinate("+"),
@@ -753,21 +746,6 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> {
     }
   }
 
-  @NotNull
-  @Override
-  public ConfigurationManager getConfigurationManager(@NotNull AndroidFacet facet) {
-    SoftReference<ConfigurationManager> ref = ourConfigurationManagers.get(facet);
-    ConfigurationManager result = null;
-    if (ref != null) {
-      result = ref.get();
-    }
-    if (result == null) {
-      result = new MyConfigurationManager(facet.getModule());
-      ourConfigurationManagers.put(facet, new SoftReference<>(result));
-    }
-    return result;
-  }
-
   @Override
   protected boolean getSupportPinchAndZoom() {
     // TODO: Enable pinch and zoom for navigation editor
@@ -824,18 +802,6 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> {
 
     if (next != null) {
       setCurrentNavigation(next);
-    }
-  }
-
-  private static class MyConfigurationManager extends ConfigurationManager {
-    MyConfigurationManager(@NotNull Module module) {
-      super(module);
-    }
-
-    @Override
-    public ConfigurationStateManager getStateManager() {
-      // Nav editor doesn't want persistent configuration state.
-      return new StudioConfigurationStateManager();
     }
   }
 }

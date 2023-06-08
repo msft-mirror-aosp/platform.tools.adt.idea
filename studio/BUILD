@@ -77,6 +77,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/.idea/libraries:utp-core-proto-jarjar",
         "//tools/adt/idea/.idea/libraries:zxing-core",
+        "//tools/adt/idea/android-common:libbuild-flags",
         "//tools/adt/idea/android:libandroid-core-proto",
         "//tools/adt/idea/android:libstudio.android-test-plugin-host-retention-proto",
         "//tools/adt/idea/android/lib:android-sdk-tools-jps",
@@ -267,6 +268,7 @@ studio_plugin(
         ],
         "sdk-common.jar": [
             "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
+            "//tools/base/sdk-common/gradle:studio.android.sdktools.sdk-common.gradle",
         ],
         "sdk-tools.jar": [
             "//tools/base/annotations:studio.android.sdktools.android-annotations",
@@ -914,6 +916,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-java-ide-customization",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-junit",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-lombok",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-maven-model",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-platform-images",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-properties",

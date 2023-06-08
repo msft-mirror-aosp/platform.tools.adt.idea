@@ -31,15 +31,11 @@ import com.android.ide.common.resources.ResourceValueMap;
 import com.android.ide.common.resources.SingleNamespaceResourceRepository;
 import com.android.resources.ResourceType;
 import com.android.sdklib.IAndroidTarget;
-import com.android.tools.idea.configurations.Configuration;
-import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.idea.configurations.ConfigurationModelModule;
-import com.android.tools.idea.configurations.ResourceResolverCache;
+import com.android.tools.configurations.Configuration;
+import com.android.tools.configurations.ConfigurationModelModule;
+import com.android.tools.configurations.ResourceResolverCache;
 import com.android.tools.idea.editors.theme.datamodels.ConfiguredThemeEditorStyle;
 import com.android.tools.idea.res.AndroidDependenciesCache;
-import com.android.tools.idea.res.LocalResourceRepository;
-import com.android.tools.idea.res.StudioResourceRepositoryManager;
-import com.android.tools.idea.util.DependencyManagementUtil;
 import com.android.tools.res.ResourceNamespacing;
 import com.android.tools.res.ResourceRepositoryManager;
 import com.google.common.collect.ImmutableList;
@@ -137,8 +133,7 @@ public class ThemeResolver {
   @Slow
   @NotNull
   private List<StyleResourceValue> resolveFrameworkThemes() {
-    ConfigurationManager configurationManager = myConfiguration.getConfigurationManager();
-    ResourceResolverCache resolverCache = configurationManager.getResolverCache();
+    ResourceResolverCache resolverCache = myConfiguration.getSettings().getResolverCache();
 
     IAndroidTarget target = myConfiguration.getTarget();
     if (target == null) {

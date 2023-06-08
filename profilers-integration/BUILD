@@ -35,16 +35,31 @@ iml_studio_test(
         "@system_image_android-29_default_x86_64//:x86_64-android-29-images",
     ],
     module = ":intellij.android.profilers.integration",
-    tags_linux = [
-        "very_flaky",  # b/282881259
+    tags = [
         "block-network",
-    ],
-    tags_mac = [],
-    tags_windows = [
-        "block-network",
-        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+        "no_crostini",  # Emulator testing not yet supported.
+        "no_windows",  # RBE environment doesn't allow emulation (requires nested virtualization).
+        "qa_smoke",  # b/282881259
+        "very_flaky",
     ],
     test_class = "com.android.tools.profilers.integration.ProfileWithCompleteDataTest",
+)
+
+iml_studio_test(
+    name = "ProfileWithLowOverheadTest",
+    timeout = "long",
+    data = profilers_test_common_data + [
+        "@system_image_android-33PlayStore_default_x86_64//:x86_64-android-33PlayStore-images",
+    ],
+    module = ":intellij.android.profilers.integration",
+    tags = [
+        "block-network",
+        "no_crostini",  # Emulator testing not yet supported.
+        "no_windows",  # RBE environment doesn't allow emulation (requires nested virtualization).
+        "qa_smoke",  # b/282881259, b/260867011
+        "very_flaky",
+    ],
+    test_class = "com.android.tools.profilers.integration.ProfileWithLowOverheadTest",
 )
 
 maven_repository(
@@ -57,7 +72,7 @@ maven_repository(
         "@maven//:com.google.protobuf.protobuf-bom_3.17.2",
         "@maven//:com.google.protobuf.protobuf-java-util_3.17.2",
         "@maven//:com.google.protobuf.protobuf-java_3.17.2",
-        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.8.20-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.9.0-Beta",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.10",

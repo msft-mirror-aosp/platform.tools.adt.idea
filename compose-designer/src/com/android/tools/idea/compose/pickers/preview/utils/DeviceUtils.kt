@@ -24,6 +24,8 @@ import com.android.sdklib.devices.Hardware
 import com.android.sdklib.devices.Screen
 import com.android.sdklib.devices.Software
 import com.android.sdklib.devices.State
+import com.android.tools.configurations.Configuration
+import com.android.tools.configurations.ConfigurationSettings
 import com.android.tools.idea.avdmanager.AvdScreenData
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.CHIN_SIZE_PX_FOR_ROUND_CHIN
 import com.android.tools.idea.compose.pickers.preview.property.DeviceConfig
@@ -32,8 +34,6 @@ import com.android.tools.idea.compose.pickers.preview.property.MutableDeviceConf
 import com.android.tools.idea.compose.pickers.preview.property.Orientation
 import com.android.tools.idea.compose.pickers.preview.property.Shape
 import com.android.tools.idea.compose.pickers.preview.property.toMutableConfig
-import com.android.tools.idea.configurations.Configuration
-import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
@@ -152,7 +152,7 @@ internal fun DeviceConfig.createDeviceInstance(): Device {
 }
 
 /** Returns the [Device] used when there's no device specified by the user. */
-internal fun ConfigurationManager.getDefaultPreviewDevice(): Device? =
+internal fun ConfigurationSettings.getDefaultPreviewDevice(): Device? =
   devices.find { device -> device.id == DEFAULT_DEVICE_ID } ?: defaultDevice
 
 /**

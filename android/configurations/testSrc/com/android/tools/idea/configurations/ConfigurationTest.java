@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.configurations;
 
-import static com.android.tools.idea.configurations.ConfigurationListener.CFG_ACTIVITY;
-import static com.android.tools.idea.configurations.ConfigurationListener.CFG_NIGHT_MODE;
-import static com.android.tools.idea.configurations.ConfigurationListener.CFG_THEME;
-import static com.android.tools.idea.configurations.ConfigurationListener.CFG_UI_MODE;
+import static com.android.tools.configurations.ConfigurationListener.CFG_ACTIVITY;
+import static com.android.tools.configurations.ConfigurationListener.CFG_NIGHT_MODE;
+import static com.android.tools.configurations.ConfigurationListener.CFG_THEME;
+import static com.android.tools.configurations.ConfigurationListener.CFG_UI_MODE;
 
 import com.android.ide.common.resources.Locale;
 import com.android.ide.common.resources.configuration.DensityQualifier;
@@ -35,6 +35,9 @@ import com.android.resources.UiMode;
 import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.devices.Device;
 import com.android.sdklib.devices.State;
+import com.android.tools.configurations.Configuration;
+import com.android.tools.configurations.ConfigurationListener;
+import com.android.tools.layoutlib.AndroidTargets;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -63,8 +66,8 @@ public class ConfigurationTest extends AndroidTestCase {
     configuration.setNightMode(NightMode.NIGHT);
     configuration.setActivity("tes.tpkg.MyActivity1");
     configuration.setUiMode(UiMode.TELEVISION);
-    IAndroidTarget target = configuration.getConfigurationManager().getTarget();
-    Device device = configuration.getConfigurationManager().getDefaultDevice();
+    IAndroidTarget target = configuration.getSettings().getTarget();
+    Device device = configuration.getSettings().getDefaultDevice();
     State deviceState = device != null ? device.getState("Portrait") : null;
     if (target != null) {
       configuration.setTarget(target);
@@ -219,11 +222,11 @@ public class ConfigurationTest extends AndroidTestCase {
     assertSame(manager, ConfigurationManager.getOrCreateInstance(myModule));
 
     Configuration configuration1 = manager.getConfiguration(file1);
-    configuration1.getConfigurationManager().setLocale(Locale.create("en"));
+    configuration1.getSettings().setLocale(Locale.create("en"));
     configuration1.setTheme("Theme.Dialog");
     Device device = manager.getDevices().get(manager.getDevices().size() / 2 - 2);
     State state = device.getAllStates().get(device.getAllStates().size() - 1);
-    configuration1.getConfigurationManager().selectDevice(device);
+    configuration1.getSettings().selectDevice(device);
 
     configuration1.setDeviceStateName(state.getName());
     configuration1.save();
@@ -246,7 +249,7 @@ public class ConfigurationTest extends AndroidTestCase {
     assertEquals(ScreenSize.XLARGE, configuration3.getDevice().getDefaultHardware().getScreen().getSize());
     assertEquals(configuration1.getLocale(), configuration3.getLocale());
     // Ensure project-wide location switching works: both locales should update
-    configuration1.getConfigurationManager().setLocale(Locale.create("no"));
+    configuration1.getSettings().setLocale(Locale.create("no"));
     assertEquals(Locale.create("no"), configuration1.getLocale());
     assertEquals(configuration1.getLocale(), configuration3.getLocale());
   }
@@ -259,7 +262,7 @@ public class ConfigurationTest extends AndroidTestCase {
     assertSame(manager, ConfigurationManager.getOrCreateInstance(myModule));
 
     for (IAndroidTarget target : manager.getTargets()) {
-      if (ConfigurationManager.isLayoutLibTarget(target)) {
+      if (AndroidTargets.isLayoutLibTarget(target)) {
         manager.setTarget(target);
         break;
       }

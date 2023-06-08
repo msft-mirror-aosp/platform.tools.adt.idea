@@ -16,7 +16,7 @@
 package com.android.tools.rendering.classloading
 
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
-import com.intellij.openapi.Disposable
+import com.android.tools.rendering.classloading.loaders.NopLoader
 
 /**
  * Classloader used in rendering and responsible for loading classes for a specific android project module, restricting and isolating
@@ -26,8 +26,9 @@ import com.intellij.openapi.Disposable
  *                    extending abstract class and/or [ClassLoader] that reduces flexibility.
  */
 abstract class ModuleClassLoader(parent: ClassLoader?, loader: Loader) :
-  DelegatingClassLoader(parent, loader), Disposable {
+  DelegatingClassLoader(parent, loader) {
     abstract val stats: ModuleClassLoaderDiagnosticsRead
+    abstract val isDisposed: Boolean
 
     /**
      * Checks whether any of the .class files loaded by this loader have changed since the creation of this class loader. Always returns

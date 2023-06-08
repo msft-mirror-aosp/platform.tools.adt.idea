@@ -21,6 +21,7 @@ import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
+import com.android.tools.idea.flags.overrides.BuildSettingFlagOverrides;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
@@ -50,7 +51,11 @@ public final class StudioFlags {
     else {
       userOverrides = new DefaultFlagOverrides();
     }
-    return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
+    return new Flags(
+      userOverrides,
+      new PropertyOverrides(),
+      BuildSettingFlagOverrides.create(),
+      new ServerFlagOverrides());
   }
 
   @TestOnly
@@ -179,6 +184,10 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = Flag.create(PROFILER, "task.based.ux", "Task-based UX",
     "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)", false);
+
+  public static final Flag<Boolean> PROFILER_TRACEBOX = Flag.create(PROFILER, "tracebox", "Tracebox",
+                                                                             "Tracebox for versions M,N,O,P of Android",
+                                                                             false);
   //endregion
 
   //region ML
@@ -422,11 +431,6 @@ public final class StudioFlags {
     "Requires applychanges.optimisticswap to be true.",
     true);
 
-  public static final Flag<Boolean> NEW_EXECUTION_FLOW_ENABLED = Flag.create(
-    RUNDEBUG, "android.new.execution.flow.enabled", "Enable new Execution flow",
-    "If enabled, AS executes Run Configuration via new.AndroidRunProfileState",
-    false);
-
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
    * "deploy-without-installing" path. Deploying changes that exceed the level of support
@@ -519,26 +523,11 @@ public final class StudioFlags {
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
-  public static final Flag<Boolean> ADBLIB_MIGRATION_DEVICE_EXPLORER = Flag.create(
-    RUNDEBUG,
-    "adblib.migration.device.explorer",
-    "Use adblib in Device Explorer",
-    "Use adblib instead of ddmlib for Device Explorer",
-    true);
-
   public static final Flag<Boolean> ADBLIB_MIGRATION_WIFI_PAIRING = Flag.create(
     RUNDEBUG,
     "adblib.migration.wifi.pairing",
     "Use adblib in Pair Device over Wi-Fi",
     "Use adblib instead of ddmlib for Pair Device over Wi-Fi",
-    true);
-
-  /** b/262404780: forces the use of legacy shell to collect ps output. */
-  public static final Flag<Boolean> ADBLIB_LEGACY_SHELL_FOR_PS_MONITOR = Flag.create(
-    RUNDEBUG,
-    "adblib.legacy.shell.for.psname.monitor",
-    "Use adblib's legacy shell connection to monitor process names",
-    "Use adblib's legacy shell instead of shell-v2 to monitor process names",
     true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER = Flag.create(
@@ -580,14 +569,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> ASWB_RUN_WEAR_ENABLE = Flag.create(
-    RUNDEBUG,
-    "aswb.run.wear",
-    "Enable launching wear surfaces in ASwB.",
-    "Enable launching wear surfaces in ASwB, by enabling the UI option in the Blaze Android Binary Editor.",
-    false
-  );
-
   public static final Flag<Boolean> DEBUG_ATTEMPT_SUSPENDED_START = Flag.create(
     RUNDEBUG,
     "debug.app.suspend.upon.start.enable",
@@ -608,14 +589,6 @@ public final class StudioFlags {
 
   //region Logcat
   private static final FlagGroup LOGCAT = new FlagGroup(FLAGS, "logcat", "Logcat");
-
-  public static final Flag<Boolean> LOGCAT_CUSTOM_FORMAT_ACTION = Flag.create(
-    LOGCAT,
-    "custom.format.action",
-    "Enable Logcat custom format action",
-    "Enables the custom format action in the Logcat tool window action bar",
-    false
-  );
 
   public static final Flag<Boolean> LOGCAT_CLICK_TO_ADD_FILTER = Flag.create(
     LOGCAT,
@@ -732,10 +705,15 @@ public final class StudioFlags {
     "This allows the IDE to pre-fetch models for the currently selected variants in parallel before resolving the " +
     "new variant selection (which is less parallelizable process).", false);
 
-  public static final Flag<Boolean> GRADLE_SYNC_OUTPUT_SYNC_STATS = Flag.create(
-    GRADLE_IDE, "gradle.sync.output.sync.stats", "Enables printing sync stats to build output",
-    "When enabled sync execution stats for models requested by Android Studio are printed to the build output tool window when" +
-    "sync completes.", false);
+  public static final Flag<Boolean> GRADLE_SYNC_FETCH_KOTLIN_MODELS_IN_PARALLEL = Flag.create(
+    GRADLE_IDE, "gradle.sync.fetch.kotlin.models.in.parallel", "Enables parallel fetching of Kotlin models",
+    "This allows the IDE to fetch Kotlin models in parallel", true);
+
+
+  public static final Flag<String> SYNC_STATS_OUTPUT_DIRECTORY = Flag.create(
+    GRADLE_IDE, "sync.stats.output.directory", "Enables printing sync stats to a file",
+    "If not empty, sync execution stats for models requested by Android Studio are printed to a file in the given directory when" +
+    "sync completes.", "");
 
   public static final Flag<Boolean> GRADLE_SYNC_ENABLE_CACHED_VARIANTS = Flag.create(
     GRADLE_IDE, "gradle.sync.enable.cached.variants", "Enables caching of build variants",
@@ -750,11 +728,6 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> GRADLE_SYNC_RECREATE_JDK = Flag.create(
     GRADLE_IDE, "gradle.sync.recreate.jdk", "Recreate JDK on sync", "Recreate Gradle JDK when syncing if there are changed roots.", true);
-
-  // TODO(b/200280395): when deleting this flag, check whether the dependencies associated with flags can be removed from the gradle-dsl
-  //  modules.
-  public static final Flag<Boolean> GRADLE_VERSION_CATALOG_EXTENDED_SUPPORT = Flag.create(
-    GRADLE_IDE, "gradle.extended.version.catalog", "Gradle version catalog support", "Multiple TOML files, catalog variables in PSD", true);
 
   public static final Flag<Boolean> GRADLE_VERSION_CATALOG_DISPLAY_BANNERS =
     Flag.create(GRADLE_IDE, "gradle.version.catalog.banners", "IDE banners if Version Catalogs used",
@@ -943,7 +916,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_ADVANCED_TAB_CONTROL = Flag.create(
     DEVICE_MIRRORING, "advanced.tab.control", "Enable closing/opening of Running Devices tabs",
     "Support closing/opening of Running Devices tabs",
-    false);
+    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -992,9 +965,6 @@ public final class StudioFlags {
 
   //region NDK
   private static final FlagGroup NDK = new FlagGroup(FLAGS, "ndk", "Native code features");
-  public static final Flag<Boolean> CMAKE_ENABLE_FEATURES_FROM_CLION = Flag.create(
-    NDK, "cmakeclionfeatures", "Enable CMake language support from CLion",
-    "If enabled, language support features (e.g. syntax highlighting) currently present in CLion will be turned on.", true);
 
   public static final Flag<Boolean> APK_DEBUG_BUILD_ID_CHECK = Flag.create(
     NDK, "apkdebugbuildidcheck", "Enable build ID check in APK debugging",
@@ -1035,13 +1005,6 @@ public final class StudioFlags {
     "Collapse the android namespace in XML code completion",
     "If enabled, XML code completion doesn't include resources from the android namespace. Instead a fake completion item " +
     "is used to offer just the namespace prefix.", true);
-
-  public static final Flag<Boolean> AGSL_LANGUAGE_SUPPORT = Flag.create(
-    EDITOR, "agsl.support.enabled",
-    "Enable editor support for AGSL (Android Graphics Shading Language)",
-    "If enabled, it offers basic editor support (syntax highlighting and basic validation) for AGSL",
-    true
-  );
 
   public static final Flag<Boolean> ADVANCED_JNI_ASSISTANCE = Flag.create(
     EDITOR, "advanced.jni.assistance",
@@ -1116,6 +1079,12 @@ public final class StudioFlags {
    "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
    true);
 
+  public static final Flag<Boolean> ESSENTIALS_MODE_GETS_RECOMMENDED = Flag.create(
+    ESSENTIALS_MODE, "essentials.mode.gets.recommend",
+    "Essentials Mode is able to get recommended to the user",
+    "When enabled this allows Android Studio to drive adoption of Essentials Mode by recommending users should try it out.",
+    true);
+
   //endregion
 
   //region Unified App Bundle
@@ -1184,12 +1153,6 @@ public final class StudioFlags {
     SYSTEM_HEALTH, "antivirus.metrics.enabled", "Enable antivirus metrics collection",
     "If enabled, metrics about the status of antivirus realtime scanning and excluded directories will be collected",
     true);
-
-  public static final Flag<Boolean> ANTIVIRUS_CHECK_USE_REGISTRY = Flag.create(
-    SYSTEM_HEALTH, "antivirus.check.registry", "Use registry instead of PowerShell for checking antivirus status",
-    "If enabled, the antivirus status checker will use the Windows registry instead of PowerShell commands",
-    true);
-
   //endregion
 
   //region Compose
@@ -1339,11 +1302,6 @@ public final class StudioFlags {
     "If enabled, the rememberInfiniteTransition Compose API support will be available in Animation Preview.",
     true);
 
-  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW = Flag.create(
-    COMPOSE, "preview.fast.reload.enabled", "Enable the Compose fast-reload preview",
-    "If enabled, the preview enabled the fast-reload feature.",
-    true);
-
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = Flag.create(
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
@@ -1448,20 +1406,6 @@ public final class StudioFlags {
   //region Device Manager
   private static final FlagGroup DEVICE_MANAGER = new FlagGroup(FLAGS, "device.manager", "Device Manager");
 
-  public static final Flag<Boolean> WEAR_OS_VIRTUAL_DEVICE_PAIRING_ASSISTANT_ENABLED = Flag.create(
-    DEVICE_MANAGER,
-    "wear.os.virtual.device.pairing.assistant.enabled",
-    "Enable the Wear OS virtual device pairing assistant",
-    "Enable the Wear OS virtual device pairing assistant",
-    true);
-
-  public static final Flag<Boolean> PAIRED_DEVICES_TAB_ENABLED = Flag.create(
-    DEVICE_MANAGER,
-    "paired.devices.tab.enabled",
-    "Enable the Paired devices tab",
-    "Enable the Paired devices tab in the details panel",
-    true);
-
   public static final Flag<Boolean> VIRTUAL_DEVICE_WATCHER_ENABLED = Flag.create(
     DEVICE_MANAGER,
     "virtual.device.watcher.enabled",
@@ -1497,15 +1441,6 @@ public final class StudioFlags {
     false
   );
   // endregion DDMLIB
-
-  //region SERVER_FLAGS
-  private static final FlagGroup SERVER_FLAGS = new FlagGroup(FLAGS, "serverflags", "Server Flags");
-  public static final Flag<Boolean> TEST_SERVER_FLAG = Flag.create(
-    SERVER_FLAGS, "test", "Test Server Enabled Flag",
-    "Creates a sample studio flag that can be set using a server flag",
-    false
-  );
-  // endregion SERVER_FLAGS
 
   // region Firebase Test Lab
   private static final FlagGroup FIREBASE_TEST_LAB = new FlagGroup(FLAGS, "firebasetestlab", "Firebase Test Lab");

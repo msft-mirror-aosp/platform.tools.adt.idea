@@ -40,10 +40,11 @@ public:
 
   static void Shutdown();
 
-  // Sets orientation of the device display. A negative value tells the agent to update
-  // the app-level orientation according to the previously set display orientation.
+  // Calls DisplayStreamer::SetVideoOrientation.
   static void SetVideoOrientation(int32_t orientation);
+  // Calls DisplayStreamer::SetMaxVideoResolution.
   static void SetMaxVideoResolution(Size max_video_resolution);
+  // Calls DisplayStreamer::GetDisplayInfo.
   static DisplayInfo GetDisplayInfo();
 
   // Modifies system settings for the screen sharing session. May be called on any thread.
@@ -62,6 +63,8 @@ public:
   static int32_t flags() { return flags_; }
 
   inline static int32_t api_level() { return api_level_; }
+
+  static SessionEnvironment& session_environment() { return *session_environment_; }
 
 private:
   static void Initialize(const std::vector<std::string>& args);

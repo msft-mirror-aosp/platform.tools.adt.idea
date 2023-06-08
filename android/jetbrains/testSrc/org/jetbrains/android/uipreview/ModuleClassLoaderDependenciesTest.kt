@@ -18,6 +18,7 @@ package org.jetbrains.android.uipreview
 import com.android.SdkConstants
 import com.android.tools.idea.util.toVirtualFile
 import com.android.tools.rendering.ModuleRenderContext.Companion.forModule
+import com.android.tools.rendering.classloading.useWithClassLoader
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ModuleRootModificationUtil
@@ -27,12 +28,12 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.PsiTestUtil
 import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.uipreview.JavacUtil.getJavac
 import org.jetbrains.android.uipreview.StudioModuleClassLoaderManager.Companion.get
 import org.junit.Test
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
-import javax.tools.ToolProvider
 
 // Regression test for b/229997303
 class ModuleClassLoaderDependenciesTest : AndroidTestCase() {
@@ -76,19 +77,18 @@ class ModuleClassLoaderDependenciesTest : AndroidTestCase() {
                                   VfsUtil.findFileByIoFile(srcDir.toFile(), true)!!)
       } as Computable<SourceFolder>)
 
-    val javac = ToolProvider.getSystemJavaCompiler()
+    val javac = getJavac()
     javac.run(null, null, null, "-cp", "${classes.absolutePath}",  "${dSrc.toAbsolutePath()}")
 
     val dClass = VfsUtil.findFileByIoFile(File(dSrc.getParent().toFile(), "D.class"), true)
     assertNotNull(dClass)
 
-    val loader = get().getShared(null, forModule(myModule), this)
-    loader.injectProjectClassFile("com.foo.qwe.D", dClass!!)
+    val loaderReference = get().getShared(null, forModule(myModule)).useWithClassLoader { loader ->
+      loader.injectProjectClassFile("com.foo.qwe.D", dClass!!)
 
-    val loadedDClass = loader.loadClass("com.foo.qwe.D")
-    assertNotNull(loadedDClass.getConstructor())
-
-    get().release(loader, this)
+      val loadedDClass = loader.loadClass("com.foo.qwe.D")
+      assertNotNull(loadedDClass.getConstructor())
+    }
   }
 
   companion object {

@@ -17,6 +17,8 @@ package com.android.tools.idea.compose.preview
 
 import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
+import com.android.tools.idea.common.error.IssueNode
+import com.android.tools.idea.common.error.IssuePanelService
 import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlModel
@@ -61,7 +63,6 @@ import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
-import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
 import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.needsBuild
@@ -74,9 +75,9 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepres
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
-import com.android.tools.rendering.RenderAsyncActionExecutor
 import com.android.tools.rendering.RenderService
 import com.intellij.ide.ActivityTracker
 import com.intellij.ide.PowerSaveMode
@@ -112,6 +113,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JComponent
+import javax.swing.event.TreeSelectionListener
 import kotlin.properties.Delegates
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -452,6 +454,16 @@ class ComposePreviewRepresentation(
 
   private val fpsCounter = FpsCalculator { System.nanoTime() }
 
+  private val issueListener: TreeSelectionListener = TreeSelectionListener {
+    val selectedNode = it?.newLeadSelectionPath?.lastPathComponent ?: return@TreeSelectionListener
+    (selectedNode as? IssueNode)?.issue?.let { issue ->
+      if (issue.source is VisualLintIssueProvider.VisualLintIssueSource) {
+        surface.issueListener.onIssueSelected(issue)
+      }
+    }
+    surface.repaint()
+  }
+
   override val interactivePreviewElementInstance: ComposePreviewElementInstance?
     get() = previewElementProvider.instanceFilter
 
@@ -525,6 +537,7 @@ class ComposePreviewRepresentation(
     )
     previewElementProvider = PreviewFilters(UiCheckPreviewElementProvider(instance))
     surface.background = INTERACTIVE_BACKGROUND_COLOR
+    IssuePanelService.getInstance(project).addIssueSelectionListener(issueListener)
     forceRefresh().invokeOnCompletion { isUiCheckPreview = true }
   }
 
@@ -533,8 +546,12 @@ class ComposePreviewRepresentation(
     previewElementProvider = defaultPreviewElementProvider
     atfChecksEnabled = false
     visualLintingEnabled = false
+    IssuePanelService.getInstance(project).removeIssueSelectionListener(issueListener)
     onStaticPreviewStart()
-    forceRefresh().invokeOnCompletion { isUiCheckPreview = false }
+    forceRefresh().invokeOnCompletion {
+      surface.repaint()
+      isUiCheckPreview = false
+    }
   }
 
   private fun onStaticPreviewStart() {
@@ -1299,14 +1316,12 @@ class ComposePreviewRepresentation(
               "No updates on the PreviewElements, just refreshing the existing ones"
             )
             // In this case, there are no new previews. We need to make sure that the surface is
-            // still correctly
-            // configured and that we are showing the right size for components. For example, if the
-            // user switches on/off
-            // decorations, that will not generate/remove new PreviewElements but will change the
-            // surface settings.
+            // still correctly configured and that we are showing the right size for components.
+            // For example, if the user switches on/off decorations, that will not generate/remove
+            // new PreviewElements but will change the surface settings.
             refreshProgressIndicator.text =
               message("refresh.progress.indicator.reusing.existing.previews")
-            surface.refreshExistingPreviewElements(
+            composeWorkBench.refreshExistingPreviewElements(
               refreshProgressIndicator,
               previewElementModelAdapter::modelToElement,
               this@ComposePreviewRepresentation::configureLayoutlibSceneManagerForPreviewElement
@@ -1337,11 +1352,6 @@ class ComposePreviewRepresentation(
       log.debug("Completed")
       launch(uiThread) { Disposer.dispose(refreshProgressIndicator) }
       if (it is CancellationException) {
-        RenderService.getRenderAsyncActionExecutor()
-          .cancelActionsByTopic(
-            listOf(RenderAsyncActionExecutor.RenderingTopic.COMPOSE_PREVIEW),
-            true
-          )
         composeWorkBench.onRefreshCancelledByTheUser()
       } else composeWorkBench.onRefreshCompleted()
 

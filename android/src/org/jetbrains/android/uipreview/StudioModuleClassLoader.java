@@ -177,7 +177,6 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
    * the parent compatibility in {@link #isCompatibleParentClassLoader(ClassLoader).}
    */
   private final ClassLoader myParentAtConstruction;
-
   private final AtomicBoolean isDisposed = new AtomicBoolean(false);
 
   StudioModuleClassLoader(@Nullable ClassLoader parent, @NotNull ModuleRenderContext renderContext,
@@ -207,7 +206,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
     myParentAtConstruction = parent;
     myImpl = loader;
     myModuleReference = new WeakReference<>(renderContext.getModule());
-    Disposer.register(renderContext.getModule(), new WeakReferenceDisposableWrapper(this));
+    Disposer.register(renderContext.getModule(), new WeakReferenceDisposableWrapper(this::dispose));
     // Extracting the provider into a variable to avoid the lambda capturing a reference to renderContext
     myPsiFileProvider = renderContext.getFileProvider();
     myDiagnostics = diagnostics;
@@ -425,12 +424,12 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
                                        diagnostics);
   }
 
+  @Override
   public boolean isDisposed() {
     return isDisposed.get();
   }
 
-  @Override
-  public void dispose() {
+  void dispose() {
     isDisposed.set(true);
     myImpl.dispose();
     ourDisposeService.submit(() -> {

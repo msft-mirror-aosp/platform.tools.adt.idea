@@ -46,14 +46,12 @@ internal object DeviceTableColumns {
     override val sorter: Comparator<DeviceType> = compareBy { it.name }
 
     override fun value(t: DeviceRowData): DeviceType = t.type
-
-    // TODO: CategoryRow uses DeviceType.toString() which renders the category
-    //  in uppercase; we need a way to make this titlecase.
   }
 
   /** Renders the type of device as an icon. */
   object Type : Column<DeviceRowData, DeviceType, IconLabel> {
     override val name = DeviceManagerBundle.message("column.title.formfactor")
+    override val columnHeaderName = "" // no room for a name
 
     override val attribute = TypeAttribute
 
@@ -104,6 +102,7 @@ internal object DeviceTableColumns {
 
   object Status : Column<DeviceRowData, DeviceRowData.Status, IconLabel> {
     override val name = "Status"
+    override val columnHeaderName = "" // no room for a name
     override val attribute =
       object : Attribute<DeviceRowData, DeviceRowData.Status> {
         override val sorter: Comparator<DeviceRowData.Status> = naturalOrder()
@@ -133,7 +132,7 @@ internal object DeviceTableColumns {
       IconLabel(null).apply { size = JBDimension(24, 24) }
   }
 
-  class Actions(private val project: Project, val coroutineScope: CoroutineScope) :
+  class Actions(private val project: Project?, val coroutineScope: CoroutineScope) :
     Column<DeviceRowData, Unit, ActionButtonsPanel> {
     override val name = DeviceManagerBundle.message("column.title.actions")
     override val attribute = Attribute.Unit
@@ -155,6 +154,6 @@ internal object DeviceTableColumns {
       Column.SizeConstraint.exactly((StudioIcons.Avd.RUN.iconWidth + 7) * 3)
   }
 
-  fun columns(project: Project, coroutineScope: CoroutineScope) =
+  fun columns(project: Project?, coroutineScope: CoroutineScope) =
     listOf(Status, Type, Name, Api, IsVirtual, Actions(project, coroutineScope))
 }

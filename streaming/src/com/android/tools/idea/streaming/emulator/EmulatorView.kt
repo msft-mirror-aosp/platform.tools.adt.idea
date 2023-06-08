@@ -442,6 +442,9 @@ class EmulatorView(
     super.paintComponent(graphics)
 
     val screenshot = lastScreenshot ?: return
+    if (frameNumber == 0) {
+      hideLongRunningOperationIndicatorInstantly()
+    }
     val skin = screenshot.skinLayout
     assert(screenshotShape.width != 0)
     assert(screenshotShape.height != 0)
@@ -573,12 +576,12 @@ class EmulatorView(
 
   private fun showVirtualSceneCameraPrompt(prompt: String = "Hold Shift to control camera") {
     if (EmulatorSettings.getInstance().showCameraControlPrompts) {
-      findNotificationHolderPanel()?.showNotification(prompt)
+      findNotificationHolderPanel()?.showFadeOutNotification(prompt)
     }
   }
 
   private fun hideVirtualSceneCameraPrompt() {
-    findNotificationHolderPanel()?.hideNotification()
+    findNotificationHolderPanel()?.hideFadeOutNotification()
   }
 
   private fun startOperatingVirtualSceneCamera() {

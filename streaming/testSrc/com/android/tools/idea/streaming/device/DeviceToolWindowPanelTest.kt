@@ -24,6 +24,7 @@ import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.createTestEvent
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
@@ -48,6 +49,8 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestDataProvider
+import com.intellij.ui.LayeredIcon
+import icons.StudioIcons
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
@@ -107,6 +110,7 @@ class DeviceToolWindowPanelTest {
 
     panel.createContent(false)
     assertThat(panel.deviceView).isNotNull()
+    assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE)
 
     fakeUi.layoutAndDispatchEvents()
     waitForCondition(5, TimeUnit.SECONDS) { agent.isRunning && panel.isConnected }
@@ -116,7 +120,12 @@ class DeviceToolWindowPanelTest {
     waitForFrame()
     assertAppearance("AppearanceAndToolbarActions1", maxPercentDifferentMac = 0.06, maxPercentDifferentWindows = 0.06)
     assertThat(panel.preferredFocusableComponent).isEqualTo(panel.deviceView)
-    assertThat(panel.isClosable).isFalse()
+    if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+      assertThat(panel.isClosable).isTrue()
+    }
+    else {
+      assertThat(panel.isClosable).isFalse()
+    }
     assertThat(panel.icon).isNotNull()
 
     // Check push button actions.
@@ -179,8 +188,13 @@ class DeviceToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     waitForFrame()
     assertThat(panel.preferredFocusableComponent).isEqualTo(panel.deviceView)
-    assertThat(panel.isClosable).isFalse()
-    assertThat(panel.icon).isNotNull()
+    if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+      assertThat(panel.isClosable).isTrue()
+    }
+    else {
+      assertThat(panel.isClosable).isFalse()
+    }
+    assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_WEAR)
 
     // Check push button actions.
     val pushButtonCases = listOf(

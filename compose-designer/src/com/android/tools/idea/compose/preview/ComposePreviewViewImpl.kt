@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.annotations.concurrency.Slow
 import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.stdui.ActionData
@@ -33,6 +34,7 @@ import com.android.tools.idea.editors.notifications.NotificationPanel
 import com.android.tools.idea.editors.shortcuts.asString
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
 import com.android.tools.idea.preview.PreviewDisplaySettings
+import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.requestBuild
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
@@ -147,6 +149,28 @@ interface ComposePreviewView {
       previewElementModelAdapter,
       modelUpdater,
       configureLayoutlibSceneManager
+    )
+  }
+
+  /**
+   * Refreshes the [ComposePreviewElement]s corresponding to the [NlModel]s that should currently be
+   * displayed in this [ComposePreviewView]. The [modelToPreview] argument is used to map [NlModel]s
+   * to [ComposePreviewElement].
+   *
+   * By default, refreshes the elements corresponding to the [mainSurface] models. Implementors of
+   * this interface can override this method if they want to render a different set of elements.
+   */
+  @Slow
+  suspend fun refreshExistingPreviewElements(
+    progressIndicator: ProgressIndicator,
+    modelToPreview: NlModel.() -> ComposePreviewElement?,
+    configureLayoutlibSceneManager:
+      (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager
+  ) {
+    mainSurface.refreshExistingPreviewElements(
+      progressIndicator,
+      modelToPreview,
+      configureLayoutlibSceneManager,
     )
   }
 }
@@ -300,8 +324,13 @@ internal class ComposePreviewViewImpl(
     workbench.init(issueErrorSplitter, mainSurface, listOf(), false)
     workbench.hideContent()
     if (projectBuildStatusManager.status == ProjectStatus.NeedsBuild) {
-      log.debug("Project needs build")
-      showNeedsToBuildErrorPanel()
+      if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
+        log.debug("Preview not supported in read-only files")
+        showModalErrorMessage(message("panel.read.only.file"))
+      } else {
+        log.debug("Project needs build")
+        showNeedsToBuildErrorPanel()
+      }
     } else {
       val message =
         when {
@@ -328,7 +357,7 @@ internal class ComposePreviewViewImpl(
       }
     }
 
-  private fun showModalErrorMessage(message: String, actionData: ActionData?) =
+  private fun showModalErrorMessage(message: String, actionData: ActionData? = null) =
     UIUtil.invokeLaterIfNeeded {
       log.debug("showModelErrorMessage: $message")
       workbench.loadingStopped(message, actionData)
@@ -383,8 +412,12 @@ internal class ComposePreviewViewImpl(
       if (
         workbench.isMessageVisible && projectBuildStatusManager.status == ProjectStatus.NeedsBuild
       ) {
-        log.debug("Needs successful build")
-        showNeedsToBuildErrorPanel()
+        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
+          showModalErrorMessage(message("panel.read.only.file"))
+        } else {
+          log.debug("Needs successful build")
+          showNeedsToBuildErrorPanel()
+        }
       } else {
         if (hasRendered) {
           log.debug("Show content")

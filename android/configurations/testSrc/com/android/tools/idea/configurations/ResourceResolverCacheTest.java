@@ -21,6 +21,8 @@ import static com.google.common.truth.Truth.assertThat;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.sdklib.devices.Device;
 import com.android.sdklib.devices.Screen;
+import com.android.tools.configurations.Configuration;
+import com.android.tools.configurations.ResourceResolverCache;
 import com.android.tools.idea.res.LocalResourceRepository;
 import com.android.tools.idea.res.StudioResourceRepositoryManager;
 import com.google.common.collect.Iterables;
@@ -92,8 +94,8 @@ public class ResourceResolverCacheTest extends AndroidTestCase {
     assertNotSame(resolver1b, configuration1.getResourceResolver());
     assertEquals("FooBar", configuration1.getResourceResolver().findResValue("@string/cancel", false).getValue());
 
-    ResourceResolverCache cache = configuration1.getConfigurationManager().getResolverCache();
-    assertSame(cache, configuration2.getConfigurationManager().getResolverCache());
+    ResourceResolverCache cache = configuration1.getSettings().getResolverCache();
+    assertSame(cache, configuration2.getSettings().getResolverCache());
   }
 
   public void testCustomConfiguration() {

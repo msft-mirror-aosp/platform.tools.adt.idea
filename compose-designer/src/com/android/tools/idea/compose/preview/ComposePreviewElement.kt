@@ -28,10 +28,10 @@ import com.android.sdklib.IAndroidTarget
 import com.android.sdklib.devices.Device
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_FQN
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
+import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.model.AndroidDpCoordinate
 import com.android.tools.idea.compose.pickers.preview.utils.findOrParseFromDefinition
 import com.android.tools.idea.compose.pickers.preview.utils.getDefaultPreviewDevice
-import com.android.tools.idea.configurations.Configuration
 import com.android.tools.idea.configurations.Wallpaper
 import com.android.tools.idea.preview.DisplayPositioning
 import com.android.tools.idea.preview.PreviewDisplaySettings
@@ -46,6 +46,7 @@ import com.android.tools.idea.uibuilder.model.updateConfigurationScreenSize
 import com.android.tools.rendering.ModuleRenderContext
 import com.android.tools.rendering.classloading.ModuleClassLoader
 import com.android.tools.rendering.classloading.ModuleClassLoaderManager
+import com.android.tools.rendering.classloading.useWithClassLoader
 import com.android.tools.sdk.CompatibilityRenderTarget
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.diagnostic.Logger
@@ -190,9 +191,7 @@ private fun PreviewConfiguration.applyTo(
   renderConfiguration.startBulkEditing()
   if (apiLevel != UNDEFINED_API_LEVEL) {
     val newTarget =
-      renderConfiguration.configurationManager.targets.firstOrNull {
-        it.version.apiLevel == apiLevel
-      }
+      renderConfiguration.settings.targets.firstOrNull { it.version.apiLevel == apiLevel }
     highestApiTarget(renderConfiguration)?.let {
       updateRenderConfigurationTargetIfChanged(CompatibilityRenderTarget(it, apiLevel, newTarget))
     }
@@ -261,9 +260,9 @@ private fun ComposePreviewElement.getCustomDeviceSize(): Dimension? =
 fun ComposePreviewElement.applyTo(renderConfiguration: Configuration) {
   configuration.applyTo(
     renderConfiguration,
-    { it.configurationManager.highestApiTarget },
-    { it.configurationManager.devices },
-    { it.configurationManager.getDefaultPreviewDevice() },
+    { it.settings.highestApiTarget },
+    { it.settings.devices },
+    { it.settings.getDefaultPreviewDevice() },
     getCustomDeviceSize()
   )
 }
@@ -542,20 +541,16 @@ class ParametrizedComposePreviewElementTemplate(
     }
 
     val moduleRenderContext = renderContext ?: forFile(file)
-    val classLoader =
-      ModuleClassLoaderManager.get()
-        .getPrivate(
-          ParametrizedComposePreviewElementTemplate::class.java.classLoader,
-          moduleRenderContext,
-          this
-        )
-    try {
-      return parameterProviders
-        .map { previewParameter -> loadPreviewParameterProvider(classLoader, previewParameter) }
-        .first()
-    } finally {
-      ModuleClassLoaderManager.get().release(classLoader, this)
-    }
+    ModuleClassLoaderManager.get()
+      .getPrivate(
+        ParametrizedComposePreviewElementTemplate::class.java.classLoader,
+        moduleRenderContext
+      )
+      .useWithClassLoader { classLoader ->
+        return parameterProviders
+          .map { previewParameter -> loadPreviewParameterProvider(classLoader, previewParameter) }
+          .first()
+      }
   }
 
   private fun loadPreviewParameterProvider(

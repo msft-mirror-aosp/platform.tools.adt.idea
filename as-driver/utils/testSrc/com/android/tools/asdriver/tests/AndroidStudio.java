@@ -225,7 +225,12 @@ public class AndroidStudio implements AutoCloseable {
   }
 
   public void executeAction(String action) {
-    ASDriver.ExecuteActionRequest rq = ASDriver.ExecuteActionRequest.newBuilder().setActionId(action).build();
+    executeAction(action, DataContextSource.DEFAULT);
+  }
+
+  public void executeAction(String action, DataContextSource dataContextSource) {
+    ASDriver.ExecuteActionRequest rq =
+      ASDriver.ExecuteActionRequest.newBuilder().setActionId(action).setDataContextSource(dataContextSource.dataContextSource).build();
     ASDriver.ExecuteActionResponse response = androidStudio.executeAction(rq);
     switch (response.getResult()) {
       case OK:
@@ -272,6 +277,8 @@ public class AndroidStudio implements AutoCloseable {
   /**
    * Opens a file and then goes to a specific line and column in the first open project's selected
    * text editor.
+   * @param file the name of the file, interpreted initially as an absolute file path, but subsequently as a project-relative file path
+   *            if no file is initially found.
    * @param line 0-indexed line number.
    * @param column 0-indexed column number.
    * @see com.intellij.openapi.editor.LogicalPosition
@@ -401,6 +408,22 @@ public class AndroidStudio implements AutoCloseable {
         throw new IllegalStateException("Error in BLeak");
       case LEAK_DETECTED:
         throw new MemoryLeakException(response.getLeakInfo());
+    }
+  }
+
+  /**
+   * Describes from which component an action should obtain its {@code DataContext}. By default, a minimal {@code DataContext} is
+   * constructed with only the {@code Project} and the {@code Editor} specified.
+   */
+  public enum DataContextSource {
+    DEFAULT(ASDriver.ExecuteActionRequest.DataContextSource.DEFAULT),
+    SELECTED_TEXT_EDITOR(ASDriver.ExecuteActionRequest.DataContextSource.SELECTED_TEXT_EDITOR);
+
+    // This is the underlying proto enum that we do not want to expose as part of the API.
+    private final ASDriver.ExecuteActionRequest.DataContextSource dataContextSource;
+
+    DataContextSource(ASDriver.ExecuteActionRequest.DataContextSource dataContextSource) {
+      this.dataContextSource = dataContextSource;
     }
   }
 

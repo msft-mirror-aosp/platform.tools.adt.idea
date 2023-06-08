@@ -15,16 +15,8 @@
  */
 package com.android.tools.profilers.integration
 
-import com.android.tools.asdriver.tests.AndroidProject
-import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.asdriver.tests.Emulator
-import com.android.tools.asdriver.tests.MavenRepo
-import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
-import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.seconds
 
 class ProfileWithCompleteDataTest : ProfilersTestBase() {
 
@@ -52,16 +44,13 @@ class ProfileWithCompleteDataTest : ProfilersTestBase() {
     profileApp(
       systemImage = Emulator.SystemImage.API_29,
       testFunction = { studio, _ ->
-        // Starting profile with complete data session and verifying the session using profiler logs.
         profileWithCompleteData(studio)
         verifyIdeaLog(".*PROFILER\\:\\s+Session\\s+started.*support\\s+level\\s+\\=DEBUGGABLE\$", 300)
         verifyIdeaLog(".*StudioMonitorStage.*PROFILER\\:\\s+Enter\\s+StudioMonitorStage\$", 300)
 
-        // Verifying UI components in profiler tool window.
         studio.waitForComponentByClass("TooltipLayeredPane", "StreamingScrollbar")
         studio.waitForComponentByClass("TooltipLayeredPane", "InstructionsPanel", "InstructionsComponent") // Specific to profiling with complete data
 
-        // Ending profiler session
         stopProfilingSession(studio)
       }
     )

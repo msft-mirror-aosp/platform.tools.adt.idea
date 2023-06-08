@@ -36,11 +36,11 @@ import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runInEdt
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
-import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.vfs.VirtualFile
@@ -63,12 +63,14 @@ import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import javax.swing.event.TreeModelEvent
+import javax.swing.event.TreeSelectionListener
 
 private const val DEFAULT_SHARED_ISSUE_PANEL_TAB_NAME = "Designer"
 
 /**
  * A service to help to show the issues of Design Tools in IJ's Problems panel.
  */
+@Service(Service.Level.PROJECT)
 class IssuePanelService(private val project: Project) {
 
   /**
@@ -520,6 +522,14 @@ class IssuePanelService(private val project: Project) {
    */
   fun setSelectedNode(nodeVisitor: TreeVisitor) {
     sharedIssuePanel?.setSelectedNode(nodeVisitor)
+  }
+
+  fun addIssueSelectionListener(listener: TreeSelectionListener) {
+    sharedIssuePanel?.addIssueSelectionListener(listener)
+  }
+
+  fun removeIssueSelectionListener(listener: TreeSelectionListener) {
+    sharedIssuePanel?.removeIssueSelectionListener(listener)
   }
 
   companion object {

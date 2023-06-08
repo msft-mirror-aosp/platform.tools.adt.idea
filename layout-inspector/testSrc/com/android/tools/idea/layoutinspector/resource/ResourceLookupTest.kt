@@ -26,9 +26,8 @@ import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.InspectorPropertyItem
 import com.android.tools.idea.layoutinspector.properties.PropertySection
+import com.android.tools.idea.layoutinspector.properties.PropertyType
 import com.android.tools.idea.layoutinspector.properties.ViewNodeAndResourceLookup
-import com.android.tools.idea.layoutinspector.resource.data.AppContext
-import com.android.tools.idea.layoutinspector.util.TestStringTable
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.TestAndroidModel
 import com.android.tools.idea.res.RESOURCE_ICON_SIZE
@@ -40,8 +39,8 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.Rectangle
-import com.android.tools.idea.layoutinspector.properties.PropertyType
 
 class ResourceLookupTest {
 
@@ -54,12 +53,12 @@ class ResourceLookupTest {
     val facet = AndroidFacet.getInstance(projectRule.module)!!
     AndroidModel.set(facet, TestAndroidModel())
     val resourceLookup = ResourceLookup(projectRule.project)
-    val table = TestStringTable()
-    val theme = table.add(ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light"))!!
-    val appContext = AppContext(theme, 1440, 3120)
+    val theme = ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light")
     val process = MODERN_DEVICE.createProcess("com.example.test")
-    resourceLookup.updateConfiguration(FolderConfiguration.createDefault(), 1.0f, appContext, table, process)
+    resourceLookup.updateConfiguration(FolderConfiguration(), theme, process,
+                                       fontScaleFromConfig = 1.0f, mainDisplayOrientation = 90, screenSize = Dimension(1440, 3120))
     assertThat(resourceLookup.resolver).isNotNull()
+    assertThat(resourceLookup.displayOrientation).isEqualTo(90)
   }
 
   @Test
@@ -67,11 +66,10 @@ class ResourceLookupTest {
     val facet = AndroidFacet.getInstance(projectRule.module)!!
     AndroidModel.set(facet, TestAndroidModel("com.example.test.debug"))
     val resourceLookup = ResourceLookup(projectRule.project)
-    val table = TestStringTable()
-    val theme = table.add(ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light"))!!
-    val appContext = AppContext(theme, 1440, 3120)
+    val theme = ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light")
     val process = MODERN_DEVICE.createProcess("com.example.test.debug")
-    resourceLookup.updateConfiguration(FolderConfiguration.createDefault(), 1.0f, appContext, table, process)
+    resourceLookup.updateConfiguration(FolderConfiguration(), theme, process,
+                                       fontScaleFromConfig = 1.0f, mainDisplayOrientation = 90, screenSize = Dimension(1440, 3120))
     assertThat(resourceLookup.resolver).isNotNull()
   }
 

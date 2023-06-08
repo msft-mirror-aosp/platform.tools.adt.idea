@@ -18,6 +18,8 @@ package com.android.tools.idea.configurations
 import com.android.sdklib.devices.Device
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.adtui.actions.prettyPrintActions
+import com.android.tools.configurations.Configuration
+import com.android.tools.configurations.ConfigurationModelModule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
@@ -161,7 +163,7 @@ class DeviceMenuActionTest {
   private fun testActions(expected: String) {
     val configuration = Mockito.mock(Configuration::class.java)
     val configurationModelModule: ConfigurationModelModule = StudioConfigurationModelModule(projectRule.projectRule.module)
-    whenever(configuration.configurationManager).thenReturn(ConfigurationManager.getOrCreateInstance(projectRule.projectRule.module))
+    whenever(configuration.settings).thenReturn(ConfigurationManager.getOrCreateInstance(projectRule.projectRule.module))
     whenever(configuration.configModule).thenReturn(configurationModelModule)
     val holder = ConfigurationHolder { configuration }
     val menuAction = DeviceMenuAction(holder, object : DeviceChangeListener {

@@ -25,6 +25,7 @@ import com.android.tools.adtui.categorytable.IconLabel
 import com.android.tools.adtui.categorytable.LabelColumn
 import com.android.tools.idea.devicemanagerv2.DeviceManagerBundle
 import com.android.tools.idea.devicemanagerv2.TwoLineLabel
+import com.android.tools.idea.devicemanagerv2.titlecase
 import com.android.tools.idea.devicemanagerv2.toLabelText
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.intellij.util.ui.JBEmptyBorder
@@ -62,6 +63,7 @@ internal object PairedDevicesTable {
 
   object Type : Column<PairedDeviceData, Icon?, IconLabel> {
     override val name = DeviceManagerBundle.message("column.title.type")
+    override val columnHeaderName = "" // no room for a name
     override val attribute =
       object : Attribute<PairedDeviceData, Icon?> {
         override val sorter = null
@@ -99,5 +101,3 @@ internal object PairedDevicesTable {
       Attribute.stringAttribute(isGroupable = false) { it.state.toString().titlecase() }
     )
 }
-
-private fun String.titlecase() = lowercase().let { it.replaceFirstChar { it.uppercase() } }

@@ -21,10 +21,11 @@ import static com.android.tools.rendering.ProblemSeverity.WARNING;
 
 import com.android.sdklib.IAndroidTarget;
 import com.android.testutils.TestUtils;
-import com.android.tools.idea.configurations.Configuration;
+import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel;
 import com.android.tools.idea.sdk.AndroidSdks;
+import com.android.tools.layoutlib.AndroidTargets;
 import com.android.tools.rendering.RenderLogger;
 import com.android.tools.rendering.RenderProblem;
 import com.android.tools.rendering.RenderResult;
@@ -100,7 +101,7 @@ public class RenderErrorContributorTest extends AndroidTestCase {
   private static IAndroidTarget getTestTarget(@NotNull ConfigurationManager configurationManager) {
     String platformDir = TestUtils.getLatestAndroidPlatform();
     for (IAndroidTarget target : configurationManager.getTargets()) {
-      if (!ConfigurationManager.isLayoutLibTarget(target)) {
+      if (!AndroidTargets.isLayoutLibTarget(target)) {
         continue;
       }
       Path path = target.getPath(IAndroidTarget.ANDROID_JAR);
