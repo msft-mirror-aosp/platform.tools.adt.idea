@@ -40,7 +40,7 @@ val SUBSET_TO_MAX_HEAP_MB = mapOf(
   SUBSET_50_NAME to 400,
   SUBSET_100_NAME to 600,
   SUBSET_200_NAME to 1300,
-  SUBSET_500_NAME to 3600,
+  SUBSET_500_NAME to 3300,
   SUBSET_1000_NAME to 9000,
   SUBSET_2000_NAME to 22000,
   SUBSET_4200_NAME to 60000
@@ -57,7 +57,7 @@ class MemoryConstrainedTestRule(
     recordMemoryMeasurement("${projectName}_Max_Heap", TimestampedMeasurement(
       Clock.System.now(),
       memoryLimitMb.toLong() shl 20
-    ))
+    ), enableAnalyzer = false)
   }
 
   private fun startMemoryPolling() {

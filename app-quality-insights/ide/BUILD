@@ -19,6 +19,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
+        "//tools/adt/idea/analytics[module]",
     ],
 )
 
@@ -44,5 +45,7 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin[test]",
         "//tools/adt/idea/app-quality-insights/ui:intellij.android.app-quality-insights.ui[module, test]",
+        "//tools/adt/idea/android:intellij.android.core[module, test]",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",
     ],
 )

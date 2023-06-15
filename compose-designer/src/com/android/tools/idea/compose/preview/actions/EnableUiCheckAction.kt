@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview.actions
 
+import com.android.tools.idea.common.error.IssuePanelService
 import com.android.tools.idea.compose.preview.COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.compose.preview.COMPOSE_PREVIEW_MANAGER
 import com.android.tools.idea.compose.preview.lite.ComposePreviewLiteModeManager
@@ -23,8 +24,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.ui.showOkCancelDialog
 import com.intellij.ui.AnActionButton
 import icons.StudioIcons
 
@@ -41,6 +40,7 @@ class EnableUiCheckAction(private val dataContextProvider: () -> DataContext) :
     val isLiteModeEnabled = ComposePreviewLiteModeManager.isLiteModeEnabled
     e.presentation.isVisible = isUiCheckModeEnabled
     e.presentation.isEnabled = isUiCheckModeEnabled && !isLiteModeEnabled
+    e.presentation.text = if (isLiteModeEnabled) null else message("action.uicheck.title")
     e.presentation.description =
       if (isLiteModeEnabled) message("action.uicheck.lite.mode.description")
       else message("action.uicheck.description")
@@ -50,18 +50,11 @@ class EnableUiCheckAction(private val dataContextProvider: () -> DataContext) :
     val modelDataContext = dataContextProvider()
     val manager = modelDataContext.getData(COMPOSE_PREVIEW_MANAGER) ?: return
     val instanceId = modelDataContext.getData(COMPOSE_PREVIEW_ELEMENT_INSTANCE) ?: return
-
-    val answer =
-      showOkCancelDialog(
-        title = message("action.uicheck.dialog.title"),
-        message = message("action.uicheck.dialog.description"),
-        okText = message("action.uicheck.dialog.oktext"),
-        icon = Messages.getInformationIcon()
-      )
-    if (answer == Messages.CANCEL) {
-      return
-    }
     manager.startUiCheckPreview(instanceId)
+    e.project?.let {
+      IssuePanelService.getInstance(it)
+        .setIssuePanelVisibility(true, IssuePanelService.Tab.DESIGN_TOOLS)
+    }
   }
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT

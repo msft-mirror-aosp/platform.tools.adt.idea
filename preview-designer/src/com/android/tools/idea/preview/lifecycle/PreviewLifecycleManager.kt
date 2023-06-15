@@ -18,7 +18,7 @@ package com.android.tools.idea.preview.lifecycle
 import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.concurrency.scopeDisposable
-import com.android.tools.idea.editors.powersave.PreviewPowerSaveManager
+import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
@@ -148,7 +148,7 @@ private constructor(
 
       onDeactivate()
 
-      if (PreviewPowerSaveManager.isInPowerSaveMode) {
+      if (EssentialsMode.isEnabled()) {
         // When on power saving mode, deactivate immediately to free resources.
         onDelayedDeactivate()
       } else {

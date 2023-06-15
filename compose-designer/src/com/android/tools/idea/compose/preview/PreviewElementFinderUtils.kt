@@ -91,8 +91,8 @@ internal fun UAnnotation.isPreviewAnnotation() =
   ReadAction.compute<Boolean, Throwable> { COMPOSE_PREVIEW_ANNOTATION_FQN == qualifiedName }
 
 /**
- * Returns true if the [uMethod] is annotated with a @Preview annotation, taking in consideration
- * indirect annotations with multipreview when the flag is enabled
+ * Returns true if the [UMethod] is annotated with a @Preview annotation, taking in consideration
+ * indirect annotations with MultiPreview when the flag is enabled
  */
 internal fun UMethod?.hasPreviewElements() =
   this?.let { getPreviewElements(it).firstOrNull() } != null
@@ -308,9 +308,9 @@ internal fun UAnnotation.getContainingComposableUMethod() =
 private fun UMethod?.isComposable() = this.isAnnotatedWith(COMPOSABLE_ANNOTATION_FQ_NAME)
 
 internal fun UAnnotation.findPreviewDefaultValues(): Map<String, String?> =
-  when (val resolvedImplmentation = this.resolve()) {
+  when (val resolvedImplementation = this.resolve()) {
     is ClsClassImpl ->
-      resolvedImplmentation.methods
+      resolvedImplementation.methods
         .map { psiMethod ->
           Pair(
             psiMethod.name,
@@ -319,7 +319,7 @@ internal fun UAnnotation.findPreviewDefaultValues(): Map<String, String?> =
         }
         .toMap()
     is KtLightClass ->
-      resolvedImplmentation.methods
+      resolvedImplementation.methods
         .map { psiMethod ->
           Pair(
             psiMethod.name,

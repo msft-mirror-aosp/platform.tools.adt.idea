@@ -17,11 +17,13 @@ package com.android.tools.idea.run.blaze
 
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AppRunConfiguration
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.clearAppStorage
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
+import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.run.ConsoleProvider
 import com.android.tools.idea.run.DeviceFutures
@@ -29,15 +31,11 @@ import com.android.tools.idea.run.DeviceHeadsUpListener
 import com.android.tools.idea.run.LaunchOptions
 import com.android.tools.idea.run.ShowLogcatListener
 import com.android.tools.idea.run.ShowLogcatListener.Companion.getShowLogcatLinkText
-import com.android.tools.idea.run.configuration.execution.AndroidConfigurationExecutor
 import com.android.tools.idea.run.configuration.execution.createRunContentDescriptor
 import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.tasks.ConnectDebuggerTask
-import com.android.tools.idea.run.tasks.LaunchContext
-import com.android.tools.idea.run.tasks.LaunchTask
 import com.android.tools.idea.run.util.LaunchUtils
-import com.android.tools.idea.stats.RunStats
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.process.NopProcessHandler
@@ -65,7 +63,7 @@ class BlazeAndroidConfigurationExecutor(
   private val consoleProvider: ConsoleProvider,
   private val applicationIdProvider: ApplicationIdProvider,
   private val env: ExecutionEnvironment,
-  override val deviceFutures: DeviceFutures,
+  private val deviceFutures: DeviceFutures,
   private val myLaunchTasksProvider: BlazeLaunchTasksProvider,
   private val launchOptions: LaunchOptions
 ) : AndroidConfigurationExecutor {
@@ -82,7 +80,7 @@ class BlazeAndroidConfigurationExecutor(
     val packageName = applicationIdProvider.packageName
     waitPreviousProcessTermination(devices, packageName, indicator)
 
-    val processHandler = AndroidProcessHandler(project, packageName, { it.forceStop(packageName) })
+    val processHandler = AndroidProcessHandler(packageName, { it.forceStop(packageName) })
 
     val console = createConsole(processHandler)
     doRun(devices, processHandler, false, indicator, console)
@@ -202,12 +200,6 @@ interface BlazeLaunchTasksProvider {
 interface BlazeLaunchTask {
   @Throws(ExecutionException::class)
   fun run(launchContext: BlazeLaunchContext)
-}
-
-class BlazeLaunchTaskWrapper(private val launchTask: LaunchTask):BlazeLaunchTask {
-  override fun run(launchContext: BlazeLaunchContext) {
-    launchTask.run(LaunchContext(launchContext.env, launchContext.device, launchContext.consoleView, launchContext.processHandler, launchContext.progressIndicator))
-  }
 }
 
 class BlazeLaunchContext(val env: ExecutionEnvironment,

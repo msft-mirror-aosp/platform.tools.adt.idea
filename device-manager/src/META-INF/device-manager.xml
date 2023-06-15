@@ -14,6 +14,7 @@
   ~ limitations under the License.
   -->
 <idea-plugin>
+  <depends optional="true" config-file="device-manager-androidstudio.xml">com.intellij.modules.androidstudio</depends>
   <extensions defaultExtensionNs="com.intellij">
     <toolWindow id="Device Manager"
                 anchor="right"
@@ -26,4 +27,9 @@
     <extensionPoint qualifiedName="org.jetbrains.android.deviceManagerTab"
                     interface="com.android.tools.idea.devicemanager.DeviceManagerTab"/>
   </extensionPoints>
+  <actions>
+    <action id="Android.DeviceManager" class="com.android.tools.idea.devicemanager.DeviceManagerAction">
+      <add-to-group group-id="AndroidDeviceManagerPlaceholder"/>
+    </action>
+  </actions>
 </idea-plugin>

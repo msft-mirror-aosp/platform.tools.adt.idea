@@ -185,9 +185,8 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = Flag.create(PROFILER, "task.based.ux", "Task-based UX",
     "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)", false);
 
-  public static final Flag<Boolean> PROFILER_TRACEBOX = Flag.create(PROFILER, "tracebox", "Tracebox",
-                                                                             "Tracebox for versions M,N,O,P of Android",
-                                                                             false);
+  public static final Flag<Boolean> PROFILER_TRACEBOX =
+    Flag.create(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android", false);
   //endregion
 
   //region ML
@@ -201,10 +200,6 @@ public final class StudioFlags {
 
   //region Design Tools
   private static final FlagGroup DESIGN_TOOLS = new FlagGroup(FLAGS, "design.tools", "Design Tools");
-  public static final Flag<Boolean> DESIGN_TOOLS_POWER_SAVE_MODE_SUPPORT = Flag.create(
-    DESIGN_TOOLS, "power.save.support", "Enable previews support for PowerSave mode",
-    "If enabled, the the Layout Editor and Compose Preview will respect the Power Save mode and avoid auto-refresh, reduce FPS, etc.",
-    true);
 
   public static final Flag<Long> PROJECT_SYSTEM_CLASS_LOADER_CACHE_LIMIT = Flag.create(
     DESIGN_TOOLS,
@@ -644,6 +639,13 @@ public final class StudioFlags {
   //region Gradle Project System
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
 
+  public static final Flag<Boolean> ANDROID_SDK_AND_IDE_COMPATIBILITY_RULES = Flag.create(
+    GRADLE_IDE, "android.sdk.ide.compatibility.rules",
+    "Enable compatibility rules support between IDE version and compile SDK version",
+    "Enable compatibility rules support between IDE version and compile SDK version",
+    false
+  );
+
   public static final Flag<Boolean> API_OPTIMIZATION_ENABLE = Flag.create(
     GRADLE_IDE, "build.injection.device.api.enabled",
     "Enable injection of device api level optimization from IDE",
@@ -791,10 +793,10 @@ public final class StudioFlags {
     GRADLE_IDE,
     "gradle.multi.variant.additional.artifact.support",
     "Gradle multi variant additional artifact support",
-    "Switch to building additional artifacts (javadocs/srcs/samples) inside Gradle rather than an injected model builder. This allows " +
-    "us to support variant specific artifacts and prevents the IDE from having to match by Gradle coordinate. This flag will have no effect " +
-    "if used with a version of AGP before 8.1.0-alpha8.",
-    false
+    "Enable an option in the Gradle experimental settings to switch to building additional artifacts (javadocs/srcs/samples) " +
+    "inside Gradle rather than an injected model builder. This allows us to support variant specific artifacts and prevents the IDE from" +
+    " having to match by Gradle coordinate. This flag will have no effect if used with a version of AGP before 8.1.0-alpha8.",
+    true
   );
 
   public static final Flag<Boolean> USE_NEW_DEPENDENCY_GRAPH_MODEL = Flag.create(
@@ -1466,6 +1468,14 @@ public final class StudioFlags {
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
 
+  public static final Flag<Boolean> APP_INSIGHTS_CHANGE_AWARE_ANNOTATION_SUPPORT =
+    Flag.create(
+      APP_INSIGHTS,
+      "insights.change.aware.annotation",
+      "Change-aware Annotation Support",
+      "Enhance annotation to aid crash investigation with the recorded VCS info",
+      true);
+
   public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
     Flag.create(
       APP_INSIGHTS,
@@ -1522,7 +1532,7 @@ public final class StudioFlags {
                 "Support adding logic for intent handling in Kotlin.", true);
   public static final Flag<Boolean> APP_LINKS_ASSISTANT_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "v2", "App Links Assistant V2",
-                "Revamped App Links Assistant (new surfaces and navigation between surfaces).", false);
+                "Revamped App Links Assistant (new surfaces and navigation between surfaces).", true);
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
                 "Improvements to Website Association Generator.", false);
@@ -1556,7 +1566,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
-  public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", false);
+  public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", true);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR

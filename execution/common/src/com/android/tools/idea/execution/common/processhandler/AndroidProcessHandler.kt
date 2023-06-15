@@ -21,13 +21,9 @@ import com.android.ddmlib.Client
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.execution.common.AndroidExecutionTarget
 import com.android.tools.idea.run.DeploymentApplicationService
-import com.intellij.execution.DefaultExecutionTarget
-import com.intellij.execution.ExecutionTargetManager
-import com.intellij.execution.KillableProcess
 import com.intellij.execution.process.AnsiEscapeDecoder
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.annotations.VisibleForTesting
@@ -49,14 +45,12 @@ import java.io.OutputStream
  * running target processes and moves to destroy state. Second, when all target processes terminate and [autoTerminate] is true,
  * this process handler automatically terminate.
  *
- * @param project IDE project which uses this process handler
  * @param targetApplicationId a target application id to be monitored
  * @param finishAndroidProcessCallback custom way to finish a started process, used by AndroidProcessMonitorManager.
  * @param deploymentApplicationService a service to be used to look up running processes on a device
  * @param androidProcessMonitorManagerFactory a factory method to construct [AndroidProcessMonitorManager]
  */
 class AndroidProcessHandler @JvmOverloads constructor(
-  private val project: Project,
   @VisibleForTesting val targetApplicationId: String,
   finishAndroidProcessCallback: (IDevice) -> Unit = { device -> device.forceStop(targetApplicationId) },
   val autoTerminate: Boolean = true,
@@ -65,7 +59,7 @@ class AndroidProcessHandler @JvmOverloads constructor(
   androidProcessMonitorManagerFactory: AndroidProcessMonitorManagerFactory = { textEmitter, listener ->
     AndroidProcessMonitorManager(targetApplicationId, deploymentApplicationService, textEmitter, listener,
                                  finishAndroidProcessCallback)
-  }) : ProcessHandler(), KillableProcess, DeviceAwareProcessHandler {
+  }) : ProcessHandler(), DeviceAwareProcessHandler {
 
   companion object {
     private var LOG = Logger.getInstance(AndroidProcessHandler::class.java)
@@ -192,22 +186,8 @@ class AndroidProcessHandler @JvmOverloads constructor(
   @AnyThread
   override fun getProcessInput(): OutputStream? = null
 
-  /**
-   * We provide a custom implementation to tie the device combo box selector to the global Stop button.
-   * Note the global Stop button prefers the result of this method over content descriptor internal state,
-   * but the tool window Stop button prefers the content descriptor internal state over this method.
-   */
   @AnyThread
-  override fun canKillProcess(): Boolean {
-    val activeTarget = ExecutionTargetManager.getInstance(project).activeTarget
-    if (activeTarget === DefaultExecutionTarget.INSTANCE || activeTarget !is AndroidExecutionTarget) {
-      return false
-    }
-    return areAnyDevicesAssociated(activeTarget)
-  }
-
-  @AnyThread
-  override fun killProcess() {
+  fun killProcess() {
     destroyProcess()
   }
 

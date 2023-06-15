@@ -19,16 +19,17 @@ import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.DeployerException
 import com.android.tools.deployer.model.App
+import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AppRunConfiguration
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
+import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.configuration.isDebug
-import com.android.tools.idea.stats.RunStats
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.RunConfiguration
@@ -46,10 +47,11 @@ import kotlinx.coroutines.joinAll
 
 abstract class AndroidConfigurationExecutorBase(
   protected val environment: ExecutionEnvironment,
-  override val deviceFutures: DeviceFutures,
+  private val deviceFutures: DeviceFutures,
   protected val appRunSettings: AppRunSettings,
   protected val applicationIdProvider: ApplicationIdProvider,
-  protected val apkProvider: ApkProvider
+  protected val apkProvider: ApkProvider,
+  protected val applicationDeployer: ApplicationDeployer
 ) : AndroidConfigurationExecutor {
 
   private val LOG = Logger.getInstance(this::class.java)
@@ -66,9 +68,8 @@ abstract class AndroidConfigurationExecutorBase(
   override fun run(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(environment))
     val console = createConsole()
-    val processHandler = AndroidProcessHandler(project, appId, getStopCallback(console, false))
+    val processHandler = AndroidProcessHandler(appId, getStopCallback(console, false))
 
-    val applicationInstaller = getApplicationDeployer(console)
 
     val onDevice = { device: IDevice ->
       LOG.info("Launching on device ${device.name}")
@@ -78,7 +79,7 @@ abstract class AndroidConfigurationExecutorBase(
       val result = try {
         // ApkProvider provides multiple ApkInfo only for instrumented tests.
         val app = apkProvider.getApks(device).single()
-        applicationInstaller.fullDeploy(device, app, appRunSettings.deployOptions, indicator)
+        applicationDeployer.fullDeploy(device, app, appRunSettings.deployOptions, indicator)
       }
       catch (e: DeployerException) {
         throw ExecutionException("Failed to install app '$appId'. ${e.details.orEmpty()}", e)
@@ -111,7 +112,7 @@ abstract class AndroidConfigurationExecutorBase(
 
     // ApkProvider provides multiple ApkInfo only for instrumented tests.
     val app = apkProvider.getApks(device).single()
-    val deployResult = getApplicationDeployer(console).fullDeploy(device, app, appRunSettings.deployOptions, indicator)
+    val deployResult = applicationDeployer.fullDeploy(device, app, appRunSettings.deployOptions, indicator)
 
     val runContentDescriptorDeferred = async {
       startDebugSession(device, console, indicator).runContentDescriptor
@@ -155,11 +156,6 @@ abstract class AndroidConfigurationExecutorBase(
     if (!terminator.killApp()) {
       throw ExecutionException("Could not terminate running app $appId")
     }
-  }
-
-  @Throws(ExecutionException::class)
-  open fun getApplicationDeployer(console: ConsoleView): ApplicationDeployer {
-    return ApplicationDeployerImpl(project, RunStats.from(environment))
   }
 
   private fun createConsole(): ConsoleView {

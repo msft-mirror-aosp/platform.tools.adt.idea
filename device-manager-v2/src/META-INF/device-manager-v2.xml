@@ -14,6 +14,7 @@
   ~ limitations under the License.
   -->
 <idea-plugin>
+  <depends optional="true" config-file="device-manager-v2-androidstudio.xml">com.intellij.modules.androidstudio</depends>
   <extensions defaultExtensionNs="com.intellij">
     <toolWindow id="Device Manager 2"
                 anchor="right"
@@ -22,7 +23,10 @@
   </extensions>
   <actions>
     <group id="Android.DeviceManager.TypeSpecificActions">
-      <action id="PairDevicesUsingWiFiAction" class="com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiAction"/>
+      <reference ref="Android.AdbDevicePairing"/>
     </group>
+    <action id="Android.DeviceManager2" class="com.android.tools.idea.devicemanagerv2.DeviceManager2Action">
+      <add-to-group group-id="AndroidDeviceManagerPlaceholder"/>
+    </action>
   </actions>
 </idea-plugin>

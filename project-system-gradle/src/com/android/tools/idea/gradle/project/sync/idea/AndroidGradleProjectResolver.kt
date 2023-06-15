@@ -20,6 +20,7 @@ import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
 import com.android.repository.Revision
 import com.android.tools.analytics.UsageTracker.log
+import com.android.tools.analytics.withProjectId
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.LibraryFilePaths
@@ -76,7 +77,6 @@ import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.projectsystem.gradle.findModule
 import com.android.tools.idea.sdk.IdeSdks
-import com.android.tools.idea.stats.withProjectId
 import com.android.utils.appendCapitalized
 import com.android.utils.findGradleSettingsFile
 import com.google.common.annotations.VisibleForTesting
@@ -529,7 +529,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       }
 
       // Otherwise fall back to using the model from the injected model builder.
-      val artifactId = stripExtensionAndClassifier(library.name)
+      val artifactId = library.component?.toIdentifier() ?: library.name
       // First check to see if we just obtained any paths from Gradle. Since we don't request all the paths this can be null
       // or contain an incomplete set of entries. In order to complete this set we need to obtain the reminder from LibraryFilePaths cache.
       val artifacts = additionalArtifactsMap[artifactId]

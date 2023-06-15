@@ -135,9 +135,14 @@ internal class DeviceView(
   override val deviceSerialNumber: String
     get() = deviceClient.deviceSerialNumber
 
-  /** The difference between [displayOrientationQuadrants] and the orientation according to the DisplayInfo Android data structure. */
+  /**
+   * Orientation of the device display according to Android's
+   * [Display.getRotation](https://developer.android.com/reference/android/view/Display#getRotation()).
+   */
   override var displayOrientationQuadrants: Int = 0
     private set
+  override val apiLevel: Int
+    get() = deviceClient.deviceConfig.apiLevel
 
   private var connectionState = ConnectionState.INITIAL
     set(value) {

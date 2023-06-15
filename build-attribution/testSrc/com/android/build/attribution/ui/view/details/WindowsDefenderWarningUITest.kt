@@ -28,7 +28,8 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.android.build.attribution.WindowsDefenderCheckService
-import com.intellij.diagnostic.WindowsDefenderCheckerWrapper
+import com.android.build.attribution.ui.controllers.WindowsDefenderPageHandlerImpl
+import com.android.build.diagnostic.WindowsDefenderCheckerWrapper
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import org.junit.Rule
@@ -192,7 +193,7 @@ class WindowsDefenderWarningUITest {
 
     val pagesFactory = WarningsViewDetailPagesFactory(model, mockHandlers, projectRule.testRootDisposable)
 
-    Mockito.`when`(mockHandlers.windowsDefenderPageHandler()).thenReturn(service)
+    Mockito.`when`(mockHandlers.windowsDefenderPageHandler()).thenReturn(WindowsDefenderPageHandlerImpl(service))
 
     val page = pagesFactory.createDetailsPage(WarningsPageId.windowsDefenderWarning)
     return TreeWalker(page).descendants().filterIsInstance<WindowsDefenderWarningPage>().single()

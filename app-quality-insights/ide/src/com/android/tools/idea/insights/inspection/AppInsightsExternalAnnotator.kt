@@ -29,78 +29,102 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import icons.StudioIcons
 import javax.swing.Icon
-import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.psi.getLineCount
 
+private val logger = Logger.getInstance(AppInsightsExternalAnnotator::class.java)
+
 class AppInsightsExternalAnnotator : ExternalAnnotator<InitialInfo, AnnotationResult>() {
-  private val logger = Logger.getInstance(javaClass)
   private val lineMarkerProvider = LineMarkerProvider()
   private val analyzer = StackTraceAnalyzer()
 
-  private data class AnnotationData(val lineNumber: Int, val insight: AppInsight)
+  data class InitialInfo(
+    val insights: List<AppInsight>,
+    val vFile: VirtualFile,
+    val editor: Editor,
+    val project: Project
+  )
 
-  @VisibleForTesting data class InitialInfo(val insights: List<AppInsight>, val fileLineCount: Int)
+  data class AnnotationResult(val insights: List<AppInsight>)
 
-  @VisibleForTesting data class AnnotationResult(val result: Map<Int, List<AppInsight>>)
-
-  override fun collectInformation(file: PsiFile) = doCollectInformation(file)
-
-  override fun collectInformation(file: PsiFile, editor: Editor, hasErrors: Boolean) =
-    doCollectInformation(file)
-
-  private fun doCollectInformation(file: PsiFile): InitialInfo? {
-    if (!LineMarkerSettings.getSettings().isEnabled(lineMarkerProvider)) {
-      return null
-    }
-
-    val insights = collectInsights(file, analyzer)
-
-    return if (insights.isEmpty()) null else InitialInfo(insights, file.getLineCount())
+  override fun collectInformation(file: PsiFile): InitialInfo? {
+    // We do nothing if there's no editor.
+    return null
   }
 
-  override fun doAnnotate(collectedInfo: InitialInfo?): AnnotationResult {
-    val annotationData =
-      collectedInfo
-        ?.insights
-        ?.filter { it.line in 0 until collectedInfo.fileLineCount }
-        ?.map { AnnotationData(lineNumber = it.line, insight = it) }
-        ?: emptyList()
+  override fun collectInformation(file: PsiFile, editor: Editor, hasErrors: Boolean): InitialInfo? {
+    if (!LineMarkerSettings.getSettings().isEnabled(lineMarkerProvider)) return null
+    val vFile = file.virtualFile ?: return null
+    val insights = collectInsights(file, analyzer).takeUnless { it.isEmpty() } ?: return null
 
-    return AnnotationResult(
-      annotationData
-        .groupBy { it.lineNumber }
-        .mapValues { (lineNumber, crashes) ->
-          // Ensures there's only one entry per issue in the crashes list.
-          crashes.map { it.insight }.distinctBy { it.issue }
-        }
-    )
+    return InitialInfo(insights, vFile, editor, file.project)
+  }
+
+  override fun doAnnotate(collectedInfo: InitialInfo?): AnnotationResult? {
+    collectedInfo ?: return null
+
+    val project = collectedInfo.project
+    val insights = collectedInfo.insights
+
+    if (!project.isChangeAwareAnnotationEnabled()) {
+      return AnnotationResult(insights)
+    }
+
+    val resolved =
+      insights.mapNotNull { insight ->
+        ProgressManager.checkCanceled()
+        if (collectedInfo.editor.isDisposed) return@mapNotNull null
+
+        insight.updateToCurrentLineNumber(
+          collectedInfo.vFile,
+          collectedInfo.editor.document,
+          project
+        )
+      }
+
+    return AnnotationResult(resolved)
   }
 
   override fun apply(file: PsiFile, annotationResult: AnnotationResult?, holder: AnnotationHolder) {
-    val doc = PsiDocumentManager.getInstance(file.project).getDocument(file) ?: return
+    annotationResult ?: return
 
-    annotationResult?.result?.forEach { (line, crashes) ->
-      val startLineOffset = doc.getLineStartOffset(line)
-      holder
-        .newSilentAnnotation(HighlightSeverity.INFORMATION)
-        // We do not care for the line itself, so we use startLineOffset for both params.
-        .range(TextRange(startLineOffset, startLineOffset))
-        .gutterIconRenderer(
-          AppInsightsGutterRenderer(crashes) { insight ->
-            AppInsightsToolWindowFactory.show(file.project, insight.provider.displayName) {
-              insight.markAsSelected()
+    val project = file.project
+    val doc = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
+    val validLineNumberRange = 0 until file.getLineCount()
+    val insights = annotationResult.insights
+
+    insights
+      .groupBy { it.line }
+      .filterKeys { it in validLineNumberRange }
+      .mapValues { (_, crashes) ->
+        // Ensures there's only one entry per issue in the crashes list.
+        crashes.distinctBy { it.issue }
+      }
+      .onEach { (line, crashes) ->
+        val startLineOffset = doc.getLineStartOffset(line)
+        holder
+          .newSilentAnnotation(HighlightSeverity.INFORMATION)
+          // We do not care for the line itself, so we use startLineOffset for both params.
+          .range(TextRange(startLineOffset, startLineOffset))
+          .gutterIconRenderer(
+            AppInsightsGutterRenderer(crashes) { insight ->
+              AppInsightsToolWindowFactory.show(file.project, insight.provider.displayName) {
+                insight.markAsSelected()
+              }
             }
-          }
-        )
-        .create()
-    }
+          )
+          .create()
+      }
   }
 
   /**
@@ -110,10 +134,12 @@ class AppInsightsExternalAnnotator : ExternalAnnotator<InitialInfo, AnnotationRe
    * Here each [AppInsightsTabProvider] points to a single kind of source.
    */
   private fun collectInsights(file: PsiFile, analyzer: StackTraceAnalyzer): List<AppInsight> {
+    val project = file.project
+
     return AppInsightsTabProvider.EP_NAME.extensionList
       .filter { it.isApplicable() }
       .map { tabProvider ->
-        val configurationManager = tabProvider.getConfigurationManager(file.project)
+        val configurationManager = tabProvider.getConfigurationManager(project)
 
         when (val model = configurationManager.configuration.value) {
           is AppInsightsModel.Authenticated -> {
@@ -122,7 +148,7 @@ class AppInsightsExternalAnnotator : ExternalAnnotator<InitialInfo, AnnotationRe
             // Here we do the work just for collecting "matching accuracy" metrics.
             controller.insightsInFile(file, analyzer)
 
-            controller.retrieveLineMatches(file).also {
+            controller.insightsInFile(file).also {
               logger.debug("Found ${it.size} ${controller.key} insights for ${file.name}")
             }
           }
@@ -144,6 +170,33 @@ class AppInsightsExternalAnnotator : ExternalAnnotator<InitialInfo, AnnotationRe
         }
       }
       .flatten()
+  }
+
+  /**
+   * Returns [AppInsight] with up-to-date [AppInsight.line] or null if there's no matching line
+   * number inferred.
+   */
+  private fun AppInsight.updateToCurrentLineNumber(
+    vFile: VirtualFile,
+    document: Document,
+    project: Project
+  ): AppInsight? {
+    val startTime = System.currentTimeMillis()
+
+    // We try with best attempt.
+    val vcsDocument = tryCreateVcsDocumentOrNull(vFile, project) ?: return null
+
+    val oldLineNumber = line
+    val newLineNumber = getUpToDateLineNumber(oldLineNumber, vcsDocument, document)
+
+    val endTime = System.currentTimeMillis()
+    logger.debug(
+      "It takes ${endTime - startTime}ms to map line number from $oldLineNumber to $newLineNumber in $vFile."
+    )
+
+    newLineNumber ?: return null
+
+    return copy(line = newLineNumber)
   }
 
   class LineMarkerProvider : LineMarkerProviderDescriptor() {

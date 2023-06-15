@@ -175,8 +175,6 @@ iml_module(
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
-        # TODO: http://b/281905227
-        "-Didea.leak.check.enabled=false",
         "-Djdk.attach.allowAttachSelf=true",
     ],
     test_resources = ["testResources"],
@@ -289,6 +287,7 @@ iml_module(
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module, test]",
         "//tools/adt/idea/streaming:intellij.android.streaming[module, test]",
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
+        "//tools/adt/idea/analytics[module, test]",
     ],
 )
 

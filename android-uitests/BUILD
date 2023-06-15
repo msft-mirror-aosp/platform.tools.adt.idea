@@ -138,6 +138,7 @@ maven_repository(
         "@maven//:androidx.annotation.annotation_1.6.0",
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
+        "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.appcompat.appcompat_1.6.1",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.1",
         "@maven//:androidx.compose.compiler.compiler_1.3.2",
@@ -1041,6 +1042,34 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "AddSupportLibraryTest",
+    size = "enormous",
+    timeout = "long",
+    data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "@maven//:com.android.support.support-annotations_28.0.0",
+        "@maven//:com.android.support.appcompat-v7_26.1.0",
+    ] + glob([
+        "testData/ConvertFrom9Patch/**",
+    ]) + glob([
+        "testData/VersionCatalogProject/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.AddSupportLibraryTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2034,6 +2063,21 @@ java_test(
     size = "large",
     data = COMMON_DATA,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.QuickDocumentationTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "ReformatFileTest",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/SimpleApplication/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.ReformatFileTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
@@ -3270,6 +3314,20 @@ java_test(
         "-Daspects.agent.rules=$(location //tools/adt/idea/android-uitests:aspect_rules)",
         "-Daspects.agent.baseline=$(location //tools/adt/idea/android-uitests:aspects_baseline)",
     ],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+# fast test
+java_test(
+    name = "CreateNewGoogleActivitiesTest",
+    size = "large",
+    data = COMMON_DATA,
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.CreateNewGoogleActivitiesTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",

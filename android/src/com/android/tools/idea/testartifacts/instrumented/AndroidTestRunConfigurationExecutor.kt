@@ -17,10 +17,12 @@ package com.android.tools.idea.testartifacts.instrumented
 
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.RunConfigurationNotifier
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
+import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.TestOptions
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -29,15 +31,12 @@ import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.DeviceHeadsUpListener
-import com.android.tools.idea.run.configuration.execution.AndroidConfigurationExecutor
 import com.android.tools.idea.run.configuration.execution.createRunContentDescriptor
 import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.tasks.DeployTask
-import com.android.tools.idea.run.tasks.LaunchContext
 import com.android.tools.idea.run.tasks.getBaseDebuggerTask
 import com.android.tools.idea.run.util.LaunchUtils
-import com.android.tools.idea.stats.RunStats
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestApplicationLaunchTask.Companion.allInModuleTest
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestApplicationLaunchTask.Companion.allInPackageTest
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestApplicationLaunchTask.Companion.classTest
@@ -60,9 +59,9 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.indicatorRunBlockingCancellable
 import com.intellij.util.concurrency.AppExecutorUtil
 import kotlinx.coroutines.Deferred
-import com.intellij.openapi.progress.indicatorRunBlockingCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -77,7 +76,7 @@ import java.util.Locale
  */
 class AndroidTestRunConfigurationExecutor @JvmOverloads constructor(
   private val env: ExecutionEnvironment,
-  override val deviceFutures: DeviceFutures,
+  private val deviceFutures: DeviceFutures,
   getApkProvider: (AndroidTestRunConfiguration) -> ApkProvider = { it.apkProvider ?: throw RuntimeException("Cannot get ApkProvider") }
 ) : AndroidConfigurationExecutor {
 
@@ -116,7 +115,7 @@ class AndroidTestRunConfigurationExecutor @JvmOverloads constructor(
     // instrumentation tests, the target application may be killed in between test cases by test runner. Only test
     // runner knows when all test run completes.
     val shouldAutoTerminate = false
-    val processHandler = AndroidProcessHandler(project, processId, { it.forceStop(processId) }, shouldAutoTerminate)
+    val processHandler = AndroidProcessHandler(processId, { it.forceStop(processId) }, shouldAutoTerminate)
 
     val console = createAndroidTestSuiteView()
     processHandler.putCopyableUserData(ANDROID_TEST_RESULT_LISTENER_KEY, console)
@@ -160,7 +159,7 @@ class AndroidTestRunConfigurationExecutor @JvmOverloads constructor(
           project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device.serialNumber)
         }
         LaunchUtils.initiateDismissKeyguard(device)
-        getDeployTask(device).run(LaunchContext(env, device, console, processHandler, indicator))
+        getDeployTask(device).run(device, indicator)
         // Notify listeners of the deployment.
         project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingTest(device.serialNumber, project)
       }

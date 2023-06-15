@@ -49,6 +49,21 @@ iml_studio_test(
     test_class = "com.android.tools.idea.OpenProjectTest",
 )
 
+iml_studio_test(
+    name = "ShowUsagesTest",
+    timeout = "long",
+    data = [
+        ":minapp",
+        ":showusages_deps",
+        INTEGRATION_TEST_GRADLE_VERSION,
+        INTEGRATION_TEST_SYSTEM_IMAGE,
+    ],
+    module = ":intellij.android.core.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.ShowUsagesTest",
+)
+
 iml_test(
     name = "EmulatorTest",
     data = [
@@ -352,6 +367,24 @@ iml_studio_test(
     test_class = "com.android.tools.idea.BuildAndRunInstrumentedTest",
 )
 
+iml_studio_test(
+    name = "DebugJUnitTest",
+    timeout = "long",
+    data = [
+        ":debug_junit_test_deps",
+        ":debugjunittest",
+        "//prebuilts/studio/sdk:build-tools/30.0.3",
+        INTEGRATION_TEST_GRADLE_VERSION,
+    ],
+    module = ":intellij.android.core.integration",
+    tags_linux = ["block-network"],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+    ],
+    test_class = "com.android.tools.idea.DebugJUnitTest",
+)
+
 maven_repository(
     name = "buildproject_deps",
     # keep sorted: for buildifier
@@ -447,6 +480,40 @@ maven_repository(
     ],
 )
 
+maven_repository(
+    name = "showusages_deps",
+    # keep sorted: for buildifier
+    artifacts = [
+        "@maven//:com.android.tools.build.aapt2_7.1.0-7984345",
+        "@maven//:com.android.tools.build.gradle_7.1.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
+        "@maven//:org.jetbrains.markdown_0.2.1",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+maven_repository(
+    name = "debug_junit_test_deps",
+    # keep sorted: for buildifier
+    artifacts = [
+        "@maven//:androidx.appcompat.appcompat_1.4.1",
+        "@maven//:androidx.core.core-ktx_1.8.0",
+        "@maven//:com.android.tools.build.aapt2_7.2.0-7984345",
+        "@maven//:com.android.tools.build.gradle_7.2.0",
+        "@maven//:junit.junit_4.13.2",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler-embeddable_1.7.20",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
+        "@maven//:org.jetbrains.markdown_0.2.1",
+    ],
+)
+
 filegroup(
     name = "minapp",
     srcs = glob(["testData/minapp/**"]),
@@ -466,4 +533,9 @@ filegroup(
 filegroup(
     name = "instrumenttestapp",
     srcs = glob(["testData/InstrumentedTestApp/**"]),
+)
+
+filegroup(
+    name = "debugjunittest",
+    srcs = glob(["testData/JUnitTestApp/**"]),
 )

@@ -30,15 +30,16 @@ import com.android.tools.idea.compose.preview.actions.StopAnimationInspectorActi
 import com.android.tools.idea.compose.preview.actions.StopInteractivePreviewAction
 import com.android.tools.idea.compose.preview.actions.StopUiCheckPreviewAction
 import com.android.tools.idea.compose.preview.actions.visibleOnlyInComposeStaticPreview
+import com.android.tools.idea.compose.preview.lite.ComposePreviewLiteModeManager
 import com.android.tools.idea.editors.sourcecode.isKotlinFileType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.representation.CommonRepresentationEditorFileType
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationProvider
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
+import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -72,7 +73,8 @@ private class ComposePreviewToolbar(private val surface: DesignSurface<*>) :
             layoutManagerSwitcher = surface.sceneViewLayoutManager as LayoutManagerSwitcher,
             layoutManagers = PREVIEW_LAYOUT_MANAGER_OPTIONS
           ) {
-            !isAnyPreviewRefreshing(it.dataContext)
+            !isAnyPreviewRefreshing(it.dataContext) &&
+              !ComposePreviewLiteModeManager.isLiteModeEnabled
           }
           .visibleOnlyInComposeStaticPreview(),
         StudioFlags.COMPOSE_DEBUG_BOUNDS.ifEnabled { ShowDebugBoundaries() },

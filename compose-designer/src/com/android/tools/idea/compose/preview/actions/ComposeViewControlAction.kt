@@ -23,11 +23,10 @@ import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.compose.preview.analytics.PreviewCanvasTracker
 import com.android.tools.idea.compose.preview.isAnyPreviewRefreshing
 import com.android.tools.idea.compose.preview.isPreviewFilterEnabled
+import com.android.tools.idea.compose.preview.lite.ComposePreviewLiteModeManager
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
-import com.android.tools.idea.uibuilder.actions.SurfaceLayoutManagerOption
-import com.android.tools.idea.uibuilder.actions.SwitchSurfaceLayoutManagerAction
+import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -57,12 +56,16 @@ class ComposeViewControlAction(
     super.update(e)
     e.presentation.isEnabled = !isAnyPreviewRefreshing(e.dataContext)
     e.presentation.isVisible = !isPreviewFilterEnabled(e.dataContext)
+    e.presentation.description =
+      if (ComposePreviewLiteModeManager.isLiteModeEnabled)
+        message("action.scene.view.control.lite.mode.description")
+      else message("action.scene.view.control.description")
   }
 
   @VisibleForTesting
   public override fun updateActions(context: DataContext): Boolean {
     removeAll()
-    if (StudioFlags.COMPOSE_VIEW_FILTER.get()) {
+    if (StudioFlags.COMPOSE_VIEW_FILTER.get() && !ComposePreviewLiteModeManager.isLiteModeEnabled) {
       DESIGN_SURFACE.getData(context)?.let { surface ->
         add(ComposeShowFilterAction(surface))
         addSeparator()

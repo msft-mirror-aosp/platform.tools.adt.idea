@@ -35,6 +35,7 @@ import com.android.tools.profiler.perfetto.proto.TraceProcessor;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Transport;
+import com.android.tools.profilers.LogUtils;
 import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerTrackRendererType;
 import com.android.tools.profilers.Stage;
@@ -105,9 +106,9 @@ import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static com.android.tools.profilers.StringFormattingUtils.formatStringInTitleCase;
 import static com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel.getUnitFromTrackName;
 import static com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel.getFormattedBatteryDrainName;
-
 
 /**
  * This class holds the models and capture data for the {@code com.android.tools.profilers.cpu.CpuCaptureStageView}.
@@ -362,6 +363,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
           }
         }
         else {
+          LogUtils.log(getClass(), "CPU capture successfully parsed");
           myCapture = capture;
           onCaptureParsed(capture);
           setState(State.ANALYZING);
@@ -470,6 +472,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
     }
 
     if (capture instanceof SystemTraceCpuCapture && capture.getSystemTraceData() != null) {
+      LogUtils.log(getClass(), "CPU capture contains system trace data");
       createDisplayPipelineTrackGroups((SystemTraceCpuCapture)capture)
         .forEach(myTrackGroupModels::add);
     }
@@ -827,15 +830,16 @@ public class CpuCaptureStage extends Stage<Timeline> {
   }
 
   private TrackGroupModel createPowerRailsTrackGroup(@NotNull CpuSystemTraceData systemTraceData) {
+    PowerProfilerDisplayMode displayMode =
+      getStudioProfilers().getIdeServices().getFeatureConfig().getSystemTracePowerProfilerDisplayMode();
+    String displayModeTitleCase = formatStringInTitleCase(displayMode.name());
     TrackGroupModel power = TrackGroupModel.newBuilder()
-      .setTitle("Power Rails")
+      .setTitle("Power Rails " + "(" + displayModeTitleCase + ")")
       .setTitleHelpText("This section shows the device's power consumption per hardware component.<br/>" +
                         "<b>Power Rails</b> are wires in your device that connect the battery to hardware modules.")
       .setCollapsedInitially(false)
       .build();
 
-    PowerProfilerDisplayMode displayMode =
-      getStudioProfilers().getIdeServices().getFeatureConfig().getSystemTracePowerProfilerDisplayMode();
     systemTraceData.getPowerRailCounters().forEach(
       (trackName, trackData) -> {
         PowerRailTrackModel trackModel = new PowerRailTrackModel(trackData, myTrackGroupTimeline.getViewRange(), displayMode);

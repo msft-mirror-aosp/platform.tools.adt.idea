@@ -93,7 +93,9 @@ class AccessibilityModelUpdaterTest {
     view: TestComposePreviewView
   ): ComposePreviewRepresentation {
     val previewRepresentation =
-      ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> view }
+      ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _, _ ->
+        view
+      }
     Disposer.register(fixture.testRootDisposable, previewRepresentation)
     previewRepresentation.atfChecksEnabled = true
     return previewRepresentation
@@ -131,7 +133,7 @@ class AccessibilityModelUpdaterTest {
     assertNotEquals(-1, buttonTextViewComponent.accessibilityId)
     assertEquals(235, buttonTextViewComponent.w)
     val buttonTextViewNavigatable = buttonTextViewComponent.navigatable as OpenFileDescriptor
-    assertEquals(1137, buttonTextViewNavigatable.offset)
+    assertEquals(1225, buttonTextViewNavigatable.offset)
     assertEquals("MainActivity.kt", buttonTextViewNavigatable.file.name)
 
     val buttonComponent = children[1]
@@ -139,7 +141,7 @@ class AccessibilityModelUpdaterTest {
     assertNotEquals(-1, buttonComponent.accessibilityId)
     assertEquals(323, buttonComponent.w)
     val buttonNavigatable = buttonComponent.navigatable as OpenFileDescriptor
-    assertEquals(1137, buttonNavigatable.offset)
+    assertEquals(1225, buttonNavigatable.offset)
     assertEquals("MainActivity.kt", buttonNavigatable.file.name)
   }
 }

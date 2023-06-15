@@ -21,7 +21,10 @@ import com.android.tools.idea.insights.RepoInfo
 import com.android.tools.idea.insights.VCS_CATEGORY
 import com.intellij.dvcs.repo.Repository
 import com.intellij.dvcs.repo.VcsRepositoryManager
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.impl.DocumentImpl
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtilRt
 import com.intellij.openapi.vcs.AbstractVcs
 import com.intellij.openapi.vcs.FilePath
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
@@ -29,12 +32,12 @@ import com.intellij.openapi.vcs.history.VcsRevisionNumber
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.vcsUtil.VcsUtil
 
-internal fun VirtualFile.getVcsManager(project: Project): AbstractVcs? {
+fun VirtualFile.getVcsManager(project: Project): AbstractVcs? {
   return ProjectLevelVcsManager.getInstance(project).getVcsFor(this)
 }
 
 /** Returns the first matched [Repository] for a given [RepoInfo]. */
-internal fun RepoInfo.locateRepository(project: Project): Repository? {
+fun RepoInfo.locateRepository(project: Project): Repository? {
   return VcsRepositoryManager.getInstance(project).repositories.firstOrNull { repoCandidate ->
     // 1. Check if vcs category is matching or not.
     if (VcsForAppInsights.getExtensionByKey(vcsKey)?.isApplicable(repoCandidate.vcs) != true)
@@ -45,14 +48,31 @@ internal fun RepoInfo.locateRepository(project: Project): Repository? {
   }
 }
 
-internal fun VirtualFile.toVcsFilePath(): FilePath = VcsUtil.getFilePath(this)
+fun VirtualFile.toVcsFilePath(): FilePath = VcsUtil.getFilePath(this)
 
-internal fun createRevisionNumber(vcsKey: VCS_CATEGORY, revision: String): VcsRevisionNumber? {
+fun createRevisionNumber(vcsKey: VCS_CATEGORY, revision: String): VcsRevisionNumber? {
   return VcsForAppInsights.getExtensionByKey(vcsKey)?.createVcsRevision(revision)
 }
 
-internal fun createShortRevisionString(vcsKey: VCS_CATEGORY, revision: String): String? {
+fun createShortRevisionString(vcsKey: VCS_CATEGORY, revision: String): String? {
   val revisionNumber = createRevisionNumber(vcsKey, revision) ?: return null
 
   return VcsUtil.getShortRevisionString(revisionNumber)
+}
+
+fun createVcsDocument(
+  vcsKey: VCS_CATEGORY,
+  virtualFile: VirtualFile,
+  revision: String,
+  project: Project
+): Document? {
+  // There's underlying cache layer: `ContentRevisionCache`.
+  val vcsContentText =
+    VcsForAppInsights.getExtensionByKey(vcsKey)
+      ?.createVcsContent(virtualFile.toVcsFilePath(), revision, project)
+      ?.content
+      ?.let { StringUtilRt.convertLineSeparators(it, "\n") }
+      ?: return null
+
+  return DocumentImpl(vcsContentText)
 }

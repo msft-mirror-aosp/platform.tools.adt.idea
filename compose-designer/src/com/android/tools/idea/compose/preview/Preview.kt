@@ -53,10 +53,10 @@ import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.editors.build.outOfDateKtFiles
 import com.android.tools.idea.editors.fast.CompilationResult
 import com.android.tools.idea.editors.fast.FastPreviewManager
-import com.android.tools.idea.editors.powersave.PreviewPowerSaveManager
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LoggerWithFixedInfo
+import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.modes.essentials.EssentialsModeMessenger
 import com.android.tools.idea.preview.NavigatingInteractionHandler
 import com.android.tools.idea.preview.PreviewDisplaySettings
@@ -68,19 +68,18 @@ import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.needsBuild
 import com.android.tools.idea.projectsystem.setupBuildListener
 import com.android.tools.idea.rendering.isErrorResult
-import com.android.tools.idea.uibuilder.actions.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationState
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
+import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
 import com.android.tools.rendering.RenderService
 import com.intellij.ide.ActivityTracker
-import com.intellij.ide.PowerSaveMode
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
@@ -110,7 +109,6 @@ import com.intellij.util.ui.UIUtil
 import java.io.File
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JComponent
 import javax.swing.event.TreeSelectionListener
@@ -145,12 +143,6 @@ import org.jetbrains.kotlin.psi.KtFile
 
 /** Background color for the surface while "Interactive" is enabled. */
 private val INTERACTIVE_BACKGROUND_COLOR = JBColor(0xF7F8FA, 0x2B2D30)
-
-/**
- * Default background used by the surface. This is used to restore the state after disabling the
- * interactive preview.
- */
-private val DEFAULT_BACKGROUND_COLOR = JBColor(0xFFFFFF, 0x1E1F22)
 
 /** [Notification] group ID. Must match the `groupNotification` entry of `compose-designer.xml`. */
 const val PREVIEW_NOTIFICATION_GROUP_ID = "Compose Preview Notification"
@@ -235,7 +227,7 @@ fun configureLayoutlibSceneManager(
     setShrinkRendering(!showDecorations)
     interactive = isInteractive
     isUsePrivateClassLoader = requestPrivateClassLoader
-    setQuality(if (PreviewPowerSaveManager.isInPowerSaveMode) 0.5f else 0.7f)
+    setQuality(if (EssentialsMode.isEnabled()) 0.75f else 0.95f)
     setShowDecorations(showDecorations)
     // The Compose Preview has its own way to track out of date files so we ask the Layoutlib Scene
     // Manager to not
@@ -306,15 +298,6 @@ class ComposePreviewRepresentation(
   private val project
     get() = psiFilePointer.project
 
-  /**
-   * Counts the current number of simultaneous executions of [refresh] method. Being inside the
-   * [refresh] indicates that the this preview is being refreshed. Even though [requestRefresh]
-   * guarantees that only at most a single refresh happens at any point in time, there might be
-   * several simultaneous calls to [refresh] method and therefore we need a counter instead of
-   * boolean flag.
-   */
-  private val refreshCallsCount = AtomicInteger(0)
-
   @Volatile private var interactiveMode = ComposePreviewManager.InteractiveMode.DISABLED
 
   private val refreshManager = ComposePreviewRefreshManager.getInstance(project)
@@ -383,18 +366,7 @@ class ComposePreviewRepresentation(
 
   init {
     val project = psiFile.project
-    /* b/277124475 */
-    project.messageBus
-      .connect(this as Disposable)
-      .subscribe(
-        PowerSaveMode.TOPIC,
-        PowerSaveMode.Listener {
-          updateFpsForCurrentMode()
 
-          // When getting out of power save mode, request a refresh
-          if (!PreviewPowerSaveManager.isInPowerSaveMode) requestRefresh()
-        }
-      )
     val essentialsModeMessagingService = service<EssentialsModeMessenger>()
     project.messageBus
       .connect(this as Disposable)
@@ -402,15 +374,15 @@ class ComposePreviewRepresentation(
         essentialsModeMessagingService.TOPIC,
         EssentialsModeMessenger.Listener {
           updateFpsForCurrentMode()
-          // When getting out of Essential Highlighting mode, request a refresh
-          if (!PreviewPowerSaveManager.isInPowerSaveMode) requestRefresh()
+          // When getting out of Essentials Mode, request a refresh
+          if (!EssentialsMode.isEnabled()) requestRefresh()
         }
       )
   }
 
   private fun updateFpsForCurrentMode() {
     fpsLimit =
-      if (PreviewPowerSaveManager.isInPowerSaveMode) {
+      if (EssentialsMode.isEnabled()) {
         StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get() / 3
       } else {
         StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get()
@@ -556,7 +528,7 @@ class ComposePreviewRepresentation(
 
   private fun onStaticPreviewStart() {
     sceneComponentProvider.enabled = true
-    surface.background = DEFAULT_BACKGROUND_COLOR
+    surface.background = Colors.DEFAULT_BACKGROUND_COLOR
   }
 
   private fun onInteractivePreviewStop() {
@@ -685,6 +657,7 @@ class ComposePreviewRepresentation(
             project,
             psiFilePointer,
             projectBuildStatusManager,
+            ::requestRefresh,
             dataProvider,
             createMainDesignSurfaceBuilder(
               project,
@@ -699,7 +672,7 @@ class ComposePreviewRepresentation(
           )
         }
       )
-      .apply { mainSurface.background = DEFAULT_BACKGROUND_COLOR }
+      .apply { mainSurface.background = Colors.DEFAULT_BACKGROUND_COLOR }
 
   @VisibleForTesting
   val staticPreviewInteractionHandler =
@@ -966,7 +939,7 @@ class ComposePreviewRepresentation(
             }
 
             if (
-              !PreviewPowerSaveManager.isInPowerSaveMode &&
+              !EssentialsMode.isEnabled() &&
                 interactiveMode.isStoppingOrDisabled() &&
                 !animationInspection.get() &&
                 !ComposePreviewLiteModeManager.isLiteModeEnabled
@@ -1020,7 +993,7 @@ class ComposePreviewRepresentation(
   // endregion
 
   override fun onCaretPositionChanged(event: CaretEvent, isModificationTriggered: Boolean) {
-    if (PreviewPowerSaveManager.isInPowerSaveMode) return
+    if (EssentialsMode.isEnabled()) return
     if (isModificationTriggered) return // We do not move the preview while the user is typing
     if (!StudioFlags.COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE.get()) return
     if (interactiveMode.isStartingOrReady()) return
@@ -1083,7 +1056,7 @@ class ComposePreviewRepresentation(
 
   override fun status(): ComposePreviewManager.Status {
     val isRefreshing =
-      (refreshCallsCount.get() > 0 ||
+      (refreshManager.isRefreshingFlow.value ||
         DumbService.isDumb(project) ||
         projectBuildStatusManager.isBuilding)
 
@@ -1298,7 +1271,6 @@ class ComposePreviewRepresentation(
         }
 
         requestVisibilityAndNotificationsUpdate()
-        refreshCallsCount.incrementAndGet()
 
         try {
           refreshProgressIndicator.text = message("refresh.progress.indicator.finding.previews")
@@ -1342,7 +1314,6 @@ class ComposePreviewRepresentation(
           if (t is CancellationException) requestLogger.debug("Request cancelled", t)
           else requestLogger.warn("Request failed", t)
         } finally {
-          refreshCallsCount.decrementAndGet()
           // Force updating toolbar icons after refresh
           ActivityTracker.getInstance().inc()
         }

@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.ProjectSyncIssues
-import com.android.ide.common.repository.GradleCoordinate
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.ArtifactIdentifier
 import com.android.ide.gradle.model.ArtifactIdentifierImpl
@@ -362,9 +361,8 @@ private fun collectIdentifiers(
         .filterNotNull()
     }
     .flatMap { it.dependencies.asSequence() }
-    .mapNotNull { (libraryResolver(it.target) as? IdeArtifactLibrary)?.artifactAddress }
-    .mapNotNull { GradleCoordinate.parseCoordinateString(it) }
-    .map { ArtifactIdentifierImpl(it.groupId, it.artifactId, it.lowerBoundVersion?.toString().orEmpty()) }
+    .mapNotNull { (libraryResolver(it.target) as? IdeArtifactLibrary)?.component }
+    .map { ArtifactIdentifierImpl(it.group, it.name, it.version.toString()) }
     .distinct()
     .toList()
 }

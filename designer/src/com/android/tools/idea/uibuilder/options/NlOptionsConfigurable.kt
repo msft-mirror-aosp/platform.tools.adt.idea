@@ -3,6 +3,7 @@ package com.android.tools.idea.uibuilder.options
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.editors.fast.FastPreviewConfiguration
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.intellij.ide.ui.search.SearchableOptionContributor
 import com.intellij.ide.ui.search.SearchableOptionProcessor
 import com.intellij.openapi.options.BoundConfigurable
@@ -151,15 +152,24 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
               }
             }
             row {
-              val liteModeHint = "When using Essentials Mode, Preview will preserve resources by inflating previews on demand and" +
-                                 " disabling live updates and preview modes. " +
-                                 "<a href=\"https://developer.android.com/jetpack/compose/tooling/previews\">Learn more</a>"
+              val liteModeHint = "Preview will preserve resources by inflating previews on demand, and disabling live updates and " +
+                                 "preview modes. <a href=\"https://developer.android.com/jetpack/compose/tooling/previews\">Learn more</a>"
 
               radioButton("Essentials")
                 .comment(liteModeHint)
                 .bindSelected(state::isComposePreviewLiteModeEnabled) {
                   state.isComposePreviewLiteModeEnabled = it
                 }
+            }
+          }.enabled(!EssentialsMode.isEnabled())
+          if (EssentialsMode.isEnabled()) {
+            row {
+              label(
+                "Note: Resource usage cannot be changed when Android Studio Essentials Mode is enabled. In this case, Compose Preview " +
+                "resource usage will be overridden to Essentials."
+
+              )
+                .component.isEnabled = false
             }
           }
         }

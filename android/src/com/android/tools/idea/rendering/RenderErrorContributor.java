@@ -20,6 +20,7 @@ import static com.android.SdkConstants.ATTR_ID;
 import static com.android.SdkConstants.ATTR_LAYOUT_HEIGHT;
 import static com.android.SdkConstants.ATTR_LAYOUT_WIDTH;
 import static com.android.AndroidXConstants.CLASS_CONSTRAINT_LAYOUT;
+import static com.android.SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER;
 import static com.android.SdkConstants.CLASS_FLEXBOX_LAYOUT;
 import static com.android.SdkConstants.CLASS_VIEW;
 import static com.android.SdkConstants.DOT_JAVA;
@@ -1012,21 +1013,25 @@ public class RenderErrorContributor {
         builder.addLink("Add constraint-layout library dependency to the project",
                         myLinkManager.createAddDependencyUrl(artifact.toString()));
         builder.add(", ");
-      }
-      if (CLASS_FLEXBOX_LAYOUT.equals(className)) {
+      } else if (CLASS_FLEXBOX_LAYOUT.equals(className)) {
         builder.newline().addNbsps(3);
         builder.addLink("Add flexbox layout library dependency to the project",
                         myLinkManager.createAddDependencyUrl(GoogleMavenArtifactId.FLEXBOX_LAYOUT.toString()));
+        builder.add(", ");
+      } else if (CLASS_COMPOSE_VIEW_ADAPTER.equals(className)) {
+        builder.newline().addNbsps(3);
+        builder.addLink("Add ui-tooling-preview library dependency to the project",
+                        myLinkManager.createAddDebugDependencyUrl(GoogleMavenArtifactId.COMPOSE_TOOLING.toString()));
         builder.add(", ");
       }
 
       builder.addLink("Fix Build Path", myLinkManager.createEditClassPathUrl());
 
-      //DesignSurface surface = renderTask.getDesignSurface();
-      //if (surface != null && surface.getType() == LAYOUT_EDITOR) {
+      String fileType = mySourceFile.getFileType() == XmlFileType.INSTANCE
+        ? "XML"
+        : "File";
       builder.add(", ");
-      builder.addLink("Edit XML", myLinkManager.createShowTagUrl(className));
-      //}
+      builder.addLink("Edit " + fileType, myLinkManager.createShowTagUrl(className));
 
       // Offer to create the class, but only if it looks like a custom view
       // TODO: Check to see if it looks like it's the name of a custom view and the

@@ -18,19 +18,22 @@ package com.android.tools.idea.avdmanager;
 import com.android.sdklib.devices.Device;
 import com.android.tools.adtui.common.ColoredIconGenerator;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.Multimaps;
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.util.ULocale;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.JBMenuItem;
 import com.intellij.openapi.ui.JBPopupMenu;
-import com.intellij.ui.ExperimentalUI;
+import com.intellij.ui.NewUI;
 import com.intellij.ui.SearchTextField;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
-import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.EmptyIcon;
+import com.intellij.util.ui.JBUI.Borders;
 import com.intellij.util.ui.ListTableModel;
-import com.intellij.util.ui.accessibility.AccessibleContextUtil;
 import icons.StudioIcons;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -50,10 +53,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.border.Border;
+import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.ListSelectionEvent;
@@ -69,18 +73,23 @@ import org.jetbrains.annotations.Nullable;
  * Lists the available device definitions by category
  */
 public class DeviceDefinitionList extends JPanel implements ListSelectionListener, DocumentListener, DeviceUiAction.DeviceProvider {
-  private static final Map<String, Device> myDefaultCategoryDeviceMap = Maps.newHashMap();
   private static final int NAME_MODEL_COLUMN_INDEX = 0;
   private static final String SEARCH_RESULTS = "Search Results";
   private static final DecimalFormat ourDecimalFormat = new DecimalFormat(".##");
 
-  private final Map<String, List<Device>> myDeviceCategoryMap = Maps.newHashMap();
+  private Multimap<Category, Device> myCategoryToDefinitionMultimap;
   private final ListTableModel<Device> myModel = new ListTableModel<>();
   private TableView<Device> myTable;
-  private final ListTableModel<String> myCategoryModel = new ListTableModel<>();
-  private TableView<String> myCategoryList;
+
+  /**
+   * myCategoryModel usually contains all the {@link Category Categories.} When the user searches for definitions, it contains
+   * {@link #SEARCH_RESULTS} as well.
+   */
+  private final ListTableModel<Object> myCategoryModel = new ListTableModel<>();
+  private TableView<Object> myCategoryList;
   private JButton myCreateProfileButton;
   private JButton myImportProfileButton;
+  private Map<Category, Device> myCategoryToSelectedDefinitionMap;
   private JButton myRefreshButton;
   private JPanel myPanel;
   private SearchTextField mySearchTextField;
@@ -111,7 +120,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
         @NotNull
         @Override
         public Comparator<Device> getComparator() {
-          return new NameComparator();
+          return Comparator.comparing(Device::getDisplayName, Collator.getInstance(ULocale.ROOT));
         }
       },
       new PlayStoreColumnInfo(),
@@ -184,8 +193,6 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     refreshDeviceProfiles();
     setDefaultDevices();
     myTable.setModelAndUpdateColumns(myModel);
-    myTable.getRowSorter().toggleSortOrder(0);
-    myTable.getRowSorter().toggleSortOrder(0);
     myTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     myTable.setRowSelectionAllowed(true);
 
@@ -193,17 +200,17 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     myTable.getSelectionModel().addListSelectionListener(this);
     // The singular column that serves as the header for our category list
     ColumnInfo[] categoryInfo = {
-      new ColumnInfo<String, String>("Category") {
-        @Nullable
+      new ColumnInfo<Object, String>("Category") {
+        @NotNull
         @Override
-        public String valueOf(String category) {
-          return category;
+        public String valueOf(@NotNull Object category) {
+          return category.toString();
         }
 
         @NotNull
         @Override
-        public TableCellRenderer getRenderer(String s) {
-          return myRenderer;
+        public TableCellRenderer getRenderer(@NotNull Object category) {
+          return new MyTableCellRenderer();
         }
       }};
     myCategoryModel.setColumnInfos(categoryInfo);
@@ -235,24 +242,20 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
   }
 
   private void setDefaultDevices() {
-    Arrays.asList(Category.values()).forEach(this::putDefaultDefinition);
-    myDefaultDevice = myDefaultCategoryDeviceMap.get(Category.PHONE.getName());
+    myCategoryToSelectedDefinitionMap = Arrays.stream(Category.values())
+      .collect(Collectors.toMap(category -> category, this::getDefaultDefinition));
+
+    myDefaultDevice = myCategoryToSelectedDefinitionMap.get(Category.PHONE);
   }
 
-  private void putDefaultDefinition(@NotNull Category category) {
-    var categoryName = category.getName();
-    var definitions = myDeviceCategoryMap.get(categoryName);
+  @NotNull
+  private Device getDefaultDefinition(@NotNull Category category) {
+    var definition = category.getDefaultDefinitionName();
 
-    if (definitions == null) {
-      return;
-    }
-
-    var definitionName = category.getDefaultDefinitionName();
-
-    definitions.stream()
-      .filter(definition -> definition.getDisplayName().equals(definitionName))
+    return myCategoryToDefinitionMultimap.get(category).stream()
+      .filter(d -> d.getDisplayName().equals(definition))
       .findFirst()
-      .ifPresent(definition -> myDefaultCategoryDeviceMap.put(categoryName, definition));
+      .orElseThrow();
   }
 
   @NotNull
@@ -282,7 +285,11 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
   @Override
   public void valueChanged(ListSelectionEvent e) {
     if (e.getSource().equals(myCategoryList.getSelectionModel())) {
-      setCategory(myCategoryList.getSelectedObject());
+      var category = myCategoryList.getSelectedObject();
+
+      if (category != null) {
+        setCategory(category);
+      }
     }
     else if (e.getSource().equals(myTable.getSelectionModel())) {
       onSelectionSet(myTable.getSelectedObject());
@@ -319,7 +326,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     }
     onSelectionSet(device);
     if (device != null) {
-      var category = Category.valueOfDefinition(device).getName();
+      var category = Category.valueOfDefinition(device);
       for (Device listItem : myModel.getItems()) {
         if (listItem.getId().equals(device.getId())) {
           myTable.setSelection(ImmutableSet.of(listItem));
@@ -338,7 +345,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
    */
   private void onSelectionSet(@Nullable Device selectedObject) {
     if (selectedObject != null) {
-      myDefaultCategoryDeviceMap.put(Category.valueOfDefinition(selectedObject).getName(), selectedObject);
+      myCategoryToSelectedDefinitionMap.put(Category.valueOfDefinition(selectedObject), selectedObject);
     }
     for (DeviceDefinitionSelectionListener listener : myListeners) {
       listener.onDeviceSelectionChanged(selectedObject);
@@ -348,18 +355,25 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
   /**
    * Update our list to display the given category.
    */
-  public void setCategory(@Nullable String selectedCategory) {
-    if (myDeviceCategoryMap.containsKey(selectedCategory)) {
-      List<Device> newItems = myDeviceCategoryMap.get(selectedCategory);
-      if (!myModel.getItems().equals(newItems)) {
-        myModel.setItems(newItems);
-        setSelectedDevice(myDefaultCategoryDeviceMap.get(selectedCategory));
-        notifyCategoryListeners(selectedCategory, newItems);
-      }
-    }
-    else if (Objects.equals(selectedCategory, SEARCH_RESULTS)) {
+  private void setCategory(@NotNull Object name) {
+    if (name.equals(SEARCH_RESULTS)) {
       updateSearchResults(mySearchTextField.getText());
+      return;
     }
+
+    if (!(name instanceof Category category)) {
+      throw new IllegalArgumentException(name.getClass().toString());
+    }
+
+    var definitions = List.copyOf(myCategoryToDefinitionMultimap.get(category));
+
+    if (myModel.getItems().equals(definitions)) {
+      return;
+    }
+
+    myModel.setItems(definitions);
+    setSelectedDevice(myCategoryToSelectedDefinitionMap.get(category));
+    notifyCategoryListeners(name.toString(), definitions);
   }
 
   private void notifyCategoryListeners(@Nullable String selectedCategory, @Nullable List<Device> items) {
@@ -370,18 +384,14 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
 
   private void refreshDeviceProfiles() {
     myDevices = new DeviceSupplier().get();
-    myDeviceCategoryMap.clear();
-    for (Device d : myDevices) {
-      var category = Category.valueOfDefinition(d).getName();
-      if (!myDeviceCategoryMap.containsKey(category)) {
-        myDeviceCategoryMap.put(category, new ArrayList<>(1));
-      }
-      myDeviceCategoryMap.get(category).add(d);
-    }
-    var categories = new ArrayList<>(myDeviceCategoryMap.keySet());
-    categories.sort(Comparator.comparing(Category::valueOfName));
-    Collection<String> selection = myCategoryList.getSelection();
-    myCategoryModel.setItems(categories);
+
+    myCategoryToDefinitionMultimap = myDevices.stream()
+      .collect(Multimaps.toMultimap(Category::valueOfDefinition,
+                                    device -> device,
+                                    MultimapBuilder.enumKeys(Category.class).treeSetValues(new NameComparator())::build));
+
+    var selection = myCategoryList.getSelection();
+    myCategoryModel.setItems(new ArrayList<>(Arrays.asList(Category.values())));
     myCategoryList.setSelection(selection);
   }
 
@@ -480,23 +490,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     refreshDeviceProfiles();
   }
 
-  private final Border myBorder = JBUI.Borders.empty(10);
-
-  /**
-   * Renders a simple text field.
-   */
-  private final TableCellRenderer myRenderer = (table, value, isSelected, hasFocus, row, column) -> {
-    JBLabel label = new JBLabel((String)value);
-    label.setBorder(myBorder);
-    if (table.getSelectedRow() == row) {
-      label.setBackground(table.getSelectionBackground());
-      label.setForeground(table.getSelectionForeground());
-      label.setOpaque(true);
-    }
-    return label;
-  };
-
-  private abstract class DeviceColumnInfo extends ColumnInfo<Device, String> {
+  private abstract static class DeviceColumnInfo extends ColumnInfo<Device, String> {
     @Nullable
     @Override
     public Comparator<Device> getComparator() {
@@ -510,39 +504,27 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     @Nullable
     @Override
     public TableCellRenderer getRenderer(Device device) {
-      return myRenderer;
+      return new MyTableCellRenderer();
+    }
+  }
+
+  private static final class MyTableCellRenderer extends DefaultTableCellRenderer {
+    @NotNull
+    @Override
+    public Component getTableCellRendererComponent(@NotNull JTable table,
+                                                   @NotNull Object value,
+                                                   boolean selected,
+                                                   boolean focused,
+                                                   int viewRowIndex,
+                                                   int viewColumnIndex) {
+      var component = (JComponent)super.getTableCellRendererComponent(table, value, selected, focused, viewRowIndex, viewColumnIndex);
+      component.setBorder(Borders.empty(10));
+
+      return component;
     }
   }
 
   private static class PlayStoreColumnInfo extends ColumnInfo<Device, Icon> {
-
-    public static final Icon highlightedPlayStoreIcon = ColoredIconGenerator.generateWhiteIcon(StudioIcons.Avd.DEVICE_PLAY_STORE);
-
-    private static final TableCellRenderer ourIconRenderer = new DefaultTableCellRenderer() {
-      @Override
-      public Component getTableCellRendererComponent(JTable table,
-                                                     Object value,
-                                                     boolean isSelected,
-                                                     boolean hasFocus,
-                                                     int row,
-                                                     int column) {
-        Icon theIcon = (Icon)value;
-        JBLabel label = new JBLabel(theIcon);
-        if (theIcon != null) {
-          AccessibleContextUtil.setName(label, "Play Store");
-        }
-        if (table.getSelectedRow() == row) {
-          label.setBackground(table.getSelectionBackground());
-          label.setForeground(table.getSelectionForeground());
-          label.setOpaque(true);
-          if (theIcon != null) {
-            label.setIcon(ExperimentalUI.isNewUI() ? StudioIcons.Avd.DEVICE_PLAY_STORE : highlightedPlayStoreIcon);
-          }
-        }
-        return label;
-      }
-    };
-
     PlayStoreColumnInfo() {
       super("Play Store");
     }
@@ -550,7 +532,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
     @NotNull
     @Override
     public TableCellRenderer getRenderer(Device device) {
-      return ourIconRenderer;
+      return new PlayStoreTableCellRenderer();
     }
 
     @Override
@@ -558,16 +540,47 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
       return -1; // Re-sizable
     }
 
-    @Nullable
+    @NotNull
     @Override
     public Icon valueOf(@NotNull Device device) {
-      return (device.hasPlayStore() ? StudioIcons.Avd.DEVICE_PLAY_STORE : null);
+      return device.hasPlayStore() ? StudioIcons.Avd.DEVICE_PLAY_STORE : EmptyIcon.ICON_16;
     }
 
     @NotNull
     @Override
     public Comparator<Device> getComparator() {
       return (o1, o2) -> Boolean.compare(o2.hasPlayStore(), o1.hasPlayStore());
+    }
+  }
+
+  private static final class PlayStoreTableCellRenderer extends DefaultTableCellRenderer {
+    private PlayStoreTableCellRenderer() {
+      setHorizontalAlignment(SwingConstants.CENTER);
+    }
+
+    @NotNull
+    @Override
+    public Component getTableCellRendererComponent(@NotNull JTable table,
+                                                   @NotNull Object icon,
+                                                   boolean selected,
+                                                   boolean focused,
+                                                   int viewRowIndex,
+                                                   int viewColumnIndex) {
+      var component = super.getTableCellRendererComponent(table, icon, selected, focused, viewRowIndex, viewColumnIndex);
+
+      var name = icon.equals(EmptyIcon.ICON_16) ? "Doesn't support Google Play system images" : "Supports Google Play system images";
+      component.getAccessibleContext().setAccessibleName(name);
+
+      if (selected && !NewUI.isEnabled()) {
+        setIcon(ColoredIconGenerator.generateWhiteIcon((Icon)icon));
+      }
+
+      return component;
+    }
+
+    @Override
+    protected void setValue(@NotNull Object icon) {
+      setIcon((Icon)icon);
     }
   }
 

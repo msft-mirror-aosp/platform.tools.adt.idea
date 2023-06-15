@@ -17,19 +17,19 @@ package com.android.tools.idea.testartifacts.instrumented
 
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.concurrency.AndroidDispatchers
+import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
+import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.DeviceHeadsUpListener
-import com.android.tools.idea.run.configuration.execution.AndroidConfigurationExecutor
 import com.android.tools.idea.run.configuration.execution.createRunContentDescriptor
 import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.tasks.getBaseDebuggerTask
-import com.android.tools.idea.stats.RunStats
 import com.android.tools.idea.testartifacts.instrumented.orchestrator.MAP_EXECUTION_TYPE_TO_MASTER_ANDROID_PROCESS_NAME
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestSuiteView
 import com.android.tools.idea.util.androidFacet
@@ -53,7 +53,7 @@ import java.util.Locale
 
 open class GradleAndroidTestRunConfigurationExecutor(
   private val env: ExecutionEnvironment,
-  override val deviceFutures: DeviceFutures
+  private val deviceFutures: DeviceFutures
 ) : AndroidConfigurationExecutor {
 
   override val configuration = env.runProfile as AndroidTestRunConfiguration
@@ -100,7 +100,7 @@ open class GradleAndroidTestRunConfigurationExecutor(
     // instrumentation tests, the target application may be killed in between test cases by test runner. Only test
     // runner knows when all test run completes.
     val shouldAutoTerminate = false
-    val processHandler = AndroidProcessHandler(project, processId, autoTerminate = shouldAutoTerminate)
+    val processHandler = AndroidProcessHandler(processId, autoTerminate = shouldAutoTerminate)
     devices.forEach { device -> processHandler.addTargetDevice(device) }
 
     createRunContentDescriptor(processHandler, console, env)

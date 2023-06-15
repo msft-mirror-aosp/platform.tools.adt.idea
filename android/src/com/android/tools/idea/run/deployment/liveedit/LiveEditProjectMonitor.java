@@ -24,7 +24,7 @@ import com.android.annotations.Trace;
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.tools.idea.gradle.project.sync.GradleSyncState;
 import com.android.tools.idea.run.deployment.liveedit.desugaring.LiveEditDesugarResponse;
-import com.android.tools.idea.stats.UsageTrackerUtils;
+import com.android.tools.analytics.UsageTrackerUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.util.Ref;
 import com.intellij.util.ThreeState;
@@ -555,10 +555,9 @@ public class LiveEditProjectMonitor implements Disposable {
       case REMOVED_INTERFACE:
         return LiveEditEvent.Status.UNSUPPORTED_MODIFY_INHERITANCE;
       case UNSUPPORTED_COMPOSE_VERSION:
-        // TODO: Add new event.
-        return LiveEditEvent.Status.UNKNOWN;
+        return LiveEditEvent.Status.UNSUPPORTED_COMPOSE_RUNTIME_VERSION;
       default:
-        return LiveEditEvent.Status.UNKNOWN;
+        return LiveEditEvent.Status.UNKNOWN_LIVE_UPDATE_DEPLOYER_ERROR;
     }
   }
 
