@@ -138,8 +138,9 @@ constructor(
         isPopup = true
         add(Separator.create("Group By"))
         add(GroupByNoneAction(deviceTable))
-        add(GroupingAction(deviceTable, DeviceTableColumns.Type))
+        add(GroupingAction(deviceTable, DeviceTableColumns.FormFactor))
         add(GroupingAction(deviceTable, DeviceTableColumns.Status))
+        add(GroupingAction(deviceTable, DeviceTableColumns.HandleType))
         // TODO: Group by Device groups, OEM, Source
       }
 
@@ -166,6 +167,7 @@ constructor(
 
     add(toolbar.component, BorderLayout.NORTH)
 
+    deviceTable.categoryIndent = 0
     deviceTable.toggleSortOrder(DeviceTableColumns.nameAttribute)
     deviceTable.addToScrollPane(scrollPane)
 

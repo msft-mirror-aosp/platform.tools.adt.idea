@@ -22,6 +22,7 @@ import com.android.tools.idea.editors.strings.model.StringResourceRepository
 import com.android.tools.idea.res.StringResourceWriter
 import com.android.tools.idea.res.getItemTag
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.xml.XmlFile
@@ -34,7 +35,7 @@ class StringResourceData private constructor(
 
   private val keyToResourceMap: MutableMap<StringResourceKey, StringResource> =
     repository.getKeys().associateWith {
-      StringResource(it, this)
+      runReadAction { StringResource(it, this) }
     }.toMutableMap()
 
   fun setKeyName(key: StringResourceKey, name: String) {
@@ -107,16 +108,12 @@ class StringResourceData private constructor(
     get() = keyToResourceMap.keys.toList()
 
   val localeList: List<Locale>
-    get() = translatedLocaleStream
-      .distinct()
+    get() = localeSet
       .sortedWith(Locale.LANGUAGE_NAME_COMPARATOR)
       .toList()
 
   val localeSet: Set<Locale>
-    get() = translatedLocaleStream.toSet()
-
-  private val translatedLocaleStream: Sequence<Locale>
-    get() = keyToResourceMap.values.asSequence().flatMap(StringResource::translatedLocales)
+    get() = repository.getTranslatedLocales()
 
   /**
    * Finds the single XML file responsible for all the translations.

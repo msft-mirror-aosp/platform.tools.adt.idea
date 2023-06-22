@@ -288,50 +288,54 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   @AnyThread
-  private fun onDeviceHeadsUp(deviceSerialNumber: String, activationLevel: ActivationLevel, project: Project) {
+  private fun onDeviceHeadsUp(serialNumber: String, activationLevel: ActivationLevel, project: Project) {
     if (project == toolWindow.project) {
       UIUtil.invokeLaterIfNeeded {
-        val excludedDevice = devicesExcludedFromMirroring.remove(deviceSerialNumber)
+        val excludedDevice = devicesExcludedFromMirroring.remove(serialNumber)
         when {
-          excludedDevice != null -> activateMirroring(deviceSerialNumber, excludedDevice.handle, excludedDevice.config, activationLevel)
-          deviceSerialNumber in deviceClients -> onPhysicalDeviceHeadsUp(deviceSerialNumber, activationLevel)
-          else -> addAttentionRequestAndTriggerEmulatorCatalogUpdate(deviceSerialNumber, activationLevel)
+          excludedDevice != null -> activateMirroring(serialNumber, excludedDevice.handle, excludedDevice.config, activationLevel)
+          serialNumber in deviceClients -> onPhysicalDeviceHeadsUp(serialNumber, activationLevel)
+          else -> addAttentionRequestAndTriggerEmulatorCatalogUpdate(serialNumber, activationLevel)
         }
       }
     }
   }
 
-  private fun addAttentionRequestAndTriggerEmulatorCatalogUpdate(deviceSerialNumber: String, activationLevel: ActivationLevel) {
-    recentAttentionRequests.put(deviceSerialNumber, activationLevel)
+  private fun addAttentionRequestAndTriggerEmulatorCatalogUpdate(serialNumber: String, activationLevel: ActivationLevel) {
+    recentAttentionRequests.put(serialNumber, activationLevel)
     alarm.addRequest(recentAttentionRequests::cleanUp, ATTENTION_REQUEST_EXPIRATION.toMillis())
-    if (isLocalEmulator(deviceSerialNumber)) {
+    if (isLocalEmulator(serialNumber)) {
       val future = RunningEmulatorCatalog.getInstance().updateNow()
       future.addCallback(EdtExecutorService.getInstance(),
                          success = { emulators ->
                            if (emulators != null) {
-                             onEmulatorHeadsUp(deviceSerialNumber, emulators, activationLevel)
+                             onEmulatorHeadsUp(serialNumber, emulators, activationLevel)
                            }
                          },
                          failure = {})
     }
   }
 
-  private fun onPhysicalDeviceHeadsUp(deviceSerialNumber: String, activationLevel: ActivationLevel) {
+  private fun onPhysicalDeviceHeadsUp(serialNumber: String, activationLevel: ActivationLevel) {
     if (toolWindow.isVisible) {
-      val panel = findPanelBySerialNumber(deviceSerialNumber)
+      val panel = findPanelBySerialNumber(serialNumber)
       if (panel != null) {
         selectPanel(panel)
         toolWindow.activate(activationLevel)
       }
     }
     else {
-      lastSelectedDeviceId = DeviceId.ofPhysicalDevice(deviceSerialNumber)
+      if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+        recentAttentionRequests.put(serialNumber, activationLevel)
+      } else {
+        lastSelectedDeviceId = DeviceId.ofPhysicalDevice(serialNumber)
+      }
       toolWindow.activate(activationLevel)
     }
   }
 
-  private fun onEmulatorHeadsUp(deviceSerialNumber: String, runningEmulators: Set<EmulatorController>, activationLevel: ActivationLevel) {
-    val emulator = runningEmulators.find { it.emulatorId.serialNumber == deviceSerialNumber } ?: return
+  private fun onEmulatorHeadsUp(serialNumber: String, runningEmulators: Set<EmulatorController>, activationLevel: ActivationLevel) {
+    val emulator = runningEmulators.find { it.emulatorId.serialNumber == serialNumber } ?: return
     // Ignore standalone emulators.
     if (emulator.emulatorId.isEmbedded) {
       onEmulatorHeadsUp(emulator.emulatorId.avdId, activationLevel)
@@ -672,7 +676,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     mirroredDevices.remove(serialNumber)
     val deviceClient = deviceClients.remove(serialNumber)
     if (deviceClient != null) {
-      updateMirroringHandlesFlow()
       devicesExcludedFromMirroring[serialNumber] =
           DeviceDescription(deviceClient.deviceName, serialNumber, deviceClient.deviceHandle, deviceClient.deviceConfig)
       Disposer.dispose(deviceClient)
@@ -713,7 +716,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       }
     }
     else if (activationLevel >= ActivationLevel.SHOW_TOOL_WINDOW) {
-      if (activationLevel >= ActivationLevel.SELECT_TAB) {
+      if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+        recentAttentionRequests.put(serialNumber, activationLevel)
+      } else {
         lastSelectedDeviceId = DeviceId.ofPhysicalDevice(serialNumber)
       }
       toolWindow.activate(activationLevel)
@@ -761,7 +766,11 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         }
       }
       else if (activationLevel >= ActivationLevel.SHOW_TOOL_WINDOW) {
-        lastSelectedDeviceId = DeviceId.ofPhysicalDevice(serialNumber)
+        if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+          recentAttentionRequests.put(serialNumber, activationLevel)
+        } else {
+          lastSelectedDeviceId = DeviceId.ofPhysicalDevice(serialNumber)
+        }
         toolWindow.activate(activationLevel)
       }
     }
@@ -1050,20 +1059,30 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private inner class MirroringActivator(private val device: DeviceDescription) : MirroringHandle {
+
     override val mirroringState: MirroringState
       get() = MirroringState.INACTIVE
 
     override fun toggleMirroring() {
       activateMirroring(device)
     }
+
+    override fun toString(): String {
+      return "MirroringActivator for ${device.serialNumber}"
+    }
   }
 
   private inner class MirroringDeactivator(private val serialNumber: String) : MirroringHandle {
+
     override val mirroringState: MirroringState
       get() = MirroringState.ACTIVE
 
     override fun toggleMirroring() {
       deactivateMirroring(serialNumber)
+    }
+
+    override fun toString(): String {
+      return "MirroringDeactivator for $serialNumber"
     }
   }
 

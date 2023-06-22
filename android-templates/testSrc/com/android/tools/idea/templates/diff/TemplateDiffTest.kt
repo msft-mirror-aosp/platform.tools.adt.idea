@@ -15,7 +15,12 @@
  */
 package com.android.tools.idea.templates.diff
 
+import com.android.testutils.TestUtils
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.npw.project.GradleAndroidModuleTemplate
+import com.android.tools.idea.npw.model.RenderTemplateModel
+import com.android.tools.idea.npw.template.ModuleTemplateDataBuilder
+import com.android.tools.idea.npw.template.ProjectTemplateDataBuilder
 import com.android.tools.idea.npw.template.TemplateResolver
 import com.android.tools.idea.templates.ProjectStateCustomizer
 import com.android.tools.idea.templates.TemplateStateCustomizer
@@ -24,6 +29,7 @@ import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.FormFactor
+import com.android.tools.idea.wizard.template.Language
 import com.android.tools.idea.wizard.template.StringParameter
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.DisposableRule
@@ -139,12 +145,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
     }
 
     val msToCheck = measureTimeMillis {
-      val project: Project =
-        if (shouldUseGradle()) {
-          (projectRule as AndroidGradleProjectRule).project
-        } else {
-          (projectRule as AndroidProjectRule).project
-        }
+      val project: Project = getProject()
       val projectRenderer: ProjectRenderer =
         when (testMode) {
           TestMode.DIFFING -> ProjectDiffer(template, goldenDirName)
@@ -160,6 +161,13 @@ class TemplateDiffTest(private val testMode: TestMode) {
     println("Checked $name ($goldenDirName) successfully in ${msToCheck}ms\n")
     validationFailed = false
   }
+
+  private fun getProject() =
+    if (shouldUseGradle()) {
+      (projectRule as AndroidGradleProjectRule).project
+    } else {
+      (projectRule as AndroidProjectRule).project
+    }
 
   /**
    * Goes up the stack trace to find the closest @Test method that this was called from. This will
@@ -185,10 +193,31 @@ class TemplateDiffTest(private val testMode: TestMode) {
     throw RuntimeException("Must be called from a @Test")
   }
 
+  private val withKotlin: ProjectStateCustomizer =
+    { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+      projectData.language = Language.Kotlin
+      // Use the Kotlin version for tests
+      projectData.kotlinVersion = TestUtils.KOTLIN_VERSION_FOR_TESTS
+    }
+
+  private fun withApplicationId(applicationId: String): ProjectStateCustomizer =
+    { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+      projectData.applicationPackage = applicationId
+    }
+
+  private fun withPackage(packageName: String): ProjectStateCustomizer =
+    { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+      moduleData.packageName = packageName
+      val paths =
+        GradleAndroidModuleTemplate.createDefaultModuleTemplate(getProject(), moduleData.name!!)
+          .paths
+      moduleData.setModuleRoots(paths, projectData.topOut!!.path, moduleData.name!!, packageName)
+    }
+
   /*
-   * Tests for individual templates go below here. Each test method should only test one template
-   * parameter combination, because the test method name is used as the directory name for the
-   * golden files.
+   * Tests for individual activity templates go below here. Each test method should only test one
+   * template parameter combination, because the test method name is used as the directory name for
+   * the golden files.
    */
   @Test
   fun testNewEmptyViewsActivity() {
@@ -196,7 +225,364 @@ class TemplateDiffTest(private val testMode: TestMode) {
   }
 
   @Test
+  fun testNewEmptyViewsActivity_notInRootPackage() {
+    checkCreateTemplate(
+      "Empty Views Activity",
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage")
+    )
+  }
+
+  @Test
+  fun testNewEmptyViewsActivityKotlin() {
+    checkCreateTemplate("Empty Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewEmptyViewsActivityKotlin_notInRootPackage() {
+    checkCreateTemplate(
+      "Empty Views Activity",
+      withKotlin,
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage")
+    )
+  }
+
+  @Test
   fun testNewBasicViewsActivity() {
     checkCreateTemplate("Basic Views Activity")
+  }
+
+  @Test
+  fun testNewBasicActivityMaterial3() {
+    val withMaterial3: ProjectStateCustomizer =
+      { moduleData: ModuleTemplateDataBuilder, _: ProjectTemplateDataBuilder ->
+        moduleData.isMaterial3 = true
+      }
+    checkCreateTemplate("Basic Views Activity", withKotlin, withMaterial3)
+  }
+
+  @Test
+  fun testNewViewModelActivity() {
+    checkCreateTemplate("Fragment + ViewModel")
+  }
+
+  @Test
+  fun testNewViewModelActivityWithKotlin() {
+    checkCreateTemplate("Fragment + ViewModel", withKotlin)
+  }
+
+  @Test
+  fun testNewTabbedActivity() {
+    checkCreateTemplate("Tabbed Views Activity")
+  }
+
+  @Test
+  fun testNewTabbedActivityWithKotlin() {
+    checkCreateTemplate("Tabbed Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewNavigationDrawerActivity() {
+    checkCreateTemplate("Navigation Drawer Views Activity")
+  }
+
+  @Test
+  fun testNewNavigationDrawerActivityWithKotlin() {
+    checkCreateTemplate("Navigation Drawer Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewPrimaryDetailFlow() {
+    checkCreateTemplate("Primary/Detail Views Flow")
+  }
+
+  @Test
+  fun testNewPrimaryDetailFlowWithKotlin() {
+    checkCreateTemplate("Primary/Detail Views Flow", withKotlin)
+  }
+
+  @Test
+  fun testNewFullscreenActivity() {
+    checkCreateTemplate("Fullscreen Views Activity")
+  }
+
+  @Test
+  fun testNewFullscreenActivityWithKotlin() {
+    checkCreateTemplate("Fullscreen Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewFullscreenActivity_activityNotInRootPackage() {
+    checkCreateTemplate(
+      "Fullscreen Views Activity",
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage")
+    )
+  }
+
+  @Test
+  fun testNewFullscreenActivityWithKotlin_activityNotInRootPackage() {
+    checkCreateTemplate(
+      "Fullscreen Views Activity",
+      withKotlin,
+      withApplicationId("com.mycompany.myapp"),
+      withPackage("com.mycompany.myapp.subpackage")
+    )
+  }
+
+  @Test
+  fun testNewLoginActivity() {
+    checkCreateTemplate("Login Views Activity")
+  }
+
+  @Test
+  fun testNewLoginActivityWithKotlin() {
+    checkCreateTemplate("Login Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewScrollingActivity() {
+    checkCreateTemplate("Scrolling Views Activity")
+  }
+
+  @Test
+  fun testNewScrollingActivityWithKotlin() {
+    checkCreateTemplate("Scrolling Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewSettingsActivity() {
+    checkCreateTemplate("Settings Views Activity")
+  }
+
+  @Test
+  fun testNewSettingsActivityWithKotlin() {
+    checkCreateTemplate("Settings Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testBottomNavigationActivity() {
+    checkCreateTemplate("Bottom Navigation Views Activity")
+  }
+
+  @Test
+  fun testBottomNavigationActivityWithKotlin() {
+    checkCreateTemplate("Bottom Navigation Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testGoogleAdMobAdsActivity() {
+    checkCreateTemplate("Google AdMob Ads Views Activity")
+  }
+
+  @Test
+  fun testGoogleAdMobAdsActivityWithKotlin() {
+    checkCreateTemplate("Google AdMob Ads Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testGoogleMapsActivity() {
+    checkCreateTemplate("Google Maps Views Activity")
+  }
+
+  @Test
+  fun testGoogleMapsActivityWithKotlin() {
+    checkCreateTemplate("Google Maps Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testGooglePayActivity() {
+    checkCreateTemplate("Google Pay Views Activity")
+  }
+
+  @Test
+  fun testGooglePayActivityWithKotlin() {
+    checkCreateTemplate("Google Pay Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testGoogleWalletActivity() {
+    checkCreateTemplate("Google Wallet Activity")
+  }
+
+  @Test
+  fun testGoogleWalletActivityWithKotlin() {
+    checkCreateTemplate("Google Wallet Activity", withKotlin)
+  }
+
+  @Test
+  fun testGameActivity() {
+    checkCreateTemplate("Game Activity (C++)")
+  }
+
+  @Test
+  fun testGameActivityWithKotlin() {
+    checkCreateTemplate("Game Activity (C++)", withKotlin)
+  }
+
+  @Test
+  fun testComposeActivityMaterial3() {
+    val withSpecificKotlin: ProjectStateCustomizer =
+      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+        projectData.language = Language.Kotlin
+        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = true)
+      }
+    checkCreateTemplate("Empty Activity", withSpecificKotlin) // Compose is always Kotlin
+  }
+
+  @Test
+  fun testResponsiveActivity() {
+    checkCreateTemplate("Responsive Views Activity")
+  }
+
+  @Test
+  fun testResponsiveActivityWithKotlin() {
+    checkCreateTemplate("Responsive Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewComposeWearActivity() {
+    val withSpecificKotlin: ProjectStateCustomizer =
+      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+        projectData.language = Language.Kotlin
+        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
+      }
+    checkCreateTemplate("Empty Wear App", withSpecificKotlin)
+  }
+
+  @Test
+  fun testNewComposeWearActivityWithTileAndComplication() {
+    val withSpecificKotlin: ProjectStateCustomizer =
+      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+        projectData.language = Language.Kotlin
+        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
+      }
+    checkCreateTemplate("Empty Wear App With Tile And Complication", withSpecificKotlin)
+  }
+
+  @Test
+  fun testNewTvActivity() {
+    checkCreateTemplate("Android TV Blank Views Activity")
+  }
+
+  @Test
+  fun testNewTvActivityWithKotlin() {
+    checkCreateTemplate("Android TV Blank Views Activity", withKotlin)
+  }
+
+  @Test
+  fun testNewNativeCppActivity() {
+    checkCreateTemplate("Native C++")
+  }
+
+  @Test
+  fun testNewNativeCppActivityWithKotlin() {
+    checkCreateTemplate("Native C++", withKotlin)
+  }
+
+  /*
+   * Tests for individual fragment templates go below here. Each test method should only test one
+   * template parameter combination, because the test method name is used as the directory name for
+   * the golden files.
+   */
+  @Test
+  fun testNewListFragment() {
+    checkCreateTemplate("Fragment (List)")
+  }
+
+  @Test
+  fun testNewListFragmentWithKotlin() {
+    checkCreateTemplate("Fragment (List)", withKotlin)
+  }
+
+  @Test
+  fun testNewModalBottomSheet() {
+    checkCreateTemplate("Modal Bottom Sheet")
+  }
+
+  @Test
+  fun testNewModalBottomSheetWithKotlin() {
+    checkCreateTemplate("Modal Bottom Sheet", withKotlin)
+  }
+
+  @Test
+  fun testNewBlankFragment() {
+    checkCreateTemplate("Fragment (Blank)")
+  }
+
+  @Test
+  fun testNewBlankFragmentWithKotlin() {
+    checkCreateTemplate("Fragment (Blank)", withKotlin)
+  }
+
+  @Test
+  fun testNewSettingsFragment() {
+    checkCreateTemplate("Settings Fragment")
+  }
+
+  @Test
+  fun testNewSettingsFragmentWithKotlin() {
+    checkCreateTemplate("Settings Fragment", withKotlin)
+  }
+
+  @Test
+  fun testNewViewModelFragment() {
+    checkCreateTemplate("Fragment (with ViewModel)")
+  }
+
+  @Test
+  fun testNewViewModelFragmentWithKotlin() {
+    checkCreateTemplate("Fragment (with ViewModel)", withKotlin)
+  }
+
+  @Test
+  fun testNewScrollingFragment() {
+    checkCreateTemplate("Scrolling Fragment")
+  }
+
+  @Test
+  fun testNewScrollingFragmentWithKotlin() {
+    checkCreateTemplate("Scrolling Fragment", withKotlin)
+  }
+
+  @Test
+  fun testNewFullscreenFragment() {
+    checkCreateTemplate("Fullscreen Fragment")
+  }
+
+  @Test
+  fun testNewFullscreenFragmentWithKotlin() {
+    checkCreateTemplate("Fullscreen Fragment", withKotlin)
+  }
+
+  @Test
+  fun testNewGoogleMapsFragment() {
+    checkCreateTemplate("Google Maps Fragment")
+  }
+
+  @Test
+  fun testNewGoogleMapsFragmentWithKotlin() {
+    checkCreateTemplate("Google Maps Fragment", withKotlin)
+  }
+
+  @Test
+  fun testNewGoogleAdMobFragment() {
+    checkCreateTemplate("Google AdMob Ads Fragment")
+  }
+
+  @Test
+  fun testNewGoogleAdMobFragmentWithKotlin() {
+    checkCreateTemplate("Google AdMob Ads Fragment", withKotlin)
+  }
+
+  @Test
+  fun testLoginFragment() {
+    checkCreateTemplate("Login Fragment")
+  }
+
+  @Test
+  fun testLoginFragmentWithKotlin() {
+    checkCreateTemplate("Login Fragment", withKotlin)
   }
 }

@@ -15,20 +15,15 @@
  */
 package com.android.tools.idea.layoutinspector.resource.data
 
-import com.android.ide.common.rendering.api.ResourceReference
-import com.android.tools.idea.layoutinspector.common.StringTable
 import java.awt.Dimension
 
 /**
  * Misc. context about the current running app.
+ *
  * @param mainDisplayOrientation The orientation of the device main display in degrees.
  */
 class AppContext(
-  val theme: Resource? = null,
+  val theme: Resource = Resource(),
   val screenSize: Dimension? = null,
-  val mainDisplayOrientation: Int,
-  val themeString: String = ""
-) {
-  fun createThemeReference(stringTable: StringTable, projectPackageName: String): ResourceReference? =
-    if (themeString.isEmpty()) theme?.createReference(stringTable) else createReference(themeString, projectPackageName)
-}
+  val mainDisplayOrientation: Int
+)

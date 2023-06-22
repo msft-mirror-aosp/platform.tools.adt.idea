@@ -15,156 +15,114 @@
  */
 package com.android.tools.idea.devicemanagerv2
 
-import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.utils.createChildScope
-import com.android.sdklib.deviceprovisioner.ActivationAction
-import com.android.sdklib.deviceprovisioner.DeactivationAction
 import com.android.sdklib.deviceprovisioner.DeviceError
-import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceState
-import com.android.sdklib.deviceprovisioner.RepairDeviceAction
-import com.android.sdklib.deviceprovisioner.TestDefaultDeviceActionPresentation
-import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.testFramework.ApplicationRule
 import icons.StudioIcons
 import javax.swing.SwingUtilities
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StartStopButtonTest {
 
-  @get:Rule val ruleChain = RuleChain.outerRule(ApplicationRule()).around(AndroidExecutorsRule())
+  private val testScope = TestScope()
+  private val testDispatcher = UnconfinedTestDispatcher(testScope.testScheduler)
 
-  class FakeDeviceHandle(
-    override val scope: CoroutineScope,
-  ) : DeviceHandle {
-    override val stateFlow =
-      MutableStateFlow<DeviceState>(DeviceState.Disconnected(DeviceProperties.build {}))
-    override val activationAction = FakeActivationAction()
-    override val deactivationAction = FakeDeactivationAction()
-    override val repairDeviceAction = FakeRepairDeviceAction()
-
-    var active = false
-
-    inner class FakeActivationAction : ActivationAction {
-      var invoked = 0
-      override suspend fun activate() {
-        invoked++
-        active = true
-        presentation.update { it.copy(enabled = false) }
-        deactivationAction.presentation.update { it.copy(enabled = true) }
-      }
-
-      override val presentation =
-        MutableStateFlow(
-          TestDefaultDeviceActionPresentation.fromContext().copy(icon = StudioIcons.Avd.RUN)
+  // Replace executors with the test dispatcher, so that we can use advanceUntilIdle to
+  // execute all consequences of test actions before making assertions.
+  @get:Rule
+  val ruleChain =
+    RuleChain.outerRule(ApplicationRule())
+      .around(
+        AndroidExecutorsRule(
+          workerThreadExecutor = testDispatcher.asExecutor(),
+          diskIoThreadExecutor = testDispatcher.asExecutor(),
+          uiThreadExecutor = { _, runnable -> testScope.launch { runnable.run() } }
         )
-    }
-
-    inner class FakeDeactivationAction : DeactivationAction {
-      var invoked = 0
-      override suspend fun deactivate() {
-        invoked++
-        active = false
-        presentation.update { it.copy(enabled = false) }
-        activationAction.presentation.update { it.copy(enabled = true) }
-      }
-
-      override val presentation =
-        MutableStateFlow(
-          TestDefaultDeviceActionPresentation.fromContext()
-            .copy(icon = StudioIcons.Avd.STOP, enabled = false)
-        )
-    }
-
-    inner class FakeRepairDeviceAction : RepairDeviceAction {
-      var invoked = 0
-      override val presentation =
-        MutableStateFlow(TestDefaultDeviceActionPresentation.fromContext())
-
-      override suspend fun repair() {
-        invoked++
-      }
-    }
-  }
-
-  @Test
-  fun enabled(): Unit = runBlocking {
-    val handle = FakeDeviceHandle(this.createChildScope())
-    val button = StartStopButton(handle, handle.activationAction, handle.deactivationAction, null)
-
-    assertThat(button.isEnabled).isTrue()
-    assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
-
-    button.doClick()
-
-    yieldUntil { handle.activationAction.invoked == 1 }
-    yieldUntil { button.baseIcon == StudioIcons.Avd.STOP }
-
-    assertThat(button.isEnabled).isTrue()
-
-    button.doClick()
-
-    yieldUntil { handle.deactivationAction.invoked == 1 }
-    yieldUntil { button.baseIcon == StudioIcons.Avd.RUN }
-
-    handle.scope.cancel()
-  }
-
-  @OptIn(ExperimentalCoroutinesApi::class)
-  @Test
-  fun repairableDevice() = runTest {
-    val scope = createChildScope(context = UnconfinedTestDispatcher(testScheduler))
-
-    val handle = FakeDeviceHandle(scope)
-    val button =
-      StartStopButton(
-        handle,
-        handle.activationAction,
-        handle.deactivationAction,
-        handle.repairDeviceAction
       )
 
-    class TestError : DeviceError {
-      override val message = "error"
+  @Test
+  fun enabled(): Unit =
+    testScope.runTest {
+      val handle = FakeDeviceHandle(this.createChildScope())
+      val button = StartStopButton(handle, handle.activationAction, handle.deactivationAction, null)
+
+      assertThat(button.isEnabled).isTrue()
+      assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
+
+      SwingUtilities.invokeAndWait { button.doClick() }
+      advanceUntilIdle()
+
+      assertThat(handle.activationAction.invoked).isEqualTo(1)
+      assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.STOP)
+      assertThat(button.isEnabled).isTrue()
+
+      SwingUtilities.invokeAndWait { button.doClick() }
+      advanceUntilIdle()
+
+      assertThat(handle.deactivationAction.invoked).isEqualTo(1)
+      assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
+
+      handle.scope.cancel()
     }
 
-    assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
+  @Test
+  fun repairableDevice() =
+    testScope.runTest {
+      val scope = createChildScope()
 
-    handle.stateFlow.update {
-      DeviceState.Disconnected(
-        DeviceProperties.build {},
-        isTransitioning = false,
-        "Disconnected",
-        error = TestError()
-      )
+      val handle = FakeDeviceHandle(scope)
+      val button =
+        StartStopButton(
+          handle,
+          handle.activationAction,
+          handle.deactivationAction,
+          handle.repairDeviceAction
+        )
+      handle.activationAction.presentation.update { it.copy(enabled = false) }
+
+      class TestError : DeviceError {
+        override val message = "error"
+      }
+
+      assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
+
+      handle.stateFlow.update {
+        DeviceState.Disconnected(
+          DeviceProperties.build {},
+          isTransitioning = false,
+          "Disconnected",
+          error = TestError()
+        )
+      }
+      handle.repairDeviceAction.presentation.update {
+        it.copy(enabled = true, icon = AllIcons.Actions.Download)
+      }
+
+      advanceUntilIdle()
+      assertThat(button.baseIcon).isEqualTo(AllIcons.Actions.Download)
+
+      handle.repairDeviceAction.presentation.update { it.copy(enabled = false) }
+
+      advanceUntilIdle()
+      assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
+
+      scope.cancel()
     }
-    handle.repairDeviceAction.presentation.update {
-      it.copy(enabled = true, icon = AllIcons.Actions.Download)
-    }
-
-    // The icon is updated on the UI thread, pump all EDT events:
-    SwingUtilities.invokeAndWait {}
-    assertThat(button.baseIcon).isEqualTo(AllIcons.Actions.Download)
-
-    handle.repairDeviceAction.presentation.update { it.copy(enabled = false) }
-
-    SwingUtilities.invokeAndWait {}
-    assertThat(button.baseIcon).isEqualTo(StudioIcons.Avd.RUN)
-
-    scope.cancel()
-  }
 }

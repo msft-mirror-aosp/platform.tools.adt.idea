@@ -20,6 +20,7 @@ import static com.intellij.openapi.externalSystem.model.ProjectKeys.LIBRARY_DEPE
 import com.android.tools.idea.gradle.model.IdeCompositeBuildMap;
 import com.android.tools.idea.gradle.model.IdeSyncIssue;
 import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable;
+import com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData;
@@ -27,6 +28,7 @@ import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.project.model.NdkModuleModel;
 import com.android.tools.idea.gradle.project.sync.IdeSyncExecutionReport;
 import com.android.tools.idea.gradle.project.sync.idea.IdeAndroidNativeVariantsModelsWrapper;
+import com.android.tools.idea.gradle.project.sync.idea.data.model.KotlinMultiplatformAndroidSourceSetData;
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectCleanupModel;
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectJdkUpdateData;
 import com.android.tools.idea.projectsystem.gradle.sync.AndroidModuleDataService;
@@ -73,8 +75,12 @@ public final class AndroidProjectKeys {
     Key.create(IdeResolvedLibraryTable.class, ANDROID_MODEL.getProcessingWeight() + 10);
 
   @NotNull
+  public static final Key<KotlinMultiplatformIdeLibraryTable> KMP_ANDROID_LIBRARY_TABLE =
+    Key.create(KotlinMultiplatformIdeLibraryTable.class, IDE_LIBRARY_TABLE.getProcessingWeight() + 10);
+
+  @NotNull
   public static final Key<IdeCompositeBuildMap> IDE_COMPOSITE_BUILD_MAP =
-    Key.create(IdeCompositeBuildMap.class, IDE_LIBRARY_TABLE.getProcessingWeight() + 10);
+    Key.create(IdeCompositeBuildMap.class, KMP_ANDROID_LIBRARY_TABLE.getProcessingWeight() + 10);
 
   @NotNull
   public static final Key<IdeSyncIssue> SYNC_ISSUE = Key.create(IdeSyncIssue.class, IDE_COMPOSITE_BUILD_MAP.getProcessingWeight() + 10);
@@ -94,6 +100,10 @@ public final class AndroidProjectKeys {
   @NotNull
   public static final Key<ProjectJdkUpdateData> PROJECT_JDK_UPDATE =
     Key.create(ProjectJdkUpdateData.class, PROJECT_CLEANUP_MODEL.getProcessingWeight() + 10);
+
+  @NotNull
+  public static final Key<KotlinMultiplatformAndroidSourceSetData> KOTLIN_MULTIPLATFORM_ANDROID_SOURCE_SETS_TABLE =
+    Key.create(KotlinMultiplatformAndroidSourceSetData.class, PROJECT_JDK_UPDATE.getProcessingWeight() + 10);
 
   private AndroidProjectKeys() {
   }

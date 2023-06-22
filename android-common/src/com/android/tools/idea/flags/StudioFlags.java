@@ -731,6 +731,18 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_SYNC_RECREATE_JDK = Flag.create(
     GRADLE_IDE, "gradle.sync.recreate.jdk", "Recreate JDK on sync", "Recreate Gradle JDK when syncing if there are changed roots.", true);
 
+  public static final Flag<Boolean> GRADLE_USES_LOCAL_JAVA_HOME_FOR_NEW_CREATED_PROJECTS = Flag.create(
+    GRADLE_IDE, "gradle.uses.local.java.home.for.new.created.projects",
+    "Gradle uses local java.home for new created projects",
+    "When creating new projects the gradleJvm will be configured with #GRADLE_LOCAL_JAVA_HOME macro, using the java.home value " +
+    "specified under .gradle/config.properties to trigger Gradle sync.", true);
+
+  public static final Flag<Boolean> MIGRATE_PROJECT_TO_GRADLE_LOCAL_JAVA_HOME = Flag.create(
+    GRADLE_IDE, "migrate.project.to.gradle.local.java.home",
+    "Migrate project to Gradle local java.home",
+    "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
+    "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
+
   public static final Flag<Boolean> GRADLE_VERSION_CATALOG_DISPLAY_BANNERS =
     Flag.create(GRADLE_IDE, "gradle.version.catalog.banners", "IDE banners if Version Catalogs used",
                 "Display banners in Gradle-related tools when Version Catalogs are in use", false);
@@ -752,9 +764,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_SKIP_RUNTIME_CLASSPATH_FOR_LIBRARIES = Flag.create(
     GRADLE_IDE,
     "gradle.skip.runtime.classpath.for.libraries",
-    "Skip runtime classpath resolution for libraries",
-    "Skip the runtime classpath resolution for libraries, instead obtain the information from the applications dependency graph.",
-    false
+    "Enable the Gradle experimental setting to skip runtime classpath resolution for libraries",
+    "Enables the Gradle experimental setting to skip the runtime classpath resolution for libraries," +
+    " instead obtain the information from the applications dependency graph.",
+    true
   );
   public static final Flag<String> GRADLE_LOCAL_DISTRIBUTION_URL = Flag.create(
     GRADLE_IDE, "local.distribution.url", "Local override for distributionUrl",
@@ -1163,7 +1176,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_LITE_MODE = Flag.create(
     COMPOSE, "preview.compose.lite.mode", "Enable Compose Preview Lite Mode",
     "If enabled, Preview Lite Mode will be enabled.",
-    false);
+    true);
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_DOUBLE_RENDER = Flag.create(
     COMPOSE, "preview.double.render", "Enable the Compose double render mode",
@@ -1562,8 +1575,7 @@ public final class StudioFlags {
 
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_ENABLE = Flag.create(TSDKVUA, "enable", "Enable the Android SDK Upgrade Assistant", "Enable the Android SDK Upgrade Assistant", true);
-  public static final Flag<Boolean> TSDKVUA_FILTERS = Flag.create(TSDKVUA, "filters", "Enable relevance filtering", "Enable relevance filtering", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = Flag.create(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
   public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", true);

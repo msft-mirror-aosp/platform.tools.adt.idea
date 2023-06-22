@@ -30,6 +30,8 @@ import com.android.tools.idea.execution.common.DeployOptions
 import com.android.tools.idea.execution.common.RunConfigurationNotifier
 import com.android.tools.idea.execution.common.adb.shell.tasks.launchSandboxSdk
 import com.android.tools.idea.execution.common.clearAppStorage
+import com.android.tools.idea.execution.common.debug.AndroidDebuggerState
+import com.android.tools.idea.execution.common.debug.DebugSessionStarter
 import com.android.tools.idea.execution.common.deploy.deployAndHandleError
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
@@ -46,7 +48,6 @@ import com.android.tools.idea.run.configuration.execution.println
 import com.android.tools.idea.run.configuration.isDebug
 import com.android.tools.idea.run.deployment.liveedit.LiveEditApp
 import com.android.tools.idea.run.tasks.RunInstantApp
-import com.android.tools.idea.run.tasks.getBaseDebuggerTask
 import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.util.androidFacet
 import com.intellij.execution.ExecutionException
@@ -62,6 +63,7 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.indicatorRunBlockingCancellable
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.util.Disposer
+import com.intellij.xdebugger.impl.XDebugSessionImpl
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -105,7 +107,7 @@ class AndroidRunConfigurationExecutor(
         project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(it.serialNumber)
       }
       if (configuration.CLEAR_APP_STORAGE) {
-        clearAppStorage(project, it, packageName)
+        clearAppStorage(project, it, packageName, RunStats.from(env))
       }
       LaunchUtils.initiateDismissKeyguard(it)
     }
@@ -157,7 +159,9 @@ class AndroidRunConfigurationExecutor(
   private fun deployAsInstantApp(devices: List<IDevice>, console: ConsoleView) {
     val state: DeepLinkLaunch.State = configuration.getLaunchOptionState(AndroidRunConfiguration.LAUNCH_DEEP_LINK) as DeepLinkLaunch.State
     devices.forEach { device ->
-      RunInstantApp(apkInfosSafe(device), state.DEEP_LINK, configuration.disabledDynamicFeatures).run(console, device)
+      RunStats.from(env).track("RUN_INSTANT_APP") {
+        RunInstantApp(apkInfosSafe(device), state.DEEP_LINK, configuration.disabledDynamicFeatures).run(console, device)
+      }
     }
   }
 
@@ -218,7 +222,7 @@ class AndroidRunConfigurationExecutor(
       project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device.serialNumber)
     }
     if (configuration.CLEAR_APP_STORAGE) {
-      clearAppStorage(project, device, packageName)
+      clearAppStorage(project, device, packageName, RunStats.from(env))
     }
     LaunchUtils.initiateDismissKeyguard(device)
 
@@ -258,9 +262,24 @@ class AndroidRunConfigurationExecutor(
 
   private fun startDebugSession(
     device: IDevice, packageName: String, indicator: ProgressIndicator, console: ConsoleView
-  ) = RunStats.from(env).track("startDebuggerSession") {
-    val debuggerTask = getBaseDebuggerTask(configuration.androidDebuggerContext, facet, env)
-    debuggerTask.perform(device, packageName, env, indicator, console)
+  ):XDebugSessionImpl  {
+    val debugger = configuration.androidDebuggerContext.androidDebugger
+      ?: throw ExecutionException("Unable to determine debugger to use for this launch")
+    LOG.info("Using debugger: " + debugger.id)
+    val debuggerState = configuration.androidDebuggerContext.getAndroidDebuggerState<AndroidDebuggerState>()
+      ?: throw ExecutionException("Unable to determine androidDebuggerState to use for this launch")
+
+    return DebugSessionStarter.attachDebuggerToStartedProcess(
+      device,
+      packageName,
+      env,
+      debugger,
+      debuggerState,
+      destroyRunningProcess = { d -> d.forceStop(packageName) },
+      indicator,
+      console,
+      15
+    )
   }
 
   override fun applyChanges(indicator: ProgressIndicator): RunContentDescriptor = indicatorRunBlockingCancellable(indicator) {
@@ -384,7 +403,8 @@ class AndroidRunConfigurationExecutor(
 
     if (needsNewRunContentDescriptor ||
       existingRunContentDescriptor?.processHandler == null ||
-      existingRunContentDescriptor.processHandler?.isProcessTerminated == true) {
+      existingRunContentDescriptor.processHandler?.isProcessTerminated == true
+    ) {
       existingRunContentDescriptor?.processHandler?.detachProcess()
       if (env.executor.isDebug) {
         startDebugSession(devices.single(), packageName, indicator, createConsole()).runContentDescriptor
@@ -459,7 +479,7 @@ class AndroidRunConfigurationExecutor(
     }
     project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingApp(device.serialNumber, project)
     try {
-      configuration.launch(app, device, facet, amStartOptions.toString(), isDebug, apkProvider, consoleView)
+      configuration.launch(app, device, facet, amStartOptions.toString(), isDebug, apkProvider, consoleView, RunStats.from(env))
     } catch (e: DeployerException) {
       throw AndroidExecutionException(e.id, e.message)
     }

@@ -33,7 +33,7 @@ import com.android.tools.idea.gradle.model.IdeDebugInfo
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeVariantCore
-import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl.Companion.fromLibraryTable
+import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl.Companion.fromLibraryTables
 import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTable
@@ -59,6 +59,7 @@ import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.getIdeModuleSo
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil.getModuleName
 import com.android.tools.idea.gradle.project.sync.idea.TraceSyncUtil.addTraceJvmArgs
 import com.android.tools.idea.gradle.project.sync.idea.VariantProjectDataNodes.Companion.collectCurrentAndPreviouslyCachedVariants
+import com.android.tools.idea.gradle.project.sync.idea.data.model.KotlinMultiplatformAndroidSourceSetType
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectCleanupModel
 import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectJdkUpdateData
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
@@ -234,7 +235,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     }
     val androidModels = resolverCtx.getExtraProject(gradleModule, IdeAndroidModels::class.java)
     val moduleDataNode = nextResolver.createModule(gradleModule, projectDataNode) ?: return null
-    createAndAttachModelsToDataNode(projectDataNode, moduleDataNode, gradleModule, androidModels)
+    createAndAttachModelsToDataNode(moduleDataNode, gradleModule, androidModels)
     ideAndroidSyncIssuesAndExceptions?.process(moduleDataNode)
     patchLanguageLevels(moduleDataNode, gradleModule, androidModels?.androidProject)
     registerModuleData(gradleModule, moduleDataNode)
@@ -333,13 +334,11 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
    *  * JavaModuleModel
    *
    *
-   * @param projectDataNode the project node
    * @param moduleNode      the module node to attach the models to
    * @param gradleModule    the module in question
    * @param androidModels   the android project models obtained from this module (null is none found)
    */
   private fun createAndAttachModelsToDataNode(
-    projectDataNode: DataNode<ProjectData>,
     moduleNode: DataNode<ModuleData>,
     gradleModule: IdeaModule,
     androidModels: IdeAndroidModels?
@@ -355,7 +354,6 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     var androidModel: GradleAndroidModelData? = null
     var ndkModuleModel: NdkModuleModel? = null
     var gradleModel: GradleModuleModel? = null
-    var issueData: Collection<IdeSyncIssue>? = null
     if (androidModels != null) {
       androidModel = createGradleAndroidModel(moduleName, rootModulePath, androidModels, mppModel)
       val ndkModuleName = moduleName + "." + getModuleName(androidModel.mainArtifactCore.name)
@@ -511,7 +509,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
         myResolvedLibraryTable!!
       )
     }
-    val libraryResolver = fromLibraryTable(myResolvedLibraryTable!!)
+    val libraryResolver = fromLibraryTables(myResolvedLibraryTable!!, null)
 
     // Call all the other resolvers to ensure that any dependencies that they need to provide are added.
     nextResolver.populateModuleDependencies(gradleModule, ideModule, ideProject)
@@ -562,11 +560,19 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     ideLibraryTable: IdeUnresolvedLibraryTable
   ): IdeResolvedLibraryTable {
     val artifactModuleIdMap = buildArtifactsModuleIdMap(ideProject)
+    val kotlinMultiplatformAndroidSourceSetData = ExternalSystemApiUtil.find(
+      ideProject,
+      AndroidProjectKeys.KOTLIN_MULTIPLATFORM_ANDROID_SOURCE_SETS_TABLE
+    )?.data
     return ResolvedLibraryTableBuilder(
       { key: Any? -> myGradlePathByModuleId[key] },
       { key: Any? -> myModuleDataByGradlePath[key] },
       { artifact: File -> resolveArtifact(artifactModuleIdMap, artifact) },
-      { "androidMain" } // TODO(b/269755640): Get this from the kmp resolvers
+      {
+        kotlinMultiplatformAndroidSourceSetData?.sourceSetsByGradleProjectPath?.get(
+          it.path
+        )?.get(KotlinMultiplatformAndroidSourceSetType.MAIN)
+      }
     ).buildResolvedLibraryTable(ideLibraryTable)
   }
 

@@ -57,27 +57,34 @@ import com.android.tools.idea.layoutinspector.view
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
+import java.awt.Dimension
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import java.awt.Dimension
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
 
-private val PROCESS = MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
+private val PROCESS =
+  MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 class AppInspectionSnapshotSupportTest {
   private val projectRule = AndroidProjectRule.withSdk()
   private val appInspectorRule = AppInspectionInspectorRule(projectRule)
   private lateinit var inspectorClientSettings: InspectorClientSettings
-  private val inspectorRule = LayoutInspectorRule(
-    listOf(appInspectorRule.createInspectorClientProvider(getClientSettings = { inspectorClientSettings })), projectRule
-  ) {
-    it.name == PROCESS.name
-  }
+  private val inspectorRule =
+    LayoutInspectorRule(
+      listOf(
+        appInspectorRule.createInspectorClientProvider(
+          getClientSettings = { inspectorClientSettings }
+        )
+      ),
+      projectRule
+    ) {
+      it.name == PROCESS.name
+    }
 
   @get:Rule
   val ruleChain = RuleChain.outerRule(projectRule).around(appInspectorRule).around(inspectorRule)!!
@@ -92,42 +99,35 @@ class AppInspectionSnapshotSupportTest {
 
   @Test
   fun saveAndLoadLiveSnapshot() {
-    inspectorClientSettings.isCapturingModeOn = true
-    appInspectorRule.viewInspector.interceptWhen ({ it.hasStartFetchCommand() }) {
+    inspectorClientSettings.isCapturingModeOn = false
+    runBlocking { inspectorRule.inspectorClient.stopFetching() }
+    appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
+      appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
+
+      appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
       appInspectorRule.viewInspector.connection.sendEvent {
-        createLayoutEventWithDeviceInfo(layoutEventBuilder)
+        createPropertiesEvent(propertiesEventBuilder)
       }
+
       LayoutInspectorViewProtocol.Response.newBuilder()
         .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
         .build()
     }
-    inspectorRule.processNotifier.fireConnected(PROCESS)
-    waitForCondition(10L, TimeUnit.SECONDS) { inspectorRule.inspectorModel.resourceLookup.hasResolver }
 
-    appInspectorRule.viewInspector.interceptWhen ({ it.hasCaptureSnapshotCommand() }) {
-      LayoutInspectorViewProtocol.Response.newBuilder().apply {
-        captureSnapshotResponseBuilder.apply {
-          addAllWindowSnapshots(listOf(
-            LayoutInspectorViewProtocol.CaptureSnapshotResponse.WindowSnapshot.newBuilder().apply {
-              createLayoutEvent(layoutBuilder)
-              createPropertiesEvent(propertiesBuilder)
-            }.build()
-          ))
-          windowRootsBuilder.apply {
-            addAllIds(listOf(ROOT))
-          }
-        }
-      }.build()
-    }
+    inspectorRule.processNotifier.fireConnected(PROCESS)
+    inspectorRule.processes.selectedProcess = PROCESS
+    waitForCondition(20, TimeUnit.SECONDS) { inspectorRule.inspectorModel.windows.isNotEmpty() }
 
     inspectorRule.inspectorClient.saveSnapshot(savePath)
-    inspectorRule.inspectorModel.resourceLookup.updateConfiguration(null, null, null)
-
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
     val newModel = InspectorModel(inspectorRule.project)
-    snapshotLoader.loadFile(savePath, newModel, inspectorRule.notificationModel, inspectorRule.inspectorClient.stats)
+    snapshotLoader.loadFile(
+      savePath,
+      newModel,
+      inspectorRule.notificationModel,
+      inspectorRule.inspectorClient.stats
+    )
     checkSnapshot(newModel, snapshotLoader)
-
     assertThat(newModel.resourceLookup.dpi).isEqualTo(640)
     assertThat(newModel.resourceLookup.fontScale).isEqualTo(1.2f)
     assertThat(newModel.resourceLookup.screenDimension).isEqualTo(Dimension(800, 1600))
@@ -137,7 +137,8 @@ class AppInspectionSnapshotSupportTest {
   @Test
   fun saveAndLoadLiveSnapshotWithDeepComposeNesting() {
     inspectorClientSettings.isCapturingModeOn = true
-    val inspectorState = FakeInspectorState(appInspectorRule.viewInspector, appInspectorRule.composeInspector)
+    val inspectorState =
+      FakeInspectorState(appInspectorRule.viewInspector, appInspectorRule.composeInspector)
     inspectorState.createFakeViewTree()
     inspectorState.createFakeViewTreeAsSnapshot()
     inspectorState.createFakeLargeComposeTree()
@@ -151,7 +152,12 @@ class AppInspectionSnapshotSupportTest {
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
     val newModel = InspectorModel(inspectorRule.project)
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
+    snapshotLoader.loadFile(
+      savePath,
+      newModel,
+      newNotificationModel,
+      inspectorRule.inspectorClient.stats
+    )
 
     // Verify we have all 126 composables
     for (id in -300L downTo -425L) {
@@ -166,44 +172,35 @@ class AppInspectionSnapshotSupportTest {
   @Test
   fun saveAndLoadNonLiveSnapshot() {
     inspectorClientSettings.isCapturingModeOn = false
+    runBlocking { inspectorRule.inspectorClient.stopFetching() }
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
-      appInspectorRule.viewInspector.connection.sendEvent {
-        rootsEventBuilder.apply {
-          addIds(1L)
-        }
-      }
+      appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
 
-      appInspectorRule.viewInspector.connection.sendEvent {
-        if (inspectorRule.inspectorModel.lastGeneration == 0) {
-          createLayoutEventWithDeviceInfo(layoutEventBuilder)
-        }
-        else {
-          createLayoutEvent(layoutEventBuilder)
-        }
-      }
+      appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
       appInspectorRule.viewInspector.connection.sendEvent {
         createPropertiesEvent(propertiesEventBuilder)
       }
 
-      LayoutInspectorViewProtocol.Response.newBuilder().setStartFetchResponse(
-        LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance()).build()
+      LayoutInspectorViewProtocol.Response.newBuilder()
+        .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
+        .build()
     }
-    // Connect will cause the load of a LayoutEvent with device information and all properties
+
     inspectorRule.processNotifier.fireConnected(PROCESS)
-    waitForCondition(10L, TimeUnit.SECONDS) { inspectorRule.inspectorModel.lastGeneration == 1 }
+    inspectorRule.processes.selectedProcess = PROCESS
+    waitForCondition(20, TimeUnit.SECONDS) { inspectorRule.inspectorModel.windows.isNotEmpty() }
 
-    // Refresh will cause the load of a LayoutEvent without device information and all properties
-    inspectorRule.inspectorClient.refresh()
-    waitForCondition(10L, TimeUnit.SECONDS) { inspectorRule.inspectorModel.lastGeneration == 2 }
-
-    // Save snapshot should be able to include the device information from the initial LayoutEvent:
     inspectorRule.inspectorClient.saveSnapshot(savePath)
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
     val newModel = InspectorModel(inspectorRule.project)
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
+    snapshotLoader.loadFile(
+      savePath,
+      newModel,
+      newNotificationModel,
+      inspectorRule.inspectorClient.stats
+    )
     checkSnapshot(newModel, snapshotLoader)
-
     assertThat(newModel.resourceLookup.dpi).isEqualTo(640)
     assertThat(newModel.resourceLookup.fontScale).isEqualTo(1.2f)
     assertThat(newModel.resourceLookup.screenDimension).isEqualTo(Dimension(800, 1600))
@@ -215,11 +212,7 @@ class AppInspectionSnapshotSupportTest {
     // Connect initially in live mode
     inspectorClientSettings.isCapturingModeOn = true
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
-      appInspectorRule.viewInspector.connection.sendEvent {
-        rootsEventBuilder.apply {
-          addIds(2L)
-        }
-      }
+      appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(2L) } }
 
       appInspectorRule.viewInspector.connection.sendEvent {
         layoutEventBuilder.apply {
@@ -244,13 +237,15 @@ class AppInspectionSnapshotSupportTest {
           }
         }
       }
-      LayoutInspectorViewProtocol.Response.newBuilder().setStartFetchResponse(
-        LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance()).build()
+      LayoutInspectorViewProtocol.Response.newBuilder()
+        .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
+        .build()
     }
 
     appInspectorRule.viewInspector.interceptWhen({ it.hasStopFetchCommand() }) {
-      LayoutInspectorViewProtocol.Response.newBuilder().setStopFetchResponse(
-        LayoutInspectorViewProtocol.StopFetchResponse.getDefaultInstance()).build()
+      LayoutInspectorViewProtocol.Response.newBuilder()
+        .setStopFetchResponse(LayoutInspectorViewProtocol.StopFetchResponse.getDefaultInstance())
+        .build()
     }
 
     inspectorRule.processNotifier.fireConnected(PROCESS)
@@ -269,15 +264,9 @@ class AppInspectionSnapshotSupportTest {
 
     // Now send the events
     startedLatch.await()
-    appInspectorRule.viewInspector.connection.sendEvent {
-      rootsEventBuilder.apply {
-        addIds(1L)
-      }
-    }
+    appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
 
-    appInspectorRule.viewInspector.connection.sendEvent {
-      createLayoutEvent(layoutEventBuilder)
-    }
+    appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
     appInspectorRule.viewInspector.connection.sendEvent {
       createPropertiesEvent(propertiesEventBuilder)
     }
@@ -289,22 +278,27 @@ class AppInspectionSnapshotSupportTest {
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
     val newModel = InspectorModel(inspectorRule.project)
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
+    snapshotLoader.loadFile(
+      savePath,
+      newModel,
+      newNotificationModel,
+      inspectorRule.inspectorClient.stats
+    )
     checkSnapshot(newModel, snapshotLoader)
   }
 
-  private fun checkSnapshot(
-    newModel: InspectorModel,
-    snapshotLoader: SnapshotLoader
-  ) {
-    assertTreeStructure(newModel.windows[ROOT]!!.root, view(ROOT, qualifiedName = "com.android.internal.policy.DecorView") {
-      view(VIEW1, qualifiedName = "android.widget.RelativeLayout") {
-        view(VIEW2, qualifiedName = "android.widget.TextView")
-        view(VIEW3, qualifiedName = "android.widget.RelativeLayout") {
-          view(VIEW4, qualifiedName = "android.widget.TextView")
+  private fun checkSnapshot(newModel: InspectorModel, snapshotLoader: SnapshotLoader) {
+    assertTreeStructure(
+      newModel.windows[ROOT]!!.root,
+      view(ROOT, qualifiedName = "com.android.internal.policy.DecorView") {
+        view(VIEW1, qualifiedName = "android.widget.RelativeLayout") {
+          view(VIEW2, qualifiedName = "android.widget.TextView")
+          view(VIEW3, qualifiedName = "android.widget.RelativeLayout") {
+            view(VIEW4, qualifiedName = "android.widget.TextView")
+          }
         }
       }
-    })
+    )
     var checkedProperties = false
     snapshotLoader.propertiesProvider.addResultListener { _, node, table ->
       assertThat(node.drawId).isEqualTo(VIEW2)
@@ -320,38 +314,40 @@ class AppInspectionSnapshotSupportTest {
   private fun createPropertiesEvent(builder: LayoutInspectorViewProtocol.PropertiesEvent.Builder) {
     builder.apply {
       rootId = ROOT
-      addAllStrings(listOf(
-        ViewString(1, "myInt"),
-        ViewString(3, "demo"),
-        ViewString(4, "layout"),
-        ViewString(12, "myapp"),
-      ))
-      addAllPropertyGroups(listOf(
-        LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply {
-          viewId = VIEW2
-          layout = ViewResource(4, 12, 3)
-          addAllProperty(listOf(
-            LayoutInspectorViewProtocol.Property.newBuilder().apply {
-              type = LayoutInspectorViewProtocol.Property.Type.INT32
-              name = 1
-              namespace = 12
-              int32Value = 12345
-            }.build()
-          ))
-        }.build(),
-        LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply {
-          viewId = VIEW1
-        }.build(),
-        LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply {
-          viewId = VIEW3
-        }.build(),
-        LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply {
-          viewId = VIEW4
-        }.build(),
-        LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply {
-          viewId = ROOT
-        }.build()
-      ))
+      addAllStrings(
+        listOf(
+          ViewString(1, "myInt"),
+          ViewString(3, "demo"),
+          ViewString(4, "layout"),
+          ViewString(12, "myapp"),
+        )
+      )
+      addAllPropertyGroups(
+        listOf(
+          LayoutInspectorViewProtocol.PropertyGroup.newBuilder()
+            .apply {
+              viewId = VIEW2
+              layout = ViewResource(4, 12, 3)
+              addAllProperty(
+                listOf(
+                  LayoutInspectorViewProtocol.Property.newBuilder()
+                    .apply {
+                      type = LayoutInspectorViewProtocol.Property.Type.INT32
+                      name = 1
+                      namespace = 12
+                      int32Value = 12345
+                    }
+                    .build()
+                )
+              )
+            }
+            .build(),
+          LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply { viewId = VIEW1 }.build(),
+          LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply { viewId = VIEW3 }.build(),
+          LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply { viewId = VIEW4 }.build(),
+          LayoutInspectorViewProtocol.PropertyGroup.newBuilder().apply { viewId = ROOT }.build()
+        )
+      )
     }
   }
 
@@ -368,7 +364,7 @@ class AppInspectionSnapshotSupportTest {
       ViewString(9, "title")
       ViewString(10, "android")
       ViewString(11, "AppTheme")
-      ViewString(12, "http://schemas.android.com/apk/res/myapp")
+      ViewString(12, "com.example")
       ViewString(13, "style")
 
       Root {
@@ -401,36 +397,35 @@ class AppInspectionSnapshotSupportTest {
           }
         }
       }
-    }
-  }
 
-  private fun createLayoutEventWithDeviceInfo(builder: LayoutInspectorViewProtocol.LayoutEvent.Builder) {
-    createLayoutEvent(builder)
-    builder.apply {
-      configurationBuilder.apply {
-        fontScale = 1.2f
-        countryCode = 310
-        networkCode = 410
-        screenLayout = SCREENLAYOUT_SIZE_SMALL or SCREENLAYOUT_LONG_YES or SCREENLAYOUT_LAYOUTDIR_RTL or SCREENLAYOUT_ROUND_YES
-        colorMode = COLOR_MODE_WIDE_COLOR_GAMUT_YES or COLOR_MODE_HDR_YES
-        touchScreen = TOUCHSCREEN_STYLUS
-        keyboard = KEYBOARD_QWERTY
-        keyboardHidden = KEYBOARDHIDDEN_NO
-        hardKeyboardHidden = KEYBOARDHIDDEN_NO
-        navigation = NAVIGATION_WHEEL
-        navigationHidden = NAVIGATIONHIDDEN_NO
-        uiMode = UI_MODE_TYPE_NORMAL or UI_MODE_NIGHT_NO
-        smallestScreenWidthDp = 200
-        density = 640
-        orientation = ORIENTATION_PORTRAIT
-        screenWidthDp = 480
-        screenHeightDp = 800
-        grammaticalGender = GRAMMATICAL_GENDER_FEMININE
-      }
       appContextBuilder.apply {
-        themeString = "@com.example:style/BasicApp.Dark.Theme"
+        configurationBuilder.apply {
+          fontScale = 1.2f
+          countryCode = 310
+          networkCode = 410
+          screenLayout =
+            SCREENLAYOUT_SIZE_SMALL or
+              SCREENLAYOUT_LONG_YES or
+              SCREENLAYOUT_LAYOUTDIR_RTL or
+              SCREENLAYOUT_ROUND_YES
+          colorMode = COLOR_MODE_WIDE_COLOR_GAMUT_YES or COLOR_MODE_HDR_YES
+          touchScreen = TOUCHSCREEN_STYLUS
+          keyboard = KEYBOARD_QWERTY
+          keyboardHidden = KEYBOARDHIDDEN_NO
+          hardKeyboardHidden = KEYBOARDHIDDEN_NO
+          navigation = NAVIGATION_WHEEL
+          navigationHidden = NAVIGATIONHIDDEN_NO
+          uiMode = UI_MODE_TYPE_NORMAL or UI_MODE_NIGHT_NO
+          smallestScreenWidthDp = 200
+          density = 640
+          orientation = ORIENTATION_PORTRAIT
+          screenWidthDp = 480
+          screenHeightDp = 800
+          grammaticalGender = GRAMMATICAL_GENDER_FEMININE
+        }
         screenWidth = 800
         screenHeight = 1600
+        theme = ViewResource(13, 12, 11)
       }
     }
   }

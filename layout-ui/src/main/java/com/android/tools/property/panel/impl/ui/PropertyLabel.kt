@@ -26,14 +26,15 @@ import com.intellij.openapi.ui.ErrorBorderCapable
 import com.intellij.ui.ClientProperty
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
+import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.plaf.UIResource
 
 /**
  * Static text component.
  *
- * Used for certain table renderer instead of [PropertyTextField] to avoid scrolling,
- * and clipping of expanded text.
+ * Used for certain table renderer instead of [PropertyTextField] to avoid scrolling, and clipping
+ * of expanded text.
  */
 class PropertyLabel(private val model: BasePropertyEditorModel) : JBLabel() {
   init {
@@ -46,6 +47,19 @@ class PropertyLabel(private val model: BasePropertyEditorModel) : JBLabel() {
     }
   }
 
+  override fun getToolTipText(event: MouseEvent): String? {
+    // Trick: Use the component from the event.source for tooltip in tables. See
+    // TableEditor.getToolTip().
+    val component = event.source as? JComponent ?: this
+    PropertyTooltip.setToolTip(
+      component,
+      model.property,
+      forValue = true,
+      text = model.property.value.orEmpty()
+    )
+    return null
+  }
+
   private fun updateFromModel() {
     text = expandableText(model.value, model.tableExpansionState)
     isVisible = model.visible
@@ -53,8 +67,13 @@ class PropertyLabel(private val model: BasePropertyEditorModel) : JBLabel() {
     background = model.displayedBackground(UIUtil.TRANSPARENT_COLOR)
     isOpaque = model.isUsedInRendererWithSelection
     updateOutline()
-    // Avoid painting the right vertical edge of the cell border if this is the left part of the complete value:
-    ClientProperty.put(this, HIDE_RIGHT_BORDER, model.tableExpansionState == TableExpansionState.EXPANDED_CELL_FOR_POPUP)
+    // Avoid painting the right vertical edge of the cell border if this is the left part of the
+    // complete value:
+    ClientProperty.put(
+      this,
+      HIDE_RIGHT_BORDER,
+      model.tableExpansionState == TableExpansionState.EXPANDED_CELL_FOR_POPUP
+    )
   }
 
   // Update the outline property on component such that the Darcula border will

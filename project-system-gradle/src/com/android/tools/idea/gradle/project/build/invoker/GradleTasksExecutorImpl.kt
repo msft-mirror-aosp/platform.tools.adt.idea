@@ -20,7 +20,6 @@ import com.android.builder.model.PROPERTY_INVOKED_FROM_IDE
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.ProjectStructure
 import com.android.tools.idea.gradle.project.build.BuildContext
 import com.android.tools.idea.gradle.project.build.BuildStatus
@@ -32,9 +31,11 @@ import com.android.tools.idea.gradle.project.build.attribution.isBuildAttributio
 import com.android.tools.idea.gradle.project.build.compiler.AndroidGradleBuildConfiguration
 import com.android.tools.idea.gradle.project.common.GradleInitScripts
 import com.android.tools.idea.gradle.project.sync.hyperlink.SyncProjectWithExtraCommandLineOptionsHyperlink
+import com.android.tools.idea.gradle.project.sync.jdk.JdkUtils
 import com.android.tools.idea.gradle.util.AndroidGradleSettings
 import com.android.tools.idea.gradle.util.GradleBuilds
 import com.android.tools.idea.gradle.util.GradleUtil
+import com.android.tools.idea.gradle.util.addAndroidStudioPluginVersion
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.sdk.SelectSdkDialog
 import com.android.tools.idea.ui.GuiTestingService
@@ -52,6 +53,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.compiler.CompilerManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
@@ -246,6 +248,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             commandLineArguments.add(GradleBuilds.PARALLEL_BUILD_OPTION)
           }
           commandLineArguments.add(AndroidGradleSettings.createProjectProperty(PROPERTY_INVOKED_FROM_IDE, true))
+          addAndroidStudioPluginVersion(commandLineArguments)
           if (enableBuildAttribution) {
             val attributionFileDir = getAgpAttributionFileDir(myRequest.data)
             commandLineArguments.add(
@@ -457,8 +460,11 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
           if (selectSdkDialog.showAndGet()) {
             val jdkHome = selectSdkDialog.jdkHome
             UIUtil.invokeLaterIfNeeded {
-              ApplicationManager.getApplication()
-                .runWriteAction { AndroidStudioGradleInstallationManager.setJdkAsProjectJdk(myRequest.project, jdkHome) }
+              myRequest.project.basePath?.let { gradleRootPath ->
+                runWriteAction {
+                  JdkUtils.setProjectGradleJdk(myRequest.project, gradleRootPath, jdkHome)
+                }
+              }
             }
           }
         }
@@ -500,7 +506,6 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     private inner class CloseListener : ContentManagerListener, VetoableProjectManagerListener {
       private var myIsApplicationExitingOrProjectClosing = false
       private var myUserAcceptedCancel = false
-      override fun projectOpened(project: Project) {}
       override fun canClose(project: Project): Boolean {
         if (project != myProject) {
           return true

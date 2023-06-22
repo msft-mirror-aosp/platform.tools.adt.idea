@@ -24,9 +24,13 @@ import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.eq
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
+import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.execution.common.AndroidSessionInfo
+import com.android.tools.idea.execution.common.assertTaskPresentedInStats
 import com.android.tools.idea.execution.common.debug.DebugSessionStarter
 import com.android.tools.idea.execution.common.debug.createFakeExecutionEnvironment
+import com.android.tools.idea.execution.common.stats.RunStats
+import com.android.tools.idea.execution.common.stats.RunStatsService
 import com.android.tools.idea.run.DeploymentApplicationService
 import com.google.common.truth.Truth.assertThat
 import com.intellij.debugger.DebuggerManager
@@ -58,6 +62,9 @@ class AndroidJavaDebuggerTest {
 
   @get:Rule
   val projectRule = ProjectRule()
+
+  @get:Rule
+  val usageTrackerRule = UsageTrackerRule()
 
   val project
     get() = projectRule.project
@@ -98,7 +105,7 @@ class AndroidJavaDebuggerTest {
   }
 
   @Test
-  fun testAllInformationForApplyChangesAndPositionManager() {
+  fun testAllInformationForPositionManager() {
     val session = DebugSessionStarter.attachDebuggerToStartedProcess(
       device,
       FakeAdbTestRule.CLIENT_PACKAGE_NAME,
@@ -116,6 +123,10 @@ class AndroidJavaDebuggerTest {
 
   @Test
   fun testSessionCreated() {
+    val stats = RunStatsService.get(project).create().also {
+      executionEnvironment.putUserData(RunStats.KEY, it)
+    }
+
     val session = DebugSessionStarter.attachDebuggerToStartedProcess(
       device,
       FakeAdbTestRule.CLIENT_PACKAGE_NAME,
@@ -124,7 +135,9 @@ class AndroidJavaDebuggerTest {
       javaDebugger.createState(), onDebugProcessDestroyed, EmptyProgressIndicator()
     )
     assertThat(session).isNotNull()
-    assertThat(session!!.sessionName).isEqualTo("myConfiguration")
+    assertThat(session.sessionName).isEqualTo("myConfiguration")
+    stats.success()
+    assertTaskPresentedInStats(usageTrackerRule.usages, "startDebuggerSession")
   }
 
   @Test

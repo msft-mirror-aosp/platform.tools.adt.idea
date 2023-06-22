@@ -15,23 +15,37 @@
  */
 package com.android.tools.idea.modes.essentials
 
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.registry.RegistryManager
 
-object EssentialsMode {
+@Service
+class EssentialsMode : ProjectActivity {
+  companion object {
 
-  private val applicationService = ApplicationManager.getApplication().getService(
-    EssentialsModeMessenger::class.java)
-  @JvmStatic
-  fun isEnabled(): Boolean {
-    return RegistryManager.getInstance().`is`("ide.essentials.mode");
+    private val messenger = service<EssentialsModeMessenger>()
+    private val essentialsModeLogger = logger<EssentialsMode>()
+    @JvmStatic
+    fun isEnabled(): Boolean {
+      return RegistryManager.getInstance().`is`("ide.essentials.mode");
+    }
+
+    @JvmStatic
+    fun setEnabled(value: Boolean) {
+      val beforeSet = isEnabled()
+      RegistryManager.getInstance().get("ide.essentials.mode").setValue(value)
+
+      // send message if the value changed
+      if (beforeSet != value) {
+        messenger.sendMessage()
+        essentialsModeLogger.info("Essentials mode isEnabled set to $value")
+      }
+    }
   }
-
-  @JvmStatic
-  fun setEnabled(value: Boolean) {
-    val beforeSet = isEnabled()
-    RegistryManager.getInstance().get("ide.essentials.mode").setValue(value)
-    // send message if the value changed
-    if (beforeSet != value) applicationService.sendMessage()
+  override suspend fun execute(project: Project) {
+    essentialsModeLogger.info("Essentials mode isEnabled on start-up: ${isEnabled()}")
   }
 }

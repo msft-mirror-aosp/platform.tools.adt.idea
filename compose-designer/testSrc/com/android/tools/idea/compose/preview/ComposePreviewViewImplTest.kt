@@ -192,7 +192,6 @@ class ComposePreviewViewImplTest {
         project,
         mainFileSmartPointer,
         statusManager,
-        {},
         nopDataProvider,
         mainSurfaceBuilder,
         fixture.testRootDisposable,
@@ -239,8 +238,9 @@ class ComposePreviewViewImplTest {
       }
     runBlocking(workerThread) {
       surface.updatePreviewsAndRefresh(
-        true,
-        previewProvider,
+        tryReusingModels = true,
+        reinflate = true,
+        previewProvider.previewElements().toList(),
         Logger.getInstance(ComposePreviewViewImplTest::class.java),
         mainFileSmartPointer.element!!,
         fixture.testRootDisposable,

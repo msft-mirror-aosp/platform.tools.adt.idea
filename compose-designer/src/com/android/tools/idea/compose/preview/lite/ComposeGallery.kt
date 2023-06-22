@@ -15,23 +15,35 @@
  */
 package com.android.tools.idea.compose.preview.lite
 
-import com.android.tools.idea.compose.preview.ComposePreviewElement
-import com.android.tools.idea.compose.preview.ComposePreviewElementInstance
+import com.android.tools.idea.compose.preview.findComposePreviewManagersForContext
+import com.intellij.openapi.actionSystem.DataContext
 import java.awt.BorderLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
+import org.jetbrains.annotations.TestOnly
 
 /** If lite mode is enabled, one preview at a time is available with tabs to select between them. */
-class ComposeGallery(content: JComponent, rootComponent: JComponent, requestRefresh: () -> Unit) {
+class ComposeGallery(
+  content: JComponent,
+  rootComponent: JComponent,
+) {
 
-  private var selectedKey: PreviewElementKey? = null
+  private val tabChangeListener: (DataContext, PreviewElementKey?) -> Unit = { dataContext, tab ->
+    val previewElement = tab?.element
+    findComposePreviewManagersForContext(dataContext).forEach {
+      it.singlePreviewElementInstance = previewElement
+    }
+  }
+
+  private val keysProvider: (DataContext) -> Set<PreviewElementKey> = { dataContext ->
+    findComposePreviewManagersForContext(dataContext)
+      .flatMap { it.availableElements }
+      .map { element -> PreviewElementKey(element) }
+      .toSet()
+  }
 
   private val tabs: GalleryTabs<PreviewElementKey> =
-    GalleryTabs(rootComponent, emptySet()) {
-      selectedKey = it
-      // Request a refresh now that the tab has changed and the content needs to be updated.
-      requestRefresh()
-    }
+    GalleryTabs(rootComponent, keysProvider, tabChangeListener)
 
   /** [JPanel] that wraps tabs and content. */
   val component =
@@ -40,17 +52,7 @@ class ComposeGallery(content: JComponent, rootComponent: JComponent, requestRefr
       add(content, BorderLayout.CENTER)
     }
 
-  /**
-   * Update [GalleryTabs] with the list of available [ComposePreviewElementInstance].
-   *
-   * @return currently selected [ComposePreviewElementInstance].
-   */
-  fun updateAndGetSelected(
-    previewElements: Sequence<ComposePreviewElement>
-  ): ComposePreviewElementInstance? {
-    val tabKeys = previewElements.map { element -> PreviewElementKey(element) }.toSet()
-    tabs.updateKeys(tabKeys)
-    selectedKey = selectedKey ?: tabKeys.firstOrNull()
-    return selectedKey?.element as? ComposePreviewElementInstance
-  }
+  @get:TestOnly
+  val selectedKey: PreviewElementKey?
+    get() = tabs.selectedKey
 }

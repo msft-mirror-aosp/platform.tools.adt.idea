@@ -8,6 +8,7 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.RequestResultProcessor
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.search.searches.ReferencesSearch
@@ -43,7 +44,10 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
     val getter = PropertyUtilBase.getAccessorName(identifier, PropertyKind.GETTER)
 
     val project = element.project
-    val searchScope = KotlinScriptSearchScope(project, project.projectScope())
+    val searchScope = when (val effectiveScope = queryParameters.effectiveSearchScope) {
+      is GlobalSearchScope -> KotlinScriptSearchScope(project, effectiveScope)
+      else -> effectiveScope
+    }
     val searchContext = UsageSearchContext.IN_CODE
     val processor = MyProcessor(keyValue, nameParts)
     val search: (String) -> Unit = { queryParameters.optimizer.searchWord(it, searchScope, searchContext, true, element, processor) }
@@ -79,9 +83,17 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
       val elementToReplace = element.parent
 
       if (elementToReplace is KtDotQualifiedExpression) {
-        val catalogName = getCatalogDotExpression(elementToReplace)
+        val (catalogName, tableName) = getCatalogDotExpression(elementToReplace)
         catalogName?.let {
-          val newElementText = catalogName.text + "." + parts.joinToString(".")
+          val newElementText = StringBuilder()
+            .append(catalogName.text).append(".")
+            .apply {
+              when (val table = tableName?.text) {
+                "plugins", "bundles", "versions" -> append(table).append(".")
+              }
+            }
+            .append(parts.joinToString("."))
+            .toString()
           val newElement = KtPsiFactory(element.project).createExpression(newElementText)
           return elementToReplace.replace(newElement)
         }
@@ -90,11 +102,12 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
       return elementToReplace
     }
 
-    private fun getCatalogDotExpression(element: KtDotQualifiedExpression): KtNameReferenceExpression? {
+    private fun getCatalogDotExpression(element: KtDotQualifiedExpression): Pair<KtNameReferenceExpression?, KtNameReferenceExpression?> {
       var newElement = element
-      while (newElement.firstChild is KtDotQualifiedExpression)
+      while (newElement.firstChild is KtDotQualifiedExpression) {
         newElement = (newElement.firstChild as KtDotQualifiedExpression)
-      return newElement.firstChild as? KtNameReferenceExpression
+      }
+      return newElement.firstChild.let { it as? KtNameReferenceExpression to it?.nextSibling?.nextSibling as? KtNameReferenceExpression }
     }
   }
 }

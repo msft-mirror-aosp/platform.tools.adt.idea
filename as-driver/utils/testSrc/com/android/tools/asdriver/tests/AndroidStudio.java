@@ -242,6 +242,17 @@ public class AndroidStudio implements AutoCloseable {
     }
   }
 
+  /**
+   * Invokes the "Resume Program" button. This button is only enabled when the debugger has paused
+   * execution, which means that this method can be used to ensure that the debugger had indeed hit
+   * a breakpoint (although it will change the state of the application by then resuming the
+   * program).
+   */
+  public void resumeProgramFromDebugging() {
+    System.out.println("Waiting for a breakpoint to be hit by the debugger, then resuming the program");
+    invokeByIcon("actions/resume.svg");
+  }
+
   public void invokeByIcon(String icon) {
     ComponentMatchersBuilder builder = new ComponentMatchersBuilder();
     builder.addSvgIconMatch(new ArrayList<>(List.of(icon)));
@@ -269,6 +280,11 @@ public class AndroidStudio implements AutoCloseable {
     System.out.println("Waiting for indexing to complete");
     ASDriver.WaitForIndexRequest rq = ASDriver.WaitForIndexRequest.newBuilder().build();
     ASDriver.WaitForIndexResponse ignore = androidStudio.waitForIndex(rq);
+  }
+
+  public void waitForNativeBreakpointHit() throws IOException, InterruptedException {
+    System.out.println("Waiting for native breakpoint to hit");
+    install.getIdeaLog().waitForMatchingLine(".*Native breakpoint hit.*", 1, TimeUnit.MINUTES);
   }
 
   /**

@@ -93,6 +93,7 @@ iml_studio_test(
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
     module = ":intellij.android.core.integration",
+    tags = ["manual"],  # Disabled due to b/287677785
     tags_linux = ["block-network"],
     tags_windows = [
         "block-network",
@@ -210,10 +211,9 @@ iml_studio_test(
     data = [
         ":createproject_deps",
         "//prebuilts/studio/sdk:build-tools/30.0.3",
-        INTEGRATION_TEST_GRADLE_VERSION,
+        "//tools/base/build-system:gradle-distrib-7.5",  # The test itself sets a flag for which AGP version to use, so we can't rely on the framework choosing INTEGRATION_TEST_GRADLE_VERSION for us
     ],
     module = ":intellij.android.core.integration",
-    tags = ["manual"],  # Disabled due to b/281051084
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.CreateProjectTest",
@@ -331,11 +331,9 @@ iml_studio_test(
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
-        "//tools/base/build-system:gradle-distrib-7.2",
-        "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
+        "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
     ],
     module = ":intellij.android.core.integration",
-    tags = ["manual"],  # Flaky due to b/260867011
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -343,6 +341,32 @@ iml_studio_test(
         "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
     ],
     test_class = "com.android.tools.idea.RunApkTest",
+)
+
+iml_studio_test(
+    name = "DebugNativeApkTest",
+    timeout = "moderate",
+    data = [
+        ":minnativeapp-apk",
+        "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:emulator",
+        "//prebuilts/studio/sdk:platform-tools",
+        "//prebuilts/studio/sdk:platforms/android-31",
+        "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
+    ],
+    module = ":intellij.android.core.integration",
+    tags_linux = [
+        "block-network",
+        "very_flaky",  # b/260867011
+    ],
+    tags_mac = [
+        "no_mac",  # No need to consume Mac resources. Testing on Linux is sufficient.
+    ],
+    tags_windows = [
+        # TODO(b/287284693): Add Windows support for this test.
+        "no_windows",
+    ],
+    test_class = "com.android.tools.idea.DebugNativeApkTest",
 )
 
 iml_studio_test(
@@ -528,6 +552,11 @@ filegroup(
 filegroup(
     name = "helloworldapk",
     srcs = glob(["testData/helloworldapk/**"]),
+)
+
+filegroup(
+    name = "minnativeapp-apk",
+    srcs = glob(["testData/minnativeapp-apk/**"]),
 )
 
 filegroup(

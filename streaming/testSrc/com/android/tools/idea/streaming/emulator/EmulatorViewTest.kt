@@ -31,8 +31,8 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
+import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.core.NotificationHolderPanel
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
@@ -754,9 +754,9 @@ class EmulatorViewTest {
     var call: GrpcCallRecord? = null
     for (rotation in listOf(1, 1, -1, -1)) {
       ui.mouse.wheel(100, 100, rotation)
-      val call = call ?: emulator.getNextGrpcCall(2, TimeUnit.SECONDS).also {
-        assertThat(it.methodName).isEqualTo("android.emulation.control.EmulatorController/injectWheel")
-        call = it
+      if (call == null) {
+        call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+        assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/injectWheel")
       }
       assertThat(shortDebugString(call.getNextRequest(2, TimeUnit.SECONDS))).isEqualTo("dy: ${-rotation * 120}")
     }

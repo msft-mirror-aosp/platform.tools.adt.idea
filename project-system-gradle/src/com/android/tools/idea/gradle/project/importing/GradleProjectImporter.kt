@@ -17,9 +17,12 @@ package com.android.tools.idea.gradle.project.importing
 
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.Projects
+import com.android.tools.idea.flags.StudioFlags.GRADLE_USES_LOCAL_JAVA_HOME_FOR_NEW_CREATED_PROJECTS
+import com.android.tools.idea.gradle.config.GradleConfigManager
 import com.android.tools.idea.gradle.project.GradleProjectInfo
 import com.android.tools.idea.gradle.project.sync.SdkSync
 import com.android.tools.idea.gradle.project.sync.jdk.JdkUtils
+import com.android.tools.idea.gradle.project.ProjectMigrationsPersistentState
 import com.android.tools.idea.gradle.util.GradleUtil
 import com.android.tools.idea.gradle.util.LocalProperties
 import com.android.tools.idea.io.FilePaths
@@ -56,6 +59,7 @@ import org.jetbrains.plugins.gradle.service.project.open.setupGradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleDefaultProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
+import org.jetbrains.plugins.gradle.util.USE_GRADLE_LOCAL_JAVA_HOME
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path
@@ -201,14 +205,21 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
         }
       }
       val projectSettings = GradleDefaultProjectSettings.createProjectSettings(externalProjectPath)
-      // Set gradleJvm to USE_PROJECT_JDK since this setting is only available in the PSD for Android Studio and use embedded jdk
-      projectSettings.gradleJvm = ExternalSystemJdkUtil.USE_PROJECT_JDK
-      ExternalSystemApiUtil.getSettings(newProject, GradleConstants.SYSTEM_ID).linkProject(projectSettings)
-      WriteAction.runAndWait<RuntimeException> {
-        val embeddedJdkPath = IdeSdks.getInstance().embeddedJdkPath
-        val jdkTableEntry = JdkUtils.addOrRecreateDedicatedJdkTableEntry(embeddedJdkPath.toString())
-        ProjectJdkTable.getInstance().findJdk(jdkTableEntry)?.let {
-          ProjectRootManager.getInstance(newProject).projectSdk = it
+      if (GRADLE_USES_LOCAL_JAVA_HOME_FOR_NEW_CREATED_PROJECTS.get() || ApplicationManager.getApplication().isUnitTestMode) {
+        projectSettings.gradleJvm = USE_GRADLE_LOCAL_JAVA_HOME
+        ExternalSystemApiUtil.getSettings(newProject, GradleConstants.SYSTEM_ID).linkProject(projectSettings)
+        GradleConfigManager.initializeJavaHome(newProject, externalProjectPath)
+        val projectMigration = ProjectMigrationsPersistentState.getInstance(newProject)
+        projectMigration.migratedGradleRootsToGradleLocalJavaHome.add(externalProjectPath)
+      } else {
+        projectSettings.gradleJvm = ExternalSystemJdkUtil.USE_PROJECT_JDK
+        ExternalSystemApiUtil.getSettings(newProject, GradleConstants.SYSTEM_ID).linkProject(projectSettings)
+        WriteAction.runAndWait<RuntimeException> {
+          val embeddedJdkPath = IdeSdks.getInstance().embeddedJdkPath
+          val jdkTableEntry = JdkUtils.addOrRecreateDedicatedJdkTableEntry(embeddedJdkPath.toString())
+          ProjectJdkTable.getInstance().findJdk(jdkTableEntry)?.let {
+            ProjectRootManager.getInstance(newProject).projectSdk = it
+          }
         }
       }
       beforeOpen(newProject)

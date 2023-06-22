@@ -67,7 +67,6 @@ internal class TestComposePreviewView(override val mainSurface: NlDesignSurface)
   override val isMessageBeingDisplayed: Boolean = false
   override var hasContent: Boolean = true
   override var hasRendered: Boolean = true
-  override val requestRefresh: () -> Unit = { mainSurface.requestRender() }
 
   override fun updateNotifications(parentEditor: FileEditor) {}
 
@@ -158,8 +157,7 @@ class ComposePreviewRepresentationTest {
 
       val composeView = TestComposePreviewView(mainSurface)
       val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _, _
-          ->
+        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
           composeView
         }
       Disposer.register(fixture.testRootDisposable, preview)
@@ -241,8 +239,7 @@ class ComposePreviewRepresentationTest {
 
       val composeView = TestComposePreviewView(mainSurface)
       val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _, _
-          ->
+        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
           composeView
         }
       Disposer.register(fixture.testRootDisposable, preview)
@@ -281,7 +278,11 @@ class ComposePreviewRepresentationTest {
           assertEquals(uiCheckElement.composableMethodFqn, it.composableMethodFqn)
           devices.add(it.configuration.deviceSpec)
         }
-      assertThat(devices.sorted(), `is`(referenceDeviceIds.keys.sorted()))
+      val deviceDefs =
+        mutableSetOf("spec:parent=_device_class_phone,orientation=landscape").apply {
+          addAll(referenceDeviceIds.keys)
+        }
+      assertThat(devices.sorted(), `is`(deviceDefs.sorted()))
 
       preview.stopUiCheckPreview()
       delayUntilCondition(250) { !preview.isUiCheckPreview }

@@ -920,6 +920,11 @@ PROJECT                       : Kotlin Multiplatform
                 BUNDLE                        : :app:bundleDebug
                 APK_FROM_BUNDLE               : :app:extractApksForDebug
     MODULE                        : Kotlin_Multiplatform.kmpFirstLib
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpFirstLib
+            main                          : Kotlin_Multiplatform.kmpFirstLib.androidMain
+            unitTest                      : Kotlin_Multiplatform.kmpFirstLib.androidUnitTest
+            androidTest                   : Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleVersion         : unspecified
         LinkedProjectId               : :kmpFirstLib
@@ -932,33 +937,57 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
         CONENT_ENTRY                  : file://<PROJECT>/kmpFirstLib
             EXCLUDE_FOLDER                : file://<PROJECT>/kmpFirstLib/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/kmpFirstLib/build [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain, :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpFirstLib
+            main                          : Kotlin_Multiplatform.kmpFirstLib.androidMain
+            unitTest                      : Kotlin_Multiplatform.kmpFirstLib.androidUnitTest
+            androidTest                   : Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -971,6 +1000,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1003,14 +1049,16 @@ PROJECT                       : Kotlin Multiplatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-            Platform                      : JVM (17)
+            Platform                      : JVM (1.8)
             UseProjectSettings            : false
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/kmpFirstLib/src/androidInstrumentedTest
             JavaSource                    : file://<PROJECT>/kmpFirstLib/src/androidInstrumentedTest/kotlin
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/kmpFirstLib/src/androidInstrumentedTest/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.0.0 [=]
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.0.0 [=]
@@ -1024,27 +1072,35 @@ PROJECT                       : Kotlin Multiplatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : Kotlin_Multiplatform.androidLib.main
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.androidMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.commonMain
         Classes
             -                             : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/instrumentedTest
             -                             : file://<PROJECT>/kmpFirstLib/build/processedResources/android/instrumentedTest
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain, :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpFirstLib.androidMain
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpFirstLib
+            main                          : Kotlin_Multiplatform.kmpFirstLib.androidMain
+            unitTest                      : Kotlin_Multiplatform.kmpFirstLib.androidUnitTest
+            androidTest                   : Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -1057,6 +1113,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidMain.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1089,44 +1162,54 @@ PROJECT                       : Kotlin Multiplatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-            Platform                      : JVM (17)
+            Platform                      : JVM (1.8)
             - SourceSetName               : Kotlin_Multiplatform.kmpFirstLib.commonMain
             UseProjectSettings            : false
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/kmpFirstLib/src/androidMain
             JavaSource                    : file://<PROJECT>/kmpFirstLib/src/androidMain/kotlin
             JavaResource                  : file://<PROJECT>/kmpFirstLib/src/androidMain/resources
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : Kotlin_Multiplatform.androidLib.main
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.commonMain
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.commonMain
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpSecondLib.androidMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpSecondLib.commonMain
         Classes
             -                             : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/main
             -                             : file://<PROJECT>/kmpFirstLib/build/processedResources/android/main
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain, :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpFirstLib.androidUnitTest
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpFirstLib
+            main                          : Kotlin_Multiplatform.kmpFirstLib.androidMain
+            unitTest                      : Kotlin_Multiplatform.kmpFirstLib.androidUnitTest
+            androidTest                   : Kotlin_Multiplatform.kmpFirstLib.androidInstrumentedTest
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -1139,6 +1222,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidUnitTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1171,15 +1271,17 @@ PROJECT                       : Kotlin Multiplatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-            Platform                      : JVM (17)
+            Platform                      : JVM (1.8)
             - SourceSetName               : Kotlin_Multiplatform.kmpFirstLib.commonTest
             UseProjectSettings            : false
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/kmpFirstLib/src/androidUnitTest
             JavaSource                    : file://<PROJECT>/kmpFirstLib/src/androidUnitTest/kotlin
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/kmpFirstLib/src/androidUnitTest/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: junit:junit:4.13.2 [=]
         LIBRARY                       : Gradle: org.hamcrest:hamcrest-core:1.3 [=]
@@ -1187,27 +1289,30 @@ PROJECT                       : Kotlin Multiplatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : Kotlin_Multiplatform.androidLib.main
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.androidMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.commonMain
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.commonTest
         Classes
             -                             : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/unitTest
             -                             : file://<PROJECT>/kmpFirstLib/build/processedResources/android/unitTest
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain, :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidInstrumentedTest, :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidInstrumentedTest, :kmpFirstLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpFirstLib:assemble, :kmpFirstLib:testClasses
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean, :kmpFirstLib:testClasses
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava, :kmpFirstLib:testClasses
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:assembleAndroidUnitTest, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidUnitTest
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpFirstLib:assemble
-                REBUILD                       : :kmpFirstLib:assemble, :kmpFirstLib:clean
-                COMPILE_JAVA                  : :kmpFirstLib:compileJava
+                ASSEMBLE                      : :kmpFirstLib:assembleAndroidMain
+                REBUILD                       : :kmpFirstLib:assembleAndroidMain, :kmpFirstLib:clean
+                COMPILE_JAVA                  : :kmpFirstLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpFirstLib.commonMain
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
@@ -1267,8 +1372,11 @@ PROJECT                       : Kotlin Multiplatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : Kotlin_Multiplatform.androidLib.main
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.commonMain
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpSecondLib.androidMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpSecondLib.commonMain
         Classes
             -                             : file://<PROJECT>/build/classes/production/Kotlin_Multiplatform.kmpFirstLib.commonMain
         BUILD_TASKS
@@ -1349,6 +1457,9 @@ PROJECT                       : Kotlin Multiplatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+        ORDER_ENTRY                   : Kotlin_Multiplatform.androidLib.main
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.androidMain
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpFirstLib.commonMain
         Classes
             -                             : file://<PROJECT>/build/classes/production/Kotlin_Multiplatform.kmpFirstLib.commonTest
         BUILD_TASKS
@@ -1554,6 +1665,8 @@ PROJECT                       : Kotlin Multiplatform
             Scope                         : Test
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
             Scope                         : Test
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
+            Scope                         : Runtime
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
                 ASSEMBLE                      : :kmpJvmOnly:assemble, :kmpJvmOnly:testClasses
@@ -1722,6 +1835,8 @@ PROJECT                       : Kotlin Multiplatform
             Scope                         : Test
         ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
             Scope                         : Test
+        ORDER_ENTRY                   : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
+            Scope                         : Runtime
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
                 ASSEMBLE                      : :kmpJvmOnly:assemble, :kmpJvmOnly:testClasses
@@ -1740,6 +1855,9 @@ PROJECT                       : Kotlin Multiplatform
                 REBUILD                       : :kmpJvmOnly:assemble, :kmpJvmOnly:clean
                 COMPILE_JAVA                  : :kmpJvmOnly:compileJava
     MODULE                        : Kotlin_Multiplatform.kmpSecondLib
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpSecondLib
+            main                          : Kotlin_Multiplatform.kmpSecondLib.androidMain
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleVersion         : unspecified
         LinkedProjectId               : :kmpSecondLib
@@ -1752,33 +1870,54 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpSecondLib/Kotlin_Multiplatform.kmpSecondLib.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
         CONENT_ENTRY                  : file://<PROJECT>/kmpSecondLib
             EXCLUDE_FOLDER                : file://<PROJECT>/kmpSecondLib/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/kmpSecondLib/build [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpSecondLib:assemble, :kmpSecondLib:testClasses
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean, :kmpSecondLib:testClasses
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava, :kmpSecondLib:testClasses
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpSecondLib:assemble
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpSecondLib:assemble, :kmpSecondLib:testClasses
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean, :kmpSecondLib:testClasses
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava, :kmpSecondLib:testClasses
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpSecondLib:assemble
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpSecondLib.androidMain
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : Kotlin_Multiplatform.kmpSecondLib
+            main                          : Kotlin_Multiplatform.kmpSecondLib.androidMain
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -1791,6 +1930,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/kmpSecondLib/Kotlin_Multiplatform.kmpSecondLib.androidMain.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            - ResFoldersRelativePath      :  [-]
+            - TestResFoldersRelativePath  :  [-]
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1823,15 +1979,17 @@ PROJECT                       : Kotlin Multiplatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib-common/<KOTLIN_VERSION>/kotlin-stdlib-common-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-            Platform                      : JVM (17)
+            Platform                      : JVM (1.8)
             - SourceSetName               : Kotlin_Multiplatform.kmpSecondLib.commonMain
             UseProjectSettings            : false
             Version                       : 5
         CONENT_ENTRY                  : file://<PROJECT>/kmpSecondLib/src/androidMain
             JavaSource                    : file://<PROJECT>/kmpSecondLib/src/androidMain/kotlin
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/kmpSecondLib/src/androidMain/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
@@ -1843,21 +2001,20 @@ PROJECT                       : Kotlin Multiplatform
             -                             : file://<PROJECT>/kmpSecondLib/build/processedResources/android/main
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
-                ASSEMBLE                      : :kmpSecondLib:assemble, :kmpSecondLib:testClasses
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean, :kmpSecondLib:testClasses
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava, :kmpSecondLib:testClasses
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
             TEST_COMPILE_MODE             : Android tests
-                ASSEMBLE                      : :kmpSecondLib:assemble
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
             TEST_COMPILE_MODE             : Unit tests
-                ASSEMBLE                      : :kmpSecondLib:assemble, :kmpSecondLib:testClasses
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean, :kmpSecondLib:testClasses
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava, :kmpSecondLib:testClasses
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
             TEST_COMPILE_MODE             : None
-                ASSEMBLE                      : :kmpSecondLib:assemble
-                REBUILD                       : :kmpSecondLib:assemble, :kmpSecondLib:clean
-                COMPILE_JAVA                  : :kmpSecondLib:compileJava
+                ASSEMBLE                      : :kmpSecondLib:assembleAndroidMain
+                REBUILD                       : :kmpSecondLib:assembleAndroidMain, :kmpSecondLib:clean
+                COMPILE_JAVA                  : :kmpSecondLib:compileAndroidMain
     MODULE                        : Kotlin_Multiplatform.kmpSecondLib.commonMain
         ExternalModuleGroup           : Kotlin Multiplatform
         ExternalModuleType            : sourceSet
@@ -2200,13 +2357,17 @@ PROJECT                       : Kotlin Multiplatform
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.0.0
             *CLASSES                      : jar://<M2>/androidx/lifecycle/lifecycle-common/2.0.0/lifecycle-common-2.0.0.jar!/
         LIBRARY                       : Gradle: androidx.test.ext:junit:1.1.2
-            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/junit-1.1.2-api.jar!/
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/junit-1.1.2/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/junit-1.1.2/jars/classes.jar!/
         LIBRARY                       : Gradle: androidx.test:core:1.3.0
-            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-1.3.0-api.jar!/
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-1.3.0/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-1.3.0/jars/classes.jar!/
         LIBRARY                       : Gradle: androidx.test:monitor:1.3.0
-            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-1.3.0-api.jar!/
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-1.3.0/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-1.3.0/jars/classes.jar!/
         LIBRARY                       : Gradle: androidx.test:runner:1.3.0
-            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.3.0-api.jar!/
+            *CLASSES                      : file://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.3.0/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-1.3.0/jars/classes.jar!/
         LIBRARY                       : Gradle: com.google.auto.value:auto-value-annotations:1.6.3
             *CLASSES                      : jar://<M2>/com/google/auto/value/auto-value-annotations/1.6.3/auto-value-annotations-1.6.3.jar!/
         LIBRARY                       : Gradle: com.google.code.findbugs:jsr305:3.0.2
@@ -2249,32 +2410,32 @@ PROJECT                       : Kotlin Multiplatform
         TEST_COMPILE_MODE             : All
             CLEAN                         : <PROJECT>::androidLib:createMockableJar, <PROJECT>::androidLib:generateTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources
             ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest, :app:assembleDebugUnitTest
-            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugAndroidTest, <PROJECT>::androidLib:assembleTypeoneModetwoDebugUnitTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest, <PROJECT>::app:assembleDebugUnitTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:clean, <PROJECT>::kmpSecondLib:testClasses
-            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugUnitTestSources, <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources, <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:compileJava, <PROJECT>::kmpSecondLib:testClasses
+            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugAndroidTest, <PROJECT>::androidLib:assembleTypeoneModetwoDebugUnitTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest, <PROJECT>::app:assembleDebugUnitTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:assembleAndroidInstrumentedTest, <PROJECT>::kmpFirstLib:assembleAndroidMain, <PROJECT>::kmpFirstLib:assembleAndroidUnitTest, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:assembleAndroidMain, <PROJECT>::kmpSecondLib:clean, <PROJECT>::kmpSecondLib:testClasses
+            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugUnitTestSources, <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources, <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::kmpFirstLib:compileAndroidInstrumentedTest, <PROJECT>::kmpFirstLib:compileAndroidMain, <PROJECT>::kmpFirstLib:compileAndroidUnitTest, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:compileAndroidMain, <PROJECT>::kmpSecondLib:compileJava, <PROJECT>::kmpSecondLib:testClasses
             SOURCE_GEN                    : <PROJECT>::androidLib:createMockableJar, <PROJECT>::androidLib:generateTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources
             BUNDLE                        : :app:bundleDebug
             APK_FROM_BUNDLE               : :app:extractApksForDebug
         TEST_COMPILE_MODE             : Android tests
             CLEAN                         : <PROJECT>::androidLib:generateTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources
             ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugAndroidTest
-            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugAndroidTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:clean
-            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpSecondLib:compileJava
+            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugAndroidTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugAndroidTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:assembleAndroidInstrumentedTest, <PROJECT>::kmpFirstLib:assembleAndroidMain, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:assembleAndroidMain, <PROJECT>::kmpSecondLib:clean
+            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::app:compileDebugAndroidTestSources, <PROJECT>::app:compileDebugSources, <PROJECT>::kmpFirstLib:compileAndroidInstrumentedTest, <PROJECT>::kmpFirstLib:compileAndroidMain, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpSecondLib:compileAndroidMain, <PROJECT>::kmpSecondLib:compileJava
             SOURCE_GEN                    : <PROJECT>::androidLib:generateTypeoneModetwoDebugAndroidTestSources, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:generateDebugAndroidTestSources, <PROJECT>::app:generateDebugSources
             BUNDLE                        : :app:bundleDebug
             APK_FROM_BUNDLE               : :app:extractApksForDebug
         TEST_COMPILE_MODE             : Unit tests
             CLEAN                         : <PROJECT>::androidLib:createMockableJar, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugSources
             ASSEMBLE                      : :app:assembleDebug, :app:assembleDebugUnitTest
-            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugUnitTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugUnitTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:clean, <PROJECT>::kmpSecondLib:testClasses
-            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugUnitTestSources, <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:compileJava, <PROJECT>::kmpSecondLib:testClasses
+            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:assembleTypeoneModetwoDebugUnitTest, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:assembleDebugUnitTest, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:assembleAndroidMain, <PROJECT>::kmpFirstLib:assembleAndroidUnitTest, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:assembleAndroidMain, <PROJECT>::kmpSecondLib:clean, <PROJECT>::kmpSecondLib:testClasses
+            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugUnitTestSources, <PROJECT>::app:compileDebugUnitTestSources, <PROJECT>::kmpFirstLib:compileAndroidUnitTest, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpFirstLib:testClasses, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpJvmOnly:testClasses, <PROJECT>::kmpSecondLib:compileJava, <PROJECT>::kmpSecondLib:testClasses
             SOURCE_GEN                    : <PROJECT>::androidLib:createMockableJar, <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:createMockableJar, <PROJECT>::app:generateDebugSources
             BUNDLE                        : :app:bundleDebug
             APK_FROM_BUNDLE               : :app:extractApksForDebug
         TEST_COMPILE_MODE             : None
             CLEAN                         : <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:generateDebugSources
             ASSEMBLE                      : :app:assembleDebug
-            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:clean
-            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::app:compileDebugSources, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpSecondLib:compileJava
+            REBUILD                       : <PROJECT>::androidLib:assembleTypeoneModetwoDebug, <PROJECT>::androidLib:clean, <PROJECT>::app:assembleDebug, <PROJECT>::app:clean, <PROJECT>::kmpFirstLib:assemble, <PROJECT>::kmpFirstLib:assembleAndroidMain, <PROJECT>::kmpFirstLib:clean, <PROJECT>::kmpJvmOnly:assemble, <PROJECT>::kmpJvmOnly:clean, <PROJECT>::kmpSecondLib:assemble, <PROJECT>::kmpSecondLib:assembleAndroidMain, <PROJECT>::kmpSecondLib:clean
+            COMPILE_JAVA                  : <PROJECT>::androidLib:compileTypeoneModetwoDebugSources, <PROJECT>::app:compileDebugSources, <PROJECT>::kmpFirstLib:compileAndroidMain, <PROJECT>::kmpFirstLib:compileJava, <PROJECT>::kmpJvmOnly:compileJava, <PROJECT>::kmpSecondLib:compileAndroidMain, <PROJECT>::kmpSecondLib:compileJava
             SOURCE_GEN                    : <PROJECT>::androidLib:generateTypeoneModetwoDebugSources, <PROJECT>::app:generateDebugSources
             BUNDLE                        : :app:bundleDebug
             APK_FROM_BUNDLE               : :app:extractApksForDebug

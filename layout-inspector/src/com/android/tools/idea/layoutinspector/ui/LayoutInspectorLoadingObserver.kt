@@ -18,10 +18,11 @@ package com.android.tools.idea.layoutinspector.ui
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * This class observes [LayoutInspector] and keeps track of when it is in a loading state.
- * It can be used for example to show loading indicators in the UI.
+ * This class observes [LayoutInspector] and keeps track of when it is in a loading state. It can be
+ * used for example to show loading indicators in the UI.
  */
 class LayoutInspectorLoadingObserver(private val layoutInspector: LayoutInspector) {
   interface Listener {
@@ -31,25 +32,17 @@ class LayoutInspectorLoadingObserver(private val layoutInspector: LayoutInspecto
 
   var listeners = mutableListOf<Listener>()
 
-  var isLoading = false
-    private set(value) {
-      if (field == value) {
-        return
-      }
+  val isLoading
+    get() = _isLoading.get()
 
-      field = value
-
-      if (isLoading) {
-        listeners.forEach { it.onStartLoading() }
-      }
-      else {
-        listeners.forEach { it.onStopLoading() }
-      }
-    }
+  private val _isLoading = AtomicBoolean(false)
 
   init {
     layoutInspector.stopInspectorListeners.add(this::onStopInspector)
-    layoutInspector.processModel?.addSelectedProcessListeners(Executors.newSingleThreadExecutor(), this::onSelectedProcess)
+    layoutInspector.processModel?.addSelectedProcessListeners(
+      Executors.newSingleThreadExecutor(),
+      this::onSelectedProcess
+    )
     layoutInspector.inspectorModel.modificationListeners.add(this::onInspectorModelChanged)
   }
 
@@ -61,19 +54,33 @@ class LayoutInspectorLoadingObserver(private val layoutInspector: LayoutInspecto
   }
 
   private fun onStopInspector() {
-    isLoading = false
+    setIsLoading(false)
   }
 
   private fun onSelectedProcess() {
     if (layoutInspector.processModel?.selectedProcess?.isRunning == true) {
-      isLoading = true
+      setIsLoading(true)
     }
     if (layoutInspector.processModel?.selectedProcess == null) {
-      isLoading = false
+      setIsLoading(false)
     }
   }
 
-  private fun onInspectorModelChanged(oldWindow: AndroidWindow?, newWindow: AndroidWindow?, isStructuralChange: Boolean) {
-    isLoading = false
+  private fun onInspectorModelChanged(
+    oldWindow: AndroidWindow?,
+    newWindow: AndroidWindow?,
+    isStructuralChange: Boolean
+  ) {
+    setIsLoading(false)
+  }
+
+  private fun setIsLoading(isLoading: Boolean) {
+    _isLoading.set(isLoading)
+
+    if (isLoading) {
+      listeners.forEach { it.onStartLoading() }
+    } else {
+      listeners.forEach { it.onStopLoading() }
+    }
   }
 }

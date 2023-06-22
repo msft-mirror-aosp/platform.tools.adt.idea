@@ -522,12 +522,16 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:tightvnc",
         "//tools/studio/google/cloud/testing/firebase-testing:google_api_services_testing",
     ],
-    modules = {"firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"]},
+    modules = {
+        "firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"],
+        "gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"],
+    },
     visibility = ["//visibility:public"],
     deps = [
         ":com.google.gct.core",
         ":org.jetbrains.android",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
     ],
 )
 
@@ -580,19 +584,6 @@ studio_plugin(
     directory = "smali",
     modules = {"smali.jar": ["//tools/adt/idea/smali:intellij.android.smali"]},
     visibility = ["//visibility:public"],
-)
-
-studio_plugin(
-    name = "com.android.gmdcodecompletion",
-    directory = "gmd-code-completion",
-    modules = {"gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"]},
-    visibility = ["//visibility:public"],
-    deps = [
-        ":com.google.gct.testing",
-        ":org.jetbrains.android",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-    ],
 )
 
 studio_plugin(
@@ -683,7 +674,6 @@ android_studio(
     platform = "//prebuilts/studio/intellij-sdk:studio-sdk",
     plugins = [
         ":org.jetbrains.android",
-        ":com.android.gmdcodecompletion",
         ":com.android.tools.studiobot",
         ":com.android.tools.apk",
         ":com.android.tools.ndk",
@@ -738,24 +728,6 @@ py_test(
     ],
 )
 
-config_setting(
-    name = "macos-arm64",
-    constraint_values = [
-        "@platforms//os:macos",
-        "@platforms//cpu:arm64",
-    ],
-    visibility = ["//visibility:private"],
-)
-
-config_setting(
-    name = "macos-x86_64",
-    constraint_values = [
-        "@platforms//os:macos",
-        "@platforms//cpu:x86_64",
-    ],
-    visibility = ["//visibility:private"],
-)
-
 py_test(
     name = "test_updater",
     timeout = "long",  # b/233245811
@@ -765,11 +737,11 @@ py_test(
         ":updater.jar",
     ] + select({
         # On macOS, the test converts macOS ↔ Windows
-        ":macos-arm64": [
+        "//tools/base/bazel/platforms:macos-arm64": [
             ":android-studio.mac_arm.zip",
             ":android-studio.win.zip",
         ],
-        ":macos-x86_64": [
+        "//tools/base/bazel/platforms:macos-x86_64": [
             ":android-studio.mac.zip",
             ":android-studio.win.zip",
         ],

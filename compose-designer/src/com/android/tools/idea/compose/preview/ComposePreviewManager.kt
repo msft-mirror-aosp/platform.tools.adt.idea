@@ -98,11 +98,20 @@ interface ComposePreviewManager : Disposable {
    */
   val availableGroups: Collection<PreviewGroup>
 
+  /** List of available elements in this preview. */
+  val availableElements: Collection<ComposePreviewElementInstance>
+
   /**
    * Group name from [availableGroups] currently selected or null if we do not want to do group
    * filtering.
    */
   var groupFilter: PreviewGroup
+
+  /**
+   * Filter that can be applied to select a single instance. Setting this filter will trigger a
+   * refresh and stop any other preview mode (Animation, Interactive, UI Check...).
+   */
+  var singlePreviewElementInstance: ComposePreviewElementInstance?
 
   /**
    * Represents the [ComposePreviewElementInstance] open in the Interactive Preview. Null if no
@@ -188,7 +197,9 @@ class NopComposePreviewManager : ComposePreviewManager {
     )
 
   override val availableGroups = emptyList<PreviewGroup>()
+  override val availableElements = emptySet<ComposePreviewElementInstance>()
   override var groupFilter = PreviewGroup.ALL_PREVIEW_GROUP
+  override var singlePreviewElementInstance: ComposePreviewElementInstance? = null
   override val interactivePreviewElementInstance: ComposePreviewElementInstance? = null
   override var animationInspectionPreviewElementInstance: ComposePreviewElementInstance? = null
   override val hasDesignInfoProviders: Boolean = false

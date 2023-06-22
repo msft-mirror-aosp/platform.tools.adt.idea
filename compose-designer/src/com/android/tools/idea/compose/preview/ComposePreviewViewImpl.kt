@@ -95,9 +95,6 @@ interface ComposePreviewView {
   /** If true, the contents have been at least rendered once. */
   var hasRendered: Boolean
 
-  /** Requests the previews displayed by this [ComposePreviewView] to be refreshed. */
-  val requestRefresh: () -> Unit
-
   /** Method called to force an update on the notifications for the given [FileEditor]. */
   fun updateNotifications(parentEditor: FileEditor)
 
@@ -134,7 +131,7 @@ interface ComposePreviewView {
    */
   suspend fun updatePreviewsAndRefresh(
     reinflate: Boolean,
-    previewElementProvider: PreviewFilters,
+    previewElements: Collection<ComposePreviewElementInstance>,
     psiFile: PsiFile,
     progressIndicator: ProgressIndicator,
     onRenderCompleted: () -> Unit,
@@ -144,8 +141,11 @@ interface ComposePreviewView {
       (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager
   ): List<ComposePreviewElement> {
     return mainSurface.updatePreviewsAndRefresh(
+      // Don't reuse models when in lite mode to avoid briefly showing an unexpected/mixed
+      // state of the old and new preview.
+      tryReusingModels = !ComposePreviewLiteModeManager.isLiteModeEnabled,
       reinflate,
-      previewElementProvider,
+      previewElements,
       Logger.getInstance(ComposePreviewView::class.java),
       psiFile,
       mainSurface,
@@ -185,7 +185,6 @@ fun interface ComposePreviewViewProvider {
     project: Project,
     psiFilePointer: SmartPsiElementPointer<PsiFile>,
     projectBuildStatusManager: ProjectBuildStatusManager,
-    refreshNeeded: () -> Unit,
     dataProvider: DataProvider,
     mainDesignSurfaceBuilder: NlDesignSurface.Builder,
     parentDisposable: Disposable
@@ -219,7 +218,6 @@ fun interface ComposePreviewViewProvider {
  *   panel. Used to handle which notifications should be displayed.
  * @param projectBuildStatusManager [ProjectBuildStatusManager] used to detect the current build
  *   status and show/hide the correct loading message.
- * @param requestRefresh requests the previews of this component to be refreshed.
  * @param dataProvider the [DataProvider] to be used by the [mainSurface] panel.
  * @param mainDesignSurfaceBuilder a builder to create main design surface
  * @param parentDisposable the [Disposable] to use as parent disposable for this panel.
@@ -228,7 +226,6 @@ internal class ComposePreviewViewImpl(
   private val project: Project,
   private val psiFilePointer: SmartPsiElementPointer<PsiFile>,
   private val projectBuildStatusManager: ProjectBuildStatusManager,
-  override val requestRefresh: () -> Unit,
   dataProvider: DataProvider,
   mainDesignSurfaceBuilder: NlDesignSurface.Builder,
   parentDisposable: Disposable
@@ -311,12 +308,7 @@ internal class ComposePreviewViewImpl(
 
     // Initialize gallery if isLiteModeEnabled.
     if (ComposePreviewLiteModeManager.isLiteModeEnabled) {
-      gallery =
-        ComposeGallery(
-          content = mainSurface,
-          rootComponent = mainSurface,
-          requestRefresh = requestRefresh
-        )
+      gallery = ComposeGallery(content = mainSurface, rootComponent = mainSurface)
     }
 
     val contentPanel =
@@ -349,23 +341,24 @@ internal class ComposePreviewViewImpl(
 
     workbench.init(issueErrorSplitter, mainSurface, listOf(), false)
     workbench.hideContent()
-    if (projectBuildStatusManager.status == ProjectStatus.NeedsBuild) {
-      if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
-        log.debug("Preview not supported in read-only files")
-        showModalErrorMessage(message("panel.read.only.file"))
-      } else {
-        log.debug("Project needs build")
-        showNeedsToBuildErrorPanel()
-      }
-    } else {
-      val message =
-        when {
-          projectBuildStatusManager.isBuilding -> message("panel.building")
-          DumbService.getInstance(project).isDumb -> message("panel.indexing")
-          else -> message("panel.initializing")
+    val projectStatus = projectBuildStatusManager.statusFlow.value
+    log.debug("ProjectStatus: $projectStatus")
+    when (projectStatus) {
+      ProjectStatus.NeedsBuild -> {
+        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
+          log.debug("Preview not supported in read-only files")
+          showModalErrorMessage(message("panel.read.only.file"))
+        } else {
+          log.debug("Project needs build")
+          showNeedsToBuildErrorPanel()
         }
-      log.debug("Show loading: $message")
-      workbench.showLoading(message)
+      }
+      ProjectStatus.Building -> workbench.showLoading(message("panel.building"))
+      ProjectStatus.NotReady -> workbench.showLoading(message("panel.initializing"))
+      else -> {
+        if (DumbService.getInstance(project).isDumb())
+          workbench.showLoading(message("panel.indexing"))
+      }
     }
     workbench.focusTraversalPolicy = LayoutFocusTraversalPolicy()
     workbench.isFocusCycleRoot = true
@@ -396,35 +389,6 @@ internal class ComposePreviewViewImpl(
 
       notificationPanel.updateNotifications(psiFilePointer.virtualFile, parentEditor, project)
     }
-
-  override suspend fun updatePreviewsAndRefresh(
-    reinflate: Boolean,
-    previewElementProvider: PreviewFilters,
-    psiFile: PsiFile,
-    progressIndicator: ProgressIndicator,
-    onRenderCompleted: () -> Unit,
-    previewElementModelAdapter: ComposePreviewElementModelAdapter,
-    modelUpdater: NlModel.NlModelUpdaterInterface,
-    configureLayoutlibSceneManager:
-      (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager
-  ): List<ComposePreviewElement> {
-    gallery?.let {
-      val elements = previewElementProvider.allAvailablePreviewElements()
-      previewElementProvider.instanceFilter = it.updateAndGetSelected(elements)
-    }
-    return mainSurface.updatePreviewsAndRefresh(
-      reinflate,
-      previewElementProvider,
-      Logger.getInstance(ComposePreviewView::class.java),
-      psiFile,
-      mainSurface,
-      progressIndicator,
-      onRenderCompleted,
-      previewElementModelAdapter,
-      modelUpdater,
-      configureLayoutlibSceneManager
-    )
-  }
 
   /** Method called to ask all notifications to update. */
   private fun updateNotifications() =

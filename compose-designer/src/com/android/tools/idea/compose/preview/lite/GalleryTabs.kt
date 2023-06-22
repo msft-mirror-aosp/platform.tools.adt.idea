@@ -19,11 +19,13 @@ import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.compose.preview.Colors
 import com.android.tools.idea.compose.preview.message
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ToggleAction
@@ -39,6 +41,9 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Adjustable
 import java.awt.BorderLayout
+import java.awt.Point
+import java.awt.event.FocusEvent
+import java.awt.event.FocusListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
@@ -54,15 +59,15 @@ interface TitledKey {
  * Shows a tab for each [Key].
  *
  * @param root a root [JComponent] for this [GalleryTabs].
- * @param keys initial set of [Key]s to create [GalleryTabs] with
+ * @param keysProvider a provider of [Key]s
  * @param tabChangeListener is called when new [Key] is selected. It is also called after
  *   [GalleryTabs] initialization with first selected [Key]. [GalleryTabs] insures
  *   [tabChangeListener] is not called twice if same [Key] set twice.
  */
 class GalleryTabs<Key : TitledKey>(
   private val root: JComponent,
-  keys: Set<Key>,
-  private val tabChangeListener: (Key?) -> Unit
+  private val keysProvider: (DataContext) -> Set<Key>,
+  private val tabChangeListener: (DataContext, Key?) -> Unit
 ) : JPanel(BorderLayout()) {
 
   private inner class TabLabelAction(val key: Key) :
@@ -74,27 +79,42 @@ class GalleryTabs<Key : TitledKey>(
           ActionPlaces.TOOLBAR,
           ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE,
         )
-        .apply { font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL) }
+        .apply {
+          font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL)
+
+          addFocusListener(
+            object : FocusListener {
+              override fun focusGained(e: FocusEvent) {
+                (e.component as? ActionButtonWithText)?.let { focusOnComponent(it) }
+              }
+
+              override fun focusLost(e: FocusEvent) {}
+            },
+          )
+        }
 
     override fun actionPerformed(e: AnActionEvent) {
-      selectedKey = key
+      updateSelectedKey(e, key)
       // If popup was opened - close it.
       allTabDropdown.popup?.cancel()
       val sameTabInToolbar =
         previousToolbar?.components?.filterIsInstance<ActionButtonWithText>()?.firstOrNull {
           (it.action as? GalleryTabs<*>.TabLabelAction)?.key == this.key
         }
-      sameTabInToolbar?.let {
-        when {
-          // If tab is not visible and on the left side - move it to the most left visible side.
-          it.location.x < -centerPanel.location.x -> scrollBar.value = it.location.x
+      sameTabInToolbar?.let { focusOnComponent(it) }
+    }
 
-          // If tab is not visible and on the right side - move it to the most right visible side.
-          it.location.x + it.bounds.width > -centerPanel.location.x + scrollBar.bounds.width ->
-            scrollBar.value = it.location.x + it.bounds.width - scrollBar.bounds.width
-        }
-        it.requestFocus()
+    private fun focusOnComponent(button: ActionButtonWithText) {
+      when {
+        // If tab is not visible and on the left side - move it to the most left visible side.
+        button.location.x < -centerPanel.location.x -> scrollBar.value = button.location.x
+
+        // If tab is not visible and on the right side - move it to the most right visible side.
+        button.location.x + button.bounds.width >
+          -centerPanel.location.x + scrollBar.bounds.width ->
+          scrollBar.value = button.location.x + button.bounds.width - scrollBar.bounds.width
       }
+      button.requestFocus()
     }
 
     override fun isSelected(e: AnActionEvent): Boolean {
@@ -129,7 +149,11 @@ class GalleryTabs<Key : TitledKey>(
             null,
             true,
           )
-          .also { it.showInCenterOf(allTabToolbar) }
+          .also {
+            val location: Point = allTabToolbar.locationOnScreen
+            location.translate(0, allTabToolbar.height)
+            it.showInScreenCoordinates(allTabToolbar, location)
+          }
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread {
@@ -143,19 +167,21 @@ class GalleryTabs<Key : TitledKey>(
   }
 
   var selectedKey: Key? = null
-    private set(value) {
-      // Avoid setting same value twice.
-      if (field == value) return
-      field = value
-      tabChangeListener(value)
-    }
+    private set
+
+  private fun updateSelectedKey(e: AnActionEvent, key: Key?) {
+    // Avoid setting same value twice.
+    if (selectedKey == key) return
+    selectedKey = key
+    tabChangeListener(e.dataContext, key)
+  }
 
   private val allTabDropdown = AllTabsDropdown()
   private val labelActions: MutableMap<Key, TabLabelAction> = mutableMapOf()
   private val centerPanel = JPanel(BorderLayout())
   private val scrollBar = JBThinOverlappingScrollBar(Adjustable.HORIZONTAL)
   private val allTabToolbar: JComponent =
-    createToolbar("More Tabs", listOf(allTabDropdown)).apply {
+    createToolbar("More Tabs", DefaultActionGroup(listOf(allTabDropdown))).apply {
       background = Colors.DEFAULT_BACKGROUND_COLOR
     }
   private var previousToolbar: JComponent? = null
@@ -169,14 +195,22 @@ class GalleryTabs<Key : TitledKey>(
       BorderLayout.CENTER,
     )
     add(allTabToolbar, BorderLayout.EAST)
-    updateKeys(keys)
+    createEmptyToolbar()
+  }
+
+  private fun createEmptyToolbar() {
+    previousToolbar =
+      createToolbar("Gallery Tabs", GalleryActionGroup(emptyList())).apply {
+        background = Colors.DEFAULT_BACKGROUND_COLOR
+        centerPanel.add(this, BorderLayout.CENTER)
+      }
   }
 
   /**
    * Update all available [Key]s. Toolbar is recreated if there are any changes in [keys]. It also
    * insures that if there are no changes in [keys] toolbar will not be updated.
    */
-  fun updateKeys(keys: Set<Key>) {
+  private fun updateKeys(e: AnActionEvent, keys: Set<Key>) {
 
     // If [GalleryTabs] needs update, [previousToolbar] will be removed and new toolbar will be
     // created and added with available [labelActions].
@@ -191,22 +225,33 @@ class GalleryTabs<Key : TitledKey>(
       previousToolbar?.let { centerPanel.remove(it) }
       // Create new toolbar.
       val toolbar =
-        createToolbar("Gallery Tabs", labelActions.values.toList()).apply {
+        createToolbar("Gallery Tabs", GalleryActionGroup(labelActions.values.toList())).apply {
           background = Colors.DEFAULT_BACKGROUND_COLOR
         }
       centerPanel.add(toolbar, BorderLayout.CENTER)
       previousToolbar = toolbar
       // If selectedKey was removed, select first key.
-      selectedKey = if (keys.contains(selectedKey)) selectedKey else keys.firstOrNull()
+      updateSelectedKey(e, if (keys.contains(selectedKey)) selectedKey else keys.firstOrNull())
     }
   }
 
   /** Creates [ActionToolbarImpl] with [actions]. */
-  private fun createToolbar(place: String, actions: List<AnAction>) =
-    ActionToolbarImpl(place, DefaultActionGroup(actions), true).apply {
+  private fun createToolbar(place: String, actionGroup: ActionGroup) =
+    ActionToolbarImpl(place, actionGroup, true).apply {
       targetComponent = root
       ActionToolbarUtil.makeToolbarNavigable(this)
       layoutPolicy = ActionToolbar.NOWRAP_LAYOUT_POLICY
       setMinimumButtonSize(ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
     }
+
+  private inner class GalleryActionGroup(actions: List<AnAction>) : DefaultActionGroup(actions) {
+    override fun update(e: AnActionEvent) {
+      super.update(e)
+      updateKeys(e, keysProvider(e.dataContext))
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread {
+      return ActionUpdateThread.EDT
+    }
+  }
 }
