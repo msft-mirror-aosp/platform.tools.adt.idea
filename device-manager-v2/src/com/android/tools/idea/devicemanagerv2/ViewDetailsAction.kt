@@ -15,12 +15,12 @@
  */
 package com.android.tools.idea.devicemanagerv2
 
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.project.DumbAwareAction
 
-class ViewDetailsAction : AnAction("View Details") {
+class ViewDetailsAction : DumbAwareAction("View Details") {
   override fun actionPerformed(e: AnActionEvent) {
-    val handle = e.deviceHandle() ?: return
-    e.deviceManagerPanel()?.showDeviceDetails(handle)
+    val row = e.deviceRowData() ?: return
+    e.deviceManagerPanel()?.showDeviceDetails(row)
   }
 }

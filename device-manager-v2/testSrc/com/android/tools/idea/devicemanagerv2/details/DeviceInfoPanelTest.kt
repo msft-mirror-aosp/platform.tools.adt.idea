@@ -28,6 +28,7 @@ import com.android.sdklib.deviceprovisioner.Resolution
 import com.android.sdklib.deviceprovisioner.testing.DeviceProvisionerRule
 import com.android.sdklib.devices.Abi
 import com.google.common.truth.Truth.assertThat
+import icons.StudioIcons
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -116,6 +117,7 @@ class DeviceInfoPanelTest {
           isVirtual = false
           resolution = Resolution(1080, 2280)
           density = 440
+          icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE
         }
       )
 
@@ -134,5 +136,28 @@ class DeviceInfoPanelTest {
     assertThat(panel.resolutionDp).isEqualTo("393 × 830")
     assertThat(panel.abiList).isEqualTo("arm64-v8a")
     assertThat(panel.availableStorage).isEqualTo("2,542 MB")
+  }
+
+  @Test
+  fun infoSectionFormat() {
+    val buffer = StringBuilder()
+    InfoSection(
+        "Properties",
+        listOf(
+          LabeledValue("Type", "Phone"),
+          LabeledValue("System image", "/tmp/foo/system.img"),
+          LabeledValue("API", "33")
+        )
+      )
+      .writeTo(buffer)
+    assertThat(buffer.toString())
+      .isEqualTo(
+        String.format(
+          "Properties%n" +
+            "Type         Phone%n" +
+            "System image /tmp/foo/system.img%n" +
+            "API          33%n"
+        )
+      )
   }
 }

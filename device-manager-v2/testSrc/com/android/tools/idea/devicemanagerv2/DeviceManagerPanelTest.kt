@@ -16,19 +16,16 @@
 package com.android.tools.idea.devicemanagerv2
 
 import com.android.adblib.utils.createChildScope
-import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceTemplate
-import com.android.sdklib.deviceprovisioner.TemplateActivationAction
 import com.android.tools.adtui.categorytable.CategoryTable
 import com.android.tools.adtui.categorytable.RowKey
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ProjectRule
 import icons.StudioIcons
-import java.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -99,6 +96,7 @@ class DeviceManagerPanelTest {
         DeviceProperties.build {
           manufacturer = "Google"
           model = "Pixel 5"
+          icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE
         }
       )
     }
@@ -154,21 +152,12 @@ class DeviceManagerPanelTest {
   ) : DeviceHandle {
     override val stateFlow =
       MutableStateFlow<DeviceState>(
-        DeviceState.Disconnected(DeviceProperties.build { model = name })
+        DeviceState.Disconnected(
+          DeviceProperties.build {
+            model = name
+            icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE
+          }
+        )
       )
-  }
-
-  private class FakeDeviceTemplate(
-    val name: String,
-  ) : DeviceTemplate {
-    override val properties = DeviceProperties.build { model = name }
-    override val activationAction =
-      object : TemplateActivationAction {
-        override suspend fun activate(duration: Duration?) = throw UnsupportedOperationException()
-        override val durationUsed = false
-        override val presentation =
-          MutableStateFlow(DeviceAction.Presentation("", StudioIcons.Avd.RUN, true))
-      }
-    override val editAction = null
   }
 }

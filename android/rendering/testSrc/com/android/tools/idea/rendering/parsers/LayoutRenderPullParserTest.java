@@ -341,6 +341,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
     @Language("XML")
     final String content = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                            "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+                           "    xmlns:other_tools=\"http://schemas.android.com/tools\"\n" +
                            "    xmlns:tools=\"http://schemas.android.com/tools\"\n" +
                            "    android:layout_width=\"match_parent\"\n" +
                            "    android:layout_height=\"match_parent\"\n" +
@@ -352,7 +353,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
                            "        app:autoSizeText=\"none\"\n" +
                            "        tools:autoSizeText=\"uniform\"\n" +
                            "        android:text=\"Hello world\"\n" +
-                           "        tools:text=\"Tools content\"/>\n" +
+                           "        other_tools:text=\"Tools content\"/>\n" +
                            "</LinearLayout>";
     PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
     assertTrue(psiFile instanceof XmlFile);
@@ -657,10 +658,8 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
     ResourceResolver resourceResolver = configuration.getResourceResolver();
     NavGraphResolver navGraphResolver = new StudioEnvironmentContext(myModule).getNavGraphResolver(resourceResolver);
 
-    LayoutRenderPullParser parser =
-      LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                    null, Density.MEDIUM, navGraphResolver,
-                                    StudioResourceRepositoryManager.getInstance(myModule), true);
+    LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, navGraphResolver,
+                                                                  StudioResourceRepositoryManager.getInstance(myModule), true);
     assertEquals(START_TAG, parser.nextTag());
     assertEquals(START_TAG, parser.nextTag());
     assertEquals("include", parser.getName());
@@ -703,10 +702,8 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
     ResourceResolver resourceResolver = configuration.getResourceResolver();
     NavGraphResolver navGraphResolver = new StudioEnvironmentContext(myModule).getNavGraphResolver(resourceResolver);
 
-    LayoutRenderPullParser parser =
-      LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                    null, Density.MEDIUM, navGraphResolver,
-                                    StudioResourceRepositoryManager.getInstance(myModule), true);
+    LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, navGraphResolver,
+                                                                  StudioResourceRepositoryManager.getInstance(myModule), true);
     assertEquals(START_TAG, parser.nextTag());
     assertEquals(START_TAG, parser.nextTag());
     assertEquals("include", parser.getName());
@@ -781,8 +778,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
     PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
     assertTrue(psiFile instanceof XmlFile);
     RenderXmlFile xmlFile = new PsiXmlFile((XmlFile) psiFile);
-    LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                                                  null, Density.MEDIUM, null,
+    LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, null,
                                                                   StudioResourceRepositoryManager.getInstance(myModule), false);
 
     assertEquals(START_TAG, parser.nextTag());
@@ -814,8 +810,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
                                               "    android:paddingHorizontal=\"12dp\" />\n";
       PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
       RenderXmlFile xmlFile = new PsiXmlFile((XmlFile) psiFile);
-      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                                                    null, Density.MEDIUM, null,
+      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, null,
                                                                     StudioResourceRepositoryManager.getInstance(myModule), false);
       assertEquals(START_TAG, parser.nextTag());
       assertEquals("12dp", parser.getAttributeValue(ANDROID_URI, "paddingLeft"));
@@ -835,8 +830,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
                                               "    tools:paddingHorizontal=\"12dp\" />\n";
       PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
       RenderXmlFile xmlFile = new PsiXmlFile((XmlFile) psiFile);
-      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                                                    null, Density.MEDIUM, null,
+      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, null,
                                                                     StudioResourceRepositoryManager.getInstance(myModule), false);
       assertEquals(START_TAG, parser.nextTag());
       assertEquals("12dp", parser.getAttributeValue(ANDROID_URI, "paddingLeft"));
@@ -855,8 +849,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
                                               "    android:paddingVertical=\"12dp\" />\n";
       PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
       RenderXmlFile xmlFile = new PsiXmlFile((XmlFile) psiFile);
-      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                                                    null, Density.MEDIUM, null,
+      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, null,
                                                                     StudioResourceRepositoryManager.getInstance(myModule), false);
       assertEquals(START_TAG, parser.nextTag());
       assertEquals("12dp", parser.getAttributeValue(ANDROID_URI, "paddingTop"));
@@ -875,8 +868,7 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
                                               "    android:paddingBottom=\"2dp\" />\n";
       PsiFile psiFile = myFixture.addFileToProject("res/layout/layout.xml", content);
       RenderXmlFile xmlFile = new PsiXmlFile((XmlFile) psiFile);
-      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER,
-                                                                    null, Density.MEDIUM, null,
+      LayoutRenderPullParser parser = LayoutRenderPullParser.create(xmlFile, RenderLogger.NOP_RENDER_LOGGER, null,
                                                                     StudioResourceRepositoryManager.getInstance(myModule), false);
       assertEquals(START_TAG, parser.nextTag());
       assertEquals("1dp", parser.getAttributeValue(ANDROID_URI, "paddingRight"));

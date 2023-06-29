@@ -18,6 +18,8 @@ package com.android.tools.asdriver.tests;
 import com.android.tools.asdriver.proto.ASDriver;
 import com.intellij.lang.annotation.HighlightSeverity;
 import java.util.Arrays;
+import java.util.Objects;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -25,7 +27,9 @@ import org.jetbrains.annotations.Nullable;
  * accessible to test classes anyway.
  */
 public class AnalysisResult {
+  @NotNull
   HighlightSeverity severity;
+  @NotNull
   String text;
   @Nullable
   String description;
@@ -33,7 +37,7 @@ public class AnalysisResult {
   String toolId;
   int lineNumber;
 
-  public AnalysisResult(HighlightSeverity severity, String text, @Nullable String description, @Nullable String toolId, int lineNumber) {
+  public AnalysisResult(@NotNull HighlightSeverity severity, @NotNull String text, @Nullable String description, @Nullable String toolId, int lineNumber) {
     this.severity = severity;
     this.text = text;
     this.description = description;
@@ -41,10 +45,12 @@ public class AnalysisResult {
     this.lineNumber = lineNumber;
   }
 
+  @NotNull
   public HighlightSeverity getSeverity() {
     return severity;
   }
 
+  @NotNull
   public String getText() {
     return text;
   }
@@ -74,11 +80,32 @@ public class AnalysisResult {
            '}';
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof AnalysisResult other)) return false;
+
+    return other.severity == severity &&
+           Objects.equals(other.text, text) &&
+           Objects.equals(other.description, description) &&
+           Objects.equals(other.toolId, toolId) &&
+           other.lineNumber == lineNumber;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(severity, text, description, toolId, lineNumber);
+  }
+
   public static AnalysisResult fromProto(ASDriver.AnalysisResult protoResult) {
-    String severityString = protoResult.getSeverity().toString();
+    // HighlightSeverity determines equality based on just the name and value. Construct a temporary severity based on the proto, and then
+    // use it to find the corresponding value in DEFAULT_SEVERITIES. (This ensures we get other properties like the display name set on the
+    // resulting object.)
+    ASDriver.AnalysisResult.HighlightSeverity protoSeverity = protoResult.getSeverity();
+    HighlightSeverity desiredSeverity = new HighlightSeverity(protoSeverity.getName(), protoSeverity.getValue());
     HighlightSeverity
-      severity = Arrays.stream(HighlightSeverity.DEFAULT_SEVERITIES).filter((hs) -> hs.getName().equals(severityString)).findFirst()
-      .orElseThrow();
+      severity = Arrays.stream(HighlightSeverity.DEFAULT_SEVERITIES).filter((hs) -> hs.equals(desiredSeverity)).findFirst()
+        .orElseThrow();
     String description = protoResult.hasDescription() ? protoResult.getDescription() : null;
     String toolId = protoResult.hasToolId() ? protoResult.getToolId() : null;
 

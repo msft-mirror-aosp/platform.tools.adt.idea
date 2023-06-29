@@ -58,7 +58,6 @@ import com.android.tools.idea.modes.essentials.EssentialsMode;
 import com.android.tools.idea.rendering.AndroidFacetRenderModelModule;
 import com.android.tools.idea.rendering.RenderResults;
 import com.android.tools.idea.rendering.ShowFixFactory;
-import com.android.tools.idea.rendering.StudioRenderConfiguration;
 import com.android.tools.idea.rendering.StudioRenderService;
 import com.android.tools.idea.rendering.StudioRenderServiceKt;
 import com.android.tools.idea.rendering.parsers.PsiXmlFile;
@@ -87,7 +86,6 @@ import com.android.tools.rendering.RenderProblem;
 import com.android.tools.rendering.RenderResult;
 import com.android.tools.rendering.RenderService;
 import com.android.tools.rendering.RenderTask;
-import com.android.tools.rendering.api.RenderConfiguration;
 import com.android.tools.rendering.api.RenderModelModule;
 import com.android.tools.rendering.imagepool.ImagePool;
 import com.google.common.annotations.VisibleForTesting;
@@ -936,46 +934,6 @@ public class LayoutlibSceneManager extends SceneManager {
   }
 
   /**
-   * Schedule asynchronously model inflating and view hierarchy updating.
-   */
-  protected void requestModelUpdate() {
-    if (isDisposed.get()) {
-      return;
-    }
-
-    myProgressIndicator.start();
-
-    myRenderingQueue.queue(new Update("model.update", HIGH_PRIORITY) {
-      @Override
-      public void run() {
-        NlModel model = getModel();
-        Project project = model.getModule().getProject();
-        if (!project.isOpen()) {
-          return;
-        }
-        DumbService.getInstance(project).runWhenSmart(() -> {
-          if (model.getVirtualFile().isValid() && !model.getFacet().isDisposed()) {
-            updateModelAsync()
-              .whenComplete((result, ex) -> {
-                isOutOfDate.set(false);
-                myProgressIndicator.stop();
-              });
-          }
-          else {
-            isOutOfDate.set(false);
-            myProgressIndicator.stop();
-          }
-        });
-      }
-
-      @Override
-      public boolean canEat(Update update) {
-        return equals(update);
-      }
-    });
-  }
-
-  /**
    * Whether we should render just the viewport
    */
   private static boolean ourRenderViewPort;
@@ -1190,8 +1148,7 @@ public class LayoutlibSceneManager extends SceneManager {
     RenderService renderService = StudioRenderService.getInstance(getModel().getProject());
     RenderLogger logger = myLogRenderErrors ? StudioRenderServiceKt.createLogger(renderService, project) : renderService.getNopLogger();
     RenderModelModule renderModule = createRenderModule(facet);
-    RenderConfiguration renderConfiguration = new StudioRenderConfiguration(configuration);
-    RenderService.RenderTaskBuilder renderTaskBuilder = renderService.taskBuilder(renderModule, renderConfiguration, logger)
+    RenderService.RenderTaskBuilder renderTaskBuilder = renderService.taskBuilder(renderModule, configuration, logger)
       .withPsiFile(new PsiXmlFile(getModel().getFile()))
       .withLayoutScanner(myLayoutScannerConfig.isLayoutScannerEnabled())
       .withTopic(myRenderingTopic);
@@ -1351,8 +1308,6 @@ public class LayoutlibSceneManager extends SceneManager {
   /**
    * Asynchronously update the model. This will inflate the layout and notify the listeners using
    * {@link ModelListener#modelDerivedDataChanged(NlModel)}.
-   *
-   * Try to use {@link #requestModelUpdate()} if possible. Which schedules the updating in the rendering queue and avoid duplication.
    */
   @NotNull
   public CompletableFuture<Void> updateModelAsync() {
@@ -1798,12 +1753,9 @@ public class LayoutlibSceneManager extends SceneManager {
       ResourceNotificationManager.ResourceVersion version =
         manager.getCurrentVersion(getModel().getFacet(), getModel().getFile(), getModel().getConfiguration());
       if (!version.equals(myRenderedVersion)) {
-        requestModelUpdate();
-        getModel().updateTheme();
+        forceReinflate();
       }
-      else {
-        requestLayoutAndRenderAsync(false);
-      }
+      requestLayoutAndRenderAsync(false);
     }
 
     return active;

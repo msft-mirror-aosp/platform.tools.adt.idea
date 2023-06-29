@@ -21,8 +21,8 @@ import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
-import com.android.tools.idea.flags.overrides.BuildSettingFlagOverrides;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
+import com.android.tools.idea.flags.overrides.BuildSettingFlagOverrides;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
@@ -253,11 +253,6 @@ public final class StudioFlags {
     NELE, "property.panel.actionbar", "Property Panel Actionbar",
     "Support Actionbar in property panel",
     false);
-
-  public static final Flag<Boolean> NELE_SOURCE_CODE_EDITOR = Flag.create(
-    NELE, "show.source.code.editor", "New Source Code Editor",
-    "Enable new source code editor with preview(s) coming as a substitute to Compose and Custom View editors.",
-    true);
 
   public static final Flag<Boolean> NELE_SHOW_RECYCLER_VIEW_SETUP_WIZARD = Flag.create(
     NELE, "recyclerview.setup.wizard", "Show setup wizard for recycler view",
@@ -632,6 +627,14 @@ public final class StudioFlags {
     "ignore.studio.tags",
     "Ignore tags that Studio itself is responsible for",
     "Ignore tags that Studio itself is responsible for",
+    true
+  );
+
+  public static final Flag<Boolean> LOGCAT_EXPORT_IMPORT_ENABLED = Flag.create(
+    LOGCAT,
+    "export.import.enable",
+    "Enable Export/Import feature",
+    "Enable Export/Import feature",
     true
   );
   //endregion
@@ -1225,6 +1228,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ALLOW_MULTIPLE_MIN_API_DEX_MARKERS_IN_APK = Flag.create(
+    COMPOSE, "deploy.live.edit.allow.multiple.min.api.dex.markers.in.apk",
+    "LiveEdit: Allow multiple min api dex markers in apk",
+    "If enabled, apk may contain multiple min api dex markers and LiveEdit picks the lowest among them",
+   false
+  );
+
   public static final Flag<Integer> COMPOSE_LIVE_LITERALS_UPDATE_RATE = Flag.create(
     COMPOSE, "deploy.live.literals.updaterate",
     "Update rate of live literals edits",
@@ -1345,6 +1355,11 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.selection", "Enable the select/deselect interaction with Previews",
     "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
     true);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY = Flag.create(
+    COMPOSE, "compose.preview.render.quality", "Enable the usage of a render quality management mechanism for Compose Preview",
+    "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
+    false);
   //endregion
 
   // region Wear surfaces

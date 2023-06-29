@@ -44,7 +44,6 @@ data class ConnectionsChanged(
           issues = LoadingState.Loading,
           currentIssueDetails = LoadingState.Ready(null),
           currentNotes = LoadingState.Ready(null),
-          // reset all filters to default states.
           filters = defaultFilters
         ),
         action =
@@ -62,7 +61,6 @@ data class ConnectionsChanged(
   }
 
   private fun findActiveConnection(state: AppInsightsState): Connection? {
-    // First, try to see if the previously selected connection is still valid, if so, pick it.
     val currentSelection = state.connections.selected
     if (currentSelection in connections) return currentSelection
 

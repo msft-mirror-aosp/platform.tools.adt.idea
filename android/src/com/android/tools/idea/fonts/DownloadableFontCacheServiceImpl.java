@@ -18,22 +18,18 @@ package com.android.tools.idea.fonts;
 import static com.android.ide.common.fonts.FontFamilyKt.FILE_PROTOCOL_START;
 import static com.android.ide.common.fonts.FontFamilyKt.HTTPS_PROTOCOL_START;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.ide.common.fonts.FontDetail;
 import com.android.ide.common.fonts.FontFamily;
 import com.android.ide.common.fonts.FontLoader;
 import com.android.ide.common.fonts.FontProvider;
-import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.tools.fonts.DownloadableFontCacheService;
-import com.android.tools.idea.sdk.AndroidSdks;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -60,7 +57,11 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
 
   private final SystemFonts mySystemFonts;
   @GuardedBy("getLock()")
-  private final Map<String, FontDirectoryDownloadService> myDownloadServiceMap;
+  private final Map<String, FontDirectoryDownloader> myDownloadServiceMap;
+
+  private final FontDownloader myFontDownloader;
+
+  private final Supplier<File> mySdkHomeProvider;
 
   @NotNull
   static DownloadableFontCacheServiceImpl getInstance() {
@@ -167,7 +168,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
   @Override
   public CompletableFuture<Boolean> download(@NotNull FontFamily family) {
     CompletableFuture<Boolean> success = new CompletableFuture<>();
-    FontDownloadService.download(Collections.singletonList(family), false, () -> success.complete(true), () -> success.complete(false));
+    myFontDownloader.download(Collections.singletonList(family), false, () -> success.complete(true), () -> success.complete(false));
     return success;
   }
 
@@ -203,7 +204,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
 
   @Override
   public void refresh(@Nullable Runnable success, @Nullable Runnable failure) {
-    Collection<FontDirectoryDownloadService> services;
+    Collection<FontDirectoryDownloader> services;
     synchronized (getLock()) {
       if (updateSdkHome()) {
         updateDownloadServices();
@@ -211,14 +212,18 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
       services = myDownloadServiceMap.values();
     }
 
-    for (FontDirectoryDownloadService service : services) {
-      service.refresh(success, failure);
+    for (FontDirectoryDownloader service : services) {
+      service.refreshFonts(success, failure);
     }
   }
 
-  @VisibleForTesting
-  public DownloadableFontCacheServiceImpl() {
+  protected DownloadableFontCacheServiceImpl(
+    @NotNull FontDownloader fontDownloader,
+    @NotNull Supplier<File> sdkHomeProvider
+  ) {
     myDownloadServiceMap = new HashMap<>();
+    myFontDownloader = fontDownloader;
+    mySdkHomeProvider = sdkHomeProvider;
     init();
     mySystemFonts = new SystemFonts(this);
 
@@ -232,7 +237,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
   }
 
   private void init() {
-    File initialSdkHome = locateSdkHome();
+    File initialSdkHome = mySdkHomeProvider.get();
     if (initialSdkHome == null) {
       initialSdkHome = createTempSdk();
     }
@@ -241,13 +246,6 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
       fontsLoaded();
       updateDownloadServices();
     }
-  }
-
-  @Nullable
-  protected File locateSdkHome() {
-    AndroidSdkHandler sdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler();
-    Path location = sdkHandler.getLocation();
-    return location != null ? location.toFile() : null;
   }
 
   @Override
@@ -271,7 +269,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
 
   private boolean updateSdkHome() {
     synchronized (getLock()) {
-      File newSdkHome = locateSdkHome();
+      File newSdkHome = mySdkHomeProvider.get();
       File oldSdkHome = getSdkHome();
       if (Objects.equals(newSdkHome, oldSdkHome)) {
         return false;
@@ -348,7 +346,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
       File fontPath = getFontPath();
       if (fontPath != null) {
         for (FontProvider provider : getProviders().values()) {
-          myDownloadServiceMap.put(provider.getAuthority(), new FontDirectoryDownloadService(this, provider, fontPath));
+          myDownloadServiceMap.put(provider.getAuthority(), myFontDownloader.createFontDirectoryDownloader(this, provider, fontPath));
         }
       }
     }

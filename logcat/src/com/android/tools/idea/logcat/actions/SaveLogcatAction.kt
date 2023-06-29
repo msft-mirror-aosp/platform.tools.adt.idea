@@ -21,8 +21,13 @@ import com.android.tools.idea.logcat.LogcatBundle
 import com.android.tools.idea.logcat.files.LogcatFileIo
 import com.android.tools.idea.logcat.util.LOGGER
 import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider
+import com.android.tools.idea.run.ShowLogcatListener
 import com.intellij.icons.AllIcons
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.ActionUpdateThread.EDT
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -32,14 +37,20 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val SAVE_PATH_KEY = "Logcat.SavePath"
 
-internal class SaveLogcatAction : DumbAwareAction(LogcatBundle.message("logcat.save.log.action.text"), null, AllIcons.Actions.MenuSaveall) {
+private const val LOGCAT_EXT = "logcat"
+
+internal class SaveLogcatAction :
+  DumbAwareAction(LogcatBundle.message("logcat.save.log.action.text"), null, AllIcons.ToolbarDecorator.Export) {
 
   override fun update(e: AnActionEvent) {
     e.presentation.isEnabled = e.getLogcatPresenter()?.let {
@@ -53,9 +64,13 @@ internal class SaveLogcatAction : DumbAwareAction(LogcatBundle.message("logcat.s
     val device = logcatPresenter.getSelectedDevice() ?: return
 
     val dialog = FileChooserFactory.getInstance().createSaveFileDialog(
-      FileSaverDescriptor(LogcatBundle.message("logcat.save.log.dialog.title"), "", "logcat"),
+      FileSaverDescriptor(LogcatBundle.message("logcat.save.log.dialog.title"), "", LOGCAT_EXT),
       project)
-    val filename = "${device.name.replace(' ', '-')}-Android-${device.release}"
+
+    val timestamp = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.ROOT).format(Date())
+    val deviceName = device.name.replace(' ', '-')
+    val systemInfo = "Android-${device.release}"
+    val filename = "${deviceName}-${systemInfo}_${timestamp}".adjustedForMac()
     val file = dialog.save(getSavePath(project), filename)?.file ?: return
     PropertiesComponent.getInstance(project).setValue(SAVE_PATH_KEY, file.parent)
 
@@ -71,9 +86,11 @@ internal class SaveLogcatAction : DumbAwareAction(LogcatBundle.message("logcat.s
         LOGGER.warn("Failed to save Logcat file: $file")
         return@launch
       }
-      withContext(AndroidDispatchers.uiThread) {
-        FileEditorManager.getInstance(project).openFile(virtualFile, true)
-      }
+      val notification = Notification("Logcat", LogcatBundle.message("logcat.save.log.notification.text"), NotificationType.INFORMATION)
+        .addAction(OpenInEditorAction(virtualFile))
+        .addAction(RevealLogcatFileAction(virtualFile))
+        .addAction(OpenInLogcatAction(virtualFile, "${device.name} Android ${device.release}"))
+      Notifications.Bus.notify(notification, project)
     }
   }
 
@@ -87,4 +104,37 @@ internal class SaveLogcatAction : DumbAwareAction(LogcatBundle.message("logcat.s
     }
     else project.guessProjectDir()
   }
+
+  private class OpenInEditorAction(val file: VirtualFile) :
+    DumbAwareAction(LogcatBundle.message("logcat.save.log.notification.open.in.editor")) {
+    override fun getActionUpdateThread() = EDT
+
+    override fun actionPerformed(e: AnActionEvent) {
+      val project = e.project ?: return
+      FileEditorManager.getInstance(project).openFile(file, true)
+    }
+  }
+
+  private class RevealLogcatFileAction(val file: VirtualFile) :
+    DumbAwareAction(RevealFileAction.getActionName()) {
+    override fun getActionUpdateThread() = EDT
+
+    override fun actionPerformed(e: AnActionEvent) {
+      RevealFileAction.openFile(file.toNioPath())
+    }
+  }
+
+  private class OpenInLogcatAction(val file: VirtualFile, private val tabName: String) :
+    DumbAwareAction(LogcatBundle.message("logcat.save.log.notification.open.in.logcat")) {
+    override fun getActionUpdateThread() = EDT
+
+    override fun actionPerformed(e: AnActionEvent) {
+      e.project?.messageBus?.syncPublisher(ShowLogcatListener.TOPIC)?.showLogcatFile(file.toNioPath(), tabName)
+    }
+  }
+}
+
+private fun String.adjustedForMac(): String {
+  // Add extension to filename on Mac only see: http://b/38447816.
+  return if (SystemInfo.isMac) "$this.$LOGCAT_EXT" else this
 }

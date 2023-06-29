@@ -6,6 +6,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.intellij.ide.ui.search.SearchableOptionContributor
 import com.intellij.ide.ui.search.SearchableOptionProcessor
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SearchableConfigurable
@@ -22,6 +23,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.labelTable
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
+import com.intellij.util.messages.Topic
 import org.jetbrains.android.uipreview.AndroidEditorSettings
 import org.jetbrains.annotations.VisibleForTesting
 import java.awt.GraphicsEnvironment
@@ -41,6 +43,18 @@ private val MAGNIFY_SUPPORTED =
   SystemInfo.isMac && Registry.`is`("actionSystem.mouseGesturesEnabled", true)
 
 class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigurable {
+
+  fun interface Listener {
+
+    companion object {
+      val TOPIC: Topic<Listener> = Topic(Listener::class.java, Topic.BroadcastDirection.TO_CHILDREN)
+    }
+
+    fun onOptionsChanged();
+  }
+
+  private fun fireOptionsChanged() =
+    ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).onOptionsChanged()
 
   private class EditorModeCellRenderer :
     SimpleListCellRenderer<AndroidEditorSettings.EditorMode>() {
@@ -134,6 +148,15 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
       group("Compose Preview") {
         if (StudioFlags.COMPOSE_PREVIEW_LITE_MODE.get()) {
           buttonsGroup("Resource Usage:") {
+            if (EssentialsMode.isEnabled()) {
+              row {
+                comment(
+                  "Note: Resource usage cannot be changed when Android Studio Essentials Mode is enabled. In this case, Compose Preview " +
+                  "resource usage will be overridden to Essentials."
+                )
+              }
+            }
+
             lateinit var defaultModeRadioButton: Cell<JBRadioButton>
             row {
               defaultModeRadioButton =
@@ -141,7 +164,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                   .bindSelected({ !state.isComposePreviewLiteModeEnabled }) {
                     state.isComposePreviewLiteModeEnabled = !it
                   }
-            }
+            }.enabled(!EssentialsMode.isEnabled())
             indent {
               row {
                 checkBox("Enable live updates")
@@ -150,7 +173,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                   }
                   .enabledIf(defaultModeRadioButton.selected)
               }
-            }
+            }.enabled(!EssentialsMode.isEnabled())
             row {
               val liteModeHint = "Preview will preserve resources by inflating previews on demand, and disabling live updates and " +
                                  "preview modes. <a href=\"https://developer.android.com/jetpack/compose/tooling/previews\">Learn more</a>"
@@ -160,17 +183,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                 .bindSelected(state::isComposePreviewLiteModeEnabled) {
                   state.isComposePreviewLiteModeEnabled = it
                 }
-            }
-          }.enabled(!EssentialsMode.isEnabled())
-          if (EssentialsMode.isEnabled()) {
-            row {
-              label(
-                "Note: Resource usage cannot be changed when Android Studio Essentials Mode is enabled. In this case, Compose Preview " +
-                "resource usage will be overridden to Essentials."
-
-              )
-                .component.isEnabled = false
-            }
+            }.enabled(!EssentialsMode.isEnabled())
           }
         }
         else {
@@ -201,6 +214,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
       preferredDrawablesEditorMode.selectedItem as AndroidEditorSettings.EditorMode
     state.preferredEditorMode = preferredEditorMode.selectedItem as AndroidEditorSettings.EditorMode
     magnifySensitivity?.let { state.magnifySensitivity = percentageValueToDouble(it.value) }
+    fireOptionsChanged()
   }
 
   override fun reset() {

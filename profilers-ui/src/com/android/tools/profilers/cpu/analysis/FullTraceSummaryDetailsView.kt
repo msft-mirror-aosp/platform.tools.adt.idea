@@ -21,7 +21,7 @@ import com.android.tools.adtui.ui.HideablePanel
 import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.StringFormattingUtils.formatLongValueWithCommas
 import com.android.tools.profilers.cpu.analysis.PowerRailTableUtils.POWER_RAIL_TOTAL_VALUE_IN_RANGE_TOOLTIP_MSG
-import com.android.tools.profilers.cpu.analysis.PowerRailTableUtils.computeCumulativePowerUsageInRange
+import com.android.tools.profilers.cpu.analysis.PowerRailTableUtils.computeCumulativeEnergyUsageInRange
 import com.android.tools.profilers.cpu.systemtrace.PowerRailTrackModel.Companion.POWER_RAIL_UNIT
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.util.ui.JBUI
@@ -37,18 +37,16 @@ class FullTraceSummaryDetailsView(profilersView: StudioProfilersView,
   val durationLabel = JLabel()
 
   @get: VisibleForTesting
-  val powerUsedLabel = JLabel()
+  val energyUsedLabel = JLabel()
 
   init {
     addRowToCommonSection("Time Range", timeRangeLabel)
     addRowToCommonSection("Duration", durationLabel)
-    addRowToCommonSectionWithInfoIcon("Total Power Used in Range", powerUsedLabel, POWER_RAIL_TOTAL_VALUE_IN_RANGE_TOOLTIP_MSG)
-    tabModel.selectionRange.addDependency(observer).onChange(Range.Aspect.RANGE) { updateRangeLabels() }
-    updateRangeLabels()
     // The CpuCapture containing the system trace data is always the first element in the tab model's data series
     val cpuCapture = tabModel.dataSeries[0]
     cpuCapture.systemTraceData?.powerRailCounters?.let { powerRailCounters ->
       if (powerRailCounters.isNotEmpty()) {
+        addRowToCommonSectionWithInfoIcon("Total Energy Used in Range", energyUsedLabel, POWER_RAIL_TOTAL_VALUE_IN_RANGE_TOOLTIP_MSG)
         addSection(
           PowerRailTable(profilersView.studioProfilers, powerRailCounters, tabModel.selectionRange, tabModel.captureRange).component)
       }
@@ -56,6 +54,9 @@ class FullTraceSummaryDetailsView(profilersView: StudioProfilersView,
     // Add a collapsible Help Text section containing Navigation and Analysis instructions (initially collapsed)
     addSection(HideablePanel.Builder(HelpTextView.HELP_TEXT_TITLE, HelpTextView()).setInitiallyExpanded(false).setPanelBorder(
       JBUI.Borders.empty()).build())
+
+    tabModel.selectionRange.addDependency(observer).onChange(Range.Aspect.RANGE) { updateRangeLabels() }
+    updateRangeLabels()
   }
 
   private fun updateRangeLabels() {
@@ -64,14 +65,14 @@ class FullTraceSummaryDetailsView(profilersView: StudioProfilersView,
     timeRangeLabel.text = formatTimeRangeAsString(selectionRange = selectionRange, relativeZeroPoint = captureRange.min.toLong())
     durationLabel.text = TimeFormatter.getSingleUnitDurationString(selectionRange.length.toLong())
 
-    var totalPowerUws = 0L
+    var totalEnergyUws = 0L
     // The CpuCapture containing the system trace data is always the first element in the tab model's data series
     val cpuCapture = tabModel.dataSeries[0]
     val powerRailCounters = cpuCapture.systemTraceData?.powerRailCounters
     powerRailCounters?.forEach {
-      totalPowerUws += computeCumulativePowerUsageInRange(it.value.cumulativeData, selectionRange)
+      totalEnergyUws += computeCumulativeEnergyUsageInRange(it.value.cumulativeData, selectionRange)
     }
 
-    powerUsedLabel.text = "${formatLongValueWithCommas(totalPowerUws)} $POWER_RAIL_UNIT"
+    energyUsedLabel.text = "${formatLongValueWithCommas(totalEnergyUws)} $POWER_RAIL_UNIT"
   }
 }

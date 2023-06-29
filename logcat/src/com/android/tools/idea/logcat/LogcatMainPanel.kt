@@ -37,6 +37,7 @@ import com.android.tools.idea.logcat.actions.ClearLogcatAction
 import com.android.tools.idea.logcat.actions.CopyMessageTextAction
 import com.android.tools.idea.logcat.actions.CreateScratchFileAction
 import com.android.tools.idea.logcat.actions.IgnoreTagAction
+import com.android.tools.idea.logcat.actions.ImportLogcatAction
 import com.android.tools.idea.logcat.actions.LogcatFoldLinesLikeThisAction
 import com.android.tools.idea.logcat.actions.LogcatFormatAction
 import com.android.tools.idea.logcat.actions.LogcatScrollToTheEndToolbarAction
@@ -50,6 +51,7 @@ import com.android.tools.idea.logcat.actions.SaveLogcatAction
 import com.android.tools.idea.logcat.actions.TerminateAppActions
 import com.android.tools.idea.logcat.actions.ToggleFilterAction
 import com.android.tools.idea.logcat.devices.Device
+import com.android.tools.idea.logcat.devices.DeviceComboBox
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.DeviceItem
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.FileItem
 import com.android.tools.idea.logcat.files.LogcatFileData
@@ -158,6 +160,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.BUTTON1
 import java.awt.event.MouseWheelEvent
+import java.nio.file.Path
 import java.time.ZoneId
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
@@ -166,6 +169,7 @@ import javax.swing.GroupLayout
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.io.path.pathString
 import kotlin.math.max
 
 // This is probably a massive overkill as we do not expect this many tags/packages in a real Logcat
@@ -264,7 +268,7 @@ internal class LogcatMainPanel @TestOnly constructor(
     logcatFilterParser,
     state?.filter ?: getDefaultFilter(project, androidProjectDetector),
     state?.filterMatchCase ?: false,
-    state?.device,
+    state?.getInitialItem()
   )
 
   private val deviceComboBox = headerPanel.deviceComboBox
@@ -380,7 +384,10 @@ internal class LogcatMainPanel @TestOnly constructor(
           LogcatPanelEvent.newBuilder()
             .setIsRestored(state != null)
             .setFilter(logcatFilterParser.getUsageTrackingEvent(headerPanel.filter, headerPanel.filterMatchCase))
-            .setFormatConfiguration(state?.formattingConfig.toUsageTracking())))
+            .setFormatConfiguration(state?.formattingConfig.toUsageTracking())
+            .setBufferSize(logcatSettings.bufferSize)
+        )
+    )
 
     project.messageBus.let { messageBus ->
       messageBus.connect(this).subscribe(ClearLogcatListener.TOPIC, ClearLogcatListener {
@@ -435,6 +442,10 @@ internal class LogcatMainPanel @TestOnly constructor(
           is LoadLogcatFile -> loadLogcatFile(it.logcatFileData).let { null }
         }
       }
+    }
+
+    state?.file?.let {
+      deviceComboBox.addOrSelectFile(Path.of(it))
     }
   }
 
@@ -520,11 +531,12 @@ internal class LogcatMainPanel @TestOnly constructor(
     val formattingOptionsStyle = formattingOptions.getStyle()
     return LogcatPanelConfig.toJson(
       LogcatPanelConfig(
-        deviceComboBox.getSelectedDevice()?.copy(isOnline = false),
-        if (formattingOptionsStyle == null) Custom(formattingOptions) else Preset(formattingOptionsStyle),
-        headerPanel.filter,
-        headerPanel.filterMatchCase,
-        isSoftWrapEnabled))
+        device = deviceComboBox.getSelectedDevice()?.copy(isOnline = false),
+        file = deviceComboBox.getSelectedFile()?.pathString,
+        formattingConfig = if (formattingOptionsStyle == null) Custom(formattingOptions) else Preset(formattingOptionsStyle),
+        filter = headerPanel.filter,
+        filterMatchCase = headerPanel.filterMatchCase,
+        isSoftWrap = isSoftWrapEnabled))
   }
 
   override suspend fun appendMessages(textAccumulator: TextAccumulator) = withContext(uiThread(ModalityState.any())) {
@@ -619,11 +631,15 @@ internal class LogcatMainPanel @TestOnly constructor(
       add(ClearLogcatAction())
       add(PauseLogcatAction())
       add(RestartLogcatAction())
-      add(SaveLogcatAction())
       add(LogcatScrollToTheEndToolbarAction(editor))
       add(PreviousOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
       add(NextOccurrenceToolbarAction(LogcatOccurrenceNavigator(project, editor)))
       add(LogcatToggleUseSoftWrapsToolbarAction())
+      if (StudioFlags.LOGCAT_EXPORT_IMPORT_ENABLED.get()) {
+        add(Separator.create())
+        add(ImportLogcatAction())
+        add(SaveLogcatAction())
+      }
       add(Separator.create())
       add(LogcatFormatAction(project, this@LogcatMainPanel))
       add(Separator.create())
@@ -632,6 +648,10 @@ internal class LogcatMainPanel @TestOnly constructor(
       add(ScreenshotAction())
       add(ScreenRecorderAction())
     }
+  }
+
+  override fun openLogcatFile(path: Path) {
+    deviceComboBox.addOrSelectFile(path)
   }
 
   @UiThread
@@ -868,6 +888,14 @@ internal class LogcatMainPanel @TestOnly constructor(
     init {
       border = BorderFactory.createCompoundBorder(Borders.customLine(JBColor.border(), 1, 1, 0, 0), border)
     }
+  }
+}
+
+private fun LogcatPanelConfig.getInitialItem(): DeviceComboBox.DeviceComboItem? {
+  return when {
+    device != null -> DeviceItem(device)
+    file != null -> FileItem(Path.of(file))
+    else -> null
   }
 }
 

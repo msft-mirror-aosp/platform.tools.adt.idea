@@ -63,20 +63,20 @@ class SystemTraceTest : ProfilersTestBase() {
 
         startSystemTrace(studio)
 
-        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+attempting\\s+start\$", 120)
+        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+start\\s+attempted\$", 120)
 
         studio.waitForComponentByClass("TooltipLayeredPane", "RecordingOptionsView", "FlexibleGrid", "ProfilerCombobox")
         studio.waitForComponentByClass("TooltipLayeredPane", "HideablePanel", "CpuListScrollPane", "DragAndDropList")
 
-        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+successfully\\s+started\$", 120)
+        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+start\\s+succeeded\$", 120)
 
         stopCpuCapture(studio)
 
-        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+attempting\\s+stop\$", 120)
-        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+successfully\\s+stopped\$", 300)
+        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+stop\\s+attempted\$", 120)
+        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+stop\\s+succeeded\$", 300)
 
         // Verify if the cpu capture is parsed.
-        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+successfully\\s+parsed\$", 300)
+        verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+parse\\s+succeeded\$", 300)
         verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+contains\\s+system\\s+trace\\s+data\$", 300)
 
         studio.waitForComponentByClass("TooltipLayeredPane", "CpuAnalysisSummaryTab", "HelpTextView")

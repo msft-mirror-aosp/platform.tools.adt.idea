@@ -76,6 +76,7 @@ class AppInspectionExecutionListener : ExecutionListener {
   ) {
     val recentProcess = RecentProcess(device, applicationId)
     RecentProcess.set(project, recentProcess)
+
     handler.addProcessListener(
       object : ProcessAdapter() {
         override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {

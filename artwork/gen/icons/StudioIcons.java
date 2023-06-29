@@ -205,7 +205,11 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon DATABASE_FOLDER = load("studio/icons/device-explorer/database-folder.svg", 1458296899, 2);
     /** 16x16 */ public static final @NotNull Icon DEVICE_PAIRED_AND_CONNECTED = load("studio/icons/device-explorer/device-paired-and-connected.svg", -1691927500, 2);
     /** 16x16 */ public static final @NotNull Icon DEVICE_PAIRED = load("studio/icons/device-explorer/device-paired.svg", 1852567387, 2);
+    /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_CAR = load("studio/icons/device-explorer/firebase-device-car.svg", -1008294095, 2);
+    /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_DESKTOP = load("studio/icons/device-explorer/firebase-device-desktop.svg", 106317318, 2);
     /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_PHONE = load("studio/icons/device-explorer/firebase-device-phone.svg", 465796196, 2);
+    /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_TV = load("studio/icons/device-explorer/firebase-device-tv.svg", 1278445382, 2);
+    /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_WEAR = load("studio/icons/device-explorer/firebase-device-wear.svg", -1959118233, 2);
     /** 16x16 */ public static final @NotNull Icon MULTIPLE_DEVICES = load("studio/icons/device-explorer/multiple-devices.svg", 352031943, 2);
     /** 16x16 */ public static final @NotNull Icon PHYSICAL_DEVICE_CAR = load("studio/icons/device-explorer/physical-device-car.svg", -414172962, 2);
     /** 16x16 */ public static final @NotNull Icon PHYSICAL_DEVICE_PHONE = load("studio/icons/device-explorer/physical-device-phone.svg", 1547958526, 2);
@@ -797,9 +801,11 @@ public final class StudioIcons {
     }
 
     public static final class ToolWindows {
+      /** 13x13 */ public static final @NotNull Icon AGP_UPGRADE_ASSISTANT = load("studio/icons/shell/tool-windows/agp-upgrade-assistant.svg", -425828152, 2);
       /** 13x13 */ public static final @NotNull Icon ANDROID_MODEL = load("studio/icons/shell/tool-windows/android-model.svg", 1179592805, 2);
       /** 13x13 */ public static final @NotNull Icon ANDROID_PREVIEW = load("studio/icons/shell/tool-windows/android-preview.svg", 1662494040, 2);
       /** 13x13 */ public static final @NotNull Icon ANDROID_PROFILER = load("studio/icons/shell/tool-windows/android-profiler.svg", 1214609246, 2);
+      /** 13x13 */ public static final @NotNull Icon APP_LINKS_ASSISTANT = load("studio/icons/shell/tool-windows/app-links-assistant.svg", 1627913579, 2);
       /** 13x13 */ public static final @NotNull Icon APP_QUALITY_INSIGHTS = load("studio/icons/shell/tool-windows/app-quality-insights.svg", 856801088, 2);
       /** 13x13 */ public static final @NotNull Icon ASSISTANT = load("studio/icons/shell/tool-windows/assistant.svg", -630422921, 2);
       /** 13x13 */ public static final @NotNull Icon ATTRIBUTES = load("studio/icons/shell/tool-windows/attributes.svg", 562054201, 2);
@@ -814,7 +820,6 @@ public final class StudioIcons {
       /** 13x13 */ public static final @NotNull Icon EMULATOR = load("studio/icons/shell/tool-windows/emulator.svg", 1684189543, 2);
       /** 13x13 */ public static final @NotNull Icon EVENT_LOG = load("studio/icons/shell/tool-windows/event-log.svg", 743023296, 2);
       /** 13x13 */ public static final @NotNull Icon FAVORITES = load("studio/icons/shell/tool-windows/favorites.svg", 492967641, 2);
-      /** 13x13 */ public static final @NotNull Icon GRADLE = load("studio/icons/shell/tool-windows/gradle.svg", 1648173064, 2);
       /** 13x13 */ public static final @NotNull Icon INSPECTION = load("studio/icons/shell/tool-windows/inspection.svg", -1379600858, 2);
       /** 13x13 */ public static final @NotNull Icon LINT = load("studio/icons/shell/tool-windows/lint.svg", 1151416152, 2);
       /** 13x13 */ public static final @NotNull Icon LOGCAT = load("studio/icons/shell/tool-windows/logcat.svg", 619214999, 2);

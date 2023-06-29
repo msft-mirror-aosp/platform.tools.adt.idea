@@ -64,6 +64,21 @@ iml_studio_test(
     test_class = "com.android.tools.idea.ShowUsagesTest",
 )
 
+iml_studio_test(
+    name = "LanguageHighlightingTest",
+    timeout = "long",
+    data = [
+        ":languagehighlighting",
+        ":languagehighlighting_deps",
+        INTEGRATION_TEST_GRADLE_VERSION,
+        INTEGRATION_TEST_SYSTEM_IMAGE,
+    ],
+    module = ":intellij.android.core.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.LanguageHighlightingTest",
+)
+
 iml_test(
     name = "EmulatorTest",
     data = [
@@ -179,6 +194,44 @@ iml_studio_test(
         "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
     ],
     test_class = "com.android.tools.idea.LiveEditTest",
+)
+
+apply_changes_data = [
+    ":buildproject_deps",
+    ":applychangesproject",
+    "//prebuilts/studio/sdk:build-tools/30.0.3",
+    "//prebuilts/studio/sdk:emulator",
+    "//prebuilts/studio/sdk:platform-tools",
+    "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
+    INTEGRATION_TEST_GRADLE_VERSION,
+]
+
+iml_studio_test(
+    name = "ApplyChangesTest",
+    timeout = "long",
+    data = apply_changes_data,
+    module = ":intellij.android.core.integration",
+    tags_linux = ["block-network"],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.ApplyChangesTest",
+)
+
+iml_studio_test(
+    name = "ApplyCodeChangesTest",
+    timeout = "long",
+    data = apply_changes_data,
+    module = ":intellij.android.core.integration",
+    tags_linux = ["block-network"],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.ApplyCodeChangesTest",
 )
 
 build_and_run_test_data = [
@@ -345,14 +398,14 @@ iml_studio_test(
 
 iml_studio_test(
     name = "DebugNativeApkTest",
-    timeout = "moderate",
+    timeout = "long",
     data = [
         ":minnativeapp-apk",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
-        "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
+        "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
     ],
     module = ":intellij.android.core.integration",
     tags_linux = [
@@ -521,6 +574,22 @@ maven_repository(
 )
 
 maven_repository(
+    name = "languagehighlighting_deps",
+    # keep sorted: for buildifier
+    artifacts = [
+        "@maven//:com.android.tools.build.aapt2_7.1.0-7984345",
+        "@maven//:com.android.tools.build.gradle_7.1.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.0-Beta",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
+        "@maven//:org.jetbrains.markdown_0.2.1",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+maven_repository(
     name = "debug_junit_test_deps",
     # keep sorted: for buildifier
     artifacts = [
@@ -550,6 +619,11 @@ filegroup(
 )
 
 filegroup(
+    name = "applychangesproject",
+    srcs = glob(["testData/applychanges/**"]),
+)
+
+filegroup(
     name = "helloworldapk",
     srcs = glob(["testData/helloworldapk/**"]),
 )
@@ -567,4 +641,10 @@ filegroup(
 filegroup(
     name = "debugjunittest",
     srcs = glob(["testData/JUnitTestApp/**"]),
+)
+
+filegroup(
+    name = "languagehighlighting",
+    srcs = glob(["testData/languagehighlighting/**"]),
+    visibility = ["//visibility:public"],
 )

@@ -48,10 +48,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.EditorNotificationPanel.Status
 import com.intellij.ui.content.Content
+import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Container
-import java.util.concurrent.Executors.newSingleThreadExecutor
 import javax.swing.JComponent
 
 private const val WORKBENCH_NAME = "Layout Inspector"
@@ -148,7 +148,9 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
       value?.enableLayoutInspector()
 
       // TODO(b/265150325) remove before the end of canaries
-      showExperimentalWarning()
+      if (value != null) {
+        showExperimentalWarning(value.layoutInspector)
+      }
     }
 
   private val stateListeners = mutableListOf<LayoutInspectorManager.StateListener>()
@@ -188,11 +190,6 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
           }
         }
       )
-
-    val layoutInspector = project.getLayoutInspector()
-    layoutInspector.processModel?.addSelectedProcessListeners {
-      layoutInspector.inspectorClientSettings.isCapturingModeOn = true
-    }
   }
 
   private fun createTabState(tabId: TabId): SelectedTabState {
@@ -330,7 +327,8 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
         val toggleDeepInspectAction =
           ToggleDeepInspectAction(
             { layoutInspectorRenderer.interceptClicks },
-            { layoutInspectorRenderer.interceptClicks = it }
+            { layoutInspectorRenderer.interceptClicks = it },
+            { layoutInspector.currentClient }
           )
 
         val processPicker =
@@ -357,7 +355,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
 
       layoutInspector.inspectorModel.selectionListeners.add(selectionChangedListener)
       layoutInspector.processModel?.addSelectedProcessListeners(
-        newSingleThreadExecutor(),
+        EdtExecutorService.getInstance(),
         selectedProcessListener
       )
     }
@@ -379,11 +377,14 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
         layoutInspectorRenderer.refresh()
       }
 
-    private val selectedProcessListener = { layoutInspectorRenderer.interceptClicks = false }
+    private val selectedProcessListener = {
+      layoutInspector.inspectorClientSettings.isCapturingModeOn = true
+      layoutInspectorRenderer.interceptClicks = false
+    }
   }
 
-  private fun showExperimentalWarning() {
-    val notificationModel = project.getLayoutInspector().notificationModel
+  private fun showExperimentalWarning(layoutInspector: LayoutInspector) {
+    val notificationModel = layoutInspector.notificationModel
     val defaultValue = true
     val shouldShowWarning = {
       PropertiesComponent.getInstance().getBoolean(SHOW_EXPERIMENTAL_WARNING_KEY, defaultValue)
@@ -492,7 +493,10 @@ fun calculateRotationCorrection(
   return (layoutInspectorDisplayOrientationQuadrant - displayRectangleOrientationQuadrant).mod(4)
 }
 
-/** Utility function to get [LayoutInspector] from a [Project] */
+/**
+ * Utility function to get [LayoutInspector] from a [Project] Call this only when LayoutInspector
+ * needs to be used, see [LayoutInspectorProjectService.getLayoutInspector].
+ */
 private fun Project.getLayoutInspector(): LayoutInspector {
   return LayoutInspectorProjectService.getInstance(this).getLayoutInspector()
 }

@@ -140,27 +140,24 @@ class LiveEditCompiler(val project: Project) {
       // 1) Compute binding context based on any previous cached analysis results.
       //    On small edits of previous analyzed project, this operation should be below 30ms or so.
       ProgressManager.checkCanceled()
-      val resolution = tracker.record({ fetchResolution(project, inputFiles) }, "resolution_fetch")
+      val resolution = tracker.record("resolution_fetch") { fetchResolution(project, inputFiles) }
 
       ProgressManager.checkCanceled()
-      val analysisResult = tracker.record({ analyze(inputFiles, resolution) }, "analysis")
+      val analysisResult = tracker.record("analysis") { analyze(inputFiles, resolution) }
       val inlineCandidates = analyzeSingleDepthInlinedFunctions(file, analysisResult.bindingContext, inlineCandidateCache)
 
       // 2) Invoke the backend with the inputs and the binding context computed from step 1.
       //    This is the one of the most time-consuming step with 80 to 500ms turnaround, depending on
       //    the complexity of the input .kt file.
       ProgressManager.checkCanceled()
-      var generationState : GenerationState? = null
-      try {
-        generationState = tracker.record(
-          {
-            backendCodeGen(project,
-                           analysisResult,
-                           inputFiles,
-                           inputFiles.first().module!!,
-                           inlineCandidates)
-          },
-          "codegen")
+      val generationState = try {
+        tracker.record("codegen") {
+          backendCodeGen(project,
+                         analysisResult,
+                         inputFiles,
+                         inputFiles.first().module!!,
+                         inlineCandidates)
+        }
       } catch (e : LiveEditUpdateException) {
         if (e.error != LiveEditUpdateException.Error.UNABLE_TO_INLINE) {
           throw e
@@ -168,25 +165,18 @@ class LiveEditCompiler(val project: Project) {
 
         // 2.1) Add any extra source file this compilation need in order to support the input file calling an inline function
         //      from another source file then perform a compilation again.
-        if (LiveEditAdvancedConfiguration.getInstance().useInlineAnalysis) {
-          inputFiles = performInlineSourceDependencyAnalysis(resolution, file, analysisResult.bindingContext)
+        inputFiles = performInlineSourceDependencyAnalysis(resolution, file, analysisResult.bindingContext)
 
-          // We need to perform the analysis once more with the new set of input files.
-          val newAnalysisResult = resolution.analyzeWithAllCompilerChecks(inputFiles)
+        // We need to perform the analysis once more with the new set of input files.
+        val newAnalysisResult = resolution.analyzeWithAllCompilerChecks(inputFiles)
 
-          // We will need to start using the new analysis for code gen.
-          generationState = tracker.record(
-            {
-              backendCodeGen(project,
-                             newAnalysisResult,
-                             inputFiles,
-                             inputFiles.first().module!!,
-                             inlineCandidates)
-            },
-            "codegen_inline")
-        }
-        else {
-          throw e
+        // We will need to start using the new analysis for code gen.
+        tracker.record("codegen_inline") {
+          backendCodeGen(project,
+                         newAnalysisResult,
+                         inputFiles,
+                         inputFiles.first().module!!,
+                         inlineCandidates)
         }
       } catch (p : ProcessCanceledException) {
         throw p
@@ -197,7 +187,7 @@ class LiveEditCompiler(val project: Project) {
       // 3) From the information we gather at the PSI changes and the output classes of Step 2, we
       //    decide which classes we want to send to the device along with what extra meta-information the
       //    agent need.
-      return@runWithCompileLock getGeneratedCode(inputs, generationState!!, output)
+      return@runWithCompileLock getGeneratedCode(inputs, generationState, output)
     }
   }
 
@@ -230,11 +220,7 @@ class LiveEditCompiler(val project: Project) {
           if (desc.hasComposableAnnotation()) {
             // When a Composable is a lambda, we actually need to take into account of all the parent groups of that Composable
             val parentGroup = input.parentGroups.takeIf { element !is KtNamedFunction }
-            val group = if (LiveEditAdvancedConfiguration.getInstance().usePartialRecompose) {
-              getGroupKey(compilerOutput, element, parentGroup)
-            } else {
-              null
-            }
+            val group = getGroupKey(compilerOutput, element, parentGroup)
             group?.let { output.addGroupId(group) }
           } else {
             output.resetState = true

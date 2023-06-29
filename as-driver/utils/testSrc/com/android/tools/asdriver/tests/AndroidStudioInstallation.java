@@ -62,7 +62,11 @@ public class AndroidStudioInstallation {
     String platform = "linux";
     String studioDir = "android-studio";
     if (SystemInfo.isMac) {
-      platform = "mac";
+      if (SystemInfo.OS_ARCH.equals("aarch64")) {
+        platform = "mac_arm";
+      } else {
+        platform = "mac";
+      }
       studioDir = "Android Studio Preview.app/Contents";
     } else if (SystemInfo.isWindows) {
       platform = "win";
@@ -184,14 +188,15 @@ public class AndroidStudioInstallation {
   }
 
   /**
-   * Emits the agent's stdout and stderr logs to the console. When running a test locally, this can
-   * be helpful for viewing the logs without having to suspend any processes; without this, you
-   * would have to manually locate the randomly created temporary directories holding the logs.
+   * Emits the agent's logs to the console. When running a test locally, this can be helpful for
+   * viewing the logs without having to suspend any processes; without this, you would have to
+   * manually locate the randomly created temporary directories holding the logs.
    */
   public void debugEmitLogs() {
     try {
       stdout.printContents();
       stderr.printContents();
+      ideaLog.printContents();
     }
     catch (IOException e) {
       e.printStackTrace();

@@ -126,6 +126,7 @@ import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
+import com.android.tools.idea.projectsystem.gradle.getGradleIdentityPath
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
@@ -367,6 +368,7 @@ interface AndroidProjectStubBuilder {
   val includeAidlSources: Boolean
   val includeBuildConfigSources: Boolean
   val internedModels: InternedModels
+  val defaultVariantName: String?
 }
 
 /**
@@ -431,6 +433,7 @@ data class AndroidProjectBuilder(
   val includeRenderScriptSources: AndroidProjectStubBuilder.() -> Boolean = { false },
   val includeAidlSources: AndroidProjectStubBuilder.() -> Boolean = { false },
   val includeBuildConfigSources: AndroidProjectStubBuilder.() -> Boolean = { false },
+  val defaultVariantName: AndroidProjectStubBuilder.() -> String? = { null },
 ) {
   fun withBuildId(buildId: AndroidProjectStubBuilder.() -> String) =
     copy(buildId = buildId)
@@ -586,6 +589,7 @@ data class AndroidProjectBuilder(
         override val includeAidlSources: Boolean get() = includeAidlSources()
         override val includeBuildConfigSources: Boolean get() = includeBuildConfigSources()
         override val internedModels: InternedModels get() = internedModels
+        override val defaultVariantName: String? get() = defaultVariantName()
       }
       return AndroidProjectModels(
         androidProject = builder.androidProject,
@@ -1114,7 +1118,7 @@ fun AndroidProjectStubBuilder.buildVariantStubs(): List<IdeVariantCoreImpl> {
 fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
   val debugBuildType = this.debugBuildType
   val releaseBuildType = this.releaseBuildType
-  val defaultVariant = debugBuildType ?: releaseBuildType
+  val defaultVariantName = this.defaultVariantName
   val buildTypes = listOfNotNull(debugBuildType, releaseBuildType)
   val projectType = projectType
   return IdeAndroidProjectImpl(
@@ -1172,6 +1176,7 @@ fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
     lintChecksJars = listOf(),
     isKaptEnabled = false,
     desugarLibraryConfigFiles = listOf(),
+    defaultVariantName = defaultVariantName
   )
 }
 
@@ -1994,12 +1999,12 @@ private fun mergeModuleContentRoots(weightMap: Map<String, Int>, moduleNode: Dat
 /**
  * Finds a module by the given [gradlePath].
  *
- * Note: In the case of composite build [gradlePath] can be in a form of `includedProject:module:module` for modules from included projects.
+ * Note: For composite build [gradlePath] can be in a form of `:includedProject:module:module` for modules from included projects.
  */
 @JvmOverloads
 fun Project.gradleModule(gradlePath: String, sourceSet: IdeModuleSourceSet? = null): Module? =
   ModuleManager.getInstance(this).modules
-    .firstOrNull { it.getGradleProjectPath()?.path == gradlePath }
+    .firstOrNull { it.getGradleIdentityPath() == gradlePath }
     ?.getHolderModule()
     ?.let {
       if (sourceSet == null) it

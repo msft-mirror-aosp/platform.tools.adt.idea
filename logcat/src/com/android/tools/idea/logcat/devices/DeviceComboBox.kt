@@ -17,7 +17,6 @@ package com.android.tools.idea.logcat.devices
 
 import com.android.tools.idea.logcat.LogcatBundle
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem
-import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.ImportItem
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.DeviceItem
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.FileItem
 import com.android.tools.idea.logcat.devices.DeviceEvent.Added
@@ -25,8 +24,6 @@ import com.android.tools.idea.logcat.devices.DeviceEvent.StateChanged
 import com.android.tools.idea.logcat.util.LOGGER
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.components.service
-import com.intellij.openapi.fileChooser.FileChooserDescriptor
-import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.MessageDialogBuilder
@@ -51,8 +48,6 @@ import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 
-private val LOGCAT_FILE_EXTENSIONS = setOf("logcat", "txt")
-
 /**
  * A [ComboBox] for selecting a device.
  *
@@ -64,10 +59,10 @@ private val LOGCAT_FILE_EXTENSIONS = setOf("logcat", "txt")
  */
 internal class DeviceComboBox(
   private val project: Project,
-  private val initialDevice: Device?,
+  private val initialItem: DeviceComboItem?,
 ) : ComboBox<DeviceComboItem>() {
   private val deviceTracker: IDeviceComboBoxDeviceTracker =
-    project.service<DeviceComboBoxDeviceTrackerFactory>().createDeviceComboBoxDeviceTracker(initialDevice)
+    project.service<DeviceComboBoxDeviceTrackerFactory>().createDeviceComboBoxDeviceTracker((initialItem as? DeviceItem)?.device)
 
   private val deviceComboModel: DeviceComboModel
     get() = model as DeviceComboModel
@@ -76,15 +71,14 @@ internal class DeviceComboBox(
     AccessibleContextUtil.setName(this, LogcatBundle.message("logcat.device.combo.accessible.name"))
     renderer = DeviceComboBoxRenderer()
     model = DeviceComboModel()
+    if (initialItem is FileItem) {
+      deviceComboModel.add(initialItem)
+      deviceComboModel.selectedItem = initialItem
+    }
   }
 
   override fun setSelectedItem(item: Any?) {
     when (item) {
-      ImportItem -> {
-        importItemSelected()
-        return
-      }
-
       is FileItem -> {
         if (!item.path.exists()) {
           val itemRemoved = handleItemError(item, LogcatBundle.message("logcat.device.combo.error.message", item.path))
@@ -120,6 +114,10 @@ internal class DeviceComboBox(
 
 
   fun trackSelected(): Flow<DeviceComboItem> = callbackFlow {
+    // If an item is already selected, the listener will not send it, so we send it now
+    (selectedItem as? DeviceComboItem)?.let {
+      trySendBlocking(it)
+    }
     val listener = ActionListener {
       item?.let {
         trySendBlocking(it)
@@ -143,6 +141,8 @@ internal class DeviceComboBox(
 
   fun getSelectedDevice(): Device? = (item as? DeviceItem)?.device
 
+  fun getSelectedFile(): Path? = (item as? FileItem)?.path
+
   private fun deviceAdded(device: Device) {
     if (deviceComboModel.containsDevice(device)) {
       deviceStateChanged(device)
@@ -151,8 +151,8 @@ internal class DeviceComboBox(
       val item = deviceComboModel.addDevice(device)
       when {
         selectedItem != null -> return
-        initialDevice == null -> selectItem(item)
-        device.deviceId == initialDevice.deviceId -> selectItem(item)
+        initialItem == null -> selectItem(item)
+        device.deviceId == (initialItem as? DeviceItem)?.device?.deviceId -> selectItem(item)
       }
     }
   }
@@ -165,18 +165,7 @@ internal class DeviceComboBox(
     (model as DeviceComboModel).replaceDevice(device, device.deviceId == (item as? DeviceItem)?.device?.deviceId)
   }
 
-  private fun importItemSelected() {
-    val descriptor = FileChooserDescriptor(true, false, false, false, false, false)
-      .withTitle(LogcatBundle.message("logcat.device.combo.file.chooser.title"))
-      .withFileFilter { it.name.substringAfterLast('.') in LOGCAT_FILE_EXTENSIONS }
-    val path = FileChooserFactory.getInstance()
-                 .createFileChooser(descriptor, project, this)
-                 .choose(project)
-                 .firstOrNull()
-                 ?.toNioPath()
-                 ?.normalize()
-               ?: return
-
+  fun addOrSelectFile(path: Path) {
     val fileItem = deviceComboModel.items.find { it is FileItem && it.path.pathString == path.pathString } ?: deviceComboModel.addFile(path)
     selectedItem = fileItem
   }
@@ -206,7 +195,6 @@ internal class DeviceComboBox(
       when (item) {
         is DeviceItem -> renderDevice(item.device)
         is FileItem -> renderFile(item.path, (list.model as DeviceComboModel).items)
-        ImportItem -> renderImport()
       }
     }
 
@@ -229,29 +217,20 @@ internal class DeviceComboBox(
       val name = if (sameName > 1) path.pathString else path.name
       append(name)
     }
-
-    private fun renderImport() {
-      icon = AllIcons.ToolbarDecorator.Import
-      append(LogcatBundle.message("logcat.device.combo.import"))
-    }
   }
 
   private class DeviceComboModel : CollectionComboBoxModel<DeviceComboItem>() {
 
-    init {
-      add(ImportItem)
-    }
-
     fun addDevice(device: Device): DeviceItem {
-      val item = DeviceItem(device)
-      add(size - 1, item)
-      return item
+      return DeviceItem(device).also {
+        add(it)
+      }
     }
 
     fun addFile(path: Path): FileItem {
-      val item = FileItem(path)
-      add(size - 1, item)
-      return item
+      return FileItem(path).also {
+        add(it)
+      }
     }
 
     fun replaceDevice(device: Device, setSelected: Boolean) {
@@ -273,6 +252,5 @@ internal class DeviceComboBox(
   sealed class DeviceComboItem {
     data class DeviceItem(val device: Device) : DeviceComboItem()
     data class FileItem(val path: Path) : DeviceComboItem()
-    object ImportItem : DeviceComboItem()
   }
 }

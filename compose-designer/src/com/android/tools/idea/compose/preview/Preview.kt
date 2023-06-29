@@ -29,16 +29,15 @@ import com.android.tools.idea.common.surface.LayoutlibInteractionHandler
 import com.android.tools.idea.common.util.ControllableTicker
 import com.android.tools.idea.compose.pickers.preview.property.referenceDeviceIds
 import com.android.tools.idea.compose.preview.PreviewGroup.Companion.ALL_PREVIEW_GROUP
-import com.android.tools.idea.compose.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
 import com.android.tools.idea.compose.preview.fast.requestFastPreviewRefreshAndTrack
+import com.android.tools.idea.compose.preview.lite.ComposeEssentialsMode
 import com.android.tools.idea.compose.preview.lite.ComposePreviewLiteModeManager
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeScreenViewProvider
-import com.android.tools.idea.compose.preview.util.FpsCalculator
 import com.android.tools.idea.compose.preview.util.containsOffset
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -60,10 +59,15 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LoggerWithFixedInfo
 import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.modes.essentials.EssentialsModeMessenger
+import com.android.tools.idea.preview.DefaultRenderQualityManager
 import com.android.tools.idea.preview.NavigatingInteractionHandler
 import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.PreviewElementProvider
+import com.android.tools.idea.preview.RenderQualityManager
+import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
+import com.android.tools.idea.preview.interactive.FpsCalculator
+import com.android.tools.idea.preview.interactive.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
 import com.android.tools.idea.projectsystem.BuildListener
@@ -73,6 +77,7 @@ import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationState
+import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
@@ -223,7 +228,8 @@ fun configureLayoutlibSceneManager(
   isInteractive: Boolean,
   requestPrivateClassLoader: Boolean,
   runAtfChecks: Boolean,
-  runVisualLinting: Boolean
+  runVisualLinting: Boolean,
+  quality: Float
 ): LayoutlibSceneManager =
   sceneManager.apply {
     val reinflate =
@@ -232,7 +238,7 @@ fun configureLayoutlibSceneManager(
     setShrinkRendering(!showDecorations)
     interactive = isInteractive
     isUsePrivateClassLoader = requestPrivateClassLoader
-    setQuality(if (EssentialsMode.isEnabled()) 0.75f else 0.95f)
+    setQuality(quality)
     setShowDecorations(showDecorations)
     // The Compose Preview has its own way to track out of date files so we ask the Layoutlib Scene
     // Manager to not
@@ -379,10 +385,49 @@ class ComposePreviewRepresentation(
         essentialsModeMessagingService.TOPIC,
         EssentialsModeMessenger.Listener {
           updateFpsForCurrentMode()
+          updateEssentialsMode(
+            ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType
+              .STUDIO_ESSENTIALS_MODE_SWITCH
+          )
           // When getting out of Essentials Mode, request a refresh
           if (!EssentialsMode.isEnabled()) requestRefresh()
         }
       )
+
+    project.messageBus
+      .connect(this as Disposable)
+      .subscribe(
+        NlOptionsConfigurable.Listener.TOPIC,
+        NlOptionsConfigurable.Listener {
+          updateEssentialsMode(
+            ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.PREVIEW_LITE_MODE_SWITCH
+          )
+        }
+      )
+  }
+
+  /**
+   * Updates the [composeWorkBench]'s [ComposeEssentialsMode] according to the state of Android
+   * Studio Essentials Mode or Compose Preview Lite Mode.
+   *
+   * @param sourceEventType type of the event that triggered the update
+   */
+  private fun updateEssentialsMode(
+    sourceEventType: ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType? = null
+  ) {
+    val liteModeIsEnabled = ComposePreviewLiteModeManager.isLiteModeEnabled
+    val composeEssentialsModeIsSet = composeWorkBench.essentialsMode != null
+    // Only update essentials mode if needed
+    if (liteModeIsEnabled == composeEssentialsModeIsSet) return
+
+    if (composeEssentialsModeIsSet) {
+      composeWorkBench.essentialsMode = null
+      singlePreviewElementInstance = null // Remove filter applied by lite mode.
+    } else {
+      composeWorkBench.essentialsMode = ComposeEssentialsMode(composeWorkBench.mainSurface)
+    }
+    logComposePreviewLiteModeEvent(sourceEventType)
+    requestRefresh()
   }
 
   private fun updateFpsForCurrentMode() {
@@ -710,6 +755,13 @@ class ComposePreviewRepresentation(
   val surface: NlDesignSurface
     get() = composeWorkBench.mainSurface
 
+  private val qualityManager: RenderQualityManager =
+    if (StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.get())
+      DefaultRenderQualityManager(surface, ComposePreviewRenderQualityPolicy) {
+        requestRefresh(type = RefreshType.QUALITY)
+      }
+    else SimpleRenderQualityManager { getDefaultPreviewQuality() }
+
   /** List of [ComposePreviewElement] being rendered by this editor */
   private var renderedElements: List<ComposePreviewElement> = emptyList()
 
@@ -735,6 +787,7 @@ class ComposePreviewRepresentation(
 
   init {
     Disposer.register(this, ticker)
+    updateEssentialsMode()
   }
 
   override val component: JComponent
@@ -1130,7 +1183,8 @@ class ComposePreviewRepresentation(
       isInteractive = interactiveModeFlow.value.isStartingOrReady(),
       requestPrivateClassLoader = usePrivateClassLoader(),
       runAtfChecks = runAtfChecks(),
-      runVisualLinting = runVisualLinting()
+      runVisualLinting = runVisualLinting(),
+      quality = qualityManager.getTargetQuality(layoutlibSceneManager)
     )
 
   private fun onAfterRender() {
@@ -1149,12 +1203,11 @@ class ComposePreviewRepresentation(
   /**
    * Logs a [ComposePreviewLiteModeEvent], which should happen after the first render and when the
    * user enables or disables Compose Preview Essentials Mode.
-   *
-   * TODO(b/286416832): log the event when triggering it from other event types
    */
   private fun logComposePreviewLiteModeEvent(
-    eventType: ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType
+    eventType: ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType?
   ) {
+    if (eventType == null) return
     ApplicationManager.getApplication().executeOnPooledThread {
       UsageTracker.log(
         AndroidStudioEvent.newBuilder()
@@ -1328,7 +1381,8 @@ class ComposePreviewRepresentation(
             }
 
           val needsFullRefresh =
-            invalidated.getAndSet(false) || renderedElements != filePreviewElements
+            refreshRequest.type != RefreshType.QUALITY &&
+              (invalidated.getAndSet(false) || renderedElements != filePreviewElements)
 
           composeWorkBench.hasContent = filePreviewElements.isNotEmpty()
           if (!needsFullRefresh) {
@@ -1345,7 +1399,10 @@ class ComposePreviewRepresentation(
               refreshProgressIndicator,
               previewElementModelAdapter::modelToElement,
               this@ComposePreviewRepresentation::configureLayoutlibSceneManagerForPreviewElement
-            )
+            ) { sceneManager ->
+              refreshRequest.type != RefreshType.QUALITY ||
+                qualityManager.needsQualityChange(sceneManager)
+            }
           } else {
             refreshProgressIndicator.text =
               message("refresh.progress.indicator.refreshing.all.previews")

@@ -190,11 +190,13 @@ class LogcatMainPanelTest {
       "Clear Logcat",
       "Pause Logcat",
       "Restart Logcat",
-      "Save Logcat to a File",
       "Scroll to the End (clicking on a particular line stops scrolling and keeps that line visible)",
       "Previous Occurrence",
       "Next Occurrence",
       "Soft-Wrap",
+      "-",
+      "Import Logs from a File",
+      "Export Logs to a File",
       "-",
       "Configure Logcat Formatting Options",
       "  Standard View",
@@ -517,6 +519,7 @@ class LogcatMainPanelTest {
     val logcatMainPanel = logcatMainPanel(
       state = LogcatPanelConfig(
         device = null,
+        file = null,
         FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(17))),
         filter = "foo",
         filterMatchCase = true,
@@ -738,7 +741,7 @@ class LogcatMainPanelTest {
   @RunsInEdt
   @Test
   fun usageTracking_noState_standard() {
-    logcatMainPanel(state = null)
+    logcatMainPanel(state = null, logcatSettings = AndroidLogcatSettings(bufferSize = 1000))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -761,15 +764,16 @@ class LogcatMainPanelTest {
                 .setPackageWidth(35))
             .setFilter(
               LogcatFilterEvent.newBuilder()
-                .setPackageProjectTerms(1)))
-        .build())
+                .setPackageProjectTerms(1))
+            .setBufferSize(1000)
+        ).build())
   }
 
   @RunsInEdt
   @Test
   fun usageTracking_noState_compact() {
     androidLogcatFormattingOptions.defaultFormatting = COMPACT
-    logcatMainPanel(state = null)
+    logcatMainPanel(state = null, logcatSettings = AndroidLogcatSettings(bufferSize = 1000))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -792,19 +796,23 @@ class LogcatMainPanelTest {
                 .setPackageWidth(35))
             .setFilter(
               LogcatFilterEvent.newBuilder()
-                .setPackageProjectTerms(1)))
-        .build())
+                .setPackageProjectTerms(1))
+            .setBufferSize(1000)
+        ).build())
   }
 
   @RunsInEdt
   @Test
   fun usageTracking_withState_preset() {
-    logcatMainPanel(state = LogcatPanelConfig(
-      device = null,
-      formattingConfig = FormattingConfig.Preset(COMPACT),
-      "filter",
-      filterMatchCase = true,
-      isSoftWrap = false))
+    logcatMainPanel(
+      state = LogcatPanelConfig(
+        device = null,
+        file = null,
+        formattingConfig = FormattingConfig.Preset(COMPACT),
+        "filter",
+        filterMatchCase = true,
+        isSoftWrap = false),
+      logcatSettings = AndroidLogcatSettings(bufferSize = 1000))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -827,19 +835,23 @@ class LogcatMainPanelTest {
                 .setPackageWidth(35))
             .setFilter(
               LogcatFilterEvent.newBuilder()
-                .setImplicitLineTerms(1)))
-        .build())
+                .setImplicitLineTerms(1))
+            .setBufferSize(1000)
+        ).build())
   }
 
   @RunsInEdt
   @Test
   fun usageTracking_withState_custom() {
-    logcatMainPanel(state = LogcatPanelConfig(
-      device = null,
-      formattingConfig = FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(20, hideDuplicates = false, enabled = true))),
-      "filter",
-      filterMatchCase = true,
-      isSoftWrap = false))
+    logcatMainPanel(
+      state = LogcatPanelConfig(
+        device = null,
+        file = null,
+        formattingConfig = FormattingConfig.Custom(FormattingOptions(tagFormat = TagFormat(20, hideDuplicates = false, enabled = true))),
+        "filter",
+        filterMatchCase = true,
+        isSoftWrap = false),
+      logcatSettings = AndroidLogcatSettings(bufferSize = 1000))
 
     assertThat(usageTrackerRule.logcatEvents()).containsExactly(
       LogcatUsageEvent.newBuilder()
@@ -861,8 +873,9 @@ class LogcatMainPanelTest {
                 .setPackageWidth(35))
             .setFilter(
               LogcatFilterEvent.newBuilder()
-                .setImplicitLineTerms(1)))
-        .build())
+                .setImplicitLineTerms(1))
+            .setBufferSize(1000)
+        ).build())
   }
 
   @Test
@@ -1208,7 +1221,12 @@ class LogcatMainPanelTest {
     filter: String = "",
     state: LogcatPanelConfig? = LogcatPanelConfig(
       device = null,
-      FormattingConfig.Preset(STANDARD), filter = filter, filterMatchCase = false, isSoftWrap = false),
+      file = null,
+      formattingConfig = FormattingConfig.Preset(STANDARD),
+      filter = filter,
+      filterMatchCase = false,
+      isSoftWrap = false
+    ),
     logcatSettings: AndroidLogcatSettings = AndroidLogcatSettings(),
     androidProjectDetector: AndroidProjectDetector = FakeAndroidProjectDetector(true),
     hyperlinkDetector: HyperlinkDetector? = null,

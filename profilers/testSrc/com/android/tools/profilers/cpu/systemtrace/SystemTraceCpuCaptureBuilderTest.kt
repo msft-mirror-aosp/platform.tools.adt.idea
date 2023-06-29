@@ -25,6 +25,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import perfetto.protos.PerfettoTrace
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
+import com.google.common.annotations.VisibleForTesting
 import com.jetbrains.rd.util.first
 
 class SystemTraceCpuCaptureBuilderTest {
@@ -110,6 +111,32 @@ class SystemTraceCpuCaptureBuilderTest {
     // Make sure fake/termination NO_ACTIVITY thread state is not added
     // when there is no states in the thread to begin with.
     assertThat(systemTraceData.getThreadStatesForThread(2).size).isEqualTo(0)
+  }
+
+  @Test
+  fun `buildThreadStateData - main thread name not present`() {
+    val mainThread = ThreadModel(1, 1, "",
+                                 listOf(),
+                                 listOf(
+                                   SchedulingEventModel(ThreadState.RUNNING_CAPTURED, 0L, 5L, 5L, 5L, 1, 1, 1),
+                                   SchedulingEventModel(ThreadState.NO_ACTIVITY, 0L, 5L, 5L, 5L, 1, 1, 1),
+                                 ))
+    val nonMainThread = ThreadModel(2, 2, "NON_MAIN_THREAD",
+                                    listOf(),
+                                    listOf())
+
+    val processes = mapOf(1 to ProcessModel(
+      1, "Main Process",
+      mapOf(1 to mainThread, 2 to nonMainThread),
+      mapOf(),
+    ))
+
+    val model = TestModel(processes, mapOf(), listOf(), listOf(), listOf())
+    val capture = SystemTraceCpuCaptureBuilder(model).build(1L, 1, Range(0.0, 5.0))
+    val systemTraceData = capture.systemTraceData
+
+    // Because the main thread name was not present, the main thread assumes the name of the process it belongs to.
+    assertThat(systemTraceData.threads.find { it.isMainThread }?.name).isEqualTo("Main Process")
   }
 
   @Test
@@ -436,7 +463,7 @@ class SystemTraceCpuCaptureBuilderTest {
     }
   }
 
-  private class TestModel(
+  class TestModel(
     private val processes: Map<Int, ProcessModel>,
     private val danglingThreads: Map<Int, ThreadModel>,
     private val cpuCores: List<CpuCoreModel>,

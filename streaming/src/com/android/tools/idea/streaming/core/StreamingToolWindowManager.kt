@@ -105,6 +105,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.guava.asDeferred
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Component
@@ -235,12 +236,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     FlightRecorder.initialize(1000)
     Disposer.register(toolWindow.disposable, this)
 
-    if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
-      val newTabAction = NewTabAction()
-      newTabAction.registerCustomShortcutSet(KeyEvent.VK_T, KeyEvent.CTRL_DOWN_MASK, toolWindow.component)
-      (toolWindow as ToolWindowEx).setTabActions(newTabAction)
-    }
-
     // Lazily initialize content since we can only have one frame.
     val messageBusConnection = project.messageBus.connect(this)
     messageBusConnection.subscribe(ToolWindowManagerListener.TOPIC, object : ToolWindowManagerListener {
@@ -367,6 +362,13 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   private fun createContent() {
     if (!initialized) {
       initialized = true
+
+      if (StudioFlags.DEVICE_MIRRORING_ADVANCED_TAB_CONTROL.get()) {
+        val newTabAction = NewTabAction()
+        newTabAction.registerCustomShortcutSet(KeyEvent.VK_T, KeyEvent.CTRL_DOWN_MASK, toolWindow.component)
+        (toolWindow as ToolWindowEx).setTabActions(newTabAction)
+      }
+
       toolWindow.contentManager.addDataProvider { dataId -> getDataFromSelectedPanel(dataId) }
       val actionGroup = DefaultActionGroup()
       actionGroup.addAction(ToggleZoomToolbarAction())
@@ -783,6 +785,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun updateMirroringHandlesFlow() {
+    if (project.isDisposed) {
+      return
+    }
     val mirroringHandles = mutableMapOf<DeviceHandle, MirroringHandle>()
     for (device in devicesExcludedFromMirroring.values) {
       if (device.handle.reservationAction == null) {
@@ -979,9 +984,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       for (device in removed) {
         removePhysicalDevicePanel(device)
       }
-      if (!toolWindow.isVisible && deviceClients.isEmpty() && emulators.isEmpty() && removed.isNotEmpty()) {
-        hideLiveIndicator()
-      }
       for ((serialNumber, device) in onlineDevices) {
         if (!mirroredDevices.contains(serialNumber)) {
           coroutineScope.launch {
@@ -989,7 +991,19 @@ internal class StreamingToolWindowManager @AnyThread constructor(
           }
         }
       }
+
+      if (!contentCreated) {
+        toolWindowScope.launch(Dispatchers.IO) {
+          val embeddedEmulators = RunningEmulatorCatalog.getInstance().updateNow().await().filter { it.emulatorId.isEmbedded }
+          withContext(Dispatchers.EDT) {
+            if (deviceClients.isEmpty() && embeddedEmulators.isEmpty()) {
+              hideLiveIndicator()
+            }
+          }
+        }
+      }
     }
+
     override fun dispose() {
       deviceClients.clear() // The clients have been disposed already.
       updateMirroringHandlesFlow()

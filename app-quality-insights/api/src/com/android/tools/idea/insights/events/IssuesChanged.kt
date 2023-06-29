@@ -16,6 +16,7 @@
 package com.android.tools.idea.insights.events
 
 import com.android.tools.idea.insights.AppInsightsState
+import com.android.tools.idea.insights.AppVcsInfo
 import com.android.tools.idea.insights.Device
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.MultiSelection
@@ -53,6 +54,11 @@ data class IssuesChanged(
     }
 
     state.toIssueRequest(clock)?.let { request ->
+      val vcsIntegrationDetailsBuilder =
+        AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.VcsIntegrationDetails
+          .newBuilder()
+          .apply { hasAppVcsInfo = issues.hasAppVcsInfo() }
+
       tracker.logCrashesFetched(
         state.connections.selected!!.appId,
         state.mode,
@@ -64,10 +70,12 @@ data class IssuesChanged(
             deviceFilter = !request.filters.devices.contains(Device.ALL)
             osFilter = !request.filters.operatingSystems.contains(OperatingSystemInfo.ALL)
             signalFilter = request.filters.signal.toLogProto()
+            visibilityFilter = request.filters.visibilityType.toLogProto()
             defaultProject = false
             fetchSource?.let { this.fetchSource = it }
             numRetries = 0
             cache = false
+            vcsIntegrationDetails = vcsIntegrationDetailsBuilder.build()
           }
           .build()
       )
@@ -83,32 +91,33 @@ data class IssuesChanged(
         issues.value.issues.firstOrNull { it.id == currentlySelectedIssue?.id }
           ?: issues.value.issues.firstOrNull()
       else null
+
     return StateTransition(
       state.copy(
         issues = issues.map { Timed(Selection(newSelectedIssue, it.issues), clock.instant()) },
         filters =
           state.filters.copy(
             versions =
-              if (issues is LoadingState.Ready)
+              if (issues is LoadingState.Ready) {
+                val currentlySelected = currentVersions.selected.map { it.value }.toSet()
                 MultiSelection(emptySet(), issues.value.versions).selectMatching {
-                  currentVersions.allSelected() ||
-                    currentVersions.selected.any { current -> it.value == current.value }
+                  currentlySelected.isEmpty() || it.value in currentlySelected
                 }
-              else state.filters.versions,
+              } else state.filters.versions,
             devices =
-              if (issues is LoadingState.Ready)
+              if (issues is LoadingState.Ready) {
+                val currentlySelected = currentDevices.selected.map { it.value }.toSet()
                 MultiSelection(emptySet(), issues.value.devices).selectMatching {
-                  currentDevices.allSelected() ||
-                    currentDevices.selected.any { current -> it.value == current.value }
+                  currentlySelected.isEmpty() || it.value in currentlySelected
                 }
-              else state.filters.devices,
+              } else state.filters.devices,
             operatingSystems =
-              if (issues is LoadingState.Ready)
+              if (issues is LoadingState.Ready) {
+                val currentlySelected = currentOses.selected.map { it.value }.toSet()
                 MultiSelection(emptySet(), issues.value.operatingSystems).selectMatching {
-                  currentOses.allSelected() ||
-                    currentOses.selected.any { current -> it.value == current.value }
+                  currentlySelected.isEmpty() || it.value in currentlySelected
                 }
-              else state.filters.operatingSystems
+              } else state.filters.operatingSystems
           ),
         currentIssueDetails =
           if (issues is LoadingState.Ready && newSelectedIssue != null) LoadingState.Loading
@@ -124,4 +133,11 @@ data class IssuesChanged(
         else Action.NONE
     )
   }
+}
+
+private fun LoadingState.Done<IssueResponse>.hasAppVcsInfo(): Boolean {
+  val response: IssueResponse = (this as? LoadingState.Ready)?.value ?: return false
+  response.issues.firstOrNull { it.sampleEvent.appVcsInfo != AppVcsInfo.NONE } ?: return false
+
+  return true
 }
