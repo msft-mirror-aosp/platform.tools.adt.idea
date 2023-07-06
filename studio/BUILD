@@ -1,7 +1,17 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
+load("//tools/base/common:version.bzl", "LAST_STABLE_BUILD_VERSION")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
+
+app_icon(
+    name = "nightly-icon",
+    icns = "nightly/studio.icns",
+    ico = "nightly/studio.ico",
+    png = "nightly/studio.png",
+    svg = "nightly/studio.svg",
+)
 
 bool_flag(
     name = "create-nightly-build",
@@ -77,7 +87,6 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/.idea/libraries:utp-core-proto-jarjar",
         "//tools/adt/idea/.idea/libraries:zxing-core",
-        "//tools/adt/idea/android-common:libbuild-flags",
         "//tools/adt/idea/android:libandroid-core-proto",
         "//tools/adt/idea/android:libstudio.android-test-plugin-host-retention-proto",
         "//tools/adt/idea/android/lib:android-sdk-tools-jps",
@@ -519,8 +528,8 @@ studio_plugin(
     directory = "firebase-testing",
     libs = [
         "//prebuilts/tools/common/m2:JSch",
-        "//tools/adt/idea/.idea/libraries:tightvnc",
         "//tools/studio/google/cloud/testing/firebase-testing:google_api_services_testing",
+        "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
     ],
     modules = {
         "firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"],
@@ -528,7 +537,6 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        ":com.google.gct.core",
         ":org.jetbrains.android",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
@@ -657,6 +665,10 @@ exports_files([
 
 android_studio(
     name = "android-studio",
+    application_icon = select({
+        ":nightly-build": ":nightly-icon",
+        "//conditions:default": None,
+    }),
     codesign_entitlements = "codesign/entitlements.xml",
     files_linux = {
         "safemode/linux/studio_safe.sh": "bin/studio_safe.sh",
@@ -690,6 +702,12 @@ android_studio(
         ":com.google.urlassistant",
         ":com.google.targetsdkversionassistant",
     ],
+    properties = select({
+        "//conditions:default": [],
+        "//tools/adt/idea/studio:nightly-build": [
+            "gradle.ide.agp.version.to.use=" + LAST_STABLE_BUILD_VERSION,
+        ],
+    }),
     searchable_options = "//tools/adt/idea/searchable-options",
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,

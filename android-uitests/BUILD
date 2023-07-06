@@ -1092,6 +1092,7 @@ java_test(
 
 java_test(
     name = "StudioDefaultJDKTest",
+    size = "large",
     data = COMMON_DATA,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.newpsd.StudioDefaultJDKTest"],
     tags = COMMON_TAGS + [
@@ -1184,6 +1185,7 @@ java_test(
 
 java_test(
     name = "BasicLayoutEditTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
@@ -1198,8 +1200,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.BasicLayoutEditTest"],
     tags = COMMON_TAGS + [
         "no_windows",
+        "qa_smoke",
         "ui_test",
-        "very_flaky",  # b/241915111
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -3305,6 +3307,7 @@ java_test(
 # fat test
 java_test(
     name = "InferNullityTest",
+    size = "large",
     data = COMMON_DATA + [
         "@maven//:androidx.annotation.annotation_1.5.0",
     ],
@@ -3354,13 +3357,12 @@ java_test(
 # fat test
 java_test(
     name = "CreateLoginActivityTest",
+    size = "large",
     data = COMMON_DATA,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.CreateLoginActivityTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/117238132
-        "qa_unreliable",  # b/117238132
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

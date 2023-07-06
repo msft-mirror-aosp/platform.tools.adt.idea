@@ -17,9 +17,9 @@ package com.android.tools.idea.gradle.project.sync.errors
 
 import com.android.SdkConstants
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.plugin.LatestKnownPluginVersionProvider
+import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueComposer
-import com.android.tools.idea.gradle.project.sync.idea.issues.updateUsageTracker
+import com.android.tools.idea.gradle.project.sync.issues.SyncFailureUsageReporter
 import com.android.tools.idea.gradle.project.sync.quickFixes.FixAndroidGradlePluginVersionQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenFileAtLocationQuickFix
 import com.android.tools.idea.gradle.util.GradleProjectSettingsFinder
@@ -58,9 +58,7 @@ class GradleDslMethodNotFoundIssueChecker : GradleIssueChecker {
     if (!message.startsWith(GRADLE_DSL_METHOD_NOT_FOUND_ERROR_PREFIX)) return null
 
     // Log metrics.
-    invokeLater {
-      updateUsageTracker(issueData.projectPath, GradleSyncFailure.DSL_METHOD_NOT_FOUND)
-    }
+    SyncFailureUsageReporter.getInstance().collectFailure(issueData.projectPath, GradleSyncFailure.DSL_METHOD_NOT_FOUND)
 
     val matcher = MISSING_METHOD_PATTERN.matcher(message)
     val buildIssueComposer =
@@ -82,7 +80,7 @@ class GradleDslMethodNotFoundIssueChecker : GradleIssueChecker {
     buildIssueComposer.addDescription("Your project may be using a version of the Android Gradle plug-in that does not contain the " +
                                "method (e.g. 'testCompile' was added in 1.1.0).")
 
-    val pluginVersion = AgpVersion.parse(LatestKnownPluginVersionProvider.INSTANCE.get())
+    val pluginVersion = AgpVersions.latestKnown
     buildIssueComposer.addQuickFix("Upgrade plugin to version ${pluginVersion} and sync project",
                             FixAndroidGradlePluginVersionQuickFix(pluginVersion, GradleVersion.version(SdkConstants.GRADLE_LATEST_VERSION)))
     buildIssueComposer.addQuickFix("Open Gradle wrapper file", GetGradleSettingsQuickFix())

@@ -164,6 +164,8 @@
               topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
     <listener class="com.android.tools.idea.gradle.project.sync.listeners.InitializeGradleLocalJavaHomeListener"
               topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
+    <listener class="com.android.tools.idea.gradle.project.sync.issues.FailuresReporterSyncListener"
+              topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
   </projectListeners>
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
     <externallyHandledExtensions implementation="com.android.tools.idea.gradle.catalog.GradleDslVersionCatalogHandler"/>
@@ -286,6 +288,12 @@
             class="org.jetbrains.android.refactoring.namespaces.MigrateToNonTransitiveRClassesAction"
             text="Migrate to Non-Transitive R Classes..."
             description="Migrates the project to use Non-Transitive R classes">
+      <add-to-group group-id="RefactoringMenu"/>
+    </action>
+    <action id="AndroidMigrateBuildConfigFromGradlePropertiesToDsl"
+            class="org.jetbrains.android.refactoring.MigrateBuildConfigFromGradlePropertiesAction"
+            text="Migrate BuildConfig to Gradle Build Files"
+            description="Enable buildConfig for those modules that need it only">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
   </actions>

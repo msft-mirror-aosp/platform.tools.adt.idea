@@ -3,7 +3,9 @@ load("//tools/base/bazel:merge_archives.bzl", "run_singlejar")
 load("//tools/base/bazel:functions.bzl", "create_option_file")
 load("//tools/base/bazel:utils.bzl", "dir_archive", "is_release")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
+load("//tools/base/bazel:expand_template.bzl", "expand_template_ex")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
 
 PluginInfo = provider(
     doc = "Info for IntelliJ plugins, including those built by the studio_plugin rule",
@@ -500,6 +502,25 @@ def _full_display_version(ctx):
     (micro, _) = _split_version(ctx.attr.version_micro_patch)
     return _form_version_full(ctx).format(intellij_info.major_version, intellij_info.minor_version, micro)
 
+def _append(ctx, platform, files, path, lines):
+    if not lines:
+        return
+    file = files[path]
+    text = "\n".join(lines)
+    template = ctx.actions.declare_file(file.basename + ".%s.template" % platform.name)
+    out = ctx.actions.declare_file(file.basename + ".%s.append.%s" % (platform.name, file.extension))
+    files[path] = out
+    ctx.actions.write(output = template, content = "{CONTENT}")
+    expand_template_ex(
+        ctx = ctx,
+        template = template,
+        out = out,
+        substitutions = {
+            "{CONTENT}": "$(inline " + file.path + ")\n" + text + "\n",
+        },
+        files = [file],
+    )
+
 def _stamp(ctx, args, srcs, src, out):
     args.add("--stamp")
     args.add(src)
@@ -643,6 +664,8 @@ def _android_studio_os(ctx, platform, out):
     platform_prefix = _android_studio_prefix(ctx, platform)
 
     platform_files = platform.get(ctx.attr.platform[IntellijInfo].base)
+    if ctx.attr.application_icon:
+        platform_files = replace_app_icon(ctx, platform.name, platform_files, ctx.attr.application_icon[AppIconInfo])
     plugin_files = platform.get(ctx.attr.platform[IntellijInfo].plugins)
 
     if ctx.attr.jre:
@@ -668,6 +691,12 @@ def _android_studio_os(ctx, platform, out):
     dev01 = ctx.actions.declare_file(ctx.attr.name + ".dev01." + platform.name)
     ctx.actions.write(dev01, "")
     files += [(platform.base_path + "license/dev01_license.txt", dev01)]
+
+    suffix = "64" if platform == LINUX else ("64.exe" if platform == WIN else "")
+    vm_options_path = platform_prefix + platform.base_path + "bin/studio" + suffix + ".vmoptions"
+    _append(ctx, platform, all_files, vm_options_path, ctx.attr.vm_options)
+
+    _append(ctx, platform, all_files, platform_prefix + platform.base_path + "bin/idea.properties", ctx.attr.properties)
 
     # Add safe mode batch file based on the current platform
     source_map = {
@@ -721,31 +750,48 @@ script_template = """\
       args=${{@:2}}
     fi
     tmp_dir=$(mktemp -d -t android-studio-XXXXXXXXXX)
-    unzip -q "{linux_file}" -d "$tmp_dir"
-    STUDIO_VM_OPTIONS="$options" $tmp_dir/android-studio/bin/studio.sh $args
+    unzip -q "{zip_file}" -d "$tmp_dir"
+    if [ -z "$options" ]; then
+        {command} $args
+    else
+        STUDIO_VM_OPTIONS="$options" {command} $args
+    fi
 """
+
+platform_by_name = {platform.name: platform for platform in [LINUX, MAC, MAC_ARM, WIN]}
 
 def _android_studio_impl(ctx):
     plugins = [plugin[PluginInfo].directory for plugin in ctx.attr.plugins]
     ctx.actions.write(ctx.outputs.plugins, "".join([dir + "\n" for dir in plugins]))
 
-    _android_studio_os(ctx, LINUX, ctx.outputs.linux)
-    _android_studio_os(ctx, MAC, ctx.outputs.mac)
-    _android_studio_os(ctx, MAC_ARM, ctx.outputs.mac_arm)
-    _android_studio_os(ctx, WIN, ctx.outputs.win)
+    outputs = {
+        LINUX: ctx.outputs.linux,
+        MAC: ctx.outputs.mac,
+        MAC_ARM: ctx.outputs.mac_arm,
+        WIN: ctx.outputs.win,
+    }
+    for (platform, output) in outputs.items():
+        _android_studio_os(ctx, platform, output)
 
     _produce_update_message_html(ctx)
 
+    host_platform = platform_by_name[ctx.attr.host_platform_name]
     vmoptions = ctx.actions.declare_file("%s-debug.vmoption" % ctx.label.name)
     ctx.actions.write(vmoptions, "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005")
 
     script = ctx.actions.declare_file("%s-run" % ctx.label.name)
     script_content = script_template.format(
-        linux_file = ctx.outputs.linux.short_path,
+        zip_file = outputs[host_platform].short_path,
+        command = {
+            LINUX: "$tmp_dir/android-studio/bin/studio.sh",
+            MAC: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC) + "\"",
+            MAC_ARM: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC_ARM) + "\"",
+            WIN: "$tmp_dir/android-studio/bin/studio64",
+        }[host_platform],
         vmoptions = vmoptions.short_path,
     )
     ctx.actions.write(script, script_content, is_executable = True)
-    runfiles = ctx.runfiles(files = [ctx.outputs.linux, vmoptions])
+    runfiles = ctx.runfiles(files = [outputs[host_platform], vmoptions])
 
     # Leave everything that is not the main zips as implicit outputs
     return DefaultInfo(
@@ -756,6 +802,7 @@ def _android_studio_impl(ctx):
 
 _android_studio = rule(
     attrs = {
+        "host_platform_name": attr.string(),
         "codesign_entitlements": attr.label(allow_single_file = True),
         "compress": attr.bool(),
         "files_linux": attr.label_keyed_string_dict(allow_files = True, default = {}),
@@ -765,6 +812,9 @@ _android_studio = rule(
         "jre": attr.label(),
         "platform": attr.label(providers = [IntellijInfo]),
         "plugins": attr.label_list(providers = [PluginInfo]),
+        "vm_options": attr.string_list(),
+        "properties": attr.string_list(),
+        "application_icon": attr.label(providers = [AppIconInfo]),
         "searchable_options": attr.label(),
         "version_code_name": attr.string(),
         "version_micro_patch": attr.string(),
@@ -796,6 +846,16 @@ _android_studio = rule(
         ),
         "_lnzipper": attr.label(
             default = Label("//tools/base/bazel/lnzipper:lnzipper"),
+            cfg = "exec",
+            executable = True,
+        ),
+        "_expander": attr.label(
+            default = Label("//tools/base/bazel/expander"),
+            cfg = "host",
+            executable = True,
+        ),
+        "_replace_exe_icon": attr.label(
+            default = Label("//tools/vendor/google/windows-exe-patcher:replace-exe-icon"),
             cfg = "exec",
             executable = True,
         ),
@@ -863,6 +923,13 @@ def android_studio(
     _android_studio(
         name = name,
         compress = is_release(),
+        host_platform_name = select({
+            "@platforms//os:linux": LINUX.name,
+            "//tools/base/bazel/platforms:macos-x86_64": MAC.name,
+            "//tools/base/bazel/platforms:macos-arm64": MAC_ARM.name,
+            "@platforms//os:windows": WIN.name,
+            "//conditions:default": "",
+        }),
         **kwargs
     )
 

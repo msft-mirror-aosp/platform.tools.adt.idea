@@ -22,7 +22,6 @@ import com.android.flags.Flags;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
-import com.android.tools.idea.flags.overrides.BuildSettingFlagOverrides;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
@@ -51,11 +50,7 @@ public final class StudioFlags {
     else {
       userOverrides = new DefaultFlagOverrides();
     }
-    return new Flags(
-      userOverrides,
-      new PropertyOverrides(),
-      BuildSettingFlagOverrides.create(),
-      new ServerFlagOverrides());
+    return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
   }
 
   @TestOnly
@@ -757,9 +752,13 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = Flag.create(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
+  /**
+   * Don't read this directly, use AgpVersions.agpVersionStudioFlagOverride which handles the 'stable' alias
+   */
   public static final Flag<String> AGP_VERSION_TO_USE = Flag.create(
     GRADLE_IDE, "agp.version.to.use", "Version of AGP to use",
-    "The AGP version to use when making a new project, e.g. \"8.0.0-dev\". When set, a compatible Gradle version will also be " +
+    "The AGP version to use when making a new project, e.g. \"8.0.0-dev\". To use the latest stable version of AGP, set the value" +
+    "to \"stable\". When set, a compatible Gradle version will also be " +
     "selected. If unset, the latest AGP version and the latest Gradle version will be used.",
     ""
   );
@@ -979,6 +978,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> INFER_ANNOTATIONS_REFACTORING_ENABLED = Flag.create(
     REFACTORINGS, "infer.annotations.enabled", "Enable the Infer Annotations refactoring",
     "If enabled, show the action in the refactoring menu", false);
+
+  public static final Flag<Boolean> MIGRATE_BUILDCONFIG_FROM_GRADLE_PROPERTIES_REFACTORING_ENABLED = Flag.create(
+    REFACTORINGS, "migrateto.dslbuildconfig.enabled", "Enable the Migrate buildConfig from gradle.properties refactoring",
+    "If enabled, show the action in the refactoring menu", true);
   //endregion
 
   //region NDK
@@ -1574,8 +1577,8 @@ public final class StudioFlags {
   private static final FlagGroup GOOGLE_PLAY_SDK_INDEX = new FlagGroup(FLAGS, "google.play.sdk.index", "Google Play SDK Index");
   public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = Flag.create(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
-    "Whether or not show issues when libraries are not policy complaint",
-    false
+    "Whether or not SDK Index policy issues should be shown",
+    true
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 

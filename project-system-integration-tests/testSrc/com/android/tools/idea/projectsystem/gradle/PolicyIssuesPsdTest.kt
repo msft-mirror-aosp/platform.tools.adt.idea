@@ -17,26 +17,28 @@ package com.android.tools.idea.projectsystem.gradle
 
 import org.junit.Test
 
+// TODO(b/289275521): This tests to be removed once google.play.sdk.index.show.sdk.policy.issues is removed
 class PolicyIssuesPsdTest : SdkIndexTestBase() {
   @Test
-  fun `policy issues shown when flag true`() {
-    system.installation.addVmOption("-Dgoogle.play.sdk.index.show.sdk.policy.issues=true")
+  fun `policy issues not shown when flag false`() {
+    system.installation.addVmOption("-Dgoogle.play.sdk.index.show.sdk.policy.issues=false")
     system.installation.addVmOption("-Didea.log.debug.categories=#com.android.tools.idea.gradle.structure.daemon.PsAnalyzerDaemon")
     verifySdkIndexIsInitializedAndUsedWhen(
       showFunction = { studio, _ ->
         openAndClosePSD(studio)
       },
       beforeClose = {
-        // Two errors should appear:
-        //   - com.startapp:inapp-sdk:3.9.1 blocking critical
-        //   - com.stripe:stripe-android:9.3.2 policy issue
-        verifyPsdIssues(numErrors = 2)
+        // An error and one warning should be shown:
+        //   - com.startapp:inapp-sdk:3.9.1 error (blocking critical)
+        //   - com.mopub:mopub-sdk:4.16.0 warning (outdated)
+        verifyPsdIssues(numWarnings = 1)
       },
       expectedIssues = setOf(
         "com.mopub:mopub-sdk version 4.16.0 has been marked as outdated by its author",
         "com.snowplowanalytics:snowplow-android-tracker version 1.4.1 has an associated message from its author",
         "com.startapp:inapp-sdk version 3.9.1 has been reported as problematic by its author and will block publishing of your app to Play Console",
-        "com.stripe:stripe-android version 9.3.2 has policy issues that will block publishing of your app to Play Console",
+        "com.startapp:inapp-sdk version 3.9.1 has been marked as outdated by its author and will block publishing of your app to Play Console",
+        "com.stripe:stripe-android version 9.3.2 has policy issues that will block publishing of your app to Play Console in the future",
       )
     )
   }

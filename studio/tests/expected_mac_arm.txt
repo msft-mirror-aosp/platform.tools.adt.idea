@@ -2065,7 +2065,6 @@ Android Studio Preview.app/Contents/plugins/android/lib/layoutlib-loader.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libam-instrumentation-data-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libandroid-core-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libapp-processes-proto.jar
-Android Studio Preview.app/Contents/plugins/android/lib/libbuild-flags.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libjava_sites.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libjava_version.jar
 Android Studio Preview.app/Contents/plugins/android/lib/liblint-checks-proto.lib.jar
@@ -2720,11 +2719,11 @@ Android Studio Preview.app/Contents/plugins/directaccess/resources/reverse_daemo
 Android Studio Preview.app/Contents/plugins/editorconfig/lib/editorconfig.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/firebase-testing.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/gmd-code-completion.jar
+Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-testing-v1-revsnapshot-1.25.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/jsch-0.1.55.jar
-Android Studio Preview.app/Contents/plugins/firebase-testing/lib/tightvnc.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/firebase.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/firebase_java_proto.jar
 Android Studio Preview.app/Contents/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
