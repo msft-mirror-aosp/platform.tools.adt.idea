@@ -1454,18 +1454,13 @@ java_test(
 java_test(
     name = "CreateCppKotlinProjectTest",
     size = "large",
-    timeout = "moderate",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-    ] + glob([
-        "testData/CppKotlin/**",
-    ]),
-    flaky = True,
+    ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.kotlin.CreateCppKotlinProjectTest"],
     tags = COMMON_TAGS + [
         "no_windows",
-        "ui_test",
-        "very_flaky",  # b/230003185
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1529,22 +1524,6 @@ java_test(
         "testData/ApkDebug/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.LocalApkProjTest"],
-    tags = COMMON_TAGS + [
-        "no_windows",
-        "qa_smoke",
-        "requires-fakeroot",
-    ],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
-    name = "APKDebuggingProjTest",
-    size = "large",
-    data = COMMON_DATA + glob([
-        "testData/ApkDebug/**",
-    ]),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.APKDebuggingProjTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_smoke",
@@ -2061,25 +2040,23 @@ java_test(
 )
 
 java_test(
-    name = "FindUsagesTest",
+    name = "QuickDocumentationTest",
     size = "large",
-    data = COMMON_DATA + glob([
-        "testData/CodeGeneration/**",
-    ]),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.FindUsagesTest"],
+    data = COMMON_DATA,
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.QuickDocumentationTest"],
     tags = COMMON_TAGS + [
         "no_windows",
-        "qa_smoke",
+        "qa_fast",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
 java_test(
-    name = "QuickDocumentationTest",
+    name = "QuickDefinitionTest",
     size = "large",
     data = COMMON_DATA,
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.QuickDocumentationTest"],
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.QuickDefinitionTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
@@ -2450,6 +2427,7 @@ java_test(
 
 java_test(
     name = "NameWithSpaceAndDollarTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
     ],
@@ -2457,8 +2435,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/111889561
-        "qa_unreliable",  # b/111889561
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2785,6 +2761,7 @@ java_test(
 
 java_test(
     name = "ApkViewerTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),

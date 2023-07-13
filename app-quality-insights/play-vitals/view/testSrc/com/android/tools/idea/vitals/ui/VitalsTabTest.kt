@@ -191,13 +191,9 @@ class VitalsTabTest {
         assertThat(text).isEqualTo("8 → 13")
         assertThat(icon).isEqualTo(StudioIcons.LayoutEditor.Toolbar.ANDROID_API)
       }
-      with(firstRowComponents[3] as JLabel) {
-        assertThat(text).isEqualTo("Google Pixel 4a")
-        assertThat(icon).isEqualTo(StudioIcons.LayoutEditor.Toolbar.DEVICE_SCREEN)
-      }
 
       // Device, OS Version, affected versions
-      fakeUi.findComponent<JLabel> { it.text == "Versions affected: 1.2.3" }
+      fakeUi.findComponent<JLabel> { it.text == "Versions affected: 1.2.3 → 2.0.0" }
 
       // Time, link to Vitals
       assertThat(

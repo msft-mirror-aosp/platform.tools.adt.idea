@@ -1126,7 +1126,6 @@ fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
     projectPath = IdeProjectPathImpl(
       rootBuildId = File("/"),
       buildId = File("/"),
-      buildName = ":",
       projectPath = gradleProjectPath
     ),
     projectType = projectType,
@@ -1535,7 +1534,7 @@ private fun setupTestProjectFromAndroidModelCore(
   projectDataNode.createChild(
     AndroidProjectKeys.IDE_COMPOSITE_BUILD_MAP,
     IdeCompositeBuildMapImpl(
-      builds = listOf(IdeBuildImpl(buildName = ":", buildId = rootProjectBasePath)),
+      builds = listOf(IdeBuildImpl(buildPath = ":", buildId = rootProjectBasePath)),
       gradleSupportsDirectTaskInvocation = true
     )
   )

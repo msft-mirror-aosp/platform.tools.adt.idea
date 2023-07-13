@@ -42,7 +42,7 @@ import java.util.concurrent.locks.ReentrantLock
  */
 internal sealed class BasicIncompleteGradleModule(
   val gradleProject: BasicGradleProject,
-  val buildName: String
+  val buildPath: String
 ) {
   val buildId: BuildId get() = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir)
   val projectPath: String get() = gradleProject.path
@@ -64,8 +64,8 @@ internal data class ModelConsumerVersion(val major: Int, val minor: Int, val des
 /**
  * The container class of Android modules.
  */
-internal sealed class BasicIncompleteAndroidModule(gradleProject: BasicGradleProject, buildName: String)
-  :  BasicIncompleteGradleModule(gradleProject, buildName) {
+internal sealed class BasicIncompleteAndroidModule(gradleProject: BasicGradleProject, buildPath: String)
+  :  BasicIncompleteGradleModule(gradleProject, buildPath) {
   abstract val agpVersion: AgpVersion
   abstract val minimumModelConsumerVersion: ModelConsumerVersion?
 
@@ -78,9 +78,9 @@ internal sealed class BasicIncompleteAndroidModule(gradleProject: BasicGradlePro
  */
 internal class BasicV1AndroidModuleGradleProject(
   gradleProject: BasicGradleProject,
-  buildName: String,
+  buildPath: String,
   private val legacyV1AgpVersion: LegacyV1AgpVersionModel
-) :  BasicIncompleteAndroidModule(gradleProject, buildName) {
+) :  BasicIncompleteAndroidModule(gradleProject, buildPath) {
   override val agpVersion: AgpVersion = AgpVersion.parse(legacyV1AgpVersion.agp)
   override val minimumModelConsumerVersion: ModelConsumerVersion? = null // Fall back to the computeAndroidGradlePluginCompatibility checks
 
@@ -106,13 +106,11 @@ internal class BasicV1AndroidModuleGradleProject(
 
         val modelCache = modelCacheV1Impl(internedModels, buildInfo.buildFolderPaths, modelCacheLock)
         val buildId = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir)
-        val buildName = buildInfo.buildIdMap[buildId] ?: error("Unknown build id: $buildId")
-        val rootBuildDir = buildInfo.buildNameMap[":"] ?: error("Root build (':') not found")
+        val rootBuildId = buildInfo.buildPathMap[":"] ?: error("Root build (':') not found")
         val androidProjectResult = AndroidProjectResult.V1Project(
           modelCache = modelCache,
-          rootBuildId = rootBuildDir,
+          rootBuildId = rootBuildId,
           buildId = buildId,
-          buildName = buildName,
           projectPath = gradleProject.path,
           androidProject = androidProject,
           legacyAndroidGradlePluginProperties = legacyAndroidGradlePluginProperties,
@@ -135,8 +133,7 @@ internal class BasicV1AndroidModuleGradleProject(
               androidProjectResult,
               nativeAndroidProject,
               nativeModule,
-              buildInfo.buildNameMap,
-              buildInfo.buildIdMap,
+              buildInfo.buildPathMap,
               modelCache
             )
           }
@@ -161,10 +158,10 @@ val MINIMUM_AGP_FOR_VERSIONS_MAP = AgpVersion.parse("7.3.0")
  */
 internal class BasicV2AndroidModuleGradleProject(
   gradleProject: BasicGradleProject,
-  buildName: String,
+  buildPath: String,
   val versions: Versions,
   val syncActionOptions: SyncActionOptions,
-) : BasicIncompleteAndroidModule(gradleProject, buildName) {
+) : BasicIncompleteAndroidModule(gradleProject, buildPath) {
   override val agpVersion: AgpVersion = AgpVersion.tryParse(versions.agp) ?: error("AGP returned incorrect version: ${versions.agp}")
   override val minimumModelConsumerVersion: ModelConsumerVersion? =
     if (agpVersion < MINIMUM_AGP_FOR_VERSIONS_MAP) null
@@ -201,14 +198,12 @@ internal class BasicV2AndroidModuleGradleProject(
 
         val modelCache = modelCacheV2Impl(internedModels, modelCacheLock, agpVersion, syncActionOptions.syncTestMode,
                                           syncActionOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
-        val rootBuildId = buildInfo.buildNameMap[":"] ?: error("Root build (':') not found")
-        val buildId = buildInfo.buildNameMap[basicAndroidProject.buildName]
-          ?: error("(Included) build named '${basicAndroidProject.buildName}' not found")
+        val rootBuildId = buildInfo.buildPathMap[":"] ?: error("Root build (':') not found")
         val androidProjectResult =
           AndroidProjectResult.V2Project(
             modelCache = modelCache,
             rootBuildId = rootBuildId,
-            buildId = buildId,
+            buildId = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir),
             basicAndroidProject = basicAndroidProject,
             androidProject = androidProject,
             modelVersions = versions,
@@ -228,8 +223,7 @@ internal class BasicV2AndroidModuleGradleProject(
             gradleProject,
             androidProjectResult,
             nativeModule,
-            buildInfo.buildNameMap,
-            buildInfo.buildIdMap,
+            buildInfo.buildPathMap,
             modelCache
           )
         }
@@ -251,8 +245,8 @@ internal class BasicV2AndroidModuleGradleProject(
 /**
  * The container class of non-Android modules.
  */
-internal class BasicNonAndroidIncompleteGradleModule(gradleProject: BasicGradleProject, buildName: String) :
-  BasicIncompleteGradleModule(gradleProject, buildName) {
+internal class BasicNonAndroidIncompleteGradleModule(gradleProject: BasicGradleProject, buildPath: String) :
+  BasicIncompleteGradleModule(gradleProject, buildPath) {
   override fun getGradleModuleAction(
     internedModels: InternedModels,
     modelCacheLock: ReentrantLock,
@@ -275,8 +269,7 @@ private fun createAndroidModuleV1(
   androidProjectResult: AndroidProjectResult.V1Project,
   nativeAndroidProject: NativeAndroidProject?,
   nativeModule: NativeModule?,
-  buildNameMap: Map<String, BuildId>,
-  buildIdMap: Map<BuildId, String>,
+  buildPathMap: Map<String, BuildId>,
   modelCache: ModelCache.V1
 ): AndroidModule {
   val agpVersion: AgpVersion? = AgpVersion.tryParse(androidProjectResult.agpVersion)
@@ -292,9 +285,7 @@ private fun createAndroidModuleV1(
 
   val androidModule = AndroidModule.V1(
     agpVersion = agpVersion,
-    buildName = androidProjectResult.buildName,
-    buildNameMap = buildNameMap,
-    buildIdMap = buildIdMap,
+    buildPathMap = buildPathMap,
     gradleProject = gradleProject,
     androidProject = ideAndroidProject,
     allVariantNames = allVariantNames,
@@ -318,8 +309,7 @@ private fun createAndroidModuleV2(
   gradleProject: BasicGradleProject,
   androidProjectResult: AndroidProjectResult.V2Project,
   nativeModule: NativeModule?,
-  buildNameMap: Map<String, BuildId>,
-  buildIdMap: Map<BuildId, String>,
+  buildPathMap: Map<String, BuildId>,
   modelCache: ModelCache
 ): AndroidModule {
   val agpVersion: AgpVersion? = AgpVersion.tryParse(androidProjectResult.agpVersion)
@@ -332,9 +322,7 @@ private fun createAndroidModuleV2(
 
   return AndroidModule.V2(
     agpVersion = agpVersion,
-    buildName = androidProjectResult.buildName,
-    buildNameMap = buildNameMap,
-    buildIdMap = buildIdMap,
+    buildPathMap = buildPathMap,
     gradleProject = gradleProject,
     androidProject = ideAndroidProject,
     allVariantNames = allVariantNames,

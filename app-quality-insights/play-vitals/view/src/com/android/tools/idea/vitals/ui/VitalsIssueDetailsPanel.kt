@@ -37,6 +37,7 @@ import com.android.tools.idea.insights.ui.EMPTY_STATE_TITLE_FORMAT
 import com.android.tools.idea.insights.ui.StackTraceConsole
 import com.android.tools.idea.insights.ui.dateFormatter
 import com.android.tools.idea.insights.ui.ifZero
+import com.android.tools.idea.insights.ui.prettyRangeString
 import com.android.tools.idea.insights.ui.transparentPanel
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.intellij.openapi.Disposable
@@ -163,12 +164,11 @@ class VitalsIssueDetailsPanel(
   // Title
   private val header = DetailsPanelHeader(stackTraceConsole.consoleView.editor)
 
-  // Events, users, affected api levels, device
+  // TODO(b/290647605): add back device label
+  // Events, users, affected api levels
   private val eventsCountLabel = JLabel(StudioIcons.AppQualityInsights.ISSUE)
   private val usersCountLabel = JLabel(StudioIcons.LayoutEditor.Palette.QUICK_CONTACT_BADGE)
   private val affectedApiLevelsLabel = JLabel(StudioIcons.LayoutEditor.Toolbar.ANDROID_API)
-  private val deviceLabel =
-    JLabel("sample device", StudioIcons.LayoutEditor.Toolbar.DEVICE_SCREEN, SwingConstants.LEFT)
 
   // Affected app version
   private val affectedVersionsLabel = JLabel("Versions affected", SwingConstants.LEFT)
@@ -314,8 +314,6 @@ class VitalsIssueDetailsPanel(
           add(usersCountLabel)
           add(Box.createHorizontalStrut(8))
           add(affectedApiLevelsLabel)
-          add(Box.createHorizontalStrut(8))
-          add(deviceLabel)
           add(Box.createHorizontalGlue())
         }
       )
@@ -342,12 +340,11 @@ class VitalsIssueDetailsPanel(
     }
 
   private fun updateBodySection(issue: AppInsightsIssue) {
-    deviceLabel.text = issue.sampleEvent.eventData.device.let { "${it.manufacturer} ${it.model}" }
     affectedApiLevelsLabel.text =
-      if (issue.issueDetails.lowestAffectedApiLevel == issue.issueDetails.highestAffectedApiLevel)
-        issue.issueDetails.lowestAffectedApiLevel.toString()
-      else
-        "${issue.issueDetails.lowestAffectedApiLevel} → ${issue.issueDetails.highestAffectedApiLevel}"
+      prettyRangeString(
+        issue.issueDetails.lowestAffectedApiLevel,
+        issue.issueDetails.highestAffectedApiLevel
+      )
     timestampLabel.text = dateFormatter.format(issue.sampleEvent.eventData.eventTime)
 
     eventsCountLabel.icon = StudioIcons.AppQualityInsights.ISSUE
@@ -356,7 +353,7 @@ class VitalsIssueDetailsPanel(
     usersCountLabel.text = issue.issueDetails.impactedDevicesCount.ifZero("-")
 
     affectedVersionsLabel.text =
-      "Versions affected: ${issue.issueDetails.firstSeenVersion} - ${issue.issueDetails.lastSeenVersion}"
+      "Versions affected: ${prettyRangeString(issue.issueDetails.firstSeenVersion, issue.issueDetails.lastSeenVersion)}"
 
     insightsPanel.removeAll()
     issue.issueDetails.annotations.forEach {

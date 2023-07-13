@@ -25,8 +25,6 @@ import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
-import com.android.tools.idea.common.surface.LayoutlibInteractionHandler
-import com.android.tools.idea.common.util.ControllableTicker
 import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.pickers.preview.property.referenceDeviceIds
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
@@ -65,7 +63,7 @@ import com.android.tools.idea.preview.PreviewDisplaySettings
 import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
-import com.android.tools.idea.preview.interactive.FpsCalculator
+import com.android.tools.idea.preview.interactive.InteractivePreviewManager
 import com.android.tools.idea.preview.interactive.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
@@ -84,7 +82,6 @@ import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
-import com.android.tools.rendering.RenderService
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposePreviewLiteModeEvent
 import com.intellij.ide.ActivityTracker
@@ -113,6 +110,7 @@ import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.problems.WolfTheProblemSolver
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
+import com.intellij.ui.ExperimentalUI
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
 import java.io.File
@@ -152,7 +150,9 @@ import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Background color for the surface while "Interactive" is enabled. */
-private val INTERACTIVE_BACKGROUND_COLOR = JBColor(0xF7F8FA, 0x2B2D30)
+@Suppress("UnstableApiUsage")
+private val INTERACTIVE_BACKGROUND_COLOR =
+  if (ExperimentalUI.isNewUI()) JBColor.PanelBackground else JBColor(0xCBD2D9, 0x46454D)
 
 /** [Notification] group ID. Must match the `groupNotification` entry of `compose-designer.xml`. */
 const val PREVIEW_NOTIFICATION_GROUP_ID = "Compose Preview Notification"
@@ -287,7 +287,23 @@ class ComposePreviewRepresentation(
   private val project
     get() = psiFilePointer.project
 
-  private val interactiveModeFlow = MutableStateFlow(ComposePreviewManager.InteractiveMode.DISABLED)
+  private val interactiveMode: ComposePreviewManager.InteractiveMode
+    get() =
+      when (val currentMode = mode) {
+        is PreviewMode.Switching ->
+          when {
+            currentMode.currentMode is PreviewMode.Interactive ->
+              ComposePreviewManager.InteractiveMode.STOPPING
+            currentMode.newMode is PreviewMode.Interactive ->
+              ComposePreviewManager.InteractiveMode.STARTING
+            else -> ComposePreviewManager.InteractiveMode.DISABLED
+          }
+        is PreviewMode.Interactive -> ComposePreviewManager.InteractiveMode.READY
+        else -> ComposePreviewManager.InteractiveMode.DISABLED
+      }
+
+  private val isStartingOrInInteractiveMode: Boolean
+    get() = currentOrNextMode is PreviewMode.Interactive
 
   private val refreshManager = ComposePreviewRefreshManager.getInstance(project)
 
@@ -299,15 +315,15 @@ class ComposePreviewRepresentation(
       onResumeActivate = { activate(true) },
       onDeactivate = {
         log.debug("onDeactivate")
-        if (interactiveModeFlow.value.isStartingOrReady()) {
-          pauseInteractivePreview()
+        if (isStartingOrInInteractiveMode) {
+          interactiveManager.pause()
         }
         // The editor is scheduled to be deactivated, deactivate its issue model to avoid
         // updating publish the issue update event.
         surface.deactivateIssueModel()
       },
       onDelayedDeactivate = {
-        stopInteractivePreview()
+        setMode(PreviewMode.Default)
         log.debug("Delayed surface deactivation")
         surface.deactivate()
       }
@@ -362,9 +378,6 @@ class ComposePreviewRepresentation(
       }
     )
 
-  /** Frames per second limit for interactive preview. */
-  private var fpsLimit = StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get()
-
   /**
    * [UniqueTaskCoroutineLauncher] for ensuring that only one fast preview request is launched at a
    * time.
@@ -381,6 +394,21 @@ class ComposePreviewRepresentation(
    * the state of the preview.
    */
   private val hasRenderedAtLeastOnce = AtomicBoolean(false)
+
+  /**
+   * Flow representing the [ComposePreviewManager]'s current [PreviewMode]. This flow is used by
+   * [mode] in order to implement the [PreviewModeManager] interface. The flow is collected and, if
+   * the current mode in the flow is [PreviewMode.Switching], then the [onExit] and [onEnter]
+   * methods are called.
+   */
+  private val modeFlow = MutableStateFlow<PreviewMode>(PreviewMode.Default)
+
+  /** The [ComposePreviewManager]'s current [PreviewMode] */
+  override val mode: PreviewMode
+    get() = modeFlow.value
+
+  private val isAnimationPreviewEnabled: Boolean
+    get() = currentOrNextMode is PreviewMode.AnimationInspection
 
   init {
     val project = psiFile.project
@@ -411,6 +439,21 @@ class ComposePreviewRepresentation(
           )
         }
       )
+
+    // Launch handling of Preview modes
+    launch {
+      modeFlow.collect {
+        when (it) {
+          // TODO(b/290173523): this should be handled in a separate class
+          is PreviewMode.Switching -> {
+            onExit(it.currentMode)
+            onEnter(it.newMode)
+            modeFlow.value = it.newMode
+          }
+          else -> Unit
+        }
+      }
+    }
   }
 
   /**
@@ -429,7 +472,7 @@ class ComposePreviewRepresentation(
 
     if (composePreviewViewEssentialsModeIsSet) {
       composeWorkBench.essentialsMode = null
-      singlePreviewElementInstance = null // Remove filter applied by essentials mode.
+      setMode(PreviewMode.Default)
     } else {
       composeWorkBench.essentialsMode = ComposeEssentialsMode(composeWorkBench.mainSurface)
     }
@@ -438,13 +481,12 @@ class ComposePreviewRepresentation(
   }
 
   private fun updateFpsForCurrentMode() {
-    fpsLimit =
+    interactiveManager.fpsLimit =
       if (EssentialsMode.isEnabled()) {
         StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get() / 3
       } else {
         StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get()
       }
-    fpsCounter.resetAndStart()
   }
 
   /** Whether the preview needs a full refresh or not. */
@@ -484,13 +526,17 @@ class ComposePreviewRepresentation(
         }
     }
 
-  override var singlePreviewElementInstance: ComposePreviewElementInstance?
+  /**
+   * Filter that can be applied to select a single instance. Setting this filter will trigger a
+   * refresh.
+   *
+   * TODO(b/290579075): replace this variable with a method
+   */
+  private var singlePreviewElementInstance: ComposePreviewElementInstance?
     get() = (filterFlow.value as? ComposePreviewElementsModel.Filter.Single)?.instance
     set(newValue) {
       val previousValue = (filterFlow.value as? ComposePreviewElementsModel.Filter.Single)?.instance
       if (newValue != previousValue) {
-        stopInteractivePreview()
-        stopUiCheckPreview()
         log.debug("New instance selection: $newValue")
         filterFlow.value =
           if (newValue != null) {
@@ -505,8 +551,6 @@ class ComposePreviewRepresentation(
     MutableStateFlow(setOf())
 
   private val navigationHandler = ComposePreviewNavigationHandler()
-
-  private val fpsCounter = FpsCalculator { System.nanoTime() }
 
   private val issueListener: TreeSelectionListener = TreeSelectionListener {
     val selectedNode = it?.newLeadSelectionPath?.lastPathComponent ?: return@TreeSelectionListener
@@ -530,7 +574,7 @@ class ComposePreviewRepresentation(
           .toolsAttribute("paintBounds", showDebugBoundaries.toString())
           .toolsAttribute("findDesignInfoProviders", hasDesignInfoProviders.toString())
           .apply {
-            if (animationInspection.get()) {
+            if (isAnimationPreviewEnabled) {
               // If the animation inspection is active, start the PreviewAnimationClock with
               // the current epoch time.
               toolsAttribute("animationClockStartTime", System.currentTimeMillis().toString())
@@ -539,147 +583,46 @@ class ComposePreviewRepresentation(
           .buildString()
     }
 
-  override suspend fun startInteractivePreview(instance: ComposePreviewElementInstance) {
-    if (interactiveModeFlow.value.isStartingOrReady()) return
+  private suspend fun startInteractivePreview(instance: ComposePreviewElementInstance) {
+    if (mode is PreviewMode.Interactive) return
     log.debug("New single preview element focus: $instance")
     requestVisibilityAndNotificationsUpdate()
-    interactiveModeFlow.value = ComposePreviewManager.InteractiveMode.STARTING
-    // We should call this before assigning newValue to instanceIdFilter
+    // We should call this before assigning the instance to singlePreviewElementInstance
     val quickRefresh = shouldQuickRefresh()
     val peerPreviews = filteredPreviewElementsInstancesFlow.value.size
     singlePreviewElementInstance = instance
     sceneComponentProvider.enabled = false
     val startUpStart = System.currentTimeMillis()
-    forceRefresh(if (quickRefresh) RefreshType.QUICK else RefreshType.NORMAL).invokeOnCompletion {
-      surface.sceneManagers.forEach { it.resetInteractiveEventsCounter() }
-      // Currently it will re-create classloader and will be slower that switch from static
-      InteractivePreviewUsageTracker.getInstance(surface)
-        .logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
-      fpsCounter.resetAndStart()
-      ticker.start()
-      delegateInteractionHandler.delegate = interactiveInteractionHandler
-      requestVisibilityAndNotificationsUpdate()
-
-      // While in interactive mode, display a small ripple when clicking
-      surface.enableMouseClickDisplay()
-      surface.background = INTERACTIVE_BACKGROUND_COLOR
-      interactiveModeFlow.value = ComposePreviewManager.InteractiveMode.READY
-      ActivityTracker.getInstance().inc()
-    }
-  }
-
-  override fun stopInteractivePreview() {
-    if (interactiveModeFlow.value.isStoppingOrDisabled()) return
-
-    log.debug("Stopping interactive")
-    onInteractivePreviewStop()
+    forceRefresh(if (quickRefresh) RefreshType.QUICK else RefreshType.NORMAL).join()
+    surface.sceneManagers.forEach { it.resetInteractiveEventsCounter() }
+    // Currently it will re-create classloader and will be slower than switch from static
+    InteractivePreviewUsageTracker.getInstance(surface)
+      .logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
+    interactiveManager.start()
     requestVisibilityAndNotificationsUpdate()
-    onStaticPreviewStart()
-    forceRefresh().invokeOnCompletion {
-      interactiveModeFlow.value = ComposePreviewManager.InteractiveMode.DISABLED
-    }
+
+    // While in interactive mode, display a small ripple when clicking
+    surface.enableMouseClickDisplay()
+    surface.background = INTERACTIVE_BACKGROUND_COLOR
+    ActivityTracker.getInstance().inc()
   }
 
-  override fun startUiCheckPreview(instance: ComposePreviewElementInstance) {
-    atfChecksEnabled = StudioFlags.NELE_ATF_FOR_COMPOSE.get()
-    visualLintingEnabled = StudioFlags.NELE_COMPOSE_VISUAL_LINT_RUN.get()
+  private suspend fun startUiCheckPreview(instance: ComposePreviewElementInstance) {
     log.debug(
       "Starting UI check. ATF checks enabled: $atfChecksEnabled, Visual Linting enabled: $visualLintingEnabled"
     )
     uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
     surface.background = INTERACTIVE_BACKGROUND_COLOR
     IssuePanelService.getInstance(project).addIssueSelectionListener(issueListener)
-    forceRefresh().invokeOnCompletion { isUiCheckPreview = true }
+    forceRefresh().join()
   }
 
-  override fun stopUiCheckPreview() {
-    if (!isUiCheckPreview) return
-    log.debug("Stopping UI check")
-    uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
-    atfChecksEnabled = false
-    visualLintingEnabled = false
-    IssuePanelService.getInstance(project).removeIssueSelectionListener(issueListener)
-    onStaticPreviewStart()
-    forceRefresh().invokeOnCompletion {
-      surface.repaint()
-      isUiCheckPreview = false
-    }
-  }
-
-  private fun onStaticPreviewStart() {
-    sceneComponentProvider.enabled = true
-    surface.background = Colors.DEFAULT_BACKGROUND_COLOR
-  }
-
-  private fun onInteractivePreviewStop() {
-    interactiveModeFlow.value = ComposePreviewManager.InteractiveMode.STOPPING
+  private suspend fun onInteractivePreviewStop() {
     surface.disableMouseClickDisplay()
-    delegateInteractionHandler.delegate = staticPreviewInteractionHandler
     requestVisibilityAndNotificationsUpdate()
-    ticker.stop()
+    interactiveManager.stop()
     filterFlow.value = ComposePreviewElementsModel.Filter.Disabled
-    logInteractiveSessionMetrics()
-  }
-
-  private fun pauseInteractivePreview() {
-    ticker.stop()
-    surface.sceneManagers.forEach { it.pauseSessionClock() }
-  }
-
-  private fun resumeInteractivePreview() {
-    fpsCounter.resetAndStart()
-    surface.sceneManagers.forEach { it.resumeSessionClock() }
-    ticker.start()
-  }
-
-  private val animationInspection = AtomicBoolean(false)
-
-  override var animationInspectionPreviewElementInstance: ComposePreviewElementInstance?
-    set(value) {
-      if (
-        (!animationInspection.get() && value != null) ||
-          (animationInspection.get() && value == null)
-      ) {
-        if (value != null) {
-          log.debug("Animation Preview open for preview: $value")
-          ComposePreviewAnimationManager.onAnimationInspectorOpened()
-          singlePreviewElementInstance = value
-          animationInspection.set(true)
-          sceneComponentProvider.enabled = false
-
-          // Open the animation inspection panel
-          ComposePreviewAnimationManager.createAnimationInspectorPanel(
-            surface,
-            this,
-            psiFilePointer
-          ) {
-            // Close this inspection panel, making all the necessary UI changes (e.g. changing
-            // background and refreshing the preview) before
-            // opening a new one.
-            animationInspectionPreviewElementInstance = null
-            updateAnimationPanelVisibility()
-          }
-          updateAnimationPanelVisibility()
-          surface.background = INTERACTIVE_BACKGROUND_COLOR
-        } else {
-          onAnimationInspectionStop()
-          onStaticPreviewStart()
-        }
-        forceRefresh().invokeOnCompletion {
-          interactiveModeFlow.value = ComposePreviewManager.InteractiveMode.DISABLED
-          ActivityTracker.getInstance().inc()
-        }
-      }
-    }
-    get() = if (animationInspection.get()) singlePreviewElementInstance else null
-
-  private fun onAnimationInspectionStop() {
-    animationInspection.set(false)
-    // Close the animation inspection panel
-    ComposePreviewAnimationManager.closeCurrentInspector()
-    // Swap the components back
-    updateAnimationPanelVisibility()
-    singlePreviewElementInstance = null
+    forceRefresh().join()
   }
 
   private fun updateAnimationPanelVisibility() {
@@ -687,7 +630,7 @@ class ComposePreviewRepresentation(
     composeWorkBench.bottomPanel =
       when {
         status().hasErrors || project.needsBuild -> null
-        animationInspection.get() -> ComposePreviewAnimationManager.currentInspector?.component
+        isAnimationPreviewEnabled -> ComposePreviewAnimationManager.currentInspector?.component
         else -> null
       }
   }
@@ -709,12 +652,6 @@ class ComposePreviewRepresentation(
   override var isInspectionTooltipEnabled: Boolean = false
 
   override var isFilterEnabled: Boolean = false
-
-  override var atfChecksEnabled: Boolean = false
-
-  override var visualLintingEnabled: Boolean = false
-
-  override var isUiCheckPreview: Boolean = false
 
   private val dataProvider = DataProvider {
     when (it) {
@@ -763,8 +700,16 @@ class ComposePreviewRepresentation(
         )
       )
       .also { delegateInteractionHandler.delegate = it }
-  private val interactiveInteractionHandler =
-    LayoutlibInteractionHandler(composeWorkBench.mainSurface)
+
+  private val interactiveManager =
+    InteractivePreviewManager(
+        composeWorkBench.mainSurface,
+        StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT.get(),
+        { surface.sceneManagers },
+        { InteractivePreviewUsageTracker.getInstance(surface) },
+        delegateInteractionHandler
+      )
+      .also { Disposer.register(this@ComposePreviewRepresentation, it) }
 
   @get:VisibleForTesting
   val surface: NlDesignSurface
@@ -783,22 +728,10 @@ class ComposePreviewRepresentation(
    */
   private var onRestoreState: (() -> Unit)? = null
 
-  private val ticker =
-    ControllableTicker(
-      {
-        if (!RenderService.isBusy() && fpsCounter.getFps() <= fpsLimit) {
-          fpsCounter.incrementFrameCounter()
-          surface.sceneManagers.first().executeCallbacksAndRequestRender(null)
-        }
-      },
-      Duration.ofMillis(5)
-    )
-
   private val psiCodeFileChangeDetectorService =
     PsiCodeFileChangeDetectorService.getInstance(project)
 
   init {
-    Disposer.register(this, ticker)
     updateEssentialsMode()
   }
 
@@ -874,7 +807,7 @@ class ComposePreviewRepresentation(
 
         override fun buildStarted() {
           log.debug("buildStarted")
-          animationInspectionsEnabled = animationInspection.get()
+          animationInspectionsEnabled = isAnimationPreviewEnabled
 
           composeWorkBench.updateProgress(message("panel.building"))
           afterBuildStarted()
@@ -1065,8 +998,8 @@ class ComposePreviewRepresentation(
 
             if (
               !EssentialsMode.isEnabled() &&
-                interactiveModeFlow.value.isStoppingOrDisabled() &&
-                !animationInspection.get() &&
+                mode !is PreviewMode.Interactive &&
+                !isAnimationPreviewEnabled &&
                 !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
             )
               requestRefresh()
@@ -1099,8 +1032,8 @@ class ComposePreviewRepresentation(
 
     surface.activate()
 
-    if (interactiveModeFlow.value.isStartingOrReady()) {
-      resumeInteractivePreview()
+    if (isStartingOrInInteractiveMode) {
+      interactiveManager.resume()
     }
 
     val anyKtFilesOutOfDate = psiCodeFileChangeDetectorService.outOfDateFiles.any { it is KtFile }
@@ -1121,7 +1054,7 @@ class ComposePreviewRepresentation(
     if (EssentialsMode.isEnabled()) return
     if (isModificationTriggered) return // We do not move the preview while the user is typing
     if (!StudioFlags.COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE.get()) return
-    if (interactiveModeFlow.value.isStartingOrReady()) return
+    if (isStartingOrInInteractiveMode) return
     // If we have not changed line, ignore
     if (event.newPosition.line == event.oldPosition.line) return
     val offset = event.editor.logicalPositionToOffset(event.newPosition)
@@ -1150,18 +1083,11 @@ class ComposePreviewRepresentation(
     }
   }
 
-  private fun logInteractiveSessionMetrics() {
-    val touchEvents = surface.sceneManagers.map { it.interactiveEventsCount }.sum()
-    InteractivePreviewUsageTracker.getInstance(surface)
-      .logInteractiveSession(fpsCounter.getFps(), fpsCounter.getDurationMs(), touchEvents)
-  }
-
   override fun dispose() {
     isDisposed.set(true)
-    if (interactiveModeFlow.value == ComposePreviewManager.InteractiveMode.READY) {
-      logInteractiveSessionMetrics()
+    if (mode is PreviewMode.Interactive) {
+      interactiveManager.stop()
     }
-    animationInspectionPreviewElementInstance = null
   }
 
   private fun hasErrorsAndNeedsBuild(): Boolean =
@@ -1199,7 +1125,7 @@ class ComposePreviewRepresentation(
         !isRefreshing &&
           (projectBuildStatus as? ProjectStatus.OutOfDate)?.areResourcesOutOfDate ?: false,
         isRefreshing,
-        interactiveModeFlow.value,
+        interactiveMode,
       )
 
     // This allows us to display notifications synchronized with any other change detection. The
@@ -1231,10 +1157,10 @@ class ComposePreviewRepresentation(
     configureLayoutlibSceneManager(
       layoutlibSceneManager,
       showDecorations = displaySettings.showDecoration,
-      isInteractive = interactiveModeFlow.value.isStartingOrReady(),
+      isInteractive = isStartingOrInInteractiveMode,
       requestPrivateClassLoader = usePrivateClassLoader(),
-      runAtfChecks = runAtfChecks(),
-      runVisualLinting = runVisualLinting(),
+      runAtfChecks = atfChecksEnabled,
+      runVisualLinting = visualLintingEnabled,
       quality = qualityManager.getTargetQuality(layoutlibSceneManager)
     )
 
@@ -1317,7 +1243,7 @@ class ComposePreviewRepresentation(
         progressIndicator,
         this::onAfterRender,
         previewElementModelAdapter,
-        if (runAtfChecks() || runVisualLinting()) accessibilityModelUpdater
+        if (atfChecksEnabled || visualLintingEnabled) accessibilityModelUpdater
         else defaultModelUpdater,
         this::configureLayoutlibSceneManagerForPreviewElement
       )
@@ -1546,24 +1472,7 @@ class ComposePreviewRepresentation(
    * includes the compose framework).
    */
   private fun usePrivateClassLoader() =
-    interactiveModeFlow.value.isStartingOrReady() ||
-      animationInspection.get() ||
-      shouldQuickRefresh()
-
-  /**
-   * Whether to run ATF checks on the preview. Never do it for interactive or animation previews.
-   */
-  private fun runAtfChecks() =
-    atfChecksEnabled && !interactiveModeFlow.value.isStartingOrReady() && !animationInspection.get()
-
-  /**
-   * Whether to run Visual Linting on the preview. Never do it for interactive or animation
-   * previews.
-   */
-  private fun runVisualLinting() =
-    visualLintingEnabled &&
-      !interactiveModeFlow.value.isStartingOrReady() &&
-      !animationInspection.get()
+    isStartingOrInInteractiveMode || isAnimationPreviewEnabled || shouldQuickRefresh()
 
   override fun invalidate() {
     invalidated.set(true)
@@ -1741,6 +1650,94 @@ class ComposePreviewRepresentation(
             .toList()
         }
       }
+    }
+  }
+
+  override fun setMode(newMode: PreviewMode.Settable) {
+    val currentMode = modeFlow.value as? PreviewMode.Settable
+    if (currentMode == null) {
+      log.debug("Mode is already switching")
+      return
+    }
+
+    if (currentMode == newMode) {
+      log.debug("Mode was already $newMode")
+      return
+    }
+
+    modeFlow.value = PreviewMode.Switching(currentMode, newMode)
+  }
+
+  private suspend fun onEnter(mode: PreviewMode) {
+    when (mode) {
+      is PreviewMode.Default -> {
+        sceneComponentProvider.enabled = true
+        surface.background = Colors.DEFAULT_BACKGROUND_COLOR
+        singlePreviewElementInstance = null
+        forceRefresh().join()
+        surface.repaint()
+      }
+      is PreviewMode.Interactive -> {
+        startInteractivePreview(mode.selected)
+      }
+      is PreviewMode.UiCheck -> {
+        startUiCheckPreview(mode.selected)
+      }
+      is PreviewMode.AnimationInspection -> {
+        ComposePreviewAnimationManager.onAnimationInspectorOpened()
+        singlePreviewElementInstance = mode.selected
+        sceneComponentProvider.enabled = false
+
+        withContext(uiThread) {
+          // Open the animation inspection panel
+          ComposePreviewAnimationManager.createAnimationInspectorPanel(
+            surface,
+            this@ComposePreviewRepresentation,
+            psiFilePointer
+          ) {
+            // Close this inspection panel, making all the necessary UI changes (e.g. changing
+            // background and refreshing the preview) before
+            // opening a new one.
+            updateAnimationPanelVisibility()
+          }
+          updateAnimationPanelVisibility()
+          surface.background = INTERACTIVE_BACKGROUND_COLOR
+        }
+        forceRefresh().join()
+      }
+      is PreviewMode.Essential -> {
+        singlePreviewElementInstance = mode.selected
+      }
+      is PreviewMode.Switching,
+      is PreviewMode.Settable -> {}
+    }
+  }
+
+  private suspend fun onExit(mode: PreviewMode) {
+    when (mode) {
+      is PreviewMode.Default -> {}
+      is PreviewMode.Interactive -> {
+        log.debug("Stopping interactive")
+        onInteractivePreviewStop()
+        requestVisibilityAndNotificationsUpdate()
+      }
+      is PreviewMode.UiCheck -> {
+        log.debug("Stopping UI check")
+        uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
+        IssuePanelService.getInstance(project).removeIssueSelectionListener(issueListener)
+      }
+      is PreviewMode.AnimationInspection -> {
+        onInteractivePreviewStop()
+        withContext(uiThread) {
+          // Close the animation inspection panel
+          ComposePreviewAnimationManager.closeCurrentInspector()
+        }
+        // Swap the components back
+        updateAnimationPanelVisibility()
+      }
+      is PreviewMode.Essential,
+      is PreviewMode.Switching,
+      is PreviewMode.Settable -> {}
     }
   }
 }

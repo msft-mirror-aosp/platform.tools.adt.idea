@@ -72,7 +72,6 @@ interface ModelCache {
     fun androidProjectFrom(
       rootBuildId: BuildId,
       buildId: BuildId,
-      buildName: String,
       projectPath: String,
       project: AndroidProject,
       legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
@@ -108,7 +107,7 @@ interface ModelCache {
       variantDependencies: VariantDependenciesCompat,
       bootClasspath: Collection<String>,
       androidProjectPathResolver: AndroidProjectPathResolver,
-      buildNameMap: Map<String, BuildId>
+      buildPathMap: Map<String, BuildId>
     ): ModelResult<IdeVariantWithPostProcessor>
 
     fun androidProjectFrom(

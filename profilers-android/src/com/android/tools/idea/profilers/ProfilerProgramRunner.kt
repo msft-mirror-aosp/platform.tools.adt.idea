@@ -24,7 +24,7 @@ import com.android.tools.idea.profilers.analytics.StudioFeatureTracker
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.run.AndroidRunConfigurationType
 import com.android.tools.idea.run.DeviceFutures
-import com.android.tools.idea.run.configuration.AndroidConfigurationProgramRunner
+import com.android.tools.idea.execution.common.AndroidConfigurationProgramRunner
 import com.android.tools.idea.run.configuration.AndroidTileConfigurationType
 import com.android.tools.idea.run.configuration.AndroidWatchFaceConfigurationType
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
@@ -91,9 +91,7 @@ class ProfilerProgramRunner : AndroidConfigurationProgramRunner() {
   )
 
   override fun canRunWithMultipleDevices(executorId: String) = false
-  override fun run(environment: ExecutionEnvironment, state: RunProfileState, indicator: ProgressIndicator): RunContentDescriptor {
-    val executor = state as AndroidConfigurationExecutor
-
+  override fun run(environment: ExecutionEnvironment, executor: AndroidConfigurationExecutor, indicator: ProgressIndicator): RunContentDescriptor {
     if (!isProfilerExecutor(environment.executor.id)) {
       throw RuntimeException("Not a profiler executor")
     }

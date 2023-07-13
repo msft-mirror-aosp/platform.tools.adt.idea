@@ -38,6 +38,7 @@ import com.android.tools.idea.layoutinspector.pipeline.AbstractInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
+import com.android.tools.idea.layoutinspector.pipeline.InspectorConnectionError
 import com.android.tools.idea.layoutinspector.pipeline.TreeLoader
 import com.android.tools.idea.layoutinspector.pipeline.adb.AdbUtils
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient
@@ -57,12 +58,14 @@ import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorCode
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.EditorNotificationPanel.Status
 import java.nio.file.Path
 import java.util.EnumSet
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -120,7 +123,8 @@ class AppInspectionInspectorClient(
     private set
 
   private val loggingExceptionHandler = CoroutineExceptionHandler { _, t ->
-    fireError(t.message, t)
+    notifyError(t)
+    logError(t)
   }
 
   private var debugViewAttributesChanged = false
@@ -178,7 +182,7 @@ class AppInspectionInspectorClient(
             stats,
             coroutineScope,
             composeInspector,
-            ::fireError,
+            this::notifyError,
             ::fireRootsEvent,
             ::fireTreeEvent,
             launchMonitor
@@ -219,14 +223,57 @@ class AppInspectionInspectorClient(
         completableDeferred.await()
         model.modificationListeners.remove(updateListener)
       }
-      .recover {
-        handleException(it)
-        throw it
+      .recover { t ->
+        notifyError(t)
+        val expectedError = handleConnectionError(t)
+        if (!expectedError) {
+          logError(t)
+        }
+        throw t
       }
   }
 
-  private fun handleException(throwable: Throwable) {
-    fireError(throwable.message, throwable)
+  /**
+   * Handles a connection error.
+   *
+   * @return true if the error is expected, false if it's unexpected.
+   */
+  private fun handleConnectionError(throwable: Throwable): Boolean {
+    if (throwable is CancellationException) {
+      return true
+    }
+
+    val errorCode = throwable.toAttachErrorInfo().code
+    launchMonitor.logAttachErrorToMetrics(errorCode)
+
+    return errorCode != AttachErrorCode.UNKNOWN_APP_INSPECTION_ERROR &&
+      errorCode != AttachErrorCode.UNKNOWN_ERROR_CODE
+  }
+
+  private fun logError(throwable: Throwable) {
+    when (throwable) {
+      is CancellationException -> {}
+      is ConnectionFailedException -> {
+        Logger.getInstance(AppInspectionInspectorClient::class.java).warn(throwable.message)
+      }
+      else -> {
+        logUnexpectedError(InspectorConnectionError(throwable))
+      }
+    }
+  }
+
+  /** Crate user-visible error message from [throwable] and notify [errorCallbacks]. */
+  private fun notifyError(throwable: Throwable) {
+    val userVisibleErrorMessage =
+      when (throwable) {
+        is CancellationException -> null
+        is ConnectionFailedException -> throwable.message
+        else -> "An unknown error happened."
+      }
+
+    if (userVisibleErrorMessage != null) {
+      notifyError(userVisibleErrorMessage)
+    }
   }
 
   override suspend fun doDisconnect() =
@@ -242,7 +289,8 @@ class AppInspectionInspectorClient(
         skiaParser.shutdown()
         logEvent(DynamicLayoutInspectorEventType.SESSION_DATA)
       } catch (t: Throwable) {
-        fireError(t.message, t)
+        notifyError(t)
+        logError(t)
         throw t
       }
     }
@@ -251,7 +299,8 @@ class AppInspectionInspectorClient(
     try {
       startFetchingInternal()
     } catch (t: Throwable) {
-      handleException(t)
+      notifyError(t)
+      logError(t)
       throw t
     }
   }
@@ -277,7 +326,8 @@ class AppInspectionInspectorClient(
       stats.currentModeIsLive = false
       viewInspector?.stopFetching()
     } catch (t: Throwable) {
-      fireError(t.message, t)
+      notifyError(t)
+      logError(t)
       throw t
     }
   }

@@ -44,7 +44,6 @@ import com.android.tools.idea.projectsystem.isTestFile
 import com.android.tools.idea.projectsystem.isUnitTestFile
 import com.android.tools.idea.uibuilder.model.updateConfigurationScreenSize
 import com.android.tools.rendering.ModuleRenderContext
-import com.android.tools.rendering.classloading.ModuleClassLoader
 import com.android.tools.rendering.classloading.ModuleClassLoaderManager
 import com.android.tools.rendering.classloading.useWithClassLoader
 import com.android.tools.sdk.CompatibilityRenderTarget
@@ -72,9 +71,7 @@ import org.jetbrains.uast.toUElementOfType
 const val UNDEFINED_API_LEVEL = -1
 const val UNDEFINED_DIMENSION = -1
 
-// Max allowed API
 const val MAX_WIDTH = 2000
-
 const val MAX_HEIGHT = 2000
 
 /** Default background to be used by the rendered elements when showBackground is set to true. */
@@ -554,7 +551,7 @@ class ParametrizedComposePreviewElementTemplate(
   }
 
   private fun loadPreviewParameterProvider(
-    classLoader: ModuleClassLoader,
+    classLoader: ClassLoader,
     previewParameter: PreviewParameter
   ): Sequence<ComposePreviewElementInstance> {
     try {

@@ -720,9 +720,6 @@ public final class StudioFlags {
     "Enables caching of build variant data so that the IDE does not always run Gradle when switching between build variants. " +
     "While faster this mode may be incompatible with some plugins.", true);
 
-  public static final Flag<Boolean> ALLOW_DIFFERENT_JDK_VERSION = Flag.create(
-    GRADLE_IDE, "jdk.allow.different", "Allow different Gradle JDK", "Allow usage of a different JDK version when running Gradle.", true);
-
   public static final Flag<Boolean> GRADLE_SYNC_USE_V2_MODEL = Flag.create(
     GRADLE_IDE, "gradle.sync.use.v2", "Use V2 Builder models", "Enable fetching V2 builder models from AGP when syncing.", true);
 
@@ -881,6 +878,14 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.extra.logging", "Add extra logging for problem detection",
     "When this flag is enabled, LayoutInspector will add extra logging for detection of various problems.",
     false);
+  //endregion
+
+  //region Streaming
+  private static final FlagGroup STREAMING = new FlagGroup(FLAGS, "streaming", "Streaming");
+  public static final Flag<Boolean> STREAMING_INPUT_FORWARDING_BUTTON = Flag.create(
+    STREAMING, "input.forwarding.button", "Show Input Forwarding Button",
+    "Shows the input forwarding button on the running device toolbar", false);
+
   //endregion
 
   //region Embedded Emulator
@@ -1334,6 +1339,10 @@ public final class StudioFlags {
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
     false);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_GROUP_LAYOUT = Flag.create(
+    COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
+    "If enabled, multiple previews associated with composable will be grouped", false);
 
   public static final Flag<Boolean> COMPOSE_NEW_PREVIEW_LAYOUT = Flag.create(
     COMPOSE, "new.preview.layout", "Enable the new layout options of Compose Preview",

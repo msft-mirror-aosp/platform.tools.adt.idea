@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.streaming.emulator
 
-import com.android.emulator.control.FoldedDisplay
-import com.android.emulator.control.ThemingStyle
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.eq
@@ -32,13 +30,14 @@ import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.adtui.ui.NotificationHolderPanel
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
+import com.android.tools.idea.streaming.executeStreamingAction
+import com.android.tools.idea.testing.flags.override
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
-import com.intellij.ide.ui.LafManager
-import com.intellij.ide.ui.laf.darcula.DarculaLookAndFeelInfo
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_COPY
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_CUT
@@ -62,24 +61,18 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_PASTE
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileEditor.FileEditor
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.util.ui.UIUtil
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.ArgumentMatchers.anyBoolean
+import org.mockito.MockedStatic
 import org.mockito.Mockito.atLeast
 import org.mockito.Mockito.verify
 import java.awt.Component
@@ -89,6 +82,8 @@ import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
+import java.awt.event.InputEvent.CTRL_DOWN_MASK
+import java.awt.event.InputEvent.SHIFT_DOWN_MASK
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.KEY_PRESSED
 import java.awt.event.KeyEvent.KEY_RELEASED
@@ -114,6 +109,8 @@ import java.awt.event.KeyEvent.VK_TAB
 import java.awt.event.KeyEvent.VK_UP
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.MILLISECONDS
+import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
 import javax.swing.JScrollPane
 
@@ -132,24 +129,19 @@ class EmulatorViewTest {
   private val emulatorViewRule = EmulatorViewRule()
   @get:Rule
   val ruleChain = RuleChain(emulatorViewRule, EdtRule())
-  private val filesOpened = mutableListOf<VirtualFile>()
 
   private val testRootDisposable
     get() = emulatorViewRule.disposable
 
+  private lateinit var mouseInfo: MockedStatic<MouseInfo>
+  private lateinit var focusManager: FakeKeyboardFocusManager
+
   @Before
   fun setUp() {
-    val fileEditorManager = mock<FileEditorManagerEx>()
-    whenever(fileEditorManager.openFile(any(), anyBoolean())).thenAnswer { invocation ->
-      filesOpened.add(invocation.getArgument(0))
-      return@thenAnswer emptyArray<FileEditor>()
-    }
-    whenever(fileEditorManager.selectedEditors).thenReturn(FileEditor.EMPTY_ARRAY)
-    whenever(fileEditorManager.openFiles).thenReturn(VirtualFile.EMPTY_ARRAY)
-    @Suppress("UnstableApiUsage")
-    whenever(fileEditorManager.openFilesWithRemotes).thenReturn(emptyList())
-    whenever(fileEditorManager.allEditors).thenReturn(FileEditor.EMPTY_ARRAY)
-    emulatorViewRule.project.replaceService(FileEditorManager::class.java, fileEditorManager, testRootDisposable)
+    StudioFlags.STREAMING_INPUT_FORWARDING_BUTTON.override(true, testRootDisposable)
+    mouseInfo = mockStatic(testRootDisposable)
+    mouseInfo.whenever<PointerInfo> { MouseInfo.getPointerInfo() }.thenReturn(mock<PointerInfo>())
+    focusManager = FakeKeyboardFocusManager(testRootDisposable)
   }
 
   @Test
@@ -230,7 +222,7 @@ class EmulatorViewTest {
 
     // Check rotation.
     emulatorViewRule.executeAction("android.device.rotate.left", view)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setPhysicalModel")
     assertThat(shortDebugString(call.request)).isEqualTo("target: ROTATION value { data: 0.0 data: 0.0 data: 90.0 }")
     call = getStreamScreenshotCallAndWaitForFrame(ui, view, ++frameNumber)
@@ -239,17 +231,17 @@ class EmulatorViewTest {
 
     // Check mouse input in landscape orientation.
     ui.mouse.press(10, 153)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 35 y: 61 buttons: 1")
 
     ui.mouse.dragTo(215, 48)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1404 y: 2723 buttons: 1")
 
     ui.mouse.release()
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1404 y: 2723")
 
@@ -263,7 +255,7 @@ class EmulatorViewTest {
     assertThat(view.canZoomOut()).isTrue()
     assertThat(view.canZoomToFit()).isTrue()
     emulatorViewRule.executeAction("android.device.rotate.right", view)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setPhysicalModel")
     assertThat(shortDebugString(call.request)).isEqualTo("target: ROTATION value { data: 0.0 data: 0.0 data: 0.0 }")
     getStreamScreenshotCallAndWaitForFrame(ui, view, ++frameNumber)
@@ -276,11 +268,11 @@ class EmulatorViewTest {
 
     // Check mouse input in portrait orientation.
     ui.mouse.press(82, 7)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 36 y: 44 buttons: 1")
     ui.mouse.release()
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 36 y: 44")
 
@@ -307,7 +299,7 @@ class EmulatorViewTest {
     // Printable ASCII characters.
     for (c in ' '..'~') {
       ui.keyboard.type(c.code)
-      val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+      val call = emulator.getNextGrpcCall(2, SECONDS)
       assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
       val expectedText = when (c) { '\"', '\'', '\\' -> "\\$c" else -> c.toString() }
       assertThat(shortDebugString(call.request)).isEqualTo("""text: "$expectedText"""")
@@ -322,10 +314,10 @@ class EmulatorViewTest {
     )
     for ((hostKeyStroke, emulatorKeyName) in controlCharacterCases) {
       ui.keyboard.pressAndRelease(hostKeyStroke)
-      val pressCall = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+      val pressCall = emulator.getNextGrpcCall(2, SECONDS)
       assertThat(pressCall.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
       assertThat(shortDebugString(pressCall.request)).isEqualTo("""key: "$emulatorKeyName"""")
-      val releaseCall = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+      val releaseCall = emulator.getNextGrpcCall(2, SECONDS)
       assertThat(releaseCall.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
       assertThat(shortDebugString(releaseCall.request)).isEqualTo("""eventType: keyup key: "$emulatorKeyName"""")
     }
@@ -346,7 +338,7 @@ class EmulatorViewTest {
     )
     for ((hostKeyStroke, emulatorKeyName) in trivialKeyStrokeCases) {
       ui.keyboard.pressAndRelease(hostKeyStroke)
-      val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+      val call = emulator.getNextGrpcCall(2, SECONDS)
       assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
       assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "$emulatorKeyName"""")
     }
@@ -404,7 +396,7 @@ class EmulatorViewTest {
       ui.keyboard.pressAndRelease(hostKeyStroke.keyCode)
       ui.keyboard.releaseForModifiers(hostKeyStroke.modifiers)
       for (message in keyboardEventMessages) {
-        val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+        val call = emulator.getNextGrpcCall(2, SECONDS)
         assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
         assertThat(shortDebugString(call.request)).isEqualTo(message)
       }
@@ -442,42 +434,28 @@ class EmulatorViewTest {
     getStreamScreenshotCallAndWaitForFrame(ui, view, ++frameNumber)
     assertAppearance(ui, "Unfolded")
 
-    ui.mouse.press(135, 190)
-    var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    ui.mouse.press(135, 160)
+    var call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-    assertThat(shortDebugString(call.request)).isEqualTo("x: 1273 y: 2100 buttons: 1")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 1493 y: 1588 buttons: 1")
     ui.mouse.release()
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-    assertThat(shortDebugString(call.request)).isEqualTo("x: 1273 y: 2100")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 1493 y: 1588")
 
-    val config = view.emulator.emulatorConfig
-    emulator.setFoldedDisplay(FoldedDisplay.newBuilder().setWidth(config.displayWidth / 2).setHeight(config.displayHeight).build())
-    view.waitForFrame(ui, ++frameNumber, 2, TimeUnit.SECONDS)
+    emulator.setFolded(true)
+    view.waitForFrame(ui, ++frameNumber, 2, SECONDS)
     assertAppearance(ui, "Folded")
 
     // Check that in a folded state mouse coordinates are interpreted differently.
-    ui.mouse.press(135, 190)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    ui.mouse.press(135, 160)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-    assertThat(shortDebugString(call.request)).isEqualTo("x: 831 y: 2100 buttons: 1")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 909 y: 1676 buttons: 1")
     ui.mouse.release()
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-    assertThat(shortDebugString(call.request)).isEqualTo("x: 831 y: 2100")
-
-    // Check EmulatorShowFoldingControlsAction.
-    val mockLafManager = mock<LafManager>()
-    whenever(mockLafManager.currentLookAndFeel).thenReturn(DarculaLookAndFeelInfo())
-    ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.disposable)
-
-    emulatorViewRule.executeAction("android.emulator.folding.controls", view)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
-    assertThat(call.methodName).isEqualTo("android.emulation.control.UiController/setUiTheme")
-    assertThat(call.request).isEqualTo(ThemingStyle.newBuilder().setStyle(ThemingStyle.Style.DARK).build())
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
-    assertThat(call.methodName).isEqualTo("android.emulation.control.UiController/showExtendedControls")
-    assertThat(shortDebugString(call.request)).isEqualTo("index: VIRT_SENSORS")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 909 y: 1676")
   }
 
   /** Checks that the mouse button release event is sent when the mouse leaves the device display. */
@@ -497,15 +475,15 @@ class EmulatorViewTest {
     ui.render()
 
     ui.mouse.press(100, 100)
-    var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    var call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 734 y: 1014 buttons: 1")
     ui.mouse.dragTo(140, 100)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1168 y: 1014 buttons: 1")
     ui.mouse.dragTo(180, 100)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1439 y: 1014")
   }
@@ -527,21 +505,20 @@ class EmulatorViewTest {
     val mousePosition = Point(150, 75)
     val pointerInfo = mock<PointerInfo>()
     whenever(pointerInfo.location).thenReturn(mousePosition)
-    val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
-    mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+    mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
 
     ui.keyboard.setFocus(view)
     ui.mouse.moveTo(mousePosition)
     ui.keyboard.press(VK_CONTROL)
     ui.layoutAndDispatchEvents()
     assertAppearance(ui, "MultiTouch1")
-    var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    var call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1274 y: 744")
 
     ui.mouse.press(mousePosition)
     assertAppearance(ui, "MultiTouch2")
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendTouch")
     assertThat(shortDebugString(call.request)).isEqualTo(
         "touches { x: 1274 y: 744 pressure: 1024 expiration: NEVER_EXPIRE }" +
@@ -551,14 +528,14 @@ class EmulatorViewTest {
     mousePosition.y += 20
     ui.mouse.dragTo(mousePosition)
     assertAppearance(ui, "MultiTouch3")
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendTouch")
     assertThat(shortDebugString(call.request)).isEqualTo(
         "touches { x: 1058 y: 960 pressure: 1024 expiration: NEVER_EXPIRE }" +
         " touches { x: 381 y: 1999 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE }")
 
     ui.mouse.release()
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendTouch")
     assertThat(shortDebugString(call.request)).isEqualTo(
         "touches { x: 1058 y: 960 expiration: NEVER_EXPIRE } touches { x: 381 y: 1999 identifier: 1 expiration: NEVER_EXPIRE }")
@@ -574,19 +551,19 @@ class EmulatorViewTest {
 
     // Check EmulatorBackButtonAction.
     emulatorViewRule.executeAction("android.device.back.button", view, place = ActionPlaces.KEYBOARD_SHORTCUT)
-    var call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    var call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
     assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "GoBack"""")
 
     // Check EmulatorHomeButtonAction.
     emulatorViewRule.executeAction("android.device.home.button", view, place = ActionPlaces.KEYBOARD_SHORTCUT)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
     assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "GoHome"""")
 
     // Check EmulatorOverviewButtonAction.
     emulatorViewRule.executeAction("android.device.overview.button", view, place = ActionPlaces.MOUSE_SHORTCUT)
-    call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
     assertThat(shortDebugString(call.request)).isEqualTo("""eventType: keypress key: "AppSwitch"""")
   }
@@ -605,7 +582,7 @@ class EmulatorViewTest {
 
     ui.mouse.moveTo(135, 190)
 
-    val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    val call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).doesNotContain("button") // No button should be pressed
   }
@@ -629,7 +606,7 @@ class EmulatorViewTest {
     ui.mouse.press(135, 190)
 
     // Here we expect the GRPC call from `press()`, as `moveTo()` should not send any GRPC call.
-    val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    val call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendTouch")
     assertThat(shortDebugString(call.request)).contains("pressure") // Should have non-zero pressure.
 
@@ -643,24 +620,18 @@ class EmulatorViewTest {
     val panel = NotificationHolderPanel(view)
     val container = HeadlessRootPaneContainer(panel)
     container.rootPane.size = Dimension(200, 300)
-    val ui = FakeUi(container.rootPane, 1.0)
+    val ui = FakeUi(container.rootPane)
 
     ui.layoutAndDispatchEvents()
     getStreamScreenshotCallAndWaitForFrame(ui, view, 1)
     ui.render()
 
     // Activate the virtual scene camera
-    val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
-    mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(mock<PointerInfo>())
-    val focusManager = FakeKeyboardFocusManager(testRootDisposable)
     focusManager.focusOwner = view
     emulator.virtualSceneCameraActive = true
-    waitForCondition(200, TimeUnit.SECONDS) {
-      ui.findComponent<EditorNotificationPanel>() != null
-    }
+    waitForCondition(200, MILLISECONDS) { ui.findComponent<EditorNotificationPanel>() != null }
 
     // Start operating camera
-    ui.keyboard.setFocus(view)
     ui.keyboard.press(VK_SHIFT)
 
     // Move mouse
@@ -671,7 +642,7 @@ class EmulatorViewTest {
     ui.keyboard.release(VK_SHIFT)
 
     // Here we expect the GRPC call from `press()`, as `moveTo()` should not send any GRPC call.
-    val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    val call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).contains("button") // Some button should be pressed
   }
@@ -681,7 +652,7 @@ class EmulatorViewTest {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
     val container = createScrollPane(view)
-    val ui = FakeUi(container, 1.0)
+    val ui = FakeUi(container)
 
     container.size = Dimension(200, 300)
     ui.layoutAndDispatchEvents()
@@ -692,16 +663,16 @@ class EmulatorViewTest {
     for ((button, expected) in params) {
       ui.mouse.press(135, 190, button)
 
-      emulator.getNextGrpcCall(2, TimeUnit.SECONDS).let {
-        assertWithMessage(button.name).that(it.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-        assertWithMessage(button.name).that(shortDebugString(it.request)).contains(expected)
+      emulator.getNextGrpcCall(2, SECONDS).apply {
+        assertWithMessage(button.name).that(methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+        assertWithMessage(button.name).that(shortDebugString(request)).contains(expected)
       }
 
       ui.mouse.release()
 
-      emulator.getNextGrpcCall(2, TimeUnit.SECONDS).let {
-        assertWithMessage(button.name).that(it.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-        assertWithMessage(button.name).that(shortDebugString(it.request)).doesNotContain("button") // No button should be pressed
+      emulator.getNextGrpcCall(2, SECONDS).apply {
+        assertWithMessage(button.name).that(methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+        assertWithMessage(button.name).that(shortDebugString(request)).doesNotContain("button") // No button should be pressed
       }
     }
   }
@@ -711,7 +682,7 @@ class EmulatorViewTest {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
     val container = createScrollPane(view)
-    val ui = FakeUi(container, 1.0)
+    val ui = FakeUi(container)
 
     container.size = Dimension(200, 300)
     ui.layoutAndDispatchEvents()
@@ -720,22 +691,22 @@ class EmulatorViewTest {
 
     ui.mouse.press(135, 190, FakeMouse.Button.RIGHT)
 
-    emulator.getNextGrpcCall(2, TimeUnit.SECONDS).let {
-      assertThat(it.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     }
 
     ui.mouse.dragDelta(5, 0)
 
-    emulator.getNextGrpcCall(2, TimeUnit.SECONDS).let {
-      assertThat(it.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-      assertThat(shortDebugString(it.request)).contains("buttons: 2")
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+      assertThat(shortDebugString(request)).contains("buttons: 2")
     }
 
     ui.mouse.release()
 
-    emulator.getNextGrpcCall(2, TimeUnit.SECONDS).let {
-      assertThat(it.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
-      assertThat(shortDebugString(it.request)).doesNotContain("button") // No button should be pressed
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+      assertThat(shortDebugString(request)).doesNotContain("button") // No button should be pressed
     }
   }
 
@@ -755,10 +726,10 @@ class EmulatorViewTest {
     for (rotation in listOf(1, 1, -1, -1)) {
       ui.mouse.wheel(100, 100, rotation)
       if (call == null) {
-        call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+        call = emulator.getNextGrpcCall(2, SECONDS)
         assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/injectWheel")
       }
-      assertThat(shortDebugString(call.getNextRequest(2, TimeUnit.SECONDS))).isEqualTo("dy: ${-rotation * 120}")
+      assertThat(shortDebugString(call.getNextRequest(2, SECONDS))).isEqualTo("dy: ${-rotation * 120}")
     }
   }
 
@@ -775,6 +746,171 @@ class EmulatorViewTest {
     assertThat(altMReleasedEvent.isConsumed).isFalse()
   }
 
+  @Test
+  fun testKeyPreprocessingSkippedWhenInputForwardingEnabled() {
+    val view = emulatorViewRule.newEmulatorView()
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    assertThat(view.skipKeyEventDispatcher(KeyEvent(view, KEY_PRESSED, System.nanoTime(), 0, VK_M, VK_M.toChar()))).isTrue()
+  }
+
+  @Test
+  fun testCtrlAndAlphabeticalKeysSentWhenInputForwardingEnabled() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+    val container = createScrollPane(view)
+    val ui = FakeUi(container)
+
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    ui.keyboard.setFocus(view)
+
+    ui.keyboard.press(VK_CONTROL)
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("key: \"Control\"")
+    }
+
+    ui.keyboard.press(KeyEvent.VK_S)
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("key: \"s\"")
+    }
+
+    ui.keyboard.release(KeyEvent.VK_S)
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("eventType: keyup key: \"s\"")
+    }
+
+    ui.keyboard.release(VK_CONTROL)
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("eventType: keyup key: \"Control\"")
+    }
+  }
+
+  @Test
+  fun testHideCameraNotificationDuringInputForwarding() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+    val panel = NotificationHolderPanel(view)
+    val container = HeadlessRootPaneContainer(panel)
+    container.rootPane.size = Dimension(200, 300)
+    val ui = FakeUi(container.rootPane, 1.0)
+
+    // Activate the virtual scene camera
+    focusManager.focusOwner = view
+    emulator.virtualSceneCameraActive = true
+    waitForCondition(200, MILLISECONDS) {
+      ui.findComponent<EditorNotificationPanel>() != null
+    }
+
+    // Enable input forwarding
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+
+    // Check if notification panel is disappeared
+    waitForCondition(200, MILLISECONDS) {
+      ui.findComponent<EditorNotificationPanel>() == null
+    }
+
+    // Disable input forwarding
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+
+    // Check if notification panel is re-appeared
+    waitForCondition(200, MILLISECONDS) {
+      ui.findComponent<EditorNotificationPanel>() != null
+    }
+  }
+
+  @Test
+  fun testCameraNotificationHasOperatingMessageWhenInputForwardingDisabledWithShift() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+    val panel = NotificationHolderPanel(view)
+    val container = HeadlessRootPaneContainer(panel)
+    container.rootPane.size = Dimension(200, 300)
+    val ui = FakeUi(container.rootPane, 1.0)
+
+    // Enable input forwarding
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+
+    // Activate the virtual scene camera
+    focusManager.focusOwner = view
+    emulator.virtualSceneCameraActive = true
+
+    // Disable input forwarding with shift key
+    executeStreamingAction("android.streaming.input.forwarding", view, emulatorViewRule.project, modifiers=SHIFT_DOWN_MASK)
+
+    // Check if notification panel is disappeared
+    waitForCondition(200, MILLISECONDS) {
+      ui.findComponent<EditorNotificationPanel>() != null
+    }
+
+    assertThat(ui.findComponent<EditorNotificationPanel>()?.text).isEqualTo(
+        "Move camera with WASDQE keys, rotate with mouse or arrow keys")
+  }
+
+  @Test
+  fun testDisableMultiTouchDuringInputForwarding() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+
+    val container = createScrollPane(view)
+    val ui = FakeUi(container, 2.0)
+
+    var frameNumber = view.frameNumber
+    assertThat(frameNumber).isEqualTo(0)
+    container.size = Dimension(200, 300)
+    ui.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame(ui, view, ++frameNumber)
+
+    val mousePosition = Point(150, 75)
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenReturn(mousePosition)
+    mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    // Start multitouch
+    ui.keyboard.setFocus(view)
+    ui.mouse.moveTo(mousePosition)
+    ui.keyboard.press(VK_CONTROL)
+    ui.layoutAndDispatchEvents()
+    assertAppearance(ui, "MultiTouch1")
+    var call = emulator.getNextGrpcCall(2, SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 1274 y: 744")
+
+    // Enable Input forwarding
+    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+
+    // Check if multitouch indicator is hidden
+    ui.layoutAndDispatchEvents()
+    assertAppearance(ui, "MultiTouch4")
+
+    // Check if mouse down event is generated instead of touch
+    ui.mouse.press(mousePosition)
+    call = emulator.getNextGrpcCall(2, SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: 1274 y: 744 buttons: 1")
+
+    // Disable input forwarding
+    executeStreamingAction("android.streaming.input.forwarding", view, emulatorViewRule.project, modifiers=CTRL_DOWN_MASK)
+
+    // Check if multitouch indicator is shown
+    ui.layoutAndDispatchEvents()
+    assertAppearance(ui, "MultiTouch2")
+
+    // Drag mouse
+    mousePosition.x -= 20
+    mousePosition.y += 20
+    ui.mouse.dragTo(mousePosition)
+
+    // Check if touch event is generated
+    call = emulator.getNextGrpcCall(2, SECONDS)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendTouch")
+    assertThat(shortDebugString(call.request)).isEqualTo(
+        "touches { x: 1058 y: 960 pressure: 1024 expiration: NEVER_EXPIRE }" +
+        " touches { x: 381 y: 1999 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE }")
+  }
+
   private fun createScrollPane(view: Component): JScrollPane {
     return JScrollPane(view).apply {
       border = null
@@ -784,9 +920,9 @@ class EmulatorViewTest {
 
   private fun getStreamScreenshotCallAndWaitForFrame(fakeUi: FakeUi, view: EmulatorView, frameNumber: Int): GrpcCallRecord {
     val emulator = emulatorViewRule.getFakeEmulator(view)
-    val call = emulator.getNextGrpcCall(2, TimeUnit.SECONDS)
+    val call = emulator.getNextGrpcCall(2, SECONDS)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamScreenshot")
-    view.waitForFrame(fakeUi, frameNumber, 2, TimeUnit.SECONDS)
+    view.waitForFrame(fakeUi, frameNumber, 2, SECONDS)
     return call
   }
 
@@ -805,9 +941,8 @@ class EmulatorViewTest {
     ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), image, 0.0)
   }
 
-  private fun getGoldenFile(name: String): Path {
-    return TestUtils.resolveWorkspacePathUnchecked("${GOLDEN_FILE_PATH}/${name}.png")
-  }
+  private fun getGoldenFile(name: String): Path =
+      TestUtils.resolveWorkspacePathUnchecked("${GOLDEN_FILE_PATH}/${name}.png")
 }
 
 private fun getKeyStroke(action: String) =

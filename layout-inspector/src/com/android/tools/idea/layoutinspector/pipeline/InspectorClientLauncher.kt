@@ -24,6 +24,7 @@ import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyClient
+import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent
@@ -37,6 +38,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 
@@ -111,9 +113,17 @@ class InspectorClientLauncher(
         )
       }
 
+      val launchers =
+        if (LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled) {
+          // Embedded Layout Inspector is meant to be used only with an App Inspection inspector.
+          listOf(appInspectionInspectorClientFactory)
+        } else {
+          listOf(appInspectionInspectorClientFactory, legacyClientFactory)
+        }
+
       return InspectorClientLauncher(
         processes,
-        listOf(appInspectionInspectorClientFactory, legacyClientFactory),
+        launchers,
         model.project,
         notificationModel,
         coroutineScope,
@@ -288,23 +298,32 @@ class InspectorClientLauncher(
     }
   }
 
+  @VisibleForTesting
+  var launchJob: Job? = null
+    private set
+
   var activeClient: InspectorClient = DisconnectedClient
     private set(value) {
-      if (field != value) {
-        val oldClient =
-          synchronized(sequenceNumberLock) {
-            checkCancelled()
-            field
-          }
-        oldClient.disconnect()
-        Disposer.dispose(oldClient)
+      if (field == value) {
+        return
+      }
+
+      val oldClient =
         synchronized(sequenceNumberLock) {
           checkCancelled()
-          field = value
+          field
         }
-        clientChangedCallbacks.forEach { callback -> callback(value) }
-        scope.launch { value.connect(project) }
+      oldClient.disconnect()
+      Disposer.dispose(oldClient)
+
+      synchronized(sequenceNumberLock) {
+        checkCancelled()
+        field = value
       }
+
+      clientChangedCallbacks.forEach { callback -> callback(value) }
+      launchJob?.cancel()
+      launchJob = scope.launch { value.connect(project) }
     }
 
   /**

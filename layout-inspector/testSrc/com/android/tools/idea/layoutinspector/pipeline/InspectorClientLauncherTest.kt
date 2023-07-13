@@ -44,6 +44,7 @@ import com.intellij.testFramework.ProjectRule
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.delay
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -529,6 +530,63 @@ class InspectorClientLauncherTest {
     assertThat(launcher.activeClient).isEqualTo(successfulClient)
     assertThat(processes.selectedProcess).isEqualTo(process2)
   }
+
+  @Test
+  fun launchJobIsCancelled() {
+    val processes = ProcessesModel(TestProcessDiscovery())
+    val process1 = MODERN_DEVICE.createProcess(pid = 1)
+    val process2 = MODERN_DEVICE.createProcess(pid = 2)
+
+    val firstProcessLatch = ReportingCountDownLatch(1)
+    val secondProcessLatch = ReportingCountDownLatch(1)
+
+    val clientFactory = ClientFactory { params ->
+      object :
+        FakeInspectorClient(
+          "First Client",
+          projectRule.project,
+          params.process,
+          disposableRule.disposable
+        ) {
+        override suspend fun doConnect() {
+          when (params.process) {
+            process1 -> {
+              // Notify that we're starting the connection process
+              firstProcessLatch.countDown()
+              // Fake connection time
+              delay(10000)
+            }
+            process2 -> secondProcessLatch.countDown()
+            else -> throw IllegalArgumentException("Unexpected process: ${params.process}")
+          }
+        }
+      }
+    }
+
+    val launcher =
+      InspectorClientLauncher(
+        processes,
+        listOf(clientFactory),
+        projectRule.project,
+        NotificationModel(projectRule.project),
+        AndroidCoroutineScope(disposableRule.disposable),
+        disposableRule.disposable
+      )
+
+    processes.selectedProcess = process1
+    // Await for connection to start
+    firstProcessLatch.await(2, TimeUnit.SECONDS)
+    val client1LaunchJob = launcher.launchJob
+
+    // Connecting the new process should cancel the previous launch
+    processes.selectedProcess = process2
+    secondProcessLatch.await(2, TimeUnit.SECONDS)
+    val client2LaunchJob = launcher.launchJob
+
+    assertThat(client1LaunchJob).isNotEqualTo(client2LaunchJob)
+    assertThat(client1LaunchJob?.isCancelled).isTrue()
+    assertThat(client2LaunchJob?.isCancelled).isFalse()
+  }
 }
 
 class InspectorClientLauncherMetricsTest {
@@ -634,17 +692,11 @@ class InspectorClientLauncherMetricsTest {
         it.studioEvent.kind == AndroidStudioEvent.EventKind.DYNAMIC_LAYOUT_INSPECTOR_EVENT
       }
 
-    assertThat(usages).hasSize(4)
+    assertThat(usages).hasSize(2)
     // ATTACH_REQUEST should be logged only once
     assertThat(usages[0].studioEvent.dynamicLayoutInspectorEvent.type)
       .isEqualTo(DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType.ATTACH_REQUEST)
-    // ATTACH_ERROR for first client
     assertThat(usages[1].studioEvent.dynamicLayoutInspectorEvent.type)
-      .isEqualTo(DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType.ATTACH_ERROR)
-    // ATTACH_ERROR for second client
-    assertThat(usages[2].studioEvent.dynamicLayoutInspectorEvent.type)
-      .isEqualTo(DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType.ATTACH_ERROR)
-    assertThat(usages[3].studioEvent.dynamicLayoutInspectorEvent.type)
       .isEqualTo(DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType.COMPATIBILITY_SUCCESS)
   }
 

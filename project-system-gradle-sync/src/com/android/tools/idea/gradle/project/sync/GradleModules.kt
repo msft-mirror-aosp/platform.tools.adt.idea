@@ -95,9 +95,7 @@ class JavaModule(
  */
 sealed class AndroidModule constructor(
   val agpVersion: AgpVersion?,
-  val buildName: String,
-  val buildNameMap: Map<String, BuildId>,
-  val buildIdMap: Map<BuildId, String>,
+  val buildPathMap: Map<String, BuildId>,
   gradleProject: BasicGradleProject,
   val androidProject: IdeAndroidProjectImpl,
   /** All configured variant names if supported by the AGP version. */
@@ -146,9 +144,7 @@ sealed class AndroidModule constructor(
 
   class V1(
     agpVersion: AgpVersion?,
-    buildName: String,
-    buildNameMap: Map<String, BuildId>,
-    buildIdMap: Map<BuildId, String>,
+    buildPathMap: Map<String, BuildId>,
     gradleProject: BasicGradleProject,
     androidProject: IdeAndroidProjectImpl,
     /** All configured variant names if supported by the AGP version. */
@@ -162,9 +158,7 @@ sealed class AndroidModule constructor(
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ) : AndroidModule(
     agpVersion = agpVersion,
-    buildName = buildName,
-    buildNameMap = buildNameMap,
-    buildIdMap = buildIdMap,
+    buildPathMap = buildPathMap,
     gradleProject = gradleProject,
     androidProject = androidProject,
     /** All configured variant names if supported by the AGP version. */
@@ -197,9 +191,7 @@ sealed class AndroidModule constructor(
 
   class V2(
     agpVersion: AgpVersion?,
-    buildName: String,
-    buildNameMap: Map<String, BuildId>,
-    buildIdMap: Map<BuildId, String>,
+    buildPathMap: Map<String, BuildId>,
     gradleProject: BasicGradleProject,
     androidProject: IdeAndroidProjectImpl,
     allVariantNames: Set<String>,
@@ -210,9 +202,7 @@ sealed class AndroidModule constructor(
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ) : AndroidModule(
     agpVersion = agpVersion,
-    buildName = buildName,
-    buildNameMap = buildNameMap,
-    buildIdMap = buildIdMap,
+    buildPathMap = buildPathMap,
     gradleProject = gradleProject,
     androidProject = androidProject,
     allVariantNames = allVariantNames,
