@@ -25,7 +25,6 @@ import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.findModelessDialog
 import com.android.tools.adtui.swing.optionsAsString
 import com.android.tools.adtui.swing.selectFirstMatch
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -41,7 +40,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.awt.image.BufferedImage
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.JComboBox
 
 /**
@@ -75,7 +74,7 @@ class EmulatorScreenshotActionTest {
 
     emulatorViewRule.executeAction("android.device.screenshot", emulatorView)
 
-    waitForCondition(500, TimeUnit.SECONDS) { findScreenshotViewer() != null }
+    waitForCondition(500, SECONDS) { findScreenshotViewer() != null }
     val screenshotViewer = findScreenshotViewer()!!
     val rootPane = screenshotViewer.rootPane
     val ui = FakeUi(rootPane)
@@ -100,7 +99,7 @@ class EmulatorScreenshotActionTest {
 
     emulatorViewRule.executeAction("android.device.screenshot", emulatorView)
 
-    waitForCondition(500, TimeUnit.SECONDS) { findScreenshotViewer() != null }
+    waitForCondition(500, SECONDS) { findScreenshotViewer() != null }
     val screenshotViewer = findScreenshotViewer()!!
     val rootPane = screenshotViewer.rootPane
     val ui = FakeUi(rootPane)
@@ -123,7 +122,7 @@ class EmulatorScreenshotActionTest {
 
     emulatorViewRule.executeAction("android.device.screenshot", emulatorView)
 
-    waitForCondition(500, TimeUnit.SECONDS) { findScreenshotViewer() != null }
+    waitForCondition(500, SECONDS) { findScreenshotViewer() != null }
     val screenshotViewer = findScreenshotViewer()!!
     val rootPane = screenshotViewer.rootPane
     val ui = FakeUi(rootPane)
@@ -140,13 +139,12 @@ class EmulatorScreenshotActionTest {
 
   @Test
   fun testWearEmulatorWithoutSkinHasPlayCompatibleOption() {
-    StudioFlags.PLAY_COMPATIBLE_WEAR_SCREENSHOTS_ENABLED.override(true)
     emulatorView = emulatorViewRule.newEmulatorView { path -> FakeEmulator.createWatchAvd(path, skinFolder = null) }
     emulator = emulatorViewRule.getFakeEmulator(emulatorView)
 
     emulatorViewRule.executeAction("android.device.screenshot", emulatorView)
 
-    waitForCondition(500, TimeUnit.SECONDS) { findScreenshotViewer() != null }
+    waitForCondition(500, SECONDS) { findScreenshotViewer() != null }
     val screenshotViewer = findScreenshotViewer()!!
     val rootPane = screenshotViewer.rootPane
     val ui = FakeUi(rootPane)

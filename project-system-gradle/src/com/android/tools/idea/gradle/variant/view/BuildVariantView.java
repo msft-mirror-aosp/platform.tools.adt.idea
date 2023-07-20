@@ -15,18 +15,15 @@
  */
 package com.android.tools.idea.gradle.variant.view;
 
-import static com.android.tools.idea.gradle.project.sync.SelectedVariantCollectorKt.getModuleIdForSyncRequest;
 import static com.android.tools.idea.gradle.variant.conflict.ConflictResolution.solveSelectionConflict;
 import static com.intellij.ui.TableUtil.scrollSelectionToVisible;
 import static com.intellij.util.ui.JBUI.scale;
 import static com.intellij.util.ui.UIUtil.getTableFocusCellHighlightBorder;
 import static com.intellij.util.ui.UIUtil.getToolTipBackground;
 
-import android.annotation.SuppressLint;
 import com.android.tools.idea.fileTypes.AndroidIconProvider;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot;
-import com.android.tools.idea.gradle.project.sync.SwitchVariantRequest;
 import com.android.tools.idea.gradle.variant.conflict.Conflict;
 import com.android.tools.idea.gradle.variant.conflict.ConflictSet;
 import com.intellij.icons.AllIcons;
@@ -86,7 +83,6 @@ public class BuildVariantView {
   private static final int MODULE_COLUMN_INDEX = 0;
   private static final int VARIANT_COLUMN_INDEX = 1;
   private static final int ABI_COLUMN_INDEX = 2;
-  protected static final String DEFAULT_INDICATOR = " (default)";
 
   private static final Color CONFLICT_CELL_BACKGROUND = MessageType.ERROR.getPopupBackground();
 
@@ -95,7 +91,7 @@ public class BuildVariantView {
   private JPanel myToolWindowPanel;
   private JBTable myVariantsTable;
   private JPanel myNotificationPanel;
-  private JButton mySetDefaultButton;
+  private JButton myImportDefaultsButton;
 
   private final List<Conflict> myConflicts = new ArrayList<>();
 
@@ -114,6 +110,12 @@ public class BuildVariantView {
     new TableSpeedSearch(myVariantsTable);
     myNotificationPanel = new NotificationPanel();
     myNotificationPanel.setVisible(false);
+
+    myImportDefaultsButton = new JButton();
+    myImportDefaultsButton.setToolTipText(
+        "Resets variant selection to the default variants (automatically selected if not specified in build.gradle)");
+    myImportDefaultsButton.addActionListener(
+      event -> BuildVariantUpdater.requestGradleSync(myProject, null, true));
   }
 
   /**
@@ -334,11 +336,7 @@ public class BuildVariantView {
       editor.addItemListener(e -> {
         if (e.getStateChange() == ItemEvent.SELECTED) {
           BuildVariantItem selectedVariant = (BuildVariantItem)e.getItem();
-          String variantName = selectedVariant.getBuildVariantName();
-          if (selectedVariant.isDefault()) {
-            variantName = variantName.substring(0, variantName.indexOf(DEFAULT_INDICATOR));
-          }
-          BuildVariantUpdater.getInstance(myProject).updateSelectedBuildVariant(tableRow.getModule(), variantName);
+          BuildVariantUpdater.getInstance(myProject).updateSelectedBuildVariant(tableRow.getModule(), selectedVariant.getBuildVariantName());
         }
       });
       DefaultCellEditor defaultCellEditor = new DefaultCellEditor(editor);

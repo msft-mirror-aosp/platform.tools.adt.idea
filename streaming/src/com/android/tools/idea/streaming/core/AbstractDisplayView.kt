@@ -19,12 +19,16 @@ import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.streaming.actions.InputForwardingStateStorage
+import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
+import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
 import com.intellij.ide.DataManager
 import com.intellij.ide.KeyboardAwareFocusOwner
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.components.service
+import com.intellij.openapi.keymap.KeymapUtil
+import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.containers.ContainerUtil
@@ -40,6 +44,8 @@ import java.awt.RadialGradientPaint
 import java.awt.Rectangle
 import java.awt.RenderingHints
 import java.awt.event.ActionEvent
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.geom.Area
@@ -101,6 +107,8 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
 
   private val frameListeners = ContainerUtil.createLockFreeCopyOnWriteList<FrameListener>()
 
+  protected open val hardwareInput: HardwareInput = HardwareInput()
+
   init {
     background = primaryPanelBackground
     addToCenter(disconnectedStatePanel)
@@ -109,6 +117,11 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
     setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, emptySet())
     setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS,
                           setOf(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK)))
+    addFocusListener(object : FocusAdapter() {
+      override fun focusLost(event: FocusEvent) {
+        hardwareInput.resetMetaKeys()
+      }
+    })
   }
 
   protected fun drawMultiTouchFeedback(graphics: Graphics2D, displayRectangle: Rectangle, dragging: Boolean) {
@@ -297,17 +310,62 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
     return normalized.scaledUnbiased(imageSize, deviceDisplaySize)
   }
 
-  protected fun isInputForwardingEnabled(): Boolean {
-    return InputForwardingStateStorage.
-        getInstance(CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this)) ?: return false).
-        isInputForwardingEnabled(deviceId)
+  protected fun getProject(): Project? =
+      CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this))
+
+  protected fun isHardwareInputEnabled(): Boolean =
+    getProject()?.service<HardwareInputStateStorage>()?.isHardwareInputEnabled(deviceId) ?: false
+
+  final override fun skipKeyEventDispatcher(event: KeyEvent): Boolean {
+    if (!isHardwareInputEnabled()) return false
+    val stroke = KeyStroke.getKeyStrokeForEvent(event)
+    for (keyStroke in KeymapUtil.getKeyStrokes(
+        KeymapUtil.getActiveKeymapShortcuts(StreamingHardwareInputAction.ACTION_ID))) {
+      if (stroke == keyStroke) return false
+    }
+    return true
   }
 
-  override fun skipKeyEventDispatcher(event: KeyEvent): Boolean {
-    return isInputForwardingEnabled()
+  internal open fun hardwareInputStateChanged(event: AnActionEvent, enabled: Boolean) {
+    if (!enabled) hardwareInput.resetMetaKeys()
   }
 
-  internal open fun inputForwardingStateChanged(event: AnActionEvent, enabled: Boolean) {}
+  protected open class HardwareInput {
+    private var pressedModifierKeys = 0
+    companion object {
+      private val vkToMask = mapOf(
+        KeyEvent.VK_SHIFT to InputEvent.SHIFT_DOWN_MASK,
+        KeyEvent.VK_CONTROL to InputEvent.CTRL_DOWN_MASK,
+        KeyEvent.VK_ALT to InputEvent.ALT_DOWN_MASK,
+        KeyEvent.VK_META to InputEvent.META_DOWN_MASK,
+        KeyEvent.VK_ALT_GRAPH to InputEvent.ALT_GRAPH_DOWN_MASK,
+      )
+    }
+
+    fun forwardEvent(event: KeyEvent) {
+      event.consume()
+      vkToMask[event.keyCode]?.let {
+        when (event.id) {
+          KeyEvent.KEY_PRESSED -> pressedModifierKeys = pressedModifierKeys or it
+          KeyEvent.KEY_RELEASED -> pressedModifierKeys = pressedModifierKeys and it.inv()
+          else -> {}
+        }
+      }
+      sendToDevice(event.id, event.keyCode, event.modifiersEx)
+    }
+
+    fun resetMetaKeys() {
+      if (pressedModifierKeys == 0) return
+      for ((vk, mask) in vkToMask) {
+        if (pressedModifierKeys and mask == 0) continue
+        pressedModifierKeys = pressedModifierKeys and mask.inv()
+        sendToDevice(KeyEvent.KEY_RELEASED, vk, pressedModifierKeys)
+      }
+      pressedModifierKeys = 0
+    }
+
+    open fun sendToDevice(id: Int, keyCode: Int, modifiersEx: Int) {}
+  }
 
  /** Attempts to restore a lost device connection. */
   protected inner class Reconnector(val reconnectLabel: String, private val progressMessage: String, val reconnect: suspend () -> Unit) {

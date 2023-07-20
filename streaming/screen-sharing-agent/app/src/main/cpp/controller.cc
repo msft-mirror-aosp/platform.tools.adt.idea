@@ -16,6 +16,7 @@
 
 #include "controller.h"
 
+#include <android/keycodes.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -267,6 +268,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   MotionEvent event(jni_);
   event.display_id = message.display_id();
   event.action = action;
+  event.button_state = message.button_state();
   event.event_time_millis = now;
   if (action != AMOTION_EVENT_ACTION_HOVER_MOVE && action != AMOTION_EVENT_ACTION_SCROLL) {
     if (action == AMOTION_EVENT_ACTION_DOWN) {
@@ -307,19 +309,33 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   // InputManager doesn't allow ACTION_DOWN and ACTION_UP events with multiple pointers.
   // They have to be converted to a sequence of pointer-specific events.
   if (action == AMOTION_EVENT_ACTION_DOWN) {
-    for (int i = 1; event.pointer_count = i, i < message.pointers().size(); i++) {
+    if (message.action_button()) {
       InputManager::InjectInputEvent(jni_, event.ToJava(), InputEventInjectionSync::NONE);
-      event.action = AMOTION_EVENT_ACTION_POINTER_DOWN | (i << AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+      event.action = AMOTION_EVENT_ACTION_BUTTON_PRESS;
+      event.action_button = message.action_button();
+    } else {
+      for (int i = 1; event.pointer_count = i, i < message.pointers().size(); i++) {
+        InputManager::InjectInputEvent(jni_, event.ToJava(), InputEventInjectionSync::NONE);
+        event.action = AMOTION_EVENT_ACTION_POINTER_DOWN | (i << AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+      }
     }
   }
   else if (action == AMOTION_EVENT_ACTION_UP) {
-    for (int i = event.pointer_count; --i > 1;) {
-      event.action = AMOTION_EVENT_ACTION_POINTER_UP | (i << AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
-      pointer_helper_->SetPointerPressure(pointer_coordinates_.GetElement(jni_, i), 0);
+    if (message.action_button()) {
+      event.action = AMOTION_EVENT_ACTION_BUTTON_RELEASE;
+      event.action_button = message.action_button();
       InputManager::InjectInputEvent(jni_, event.ToJava(), InputEventInjectionSync::NONE);
-      event.pointer_count = i;
+      event.action = AMOTION_EVENT_ACTION_UP;
+      event.action_button = 0;
+    } else {
+      for (int i = event.pointer_count; --i > 1;) {
+        event.action = AMOTION_EVENT_ACTION_POINTER_UP | (i << AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+        pointer_helper_->SetPointerPressure(pointer_coordinates_.GetElement(jni_, i), 0);
+        InputManager::InjectInputEvent(jni_, event.ToJava(), InputEventInjectionSync::NONE);
+        event.pointer_count = i;
+      }
+      event.action = AMOTION_EVENT_ACTION_UP;
     }
-    event.action = AMOTION_EVENT_ACTION_UP;
   }
   Agent::RecordTouchEvent();
   InputManager::InjectInputEvent(jni_, event.ToJava(), InputEventInjectionSync::NONE);
@@ -327,6 +343,10 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   if (event.action == AMOTION_EVENT_ACTION_UP) {
     // This event may have started an app. Update the app-level display orientation.
     Agent::SetVideoOrientation(DisplayStreamer::CURRENT_VIDEO_ORIENTATION);
+
+    if (!display_info.IsOn()) {
+      ProcessKeyboardEvent(KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0));  // Wakeup the display.
+    }
   }
 }
 

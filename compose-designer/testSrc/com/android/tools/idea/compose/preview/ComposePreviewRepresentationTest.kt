@@ -20,7 +20,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.DesignSurfaceListener
 import com.android.tools.idea.compose.ComposeProjectRule
-import com.android.tools.idea.compose.preview.essentials.ComposeEssentialsMode
+import com.android.tools.idea.compose.preview.gallery.ComposeGalleryMode
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.awaitStatus
@@ -34,12 +34,15 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisi
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
+import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.RegisterToolWindowTask
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.runInEdtAndWait
 import java.util.UUID
@@ -54,6 +57,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -67,7 +71,7 @@ internal class TestComposePreviewView(override val mainSurface: NlDesignSurface)
   override val isMessageBeingDisplayed: Boolean = false
   override var hasContent: Boolean = true
   override var hasRendered: Boolean = true
-  override var essentialsMode: ComposeEssentialsMode? = null
+  override var galleryMode: ComposeGalleryMode? = null
 
   override fun updateNotifications(parentEditor: FileEditor) {}
 
@@ -100,6 +104,8 @@ class ComposePreviewRepresentationTest {
     val testProjectSystem = TestProjectSystem(project)
     runInEdtAndWait { testProjectSystem.useInTests() }
     logger.info("setup complete")
+    ToolWindowManager.getInstance(project)
+      .registerToolWindow(RegisterToolWindowTask(ProblemsView.ID))
 
     // Create VisualLintService early to avoid it being created at the time of project disposal
     VisualLintService.getInstance(project)
@@ -259,6 +265,11 @@ class ComposePreviewRepresentationTest {
         mainSurface.models.mapNotNull { it.dataContext.getData(COMPOSE_PREVIEW_ELEMENT_INSTANCE) }
       val uiCheckElement = previewElements.single { it.composableMethodFqn == "TestKt.Preview1" }
 
+      val contentManager =
+        ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)!!.contentManager
+      assertEquals(0, contentManager.contents.size)
+
+      // Start UI Check mode
       preview.setMode(PreviewMode.UiCheck(uiCheckElement))
       delayUntilCondition(250) { preview.isUiCheckPreview }
 
@@ -299,6 +310,11 @@ class ComposePreviewRepresentationTest {
         }
       )
 
+      // Check that the UI Check tab has been created
+      assertEquals(2, contentManager.contents.size)
+      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+
+      // Stop UI Check mode
       preview.setMode(PreviewMode.Default)
       delayUntilCondition(250) { preview.isInNormalMode }
       assertInstanceOf<ComposePreviewRepresentation.UiCheckModeFilter.Disabled>(
@@ -325,6 +341,22 @@ class ComposePreviewRepresentationTest {
           "${it.composableMethodFqn}\n${it.configuration.deviceSpec}\n"
         }
       )
+
+      // Check that the UI Check tab is still present
+      assertEquals(2, contentManager.contents.size)
+      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+
+      // Restart UI Check mode on the same preview
+      preview.setMode(PreviewMode.UiCheck(uiCheckElement))
+      delayUntilCondition(250) { preview.isUiCheckPreview }
+
+      // Check that the UI Check tab is being reused
+      assertEquals(2, contentManager.contents.size)
+      val tab = contentManager.findContent(uiCheckElement.displaySettings.name)
+      assertNotNull(tab)
+
+      preview.setMode(PreviewMode.Default)
+      delayUntilCondition(250) { preview.isInNormalMode }
 
       preview.onDeactivate()
     }

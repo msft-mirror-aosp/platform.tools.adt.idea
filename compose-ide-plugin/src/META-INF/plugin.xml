@@ -35,9 +35,12 @@
     <dependencySupport coordinate="androidx.compose.runtime:runtime" kind="java" displayName="Jetpack Compose"/>
 
     <annotator language="kotlin" implementationClass="com.android.tools.compose.ComposeColorAnnotator"/>
+    <annotator language="kotlin" implementationClass="com.android.tools.compose.code.ComposeStateReadAnnotator"/>
 
     <additionalTextAttributes scheme="Default" file="colorschemes/ComposableHighlighterExtensionColorSchemeDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposableHighlighterExtensionColorSchemeDarcula.xml"/>
+    <additionalTextAttributes scheme="Default" file="colorschemes/ComposeStateReadAnnotatorColorSchemeDefault.xml"/>
+    <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposeStateReadAnnotatorColorSchemeDarcula.xml"/>
 
     <colorSettingsPage implementation="com.android.tools.compose.ComposeColorSettingsPage"/>
 
@@ -171,7 +174,7 @@
 
   <actions>
     <action id="android.device.liveedit.status" class="com.android.tools.idea.editors.liveedit.ui.LiveEditNotificationGroup">
-      <add-to-group group-id="StreamingToolbarSecondary" anchor="first"/>
+      <add-to-group group-id="StreamingToolbarSecondary" anchor="last"/>
     </action>
   </actions>
 

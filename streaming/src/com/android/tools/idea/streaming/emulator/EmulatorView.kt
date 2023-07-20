@@ -61,7 +61,6 @@ import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDe
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionStateListener
 import com.google.protobuf.TextFormat.shortDebugString
-import com.intellij.ide.DataManager
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
@@ -69,7 +68,6 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_COPY
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_CUT
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_EDITOR_MOVE_CARET_DOWN
@@ -316,7 +314,7 @@ class EmulatorView(
   private fun updateCameraPromptAndMultiTouchFeedback(modifiers: Int = lastModifiers) {
     lastModifiers = modifiers
 
-    val cameraReadyToOperate = virtualSceneCameraActive && isFocusOwner && !isInputForwardingEnabled()
+    val cameraReadyToOperate = virtualSceneCameraActive && isFocusOwner && !isHardwareInputEnabled()
     virtualSceneCameraOperating = cameraReadyToOperate && modifiers and SHIFT_DOWN_MASK != 0
     virtualSceneCameraPrompt = when {
       virtualSceneCameraOperating -> {
@@ -327,7 +325,7 @@ class EmulatorView(
       else -> null
     }
 
-    multiTouchMode = mouseIsInside && !virtualSceneCameraActive && modifiers and CTRL_DOWN_MASK != 0 && !isInputForwardingEnabled()
+    multiTouchMode = mouseIsInside && !virtualSceneCameraActive && modifiers and CTRL_DOWN_MASK != 0 && !isHardwareInputEnabled()
   }
 
   private var virtualSceneCameraActive = false
@@ -479,7 +477,7 @@ class EmulatorView(
     if (emulatorOutOfDateNotificationShown) {
       return
     }
-    val project = CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this)) ?: return
+    val project = getProject() ?: return
     val title = "Emulator is out of date"
     val message = XmlStringUtil.wrapInHtml("Please update the Android Emulator")
     val notification = RUNNING_DEVICES_NOTIFICATION_GROUP.createNotification(title, message, NotificationType.WARNING)
@@ -702,7 +700,8 @@ class EmulatorView(
     requestScreenshotFeed(displayMode.displaySize, displayOrientationQuadrants)
   }
 
-  override fun inputForwardingStateChanged(event: AnActionEvent, enabled: Boolean) {
+  override fun hardwareInputStateChanged(event: AnActionEvent, enabled: Boolean) {
+    super.hardwareInputStateChanged(event, enabled)
     updateCameraPromptAndMultiTouchFeedback(event.inputEvent)
   }
 
@@ -760,6 +759,25 @@ class EmulatorView(
     }
   }
 
+  override val hardwareInput: HardwareInput = object : HardwareInput() {
+    override fun sendToDevice(id: Int, keyCode: Int, modifierEx: Int) {
+      if (!isConnected) {
+        return
+      }
+      val keyName = VK_TO_DOM_KEY_NAME[keyCode] ?: return
+      val eventType = when (id) {
+        KeyEvent.KEY_PRESSED -> KeyEventType.keydown
+        KeyEvent.KEY_RELEASED -> KeyEventType.keyup
+        else -> return
+      }
+      val grpcEvent = KeyboardEvent.newBuilder()
+          .setKey(keyName)
+          .setEventType(eventType)
+          .build()
+      emulator.sendKey(grpcEvent)
+    }
+  }
+
   private inner class MyKeyListener  : KeyAdapter() {
 
     private var cachedKeyStrokeMap: Map<KeyStroke, EmulatorKeyStroke>? = null
@@ -782,7 +800,7 @@ class EmulatorView(
     }
 
     override fun keyTyped(event: KeyEvent) {
-      if (isInputForwardingEnabled()) {
+      if (isHardwareInputEnabled()) {
         return
       }
 
@@ -806,8 +824,8 @@ class EmulatorView(
 
     override fun keyPressed(event: KeyEvent) {
       updateCameraPromptAndMultiTouchFeedback(event)
-      if (isInputForwardingEnabled()) {
-        forwardInputEvent(event)
+      if (isHardwareInputEnabled()) {
+        hardwareInput.forwardEvent(event)
         return
       }
 
@@ -832,8 +850,8 @@ class EmulatorView(
     override fun keyReleased(event: KeyEvent) {
       updateCameraPromptAndMultiTouchFeedback(event)
 
-      if (isInputForwardingEnabled()) {
-        forwardInputEvent(event)
+      if (isHardwareInputEnabled()) {
+        hardwareInput.forwardEvent(event)
         return
       }
 
@@ -930,24 +948,6 @@ class EmulatorView(
       for (keyStroke in KeymapUtil.getKeyStrokes(KeymapUtil.getActiveKeymapShortcuts(actionId))) {
         put(keyStroke, androidKeystroke)
       }
-    }
-
-    private fun forwardInputEvent(event: KeyEvent) {
-      event.consume()
-      if (!isConnected) {
-        return
-      }
-      val keyName = VK_TO_DOM_KEY_NAME[event.keyCode] ?: return
-      val eventType = when (event.id) {
-        KeyEvent.KEY_PRESSED -> KeyEventType.keydown
-        KeyEvent.KEY_RELEASED -> KeyEventType.keyup
-        else -> return
-      }
-      val grpcEvent = KeyboardEvent.newBuilder()
-          .setKey(keyName)
-          .setEventType(eventType)
-          .build()
-      emulator.sendKey(grpcEvent)
     }
   }
 

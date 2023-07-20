@@ -5,6 +5,7 @@ plugins {
 
 kotlin {
   androidLibrary {
+    withJava()
     withAndroidTestOnJvm(compilationName = "unitTest")
     withAndroidTestOnDevice(compilationName = "instrumentedTest") {
       instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -20,8 +21,8 @@ kotlin {
 
     sourceSets.getByName("androidInstrumentedTest") {
       dependencies {
-        implementation("androidx.test:runner:1.3.0")
-        implementation("androidx.test:core:1.3.0")
+        implementation("androidx.test:runner:1.4.0-alpha06")
+        implementation("androidx.test:core:1.4.0-alpha06")
         implementation("androidx.test.ext:junit:1.1.2")
       }
     }

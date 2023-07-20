@@ -132,8 +132,7 @@ maven_repository(
         "@maven//:android.arch.navigation.navigation-fragment_1.0.0",
         "@maven//:android.arch.navigation.navigation-ui_1.0.0",
         "@maven//:android.arch.persistence.room.runtime_1.0.0",
-        "@maven//:androidx.activity.activity-compose_1.5.1",
-        "@maven//:androidx.activity.activity-compose_1.7.0",
+        "@maven//:androidx.activity.activity-compose_1.7.2",
         "@maven//:androidx.activity.activity-ktx_1.6.0",
         "@maven//:androidx.activity.activity-ktx_1.7.0",
         "@maven//:androidx.annotation.annotation_1.6.0",
@@ -158,7 +157,6 @@ maven_repository(
         "@maven//:androidx.compose.ui.ui-test-junit4_1.4.0",
         "@maven//:androidx.compose.ui.ui-test-manifest_1.3.0",
         "@maven//:androidx.compose.ui.ui-test-manifest_1.4.0",
-        "@maven//:androidx.compose.ui.ui-tooling_1.3.0",
         "@maven//:androidx.compose.ui.ui-tooling_1.4.0",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
@@ -169,6 +167,7 @@ maven_repository(
         "@maven//:androidx.core.core-ktx_1.3.2",
         "@maven//:androidx.core.core-ktx_1.6.0",
         "@maven//:androidx.core.core-ktx_1.9.0",
+        "@maven//:androidx.core.core-splashscreen_1.0.1",
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
         "@maven//:androidx.emoji2.emoji2-views-helper_1.3.0",
@@ -178,7 +177,6 @@ maven_repository(
         "@maven//:androidx.leanback.leanback_1.0.0",
         "@maven//:androidx.legacy.legacy-support-v13_1.0.0",
         "@maven//:androidx.legacy.legacy-support-v4_1.0.0",
-        "@maven//:androidx.lifecycle.lifecycle-common-java8_2.5.1",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-extensions_2.2.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.6.1",
@@ -203,10 +201,9 @@ maven_repository(
         "@maven//:androidx.test.espresso.espresso-core_3.5.1",
         "@maven//:androidx.test.ext.junit_1.1.3",
         "@maven//:androidx.test.ext.junit_1.1.5",
-        "@maven//:androidx.wear.compose.compose-foundation_1.0.0",
-        "@maven//:androidx.wear.compose.compose-material_1.0.0",
-        "@maven//:androidx.wear.tiles.tiles-material_1.1.0",
-        "@maven//:androidx.wear.tiles.tiles_1.1.0",
+        "@maven//:androidx.wear.compose.compose-material_1.1.2",
+        "@maven//:androidx.wear.tiles.tiles-material_1.2.0-alpha05",
+        "@maven//:androidx.wear.tiles.tiles_1.2.0-alpha05",
         "@maven//:androidx.wear.watchface.watchface-complications-data-source-ktx_1.1.1",
         "@maven//:androidx.wear.wear_1.2.0",
         "@maven//:com.android.application.com.android.application.gradle.plugin_7.2.0",
@@ -223,7 +220,7 @@ maven_repository(
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.support-v4_27.1.1",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
-        "@maven//:com.android.tools.build.bundletool_1.15.1",
+        "@maven//:com.android.tools.build.bundletool_1.15.2",
         "@maven//:com.android.tools.build.gradle_7.1.0",
         "@maven//:com.android.tools.build.gradle_7.2.0",
         "@maven//:com.android.tools.build.gradle_7.3.1",
@@ -239,8 +236,8 @@ maven_repository(
         "@maven//:com.google.android.gms.play-services-pay_16.1.0",
         "@maven//:com.google.android.gms.play-services-wallet_19.1.0",
         "@maven//:com.google.android.gms.play-services-wearable_18.0.0",
-        "@maven//:com.google.android.horologist.horologist-compose-tools_0.1.5",
-        "@maven//:com.google.android.horologist.horologist-tiles_0.1.5",
+        "@maven//:com.google.android.horologist.horologist-compose-tools_0.4.8",
+        "@maven//:com.google.android.horologist.horologist-tiles_0.4.8",
         "@maven//:com.google.android.libraries.mapsplatform.secrets-gradle-plugin.secrets-gradle-plugin_2.0.1",
         "@maven//:com.google.android.material.material_1.1.0",
         "@maven//:com.google.android.material.material_1.3.0",
@@ -678,27 +675,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_smoke",
-    ],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
-    name = "DeviceConfigurationDialogTest",
-    size = "large",
-    data = COMMON_DATA + glob([
-        "testData/SimpleApplication/**",
-    ]) + select({
-        ":has_emulator": [
-            "@externsdk//:emulator",
-            "@externsdk//:system-images",
-        ],
-        "//conditions:default": [],
-    }),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.avdmanager.DeviceConfigurationDialogTest"],
-    tags = COMMON_TAGS + [
-        "no_windows",
-        "qa_fast",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2486,6 +2462,7 @@ java_test(
 
 java_test(
     name = "ConstraintLayoutAnchorExemptionTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
@@ -2500,8 +2477,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/116793860
-        "qa_unreliable",  # b/116793860
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

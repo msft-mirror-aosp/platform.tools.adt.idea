@@ -20,9 +20,10 @@ import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.layoutinspector.runningdevices.FakeToolWindowManager
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManager
+import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManagerGlobalState
 import com.android.tools.idea.layoutinspector.runningdevices.TabId
 import com.android.tools.idea.layoutinspector.runningdevices.TabInfo
-import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
+import com.android.tools.idea.layoutinspector.runningdevices.withEmbeddedLayoutInspector
 import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
@@ -64,6 +65,8 @@ class ToggleLayoutInspectorActionTest {
 
   @Before
   fun setUp() {
+    LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.clear()
+
     tab1 = TabInfo(TabId("tab1"), JPanel(), JPanel(), displayViewRule.newEmulatorView())
 
     // replace ToolWindowManager with fake one
@@ -95,7 +98,7 @@ class ToggleLayoutInspectorActionTest {
   }
 
   @Test
-  fun testActionPerformedTogglesLayoutInspector() {
+  fun testActionPerformedTogglesLayoutInspector() = withEmbeddedLayoutInspector {
     val toggleLayoutInspectorAction = ToggleLayoutInspectorAction()
     val fakeActionEvent = toggleLayoutInspectorAction.getFakeActionEvent()
 
@@ -130,7 +133,7 @@ class ToggleLayoutInspectorActionTest {
 
   @Test
   fun testActionNotVisibleWhenEmbeddedLayoutInspectorIsDisabled() =
-    runWithEmbeddedLayoutInspector(false) {
+    withEmbeddedLayoutInspector(false) {
       val toggleLayoutInspectorAction = ToggleLayoutInspectorAction()
       val fakeActionEvent = toggleLayoutInspectorAction.getFakeActionEvent()
 
@@ -140,7 +143,7 @@ class ToggleLayoutInspectorActionTest {
 
   @Test
   fun testLayoutInspectorManagerNotCreatedWhenEmbeddedLayoutInspectorIsDisabled() =
-    runWithEmbeddedLayoutInspector(false) {
+    withEmbeddedLayoutInspector(false) {
       val mockLayoutInspectorManager = mock<LayoutInspectorManager>()
       displayViewRule.project.replaceService(
         LayoutInspectorManager::class.java,
@@ -160,14 +163,34 @@ class ToggleLayoutInspectorActionTest {
       verifyNoMoreInteractions(mockLayoutInspectorManager)
     }
 
-  private fun runWithEmbeddedLayoutInspector(enable: Boolean, block: () -> Unit) {
-    val previous = LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
-    LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled = enable
-    block()
-    LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled = previous
+  @Test
+  fun testActionCantBeEnabledAcrossMultipleProjects() = withEmbeddedLayoutInspector {
+    val toggleLayoutInspectorAction = ToggleLayoutInspectorAction()
+    val fakeActionEvent = toggleLayoutInspectorAction.getFakeActionEvent("device1")
+
+    toggleLayoutInspectorAction.update(fakeActionEvent)
+    assertThat(fakeActionEvent.presentation.isEnabled).isTrue()
+
+    LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.add(TabId("device1"))
+
+    toggleLayoutInspectorAction.update(fakeActionEvent)
+    assertThat(fakeActionEvent.presentation.isEnabled).isFalse()
+    assertThat(fakeActionEvent.presentation.description)
+      .isEqualTo(
+        "Layout Inspector is already active for this device in another Project. " +
+          "Stop inspecting the device in the other Project to inspect here."
+      )
+
+    LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.clear()
+
+    toggleLayoutInspectorAction.update(fakeActionEvent)
+    assertThat(fakeActionEvent.presentation.isEnabled).isTrue()
+    assertThat(fakeActionEvent.presentation.description).isEmpty()
   }
 
-  private fun AnAction.getFakeActionEvent(): AnActionEvent {
+  private fun AnAction.getFakeActionEvent(
+    deviceSerialNumber: String = "serial_number"
+  ): AnActionEvent {
     val contentPanelContainer = JPanel()
     val contentPanel = BorderLayoutPanel()
     contentPanelContainer.add(contentPanel)
@@ -175,7 +198,7 @@ class ToggleLayoutInspectorActionTest {
     val dataContext = DataContext {
       when (it) {
         CommonDataKeys.PROJECT.name -> displayViewRule.project
-        SERIAL_NUMBER_KEY.name -> "serial_number"
+        SERIAL_NUMBER_KEY.name -> deviceSerialNumber
         STREAMING_CONTENT_PANEL_KEY.name -> contentPanel
         DISPLAY_VIEW_KEY.name -> displayView
         else -> null
@@ -203,5 +226,6 @@ class ToggleLayoutInspectorActionTest {
     }
 
     override fun isEnabled(tabId: TabId) = isEnabled
+    override fun dispose() {}
   }
 }

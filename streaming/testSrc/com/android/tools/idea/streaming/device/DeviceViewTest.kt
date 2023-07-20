@@ -25,11 +25,14 @@ import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.ZoomType
+import com.android.tools.adtui.swing.FakeKeyboardFocusManager
+import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
 import com.android.tools.idea.concurrency.AndroidExecutors
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
@@ -40,10 +43,13 @@ import com.android.tools.idea.streaming.executeStreamingAction
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.CrashReporterRule
 import com.android.tools.idea.testing.executeCapturingLoggedErrors
+import com.android.tools.idea.testing.flags.override
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.DEVICE_MIRRORING_ABNORMAL_AGENT_TERMINATION
 import com.intellij.ide.ClipboardSynchronizer
+import com.intellij.ide.DataManager
+import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_COPY
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_CUT
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_EDITOR_MOVE_CARET_DOWN_WITH_SELECTION
@@ -66,7 +72,9 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_PASTE
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
+import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
@@ -74,6 +82,8 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TestDataProvider
+import com.intellij.testFramework.assertInstanceOf
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ConcurrencyUtil
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap
@@ -85,15 +95,14 @@ import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
 import java.awt.Component
-import java.awt.DefaultKeyboardFocusManager
 import java.awt.Dimension
-import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
 import java.awt.Rectangle
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
+import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.KEY_PRESSED
 import java.awt.event.KeyEvent.VK_BACK_SPACE
@@ -140,6 +149,7 @@ internal class DeviceViewTest {
   private lateinit var device: FakeScreenSharingAgentRule.FakeDevice
   private lateinit var view: DeviceView
   private lateinit var fakeUi: FakeUi
+  private lateinit var focusManager: FakeKeyboardFocusManager
 
   private val testRootDisposable
     get() = agentRule.disposable
@@ -151,6 +161,9 @@ internal class DeviceViewTest {
   @Before
   fun setUp() {
     device = agentRule.connectDevice("Pixel 5", 30, Dimension(1080, 2340))
+    StudioFlags.STREAMING_HARDWARE_INPUT_BUTTON.override(true, testRootDisposable)
+    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
+    focusManager = FakeKeyboardFocusManager(testRootDisposable)
   }
 
   @Test
@@ -213,19 +226,19 @@ internal class DeviceViewTest {
       // Check mouse input.
       fakeUi.mouse.moveTo(40, 30)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_MOVE, 0))
+          MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0))
 
       fakeUi.mouse.press(40, 30)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_DOWN, 0))
+          MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
 
       fakeUi.mouse.dragTo(60, 55)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(expectedCoordinates[i * 2 + 1]), MotionEventMessage.ACTION_MOVE, 0))
+          MotionEventMessage(listOf(expectedCoordinates[i * 2 + 1]), MotionEventMessage.ACTION_MOVE, 0, 0, 0))
 
       fakeUi.mouse.release()
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(expectedCoordinates[i * 2 + 1]), MotionEventMessage.ACTION_UP, 0))
+          MotionEventMessage(listOf(expectedCoordinates[i * 2 + 1]), MotionEventMessage.ACTION_UP, 0, 0, 0))
 
       fakeUi.mouse.wheel(60, 55, -1)  // Vertical scrolling is backward on Android
       val verticalAxisValues = Int2FloatOpenHashMap(1).apply {
@@ -233,7 +246,7 @@ internal class DeviceViewTest {
       }
       val verticalScrollPointer = expectedCoordinates[i * 2 + 1].copy(axisValues = verticalAxisValues)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(verticalScrollPointer), MotionEventMessage.ACTION_SCROLL, 0))
+          MotionEventMessage(listOf(verticalScrollPointer), MotionEventMessage.ACTION_SCROLL, 0, 0, 0))
 
       // Java fakes horizontal scrolling by pretending shift was held down during the scroll.
       fakeUi.keyboard.press(VK_SHIFT)
@@ -244,7 +257,7 @@ internal class DeviceViewTest {
       }
       val horizontalScrollPointer = expectedCoordinates[i * 2 + 1].copy(axisValues = horizontalAxisValues)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-          MotionEventMessage(listOf(horizontalScrollPointer), MotionEventMessage.ACTION_SCROLL, 0))
+          MotionEventMessage(listOf(horizontalScrollPointer), MotionEventMessage.ACTION_SCROLL, 0, 0, 0))
 
       executeStreamingAction("android.device.rotate.left", view, project)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage((i + 1) % 4))
@@ -253,26 +266,26 @@ internal class DeviceViewTest {
     // Check dragging over the edge of the device screen.
     fakeUi.mouse.press(40, 50)
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(292, 1306, 0)), MotionEventMessage.ACTION_DOWN, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(292, 1306, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
     fakeUi.mouse.dragTo(90, 60)
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_MOVE, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0))
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_UP, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0))
     fakeUi.mouse.release()
 
     // Check mouse leaving the device view while dragging.
     fakeUi.mouse.press(50, 40)
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(553, 1046, 0)), MotionEventMessage.ACTION_DOWN, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(553, 1046, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
     fakeUi.mouse.dragTo(55, 10)
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_MOVE, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0))
     fakeUi.mouse.dragTo(60, -10)
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_MOVE, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0))
     assertThat(agent.getNextControlMessage(2, SECONDS)).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_UP, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0))
     fakeUi.mouse.release()
   }
 
@@ -312,7 +325,8 @@ internal class DeviceViewTest {
     fakeUi.keyboard.setFocus(view)
     fakeUi.mouse.moveTo(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0,
+                           0))
     fakeUi.keyboard.press(VK_CONTROL)
     fakeUi.layoutAndDispatchEvents()
     assertAppearance("MultiTouch1")
@@ -320,7 +334,7 @@ internal class DeviceViewTest {
     fakeUi.mouse.press(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
         MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0), MotionEventMessage.Pointer(417, 1633, 1)),
-                           MotionEventMessage.ACTION_DOWN, 0))
+                           MotionEventMessage.ACTION_DOWN, 0, 0, 0))
     assertAppearance("MultiTouch2")
 
     mousePosition.x -= 10
@@ -328,13 +342,13 @@ internal class DeviceViewTest {
     fakeUi.mouse.dragTo(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
         MotionEventMessage(listOf(MotionEventMessage.Pointer(428, 941, 0), MotionEventMessage.Pointer(652, 1399, 1)),
-                           MotionEventMessage.ACTION_MOVE, 0))
+                           MotionEventMessage.ACTION_MOVE, 0, 0, 0))
     assertAppearance("MultiTouch3")
 
     fakeUi.mouse.release()
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
         MotionEventMessage(listOf(MotionEventMessage.Pointer(428, 941, 0), MotionEventMessage.Pointer(652, 1399, 1)),
-                           MotionEventMessage.ACTION_UP, 0))
+                           MotionEventMessage.ACTION_UP, 0, 0, 0))
 
     fakeUi.keyboard.release(VK_CONTROL)
     assertAppearance("MultiTouch4")
@@ -456,14 +470,12 @@ internal class DeviceViewTest {
       }
     }
 
-    val mockFocusManager: DefaultKeyboardFocusManager = mock()
-    whenever(mockFocusManager.processKeyEvent(any(Component::class.java), any(KeyEvent::class.java))).thenCallRealMethod()
-    replaceKeyboardFocusManager(mockFocusManager, testRootDisposable)
-
-    mockFocusManager.processKeyEvent(
-      view, KeyEvent(view, KEY_PRESSED, System.nanoTime(), KeyEvent.SHIFT_DOWN_MASK, VK_TAB, VK_TAB.toChar()))
-
-    Mockito.verify(mockFocusManager, Mockito.atLeast(1)).focusNextComponent(eq(view))
+    focusManager = Mockito.spy(focusManager)
+    replaceKeyboardFocusManager(focusManager, testRootDisposable)
+    focusManager.focusOwner = view
+    focusManager.processKeyEvent(
+        view, KeyEvent(view, KEY_PRESSED, System.nanoTime(), KeyEvent.SHIFT_DOWN_MASK, VK_TAB, VK_TAB.toChar()))
+    Mockito.verify(focusManager, Mockito.atLeast(1)).focusNextComponent(eq(view))
   }
 
   @Test
@@ -644,6 +656,22 @@ internal class DeviceViewTest {
   }
 
   @Test
+  fun testConnectionTimeout() {
+    if (!isFFmpegAvailableToTest()) {
+      return
+    }
+    StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.override(200, testRootDisposable)
+    agent.startDelayMillis = 300
+    val loggedErrors = executeCapturingLoggedErrors {
+      createDeviceViewWithoutWaitingForAgent(500, 1000, screenScale = 1.0)
+      val errorMessage = fakeUi.getComponent<JLabel>()
+      waitForCondition(2, SECONDS) { fakeUi.isShowing(errorMessage) }
+      assertThat(errorMessage.text).isEqualTo("Device agent is not responding")
+    }
+    assertThat(loggedErrors).containsExactly("Failed to initialize the screen sharing agent")
+  }
+
+  @Test
   fun testDeviceDisconnection() {
     if (!isFFmpegAvailableToTest()) {
       return
@@ -658,17 +686,209 @@ internal class DeviceViewTest {
   @Test
   fun testKeysForMnemonicsShouldNotBeConsumed() {
     createDeviceView(500, 1000)
+    waitForFrame()
 
     val altMPressedEvent = KeyEvent(view, KEY_PRESSED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, VK_M, VK_M.toChar())
-    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMPressedEvent)
+    focusManager.redispatchEvent(view, altMPressedEvent)
     assertThat(altMPressedEvent.isConsumed).isFalse()
 
     val altMReleasedEvent = KeyEvent(view, KeyEvent.KEY_RELEASED, System.nanoTime(), KeyEvent.ALT_DOWN_MASK, VK_M, VK_M.toChar())
-    KeyboardFocusManager.getCurrentKeyboardFocusManager().redispatchEvent(view, altMReleasedEvent)
+    focusManager.redispatchEvent(view, altMReleasedEvent)
     assertThat(altMReleasedEvent.isConsumed).isFalse()
   }
 
+  @Test
+  fun testKeyPreprocessingSkippedWhenHardwareInputEnabled() {
+    createDeviceView(250, 500)
+    waitForFrame()
+
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    assertThat(view.skipKeyEventDispatcher(
+      KeyEvent(view, KEY_PRESSED, System.nanoTime(), 0, KeyEvent.VK_M, KeyEvent.VK_M.toChar()))).isTrue()
+  }
+
+  @Test
+  fun testKeyPreprocessingNotSkippedForActionTogglingHardwareInput() {
+    createDeviceView(250, 500)
+    waitForFrame()
+
+    executeStreamingAction("android.streaming.hardware.input", view, project)
+    val keymapManager = KeymapManager.getInstance()
+    keymapManager.activeKeymap.addShortcut("android.streaming.hardware.input", KeyboardShortcut.fromString("control shift J"))
+
+    assertThat(view.skipKeyEventDispatcher(KeyEvent(view, KeyEvent.KEY_PRESSED, System.nanoTime(),
+                                                    KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK, KeyEvent.VK_J,
+                                                    KeyEvent.CHAR_UNDEFINED))).isFalse()
+  }
+
+  @Test
+  fun testCtrlAndAlphabeticalKeysSentWhenHardwareInputEnabled() {
+    createDeviceView(250, 500)
+    waitForFrame()
+
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+    fakeUi.keyboard.setFocus(view)
+
+    fakeUi.keyboard.press(VK_CONTROL)
+    assertThat(agent.getNextControlMessage(2, SECONDS)).
+        isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON))
+
+    fakeUi.keyboard.press(KeyEvent.VK_S)
+    assertThat(agent.getNextControlMessage(2, SECONDS)).
+        isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_S, AMETA_CTRL_ON))
+
+    fakeUi.keyboard.release(KeyEvent.VK_S)
+    assertThat(agent.getNextControlMessage(2, SECONDS)).
+        isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_S, AMETA_CTRL_ON))
+
+    fakeUi.keyboard.release(VK_CONTROL)
+    assertThat(agent.getNextControlMessage(2, SECONDS)).
+        isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_CTRL_LEFT, 0))
+  }
+
+  @Test
+  fun testButtonsDuringHardwareInput() {
+    createDeviceView(250, 500)
+    waitForFrame()
+
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    val mousePosition = Point(97, 141)
+    fakeUi.mouse.press(mousePosition)
+    fakeUi.mouse.release()
+    fakeUi.mouse.press(mousePosition.x, mousePosition.y, FakeMouse.Button.RIGHT)
+    fakeUi.mouse.release()
+    fakeUi.mouse.press(mousePosition.x, mousePosition.y, FakeMouse.Button.MIDDLE)
+    fakeUi.mouse.release()
+
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_DOWN)
+      assertThat(buttonState).isEqualTo(MotionEventMessage.BUTTON_PRIMARY)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_PRIMARY)
+    }
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_UP)
+      assertThat(buttonState).isEqualTo(0)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_PRIMARY)
+    }
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_DOWN)
+      assertThat(buttonState).isEqualTo(MotionEventMessage.BUTTON_SECONDARY)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_SECONDARY)
+    }
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_UP)
+      assertThat(buttonState).isEqualTo(0)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_SECONDARY)
+    }
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_DOWN)
+      assertThat(buttonState).isEqualTo(MotionEventMessage.BUTTON_TERTIARY)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_TERTIARY)
+    }
+    assertInstanceOf<MotionEventMessage>(agent.getNextControlMessage(2, SECONDS)).apply {
+      assertThat(action).isEqualTo(MotionEventMessage.ACTION_UP)
+      assertThat(buttonState).isEqualTo(0)
+      assertThat(actionButton).isEqualTo(MotionEventMessage.BUTTON_TERTIARY)
+    }
+  }
+
+  @Test
+  fun testDisableMultiTouchDuringHardwareInput() {
+    if (!isFFmpegAvailableToTest()) {
+      return
+    }
+    createDeviceView(50, 100)
+    waitForFrame()
+    assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
+
+    val mousePosition = Point(30, 30)
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenReturn(mousePosition)
+    val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
+    mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    // Start multi-touch
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.mouse.moveTo(mousePosition)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+      MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0,
+                         0))
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.layoutAndDispatchEvents()
+    assertAppearance("MultiTouch1")
+
+    // Enable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    // Check if multitouch indicator is hidden
+    fakeUi.layoutAndDispatchEvents()
+    assertAppearance("MultiTouch4")
+
+    // Pressing mouse should generate mouse events instead of touch
+    fakeUi.mouse.press(mousePosition)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+      MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_DOWN, 1, 1, 0))
+
+    // Disable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project, modifiers = InputEvent.CTRL_DOWN_MASK)
+
+    // Check if multitouch indicator is shown again
+    fakeUi.layoutAndDispatchEvents()
+    assertAppearance("MultiTouch2")
+  }
+
+  @Test
+  fun testMetaKeysReleasedWhenHardwareInputDisabled() {
+    createDeviceView(50, 100)
+    waitForFrame()
+
+    // Enable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    // Press Ctrl
+    focusManager.focusOwner = view
+    fakeUi.keyboard.press(VK_CONTROL)
+
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+      KeyEventMessage(ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON))
+
+    // Disable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+      KeyEventMessage(ACTION_UP, AKEYCODE_CTRL_LEFT, 0))
+  }
+
+  @Test
+  fun testMetaKeysReleasedWhenLostFocusDuringHardwareInput() {
+    createDeviceView(50, 100)
+    waitForFrame()
+
+    // Enable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, agentRule.project)
+
+    // Press Ctrl
+    focusManager.focusOwner = view
+    fakeUi.keyboard.press(VK_CONTROL)
+
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        KeyEventMessage(ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON))
+
+    // Lose focus
+    focusManager.focusOwner = null
+
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+      KeyEventMessage(ACTION_UP, AKEYCODE_CTRL_LEFT, 0))
+  }
+
   private fun createDeviceView(width: Int, height: Int, screenScale: Double = 2.0) {
+    createDeviceViewWithoutWaitingForAgent(width, height, screenScale)
+    waitForCondition(15, SECONDS) { agent.isRunning }
+  }
+
+  private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int, screenScale: Double) {
     val deviceClient =
         DeviceClient(testRootDisposable, device.serialNumber, device.handle, device.configuration, device.deviceState.cpuAbi, project)
     // DeviceView has to be disposed before DeviceClient.
@@ -676,7 +896,6 @@ internal class DeviceViewTest {
     Disposer.register(testRootDisposable, disposable)
     view = DeviceView(disposable, deviceClient, UNKNOWN_ORIENTATION, agentRule.project)
     fakeUi = FakeUi(wrapInScrollPane(view, width, height), screenScale)
-    waitForCondition(15, SECONDS) { agent.isRunning }
   }
 
   private fun wrapInScrollPane(view: Component, width: Int, height: Int): JScrollPane {

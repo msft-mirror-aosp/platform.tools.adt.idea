@@ -471,13 +471,6 @@ public final class StudioFlags {
     "Eliminate the cost of opening a connection and spawning a process when using Apply Changes.",
     true);
 
-  public static final Flag<Boolean> SELECT_DEVICE_SNAPSHOT_COMBO_BOX_SNAPSHOTS_ENABLED = Flag.create(
-    RUNDEBUG,
-    "select.device.snapshot.combo.box.snapshots.enabled",
-    "Enable Select Device/Snapshot combo box snapshots",
-    "So the new Instant Run can use the combo box",
-    true);
-
   public static final Flag<Boolean> ADB_CONNECTION_STATUS_WIDGET_ENABLED = Flag.create(
     RUNDEBUG,
     "adb.connection.status.widget.enabled",
@@ -528,6 +521,13 @@ public final class StudioFlags {
     "adb.jdwp.tracer.enabled",
     "Enable JDWP Traces",
     "Enables capture of JDWP traffic and generate a perfetto report",
+    false);
+
+  public static final Flag<Boolean> JDWP_SCACHE = Flag.create(
+    RUNDEBUG,
+    "adb.jdwp.scache.enabled",
+    "Enable JDWP SCache",
+    "Enables JDWP Speculative Cache (SCache). Requires restart",
     false);
 
   public static final Flag<Boolean> SUPPORT_FEATURE_ON_FEATURE_DEPS = Flag.create(
@@ -657,13 +657,6 @@ public final class StudioFlags {
     "For internal use only. Enables injection of device serial from the IDE into Gradle build.",
     false
   );
-
-  public static final Flag<Boolean> FIX_ANDROID_RUN_CONFIGURATIONS_ENABLED = Flag.create(
-    GRADLE_IDE, "gradle.run.configuration.fix.enabled",
-    "Check Android Run Configurations contains the \"Gradle-aware Make\" task and fix them",
-    "When a project is loaded, automatically add a \"Gradle-aware Make\" task to each Run Configuration if the task is missing",
-    true);
-
   public static final Flag<Boolean> USE_DEVELOPMENT_OFFLINE_REPOS = Flag.create(
     GRADLE_IDE, "development.offline.repos", "Enable development offline repositories",
     "Makes Gradle use development offline repositories such as /out/repo", StudioPathManager.isRunningFromSources());
@@ -882,9 +875,9 @@ public final class StudioFlags {
 
   //region Streaming
   private static final FlagGroup STREAMING = new FlagGroup(FLAGS, "streaming", "Streaming");
-  public static final Flag<Boolean> STREAMING_INPUT_FORWARDING_BUTTON = Flag.create(
-    STREAMING, "input.forwarding.button", "Show Input Forwarding Button",
-    "Shows the input forwarding button on the running device toolbar", false);
+  public static final Flag<Boolean> STREAMING_HARDWARE_INPUT_BUTTON = Flag.create(
+    STREAMING, "hardware.input.button", "Show Hardware Input Button",
+    "Shows the hardware input button on the running device toolbar", false);
 
   //endregion
 
@@ -944,6 +937,10 @@ public final class StudioFlags {
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
     " the default is \"info\"",
     "");
+  public static final Flag<Integer> DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS = Flag.create(
+    DEVICE_MIRRORING, "connection.timeout", "Connection Timeout for Mirroring",
+    "Connection timeout for mirroring in milliseconds",
+    10_000);
   public static final Flag<Integer> DEVICE_MIRRORING_MAX_BIT_RATE = Flag.create(
     DEVICE_MIRRORING, "max.bit.rate", "Maximum Bit Rate for Mirroring of Physical Devices",
     "The maximum bit rate of video stream, zero means no limit",
@@ -1087,6 +1084,13 @@ public final class StudioFlags {
     "Enable JFR for typing latency",
     "If enabled, allows JFR reports to be generated when typing latency exceeds the defined threshold",
     true
+  );
+
+  public static final Flag<Boolean> COMPOSE_STATE_READ_HIGHLIGHTING_ENABLED = Flag.create(
+    EDITOR, "compose.state.read.highlighting.enabled",
+    "Enable highlighting of State reads in @Composable functions",
+    "If enabled, calls out reads of variables of type State inside @Composable functions.",
+    false
   );
 
   public static final FlagGroup ESSENTIALS_MODE = new FlagGroup(FLAGS, "essentialsmode", "Essentials Mode");
@@ -1635,16 +1639,6 @@ public final class StudioFlags {
     true
   );
   // endregion NEW_SEND_FEEDBACK_DIALOG
-
-  // region Play Compatible Wear Screenshots
-  private static final FlagGroup
-    PLAY_COMPATIBLE_WEAR_SCREENSHOTS = new FlagGroup(FLAGS, "play.compatible.wear.screenshots", "Play Compatible Wear Screenshots");
-  public static final Flag<Boolean> PLAY_COMPATIBLE_WEAR_SCREENSHOTS_ENABLED = Flag.create(
-    PLAY_COMPATIBLE_WEAR_SCREENSHOTS, "enable", "Enable Play Compatible Wear Screenshots",
-    "Enable a play compatible screenshot option for wear devices.",
-    true
-  );
-  // endregion
 
   // region AVD Command Line Options
   private static final FlagGroup

@@ -34,6 +34,7 @@ import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_
 import com.android.tools.idea.streaming.device.DeviceClient.AgentTerminationListener
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_COPY
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_CUT
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_EDITOR_MOVE_CARET_DOWN
@@ -82,8 +83,11 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
+import java.awt.event.InputEvent
 import java.awt.event.InputEvent.ALT_DOWN_MASK
 import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON2_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON3_DOWN_MASK
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.META_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
@@ -91,8 +95,8 @@ import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.CHAR_UNDEFINED
 import java.awt.event.KeyEvent.KEY_PRESSED
+import java.awt.event.KeyEvent.KEY_RELEASED
 import java.awt.event.KeyEvent.VK_BACK_SPACE
-import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_DELETE
 import java.awt.event.KeyEvent.VK_DOWN
 import java.awt.event.KeyEvent.VK_ENTER
@@ -107,10 +111,10 @@ import java.awt.event.KeyEvent.VK_TAB
 import java.awt.event.KeyEvent.VK_UP
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.awt.event.MouseEvent.BUTTON1
 import java.awt.event.MouseWheelEvent
 import java.awt.geom.AffineTransform
 import java.util.concurrent.CancellationException
+import java.util.concurrent.TimeoutException
 import javax.swing.KeyStroke
 import kotlin.math.absoluteValue
 import kotlin.math.min
@@ -177,12 +181,14 @@ internal class DeviceView(
         val point = lastTouchCoordinates
         if (point != null) {
           val action = if (value) MotionEventMessage.ACTION_POINTER_DOWN else MotionEventMessage.ACTION_POINTER_UP
-          sendMotionEvent(point, action)
+          sendMotionEvent(point, action, 0)
         }
       }
     }
   /** Last coordinates of the mouse pointer while the first button is pressed, null when the first button is released. */
   private var lastTouchCoordinates: Point? = null
+  /** Whether the last observed mouse event was in display. */
+  private var wasInsideDisplay = false
 
   init {
     Disposer.register(disposableParent, this)
@@ -284,7 +290,7 @@ internal class DeviceView(
       when (connectionState) {
         ConnectionState.CONNECTING -> {
           thisLogger().error("Failed to initialize the screen sharing agent", exception)
-          message = "Failed to initialize the device agent. See the error log."
+          message = (exception as? TimeoutException)?.message ?: "Failed to initialize the device agent. See the error log."
           reconnector = Reconnector("Retry", "Connecting to the device") { connectToAgentAsync(initialDisplayOrientation) }
         }
 
@@ -395,6 +401,11 @@ internal class DeviceView(
     }
   }
 
+  override fun hardwareInputStateChanged(event: AnActionEvent, enabled: Boolean) {
+    super.hardwareInputStateChanged(event, enabled)
+    updateMultiTouchMode(event.inputEvent)
+  }
+
   private fun startClipboardSynchronization() {
     val synchronizer = clipboardSynchronizer
     if (synchronizer == null) {
@@ -415,33 +426,45 @@ internal class DeviceView(
     }
   }
 
-  private fun sendMotionEvent(p: Point, action: Int, axisValues: Int2FloatOpenHashMap? = null) {
+  private fun sendMotionEvent(p: Point, action: Int, modifiers: Int, button: Int=0, axisValues: Int2FloatOpenHashMap? = null) {
     val displayCoordinates = toDeviceDisplayCoordinates(p) ?: return
 
     if (displayCoordinates in deviceDisplaySize) {
       // Within the bounds of the device display.
-      sendMotionEventDisplayCoordinates(displayCoordinates, action, axisValues)
+      sendMotionEventDisplayCoordinates(displayCoordinates, action, modifiers, button, axisValues)
     }
     else if (action == MotionEventMessage.ACTION_MOVE) {
       // Crossed the device display boundary while dragging.
       lastTouchCoordinates = null
       val adjusted = displayCoordinates.constrainInside(deviceDisplaySize)
-      sendMotionEventDisplayCoordinates(adjusted, action)
-      sendMotionEventDisplayCoordinates(adjusted, MotionEventMessage.ACTION_UP)
+      sendMotionEventDisplayCoordinates(adjusted, action, modifiers, button)
+      sendMotionEventDisplayCoordinates(adjusted, MotionEventMessage.ACTION_UP, modifiers, button)
     }
   }
 
-  private fun sendMotionEventDisplayCoordinates(p: Point, action: Int, axisValues: Int2FloatOpenHashMap? = null) {
+  private fun sendMotionEventDisplayCoordinates(p: Point, action: Int, modifiers: Int, button: Int, axisValues: Int2FloatOpenHashMap? = null) {
     if (!isConnected) {
       return
     }
+    val buttonState =
+      (if (modifiers and BUTTON1_DOWN_MASK != 0) MotionEventMessage.BUTTON_PRIMARY else 0) or
+      (if (modifiers and BUTTON2_DOWN_MASK != 0) MotionEventMessage.BUTTON_TERTIARY else 0) or
+      (if (modifiers and BUTTON3_DOWN_MASK != 0) MotionEventMessage.BUTTON_SECONDARY else 0)
+    val androidActionButton = when (button) {
+      MouseEvent.BUTTON1 -> MotionEventMessage.BUTTON_PRIMARY
+      MouseEvent.BUTTON2 -> MotionEventMessage.BUTTON_TERTIARY
+      MouseEvent.BUTTON3 -> MotionEventMessage.BUTTON_SECONDARY
+      else -> 0
+    }
     val message = when {
       action == MotionEventMessage.ACTION_POINTER_DOWN || action == MotionEventMessage.ACTION_POINTER_UP ->
-          MotionEventMessage(originalAndMirroredPointer(p),action or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT), displayId)
-      multiTouchMode -> MotionEventMessage(originalAndMirroredPointer(p), action, displayId)
-      else -> MotionEventMessage(originalPointer(p, axisValues), action, displayId)
+          MotionEventMessage(originalAndMirroredPointer(p),action or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT), 0, 0, displayId)
+      isHardwareInputEnabled() && (action == MotionEventMessage.ACTION_DOWN || action == MotionEventMessage.ACTION_UP) ->
+          MotionEventMessage(originalPointer(p, axisValues), action, buttonState, androidActionButton, displayId)
+      isHardwareInputEnabled() -> MotionEventMessage(originalPointer(p, axisValues), action, buttonState, 0, displayId)
+      multiTouchMode -> MotionEventMessage(originalAndMirroredPointer(p), action, 0, 0, displayId)
+      else -> MotionEventMessage(originalPointer(p, axisValues), action, 0, 0, displayId)
     }
-
     deviceController?.sendControlMessage(message)
   }
 
@@ -497,6 +520,20 @@ internal class DeviceView(
     }
   }
 
+  override val hardwareInput = object : HardwareInput() {
+    override fun sendToDevice(id: Int, keyCode: Int, modifiersEx: Int) {
+      if (!isConnected) return
+      val action = when (id) {
+        KEY_PRESSED -> ACTION_DOWN
+        KEY_RELEASED -> ACTION_UP
+        else -> return
+      }
+      val metaState = modifiersToMetaState(modifiersEx)
+      val akeycode = VK_TO_AKEYCODE[keyCode] ?: return
+      deviceController?.sendControlMessage(KeyEventMessage(action, akeycode, metaState))
+    }
+  }
+
   private inner class MyKeyListener  : KeyAdapter() {
 
     var cachedKeyStrokeMap: Map<KeyStroke, AndroidKeyStroke>? = null
@@ -522,6 +559,9 @@ internal class DeviceView(
       if (!isConnected) {
         return
       }
+      if (isHardwareInputEnabled()) {
+        return
+      }
       if (event.isAltDown || event.isControlDown || event.isMetaDown) {
         return
       }
@@ -543,21 +583,19 @@ internal class DeviceView(
     }
 
     private fun keyPressedOrReleased(event: KeyEvent) {
-      val keyCode = event.keyCode
-      val modifiers = event.modifiersEx
-
-      if (keyCode == VK_CONTROL) {
-        if (modifiers == CTRL_DOWN_MASK) {
-          multiTouchMode = true
-        }
-        else if ((modifiers and CTRL_DOWN_MASK) == 0) {
-          multiTouchMode = false
-        }
-      }
+      updateMultiTouchMode(event)
 
       if (!isConnected) {
         return
       }
+
+      if (isHardwareInputEnabled()) {
+        hardwareInput.forwardEvent(event)
+        return
+      }
+
+      val keyCode = event.keyCode
+      val modifiers = event.modifiersEx
       val androidKeyStroke = hostKeyStrokeToAndroidKeyStroke(keyCode, modifiers)
       if (androidKeyStroke == null) {
         if (modifiers == 0) {
@@ -597,16 +635,6 @@ internal class DeviceView(
         else -> AKEYCODE_UNKNOWN
       }
     }
-
-    private fun modifiersToMetaState(modifiers: Int): Int {
-      return modifierToMetaState(modifiers, SHIFT_DOWN_MASK,  AMETA_SHIFT_ON) or
-             modifierToMetaState(modifiers, CTRL_DOWN_MASK,  AMETA_CTRL_ON) or
-             modifierToMetaState(modifiers, META_DOWN_MASK,  AMETA_META_ON) or
-             modifierToMetaState(modifiers, ALT_DOWN_MASK,  AMETA_ALT_ON)
-    }
-
-    private fun modifierToMetaState(modifiers: Int, modifierMask: Int, metaState: Int) =
-        if ((modifiers and modifierMask) != 0) metaState else 0
 
     private fun buildKeyStrokeMap(): Map<KeyStroke, AndroidKeyStroke> {
       return mutableMapOf<KeyStroke, AndroidKeyStroke>().apply {
@@ -653,21 +681,18 @@ internal class DeviceView(
   private inner class MyMouseListener : MouseAdapter() {
     override fun mousePressed(event: MouseEvent) {
       requestFocusInWindow()
-      if (isInsideDisplay(event) && event.button == BUTTON1) {
-        event.location.let {
-          lastTouchCoordinates = it
-          updateMultiTouchMode(event)
-          sendMotionEvent(it, MotionEventMessage.ACTION_DOWN)
-        }
-      }
+      if (!isInsideDisplay(event)) return
+      if (event.button != MouseEvent.BUTTON1 && !isHardwareInputEnabled()) return
+      lastTouchCoordinates = event.location
+      updateMultiTouchMode(event)
+      sendMotionEvent(event.location, MotionEventMessage.ACTION_DOWN, event.modifiersEx, button = event.button)
     }
 
     override fun mouseReleased(event: MouseEvent) {
-      if (event.button == BUTTON1) {
-        lastTouchCoordinates = null
-        updateMultiTouchMode(event)
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_UP)
-      }
+      if (event.button != MouseEvent.BUTTON1 && !isHardwareInputEnabled()) return
+      lastTouchCoordinates = null
+      updateMultiTouchMode(event)
+      sendMotionEvent(event.location, MotionEventMessage.ACTION_UP, event.modifiersEx, button = event.button)
     }
 
     override fun mouseEntered(event: MouseEvent) {
@@ -675,25 +700,25 @@ internal class DeviceView(
     }
 
     override fun mouseExited(event: MouseEvent) {
-      if ((event.modifiersEx and BUTTON1_DOWN_MASK) != 0 && lastTouchCoordinates != null) {
+      if ((event.modifiersEx and (BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK or BUTTON3_DOWN_MASK)) != 0 && lastTouchCoordinates != null) {
         // Moving over the edge of the display view will terminate the ongoing dragging.
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_MOVE)
+        sendMotionEvent(event.location, MotionEventMessage.ACTION_MOVE, event.modifiersEx)
       }
       lastTouchCoordinates = null
-      multiTouchMode = false
+      updateMultiTouchMode(event)
     }
 
     override fun mouseDragged(event: MouseEvent) {
       updateMultiTouchMode(event)
-      if ((event.modifiersEx and BUTTON1_DOWN_MASK) != 0 && lastTouchCoordinates != null) {
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_MOVE)
+      if ((event.modifiersEx and (BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK or BUTTON3_DOWN_MASK)) != 0 && lastTouchCoordinates != null) {
+        sendMotionEvent(event.location, MotionEventMessage.ACTION_MOVE, event.modifiersEx)
       }
     }
 
     override fun mouseMoved(event: MouseEvent) {
       updateMultiTouchMode(event)
       if (!multiTouchMode) {
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_HOVER_MOVE)
+        sendMotionEvent(event.location, MotionEventMessage.ACTION_HOVER_MOVE, event.modifiersEx)
       }
     }
 
@@ -712,7 +737,7 @@ internal class DeviceView(
         val scrollAmount = remainingRotation.coerceAtMost(1.0f) * direction
         val axisValues = Int2FloatOpenHashMap(1)
         axisValues.put(axis, scrollAmount)
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_SCROLL, axisValues)
+        sendMotionEvent(event.location, MotionEventMessage.ACTION_SCROLL, event.modifiersEx, axisValues=axisValues)
         remainingRotation -= 1
       }
     }
@@ -721,13 +746,16 @@ internal class DeviceView(
       if (scrollType != MouseWheelEvent.WHEEL_UNIT_SCROLL) return 1.0f
       return (preciseWheelRotation * scrollAmount).absoluteValue.toFloat() * ANDROID_SCROLL_ADJUSTMENT_FACTOR
     }
+  }
 
-    private fun updateMultiTouchMode(event: MouseEvent) {
-      val oldMultiTouchMode = multiTouchMode
-      multiTouchMode = isInsideDisplay(event) && (event.modifiersEx and CTRL_DOWN_MASK) != 0
-      if (multiTouchMode && oldMultiTouchMode) {
-        repaint() // If multi-touch mode changed above, the repaint method was already called.
-      }
+  private fun updateMultiTouchMode(event: InputEvent) {
+    val oldMultiTouchMode = multiTouchMode
+    if (event is MouseEvent) {
+      wasInsideDisplay = isInsideDisplay(event)
+    }
+    multiTouchMode = wasInsideDisplay && (event.modifiersEx and CTRL_DOWN_MASK) != 0 && !isHardwareInputEnabled()
+    if (multiTouchMode && oldMultiTouchMode) {
+      repaint() // If multi-touch mode changed above, the repaint method was already called.
     }
   }
 
@@ -736,5 +764,15 @@ internal class DeviceView(
     // trying different numbers until scrolling felt usable.
     @VisibleForTesting
     internal const val ANDROID_SCROLL_ADJUSTMENT_FACTOR = 0.125f
+
+    private fun modifiersToMetaState(modifiers: Int): Int {
+      return modifierToMetaState(modifiers, SHIFT_DOWN_MASK, AMETA_SHIFT_ON) or
+        modifierToMetaState(modifiers, CTRL_DOWN_MASK, AMETA_CTRL_ON) or
+        modifierToMetaState(modifiers, META_DOWN_MASK, AMETA_META_ON) or
+        modifierToMetaState(modifiers, ALT_DOWN_MASK, AMETA_ALT_ON)
+    }
+
+    private fun modifierToMetaState(modifiers: Int, modifierMask: Int, metaState: Int) =
+      if ((modifiers and modifierMask) != 0) metaState else 0
   }
 }

@@ -47,6 +47,9 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.EditorNotificationPanel.Status
+import com.intellij.ui.IdeBorderFactory
+import com.intellij.ui.JBColor
+import com.intellij.ui.SideBorder
 import com.intellij.ui.content.Content
 import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -60,8 +63,17 @@ const val SHOW_EXPERIMENTAL_WARNING_KEY =
   "com.android.tools.idea.layoutinspector.runningdevices.experimental.notification.show"
 const val EMBEDDED_EXPERIMENTAL_MESSAGE_KEY = "embedded.inspector.experimental.notification.message"
 
+/**
+ * Object used to track tabs that have Layout Inspector enabled across multiple projects. Layout
+ * Inspector should be enabled only once for each tab, across projects. Multiple projects connecting
+ * to the same process is not a supported use case by Layout Inspector.
+ */
+object LayoutInspectorManagerGlobalState {
+  val tabsWithLayoutInspector = mutableSetOf<TabId>()
+}
+
 /** Responsible for managing Layout Inspector in Running Devices Tool Window. */
-interface LayoutInspectorManager {
+interface LayoutInspectorManager : Disposable {
   companion object {
     @JvmStatic
     fun getInstance(project: Project): LayoutInspectorManager {
@@ -88,8 +100,7 @@ interface LayoutInspectorManager {
 
 /** This class is meant to be used on the UI thread, to avoid concurrency issues. */
 @UiThread
-private class LayoutInspectorManagerImpl(private val project: Project) :
-  LayoutInspectorManager, Disposable {
+private class LayoutInspectorManagerImpl(private val project: Project) : LayoutInspectorManager {
 
   /** Tabs on which Layout Inspector is enabled. */
   private var tabsWithLayoutInspector = setOf<TabId>()
@@ -99,13 +110,19 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
         return
       }
 
+      val tabsAdded = value - field
+      val tabsRemoved = field - value
+
       // check if the selected tab was removed
-      val removedTabs = tabsWithLayoutInspector - value
-      if (removedTabs.contains(selectedTab?.tabId)) {
+      if (tabsRemoved.contains(selectedTab?.tabId)) {
         selectedTab = null
       }
 
       field = value
+
+      LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.addAll(tabsAdded)
+      LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.removeAll(tabsRemoved)
+
       updateListeners()
     }
 
@@ -253,6 +270,11 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
     return tabsWithLayoutInspector.contains(tabId)
   }
 
+  override fun dispose() {
+    selectedTab = null
+    tabsWithLayoutInspector = emptySet()
+  }
+
   private fun updateListeners(
     listenersToUpdate: List<LayoutInspectorManager.StateListener> = stateListeners
   ) {
@@ -350,7 +372,10 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
         subPanel.add(InspectorBanner(layoutInspector.notificationModel), BorderLayout.NORTH)
         subPanel.add(centerPanel, BorderLayout.CENTER)
 
-        createLayoutInspectorWorkbench(project, disposable, layoutInspector, mainPanel)
+        val workBench =
+          createLayoutInspectorWorkbench(project, disposable, layoutInspector, mainPanel)
+        workBench.component.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.TOP)
+        workBench
       }
       tabComponents.displayView.add(layoutInspectorRenderer)
 
@@ -417,8 +442,6 @@ private class LayoutInspectorManagerImpl(private val project: Project) :
       notificationModel.removeNotification(EMBEDDED_EXPERIMENTAL_MESSAGE_KEY)
     }
   }
-
-  override fun dispose() {}
 }
 
 private fun createLayoutInspectorWorkbench(

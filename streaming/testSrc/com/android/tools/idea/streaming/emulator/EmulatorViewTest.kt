@@ -61,6 +61,8 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_PASTE
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
+import com.intellij.openapi.actionSystem.KeyboardShortcut
+import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
@@ -138,7 +140,7 @@ class EmulatorViewTest {
 
   @Before
   fun setUp() {
-    StudioFlags.STREAMING_INPUT_FORWARDING_BUTTON.override(true, testRootDisposable)
+    StudioFlags.STREAMING_HARDWARE_INPUT_BUTTON.override(true, testRootDisposable)
     mouseInfo = mockStatic(testRootDisposable)
     mouseInfo.whenever<PointerInfo> { MouseInfo.getPointerInfo() }.thenReturn(mock<PointerInfo>())
     focusManager = FakeKeyboardFocusManager(testRootDisposable)
@@ -747,20 +749,32 @@ class EmulatorViewTest {
   }
 
   @Test
-  fun testKeyPreprocessingSkippedWhenInputForwardingEnabled() {
+  fun testKeyPreprocessingSkippedWhenHardwareInputEnabled() {
     val view = emulatorViewRule.newEmulatorView()
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
     assertThat(view.skipKeyEventDispatcher(KeyEvent(view, KEY_PRESSED, System.nanoTime(), 0, VK_M, VK_M.toChar()))).isTrue()
   }
 
   @Test
-  fun testCtrlAndAlphabeticalKeysSentWhenInputForwardingEnabled() {
+  fun testKeyPreprocessingNotSkippedForActionTogglingHardwareInput() {
+    val view = emulatorViewRule.newEmulatorView()
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
+    val keymapManager = KeymapManager.getInstance()
+    keymapManager.activeKeymap.addShortcut("android.streaming.hardware.input", KeyboardShortcut.fromString("control shift J"))
+
+    assertThat(view.skipKeyEventDispatcher(KeyEvent(view, KEY_PRESSED, System.nanoTime(),
+                                                    KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK, KeyEvent.VK_J,
+                                                    KeyEvent.CHAR_UNDEFINED))).isFalse()
+  }
+
+  @Test
+  fun testCtrlAndAlphabeticalKeysSentWhenHardwareInputEnabled() {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
     val container = createScrollPane(view)
     val ui = FakeUi(container)
 
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
     ui.keyboard.setFocus(view)
 
     ui.keyboard.press(VK_CONTROL)
@@ -789,7 +803,7 @@ class EmulatorViewTest {
   }
 
   @Test
-  fun testHideCameraNotificationDuringInputForwarding() {
+  fun testHideCameraNotificationDuringHardwareInput() {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
     val panel = NotificationHolderPanel(view)
@@ -804,16 +818,16 @@ class EmulatorViewTest {
       ui.findComponent<EditorNotificationPanel>() != null
     }
 
-    // Enable input forwarding
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    // Enable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
 
     // Check if notification panel is disappeared
     waitForCondition(200, MILLISECONDS) {
       ui.findComponent<EditorNotificationPanel>() == null
     }
 
-    // Disable input forwarding
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    // Disable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
 
     // Check if notification panel is re-appeared
     waitForCondition(200, MILLISECONDS) {
@@ -822,7 +836,7 @@ class EmulatorViewTest {
   }
 
   @Test
-  fun testCameraNotificationHasOperatingMessageWhenInputForwardingDisabledWithShift() {
+  fun testCameraNotificationHasOperatingMessageWhenHardwareInputDisabledWithShift() {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
     val panel = NotificationHolderPanel(view)
@@ -830,15 +844,15 @@ class EmulatorViewTest {
     container.rootPane.size = Dimension(200, 300)
     val ui = FakeUi(container.rootPane, 1.0)
 
-    // Enable input forwarding
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    // Enable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
 
     // Activate the virtual scene camera
     focusManager.focusOwner = view
     emulator.virtualSceneCameraActive = true
 
-    // Disable input forwarding with shift key
-    executeStreamingAction("android.streaming.input.forwarding", view, emulatorViewRule.project, modifiers=SHIFT_DOWN_MASK)
+    // Disable hardware input with shift key
+    executeStreamingAction("android.streaming.hardware.input", view, emulatorViewRule.project, modifiers=SHIFT_DOWN_MASK)
 
     // Check if notification panel is disappeared
     waitForCondition(200, MILLISECONDS) {
@@ -850,7 +864,7 @@ class EmulatorViewTest {
   }
 
   @Test
-  fun testDisableMultiTouchDuringInputForwarding() {
+  fun testDisableMultiTouchDuringHardwareInput() {
     val view = emulatorViewRule.newEmulatorView()
     val emulator = emulatorViewRule.getFakeEmulator(view)
 
@@ -878,8 +892,8 @@ class EmulatorViewTest {
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1274 y: 744")
 
-    // Enable Input forwarding
-    emulatorViewRule.executeAction("android.streaming.input.forwarding", view)
+    // Enable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
 
     // Check if multitouch indicator is hidden
     ui.layoutAndDispatchEvents()
@@ -891,8 +905,8 @@ class EmulatorViewTest {
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/sendMouse")
     assertThat(shortDebugString(call.request)).isEqualTo("x: 1274 y: 744 buttons: 1")
 
-    // Disable input forwarding
-    executeStreamingAction("android.streaming.input.forwarding", view, emulatorViewRule.project, modifiers=CTRL_DOWN_MASK)
+    // Disable hardware input
+    executeStreamingAction("android.streaming.hardware.input", view, emulatorViewRule.project, modifiers=CTRL_DOWN_MASK)
 
     // Check if multitouch indicator is shown
     ui.layoutAndDispatchEvents()
@@ -909,6 +923,62 @@ class EmulatorViewTest {
     assertThat(shortDebugString(call.request)).isEqualTo(
         "touches { x: 1058 y: 960 pressure: 1024 expiration: NEVER_EXPIRE }" +
         " touches { x: 381 y: 1999 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE }")
+  }
+
+  @Test
+  fun testMetaKeysReleasedWhenHardwareInputDisabled() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+    val container = createScrollPane(view)
+    val ui = FakeUi(container, 2.0)
+
+    // Enable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
+
+    // Press Ctrl
+    focusManager.focusOwner = view
+    ui.keyboard.press(VK_CONTROL)
+
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("key: \"Control\"")
+    }
+
+    // Disable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
+
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("eventType: keyup key: \"Control\"")
+    }
+  }
+
+  @Test
+  fun testMetaKeysReleasedWhenLostFocusDuringHardwareInput() {
+    val view = emulatorViewRule.newEmulatorView()
+    val emulator = emulatorViewRule.getFakeEmulator(view)
+    val container = createScrollPane(view)
+    val ui = FakeUi(container, 2.0)
+
+    // Enable hardware input
+    emulatorViewRule.executeAction("android.streaming.hardware.input", view)
+
+    // Press Ctrl
+    focusManager.focusOwner = view
+    ui.keyboard.press(VK_CONTROL)
+
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("key: \"Control\"")
+    }
+
+    // Lose focus
+    focusManager.focusOwner = null
+
+    emulator.getNextGrpcCall(2, SECONDS).apply {
+      assertThat(methodName).isEqualTo("android.emulation.control.EmulatorController/sendKey")
+      assertThat(shortDebugString(request)).isEqualTo("eventType: keyup key: \"Control\"")
+    }
   }
 
   private fun createScrollPane(view: Component): JScrollPane {

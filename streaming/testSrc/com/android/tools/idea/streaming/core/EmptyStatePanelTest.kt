@@ -53,7 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.JEditorPane
 import javax.swing.event.HyperlinkEvent
 
@@ -191,14 +191,15 @@ class EmptyStatePanelTest {
     assertThat(htmlComponent.normalizedText).contains(
         "To launch a virtual device, click <font color=\"6c707e\" size=\"+1\"><b>&#65291;</b></font> and select a virtual device," +
         " or select the <i>Launch in the Running Devices tool window</i> option in the" +
-        " <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>.")
+        " <font color=\"589df6\"><a href=\"EmulatorSettings\">Emulator settings</a></font>" +
+        " and use the <font color=\"589df6\"><a href=\"DeviceManager\">Device Manager</a></font>.")
   }
 
   private fun createEmptyStatePanel(): EmptyStatePanel {
     val panel = EmptyStatePanel(projectRule.project, testRootDisposable).apply { setSize(500, 1000) }
 
     // Allow the panel to update itself.
-    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 2, TimeUnit.SECONDS)
+    ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 2, SECONDS)
     UIUtil.dispatchAllInvocationEvents()
 
     return panel

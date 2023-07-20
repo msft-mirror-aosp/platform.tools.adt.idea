@@ -118,9 +118,15 @@
                            order="first"/>
     <completion.contributor language="TOML"
                             implementationClass="com.android.tools.idea.gradle.completions.TomlVersionRefCompletionContributor" />
+    <completion.contributor language="TOML"
+                            implementationClass="com.android.tools.idea.gradle.completions.DeclarativeCompletionContributor" />
     <completion.confidence language="TOML"
                            id="EnableAutoPopupInLiteralForTomlVersionRefDependencyCompletion"
                            implementationClass="com.android.tools.idea.gradle.completions.EnableAutoPopupInLiteralForTomlVersionRefDependencyCompletion" />
+    <completion.confidence language="TOML"
+                           id="EnableAutoPopupInDeclarativeBuildCompletion"
+                           implementationClass="com.android.tools.idea.gradle.completions.EnableAutoPopupInDeclarativeBuildCompletion" />
+    <indexedRootsProvider implementation="com.android.tools.idea.gradle.index.VersionCatalogFileIndexContributor"/>
     <useScopeEnlarger implementation="com.android.tools.idea.gradle.navigation.GradleTomlUseScopeEnlarger"/>
     <gotoDeclarationHandler implementation="com.android.tools.idea.gradle.refactoring.VersionCatalogGoToDeclarationHandler"/>
     <renameHandler implementation="com.android.tools.idea.gradle.refactoring.GradleRenameModuleHandler" order="last"/>
@@ -239,14 +245,6 @@
       <action id="SelectBuildVariant" class="com.android.tools.idea.gradle.actions.SelectBuildVariantAction"/>
       <add-to-group group-id="BuildMenu" anchor="last"/>
       <separator/>
-    </group>
-    <group id="Internal.Android.Gradle" internal="true">
-      <action id="Android.FixAndroidRunConfigurations"
-              class="com.android.tools.idea.projectsystem.gradle.actions.FixAndroidRunConfigurationsAction"
-              text="Fix Android Run Configurations"
-              description="Add &quot;Gradle-aware Make&quot; launch task to Android Run Configuration(s) if it is missing">
-      </action>
-      <add-to-group group-id="Internal.Android" anchor="last"/>
     </group>
     <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.BuildApkAction">
       <add-to-group group-id="BuildMenu" relative-to-action="Android.GenerateSignedApk" anchor="before"/>

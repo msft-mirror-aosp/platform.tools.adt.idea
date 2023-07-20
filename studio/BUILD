@@ -202,6 +202,7 @@ studio_plugin(
             "//tools/adt/idea/android-lang-databinding:intellij.android.lang-databinding",
             "//tools/adt/idea/android-lang:intellij.android.lang",
             "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
+            "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector.gradle",
             "//tools/adt/idea/layout-ui:intellij.android.layout-ui",
             "//tools/adt/idea/logcat:intellij.android.logcat",
             "//tools/adt/idea/mlkit:intellij.android.mlkit",
@@ -290,6 +291,7 @@ studio_plugin(
             "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
             "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
             "//tools/base/ddmlib:studio.android.sdktools.ddmlib",
+            "//tools/base/jdwp-scache:studio.android.sdktools.jdwpscache",
             "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
             "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
             "//tools/base/device_validator:studio.android.sdktools.dvlib",
@@ -438,6 +440,7 @@ studio_plugin(
             "//tools/adt/idea/glance-designer:intellij.android.glance-designer",
             "//tools/adt/idea/layoutlib:intellij.android.layoutlib",
             "//tools/adt/idea/nav/editor:intellij.android.nav.editor",
+            "//tools/adt/idea/nav/editor:intellij.android.nav.editor.gradle",
             "//tools/adt/idea/preview-designer:intellij.android.preview-designer",
             "//tools/adt/idea/wear-designer:intellij.android.wear-designer",
         ],
@@ -548,40 +551,27 @@ studio_plugin(
     directory = "google-cloud-tools-as",
     libs = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:gradle-appengine-builder-model-0.1.0",
-        "//tools/studio/google/cloud/tools/android-studio-plugin/lib:google-api-services-source",
-    ],
-    licenses = [
-        "//tools/studio/google/cloud/tools/android-studio-plugin/lib:licenses",
-    ],
-    modules = {"google-cloud-tools-as.jar": ["//tools/studio/google/cloud/tools/android-studio-plugin:google-cloud-tools-as"]},
-    visibility = ["//visibility:public"],
-    deps = [
-        ":com.google.gct.core",
-        ":org.jetbrains.android",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle-java",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-git",
-    ],
-)
-
-studio_plugin(
-    name = "com.google.gct.core",
-    directory = "google-cloud-tools-core-as",
-    libs = [
         "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-appengine-v1-rev9-1.22.0",
         "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-source",
         "//tools/studio/google/cloud/tools/core-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
     ],
     licenses = [
+        "//tools/studio/google/cloud/tools/android-studio-plugin/lib:licenses",
         "//tools/studio/google/cloud/tools/core-plugin/lib:licenses",
     ],
-    modules = {"google-cloud-tools-core-as.jar": ["//tools/studio/google/cloud/tools/core-plugin:google-cloud-tools-core-as"]},
+    modules = {
+        "google-cloud-tools-as.jar": [
+            "//tools/studio/google/cloud/tools/android-studio-plugin:google-cloud-tools-as",
+            "//tools/studio/google/cloud/tools/core-plugin:google-cloud-tools-core-as",
+        ],
+    },
     visibility = ["//visibility:public"],
     deps = [
-        "org.jetbrains.android",
+        ":org.jetbrains.android",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Groovy",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle-java",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-vcs-git",
     ],
@@ -696,7 +686,6 @@ android_studio(
         ":com.google.gct.directaccess",
         ":com.google.gct.testing",
         ":com.google.gct",
-        ":com.google.gct.core",
         ":com.android.tools.idea.smali",
         ":com.google.gct.test.recorder",
         ":com.google.urlassistant",

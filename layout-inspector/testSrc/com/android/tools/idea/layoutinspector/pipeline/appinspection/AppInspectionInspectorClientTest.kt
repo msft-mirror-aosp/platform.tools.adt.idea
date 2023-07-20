@@ -46,6 +46,7 @@ import com.android.tools.idea.appinspection.api.AppInspectionApiServices
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionAppProguardedException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionArtifactNotFoundException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionCannotFindAdbDeviceException
+import com.android.tools.idea.appinspection.inspector.api.AppInspectionCrashException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionLibraryMissingException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionProcessNoLongerExistsException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionServiceException
@@ -78,7 +79,7 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PRO
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.VERSION_MISSING_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors.sendEvent
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewLayoutInspectorClient
-import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
+import com.android.tools.idea.layoutinspector.runningdevices.withEmbeddedLayoutInspector
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanel
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
@@ -110,6 +111,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
 import javax.swing.JTable
 import kotlin.collections.set
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol
@@ -208,6 +210,28 @@ class AppInspectionInspectorClientTest {
       .isEqualTo(DynamicLayoutInspectorEventType.ATTACH_ERROR)
     assertThat(usages[2].studioEvent.dynamicLayoutInspectorEvent.type)
       .isEqualTo(DynamicLayoutInspectorEventType.SESSION_DATA)
+  }
+
+  @Test
+  fun crashedInspectorShowsNotification() {
+    shouldFailDuringAttach = true
+    failingApiServices.exception =
+      CancellationException(
+        "",
+        cause = CancellationException("", cause = AppInspectionCrashException(""))
+      )
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+
+    assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
+
+    val usages =
+      usageRule.testTracker.usages.filter {
+        it.studioEvent.kind == AndroidStudioEvent.EventKind.DYNAMIC_LAYOUT_INSPECTOR_EVENT
+      }
+
+    val notification1 = inspectorRule.notificationModel.notifications.single()
+    assertThat(notification1.message).isEqualTo("Layout Inspector crashed on the device.")
   }
 
   @Test
@@ -379,20 +403,18 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun disableBitmapCapturingTrueWhenInRunningDevices(): Unit = runBlocking {
-    val originalState = LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
-    LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled = true
+  fun disableBitmapCapturingTrueWhenInRunningDevices(): Unit = withEmbeddedLayoutInspector {
+    runBlocking {
+      val disableBitmapScreenshotReceived = ReportingCountDownLatch(1)
+      inspectionRule.viewInspector.listenWhen({ it.hasDisableBitmapScreenshotCommand() }) { command
+        ->
+        assertThat(command.disableBitmapScreenshotCommand.disable).isTrue()
+        disableBitmapScreenshotReceived.countDown()
+      }
 
-    val disableBitmapScreenshotReceived = ReportingCountDownLatch(1)
-    inspectionRule.viewInspector.listenWhen({ it.hasDisableBitmapScreenshotCommand() }) { command ->
-      assertThat(command.disableBitmapScreenshotCommand.disable).isTrue()
-      disableBitmapScreenshotReceived.countDown()
+      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+      disableBitmapScreenshotReceived.await(TIMEOUT, TIMEOUT_UNIT)
     }
-
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    disableBitmapScreenshotReceived.await(TIMEOUT, TIMEOUT_UNIT)
-
-    LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled = originalState
   }
 
   @Test
@@ -1668,11 +1690,13 @@ private fun runWithFlagState(desiredFlagState: Boolean, task: () -> Unit) {
 
 private val failingApiServices =
   object : AppInspectionApiServices {
+    var exception: Throwable = RuntimeException()
+
     override val processDiscovery
       get() = throw RuntimeException()
     override suspend fun disposeClients(project: String) = throw RuntimeException()
     override suspend fun attachToProcess(process: ProcessDescriptor, projectName: String) =
-      throw RuntimeException()
+      throw exception
     override suspend fun launchInspector(params: LaunchParameters) = throw RuntimeException()
     override suspend fun stopInspectors(process: ProcessDescriptor) = throw RuntimeException()
   }

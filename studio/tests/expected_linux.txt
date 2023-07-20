@@ -450,7 +450,7 @@ android-studio/lib/ant/lib/classpath.index
 android-studio/lib/ant/lib/libraries.properties
 android-studio/lib/ant/src.zip
 android-studio/lib/app.jar
-android-studio/lib/build-marker-AI-231.9161.38.2311.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-231.9225.16.2311.__BUILD_NUMBER__
 android-studio/lib/byte-buddy-agent.jar
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/error-prone-annotations.jar
@@ -691,7 +691,7 @@ android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin
 android-studio/plugins/android-compose-ide-plugin/lib/compiler-hosted-1.4.7.jar
 android-studio/plugins/android-ndk/lib/android-ndk.jar
 android-studio/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
-android-studio/plugins/android-ndk/lib/org.eclipse.equinox.common_3.10.500.v20190621-0852.jar
+android-studio/plugins/android-ndk/lib/org.eclipse.equinox.common_3.10.500.v20190815-1535.jar
 android-studio/plugins/android-ndk/resources/lldb/LICENSE.TXT
 android-studio/plugins/android-ndk/resources/lldb/android/arm64-v8a/lldb-server
 android-studio/plugins/android-ndk/resources/lldb/android/armeabi/lldb-server
@@ -2314,6 +2314,9 @@ android-studio/plugins/android/resources/device-art-resources/pixel_silver/layou
 android-studio/plugins/android/resources/device-art-resources/pixel_silver/port_back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_silver/port_fore.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_silver/port_shadow.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_tablet/back.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_tablet/layout
+android-studio/plugins/android/resources/device-art-resources/pixel_tablet/mask.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_xl/land_back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_xl/land_fore.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_xl/land_shadow.webp
@@ -2716,14 +2719,11 @@ android-studio/plugins/firebase/lib/firebase.jar
 android-studio/plugins/firebase/lib/firebase_java_proto.jar
 android-studio/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 android-studio/plugins/git4insights/lib/git4insights.jar
+android-studio/plugins/google-cloud-tools-as/lib/google-api-services-appengine-v1-rev9-1.22.0.jar
+android-studio/plugins/google-cloud-tools-as/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 android-studio/plugins/google-cloud-tools-as/lib/google-api-services-source.jar
 android-studio/plugins/google-cloud-tools-as/lib/google-cloud-tools-as.jar
 android-studio/plugins/google-cloud-tools-as/lib/gradle-appengine-builder-model-0.1.0.jar
-android-studio/plugins/google-cloud-tools-core-as/lib/google-api-services-appengine-v1-rev9-1.22.0.jar
-android-studio/plugins/google-cloud-tools-core-as/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
-android-studio/plugins/google-cloud-tools-core-as/lib/google-api-services-source.jar
-android-studio/plugins/google-cloud-tools-core-as/lib/google-cloud-tools-core-as.jar
-android-studio/plugins/google-cloud-tools-core-as/lib/gradle-appengine-builder-model-0.1.0.jar
 android-studio/plugins/gradle-java/lib/gradle-java.jar
 android-studio/plugins/gradle-java/lib/gradle-jps.jar
 android-studio/plugins/gradle/lib/gradle-api-8.0.jar

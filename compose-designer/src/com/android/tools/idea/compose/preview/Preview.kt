@@ -19,7 +19,6 @@ import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.configurations.DEVICE_CLASS_PHONE_ID
-import com.android.tools.idea.common.error.IssueNode
 import com.android.tools.idea.common.error.IssuePanelService
 import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.DefaultModelUpdater
@@ -29,10 +28,10 @@ import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.pickers.preview.property.referenceDeviceIds
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
-import com.android.tools.idea.compose.preview.essentials.ComposeEssentialsMode
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
 import com.android.tools.idea.compose.preview.fast.requestFastPreviewRefreshAndTrack
+import com.android.tools.idea.compose.preview.gallery.ComposeGalleryMode
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeScreenViewProvider
@@ -79,7 +78,6 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -118,7 +116,6 @@ import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JComponent
-import javax.swing.event.TreeSelectionListener
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -420,7 +417,7 @@ class ComposePreviewRepresentation(
         essentialsModeMessagingService.TOPIC,
         EssentialsModeMessenger.Listener {
           updateFpsForCurrentMode()
-          updateEssentialsMode(
+          updateGalleryMode(
             ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType
               .STUDIO_ESSENTIALS_MODE_SWITCH
           )
@@ -434,7 +431,7 @@ class ComposePreviewRepresentation(
       .subscribe(
         NlOptionsConfigurable.Listener.TOPIC,
         NlOptionsConfigurable.Listener {
-          updateEssentialsMode(
+          updateGalleryMode(
             ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.PREVIEW_LITE_MODE_SWITCH
           )
         }
@@ -457,24 +454,24 @@ class ComposePreviewRepresentation(
   }
 
   /**
-   * Updates the [composeWorkBench]'s [ComposeEssentialsMode] according to the state of Android
-   * Studio (and/or Compose Preview) Essentials Mode.
+   * Updates the [composeWorkBench]'s [ComposeGalleryMode] according to the state of Android Studio
+   * (and/or Compose Preview) Essentials Mode.
    *
    * @param sourceEventType type of the event that triggered the update
    */
-  private fun updateEssentialsMode(
+  private fun updateGalleryMode(
     sourceEventType: ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType? = null
   ) {
     val essentialsModeIsEnabled = ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-    val composePreviewViewEssentialsModeIsSet = composeWorkBench.essentialsMode != null
-    // Only update essentials mode if needed
-    if (essentialsModeIsEnabled == composePreviewViewEssentialsModeIsSet) return
+    val galleryModeIsSet = composeWorkBench.galleryMode != null
+    // Only update gallery mode if needed
+    if (essentialsModeIsEnabled == galleryModeIsSet) return
 
-    if (composePreviewViewEssentialsModeIsSet) {
-      composeWorkBench.essentialsMode = null
+    if (galleryModeIsSet) {
+      composeWorkBench.galleryMode = null
       setMode(PreviewMode.Default)
     } else {
-      composeWorkBench.essentialsMode = ComposeEssentialsMode(composeWorkBench.mainSurface)
+      composeWorkBench.galleryMode = ComposeGalleryMode(composeWorkBench.mainSurface)
     }
     logComposePreviewLiteModeEvent(sourceEventType)
     requestRefresh()
@@ -552,16 +549,6 @@ class ComposePreviewRepresentation(
 
   private val navigationHandler = ComposePreviewNavigationHandler()
 
-  private val issueListener: TreeSelectionListener = TreeSelectionListener {
-    val selectedNode = it?.newLeadSelectionPath?.lastPathComponent ?: return@TreeSelectionListener
-    (selectedNode as? IssueNode)?.issue?.let { issue ->
-      if (issue.source is VisualLintIssueProvider.VisualLintIssueSource) {
-        surface.issueListener.onIssueSelected(issue)
-      }
-    }
-    surface.repaint()
-  }
-
   private val previewElementModelAdapter =
     object : ComposePreviewElementModelAdapter() {
       override fun createDataContext(previewElement: ComposePreviewElementInstance) =
@@ -613,7 +600,15 @@ class ComposePreviewRepresentation(
     )
     uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
     surface.background = INTERACTIVE_BACKGROUND_COLOR
-    IssuePanelService.getInstance(project).addIssueSelectionListener(issueListener)
+    withContext(uiThread) {
+      IssuePanelService.getInstance(project)
+        .startUiCheck(
+          this@ComposePreviewRepresentation,
+          instance.instanceId,
+          instance.displaySettings.name,
+          surface
+        )
+    }
     forceRefresh().join()
   }
 
@@ -732,7 +727,7 @@ class ComposePreviewRepresentation(
     PsiCodeFileChangeDetectorService.getInstance(project)
 
   init {
-    updateEssentialsMode()
+    updateGalleryMode()
   }
 
   override val component: JComponent
@@ -1576,12 +1571,15 @@ class ComposePreviewRepresentation(
    * and generate multiple previews, one per reference device for the user to check.
    */
   sealed class UiCheckModeFilter {
+    abstract val basePreviewInstance: ComposePreviewElementInstance?
     abstract fun filterPreviewInstances(
       previewInstances: Collection<ComposePreviewElementInstance>
     ): Collection<ComposePreviewElementInstance>
     abstract fun filterGroups(groups: Set<PreviewGroup.Named>): Set<PreviewGroup.Named>
 
     object Disabled : UiCheckModeFilter() {
+      override val basePreviewInstance = null
+
       override fun filterPreviewInstances(
         previewInstances: Collection<ComposePreviewElementInstance>
       ): Collection<ComposePreviewElementInstance> = previewInstances
@@ -1589,6 +1587,8 @@ class ComposePreviewRepresentation(
     }
 
     class Enabled(selected: ComposePreviewElementInstance) : UiCheckModeFilter() {
+      override val basePreviewInstance = selected
+
       private val uiCheckPreviews: Collection<ComposePreviewElementInstance> =
         calculatePreviews(selected)
 
@@ -1723,8 +1723,10 @@ class ComposePreviewRepresentation(
       }
       is PreviewMode.UiCheck -> {
         log.debug("Stopping UI check")
+        uiCheckFilterFlow.value.basePreviewInstance?.let {
+          IssuePanelService.getInstance(project).stopUiCheck(it.instanceId, surface)
+        }
         uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
-        IssuePanelService.getInstance(project).removeIssueSelectionListener(issueListener)
       }
       is PreviewMode.AnimationInspection -> {
         onInteractivePreviewStop()
