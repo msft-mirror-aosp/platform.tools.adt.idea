@@ -15,19 +15,17 @@
  */
 package com.android.tools.idea.compose.preview.gallery
 
-import com.android.tools.adtui.TreeWalker
 import com.android.tools.idea.compose.preview.COMPOSE_PREVIEW_MANAGER
 import com.android.tools.idea.compose.preview.ComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.PreviewMode
 import com.android.tools.idea.compose.preview.SingleComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.TestComposePreviewManager
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.testFramework.MapDataContext
 import com.intellij.testFramework.TestActionEvent.createTestEvent
 import com.intellij.testFramework.assertInstanceOf
-import java.awt.Component
-import java.util.stream.Collectors
+import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ui.UIUtil
 import javax.swing.JPanel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -61,17 +59,10 @@ class ComposeGalleryModeTest {
     val gallery = ComposeGalleryMode(JPanel())
     val tabsToolbar = findTabs(gallery.component)
     tabsToolbar.actionGroup.update(createTestEvent(context))
+    runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
 
     assertEquals(firstElement, gallery.selectedKey!!.element)
-    assertInstanceOf<PreviewMode.Essential>(composePreviewManager.mode)
-    assertEquals(firstElement, (composePreviewManager.mode as PreviewMode.Essential).selected)
+    assertInstanceOf<PreviewMode.Gallery>(composePreviewManager.mode)
+    assertEquals(firstElement, (composePreviewManager.mode as PreviewMode.Gallery).selected)
   }
-
-  private fun findTabs(parent: Component): ActionToolbarImpl =
-    TreeWalker(parent)
-      .descendantStream()
-      .filter { it is ActionToolbarImpl }
-      .collect(Collectors.toList())
-      .map { it as ActionToolbarImpl }
-      .first { it.place == "Gallery Tabs" }
 }

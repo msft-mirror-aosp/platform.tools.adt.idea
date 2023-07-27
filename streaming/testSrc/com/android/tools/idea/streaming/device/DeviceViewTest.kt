@@ -40,6 +40,7 @@ import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
 import com.android.tools.idea.streaming.device.DeviceView.Companion.ANDROID_SCROLL_ADJUSTMENT_FACTOR
 import com.android.tools.idea.streaming.executeStreamingAction
+import com.android.tools.idea.streaming.extractText
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.CrashReporterRule
 import com.android.tools.idea.testing.executeCapturingLoggedErrors
@@ -130,7 +131,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.JButton
-import javax.swing.JLabel
+import javax.swing.JEditorPane
 import javax.swing.JScrollPane
 
 /**
@@ -168,9 +169,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testFrameListener() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(200, 300, 2.0)
     var frameListenerCalls = 0
 
@@ -194,9 +193,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testResizingRotationAndMouseInput() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(200, 300, 2.0)
     assertThat(agent.commandLine).matches("CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process" +
                                           " $DEVICE_PATH_BASE com.android.tools.screensharing.Main" +
@@ -290,10 +287,42 @@ internal class DeviceViewTest {
   }
 
   @Test
+  fun testUpsideDownMouseInput() {
+    assumeFFmpegAvailable()
+    createDeviceView(200, 300, 2.0)
+    waitForFrame()
+    assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.displayOrientationQuadrants).isEqualTo(0)
+
+    executeStreamingAction("android.device.rotate.right", view, project)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage(3))
+    executeStreamingAction("android.device.rotate.right", view, project)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage(2))
+    assertThat(view.displayOrientationQuadrants).isEqualTo(2)
+    assertThat(view.displayOrientationCorrectionQuadrants).isEqualTo(0)
+
+    fakeUi.mouse.press(40, 30)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(1007, 2107, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
+    fakeUi.mouse.release()
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(1007, 2107, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0))
+
+    runBlocking { agent.setDisplayOrientationCorrection(2) }
+    waitForFrame()
+    assertThat(view.displayOrientationQuadrants).isEqualTo(2)
+    assertThat(view.displayOrientationCorrectionQuadrants).isEqualTo(2)
+    fakeUi.mouse.press(40, 30)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(235, 1008, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
+    fakeUi.mouse.release()
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(235, 1008, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0))
+  }
+
+  @Test
   fun testRoundWatch() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     device = agentRule.connectDevice("Pixel Watch", 30, Dimension(384, 384), roundDisplay = true, abi = "armeabi-v7a",
                                      additionalDeviceProperties = mapOf(DevicePropertyNames.RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
 
@@ -309,9 +338,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testMultiTouch() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(50, 100, 2.0)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
@@ -356,9 +383,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testKeyboardInput() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(150, 250, 1.5)
     waitForFrame()
 
@@ -480,9 +505,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testZoom() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(100, 200, 2.0)
     waitForFrame()
 
@@ -550,9 +573,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testClipboardSynchronization() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(100, 200, 1.5)
     waitForFrame()
 
@@ -570,9 +591,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testAgentCrashAndReconnect() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(500, 1000, screenScale = 1.0)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
@@ -584,9 +603,9 @@ internal class DeviceViewTest {
       agent.writeToStderr("Kaput\n")
       agent.crash()
     }
-    val errorMessage = fakeUi.getComponent<JLabel>()
+    val errorMessage = fakeUi.getComponent<JEditorPane>()
     waitForCondition(2, SECONDS) { fakeUi.isShowing(errorMessage) }
-    assertThat(errorMessage.text).isEqualTo("Lost connection to the device. See the error log.")
+    assertThat(extractText(errorMessage.text)).isEqualTo("Lost connection to the device. See the error log.")
     var events = usageTrackerRule.agentTerminationEventsAsStrings()
     assertThat(events.size).isEqualTo(1)
     val eventPattern = Regex(
@@ -628,13 +647,13 @@ internal class DeviceViewTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue() // Let all ongoing activity finish before attempting to reconnect.
     val loggedErrors = executeCapturingLoggedErrors {
       fakeUi.clickOn(button)
-      waitForCondition(5, SECONDS) { errorMessage.text.isNotEmpty() }
+      waitForCondition(5, SECONDS) { extractText(errorMessage.text).isNotEmpty() }
       for (i in 1 until 3) {
         ConcurrencyUtil.awaitQuiescence(AndroidExecutors.getInstance().workerThreadExecutor as ThreadPoolExecutor, 5, SECONDS)
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
       }
     }
-    assertThat(errorMessage.text).isEqualTo("Failed to initialize the device agent. See the error log.")
+    assertThat(extractText(errorMessage.text)).isEqualTo("Failed to initialize the device agent. See the error log.")
     assertThat(button.text).isEqualTo("Retry")
     assertThat(loggedErrors).containsExactly("Failed to initialize the screen sharing agent")
 
@@ -657,25 +676,21 @@ internal class DeviceViewTest {
 
   @Test
   fun testConnectionTimeout() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.override(200, testRootDisposable)
     agent.startDelayMillis = 300
     val loggedErrors = executeCapturingLoggedErrors {
       createDeviceViewWithoutWaitingForAgent(500, 1000, screenScale = 1.0)
-      val errorMessage = fakeUi.getComponent<JLabel>()
+      val errorMessage = fakeUi.getComponent<JEditorPane>()
       waitForCondition(2, SECONDS) { fakeUi.isShowing(errorMessage) }
-      assertThat(errorMessage.text).isEqualTo("Device agent is not responding")
+      assertThat(extractText(errorMessage.text)).isEqualTo("Device agent is not responding")
     }
     assertThat(loggedErrors).containsExactly("Failed to initialize the screen sharing agent")
   }
 
   @Test
   fun testDeviceDisconnection() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(500, 1000)
     waitForFrame()
 
@@ -796,9 +811,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testDisableMultiTouchDuringHardwareInput() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     createDeviceView(50, 100)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))

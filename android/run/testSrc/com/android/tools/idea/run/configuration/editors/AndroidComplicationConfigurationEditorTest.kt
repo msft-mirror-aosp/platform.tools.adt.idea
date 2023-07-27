@@ -16,6 +16,9 @@
 package com.android.tools.idea.run.configuration.editors
 
 import com.android.testutils.MockitoKt.whenever
+import com.android.testutils.ignore.IgnoreTestRule
+import com.android.testutils.ignore.IgnoreWithCondition
+import com.android.testutils.ignore.OnWindows
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.swing.enableHeadlessDialogs
@@ -50,7 +53,6 @@ import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.components.JBTextField
-import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -72,6 +74,9 @@ class AndroidComplicationConfigurationEditorTest {
   @get:Rule
   val projectRule = AndroidProjectRule.inMemory().onEdt()
 
+  @get:Rule
+  val ignoreTests = IgnoreTestRule()
+
   private val fixture get() = projectRule.fixture
 
   private val module get() = projectRule.projectRule.module
@@ -85,7 +90,7 @@ class AndroidComplicationConfigurationEditorTest {
   //region editor-utils
   private val componentComboBox get() = TreeWalker(editor).descendants().filterIsInstance<ComboBox<String>>()[1]
   private val modulesComboBox get() = TreeWalker(editor).descendants().filterIsInstance<ModulesComboBox>().first()
-  private val slotsPanel get() = editor.components.firstIsInstance<SlotsPanel>().slotsUiPanel
+  private val slotsPanel get() = (editor.components.first {it is SlotsPanel} as SlotsPanel).slotsUiPanel
 
   private val <T> ComboBox<T>.items get() = (0 until itemCount).map { getItemAt(it) }
   private fun getPanelForSlot(slotNum: Int) = slots(slotsPanel)[slotNum] as JPanel
@@ -226,6 +231,7 @@ class AndroidComplicationConfigurationEditorTest {
   }
 
   @Test
+  @IgnoreWithCondition(reason = "b/290892445", condition = OnWindows::class)
   fun testCleanupComplicationNameOnModuleChange() {
     runConfiguration.componentLaunchOptions.componentName = "com.example.MyIconComplication"
     runConfiguration.setModule(module)

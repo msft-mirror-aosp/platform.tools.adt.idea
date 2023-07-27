@@ -57,13 +57,9 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.Optional
-import java.util.stream.Collectors
 
-class LiveEditCompiler(val project: Project) {
+class LiveEditCompiler(val project: Project, private val irClassCache: IrClassCache? = null) {
 
   private val LOGGER = LogWrapper(Logger.getInstance(LiveEditCompiler::class.java))
 
@@ -118,6 +114,9 @@ class LiveEditCompiler(val project: Project) {
           throw e
         } catch (e : Exception) {
           throw internalError("Unexpected error during compilation command", file, e)
+          // Unlike the other exception where it is temporary errors or setup failures. These type of internal error should be
+          // rare and probably worth logging for bug reports.
+          logger.log(e.stackTraceToString())
         }
       }
     }
@@ -201,6 +200,11 @@ class LiveEditCompiler(val project: Project) {
         throw p
       } catch (t : Throwable) {
         throw internalError("Internal Error During Code Gen", t)
+      }
+
+      if (StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER.get()) {
+        LiveEditOutputBuilder.getGeneratedCode(file, generationState.factory.asList(), irClassCache!!, inlineCandidateCache, output)
+        return@runWithCompileLock
       }
 
       // 3) From the information we gather at the PSI changes and the output classes of Step 2, we

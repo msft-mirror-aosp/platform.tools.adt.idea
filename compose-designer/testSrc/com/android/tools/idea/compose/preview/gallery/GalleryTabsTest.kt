@@ -18,10 +18,12 @@ package com.android.tools.idea.compose.preview.gallery
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -48,7 +50,8 @@ class GalleryTabsTest {
     invokeAndWaitIfNeeded {
       val keys = setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
       val tabs = GalleryTabs(rootComponent, { keys }, { _, _ -> })
-      val ui = FakeUi(tabs).apply { updateToolbars() }
+      FakeUi(tabs).apply { updateToolbars() }
+      runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
       assertEquals(keys.first(), tabs.selectedKey)
     }
   }
@@ -60,7 +63,8 @@ class GalleryTabsTest {
       var providedKeys = setOf(TestKey("First Tab")) + keys
       val tabs = GalleryTabs(rootComponent, { providedKeys }, { _, _ -> })
       providedKeys = keys
-      val ui = FakeUi(tabs).apply { updateToolbars() }
+      FakeUi(tabs).apply { updateToolbars() }
+      runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
       assertEquals(keys.first(), tabs.selectedKey)
     }
   }
@@ -71,6 +75,9 @@ class GalleryTabsTest {
       val newTab = TestKey("newTab")
       val providedKeys = mutableSetOf(TestKey("Tab"), TestKey("Tab2"), TestKey("Tab3"))
       val tabs = GalleryTabs(rootComponent, { providedKeys }) { _, _ -> }
+      // Use a direct executor instead of the default (invokeLater) for replacing the toolbar,
+      // so the ActionButtonWithText can be found when using TreeWalker.
+      tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
       val ui = FakeUi(tabs)
       ui.updateNestedActions()
       assertEquals(3, findAllActionButtons(tabs).size)
@@ -88,6 +95,9 @@ class GalleryTabsTest {
       val keyThree = TestKey("Third")
       var providedKeys = setOf(keyTwo)
       val tabs = GalleryTabs(rootComponent, { providedKeys }) { _, _ -> }
+      // Use a direct executor instead of the default (invokeLater) for replacing the toolbar,
+      // so the ActionButtonWithText can be found when using TreeWalker.
+      tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
       providedKeys = setOf(keyOne, keyTwo, keyThree)
       val ui = FakeUi(tabs)
       ui.updateNestedActions()
@@ -105,6 +115,7 @@ class GalleryTabsTest {
       val providedKeys = setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
       val tabs = GalleryTabs(rootComponent, { providedKeys }) { _, _ -> }
       val ui = FakeUi(tabs).apply { updateToolbars() }
+      runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
       val toolbar = findTabs(tabs)
       // Update toolbars
       ui.updateNestedActions()
@@ -121,6 +132,7 @@ class GalleryTabsTest {
         mutableSetOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab"))
       val tabs = GalleryTabs(rootComponent, { providedKeys }) { _, _ -> }
       val ui = FakeUi(tabs).apply { updateToolbars() }
+      runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
       val toolbar = findTabs(tabs)
       // Set new set of keys.
       providedKeys += TestKey("New Tab")
@@ -147,6 +159,31 @@ class GalleryTabsTest {
       val updatedToolbar = findTabs(tabs)
       // New toolbar was created.
       assertNotEquals(toolbar, updatedToolbar)
+    }
+  }
+
+  @Test
+  fun `toolbar keeps selection if key is only updated`() {
+    invokeAndWaitIfNeeded {
+      val keyToUpdate = TestKey("Key to update")
+      var providedKeys =
+        mutableSetOf(TestKey("First"), TestKey("Second"), keyToUpdate, TestKey("Fourth"))
+      val tabs = GalleryTabs(rootComponent, { providedKeys }) { _, _ -> }
+      // Use a direct executor instead of the default (invokeLater) for replacing the toolbar,
+      // so the ActionButtonWithText can be found when using TreeWalker.
+      tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
+      val root = JPanel(BorderLayout()).apply { size = Dimension(400, 400) }
+      root.add(tabs, BorderLayout.NORTH)
+      val ui = FakeUi(root).apply { updateNestedActions() }
+
+      val buttons = findAllActionButtons(root)
+      ui.clickOn(buttons[2])
+      assertEquals("Key to update", tabs.selectedKey?.title)
+
+      providedKeys =
+        mutableSetOf(TestKey("First"), TestKey("Second"), TestKey("updated"), TestKey("Fourth"))
+      ui.updateNestedActions()
+      assertEquals("updated", tabs.selectedKey?.title)
     }
   }
 
@@ -185,6 +222,9 @@ class GalleryTabsTest {
         ) { _, key ->
           selectedTab = key
         }
+      // Use a direct executor instead of the default (invokeLater) for replacing the toolbar,
+      // so the ActionButtonWithText can be found when using TreeWalker.
+      tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
       val root = JPanel(BorderLayout()).apply { size = Dimension(400, 400) }
       root.add(tabs, BorderLayout.NORTH)
       val ui = FakeUi(root).apply { updateNestedActions() }
@@ -212,6 +252,9 @@ class GalleryTabsTest {
           { setOf(TestKey("First Tab"), TestKey("Second Tab"), TestKey("Third Tab")) },
         ) { _, _ ->
         }
+      // Use a direct executor instead of the default (invokeLater) for replacing the toolbar,
+      // so the ActionButtonWithText can be found when using TreeWalker.
+      tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
       // Width is 100, so only first tab is actually visible.
       val root = JPanel(BorderLayout()).apply { size = Dimension(150, 400) }
       root.add(tabs, BorderLayout.NORTH)
@@ -266,14 +309,4 @@ class GalleryTabsTest {
       .filter { it is ActionButtonWithText }
       .collect(Collectors.toList())
       .map { it as ActionButtonWithText }
-
-  private fun findTabs(parent: Component) = findToolbar(parent, "Gallery Tabs")
-
-  private fun findToolbar(parent: Component, place: String): ActionToolbarImpl =
-    TreeWalker(parent)
-      .descendantStream()
-      .filter { it is ActionToolbarImpl }
-      .collect(Collectors.toList())
-      .map { it as ActionToolbarImpl }
-      .first { it.place == place }
 }

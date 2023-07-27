@@ -16,8 +16,10 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.insights.persistence.AppInsightsSettings
+import com.android.tools.idea.sdk.AndroidEnvironmentChecker
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.components.service
+import com.intellij.openapi.wm.ext.LibraryDependentToolWindow
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl.MockToolWindow
@@ -51,5 +53,17 @@ class AppInsightsToolWindowFactoryTest {
 
     assertThat(toolWindow.contentManager.selectedContent)
       .isEqualTo(toolWindow.contentManager.contents.find { it.tabName == "Test 2" })
+  }
+
+  @Test
+  fun isLibraryToolWindow() {
+    val toolWindow =
+      LibraryDependentToolWindow.EXTENSION_POINT_NAME.extensions.find {
+        it.id == "App Quality Insights"
+      }
+        ?: throw AssertionError("Tool window not found")
+
+    assertThat(toolWindow.librarySearchClass)
+      .isEqualTo(AndroidEnvironmentChecker::class.qualifiedName)
   }
 }

@@ -48,6 +48,8 @@ import org.junit.runners.Parameterized.*
 /**
  * Template test that generates the template files and diffs them against golden files located in
  * android-templates/testData/golden
+ *
+ * For context and instructions on running and generating golden files, see go/template-diff-tests
  */
 @RunWith(Parameterized::class)
 class TemplateDiffTest(private val testMode: TestMode) {
@@ -196,18 +198,25 @@ class TemplateDiffTest(private val testMode: TestMode) {
     throw RuntimeException("Must be called from a @Test")
   }
 
-  private val withKotlin: ProjectStateCustomizer =
+  private fun withKotlin(
+    kotlinVersion: String = TestUtils.KOTLIN_VERSION_FOR_TESTS
+  ): ProjectStateCustomizer =
     { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
       projectData.language = Language.Kotlin
       // Use the Kotlin version for tests
-      projectData.kotlinVersion = TestUtils.KOTLIN_VERSION_FOR_TESTS
+      projectData.kotlinVersion = kotlinVersion
     }
 
+  private val withSpecificKotlin: ProjectStateCustomizer =
+    withKotlin(RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = true))
+
+  @Suppress("SameParameterValue")
   private fun withApplicationId(applicationId: String): ProjectStateCustomizer =
     { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
       projectData.applicationPackage = applicationId
     }
 
+  @Suppress("SameParameterValue")
   private fun withPackage(packageName: String): ProjectStateCustomizer =
     { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
       moduleData.packageName = packageName
@@ -238,14 +247,14 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewEmptyViewsActivityKotlin() {
-    checkCreateTemplate("Empty Views Activity", withKotlin)
+    checkCreateTemplate("Empty Views Activity", withKotlin())
   }
 
   @Test
   fun testNewEmptyViewsActivityKotlin_notInRootPackage() {
     checkCreateTemplate(
       "Empty Views Activity",
-      withKotlin,
+      withKotlin(),
       withApplicationId("com.mycompany.myapp"),
       withPackage("com.mycompany.myapp.subpackage")
     )
@@ -262,7 +271,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
       { moduleData: ModuleTemplateDataBuilder, _: ProjectTemplateDataBuilder ->
         moduleData.isMaterial3 = true
       }
-    checkCreateTemplate("Basic Views Activity", withKotlin, withMaterial3)
+    checkCreateTemplate("Basic Views Activity", withKotlin(), withMaterial3)
   }
 
   @Test
@@ -272,7 +281,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewViewModelActivityWithKotlin() {
-    checkCreateTemplate("Fragment + ViewModel", withKotlin)
+    checkCreateTemplate("Fragment + ViewModel", withKotlin())
   }
 
   @Test
@@ -282,7 +291,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewTabbedActivityWithKotlin() {
-    checkCreateTemplate("Tabbed Views Activity", withKotlin)
+    checkCreateTemplate("Tabbed Views Activity", withKotlin())
   }
 
   @Test
@@ -292,7 +301,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewNavigationDrawerActivityWithKotlin() {
-    checkCreateTemplate("Navigation Drawer Views Activity", withKotlin)
+    checkCreateTemplate("Navigation Drawer Views Activity", withKotlin())
   }
 
   @Test
@@ -302,7 +311,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewPrimaryDetailFlowWithKotlin() {
-    checkCreateTemplate("Primary/Detail Views Flow", withKotlin)
+    checkCreateTemplate("Primary/Detail Views Flow", withKotlin())
   }
 
   @Test
@@ -312,7 +321,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewFullscreenActivityWithKotlin() {
-    checkCreateTemplate("Fullscreen Views Activity", withKotlin)
+    checkCreateTemplate("Fullscreen Views Activity", withKotlin())
   }
 
   @Test
@@ -328,7 +337,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
   fun testNewFullscreenActivityWithKotlin_activityNotInRootPackage() {
     checkCreateTemplate(
       "Fullscreen Views Activity",
-      withKotlin,
+      withKotlin(),
       withApplicationId("com.mycompany.myapp"),
       withPackage("com.mycompany.myapp.subpackage")
     )
@@ -341,7 +350,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewLoginActivityWithKotlin() {
-    checkCreateTemplate("Login Views Activity", withKotlin)
+    checkCreateTemplate("Login Views Activity", withKotlin())
   }
 
   @Test
@@ -351,7 +360,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewScrollingActivityWithKotlin() {
-    checkCreateTemplate("Scrolling Views Activity", withKotlin)
+    checkCreateTemplate("Scrolling Views Activity", withKotlin())
   }
 
   @Test
@@ -361,7 +370,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewSettingsActivityWithKotlin() {
-    checkCreateTemplate("Settings Views Activity", withKotlin)
+    checkCreateTemplate("Settings Views Activity", withKotlin())
   }
 
   @Test
@@ -371,7 +380,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testBottomNavigationActivityWithKotlin() {
-    checkCreateTemplate("Bottom Navigation Views Activity", withKotlin)
+    checkCreateTemplate("Bottom Navigation Views Activity", withKotlin())
   }
 
   @Test
@@ -381,7 +390,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testGoogleAdMobAdsActivityWithKotlin() {
-    checkCreateTemplate("Google AdMob Ads Views Activity", withKotlin)
+    checkCreateTemplate("Google AdMob Ads Views Activity", withKotlin())
   }
 
   @Test
@@ -391,7 +400,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testGoogleMapsActivityWithKotlin() {
-    checkCreateTemplate("Google Maps Views Activity", withKotlin)
+    checkCreateTemplate("Google Maps Views Activity", withKotlin())
   }
 
   @Test
@@ -401,7 +410,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testGooglePayActivityWithKotlin() {
-    checkCreateTemplate("Google Pay Views Activity", withKotlin)
+    checkCreateTemplate("Google Pay Views Activity", withKotlin())
   }
 
   @Test
@@ -411,7 +420,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testGoogleWalletActivityWithKotlin() {
-    checkCreateTemplate("Google Wallet Activity", withKotlin)
+    checkCreateTemplate("Google Wallet Activity", withKotlin())
   }
 
   @Test
@@ -421,16 +430,11 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testGameActivityWithKotlin() {
-    checkCreateTemplate("Game Activity (C++)", withKotlin)
+    checkCreateTemplate("Game Activity (C++)", withKotlin())
   }
 
   @Test
   fun testComposeActivityMaterial3() {
-    val withSpecificKotlin: ProjectStateCustomizer =
-      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
-        projectData.language = Language.Kotlin
-        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = true)
-      }
     checkCreateTemplate("Empty Activity", withSpecificKotlin) // Compose is always Kotlin
   }
 
@@ -441,26 +445,16 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testResponsiveActivityWithKotlin() {
-    checkCreateTemplate("Responsive Views Activity", withKotlin)
+    checkCreateTemplate("Responsive Views Activity", withKotlin())
   }
 
   @Test
   fun testNewComposeWearActivity() {
-    val withSpecificKotlin: ProjectStateCustomizer =
-      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
-        projectData.language = Language.Kotlin
-        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
-      }
     checkCreateTemplate("Empty Wear App", withSpecificKotlin)
   }
 
   @Test
   fun testNewComposeWearActivityWithTileAndComplication() {
-    val withSpecificKotlin: ProjectStateCustomizer =
-      { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
-        projectData.language = Language.Kotlin
-        projectData.kotlinVersion = RenderTemplateModel.getComposeKotlinVersion(isMaterial3 = false)
-      }
     checkCreateTemplate("Empty Wear App With Tile And Complication", withSpecificKotlin)
   }
 
@@ -471,7 +465,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewTvActivityWithKotlin() {
-    checkCreateTemplate("Android TV Blank Views Activity", withKotlin)
+    checkCreateTemplate("Android TV Blank Views Activity", withKotlin())
   }
 
   @Test
@@ -481,7 +475,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewNativeCppActivityWithKotlin() {
-    checkCreateTemplate("Native C++", withKotlin)
+    checkCreateTemplate("Native C++", withKotlin())
   }
 
   /*
@@ -496,7 +490,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewListFragmentWithKotlin() {
-    checkCreateTemplate("Fragment (List)", withKotlin)
+    checkCreateTemplate("Fragment (List)", withKotlin())
   }
 
   @Test
@@ -506,7 +500,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewModalBottomSheetWithKotlin() {
-    checkCreateTemplate("Modal Bottom Sheet", withKotlin)
+    checkCreateTemplate("Modal Bottom Sheet", withKotlin())
   }
 
   @Test
@@ -516,7 +510,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewBlankFragmentWithKotlin() {
-    checkCreateTemplate("Fragment (Blank)", withKotlin)
+    checkCreateTemplate("Fragment (Blank)", withKotlin())
   }
 
   @Test
@@ -526,7 +520,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewSettingsFragmentWithKotlin() {
-    checkCreateTemplate("Settings Fragment", withKotlin)
+    checkCreateTemplate("Settings Fragment", withKotlin())
   }
 
   @Test
@@ -536,7 +530,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewViewModelFragmentWithKotlin() {
-    checkCreateTemplate("Fragment (with ViewModel)", withKotlin)
+    checkCreateTemplate("Fragment (with ViewModel)", withKotlin())
   }
 
   @Test
@@ -546,7 +540,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewScrollingFragmentWithKotlin() {
-    checkCreateTemplate("Scrolling Fragment", withKotlin)
+    checkCreateTemplate("Scrolling Fragment", withKotlin())
   }
 
   @Test
@@ -556,7 +550,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewFullscreenFragmentWithKotlin() {
-    checkCreateTemplate("Fullscreen Fragment", withKotlin)
+    checkCreateTemplate("Fullscreen Fragment", withKotlin())
   }
 
   @Test
@@ -566,7 +560,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewGoogleMapsFragmentWithKotlin() {
-    checkCreateTemplate("Google Maps Fragment", withKotlin)
+    checkCreateTemplate("Google Maps Fragment", withKotlin())
   }
 
   @Test
@@ -576,7 +570,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewGoogleAdMobFragmentWithKotlin() {
-    checkCreateTemplate("Google AdMob Ads Fragment", withKotlin)
+    checkCreateTemplate("Google AdMob Ads Fragment", withKotlin())
   }
 
   @Test
@@ -586,7 +580,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testLoginFragmentWithKotlin() {
-    checkCreateTemplate("Login Fragment", withKotlin)
+    checkCreateTemplate("Login Fragment", withKotlin())
   }
 
   /*
@@ -606,7 +600,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewBroadcastReceiverWithKotlin() {
-    checkCreateTemplate("Broadcast Receiver", withKotlin)
+    checkCreateTemplate("Broadcast Receiver", withKotlin())
   }
 
   @Test
@@ -616,7 +610,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewContentProviderWithKotlin() {
-    checkCreateTemplate("Content Provider", withKotlin)
+    checkCreateTemplate("Content Provider", withKotlin())
   }
 
   @Test
@@ -626,7 +620,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewSliceProviderWithKotlin() {
-    checkCreateTemplate("Slice Provider", withKotlin)
+    checkCreateTemplate("Slice Provider", withKotlin())
   }
 
   @Test
@@ -641,7 +635,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewIntentServiceWithKotlin() {
-    checkCreateTemplate("Service (IntentService)", withKotlin)
+    checkCreateTemplate("Service (IntentService)", withKotlin())
   }
 
   @Test
@@ -651,7 +645,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewServiceWithKotlin() {
-    checkCreateTemplate("Service", withKotlin)
+    checkCreateTemplate("Service", withKotlin())
   }
 
   @Test
@@ -691,7 +685,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testAutomotiveMessagingServiceWithKotlin() {
-    checkCreateTemplate("Messaging Service", withKotlin)
+    checkCreateTemplate("Messaging Service", withKotlin())
   }
 
   @Test
@@ -701,6 +695,6 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testAutomotiveMediaServiceWithKotlin() {
-    checkCreateTemplate("Media Service", withKotlin)
+    checkCreateTemplate("Media Service", withKotlin())
   }
 }

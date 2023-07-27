@@ -32,6 +32,7 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.ui.AnActionButton
@@ -44,10 +45,12 @@ import java.awt.BorderLayout
 import java.awt.Point
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
+import java.util.concurrent.Executor
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
 import javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+import org.jetbrains.annotations.TestOnly
 
 /** A key for each tab in [GalleryTabs]. */
 interface TitledKey {
@@ -196,6 +199,10 @@ class GalleryTabs<Key : TitledKey>(
     }
   private var previousToolbar: JComponent? = null
 
+  private var updateToolbarExecutor: Executor = Executor { command ->
+    invokeLater { command.run() }
+  }
+
   init {
     add(
       JBScrollPane(centerPanel, VERTICAL_SCROLLBAR_NEVER, HORIZONTAL_SCROLLBAR_AS_NEEDED).apply {
@@ -229,6 +236,7 @@ class GalleryTabs<Key : TitledKey>(
 
     // Only update toolbar if there are any changes.
     if (needsUpdate) {
+      val currentKeys = labelActions.keys.toSet()
       labelActions.clear()
       keys.forEach { labelActions[it] = TabLabelAction(it) }
       // Remove previous toolbar if exists.
@@ -238,11 +246,36 @@ class GalleryTabs<Key : TitledKey>(
         createToolbar("Gallery Tabs", GalleryActionGroup(labelActions.values.toList())).apply {
           background = Colors.DEFAULT_BACKGROUND_COLOR
         }
-      centerPanel.add(toolbar, BorderLayout.CENTER)
-      previousToolbar = toolbar
-      // If selectedKey was removed, select first key.
-      updateSelectedKey(e, if (keys.contains(selectedKey)) selectedKey else keys.firstOrNull())
+
+      updateToolbarExecutor.execute {
+        centerPanel.add(toolbar, BorderLayout.CENTER)
+        previousToolbar = toolbar
+        // If selectedKey was removed select first key. If it was only updated (i.e. if a
+        // parameter value has changed), we select the new key corresponding to it.
+        val newSelectedKey =
+          // TODO(b/292482974): Find the correct key when there are Multipreview changes
+          when {
+            keys.contains(selectedKey) -> {
+              // Trivial case. When the selected key is present, keep the selection
+              selectedKey
+            }
+            keys.size == currentKeys.size -> {
+              // The selectedKey was updated so we need to find the new corresponding key
+              (keys subtract currentKeys).singleOrNull() ?: keys.firstOrNull()
+            }
+            else -> {
+              // Default to the first key if we can't match it to an existing key
+              keys.firstOrNull()
+            }
+          }
+        updateSelectedKey(e, newSelectedKey)
+      }
     }
+  }
+
+  @TestOnly
+  fun setUpdateToolbarExecutorForTests(executor: Executor) {
+    updateToolbarExecutor = executor
   }
 
   /** Creates [ActionToolbarImpl] with [actions]. */

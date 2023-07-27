@@ -33,9 +33,10 @@ import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefin
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.TargetSelectionActionFactory
 import com.android.tools.idea.layoutinspector.ui.toolbar.createLayoutInspectorMainToolbar
-import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
 import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.DEVICE_ID_KEY
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
+import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.DataManager
@@ -47,11 +48,10 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.EditorNotificationPanel.Status
-import com.intellij.ui.IdeBorderFactory
 import com.intellij.ui.JBColor
-import com.intellij.ui.SideBorder
 import com.intellij.ui.content.Content
 import com.intellij.util.concurrency.EdtExecutorService
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Container
@@ -69,7 +69,7 @@ const val EMBEDDED_EXPERIMENTAL_MESSAGE_KEY = "embedded.inspector.experimental.n
  * to the same process is not a supported use case by Layout Inspector.
  */
 object LayoutInspectorManagerGlobalState {
-  val tabsWithLayoutInspector = mutableSetOf<TabId>()
+  val tabsWithLayoutInspector = mutableSetOf<DeviceId>()
 }
 
 /** Responsible for managing Layout Inspector in Running Devices Tool Window. */
@@ -86,16 +86,16 @@ interface LayoutInspectorManager : Disposable {
      * Called each time the state of [LayoutInspectorManager] changes. Which happens each time
      * Layout Inspector is enabled or disabled for a tab.
      */
-    fun onStateUpdate(state: Set<TabId>)
+    fun onStateUpdate(state: Set<DeviceId>)
   }
 
   fun addStateListener(listener: StateListener)
 
-  /** Injects or removes Layout Inspector in the tab associated to [tabId]. */
-  fun enableLayoutInspector(tabId: TabId, enable: Boolean)
+  /** Injects or removes Layout Inspector in the tab associated to [deviceId]. */
+  fun enableLayoutInspector(deviceId: DeviceId, enable: Boolean)
 
-  /** Returns true if Layout Inspector is enabled for [tabId], false otherwise. */
-  fun isEnabled(tabId: TabId): Boolean
+  /** Returns true if Layout Inspector is enabled for [deviceId], false otherwise. */
+  fun isEnabled(deviceId: DeviceId): Boolean
 }
 
 /** This class is meant to be used on the UI thread, to avoid concurrency issues. */
@@ -103,7 +103,7 @@ interface LayoutInspectorManager : Disposable {
 private class LayoutInspectorManagerImpl(private val project: Project) : LayoutInspectorManager {
 
   /** Tabs on which Layout Inspector is enabled. */
-  private var tabsWithLayoutInspector = setOf<TabId>()
+  private var tabsWithLayoutInspector = setOf<DeviceId>()
     set(value) {
       ApplicationManager.getApplication().assertIsDispatchThread()
       if (value == field) {
@@ -114,7 +114,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       val tabsRemoved = field - value
 
       // check if the selected tab was removed
-      if (tabsRemoved.contains(selectedTab?.tabId)) {
+      if (tabsRemoved.contains(selectedTab?.deviceId)) {
         selectedTab = null
       }
 
@@ -136,7 +136,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
       val previousTab = field
       // only disable Layout Inspector if the previous tab is still open.
-      if (previousTab != null && previousTab.tabId in existingRunningDevicesTabs) {
+      if (previousTab != null && previousTab.deviceId in existingRunningDevicesTabs) {
         previousTab.disableLayoutInspector()
         previousTab.layoutInspector.stopInspector()
       }
@@ -148,11 +148,11 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       }
 
       // lock device model to only allow connections to this device
-      value.layoutInspector.deviceModel?.forcedDeviceSerialNumber = value.tabId.deviceSerialNumber
+      value.layoutInspector.deviceModel?.forcedDeviceSerialNumber = value.deviceId.serialNumber
 
       val selectedDevice =
         value.layoutInspector.deviceModel?.devices?.find {
-          it.serial == value.tabId.deviceSerialNumber
+          it.serial == value.deviceId.serialNumber
         }
       // the device might not be available yet in app inspection
       if (selectedDevice != null) {
@@ -160,14 +160,13 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         value.layoutInspector.foregroundProcessDetection?.startPollingDevice(
           selectedDevice,
           // only stop polling if the previous tab is still open.
-          previousTab?.tabId in existingRunningDevicesTabs
+          previousTab?.deviceId in existingRunningDevicesTabs
         )
       }
 
       // inject Layout Inspector UI
       value.enableLayoutInspector()
 
-      // TODO(b/265150325) remove before the end of canaries
       showExperimentalWarning(value.layoutInspector)
     }
 
@@ -176,7 +175,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
   /**
    * The list of tabs currently open in Running Devices, with or without Layout Inspector enabled.
    */
-  private var existingRunningDevicesTabs: List<TabId> = emptyList()
+  private var existingRunningDevicesTabs: List<DeviceId> = emptyList()
 
   init {
     check(LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled) {
@@ -186,18 +185,18 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     RunningDevicesStateObserver.getInstance(project)
       .addListener(
         object : RunningDevicesStateObserver.Listener {
-          override fun onSelectedTabChanged(tabId: TabId?) {
+          override fun onSelectedTabChanged(deviceId: DeviceId?) {
             selectedTab =
-              if (tabId != null && tabsWithLayoutInspector.contains(tabId)) {
+              if (deviceId != null && tabsWithLayoutInspector.contains(deviceId)) {
                 // Layout Inspector was enabled for this tab.
-                createTabState(tabId)
+                createTabState(deviceId)
               } else {
                 // Layout Inspector was not enabled for this tab.
                 null
               }
           }
 
-          override fun onExistingTabsChanged(existingTabs: List<TabId>) {
+          override fun onExistingTabsChanged(existingTabs: List<DeviceId>) {
             existingRunningDevicesTabs = existingTabs
             // If the Running Devices Tool Window is collapsed, all tabs are removed.
             // We don't want to update our state when this happens, because it means we would lose
@@ -210,10 +209,11 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       )
   }
 
-  private fun createTabState(tabId: TabId): SelectedTabState {
+  private fun createTabState(deviceId: DeviceId): SelectedTabState {
     ApplicationManager.getApplication().assertIsDispatchThread()
     val runningDevicesContentManager = project.getRunningDevicesContentManager()
-    val selectedTabContent = runningDevicesContentManager?.contents?.find { it.tabId == tabId }
+    val selectedTabContent =
+      runningDevicesContentManager?.contents?.find { it.deviceId == deviceId }
     val selectedTabDataProvider = selectedTabContent?.component as? DataProvider
 
     val streamingContentPanel =
@@ -233,7 +233,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         displayView = displayView
       )
 
-    return SelectedTabState(project, this, tabId, tabComponents, project.getLayoutInspector())
+    return SelectedTabState(project, deviceId, tabComponents, project.getLayoutInspector())
   }
 
   override fun addStateListener(listener: LayoutInspectorManager.StateListener) {
@@ -242,32 +242,32 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     stateListeners.add(listener)
   }
 
-  override fun enableLayoutInspector(tabId: TabId, enable: Boolean) {
+  override fun enableLayoutInspector(deviceId: DeviceId, enable: Boolean) {
     ApplicationManager.getApplication().assertIsDispatchThread()
     if (enable) {
-      if (tabsWithLayoutInspector.contains(tabId)) {
+      if (tabsWithLayoutInspector.contains(deviceId)) {
         // do nothing if Layout Inspector is already enabled
         return
       }
 
-      tabsWithLayoutInspector = tabsWithLayoutInspector + tabId
-      selectedTab = createTabState(tabId)
+      tabsWithLayoutInspector = tabsWithLayoutInspector + deviceId
+      selectedTab = createTabState(deviceId)
     } else {
-      if (!tabsWithLayoutInspector.contains(tabId)) {
+      if (!tabsWithLayoutInspector.contains(deviceId)) {
         // do nothing if Layout Inspector is not enabled
         return
       }
 
-      tabsWithLayoutInspector = tabsWithLayoutInspector - tabId
-      if (selectedTab?.tabId == tabId) {
+      tabsWithLayoutInspector = tabsWithLayoutInspector - deviceId
+      if (selectedTab?.deviceId == deviceId) {
         selectedTab = null
       }
     }
   }
 
-  override fun isEnabled(tabId: TabId): Boolean {
+  override fun isEnabled(deviceId: DeviceId): Boolean {
     ApplicationManager.getApplication().assertIsDispatchThread()
-    return tabsWithLayoutInspector.contains(tabId)
+    return tabsWithLayoutInspector.contains(deviceId)
   }
 
   override fun dispose() {
@@ -308,15 +308,14 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
   /**
    * Represents the state of the selected tab.
    *
-   * @param tabId The id of selected tab.
+   * @param deviceId The id of selected tab.
    * @param tabComponents The components of the selected tab.
    * @param wrapLogic The logic used to wrap the tab in a workbench.
    */
   @UiThread
   private data class SelectedTabState(
     val project: Project,
-    val disposable: Disposable,
-    val tabId: TabId,
+    val deviceId: DeviceId,
     val tabComponents: TabComponents,
     val layoutInspector: LayoutInspector,
     val wrapLogic: WrapLogic =
@@ -341,11 +340,18 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         { layoutInspector.currentClient.stats },
       )
   ) {
+
+    private var layoutInspectorDisposable: Disposable? = null
+
     fun enableLayoutInspector() {
       ApplicationManager.getApplication().assertIsDispatchThread()
+
+      val disposable = Disposer.newDisposable(tabComponents.disposable)
+      layoutInspectorDisposable = disposable
+
       wrapLogic.wrapComponent { centerPanel ->
+        val inspectorPanel = BorderLayoutPanel()
         val mainPanel = BorderLayoutPanel()
-        val subPanel = BorderLayoutPanel()
 
         val toggleDeepInspectAction =
           ToggleDeepInspectAction(
@@ -357,7 +363,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         val processPicker =
           TargetSelectionActionFactory.getSingleDeviceProcessPicker(
             layoutInspector,
-            tabId.deviceSerialNumber
+            deviceId.serialNumber
           )
         val toolbar =
           createLayoutInspectorMainToolbar(
@@ -367,15 +373,15 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
             listOf(toggleDeepInspectAction)
           )
         mainPanel.add(toolbar.component, BorderLayout.NORTH)
-        mainPanel.add(subPanel, BorderLayout.CENTER)
-
-        subPanel.add(InspectorBanner(layoutInspector.notificationModel), BorderLayout.NORTH)
-        subPanel.add(centerPanel, BorderLayout.CENTER)
+        mainPanel.add(centerPanel, BorderLayout.CENTER)
 
         val workBench =
           createLayoutInspectorWorkbench(project, disposable, layoutInspector, mainPanel)
-        workBench.component.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.TOP)
-        workBench
+
+        inspectorPanel.add(InspectorBanner(layoutInspector.notificationModel), BorderLayout.NORTH)
+        inspectorPanel.add(workBench, BorderLayout.CENTER)
+        inspectorPanel.border = JBUI.Borders.customLineTop(JBColor.border())
+        inspectorPanel
       }
       tabComponents.displayView.add(layoutInspectorRenderer)
 
@@ -388,6 +394,10 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
     fun disableLayoutInspector() {
       ApplicationManager.getApplication().assertIsDispatchThread()
+
+      layoutInspectorDisposable?.let { Disposer.dispose(it) }
+      layoutInspectorDisposable = null
+
       wrapLogic.unwrapComponent()
       tabComponents.displayView.remove(layoutInspectorRenderer)
       layoutInspector.inspectorModel.selectionListeners.remove(selectionChangedListener)
@@ -525,9 +535,7 @@ private fun Project.getLayoutInspector(): LayoutInspector {
   return LayoutInspectorProjectService.getInstance(this).getLayoutInspector()
 }
 
-private val Content.tabId: TabId?
+private val Content.deviceId: DeviceId?
   get() {
-    val deviceSerialNumber =
-      (component as? DataProvider)?.getData(SERIAL_NUMBER_KEY.name) as? String ?: return null
-    return TabId(deviceSerialNumber)
+    return (component as? DataProvider)?.getData(DEVICE_ID_KEY.name) as? DeviceId ?: return null
   }

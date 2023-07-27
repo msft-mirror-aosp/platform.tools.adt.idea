@@ -29,6 +29,8 @@ import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.categorytable.CategoryTable
 import com.android.tools.adtui.categorytable.IconButton
 import com.android.tools.adtui.categorytable.RowKey.ValueRowKey
+import com.android.tools.adtui.stdui.ActionData
+import com.android.tools.adtui.stdui.EmptyStatePanel
 import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -38,7 +40,6 @@ import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ConcurrentHashMultiset
-import com.intellij.icons.AllIcons
 import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -54,6 +55,7 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -116,12 +118,45 @@ constructor(
 
   private val splitter = JBSplitter(true)
   private val scrollPane = JBScrollPane()
+
+  /**
+   * Depending on how many ways we have to create devices, this is either null, an AnAction that
+   * creates a device, or a DropDownAction that shows a popup menu of ways to create a device.
+   */
+  private val addDevice: AnAction? = run {
+    val createDeviceActions = createDeviceActions.map { it.toAnAction() }
+    val createTemplateActions = createTemplateActions.map { it.toAnAction() }
+    val createActions = createDeviceActions + createTemplateActions
+
+    when (createActions.size) {
+      0 -> null
+      1 -> createActions[0]
+      else ->
+        DropDownAction("Add Device", "Add a new device", StudioIcons.Common.ADD).also {
+          it.addAll(createActions)
+        }
+    }
+  }
+
+  private val emptyStatePanel =
+    EmptyStatePanel(
+        "No devices connected.",
+        actionData =
+          addDevice?.let {
+            ActionData(it.templatePresentation.description.titlecase() + "...") {
+              ActionToolbarUtil.findActionButton(toolbar, addDevice)?.click()
+            }
+          }
+      )
+      .apply { background = JBUI.CurrentTheme.Table.background(false, true) }
+
   internal var deviceTable =
     CategoryTable(
       columns(project, panelScope),
       DeviceRowData::key,
       uiDispatcher,
-      rowDataProvider = ::provideRowData
+      rowDataProvider = ::provideRowData,
+      emptyStatePanel = emptyStatePanel
     )
 
   private val templateInstantiationCount = ConcurrentHashMultiset.create<DeviceTemplate>()
@@ -129,42 +164,27 @@ constructor(
   private val pairedDevicesFlow =
     pairedDevicesFlow.stateIn(panelScope, SharingStarted.Lazily, emptyMap())
 
-  init {
-    layout = BorderLayout()
-
-    // TODO: Add group selector dropdown
-
+  private val toolbar: ActionToolbar = run {
     val groupingActions =
-      DefaultActionGroup("Group", null, AllIcons.Actions.GroupBy).apply {
+      DefaultActionGroup("Group", null, StudioIcons.Common.GROUP).apply {
         isPopup = true
         add(Separator.create("Group By"))
         add(GroupByNoneAction(deviceTable))
         add(GroupingAction(deviceTable, DeviceTableColumns.FormFactor, "Form Factor"))
         add(GroupingAction(deviceTable, DeviceTableColumns.Status))
         add(GroupingAction(deviceTable, DeviceTableColumns.HandleType))
-        // TODO: Group by Device groups, OEM, Source
-      }
-
-    val createDeviceActions = createDeviceActions.map { it.toAnAction() }
-    val createTemplateActions = createTemplateActions.map { it.toAnAction() }
-    val createActions = createDeviceActions + createTemplateActions
-
-    val addDevice =
-      when (createActions.size) {
-        0 -> null
-        1 -> createActions[0]
-        else ->
-          DropDownAction("Add Device", "Add a new device", StudioIcons.Common.ADD).also {
-            it.addAll(createActions)
-          }
       }
 
     val typeSpecificActions =
       ActionManager.getInstance().getAction("Android.DeviceManager.TypeSpecificActions")
-    val toolbar =
-      createToolbar(
-        listOfNotNull(groupingActions, Separator.create(), addDevice, typeSpecificActions)
-      )
+
+    createToolbar(
+      listOfNotNull(groupingActions, Separator.create(), addDevice, typeSpecificActions)
+    )
+  }
+
+  init {
+    layout = BorderLayout()
 
     add(toolbar.component, BorderLayout.NORTH)
 
@@ -276,6 +296,7 @@ constructor(
         e.presentation.isEnabled = presentation.value.enabled
         e.presentation.icon = presentation.value.icon
         e.presentation.text = presentation.value.label
+        e.presentation.description = presentation.value.label
       }
 
       override fun actionPerformed(e: AnActionEvent) {

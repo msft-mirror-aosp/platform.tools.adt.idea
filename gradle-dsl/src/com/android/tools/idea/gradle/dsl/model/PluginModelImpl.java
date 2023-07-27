@@ -24,8 +24,10 @@ import com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.InexpressiblePropertyTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.InfixPropertyTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.LiteralToInfixTransform;
+import com.android.tools.idea.gradle.dsl.model.ext.transforms.MapPropertyTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PluginNameTransform;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PluginAliasTransform;
+import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
@@ -46,11 +48,11 @@ import static com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.Valu
 
 public class PluginModelImpl implements PluginModel {
   @NonNls public static final String ALIAS = "alias";
-  @NonNls private static final String APPLY = "apply";
+  @NonNls public static final String APPLY = "apply";
   @NonNls public static final String ID = "id";
   @NonNls public static final String KOTLIN = "kotlin";
   @NonNls public static final String PLUGIN = "plugin";
-  @NonNls private static final String VERSION = "version";
+  @NonNls public static final String VERSION = "version";
 
   @NotNull
   private final GradleDslElement myCompleteElement;
@@ -104,6 +106,7 @@ public class PluginModelImpl implements PluginModel {
     return GradlePropertyModelBuilder.create(myCompleteElement)
       .addTransform(new PluginAliasTransform(ID, ArtifactDependencySpec::getName, ArtifactDependencySpecImpl::setName))
       .addTransform(new PluginNameTransform())
+      .addLanguageTransform(GradleDslNameConverter.Kind.TOML , new MapPropertyTransform(ID))
       .buildResolved();
   }
 
@@ -114,6 +117,7 @@ public class PluginModelImpl implements PluginModel {
       .addTransform(new PluginAliasTransform(VERSION, ArtifactDependencySpec::getVersion, ArtifactDependencySpecImpl::setVersion))
       .addTransform(new LiteralToInfixTransform(VERSION))
       .addTransform(new InfixPropertyTransform(VERSION))
+      .addLanguageTransform(GradleDslNameConverter.Kind.TOML , new MapPropertyTransform(VERSION))
       .addTransform(new InexpressiblePropertyTransform())
       .buildResolved();
   }
@@ -124,6 +128,7 @@ public class PluginModelImpl implements PluginModel {
     return GradlePropertyModelBuilder.create(myCompleteElement)
       .addTransform(new LiteralToInfixTransform(APPLY))
       .addTransform(new InfixPropertyTransform(APPLY))
+      .addLanguageTransform(GradleDslNameConverter.Kind.TOML , new MapPropertyTransform(APPLY))
       .addTransform(new InexpressiblePropertyTransform())
       .buildResolved();
   }

@@ -248,6 +248,9 @@
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$PopulateCachesActivity"/>
     <postStartupActivity implementation="com.android.tools.idea.modes.essentials.EssentialsModeRecommender"/>
     <postStartupActivity implementation="com.android.tools.idea.modes.essentials.EssentialsModeNotifierOnStartup"/>
+    <applicationConfigurable groupId="appearance" groupWeight="140" id="essentials.mode.settings"
+                             instance="com.android.tools.idea.modes.essentials.EssentialsModeSettingsPage"/>
+    <statusBarWidgetFactory id="Essentials Mode Widget" implementation="com.android.tools.idea.modes.essentials.EssentialsModeWidgetFactory"/>
     <postStartupActivity implementation="com.intellij.ide.actions.EssentialHighlightingNotifier"/>
     <lang.foldingBuilder language="JAVA" implementationClass="com.android.tools.idea.folding.ResourceFoldingBuilder" />
     <codeFoldingOptionsProvider instance="com.android.tools.idea.folding.AndroidCodeFoldingOptionsProvider"/>
@@ -313,6 +316,7 @@
 
     <applicationService serviceInterface="com.android.tools.rendering.classloading.ModuleClassLoaderManager"
                         serviceImplementation="org.jetbrains.android.uipreview.StudioModuleClassLoaderManager"/>
+    <applicationService serviceImplementation="com.android.tools.idea.stats.ExperimentalUISettings"/>
 
     <registryKey key="ide.essentials.mode"
                  description="Essentials Mode is a lighter-weight version of the editor, which turns some features off until receiving an explicit SaveAll command"
@@ -385,6 +389,14 @@
                             id="AndroidJavaCompletionContributor"
                             implementationClass="org.jetbrains.android.AndroidJavaCompletionContributor"
                             order="first"/>
+    <completion.contributor language="kotlin"
+                            id="ResourceCompletionContributor"
+                            implementationClass="com.android.tools.idea.res.completion.ResourceCompletionContributor"
+                            order="first" />
+    <completion.contributor language="JAVA"
+                            id="ResourceCompletionContributor"
+                            implementationClass="com.android.tools.idea.res.completion.ResourceCompletionContributor"
+                            order="first" />
     <completion.contributor language="JAVA"
                             implementationClass="org.jetbrains.android.inspections.ResourceTypeCompletionContributor"
                             id="resourceTypeCompletion"

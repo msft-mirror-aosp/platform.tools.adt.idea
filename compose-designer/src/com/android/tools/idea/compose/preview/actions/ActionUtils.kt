@@ -41,14 +41,25 @@ private class ComposePreviewNonInteractiveActionWrapper(actions: List<AnAction>)
   }
 }
 
+// TODO(b/292057010) Enable group filtering for Gallery mode.
+private class ComposePreviewDefaultWrapper(actions: List<AnAction>) : DefaultActionGroup(actions) {
+  override fun update(e: AnActionEvent) {
+    super.update(e)
+
+    e.getData(COMPOSE_PREVIEW_MANAGER)?.let {
+      e.presentation.isVisible = it.mode is PreviewMode.Default
+    }
+  }
+}
+
 /**
- * Helper method that sets the [PreviewMode] of all [PreviewModeManager]s in the given
- * [AnActionEvent]'s [DataContext] to [PreviewMode.Default].
+ * Helper method that navigates back to the previous [PreviewMode] for all [PreviewModeManager]s in
+ * the given [AnActionEvent]'s [DataContext].
  *
  * @param e the [AnActionEvent] holding the context of the action
  */
-internal fun setDefaultPreviewMode(e: AnActionEvent) {
-  findComposePreviewManagersForContext(e.dataContext).forEach { it.setMode(PreviewMode.Default) }
+internal fun navigateBack(e: AnActionEvent) {
+  findComposePreviewManagersForContext(e.dataContext).forEach { it.back() }
 }
 
 /**
@@ -66,7 +77,14 @@ internal fun AnAction.visibleOnlyInComposeStaticPreview(): ActionGroup =
   listOf(this).visibleOnlyInComposeStaticPreview()
 
 /**
- * The given disables the actions if a12 surface is refreshing or if the [sceneView] contains
+ * Makes the given action only visible when the Compose preview is not in interactive or animation
+ * modes. Returns an [ActionGroup] that handles the visibility.
+ */
+internal fun AnAction.visibleOnlyInComposeDefaultPreview(): ActionGroup =
+  ComposePreviewDefaultWrapper(listOf(this))
+
+/**
+ * The given disables the actions if any surface is refreshing or if the [sceneView] contains
  * errors.
  */
 fun List<AnAction>.disabledIfRefreshingOrRenderErrors(sceneView: SceneView): List<AnAction> = map {

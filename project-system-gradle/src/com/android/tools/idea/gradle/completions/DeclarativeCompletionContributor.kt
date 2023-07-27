@@ -17,11 +17,14 @@ package com.android.tools.idea.gradle.completions
 
 import com.android.SdkConstants
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.completions.ElementType.*
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElementList
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElementSchema
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription
+import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription
 import com.intellij.codeInsight.completion.CompletionConfidence
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -40,8 +43,9 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.findParentOfType
 import com.intellij.util.ProcessingContext
 import com.intellij.util.ThreeState
-import org.toml.lang.TomlLanguage
+import org.toml.lang.psi.TomlArrayTable
 import org.toml.lang.psi.TomlFile
+import org.toml.lang.psi.TomlHeaderOwner
 import org.toml.lang.psi.TomlKey
 import org.toml.lang.psi.TomlKeySegment
 import org.toml.lang.psi.TomlKeyValue
@@ -52,20 +56,19 @@ import org.toml.lang.psi.TomlTableHeader
 val DECLARATIVE_BUILD_FILE = psiFile().withName(StandardPatterns.string().equalTo(SdkConstants.FN_DECLARATIVE_BUILD_GRADLE))
 
 val INSIDE_TABLE_HEADER =
-  psiElement(TomlTableHeader::class.java)
-    .withLanguage(TomlLanguage)
+  psiElement().withSuperParent(3, TomlTableHeader::class.java)
     .inFile(DECLARATIVE_BUILD_FILE)
 
-val INSIDE_SIMPLE_KEY = psiElement().withParent(TomlKeySegment::class.java)
-  .withLanguage(TomlLanguage)
-  .inFile(DECLARATIVE_BUILD_FILE)
-
+val INSIDE_SIMPLE_KEY =
+  psiElement().withSuperParent(3, TomlKeyValue::class.java)
+    .inFile(DECLARATIVE_BUILD_FILE)
 
 private enum class ElementType(val str: String) {
   STRING("String"),
   INTEGER("Integer"),
   BOOLEAN("Boolean"),
   BLOCK("Block element"),
+  ARRAY_TABLE("Array Table"),
   FIRST_LEVEL_BLOCK("Block element"),
   STRING_ARRAY("String Array"),
   INTEGER_ARRAY("Integer Array"),
@@ -73,9 +76,9 @@ private enum class ElementType(val str: String) {
   GENERIC_PROPERTY("Property")
 }
 
-private data class Suggestion(val name:String, val type: ElementType)
+private data class Suggestion(val name: String, val type: ElementType)
 
-class NamedNode(val name: String) {
+private class NamedNode(val name: String) {
   private val childrenMap = mutableMapOf<String, NamedNode>()
 
   val children = childrenMap.keys
@@ -83,9 +86,9 @@ class NamedNode(val name: String) {
     childrenMap[key.name] = key
   }
 
-  fun getOrPut(name:String, newKey:NamedNode):NamedNode{
+  fun getOrPut(name: String, newKey: NamedNode): NamedNode {
     val key = childrenMap[name]
-    if(key == null){
+    if (key == null) {
       childrenMap[name] = newKey
       return newKey
     }
@@ -107,8 +110,13 @@ class DeclarativeCompletionContributor : CompletionContributor() {
                  val segment = parameters.position.parent as? TomlKeySegment ?: return
                  val path = generateExistingPath(segment)
                  result.addAllElements(getSuggestions(path, existingKeys).map {
-                   LookupElementBuilder.create(it.name)
+                   val element = LookupElementBuilder.create(it.name)
                      .withTypeText(it.type.str, null, true)
+                   when (it.type) {
+                     GENERIC_PROPERTY, STRING, INTEGER, BOOLEAN, STRING_ARRAY -> element.withInsertHandler(extractFromTable(it.type))
+                     ARRAY_TABLE -> element.withInsertHandler(insertArrayTable())
+                     else -> element
+                   }
                  })
                }
              }
@@ -124,8 +132,9 @@ class DeclarativeCompletionContributor : CompletionContributor() {
                  result.addAllElements(getSuggestions(path, existingKeys).map {
                    val element = LookupElementBuilder.create(it.name)
                      .withTypeText(it.type.str, null, true)
-                   when(it.type){
-                     ElementType.GENERIC_PROPERTY -> element.withInsertHandler(insertProperty())
+                   when (it.type) {
+                     GENERIC_PROPERTY, STRING, BOOLEAN, INTEGER, STRING_ARRAY -> element.withInsertHandler(insertProperty(it.type))
+                     ARRAY_TABLE -> element.withInsertHandler(insertArrayTable())
                      else -> element
                    }
                  })
@@ -135,13 +144,98 @@ class DeclarativeCompletionContributor : CompletionContributor() {
     }
   }
 
-  private fun insertProperty(): InsertHandler<LookupElement?> =
+  private fun extractFromTable(type: ElementType): InsertHandler<LookupElement?> =
     InsertHandler { context: InsertionContext, item: LookupElement ->
       val editor = context.editor
       val document = editor.document
       context.commitDocument()
-      document.insertString(context.tailOffset, " = ")
-      editor.caretModel.moveToOffset(context.tailOffset)
+      val inserted = item.lookupString
+
+      // delete inserted string including dot
+      val startInserted = context.tailOffset - inserted.length
+      document.deleteString(startInserted - 1, context.tailOffset)
+
+      // insert lookupString after new line
+      var newOffset = document.text.indexOf("\n", startInserted - 1)
+      if (newOffset == -1) {
+        newOffset = document.text.length
+      }
+      document.insertString(newOffset, "\n" + inserted)
+
+      val offsetAfterInsertion = newOffset + inserted.length + 1
+      editor.caretModel.moveToOffset(offsetAfterInsertion)
+      context.tailOffset = offsetAfterInsertion
+
+      insertProperty(type).handleInsert(context, item)
+    }
+
+  /**
+   * Insert handler adds double square brackets if needed.
+   * Handler detects single brackets and append second to the existing ones.
+   * Analysis happens withing single line of where editing is done.
+   */
+  private fun insertArrayTable(): InsertHandler<LookupElement?> =
+    InsertHandler { context: InsertionContext, _: LookupElement ->
+      val editor = context.editor
+      val document = editor.document
+      context.commitDocument()
+
+      val text = document.text
+      // Here we extract line of where suggestion happened.
+      // Boundaries are \n symbol or start/end of the file
+      val lineStart = text.substring(0, context.tailOffset).indexOf("\n") + 1
+      // Line end is \n symbol or comment symbol
+      val lineEnd = "[\\n#]".toRegex().find(text)?.range?.start ?: text.length
+      val currLine = text.substring(lineStart, lineEnd)
+
+      val lineStartNoWhitespaces = currLine.indexOfFirst { !it.isWhitespace() }
+
+      if (!currLine.startsWith("[[", lineStartNoWhitespaces)) {
+        if (currLine.startsWith("[", lineStartNoWhitespaces)) {
+          document.insertString(lineStart + lineStartNoWhitespaces, "[")
+        }
+        else {
+          document.insertString(lineStart + lineStartNoWhitespaces, "[[")
+        }
+      }
+
+      if (!currLine.contains("]]")) {
+        // if inserted string is at the very end of the file - in this case tailOffset is bigger than doc size
+        if (context.tailOffset < document.text.length &&
+            document.text[context.tailOffset] == ']') {
+          document.insertString(context.tailOffset, "]")
+        }
+        else {
+          // or adding ]] at the end of inserted string (tailOffset updates itself after we, maybe, inserted [[)
+          document.insertString(context.tailOffset, "]]")
+        }
+      }
+
+      val newOffset = document.text.indexOf("\n", context.tailOffset).takeIf { it > -1 } ?: document.text.length
+      //inserting new line symbol with caret right before the end of current line
+      document.insertString(newOffset, "\n")
+      editor.caretModel.moveToOffset(newOffset + 1)
+    }
+
+  private fun insertProperty(type: ElementType): InsertHandler<LookupElement?> =
+    InsertHandler { context: InsertionContext, _: LookupElement ->
+      val editor = context.editor
+      val document = editor.document
+      context.commitDocument()
+      when(type){
+        STRING -> {
+          document.insertString(context.tailOffset, " = \"\"")
+          editor.caretModel.moveToOffset(context.tailOffset - 1)
+        }
+        STRING_ARRAY -> {
+          document.insertString(context.tailOffset, " = [\"\"]")
+          editor.caretModel.moveToOffset(context.tailOffset - 2)
+        }
+        else -> {
+          document.insertString(context.tailOffset, " = ")
+          editor.caretModel.moveToOffset(context.tailOffset)
+        }
+      }
     }
 
   private fun getDeclaredKeys(tomlFile: TomlFile): NamedNode {
@@ -185,9 +279,13 @@ class DeclarativeCompletionContributor : CompletionContributor() {
       currentModel = blockElement.schemaConstructor.construct()
     }
     val result = mutableListOf<Suggestion>()
-    result += currentModel.blockElementDescriptions.map { Suggestion(it.key, ElementType.BLOCK)  }
+    result += currentModel.blockElementDescriptions.map {
+      Suggestion(it.key,
+                 if(isArrayBlock(it.value)) ARRAY_TABLE else BLOCK
+      )
+    }
     result += currentModel.getPropertiesInfo(GradleDslNameConverter.Kind.TOML).entrySet
-      .filterNot{ currentNode?.children?.contains(it.surfaceSyntaxDescription.name) ?: false }
+      .filterNot { currentNode?.children?.contains(it.surfaceSyntaxDescription.name) ?: false }
       .map {
         val propertyDescription = it.modelEffectDescription.property
         Suggestion(it.surfaceSyntaxDescription.name, propertyDescription.transformToSuggestionType())
@@ -195,14 +293,17 @@ class DeclarativeCompletionContributor : CompletionContributor() {
     return result
   }
 
+  private fun isArrayBlock(description: PropertiesElementDescription<*>):Boolean =
+    GradleDslElementList::class.java.isAssignableFrom(description.clazz)
+
   private fun ModelPropertyDescription.transformToSuggestionType(): ElementType {
     return when (this.type) {
-      ModelPropertyType.MUTABLE_LIST, ModelPropertyType.MUTABLE_SET -> ElementType.STRING_ARRAY
-      ModelPropertyType.STRING -> ElementType.STRING
-      ModelPropertyType.BOOLEAN -> ElementType.BOOLEAN
-      ModelPropertyType.NUMERIC -> ElementType.INTEGER
+      ModelPropertyType.MUTABLE_LIST, ModelPropertyType.MUTABLE_SET -> STRING_ARRAY
+      ModelPropertyType.STRING -> STRING
+      ModelPropertyType.BOOLEAN -> BOOLEAN
+      ModelPropertyType.NUMERIC -> INTEGER
       // TODO -  need to handle map type
-      else -> ElementType.GENERIC_PROPERTY
+      else -> GENERIC_PROPERTY
     }
   }
 
@@ -221,19 +322,20 @@ class DeclarativeCompletionContributor : CompletionContributor() {
       }
       while (key != null)
     }
-    val parentTableHeaderKey = nextElement.findParentOfType<TomlTable>()?.header?.key
+    val parentTableHeaderKey = nextElement.findParentOfType<TomlHeaderOwner>()?.header?.key
     parentTableHeaderKey?.appendReversedSegments(result, psiElement)
     return result.reversed()
   }
 
   private fun TomlKey.appendReversedSegments(list: MutableList<String>, startElement: PsiElement) {
-    segments.reversed().forEach{ segment -> if (segment != startElement) list += segment.text }
+    segments.reversed().forEach { segment -> if (segment != startElement) list += segment.text }
   }
 
 }
 
 class EnableAutoPopupInDeclarativeBuildCompletion : CompletionConfidence() {
-  override fun shouldSkipAutopopup(contextElement: PsiElement, psiFile: PsiFile, offset: Int): ThreeState =
-    if (INSIDE_SIMPLE_KEY.accepts(contextElement) ||
-        INSIDE_TABLE_HEADER.accepts(contextElement)) ThreeState.NO else ThreeState.UNSURE
+  override fun shouldSkipAutopopup(contextElement: PsiElement, psiFile: PsiFile, offset: Int): ThreeState = when {
+    INSIDE_SIMPLE_KEY.accepts(contextElement) || INSIDE_TABLE_HEADER.accepts(contextElement) -> ThreeState.NO
+    else -> ThreeState.UNSURE
+  }
 }

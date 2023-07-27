@@ -150,16 +150,20 @@ CodecInfo* SelectVideoEncoder(const string& mime_type) {
   return new CodecInfo(mime_type, codec_name, Size(max_width, max_height), Size(width_alignment, height_alignment));
 }
 
-string GetVideoEncoderDetails(const string& codec_name, const string& mime_type, int32_t width, int32_t height) {
+string GetVideoEncoderDetails(const CodecInfo& codec_info, int32_t width, int32_t height) {
+  string codec_name = codec_info.name;
+  string mime_type = codec_info.mime_type;
   Jni jni = Jvm::GetJni();
   JClass clazz = jni.GetClass("com/android/tools/screensharing/CodecInfo");
   jmethodID method = clazz.GetStaticMethod("getVideoEncoderDetails", "(Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;");
   return clazz.CallStaticObjectMethod(method, JString(jni, codec_name).ref(), JString(jni, mime_type).ref(), width, height).ToString();
 }
 
-[[noreturn]] void FatalVideoEncoderError(const char* error_message, const string& codec_name, const string& mime_type,
-                                         int32_t width, int32_t height) {
-  Log::Fatal("%s:\n%s", error_message, GetVideoEncoderDetails(codec_name, mime_type, width, height).c_str());
+[[noreturn]] void FatalVideoEncoderError(const char* error_message, const CodecInfo& codec_info, int32_t width, int32_t height) {
+  if (codec_info.max_resolution.width <= 640 && codec_info.max_resolution.height <= 640) {
+    Log::Fatal(WEAK_VIDEO_ENCODER, "%s:\n%s", error_message, GetVideoEncoderDetails(codec_info, width, height).c_str());
+  }
+  Log::Fatal(REPEATED_VIDEO_ENCODER_ERRORS, "%s:\n%s", error_message, GetVideoEncoderDetails(codec_info, width, height).c_str());
 }
 
 void WriteChannelHeader(const string& codec_name, int socket_fd) {
@@ -184,33 +188,40 @@ int32_t RoundUpToMultipleOf(int32_t value, int32_t power_of_two) {
   return (value + power_of_two - 1) & ~(power_of_two - 1);
 }
 
-Size ComputeVideoSize(Size rotated_display_size, Size max_resolution, Size size_alignment) {
+Size ComputeVideoSize(Size rotated_display_size, const CodecInfo& codec_info, Size max_video_resolution) {
+  int32_t max_width = min(max_video_resolution.width, codec_info.max_resolution.width);
+  int32_t max_height = min(max_video_resolution.height, codec_info.max_resolution.height);
   double display_width = rotated_display_size.width;
   double display_height = rotated_display_size.height;
-  if (size_alignment.width < 8) {
-    size_alignment.width = 8;  // Increase horizontal size alignment to accommodate FFmpeg video decoder.
-  }
-  double scale = max(min(1.0, min(max_resolution.width / display_width, max_resolution.height / display_height)),
+  double scale = max(min(1.0, min(max_width / display_width, max_height / display_height)),
                      max(MIN_VIDEO_RESOLUTION / display_width, MIN_VIDEO_RESOLUTION / display_height));
-  // We are computing width of the frame first and the height based on the width to make sure that,
-  // if the video frame has a sightly different aspect ration than the display, it is taller rather
-  // than wider.
-  int32_t width = RoundUpToMultipleOf(lround(display_width * scale), size_alignment.width);
-  int32_t height = RoundUpToMultipleOf(lround(width * display_height / display_width), size_alignment.height);
+  // The horizontal size alignment is multiple of 8 to accommodate FFmpeg video decoder.
+  int32_t alignment_width = RoundUpToMultipleOf(codec_info.size_alignment.width, 8);
+  int32_t alignment_height = codec_info.size_alignment.height;
+  // Video width is computed first and height is computed based on the width to make sure that,
+  // if the video has a sightly different aspect ratio than the display, it is taller rather than
+  // wider.
+  int32_t width = RoundUpToMultipleOf(lround(display_width * scale), alignment_width);
+  int32_t height;
+  while (width > codec_info.max_resolution.width ||
+      (height = RoundUpToMultipleOf(lround(width * display_height / display_width), alignment_height)) > codec_info.max_resolution.height) {
+    width -= alignment_width;  // Reduce video size to stay within maximum resolution of the codec.
+  }
   return Size { width, height };
 }
 
 Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_video_resolution, AMediaFormat* media_format,
                     const DisplayInfo& display_info) {
-  Size max_resolution = Size(min(max_video_resolution.width, codec_info.max_resolution.width),
-                             min(max_video_resolution.height, codec_info.max_resolution.height));
-  Size video_size = ComputeVideoSize(display_info.logical_size, max_resolution, codec_info.size_alignment);
+  Size video_size = ComputeVideoSize(display_info.logical_size, codec_info, max_video_resolution);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_WIDTH, video_size.width);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_HEIGHT, video_size.height);
+  int32_t bit_rate = 0;
+  AMediaFormat_getInt32(media_format, AMEDIAFORMAT_KEY_BIT_RATE, &bit_rate);
   media_status_t status = AMediaCodec_configure(codec, media_format, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
   if (status != AMEDIA_OK) {
-    Log::Fatal("AMediaCodec_configure returned %d for video_size=%dx%d", status, video_size.width, video_size.height);
+    Log::Fatal("AMediaCodec_configure returned %d for video_size=%dx%d bit rate=%d", status, video_size.width, video_size.height, bit_rate);
   }
+  Log::I("Configured %s video_size=%dx%d bit rate=%d", codec_info.name.c_str(), video_size.width, video_size.height, bit_rate);
   return video_size;
 }
 
@@ -308,8 +319,7 @@ void DisplayStreamer::Run() {
       }
     }
     // Use heuristics for determining a bit rate value that doesn't cause SIGABRT in the encoder (b/251659422).
-    int32_t bit_rate = IsUnderpoweredCodec(codec_info_->max_resolution, display_info.logical_size) ?
-        BIT_RATE_REDUCED : BIT_RATE;
+    int32_t bit_rate = IsUnderpoweredCodec(codec_info_->max_resolution, display_info.logical_size) ? BIT_RATE_REDUCED : BIT_RATE;
     if (max_bit_rate_ > 0 && bit_rate > max_bit_rate_) {
       bit_rate = max_bit_rate_;
     }
@@ -380,8 +390,7 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(AMediaCodec* codec, VideoPa
     CodecOutputBuffer codec_buffer(codec);
     if (!codec_buffer.Deque(-1)) {
       if (++consequent_deque_error_count_ >= MAX_SUBSEQUENT_ERRORS) {
-        FatalVideoEncoderError("Too many video encoder errors", codec_info_->name, codec_info_->mime_type,
-                               packet_header->display_width, packet_header->display_height);
+        FatalVideoEncoderError("Too many video encoder errors", *codec_info_, packet_header->display_width, packet_header->display_height);
       }
       continue;
     }

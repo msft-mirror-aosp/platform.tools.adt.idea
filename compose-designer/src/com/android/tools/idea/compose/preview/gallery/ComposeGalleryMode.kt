@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview.gallery
 
+import com.android.tools.idea.compose.preview.ComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.PreviewMode
 import com.android.tools.idea.compose.preview.findComposePreviewManagersForContext
 import com.intellij.openapi.actionSystem.DataContext
@@ -32,7 +33,7 @@ class ComposeGalleryMode(rootComponent: JComponent) {
   private val tabChangeListener: (DataContext, PreviewElementKey?) -> Unit = { dataContext, tab ->
     val previewElement = tab?.element
     findComposePreviewManagersForContext(dataContext).forEach { previewManager ->
-      previewElement?.let { previewManager.setMode(PreviewMode.Essential(previewElement)) }
+      previewElement?.let { previewManager.setMode(PreviewMode.Gallery(previewElement)) }
     }
   }
 
@@ -48,6 +49,12 @@ class ComposeGalleryMode(rootComponent: JComponent) {
 
   /** [JPanel] for tabs. */
   val component: JComponent = tabs
+
+  /** Simulates a tab change, firing the [tabChangeListener]. Intended to be used in tests only. */
+  @TestOnly
+  fun triggerTabChange(context: DataContext, previewElement: ComposePreviewElementInstance) {
+    tabChangeListener(context, PreviewElementKey(previewElement))
+  }
 
   @get:TestOnly
   val selectedKey: PreviewElementKey?

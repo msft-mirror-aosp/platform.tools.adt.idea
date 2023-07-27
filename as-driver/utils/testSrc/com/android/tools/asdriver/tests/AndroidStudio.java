@@ -363,16 +363,24 @@ public class AndroidStudio implements AutoCloseable {
     waitForComponent(builder);
   }
 
-  public void waitForComponentByClass(String... classNames) {
+  public void waitForComponentByClass(String... classNames){
+    waitForComponentByClass(false, classNames);
+  }
+
+  public void waitForComponentByClass(boolean waitForEnabled, String... classNames) {
     ComponentMatchersBuilder builder = new ComponentMatchersBuilder();
     for (String className : classNames) {
       builder.addSwingClassRegexMatch(String.format(".*%s.*", className));
     }
-    waitForComponent(builder);
+    waitForComponent(builder, waitForEnabled);
   }
 
-  public void waitForComponent(ComponentMatchersBuilder requestBuilder) {
-    ASDriver.WaitForComponentRequest request = ASDriver.WaitForComponentRequest.newBuilder().addAllMatchers(requestBuilder.build()).build();
+  public void waitForComponent(ComponentMatchersBuilder requestBuilder){
+    waitForComponent(requestBuilder, false);
+  }
+
+  public void waitForComponent(ComponentMatchersBuilder requestBuilder, boolean waitForEnabled) {
+    ASDriver.WaitForComponentRequest request = ASDriver.WaitForComponentRequest.newBuilder().addAllMatchers(requestBuilder.build()).setWaitForEnabled(waitForEnabled).build();
     ASDriver.WaitForComponentResponse response = androidStudio.waitForComponent(request);
     switch (response.getResult()) {
       case OK -> {}
@@ -382,15 +390,10 @@ public class AndroidStudio implements AutoCloseable {
     }
   }
 
-  public void waitForProjectInit() throws IOException, InterruptedException{
-    // Both waits are needed in order for app to launch
-    install.getIdeaLog().waitForMatchingLine(".*UnindexedFilesIndexer - Finished for.*", 180, TimeUnit.SECONDS);
-    install.getIdeaLog().reset();
-    install.getIdeaLog().waitForMatchingLine(".*\\[Building Activity\\] Saving symbols.*", 180, TimeUnit.SECONDS);
-
+  public void waitForProjectInit(){
     // Need to wait for the device selector to be ready
     System.out.println("Wait for ActionToolBar");
-    this.waitForComponentByClass("MyNavBarWrapperPanel", "ActionToolbarImpl", "DeviceAndSnapshotComboBoxAction");
+    this.waitForComponentByClass(true, "MyNavBarWrapperPanel", "ActionToolbarImpl", "DeviceAndSnapshotComboBoxAction");
   }
 
   public List<AnalysisResult> analyzeFile(String file) {

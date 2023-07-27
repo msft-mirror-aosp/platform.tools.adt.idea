@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.editors
 
+import com.android.flags.junit.FlagRule
+import com.android.sdklib.AndroidVersion
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.testing.AndroidProjectRule.Companion.withSdk
@@ -40,8 +42,9 @@ import org.mockito.junit.MockitoJUnit
 
 @RunWith(JUnit4::class)
 class AttachAndroidSdkSourcesNotificationProviderTest {
+  // TODO(b/291755082): Update to 34 once 34 sources are published
   @get:Rule
-  val myAndroidProjectRule = withSdk()
+  val myAndroidProjectRule = withSdk(AndroidVersion(33))
 
   @get:Rule
   val myMockitoRule = MockitoJUnit.rule()

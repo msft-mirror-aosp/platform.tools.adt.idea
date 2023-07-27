@@ -28,15 +28,22 @@ import org.junit.Test
 @RunsInEdt
 class DeclarativeCompletionContributorTest : AndroidTestCase() {
   @Before
-  override fun setUp() {
+  public override fun setUp() {
     super.setUp()
     StudioFlags.DECLARATIVE_PLUGIN_STUDIO_SUPPORT.override(true)
   }
 
   @After
-  override fun tearDown() {
-    super.tearDown()
-    StudioFlags.DECLARATIVE_PLUGIN_STUDIO_SUPPORT.clearOverride()
+  public override fun tearDown() {
+    try {
+      StudioFlags.DECLARATIVE_PLUGIN_STUDIO_SUPPORT.clearOverride()
+    }
+    catch (e: Throwable) {
+      addSuppressedException(e)
+    }
+    finally {
+      super.tearDown()
+    }
   }
 
   @Test
@@ -65,6 +72,64 @@ class DeclarativeCompletionContributorTest : AndroidTestCase() {
         "compileSdkVersion" to "Integer"
       )
     }
+
+  @Test
+  fun testCompletionStringProperty() = doCompletionTest("""
+      [android]
+      targetProj$caret
+      """.trimIndent(), """
+      [android]
+      targetProjectPath = "$caret"
+      """.trimIndent())
+
+  @Test
+  fun testCompletionNonStringProperty() = doCompletionTest("""
+      [android]
+      generatePureSpl$caret
+      """.trimIndent(), """
+      [android]
+      generatePureSplits = $caret
+      """.trimIndent())
+
+  @Test
+  fun testCompletionStringPropertyInHeader() = doCompletionTest(
+    "[android.targetProj$caret]",
+    """
+      [android]
+      targetProjectPath = "$caret"
+      """.trimIndent())
+
+  @Test
+  fun testCompletionStringPropertyInHeader2() = doCompletionTest(
+    """
+      [android.targetProj$caret]
+      compileSdk = 1
+    """.trimIndent(),
+    """
+      [android]
+      targetProjectPath = "$caret"
+      compileSdk = 1
+      """.trimIndent())
+
+  @Test
+  fun testCompletionNonStringPropertyInHeader() = doCompletionTest(
+    "[android.generatePureSpl$caret]".trimIndent(),
+    """
+      [android]
+      generatePureSplits = $caret
+      """.trimIndent())
+
+  @Test
+  fun testCompletionNonStringPropertyInHeader2() = doCompletionTest(
+    """
+      [android.generatePureSpl$caret]
+      compileSdk = 1
+    """.trimIndent(),
+    """
+      [android]
+      generatePureSplits = $caret
+      compileSdk = 1
+      """.trimIndent())
 
   @Test
   fun testBasicCompletionSecondLevelInTable() =
@@ -107,18 +172,139 @@ class DeclarativeCompletionContributorTest : AndroidTestCase() {
       )
     }
 
+  @Test
+  fun testCompletionArrayPropertyInHeader() =
+    doCompletionTest(
+      "[android.aidlPackagedLi$caret]",
+      """
+      [android]
+      aidlPackagedList = ["$caret"]
+      """.trimIndent())
+
+
+  @Test
+  fun testCompletionArrayPropertyInHeader2() =
+    doCompletionTest(
+      """
+      [android.aidlPackagedLi$caret]
+      targetSdk = 1
+    """.trimIndent(),
+      """
+      [android]
+      aidlPackagedList = ["$caret"]
+      targetSdk = 1
+      """.trimIndent())
+
+  @Test
+  fun testSuggestionsForTableArray() =
+    doTest("p$caret") { suggestions ->
+      Truth.assertThat(suggestions.toList()).contains(
+        "plugins" to "Array Table",
+      )
+    }
+
+  @Test
+  fun testCompletionTableArray() =
+    doCompletionTest(
+      "plugi$caret",
+      """
+      [[plugins]]
+      $caret
+      """.trimIndent())
+
+  @Test
+  fun testCompletionTableArray2() =
+    doCompletionTest(
+      """
+      [plugi$caret]
+    """.trimIndent(),
+      """
+      [[plugins]]
+      $caret
+      """.trimIndent())
+
+  @Test
+  fun testCompletionTableArray3() =
+    doCompletionTest(
+      """
+      [[plugi$caret]]
+    """.trimIndent(),
+      """
+      [[plugins]]
+      $caret
+      """.trimIndent())
+
+  @Test
+  fun testCompletionTableArray4() =
+    doCompletionTest(
+      """
+      [plugin$caret]
+      [[plugins]]
+    """.trimIndent(),
+      """
+        [[plugins]]
+        $caret
+        [[plugins]]
+      """.trimIndent())
+
+  @Test
+  fun testCompletionTableArray5() =
+    doCompletionTest(
+      " [   plugin$caret]   ",
+      " [[   plugins]]   \n$caret")
+
+  fun testCompletionTableArray6() =
+    doCompletionTest(
+      """[[plu$caret # This is a [[comment]]""",
+      "[[plugins]] # This is a [[comment]]\n" +
+      "$caret"
+    )
+
+  @Test
+  fun testCompletionTableArrayNegative() =
+    doCompletionTest(
+      "   plugi$caret   ",
+      "   [[plugins]]   \n" +
+      "$caret"
+     )
+
+  fun testSuggestionsWithinArrayTable() =
+    doTest("""
+      [[plugins]]
+      $caret
+      """.trimIndent()) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsAllOf(
+        "id" to "String",
+        "version" to "String",
+        "apply" to "Boolean",
+      )
+    }
+
   private fun doTest(declarativeFile: String, check: (Map<String, String>) -> Unit) {
     val buildFile = myFixture.addFileToProject(
       "build.gradle.toml", declarativeFile)
     myFixture.configureFromExistingVirtualFile(buildFile.virtualFile)
     myFixture.completeBasic()
-    val map: Map<String, String> = myFixture.lookupElements.associate {
+    val map: Map<String, String> = myFixture.lookupElements!!.associate {
       val presentation = LookupElementPresentation()
       it.renderElement(presentation)
       it.lookupString to (presentation.typeText ?: "")
     }
 
     check.invoke(map)
+  }
+
+  private fun doCompletionTest(declarativeFile: String, fileAfter: String) {
+    val buildFile = myFixture.addFileToProject(
+      "build.gradle.toml", declarativeFile)
+    myFixture.configureFromExistingVirtualFile(buildFile.virtualFile)
+    myFixture.completeBasic()
+
+    val caretOffset = fileAfter.indexOf(caret)
+    val cleanFileAfter = fileAfter.replace(caret, "")
+
+    Truth.assertThat(buildFile.text).isEqualTo(cleanFileAfter)
+    Truth.assertThat(myFixture.editor.caretModel.offset).isEqualTo(caretOffset)
   }
 
 }

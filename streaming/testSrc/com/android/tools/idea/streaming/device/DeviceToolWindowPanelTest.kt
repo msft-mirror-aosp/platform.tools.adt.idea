@@ -17,7 +17,9 @@ package com.android.tools.idea.streaming.device
 
 import com.android.adblib.DevicePropertyNames.RO_BUILD_CHARACTERISTICS
 import com.android.testutils.ImageDiffUtil
-import com.android.testutils.MockitoKt
+import com.android.testutils.MockitoKt.any
+import com.android.testutils.MockitoKt.mock
+import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.ZoomType
@@ -55,7 +57,7 @@ import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito
+import org.mockito.Mockito.anyInt
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.Point
@@ -95,16 +97,14 @@ class DeviceToolWindowPanelTest {
   fun setUp() {
     HeadlessDataManager.fallbackToProductionDataManager(testRootDisposable) // Necessary to properly update toolbar button states.
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
-    val mockScreenRecordingCache = MockitoKt.mock<ScreenRecordingSupportedCache>()
-    MockitoKt.whenever(mockScreenRecordingCache.isScreenRecordingSupported(MockitoKt.any(), Mockito.anyInt())).thenReturn(true)
+    val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
+    whenever(mockScreenRecordingCache.isScreenRecordingSupported(any(), anyInt())).thenReturn(true)
     project.registerServiceInstance(ScreenRecordingSupportedCache::class.java, mockScreenRecordingCache, testRootDisposable)
   }
 
   @Test
   fun testAppearanceAndToolbarActions() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     device = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
     assertThat(panel.deviceView).isNull()
 
@@ -172,9 +172,7 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActions() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     device = agentRule.connectDevice("Pixel Watch", 30, Dimension(454, 454),
                                      additionalDeviceProperties = mapOf(RO_BUILD_CHARACTERISTICS to "nosdcard,watch"))
     panel.createContent(false)
@@ -245,9 +243,7 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testFolding() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     device = agentRule.connectDevice("Pixel Fold", 33, Dimension(2208, 1840), foldedSize = Dimension(1080, 2092))
 
     panel.createContent(false)
@@ -267,13 +263,13 @@ class DeviceToolWindowPanelTest {
     assertThat(event.presentation.text).isEqualTo("Fold/Unfold (currently Open)")
     val foldingActions = foldingGroup.getChildren(event)
     assertThat(foldingActions).asList().containsExactly(
-      DeviceFoldingAction(FoldingState(0, "Closed", true)),
-      DeviceFoldingAction(FoldingState(1, "Tent", true)),
-      DeviceFoldingAction(FoldingState(2, "Half-Open", true)),
-      DeviceFoldingAction(FoldingState(3, "Open", true)),
-      DeviceFoldingAction(FoldingState(4, "Rear Display", true)),
-      DeviceFoldingAction(FoldingState(5, "Both Displays", true)),
-      DeviceFoldingAction(FoldingState(6, "Flipped", true)))
+        DeviceFoldingAction(FoldingState(0, "Closed", true)),
+        DeviceFoldingAction(FoldingState(1, "Tent", true)),
+        DeviceFoldingAction(FoldingState(2, "Half-Open", true)),
+        DeviceFoldingAction(FoldingState(3, "Open", true)),
+        DeviceFoldingAction(FoldingState(4, "Rear Display", true)),
+        DeviceFoldingAction(FoldingState(5, "Both Displays", true)),
+        DeviceFoldingAction(FoldingState(6, "Flipped", true)))
     for (action in foldingActions) {
       action.update(event)
       assertThat(event.presentation.isEnabled).isTrue()
@@ -291,9 +287,7 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testZoom() {
-    if (!isFFmpegAvailableToTest()) {
-      return
-    }
+    assumeFFmpegAvailable()
     device = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
     assertThat(panel.deviceView).isNull()
 

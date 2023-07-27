@@ -24,6 +24,7 @@ import com.android.tools.idea.editors.liveedit.ui.EmulatorLiveEditAdapter
 import com.android.tools.idea.editors.liveedit.ui.LiveEditIssueNotificationAction
 import com.android.tools.idea.execution.common.AndroidExecutionTarget
 import com.android.tools.idea.execution.common.DeployableToDevice
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.deployment.liveedit.EditEvent
 import com.android.tools.idea.run.deployment.liveedit.LiveEditAdbEventsListener
@@ -47,18 +48,28 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.messages.MessageBusConnection
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.Executor
 
 /**
@@ -88,36 +99,33 @@ class LiveEditServiceImpl(val project: Project,
     val adapter = EmulatorLiveEditAdapter(project)
     LiveEditIssueNotificationAction.registerProject(project, adapter)
     Disposer.register(this) { LiveEditIssueNotificationAction.unregisterProject(project) }
-    ApplicationManager.getApplication().invokeLater {
-      val toolWindowManager = project.getServiceIfCreated(ToolWindowManager::class.java)
-      toolWindowManager?.invokeLater {
-        val runningDevicesWindow = toolWindowManager.getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)
-        runningDevicesWindow?.addContentManagerListener(object : ContentManagerListener {
-          override fun contentAdded(event: ContentManagerEvent) {
-            val dataProvider = event.content.component as? DataProvider ?: return
-            val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
-            serial?.let { adapter.register(it) }
-          }
-
-          override fun contentRemoveQuery(event: ContentManagerEvent) {
-            val dataProvider = event.content.component as? DataProvider ?: return
-            val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
-            serial?.let { adapter.unregister(it) }
-          }
-        })
-
-        runningDevicesWindow?.contentManagerIfCreated?.contents?.forEach {
-          val dataProvider = it.component as? DataProvider ?: return@forEach
-          val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
-          serial?.let { s -> adapter.register(s) }
-        }
-      }
-    }
+    registerWithRunningDevices(project, adapter)
 
     // TODO: Deactivate this when not needed.
     val listener = PsiListener(this::onPsiChanged)
     PsiManager.getInstance(project).addPsiTreeChangeListener(listener, this)
+
     deployMonitor = LiveEditProjectMonitor(this, project)
+
+    EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
+      override fun documentChanged(event: DocumentEvent) {
+        if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER.get()) {
+          return
+        }
+
+        // Ensure that we have the original, VirtualFile-backed version of the file, since sometimes an event is generated with a
+        // non-physical version of a given file, which will cause some Live Edit checks that assume a non-null VirtualFile to fail.
+        val file = PsiDocumentManager.getInstance(project).getPsiFile(event.document)?.originalFile
+        if (file !is KtFile) {
+          return
+        }
+
+        // Create a "fake" edit event until we refactor away the PSI event detection path.
+        val editEvent = EditEvent(file, file)
+        executor.execute { deployMonitor.onPsiChanged(editEvent) }
+      }
+    }, this)
+
     // TODO: Delete if it turns our we don't need Hard-refresh trigger.
     //bindKeyMapShortcut(LiveEditApplicationConfiguration.getInstance().leTriggerMode)
 
@@ -150,6 +158,11 @@ class LiveEditServiceImpl(val project: Project,
           showMultiDeployNotification = false
         }
       }
+    })
+
+    // Listen for when a new Kotlin file opens.
+    project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+      override fun fileOpened(source: FileEditorManager, file: VirtualFile) = deployMonitor.notifyFileOpen(file)
     })
   }
 
@@ -218,6 +231,10 @@ class LiveEditServiceImpl(val project: Project,
 
   @com.android.annotations.Trace
   private fun onPsiChanged(event: EditEvent) {
+    // Disable PSI event detection if the class differ path is enabled.
+    if (StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER.get()) {
+      return
+    }
     executor.execute { deployMonitor.onPsiChanged(event) }
   }
 
@@ -252,5 +269,55 @@ class LiveEditServiceImpl(val project: Project,
     // TODO(b/286911223): Check if its possible to retrieve AndroidFacet from BlazeCommandRunConfiguration instance of RunProfile and if LaunchUtils.canDebugApp may be run on it
     // Check if the run profile deploys to local device to allow BlazeCommandRunConfiguration based run profiles
     return DeployableToDevice.deploysToLocalDevice(runProfile)
+  }
+
+  /**
+   * Wrapper function to add listeners to the running devices tool window. This wrapper is needed due to changing startup sequence,
+   * forcing us to determine if we need to wait for the running devices tool window initialization first.
+   */
+  private fun registerWithRunningDevices(project: Project, adapter: EmulatorLiveEditAdapter) {
+    val toolWindow = project.getServiceIfCreated(ToolWindowManager::class.java)?.getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)
+    if (toolWindow == null) {
+      // If our service gets initialized before running devices tool window, then we need to listen for when the tool window is created,
+      // then add listeners to it.
+      val connection = project.messageBus.connect()
+      connection.subscribe(ToolWindowManagerListener.TOPIC, object: ToolWindowManagerListener {
+        override fun toolWindowsRegistered(ids: MutableList<String>, toolWindowManager: ToolWindowManager) {
+          if (ids.contains(RUNNING_DEVICES_TOOL_WINDOW_ID)) {
+            toolWindowManager.getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)?.let { addListenersToRunningDevices(adapter, it) }
+            connection.disconnect()
+          }
+        }
+      })
+    }
+    else {
+      // If the running devices tool window is already initialized, then we can safely add listeners to it.
+      addListenersToRunningDevices(adapter, toolWindow)
+    }
+  }
+
+  /**
+   * Adds content listeners, so we know when a device is added/removed to the running devices tool window.
+   */
+  private fun addListenersToRunningDevices(adapter: EmulatorLiveEditAdapter, runningDevicesWindow: ToolWindow) {
+    runningDevicesWindow.addContentManagerListener(object : ContentManagerListener {
+      override fun contentAdded(event: ContentManagerEvent) {
+        val dataProvider = event.content.component as? DataProvider ?: return
+        val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
+        serial?.let { adapter.register(it) }
+      }
+
+      override fun contentRemoveQuery(event: ContentManagerEvent) {
+        val dataProvider = event.content.component as? DataProvider ?: return
+        val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
+        serial?.let { adapter.unregister(it) }
+      }
+    })
+
+    runningDevicesWindow.contentManagerIfCreated?.contents?.forEach {
+      val dataProvider = it.component as? DataProvider ?: return@forEach
+      val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
+      serial?.let { s -> adapter.register(s) }
+    }
   }
 }

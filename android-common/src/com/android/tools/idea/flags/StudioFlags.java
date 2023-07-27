@@ -516,6 +516,14 @@ public final class StudioFlags {
     "Note: Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> ADBLIB_ONE_SESSION_PER_PROJECT = Flag.create(
+    RUNDEBUG,
+    "adblib.one.session.per.project",
+    "Creates one AdbSession per project",
+    "Creates one AdbSession per project, as opposed to one shared Application level instance. " +
+    "Note: Changing the value of this flag requires restarting Android Studio.",
+    false);
+
   public static final Flag<Boolean> JDWP_TRACER = Flag.create(
     RUNDEBUG,
     "adb.jdwp.tracer.enabled",
@@ -657,9 +665,23 @@ public final class StudioFlags {
     "For internal use only. Enables injection of device serial from the IDE into Gradle build.",
     false
   );
+
   public static final Flag<Boolean> USE_DEVELOPMENT_OFFLINE_REPOS = Flag.create(
     GRADLE_IDE, "development.offline.repos", "Enable development offline repositories",
-    "Makes Gradle use development offline repositories such as /out/repo", StudioPathManager.isRunningFromSources());
+    "Uses the development offline repositories " +
+    "(which can come from STUDIO_CUSTOM_REPO or from a local build of AGP when running studio from IDEA) " +
+    "in the new project templates and for determining which versions of AGP are avaliable for the upgrade assistant.",
+    StudioPathManager.isRunningFromSources());
+
+  public static final Flag<Boolean> INJECT_EXTRA_GRADLE_REPOSITORIES_WITH_INIT_SCRIPT = Flag.create(
+    GRADLE_IDE, "inject.repos.with.init.script",
+    "Inject repositories using a Gradle init script",
+    "Also inject any development offline repos (if gradle.ide.development.offline.repos is set) " +
+    "and the customised GMAVEN_TEST_BASE_URL if set using a Gradle init script at every build and sync invocation. " +
+    "Note this this is disabled by default as it can break projects that would otherwise sync and build correctly with " +
+    "published versions of AGP, including the relatively common case of projects that depend on AGP in buildSrc.",
+    false);
+
   public static final Flag<Boolean> BUILD_ANALYZER_JETIFIER_ENABLED = Flag.create(
     GRADLE_IDE, "build.analyzer.jetifier.warning", "Enable Jetifier usage analyzis",
     "Enable Jetifier usage analyzis is Build Analyzer.", true);
@@ -877,7 +899,7 @@ public final class StudioFlags {
   private static final FlagGroup STREAMING = new FlagGroup(FLAGS, "streaming", "Streaming");
   public static final Flag<Boolean> STREAMING_HARDWARE_INPUT_BUTTON = Flag.create(
     STREAMING, "hardware.input.button", "Show Hardware Input Button",
-    "Shows the hardware input button on the running device toolbar", false);
+    "Shows the hardware input button on the running device toolbar", true);
 
   //endregion
 
@@ -906,7 +928,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_NOTIFICATIONS = Flag.create(
     EMBEDDED_EMULATOR, "trace.notifications", "Enable Emulator Notification Tracing",
     "Enables tracing of received Emulator notifications",
-    false);
+    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = Flag.create(
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery",
@@ -1093,6 +1115,13 @@ public final class StudioFlags {
     false
   );
 
+  public static final Flag<Boolean> RENDER_DRAWABLES_IN_AUTOCOMPLETE_ENABLED = Flag.create(
+    EDITOR, "render.drawables.in.autocomplete.enabled",
+    "Enable rendering of drawable resources in autocomplete popup UI",
+    "If enabled, renders drawable resources in the autocomplete popup UI.",
+    true
+  );
+
   public static final FlagGroup ESSENTIALS_MODE = new FlagGroup(FLAGS, "essentialsmode", "Essentials Mode");
 
 
@@ -1229,6 +1258,13 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.deploy.advanced.settings",
     "Enable live edit deploy settings menu",
     "If enabled, advanced Live Edit settings menu will be visible",
+    false
+  );
+
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER = Flag.create(
+    COMPOSE, "deploy.live.edit.deploy.differ",
+    "LiveEdit: Resolve changed classes and group IDs with the class differ.",
+    "If enabled, the class differ will be used inside of the LE compiler",
     false
   );
 
@@ -1664,5 +1700,10 @@ public final class StudioFlags {
     Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
   // endregion STUDIO_BOT
 
+  // region EXPERIMENTAL_UI
+  private static final FlagGroup EXPERIMENTAL_UI = new FlagGroup(FLAGS, "experimentalui", "Experimental UI");
+  public static final Flag<Boolean> EXPERIMENTAL_UI_SURVEY_ENABLED =
+    Flag.create(EXPERIMENTAL_UI, "enabled", "Enable Experimental UI Survey", "Enable the experimental UI survey.", true);
+  // endregion STUDIO_BOT
   private StudioFlags() { }
 }

@@ -28,6 +28,8 @@ import icons.StudioIcons
 
 @JvmField val STREAMING_CONTENT_PANEL_KEY = DataKey.create<BorderLayoutPanel>("StreamingContentPanel")
 
+@JvmField val DEVICE_ID_KEY = DataKey.create<DeviceId>("DeviceId")
+
 @JvmField internal val NUMBER_OF_DISPLAYS_KEY = DataKey.create<Int>("NumberOfDisplays")
 
 internal val RUNNING_DEVICES_NOTIFICATION_GROUP: NotificationGroup

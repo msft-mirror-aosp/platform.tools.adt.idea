@@ -317,6 +317,16 @@ class AndroidLintIdeSupport : LintIdeSupport() {
     )
   }
 
+  override fun logQuickFixInvocation(project: Project, issue: Issue, fixDescription: String) {
+    val analytics = LintIdeAnalytics(project)
+    analytics.logQuickFixInvocation(issue, fixDescription)
+  }
+
+  override fun logTooltipLink(url: String, issue: Issue, project: Project) {
+    val analytics = LintIdeAnalytics(project)
+    analytics.logTooltipLink(url, issue)
+  }
+
   override fun ensureNamespaceImported(
     file: XmlFile,
     namespaceUri: String,

@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.streaming.core
 
+import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.adtui.common.primaryPanelBackground
+import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.streaming.SERIAL_NUMBER_KEY
@@ -27,6 +29,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.IdeBorderFactory
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
@@ -41,22 +44,24 @@ private const val IS_TOOLBAR_HORIZONTAL = true
 /**
  * Provides view of one Android device in the Running Devices tool window.
  */
-internal abstract class RunningDevicePanel(
+abstract class RunningDevicePanel(
   val id: DeviceId,
   mainToolbarId: String,
   secondaryToolbarId: String
 ) : BorderLayoutPanel(), DataProvider {
 
-  abstract val title: String
-  abstract val icon: Icon
-  abstract val isClosable: Boolean
-  abstract val preferredFocusableComponent: JComponent
+  internal abstract val title: String
+  internal abstract val icon: Icon
+  internal abstract val isClosable: Boolean
+  internal abstract val preferredFocusableComponent: JComponent
 
-  abstract var zoomToolbarVisible: Boolean
+  internal abstract var zoomToolbarVisible: Boolean
+  internal abstract val primaryDisplayView: AbstractDisplayView?
 
   protected val mainToolbar: ActionToolbar
   protected val secondaryToolbar: ActionToolbar
   protected val centerPanel = BorderLayoutPanel()
+  private val pendingNotifications = mutableListOf<EditorNotificationPanel>()
 
   // Start time of the current device mirroring session in milliseconds since epoch.
   private var mirroringStartTime: Long = 0
@@ -89,11 +94,40 @@ internal abstract class RunningDevicePanel(
     }
   }
 
-  abstract fun createContent(deviceFrameVisible: Boolean, savedUiState: UiState? = null)
-  abstract fun destroyContent(): UiState
-  abstract fun setDeviceFrameVisible(visible: Boolean)
+  /** Adds a notification panel that is removed when its close icon is clicked. */
+  fun addNotification(notificationPanel: EditorNotificationPanel) {
+    notificationPanel.setCloseAction { removeNotification(notificationPanel) }
+    findNotificationHolderPanel()?.addNotification(notificationPanel) ?: pendingNotifications.add(notificationPanel)
+  }
+
+  /** Removes the given notification panel. */
+  fun removeNotification(notificationPanel: EditorNotificationPanel) {
+    findNotificationHolderPanel()?.removeNotification(notificationPanel) ?: pendingNotifications.remove(notificationPanel)
+  }
+
+  internal abstract fun createContent(deviceFrameVisible: Boolean, savedUiState: UiState? = null)
+  internal abstract fun destroyContent(): UiState
+  internal abstract fun setDeviceFrameVisible(visible: Boolean)
   /** Returns device information for metrics collection. */
   protected abstract fun getDeviceInfo(): DeviceInfo
+
+  internal fun saveActiveNotifications(uiState: UiState) {
+    findNotificationHolderPanel()?.let { uiState.activeNotifications.addAll(it.notificationPanels) }
+    uiState.activeNotifications.addAll(pendingNotifications)
+    pendingNotifications.clear()
+  }
+
+  internal fun restoreActiveNotifications(uiState: UiState) {
+    val activeNotifications = uiState.activeNotifications
+    if (activeNotifications.isNotEmpty() || pendingNotifications.isNotEmpty()) {
+      val notificationHolderPanel = findNotificationHolderPanel()
+      if (notificationHolderPanel != null) {
+        activeNotifications.forEach { notificationHolderPanel.addNotification(it) }
+        pendingNotifications.forEach { notificationHolderPanel.addNotification(it) }
+        pendingNotifications.clear()
+      }
+    }
+  }
 
   /**
    * Records the start of a device mirroring session.
@@ -106,6 +140,9 @@ internal abstract class RunningDevicePanel(
    * Records the end of a device mirroring session.
    */
   protected fun mirroringEnded(deviceKind: DeviceMirroringSession.DeviceKind) {
+    if (mirroringStartTime == 0L) {
+      return
+    }
     val durationSec = (System.currentTimeMillis() - mirroringStartTime) / 1000
     mirroringStartTime = 0
 
@@ -123,8 +160,10 @@ internal abstract class RunningDevicePanel(
 
   override fun getData(dataId: String): Any? {
     return when (dataId) {
+      DISPLAY_VIEW_KEY.name, ZOOMABLE_KEY.name -> primaryDisplayView
       SERIAL_NUMBER_KEY.name -> id.serialNumber
       STREAMING_CONTENT_PANEL_KEY.name -> centerPanel
+      DEVICE_ID_KEY.name -> id
       else -> null
     }
   }
@@ -139,5 +178,10 @@ internal abstract class RunningDevicePanel(
     return toolbar
   }
 
-  interface UiState
+  private fun findNotificationHolderPanel() =
+      primaryDisplayView?.findContainingComponent<NotificationHolderPanel>()
+
+  internal abstract class UiState {
+    val activeNotifications: MutableList<EditorNotificationPanel> = mutableListOf()
+  }
 }

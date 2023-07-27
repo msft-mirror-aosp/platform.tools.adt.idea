@@ -135,33 +135,59 @@ maven_repository(
         "@maven//:androidx.activity.activity-compose_1.7.2",
         "@maven//:androidx.activity.activity-ktx_1.6.0",
         "@maven//:androidx.activity.activity-ktx_1.7.0",
+        "@maven//:androidx.annotation.annotation-jvm_1.6.0",
         "@maven//:androidx.annotation.annotation_1.6.0",
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.appcompat.appcompat_1.6.1",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.1",
+        "@maven//:androidx.compose.animation.animation-core-android_1.5.0-beta01",  # Necessary for Compose for TV
+        "@maven//:androidx.compose.animation.animation_1.3.0",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:androidx.compose.animation.animation_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.compiler.compiler_1.3.2",
         "@maven//:androidx.compose.compiler.compiler_1.4.3",
         "@maven//:androidx.compose.compose-bom_2022.10.00",
         "@maven//:androidx.compose.compose-bom_2023.03.00",
+        "@maven//:androidx.compose.foundation.foundation-android_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.foundation.foundation-layout_1.3.0",
         "@maven//:androidx.compose.foundation.foundation-layout_1.4.0",
         "@maven//:androidx.compose.foundation.foundation_1.3.0",
         "@maven//:androidx.compose.foundation.foundation_1.4.0",
+        "@maven//:androidx.compose.foundation.foundation_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.material.material_1.3.0",
         "@maven//:androidx.compose.material.material_1.4.0",
+        "@maven//:androidx.compose.material.material_1.4.3",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.material.material_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.material3.material3_1.0.0",
         "@maven//:androidx.compose.material3.material3_1.0.1",
+        "@maven//:androidx.compose.ui.ui-graphics-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-test-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-test-junit4-android_1.5.0-beta01",
         "@maven//:androidx.compose.ui.ui-test-junit4_1.3.0",
         "@maven//:androidx.compose.ui.ui-test-junit4_1.4.0",
+        "@maven//:androidx.compose.ui.ui-test-junit4_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:androidx.compose.ui.ui-test-junit4_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-test-manifest_1.3.0",
         "@maven//:androidx.compose.ui.ui-test-manifest_1.4.0",
+        "@maven//:androidx.compose.ui.ui-test-manifest_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:androidx.compose.ui.ui-test-manifest_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-tooling-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-tooling-data-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-tooling-preview-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-tooling-preview_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-tooling_1.4.0",
+        "@maven//:androidx.compose.ui.ui-tooling_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:androidx.compose.ui.ui-tooling_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui-unit-android_1.5.0-beta01",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.ui.ui_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.4",
         "@maven//:androidx.core.core-ktx_1.0.1",
+        "@maven//:androidx.core.core-ktx_1.10.1",
+        "@maven//:androidx.core.core-ktx_1.11.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:androidx.core.core-ktx_1.11.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.core.core-ktx_1.2.0",
         "@maven//:androidx.core.core-ktx_1.3.0",
         "@maven//:androidx.core.core-ktx_1.3.2",
@@ -171,6 +197,7 @@ maven_repository(
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
         "@maven//:androidx.emoji2.emoji2-views-helper_1.3.0",
+        "@maven//:androidx.emoji2.emoji2-views-helper_1.4.0-beta03",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.fragment.fragment_1.3.0",
         "@maven//:androidx.fragment.fragment_1.3.0-rc01",
         "@maven//:androidx.games.games-activity_1.2.2",
@@ -186,11 +213,11 @@ maven_repository(
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-savedstate_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel_2.6.1",
         "@maven//:androidx.media.media_1.6.0",
-        "@maven//:androidx.navigation.navigation-fragment-ktx_2.5.3",
-        "@maven//:androidx.navigation.navigation-fragment_2.5.3",
-        "@maven//:androidx.navigation.navigation-safe-args-gradle-plugin_2.5.3",
-        "@maven//:androidx.navigation.navigation-ui-ktx_2.5.3",
-        "@maven//:androidx.navigation.navigation-ui_2.5.2",
+        "@maven//:androidx.navigation.navigation-fragment-ktx_2.6.0",
+        "@maven//:androidx.navigation.navigation-fragment_2.6.0",
+        "@maven//:androidx.navigation.navigation-safe-args-gradle-plugin_2.6.0",
+        "@maven//:androidx.navigation.navigation-ui-ktx_2.6.0",
+        "@maven//:androidx.navigation.navigation-ui_2.6.0",
         "@maven//:androidx.palette.palette-ktx_1.0.0",
         "@maven//:androidx.preference.preference_1.2.0",
         "@maven//:androidx.recyclerview.recyclerview_1.3.0",
@@ -201,6 +228,8 @@ maven_repository(
         "@maven//:androidx.test.espresso.espresso-core_3.5.1",
         "@maven//:androidx.test.ext.junit_1.1.3",
         "@maven//:androidx.test.ext.junit_1.1.5",
+        "@maven//:androidx.tv.tv-foundation_1.0.0-alpha07",
+        "@maven//:androidx.tv.tv-material_1.0.0-alpha07",
         "@maven//:androidx.wear.compose.compose-material_1.1.2",
         "@maven//:androidx.wear.tiles.tiles-material_1.2.0-alpha05",
         "@maven//:androidx.wear.tiles.tiles_1.2.0-alpha05",
@@ -244,6 +273,7 @@ maven_repository(
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.android.material.material_1.5.0",
         "@maven//:com.google.android.material.material_1.8.0",
+        "@maven//:com.google.android.material.material_1.9.0",
         "@maven//:com.google.android.support.wearable_2.9.0",
         "@maven//:com.google.android.wearable.wearable_2.9.0",
         "@maven//:com.google.auto.value.auto-value_1.6.2",
@@ -279,8 +309,11 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.6.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-test_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:org.mockito.mockito-core_4.8.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
@@ -1205,6 +1238,7 @@ java_test(
 
 java_test(
     name = "OpenCloseVisualizationToolTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
@@ -1240,6 +1274,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.FlavorsExecutionTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_windows",
         "qa_smoke",
         "qa_smoke_unreliable",  # b/160247726
@@ -1290,6 +1325,20 @@ java_test(
         "testData/VersionCatalogProject/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.GradleVersionCatalogTest"],
+    tags = COMMON_TAGS + [
+        "qa_smoke",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "GradleVersionCatalogTest2",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/VersionCatalogProject/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.projectstructure.GradleVersionCatalogTest2"],
     tags = COMMON_TAGS + [
         "qa_smoke",
     ],
@@ -1411,23 +1460,6 @@ java_test(
 )
 
 java_test(
-    name = "CreateNewMobileProjectTest",
-    size = "large",
-    data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib/data:framework_res.jar",
-    ],
-    flaky = True,
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.CreateNewMobileProjectTest"],
-    tags = COMMON_TAGS + [
-        "no_windows",
-        "ui_test",
-        "very_flaky",  # b/278938074
-    ],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
     name = "CreateCppKotlinProjectTest",
     size = "large",
     data = COMMON_DATA + [
@@ -1468,6 +1500,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.AbiSplitApksTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_crostini",
         "no_windows",
         "qa_fast",
@@ -1485,6 +1518,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.X86AbiSplitApksTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_crostini",
         "no_windows",
         "qa_fast",
@@ -1627,6 +1661,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.ManuallyAddNavLibTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -2203,6 +2238,7 @@ java_test(
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.VerifyNpwAndroidTVTemplatesTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -2647,6 +2683,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.CLionIntegrationTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -3091,6 +3128,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.debugger.CreateFromPreexistingApkTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "no_windows",
         "qa_fast",
     ],

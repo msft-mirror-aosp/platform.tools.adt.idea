@@ -404,18 +404,18 @@ class KotlinModelConverter {
         sourceProvider = mainKotlinCompilation.declaredSourceSets.firstOrNull {
           it.name == mainAndroidCompilation.defaultSourceSetName
         }?.let { sourceSet ->
-          sourceSet.extras[androidSourceSetKey]?.invoke()?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
+          sourceSet.extras[androidSourceSetKey]?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
         },
         extraSourceProviders = listOf(
           AndroidProject.ARTIFACT_UNIT_TEST to unitTestKotlinCompilation?.declaredSourceSets?.firstOrNull {
             it.name == unitTestAndroidCompilation?.defaultSourceSetName
           }?.let { sourceSet ->
-            sourceSet.extras[androidSourceSetKey]?.invoke()?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
+            sourceSet.extras[androidSourceSetKey]?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
           },
           AndroidProject.ARTIFACT_ANDROID_TEST to androidTestKotlinCompilation?.declaredSourceSets?.firstOrNull {
             it.name == androidTestAndroidCompilation?.defaultSourceSetName
           }?.let { sourceSet ->
-            sourceSet.extras[androidSourceSetKey]?.invoke()?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
+            sourceSet.extras[androidSourceSetKey]?.sourceProvider?.convert(sourceSet, targetInfo.withJava)
           }
         ).mapNotNull { (artifactName, sourceProvider) ->
           sourceProvider?.let {
@@ -433,7 +433,7 @@ class KotlinModelConverter {
       signingConfigs = listOfNotNull(
         androidTestAndroidCompilation?.instrumentedTestInfo?.signingConfig?.convert()
       ),
-      aaptOptions = IdeAaptOptionsImpl(IdeAaptOptions.Namespacing.REQUIRED),
+      aaptOptions = IdeAaptOptionsImpl(IdeAaptOptions.Namespacing.DISABLED),
       lintOptions = IdeLintOptionsImpl(), // TODO(b/269755640): support lint in the IDE
       javaCompileOptions = IdeJavaCompileOptionsImpl(
         encoding = Charset.defaultCharset().name(),

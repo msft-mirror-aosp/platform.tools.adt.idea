@@ -80,9 +80,11 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.keymap.impl.IdeKeyEventDispatcher
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
@@ -572,7 +574,14 @@ class LayoutInspectorTreePanelTest {
     val callbacks: ToolWindowCallback = mock()
     tree.registerCallbacks(callbacks)
     ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
+    UIUtil.dispatchAllInvocationEvents()
     verify(callbacks).stopFiltering()
+
+    // Reset the filter and press up. This key should be forwarded to the table.
+    // Make sure the source is specified as the table or the BasicTableUI will cause a class cast
+    // exception: b/291976682.
+    tree.setFilter("")
+    ui.keyboard.pressAndRelease(KeyEvent.VK_UP)
   }
 
   @RunsInEdt
@@ -878,7 +887,7 @@ class LayoutInspectorTreePanelTest {
 
   @Test
   fun testNonStructuralModelChanges() {
-    val tree = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val tree = runInEdtAndGet { LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable) }
     val inspector = inspectorRule.inspector
     tree.setToolContext(inspector)
     runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
@@ -938,7 +947,7 @@ class LayoutInspectorTreePanelTest {
 
   @Test
   fun testResetRecompositionCounts() {
-    val tree = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val tree = runInEdtAndGet { LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable) }
     val inspector = inspectorRule.inspector
     val model = inspector.inspectorModel
     val compose1 = model[COMPOSE1] as ComposeViewNode
@@ -980,7 +989,7 @@ class LayoutInspectorTreePanelTest {
 
   @Test
   fun testRecompositionCountsAreLogged() {
-    val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val panel = runInEdtAndGet { LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable) }
     val inspector = inspectorRule.inspector
     setToolContext(panel, inspector)
 
@@ -992,7 +1001,7 @@ class LayoutInspectorTreePanelTest {
 
   @Test
   fun testTextValueOfNodeType() {
-    val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val panel = runInEdtAndGet { LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable) }
     val inspector = inspectorRule.inspector
     val model = inspectorRule.inspectorModel
     setToolContext(panel, inspector)
@@ -1001,6 +1010,22 @@ class LayoutInspectorTreePanelTest {
     assertThat(nodeType.textValueOf(model[VIEW4]!!.treeNode)).isEqualTo("\"Hello World!\"")
     assertThat(nodeType.textValueOf(model[COMPOSE1]!!.treeNode)).isNull()
     assertThat(nodeType.textValueOf(model[COMPOSE3]!!.treeNode)).isEqualTo("(inline)")
+  }
+
+  @Test
+  fun testListenersAreClearedOnDispose() {
+    val disposable = Disposer.newDisposable(projectRule.fixture.testRootDisposable)
+    val panel = runInEdtAndGet { LayoutInspectorTreePanel(disposable) }
+
+    setToolContext(panel, inspectorRule.inspector)
+
+    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners).hasSize(1)
+    assertThat(inspectorRule.inspector.inspectorModel.connectionListeners).hasSize(1)
+
+    Disposer.dispose(disposable)
+
+    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners).hasSize(0)
+    assertThat(inspectorRule.inspector.inspectorModel.connectionListeners).hasSize(0)
   }
 
   private fun setToolContext(tree: LayoutInspectorTreePanel, inspector: LayoutInspector) {

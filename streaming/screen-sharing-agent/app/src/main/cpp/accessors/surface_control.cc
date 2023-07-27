@@ -62,9 +62,12 @@ JObject SurfaceControl::GetInternalDisplayToken(Jni jni) {
           Agent::api_level() >= 33 ?
               surface_control_class_.FindStaticMethod(jni, "getInternalDisplayToken", "()Landroid/os/IBinder;") :
           Agent::api_level() >= 29 ?
-          surface_control_class_.GetStaticMethod(jni, "getInternalDisplayToken", "()Landroid/os/IBinder;") :
-          surface_control_class_.GetStaticMethod(jni, "getBuiltInDisplay", "(I)Landroid/os/IBinder;");
+              surface_control_class_.GetStaticMethod(jni, "getInternalDisplayToken", "()Landroid/os/IBinder;") :
+              surface_control_class_.GetStaticMethod(jni, "getBuiltInDisplay", "(I)Landroid/os/IBinder;");
       if (get_internal_display_token_method_ == nullptr) {
+        if (Agent::api_level() <= 33) {
+          Log::W("Unable to get display token");
+        }
         get_internal_display_token_method_not_available_ = true;
         return JObject();
       }
@@ -94,11 +97,11 @@ void SurfaceControl::DestroyDisplay(Jni jni, jobject display_token) {
 }
 
 void SurfaceControl::SetDisplaySurface(Jni jni, jobject display_token, ANativeWindow* surface) {
-  surface_control_class_.CallStaticObjectMethod(jni, set_display_surface_method_, display_token, SurfaceToJava(jni, surface).ref());
+  surface_control_class_.CallStaticVoidMethod(jni, set_display_surface_method_, display_token, SurfaceToJava(jni, surface).ref());
 }
 
 void SurfaceControl::SetDisplayLayerStack(Jni jni, jobject display_token, int32_t layer_stack) {
-  surface_control_class_.CallStaticObjectMethod(jni, set_display_layer_stack_method_, display_token, static_cast<jint>(layer_stack));
+  surface_control_class_.CallStaticVoidMethod(jni, set_display_layer_stack_method_, display_token, static_cast<jint>(layer_stack));
 }
 
 void SurfaceControl::SetDisplayProjection(
@@ -108,7 +111,7 @@ void SurfaceControl::SetDisplayProjection(
          display_rect.right - display_rect.left, display_rect.bottom - display_rect.top);
   JObject java_layer_stack_rect = ToJava(jni, layer_stack_rect);
   JObject java_display_rect = ToJava(jni, display_rect);
-  surface_control_class_.CallStaticObjectMethod(
+  surface_control_class_.CallStaticVoidMethod(
       jni, set_display_projection_method_, display_token, static_cast<jint>(orientation),
       java_layer_stack_rect.ref(), java_display_rect.ref());
 }
@@ -141,6 +144,7 @@ void SurfaceControl::SetDisplayPowerMode(Jni jni, jobject display_token, Display
       set_display_power_mode_method_ = surface_control_class_.GetStaticMethod(jni, "setDisplayPowerMode", "(Landroid/os/IBinder;I)V");
     }
   }
+  Log::D("Calling setDisplayPowerMode(..., %d)", mode);
   surface_control_class_.CallStaticVoidMethod(jni, set_display_power_mode_method_, display_token, mode);
 }
 

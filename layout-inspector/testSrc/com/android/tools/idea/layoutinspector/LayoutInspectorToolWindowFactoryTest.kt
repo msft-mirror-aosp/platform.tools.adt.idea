@@ -34,6 +34,7 @@ import com.android.tools.idea.layoutinspector.ui.DeviceViewContentPanel
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
 import com.android.tools.idea.layoutinspector.ui.InspectorRenderSettings
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
+import com.android.tools.idea.sdk.AndroidFacetChecker
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.ui.flatten
 import com.android.tools.idea.transport.TransportService
@@ -48,6 +49,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowBalloonShowOptions
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
+import com.intellij.openapi.wm.ext.LibraryDependentToolWindow
 import com.intellij.project.TestProjectManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
@@ -60,9 +62,8 @@ import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.util.concurrent.TimeUnit
+import kotlin.test.fail
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
-import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
@@ -225,15 +226,29 @@ class LayoutInspectorToolWindowFactoryTest {
     }
     val component = toolWindow.contentManager.selectedContent?.component!!
     waitForCondition(5L, TimeUnit.SECONDS) {
-      component.flatten(false).firstIsInstanceOrNull<DeviceViewPanel>() != null
+      component.flatten(false).firstOrNull { it is DeviceViewPanel } != null
     }
     val inspector =
-      DataManager.getDataProvider(component.flatten(false).firstIsInstance<WorkBench<*>>())
+      DataManager.getDataProvider(
+          component.flatten(false).first { it is WorkBench<*> } as WorkBench<*>
+        )
         ?.getData(LAYOUT_INSPECTOR_DATA_KEY.name) as LayoutInspector
     assertThat(inspector.treeSettings).isInstanceOf(InspectorTreeSettings::class.java)
-    val contentPanel = component.flatten(false).firstIsInstance<DeviceViewContentPanel>()
+    val contentPanel =
+      component.flatten(false).first { it is DeviceViewContentPanel } as DeviceViewContentPanel
     assertThat(inspector.renderLogic.renderSettings)
       .isInstanceOf(InspectorRenderSettings::class.java)
+  }
+
+  @Test
+  fun isLibraryToolWindow() {
+    val toolWindow =
+      LibraryDependentToolWindow.EXTENSION_POINT_NAME.extensions.find {
+        it.id == "Layout Inspector"
+      }
+        ?: fail("Tool window not found")
+
+    assertThat(toolWindow.librarySearchClass).isEqualTo(AndroidFacetChecker::class.qualifiedName)
   }
 }
 
@@ -279,11 +294,13 @@ class LayoutInspectorToolWindowFactoryDisposeTest {
       LayoutInspectorToolWindowFactory().createToolWindowContent(project, toolWindow)
       val component = toolWindow.contentManager.selectedContent?.component!!
       waitForCondition(25L, TimeUnit.SECONDS) {
-        component.flatten(false).firstIsInstanceOrNull<DeviceViewPanel>() != null
+        component.flatten(false).firstOrNull { it is DeviceViewPanel } != null
       }
-      val deviceViewPanel = component.flatten(false).firstIsInstance<DeviceViewPanel>()
+      val deviceViewPanel =
+        component.flatten(false).first { it is DeviceViewPanel } as DeviceViewPanel
       val deviceViewContentPanel =
-        deviceViewPanel.flatten(false).firstIsInstance<DeviceViewContentPanel>()
+        deviceViewPanel.flatten(false).first { it is DeviceViewContentPanel }
+          as DeviceViewContentPanel
       val processes = deviceViewPanel.layoutInspector.processModel!!
       RecentProcess.set(project, RecentProcess(adbRule.bridge.devices.first(), MODERN_PROCESS.name))
 

@@ -29,14 +29,17 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.components.service
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBLabel
-import com.intellij.ui.scale.JBUIScale
+import com.intellij.ui.components.JBPanel
+import com.intellij.ui.components.htmlComponent
 import com.intellij.util.containers.ContainerUtil
+import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.launch
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
 import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
@@ -52,11 +55,8 @@ import java.awt.geom.Area
 import java.awt.geom.Ellipse2D
 import java.awt.image.BufferedImage
 import javax.swing.AbstractAction
-import javax.swing.Box
 import javax.swing.JButton
-import javax.swing.JComponent
 import javax.swing.KeyStroke
-import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 import kotlin.math.floor
 import kotlin.math.log2
@@ -91,19 +91,7 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
   var frameNumber: Int = 0
     protected set
 
-  private val disconnectedStateMessage = JBLabel("", SwingConstants.CENTER)
-  private val reconnectButton = JButton("Reconnect")
-
-  private val disconnectedStatePanel = Box.createVerticalBox().apply {
-    isVisible = false
-    add(Box.createVerticalGlue())
-    disconnectedStateMessage.alignmentX = CENTER_ALIGNMENT
-    add(disconnectedStateMessage)
-    add(Box.createVerticalStrut(JBUIScale.scale(20)))
-    reconnectButton.alignmentX = CENTER_ALIGNMENT
-    add(reconnectButton)
-    add(Box.createVerticalGlue())
-  }
+  private val disconnectedStatePanel = DisconnectedStatePanel()
 
   private val frameListeners = ContainerUtil.createLockFreeCopyOnWriteList<FrameListener>()
 
@@ -205,45 +193,16 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
   protected fun showDisconnectedStateMessage(message: String, reconnector: Reconnector? = null) {
     hideLongRunningOperationIndicatorInstantly()
     zoom(ZoomType.FIT)
-    disconnectedStateMessage.text = message
-    reconnectButton.apply {
-      if (reconnector == null) {
-        isVisible = false
-      }
-      else {
-        isVisible = true
-        action = object : AbstractAction(reconnector.reconnectLabel) {
-          override fun actionPerformed(event: ActionEvent) {
-            reconnector.start()
-          }
-        }
-        SwingUtilities.getRootPane(this)?.let { it.defaultButton = this }
-      }
-    }
-    disconnectedStatePanel.isVisible = true
-    revalidate()
+    disconnectedStatePanel.showPanel(message, reconnector)
   }
 
   protected fun hideDisconnectedStateMessage() {
-    disconnectedStatePanel.isVisible = false
-    reconnectButton.action = null
-    revalidate()
+    disconnectedStatePanel.hidePanel()
   }
 
   private fun findLoadingPanel(): StreamingLoadingPanel? = findContainingComponent()
 
   protected fun findNotificationHolderPanel(): NotificationHolderPanel? = findContainingComponent()
-
-  private inline fun <reified T : JComponent> findContainingComponent(): T? {
-    var component = parent
-    while (component != null) {
-      if (component is T) {
-        return component
-      }
-      component = component.parent
-    }
-    return null
-  }
 
   /**
    * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of
@@ -288,7 +247,11 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
     val imageSize = displayRectangle.size.rotatedByQuadrants(displayOrientationQuadrants)
     // Mouse pointer coordinates compensated for the device display rotation.
     val normalized = Point()
-    when (displayOrientationQuadrants) {
+    val rotation = when {
+      displayOrientationCorrectionQuadrants % 2 == 0 -> displayOrientationQuadrants + displayOrientationCorrectionQuadrants % 4
+      else -> displayOrientationQuadrants
+    }
+    when (rotation) {
       0 -> {
         normalized.x = p.x.scaled(screenScale) - displayRectangle.x
         normalized.y = p.y.scaled(screenScale) - displayRectangle.y
@@ -377,6 +340,79 @@ abstract class AbstractDisplayView(val displayId: Int) : ZoomablePanel(), Dispos
       AndroidCoroutineScope(this@AbstractDisplayView).launch {
         reconnect()
       }
+    }
+  }
+
+  private class DisconnectedStatePanel : JBPanel<DisconnectedStatePanel>(GridBagLayout()) {
+
+    private val message = htmlComponent(text = "", lineWrap = true).apply {
+      isOpaque = false
+      isFocusable = false
+      border = JBUI.Borders.empty()
+    }
+
+    val button = JButton("Reconnect")
+
+    init {
+      isVisible = false
+      val topMargin = 0.45
+
+      val c = GridBagConstraints().apply {
+        fill = GridBagConstraints.BOTH
+        gridx = 0
+        gridy = 0
+        weightx = 1.0
+        weighty = topMargin
+      }
+      add(createFiller(), c)
+      c.gridy = 3
+      c.weighty = 1 - topMargin
+      add(createFiller(), c)
+
+      c.insets = JBUI.insets(10)
+      c.weighty = 0.0
+      c.fill = GridBagConstraints.HORIZONTAL
+      c.gridy = 1
+      add(message, c)
+
+      c.gridy = 2
+      c.fill = GridBagConstraints.NONE
+      add(button, c)
+    }
+
+    fun showPanel(messageHtml: String, reconnector: Reconnector? = null) {
+      message.text = "<center>$messageHtml</center>"
+      button.apply {
+        if (reconnector == null) {
+          isVisible = false
+        }
+        else {
+          isVisible = true
+          action = object : AbstractAction(reconnector.reconnectLabel) {
+            override fun actionPerformed(event: ActionEvent) {
+              reconnector.start()
+            }
+          }
+          SwingUtilities.getRootPane(this)?.let { it.defaultButton = this }
+        }
+      }
+      isVisible = true
+      revalidate()
+    }
+
+    fun hidePanel() {
+      isVisible = false
+      button.action = null
+      revalidate()
+    }
+
+    private fun createFiller(): JBPanel<*> {
+      return JBPanel<JBPanel<*>>()
+        .withBorder(JBUI.Borders.empty())
+        .withMinimumWidth(0)
+        .withMinimumHeight(0)
+        .withPreferredSize(0, 0)
+        .andTransparent()
     }
   }
 }

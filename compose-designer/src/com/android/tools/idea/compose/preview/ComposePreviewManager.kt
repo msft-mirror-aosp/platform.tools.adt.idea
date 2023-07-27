@@ -74,6 +74,9 @@ interface ComposePreviewManager : Disposable, PreviewModeManager {
 
   fun status(): Status
 
+  /** Return to previously selected [PreviewMode]. */
+  fun back()
+
   /**
    * [StateFlow] of available named groups in this preview. The editor can contain multiple groups
    * and only one will be displayed at a given time.
@@ -116,10 +119,11 @@ interface ComposePreviewManager : Disposable, PreviewModeManager {
 
   /**
    * Indicates whether the preview is in its default mode by opposition to one of the special modes
-   * (interactive, animation, UI check, essential).
+   * (interactive, animation, UI check). Both [PreviewMode.Default] and [PreviewMode.Gallery] are
+   * normal modes.
    */
   val isInNormalMode: Boolean
-    get() = mode is PreviewMode.Default
+    get() = mode is PreviewMode.Default || mode is PreviewMode.Gallery
 
   val isUiCheckPreview: Boolean
     get() = mode is PreviewMode.UiCheck
@@ -157,6 +161,7 @@ class NopComposePreviewManager : ComposePreviewManager {
   }
 
   override fun invalidate() {}
+  override fun back() {}
   override fun dispose() {}
 }
 

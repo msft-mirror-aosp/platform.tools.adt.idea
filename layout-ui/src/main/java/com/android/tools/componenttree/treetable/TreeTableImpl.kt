@@ -244,8 +244,13 @@ class TreeTableImpl(
   }
 
   override fun updateUI() {
-    super.updateUI()
-    if (initialized) {
+    if (!initialized) {
+      super.updateUI()
+    } else {
+      // BasicTreeUI will reset the selection model during updateUI. Do not fire a selection
+      // update to the client since is not the users intent to reset the selection.
+      treeTableSelectionModel.update { super.updateUI() }
+
       // The tree row height is not updated correctly after a UI update. See b/275514572
       tree.rowHeight = getRowHeight()
 
@@ -273,6 +278,35 @@ class TreeTableImpl(
       0 -> super.getCellRenderer(row, column)
       else -> extraColumns[column - 1].renderer ?: emptyTreeCellRenderer
     }
+
+  // TreeTableCellRenderer.getTableCellRendererComponent will set the tooltip on the table to the
+  // tooltip of the last renderer. This is incorrect and will lead to tooltip popups showing up in
+  // the wrong places. See b/287929757
+  // To get around this bug: we rely on getToolTop(MouseEvent) to return the tooltip for a mouse
+  // location and ignore any tooltip set on the table itself.
+  override fun getToolTipText(): String? = null
+
+  // The JTable implementation ends up with the TreeTableCellRenderer.TableCellRendererComponent
+  // which doesn't have any tooltip. Get the correct one here.
+  override fun getToolTipText(event: MouseEvent): String? {
+    val cell = position(event.x, event.y) ?: return null
+    val item = getValueAt(cell.row, cell.column)
+    if (cell.column > 0) {
+      return extraColumns[cell.column - 1].getTooltipText(item)
+    } else {
+      val component =
+        tree.cellRenderer.getTreeCellRendererComponent(
+          tree,
+          item,
+          false,
+          false,
+          false,
+          cell.row,
+          false
+        ) as? JComponent
+      return component?.toolTipText
+    }
+  }
 
   override fun adapt(treeTableModel: TreeTableModel): TreeTableModelAdapter =
     object : TreeTableModelAdapter(treeTableModel, tree, this) {
@@ -346,6 +380,13 @@ class TreeTableImpl(
         ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
       else -> ListSelectionModel.SINGLE_SELECTION
     }
+
+  private fun position(x: Int, y: Int): Cell? {
+    val point = Point(x, y)
+    val row = rowAtPoint(point)
+    val column = columnAtPoint(point)
+    return if (row >= 0 && column >= 0) Cell(row, column) else null
+  }
 
   private inner class DataUpdateHandler(private val selectionModel: TreeTableSelectionModelImpl) :
     TreeTableModelImplAdapter() {
@@ -431,13 +472,6 @@ class TreeTableImpl(
     override fun mouseExited(event: MouseEvent) {
       repaintBadge(hoverCell)
       hoverCell = null
-    }
-
-    private fun position(x: Int, y: Int): Cell? {
-      val point = Point(x, y)
-      val row = rowAtPoint(point)
-      val column = columnAtPoint(point)
-      return if (row >= 0 && column >= 0) Cell(row, column) else null
     }
 
     private fun repaintBadge(cell: Cell?) {

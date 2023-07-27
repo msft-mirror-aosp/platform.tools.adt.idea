@@ -24,6 +24,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -132,7 +133,8 @@ class PreviewRefreshManager(private val scope: CoroutineScope) {
   init {
     scope.launch(AndroidDispatchers.workerThread) {
       requestsFlow.collect {
-        val currentJob: Job
+        val lazyWrapperJob: Job
+        var currentRefreshJob: Job? = null
         val currentRequest: PreviewRefreshRequest
         requestsLock.withLock {
           if (allPendingRequests.isEmpty()) {
@@ -141,14 +143,23 @@ class PreviewRefreshManager(private val scope: CoroutineScope) {
           }
           currentRequest = allPendingRequests.remove()
           pendingRequestsPerClient.remove(currentRequest.clientId)
-          currentJob = currentRequest.doRefresh()
+          // Don't start the refresh inside the requestsLock to avoid
+          // a potential deadlock with the UI thread.
+          lazyWrapperJob =
+            launch(start = CoroutineStart.LAZY) {
+              currentRefreshJob = currentRequest.doRefresh()
+              currentRefreshJob!!.join()
+            }
           runningRequest = currentRequest
-          runningJob = currentJob
+          runningJob = lazyWrapperJob
         }
 
         try {
           _isRefreshingFlow.value = true
-          currentJob.invokeOnCompletion {
+          lazyWrapperJob.invokeOnCompletion {
+            if (it != null) {
+              currentRefreshJob?.cancel(if (it is CancellationException) it else null)
+            }
             val result =
               when (it) {
                 null -> RefreshResult.SUCCESS
@@ -161,7 +172,8 @@ class PreviewRefreshManager(private val scope: CoroutineScope) {
               log.warn("Failed refresh request ($currentRequest)", it)
             }
           }
-          currentJob.join()
+          lazyWrapperJob.join()
+          currentRefreshJob?.join()
         } finally {
           requestsLock.withLock {
             runningRequest = null
@@ -176,33 +188,41 @@ class PreviewRefreshManager(private val scope: CoroutineScope) {
   }
 
   fun requestRefresh(request: PreviewRefreshRequest) {
-    requestsLock.withLock {
-      // If the running request is of the same client and has lower than
-      // or equal priority to the new one, then it should be cancelled.
-      runningRequest?.let {
-        if (it.clientId == request.clientId && it <= request) {
-          runningJob!!.cancel(
-            CancellationException(
-              "Outdated, a refresh was replaced by a newer one (${request.clientId})"
-            )
-          )
-        }
-      }
+    scope
+      .launch(AndroidDispatchers.workerThread) {
+        requestsLock.withLock {
+          // If the running request is of the same client and has lower than
+          // or equal priority to the new one, then it should be cancelled.
+          runningRequest?.let {
+            if (it.clientId == request.clientId && it <= request) {
+              runningJob!!.cancel(
+                CancellationException(
+                  "Outdated, a refresh was replaced by a newer one (${request.clientId})"
+                )
+              )
+            }
+          }
 
-      val currentPendingRequestOfClient = pendingRequestsPerClient[request.clientId]
-      // If the pending request of the request's client has higher priority,
-      // then skip the new one, otherwise skip the old one.
-      if (currentPendingRequestOfClient != null && currentPendingRequestOfClient > request) {
-        request.onSkip(currentPendingRequestOfClient)
-      } else {
-        currentPendingRequestOfClient?.let {
-          it.onSkip(request)
-          allPendingRequests.remove(it)
+          val currentPendingRequestOfClient = pendingRequestsPerClient[request.clientId]
+          // If the pending request of the request's client has higher priority,
+          // then skip the new one, otherwise skip the old one.
+          if (currentPendingRequestOfClient != null && currentPendingRequestOfClient > request) {
+            request.onSkip(currentPendingRequestOfClient)
+          } else {
+            currentPendingRequestOfClient?.let {
+              it.onSkip(request)
+              allPendingRequests.remove(it)
+            }
+            pendingRequestsPerClient[request.clientId] = request
+            allPendingRequests.add(request)
+          }
+          requestsFlow.tryEmit(Unit)
         }
-        pendingRequestsPerClient[request.clientId] = request
-        allPendingRequests.add(request)
       }
-      requestsFlow.tryEmit(Unit)
-    }
+      .invokeOnCompletion {
+        if (it != null) {
+          log.warn("Failure while trying to enqueue a new refresh request ($request)", it)
+        }
+      }
   }
 }

@@ -2261,7 +2261,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
     Namespace                     : com.example.kmpfirstlib
     TestNamespace                 : com.example.kmpfirstlib.test
     AaptOptions
-        NameSpacing                   : REQUIRED
+        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2391,17 +2391,41 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>
+                        androidLibrary                : androidx.appcompat:appcompat:1.4.1@aar
                         androidLibrary                : androidx.test:runner:1.4.0-alpha06@aar
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
                         androidLibrary                : androidx.test:core:1.4.0-alpha06@aar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                        androidLibrary                : androidx.fragment:fragment:1.3.6@aar
+                        androidLibrary                : androidx.activity:activity:1.2.4@aar
+                        androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
+                        androidLibrary                : androidx.drawerlayout:drawerlayout:1.0.0@aar
+                        androidLibrary                : androidx.viewpager:viewpager:1.0.0@aar
+                        androidLibrary                : androidx.loader:loader:1.0.0@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable-animated:1.1.0@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable:1.1.0@aar
+                        androidLibrary                : androidx.customview:customview:1.0.0@aar
+                        androidLibrary                : androidx.core:core:1.7.0@aar
+                        androidLibrary                : androidx.cursoradapter:cursoradapter:1.0.0@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
+                        androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                         androidLibrary                : androidx.test.services:storage:1.4.0-alpha06@aar
                         androidLibrary                : androidx.test:monitor:1.4.0-alpha06@aar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0
-                        javaLibrary                   : androidx.annotation:annotation:1.0.0
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                        androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
+                        javaLibrary                   : androidx.collection:collection:1.1.0
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
+                        javaLibrary                   : androidx.arch.core:core-common:2.1.0
+                        androidLibrary                : androidx.interpolator:interpolator:1.0.0@aar
+                        javaLibrary                   : androidx.annotation:annotation:1.3.0
                         javaLibrary                   : junit:junit:4.12
                         javaLibrary                   : org.jetbrains:annotations:13.0
+                        androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         module                        : :-:androidLib-MAIN
@@ -2409,17 +2433,41 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>
+                        androidLibrary                : androidx.appcompat:appcompat:1.4.1@aar
                         androidLibrary                : androidx.test:runner:1.4.0-alpha06@aar
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
                         androidLibrary                : androidx.test:core:1.4.0-alpha06@aar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                        androidLibrary                : androidx.fragment:fragment:1.3.6@aar
+                        androidLibrary                : androidx.activity:activity:1.2.4@aar
+                        androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
+                        androidLibrary                : androidx.drawerlayout:drawerlayout:1.0.0@aar
+                        androidLibrary                : androidx.viewpager:viewpager:1.0.0@aar
+                        androidLibrary                : androidx.loader:loader:1.0.0@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable-animated:1.1.0@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable:1.1.0@aar
+                        androidLibrary                : androidx.customview:customview:1.0.0@aar
+                        androidLibrary                : androidx.core:core:1.7.0@aar
+                        androidLibrary                : androidx.cursoradapter:cursoradapter:1.0.0@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
+                        androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                         androidLibrary                : androidx.test.services:storage:1.4.0-alpha06@aar
                         androidLibrary                : androidx.test:monitor:1.4.0-alpha06@aar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0
-                        javaLibrary                   : androidx.annotation:annotation:1.0.0
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                        androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
+                        javaLibrary                   : androidx.collection:collection:1.1.0
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
+                        javaLibrary                   : androidx.arch.core:core-common:2.1.0
+                        androidLibrary                : androidx.interpolator:interpolator:1.0.0@aar
+                        javaLibrary                   : androidx.annotation:annotation:1.3.0
                         javaLibrary                   : junit:junit:4.12
                         javaLibrary                   : org.jetbrains:annotations:13.0
+                        androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         module                        : :-:androidLib-MAIN
@@ -2447,22 +2495,26 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>
-                        javaLibrary                   : junit:junit:4.13.2
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-test-junit:<KOTLIN_VERSION>
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-test:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
-                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         javaLibrary                   : org.jetbrains:annotations:13.0
+                        javaLibrary                   : junit:junit:4.13.2
+                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         module                        : :-:androidLib-MAIN
                     runtimeClasspath
                         module                        : :-:kmpFirstLib-commonTest
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>
-                        javaLibrary                   : junit:junit:4.13.2
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-test-junit:<KOTLIN_VERSION>
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-test:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
-                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         javaLibrary                   : org.jetbrains:annotations:13.0
+                        javaLibrary                   : junit:junit:4.13.2
+                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         module                        : :-:androidLib-MAIN
                 MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     kotlinMppGradleModel          : {androidInstrumentedTest=androidInstrumentedTest, androidMain=androidMain, androidUnitTest=androidUnitTest, commonMain=commonMain, commonTest=commonTest} (KotlinMPPGradleModelImpl)
@@ -2482,8 +2534,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         - platforms                   : JVM
                     - additionalVisibleSourceSets : androidMain
                     - additionalVisibleSourceSets : commonMain
-                    extras
-                        android-source-set-model      : <OMITTED>
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2528,8 +2578,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         useFirLT                      : true
                 - declaredSourceSets          : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
-                extras
-                    android-compilation-model     : <OMITTED>
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -2562,8 +2610,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         - platforms                   : JVM
                     - allDependsOnSourceSets      : commonMain
                     - declaredDependsOnSourceSets : commonMain
-                    extras
-                        android-source-set-model      : <OMITTED>
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2605,8 +2651,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
-                extras
-                    android-compilation-model     : <OMITTED>
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -2643,8 +2687,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - additionalVisibleSourceSets : commonMain
                     - allDependsOnSourceSets      : commonTest
                     - declaredDependsOnSourceSets : commonTest
-                    extras
-                        android-source-set-model      : <OMITTED>
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2689,8 +2731,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         useFirLT                      : true
                 - declaredSourceSets          : androidUnitTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
-                extras
-                    android-compilation-model     : <OMITTED>
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -2701,8 +2741,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     resourcesDir                  : <ROOT>/kmpFirstLib/build/processedResources/android/unitTest [-]
                 platform                      : JVM
             disambiguationClassifier      : android
-            extras
-                android-target-model          : <OMITTED>
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib.jar [-]
             platform                      : JVM
@@ -3038,7 +3076,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.kmpsecondlib
     AaptOptions
-        NameSpacing                   : REQUIRED
+        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -3156,8 +3194,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                         - platforms                   : JVM
                     - allDependsOnSourceSets      : commonMain
                     - declaredDependsOnSourceSets : commonMain
-                    extras
-                        android-source-set-model      : <OMITTED>
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -3199,8 +3235,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                         useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
-                extras
-                    android-compilation-model     : <OMITTED>
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -3211,8 +3245,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     resourcesDir                  : <ROOT>/kmpSecondLib/build/processedResources/android/main [-]
                 platform                      : JVM
             disambiguationClassifier      : android
-            extras
-                android-target-model          : <OMITTED>
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib.jar [-]
             platform                      : JVM

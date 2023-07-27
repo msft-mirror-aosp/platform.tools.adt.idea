@@ -91,6 +91,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -123,6 +124,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -320,7 +322,8 @@ class ComposePreviewRepresentation(
         surface.deactivateIssueModel()
       },
       onDelayedDeactivate = {
-        setMode(PreviewMode.Default)
+        // If currently selected mode is not Normal mode, switch for Default normal mode.
+        if (!isInNormalMode) setMode(PreviewMode.Default)
         log.debug("Delayed surface deactivation")
         surface.deactivate()
       }
@@ -439,12 +442,19 @@ class ComposePreviewRepresentation(
 
     // Launch handling of Preview modes
     launch {
-      modeFlow.collect {
+      // Keep track of the last mode that was set to ensure it is correctly disposed
+      var lastMode = modeFlow.value
+      modeFlow.collectLatest {
         when (it) {
           // TODO(b/290173523): this should be handled in a separate class
           is PreviewMode.Switching -> {
-            onExit(it.currentMode)
-            onEnter(it.newMode)
+            // We can not interrupt the state change to ensure the change is done correctly
+            withContext(NonCancellable) {
+              onExit(lastMode)
+              onEnter(it.newMode)
+              lastMode = it.newMode
+              restoreMode = it.currentMode
+            }
             modeFlow.value = it.newMode
           }
           else -> Unit
@@ -468,14 +478,16 @@ class ComposePreviewRepresentation(
     if (essentialsModeIsEnabled == galleryModeIsSet) return
 
     if (galleryModeIsSet) {
-      composeWorkBench.galleryMode = null
-      setMode(PreviewMode.Default)
+      // There is no need to switch back to Default mode as toolbar is available.
+      // When exiting Essentials mode - preview will stay in Gallery mode.
     } else {
-      composeWorkBench.galleryMode = ComposeGalleryMode(composeWorkBench.mainSurface)
+      currentLayoutMode = LayoutMode.Gallery
     }
     logComposePreviewLiteModeEvent(sourceEventType)
     requestRefresh()
   }
+
+  @TestOnly fun updateGalleryModeForTest() = updateGalleryMode()
 
   private fun updateFpsForCurrentMode() {
     interactiveManager.fpsLimit =
@@ -581,15 +593,12 @@ class ComposePreviewRepresentation(
     sceneComponentProvider.enabled = false
     val startUpStart = System.currentTimeMillis()
     forceRefresh(if (quickRefresh) RefreshType.QUICK else RefreshType.NORMAL).join()
-    surface.sceneManagers.forEach { it.resetInteractiveEventsCounter() }
     // Currently it will re-create classloader and will be slower than switch from static
     InteractivePreviewUsageTracker.getInstance(surface)
       .logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
     interactiveManager.start()
     requestVisibilityAndNotificationsUpdate()
 
-    // While in interactive mode, display a small ripple when clicking
-    surface.enableMouseClickDisplay()
     surface.background = INTERACTIVE_BACKGROUND_COLOR
     ActivityTracker.getInstance().inc()
   }
@@ -613,7 +622,6 @@ class ComposePreviewRepresentation(
   }
 
   private suspend fun onInteractivePreviewStop() {
-    surface.disableMouseClickDisplay()
     requestVisibilityAndNotificationsUpdate()
     interactiveManager.stop()
     filterFlow.value = ComposePreviewElementsModel.Filter.Disabled
@@ -725,6 +733,34 @@ class ComposePreviewRepresentation(
 
   private val psiCodeFileChangeDetectorService =
     PsiCodeFileChangeDetectorService.getInstance(project)
+
+  /**
+   * Currently selected [LayoutMode]. If [LayoutMode] has changed - hierarchy of the components will
+   * be rearranged and for [LayoutMode.Gallery] tab component will be added.
+   */
+  private var currentLayoutMode: LayoutMode = LayoutMode.Default
+    set(value) {
+      // Switching layout from toolbar.
+      if (field == value) return
+      field = value
+
+      when (value) {
+        LayoutMode.Gallery -> {
+          composeWorkBench.galleryMode = ComposeGalleryMode(composeWorkBench.mainSurface)
+        }
+        LayoutMode.Default -> {
+          composeWorkBench.galleryMode = null
+        }
+      }
+    }
+
+  /**
+   * With entering one of the [PreviewMode.Focus] modes (interactive, animation, etc. ) previous
+   * mode is saved into [restoreMode]. After exiting the special mode [restoreMode] is set.
+   *
+   * TODO(b/293257529) Need to restore selected tab as well in Gallery mode.
+   */
+  private var restoreMode: PreviewMode.Settable? = null
 
   init {
     updateGalleryMode()
@@ -1137,6 +1173,13 @@ class ComposePreviewRepresentation(
     return newStatus
   }
 
+  override fun back() {
+    restoreMode?.let {
+      setMode(it)
+      restoreMode = null
+    }
+  }
+
   /**
    * Method called when the notifications of the [PreviewRepresentation] need to be updated. This is
    * called by the [ComposeNewPreviewNotificationProvider] when the editor needs to refresh the
@@ -1253,7 +1296,7 @@ class ComposePreviewRepresentation(
     }
   }
 
-  internal fun requestRefresh(
+  private fun requestRefresh(
     type: RefreshType = RefreshType.NORMAL,
     completableDeferred: CompletableDeferred<Unit>? = null
   ) {
@@ -1266,6 +1309,12 @@ class ComposePreviewRepresentation(
       ComposePreviewRefreshRequest(this.hashCode().toString(), ::refresh, completableDeferred, type)
     )
   }
+
+  @TestOnly
+  fun requestRefreshForTest(
+    type: RefreshType = RefreshType.NORMAL,
+    completableDeferred: CompletableDeferred<Unit>? = null
+  ) = requestRefresh(type, completableDeferred)
 
   private fun requestVisibilityAndNotificationsUpdate() {
     launch(workerThread) { refreshNotificationsAndVisibilityFlow.emit(Unit) }
@@ -1457,6 +1506,10 @@ class ComposePreviewRepresentation(
           (surface.sceneViewLayoutManager as LayoutManagerSwitcher).setLayoutManager(
             it.layoutManager
           )
+          // If gallery mode was selected before - need to restore this type of layout.
+          if (it == PREVIEW_LAYOUT_GALLERY_OPTION) {
+            setMode(PreviewMode.Gallery(allPreviewElementsInFileFlow.value.first()))
+          }
         }
     }
   }
@@ -1654,12 +1707,7 @@ class ComposePreviewRepresentation(
   }
 
   override fun setMode(newMode: PreviewMode.Settable) {
-    val currentMode = modeFlow.value as? PreviewMode.Settable
-    if (currentMode == null) {
-      log.debug("Mode is already switching")
-      return
-    }
-
+    val currentMode = currentOrNextMode
     if (currentMode == newMode) {
       log.debug("Mode was already $newMode")
       return
@@ -1669,6 +1717,8 @@ class ComposePreviewRepresentation(
   }
 
   private suspend fun onEnter(mode: PreviewMode) {
+    invokeLater { currentLayoutMode = mode.layoutMode }
+
     when (mode) {
       is PreviewMode.Default -> {
         sceneComponentProvider.enabled = true
@@ -1705,7 +1755,8 @@ class ComposePreviewRepresentation(
         }
         forceRefresh().join()
       }
-      is PreviewMode.Essential -> {
+      is PreviewMode.Gallery -> {
+        surface.background = Colors.DEFAULT_BACKGROUND_COLOR
         singlePreviewElementInstance = mode.selected
       }
       is PreviewMode.Switching,
@@ -1737,7 +1788,7 @@ class ComposePreviewRepresentation(
         // Swap the components back
         updateAnimationPanelVisibility()
       }
-      is PreviewMode.Essential,
+      is PreviewMode.Gallery,
       is PreviewMode.Switching,
       is PreviewMode.Settable -> {}
     }
