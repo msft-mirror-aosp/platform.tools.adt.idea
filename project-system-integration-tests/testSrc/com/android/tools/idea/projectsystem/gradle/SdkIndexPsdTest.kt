@@ -26,11 +26,10 @@ class SdkIndexPsdTest : SdkIndexTestBase() {
         openAndClosePSD(studio)
       },
       beforeClose = {
-        // One error and two warnings should appear:
+        // One error and one warning should appear:
         //   - com.startapp:inapp-sdk:3.9.1 blocking critical
-        //   - com.stripe:stripe-android:9.3.2 warning (policy issues, not blocking)
         //   - com.mopub:mopub-sdk:4.16.0 warning (outdated)
-        verifyPsdIssues(numWarnings = 2)
+        verifyPsdIssues(numWarnings = 1)
       },
       expectedIssues = setOf(
         "com.mopub:mopub-sdk version 4.16.0 has been marked as outdated by its author",

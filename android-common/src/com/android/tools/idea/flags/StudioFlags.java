@@ -1627,7 +1627,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = Flag.create(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
     "Whether or not SDK Index policy issues should be shown",
-    true
+    false
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 
