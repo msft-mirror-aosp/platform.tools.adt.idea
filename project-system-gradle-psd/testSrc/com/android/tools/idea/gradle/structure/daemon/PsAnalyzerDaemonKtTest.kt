@@ -40,8 +40,8 @@ class PsAnalyzerDaemonKtTest(private val blocking: Boolean,
     const val LIBRARY_GROUP = "test-group"
     const val LIBRARY_ARTIFACT = "test-artifact"
     const val LIBRARY_VERSION = "test-version"
-    private const val MESSAGE_POLICY = "has policy issues that will block publishing of your app to Play Console in the future"
-    private const val MESSAGE_POLICY_BLOCKING = "has policy issues that will block publishing of your app to Play Console"
+    private val MESSAGE_POLICY = null // Policy issues not shown in H
+    private val MESSAGE_POLICY_BLOCKING = null // Policy issues not shown in H
     private const val MESSAGE_OUTDATED = "has been marked as outdated by its author"
     private const val MESSAGE_OUTDATED_BLOCKING = "has been marked as outdated by its author and will block publishing of your app to Play Console"
     private const val MESSAGE_CRITICAL = "has an associated message from its author"
@@ -60,8 +60,10 @@ class PsAnalyzerDaemonKtTest(private val blocking: Boolean,
       arrayOf(false, false, true, false, MESSAGE_OUTDATED),
       // Critical
       arrayOf(false, false, false, true, MESSAGE_CRITICAL),
-      // Two types
-      arrayOf(false, true, true, false, MESSAGE_MULTIPLE_ISSUES),
+      // Two types (one policy)
+      arrayOf(false, true, true, false, MESSAGE_OUTDATED),
+      // Two types (no policy)
+      arrayOf(false, false, true, true, MESSAGE_MULTIPLE_ISSUES),
       // Three types
       arrayOf(false, true, true, true, MESSAGE_MULTIPLE_ISSUES),
       // Policy BLOCKING
@@ -70,8 +72,10 @@ class PsAnalyzerDaemonKtTest(private val blocking: Boolean,
       arrayOf(true, false, true, false, MESSAGE_OUTDATED_BLOCKING),
       // Critical BLOCKING
       arrayOf(true, false, false, true, MESSAGE_CRITICAL_BLOCKING),
-      // Two types BLOCKING
-      arrayOf(true, true, true, false, MESSAGE_MULTIPLE_ISSUES_BLOCKING),
+      // Two types BLOCKING (one policy)
+      arrayOf(true, true, true, false, MESSAGE_OUTDATED_BLOCKING),
+      // Two types BLOCKING (no policy)
+      arrayOf(true, false, true, true, MESSAGE_MULTIPLE_ISSUES_BLOCKING),
       // Three types BLOCKING
       arrayOf(true, true, true, true, MESSAGE_MULTIPLE_ISSUES_BLOCKING),
     )
