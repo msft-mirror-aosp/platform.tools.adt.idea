@@ -161,7 +161,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
             row {
                 defaultModeRadioButton =
                   radioButton("Default").bindSelected({
-                    !state.isComposePreviewEssentialsModeEnabled
+                    !state.isComposePreviewEssentialsModeEnabled && !EssentialsMode.isEnabled()
                   }) {
                     state.isComposePreviewEssentialsModeEnabled = !it
                   }
@@ -180,9 +180,9 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                   "Preview will preserve resources by inflating previews on demand, and disabling live updates and preview modes. " +
                     "<a href=\"https://developer.android.com/jetpack/compose/tooling/previews#essentials\">Learn more</a>"
 
-                radioButton("Essentials").comment(essentialsModeHint).bindSelected(
-                  state::isComposePreviewEssentialsModeEnabled
-                ) {
+                radioButton("Essentials").comment(essentialsModeHint).bindSelected({
+                  state.isComposePreviewEssentialsModeEnabled || EssentialsMode.isEnabled()
+                }) {
                   state.isComposePreviewEssentialsModeEnabled = it
                 }
               }
