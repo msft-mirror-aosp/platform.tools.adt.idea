@@ -1554,7 +1554,7 @@ public final class StudioFlags {
       "insights.change.aware.annotation",
       "Change-aware Annotation Support",
       "Enhance annotation to aid crash investigation with the recorded VCS info",
-      true);
+      false);
 
   public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
     Flag.create(
@@ -1562,7 +1562,7 @@ public final class StudioFlags {
       "insights.vcs",
       "VCS Support",
       "Enhance code navigation to aid crash investigation with the recorded VCS info",
-      true);
+      false);
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     Flag.create(
