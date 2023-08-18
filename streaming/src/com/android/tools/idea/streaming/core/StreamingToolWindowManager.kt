@@ -143,7 +143,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   private val properties = PropertiesComponent.getInstance(project)
   private val emulatorSettings = EmulatorSettings.getInstance()
   private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
-  private val deviceProvisioner = project.service<DeviceProvisionerService>().deviceProvisioner
+  private val deviceProvisioner
+    @AnyThread get() = project.service<DeviceProvisionerService>().deviceProvisioner
   private var initialized = false
   private var contentCreated = false
   private var mirroringConfirmationDialogShowing = false
@@ -989,13 +990,19 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
     private fun onlineDevicesChanged() {
       val removedExcluded = devicesExcludedFromMirroring.keys.retainAll(onlineDevices.keys)
-      if (removedExcluded) {
+      val removed = deviceClients.keys.minus(onlineDevices.keys)
+      if (contentCreated) {
+        for (device in removed) {
+          removePhysicalDevicePanel(device)
+        }
+      }
+      else {
+        deviceClients.keys.removeAll(removed)
+      }
+      if (removedExcluded || removed.isNotEmpty()) {
         updateMirroringHandlesFlow()
       }
-      val removed = deviceClients.keys.minus(onlineDevices.keys)
-      for (device in removed) {
-        removePhysicalDevicePanel(device)
-      }
+
       for ((serialNumber, device) in onlineDevices) {
         if (serialNumber !in mirroredDevices && serialNumber !in devicesExcludedFromMirroring) {
           coroutineScope.launch {

@@ -82,6 +82,8 @@ class AndroidGradleProjectStartupActivity : StartupActivity {
     val gradleProjectInfo = GradleProjectInfo.getInstance(project)
 
     fun shouldSyncOrAttachModels(): Boolean {
+      if (gradleProjectInfo.isSkipStartupActivity) return false
+
       // Opening an IDEA project with Android modules (AS and IDEA - i.e. previously synced).
       if (gradleProjectInfo.androidModules.isNotEmpty()) return true
 
@@ -104,6 +106,8 @@ class AndroidGradleProjectStartupActivity : StartupActivity {
       AndroidStudioPreferences.cleanUpPreferences(project)
       showNeededNotifications(project)
     }
+
+    gradleProjectInfo.isSkipStartupActivity = false
   }
 }
 

@@ -18,7 +18,7 @@ package com.android.tools.compose
 
 import androidx.compose.compiler.plugins.kotlin.ComposeClassIds
 import androidx.compose.compiler.plugins.kotlin.ComposeFqNames
-import androidx.compose.compiler.plugins.kotlin.hasComposableAnnotation
+import androidx.compose.compiler.plugins.kotlin.k1.hasComposableAnnotation
 import com.android.tools.idea.kotlin.findAnnotation
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.psi.PsiElement
@@ -108,7 +108,7 @@ else {
 }
 
 // TODO(274630452): When the upstream APIs are available, implement it based on `fullyExpandedType` and `KtTypeRenderer`.
-internal fun KtAnalysisSession.asFqName(type: KtType) = type.expandedClassSymbol?.classIdIfNonLocal?.asSingleFqName()
+private fun KtAnalysisSession.asFqName(type: KtType) = type.expandedClassSymbol?.classIdIfNonLocal?.asSingleFqName()
 
 internal fun KtFunction.hasComposableAnnotation() = if (isK2Plugin()) {
   findAnnotation(ComposeFqNames.Composable) != null

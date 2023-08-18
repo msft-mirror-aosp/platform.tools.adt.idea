@@ -138,12 +138,16 @@ fun LayoutInspectorViewProtocol.Locale.convert(): Locale {
 }
 
 fun LayoutInspectorViewProtocol.AppContext.convert(): AppContext {
+  val isRunningInMainDisplay =
+    displayType == LayoutInspectorViewProtocol.DisplayType.MAIN_DISPLAY ||
+      displayType == LayoutInspectorViewProtocol.DisplayType.UNDEFINED
   return AppContext(
     theme.convert(),
     if (mainDisplayWidth > 0 && mainDisplayHeight > 0)
       Dimension(mainDisplayWidth, mainDisplayHeight)
     else null,
-    mainDisplayOrientation
+    mainDisplayOrientation,
+    isRunningInMainDisplay
   )
 }
 

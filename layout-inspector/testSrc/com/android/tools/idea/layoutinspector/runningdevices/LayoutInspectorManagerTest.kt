@@ -223,9 +223,16 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
     val workbench = tab1.content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
-    val dataContext = DataManager.getInstance().getDataContext(workbench)
-    val layoutInspector = dataContext.getData(LAYOUT_INSPECTOR_DATA_KEY)
-    assertThat(layoutInspector).isEqualTo(layoutInspector)
+    val dataContext1 = DataManager.getInstance().getDataContext(workbench)
+    val layoutInspector1 = dataContext1.getData(LAYOUT_INSPECTOR_DATA_KEY)
+    assertThat(layoutInspector1).isEqualTo(layoutInspector1)
+
+    layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
+
+    val dataContext2 = DataManager.getInstance().getDataContext(workbench)
+    val layoutInspector2 = dataContext2.getData(LAYOUT_INSPECTOR_DATA_KEY)
+
+    assertThat(layoutInspector2).isNull()
   }
 
   @Test
@@ -478,10 +485,15 @@ class LayoutInspectorManagerTest {
     var isWorkbenchDisposed = false
     val workBench = tab1.content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
     Disposer.register(workBench) { isWorkbenchDisposed = true }
+    var isRendererDisposed = false
+    val renderer =
+      tab1.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>().first()
+    Disposer.register(renderer) { isRendererDisposed = true }
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
     assertThat(isWorkbenchDisposed).isTrue()
+    assertThat(isRendererDisposed).isTrue()
   }
 
   private fun assertHasWorkbench(tabInfo: TabInfo) {
@@ -489,6 +501,10 @@ class LayoutInspectorManagerTest {
       .hasSize(1)
     assertThat(tabInfo.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>())
       .hasSize(1)
+
+    val workbench =
+      tabInfo.content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
+    assertThat(workbench.isFocusCycleRoot).isFalse()
 
     val toolbars =
       tabInfo.container.allChildren().filterIsInstance<ActionToolbar>().filter {

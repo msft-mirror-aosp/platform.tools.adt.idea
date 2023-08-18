@@ -16,8 +16,8 @@
 package com.android.build.diagnostic
 
 import com.android.tools.analytics.UsageTracker
-import com.android.tools.idea.IdeInfo
 import com.android.tools.analytics.withProjectId
+import com.android.tools.idea.IdeInfo
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.BuildAttributionUiEvent
 import com.google.wireless.android.sdk.stats.WindowsDefenderStatus
@@ -37,6 +37,7 @@ import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.NlsContexts
+import org.jetbrains.android.util.AndroidBundle
 import java.nio.file.Path
 
 private val LOG = Logger.getInstance(WindowsDefenderCheckService::class.java)
@@ -179,39 +180,30 @@ class WindowsDefenderCheckService(
   private fun showWarningNotification(canRunExclusionScript: Boolean, importantPaths: List<Path>) {
     if (!project.isTrusted()) return
     val pathList = importantPaths.joinToString(separator = "<br>&nbsp;&nbsp;", prefix = "<br>&nbsp;&nbsp;") { it.toString() }
-    val showManualInstructions = {
-      BrowserUtil.browse(manualInstructionsLink)
-      trackShowingManualInstructions(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION)
-    }
+    val ignoreForProject = DiagnosticBundle.message("defender.config.suppress1")
     val notification = if (canRunExclusionScript) {
       val auto = DiagnosticBundle.message("defender.config.auto")
       val manual = DiagnosticBundle.message("defender.config.manual")
-      notification(DiagnosticBundle.message("defender.config.prompt", pathList, auto, manual), NotificationType.INFORMATION)
+      notification(AndroidBundle.message("android.defender.config.prompt", pathList, auto, ignoreForProject), NotificationType.INFORMATION)
         .addAction(NotificationAction.createSimpleExpiring(auto) {
           runAutoExclusionScript(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, ::showResultNotification)
         })
-        .addAction(NotificationAction.createSimple(manual, showManualInstructions))
+        .addAction(NotificationAction.createSimple(manual, ::showManualInstructions))
     }
     else {
-      notification(DiagnosticBundle.message("defender.config.prompt.no.script", pathList), NotificationType.INFORMATION)
-        .addAction(
-          NotificationAction.createSimple(DiagnosticBundle.message("defender.config.instructions"), showManualInstructions))
-    }
-    val onIgnoreCallback = {
-      val action = ActionsBundle.message("action.ResetWindowsDefenderNotification.text")
-      notification(DiagnosticBundle.message("defender.config.restore", action), NotificationType.INFORMATION)
-        .notify(project)
+      notification(AndroidBundle.message("android.defender.config.prompt.no.script", pathList), NotificationType.INFORMATION)
+        .addAction(NotificationAction.createSimple(DiagnosticBundle.message("defender.config.instructions"), ::showManualInstructions))
     }
     notification
       .also {
         it.isImportant = true
         it.collapseDirection = Notification.CollapseActionsDirection.KEEP_LEFTMOST
       }
-      .addAction(NotificationAction.createSimpleExpiring(DiagnosticBundle.message("defender.config.suppress1")) {
-        ignoreCheckForProject(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, onIgnoreCallback)
+      .addAction(NotificationAction.createSimpleExpiring(ignoreForProject) {
+        ignoreCheckForProject(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, ::onIgnoreCallback)
       })
       .addAction(NotificationAction.createSimpleExpiring(DiagnosticBundle.message("defender.config.suppress2")) {
-        ignoreCheckGlobally(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, onIgnoreCallback)
+        ignoreCheckGlobally(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, ::onIgnoreCallback)
       })
       .notify(project)
   }
@@ -222,10 +214,26 @@ class WindowsDefenderCheckService(
         .notify(project)
     }
     else {
-      notification(DiagnosticBundle.message("defender.config.failed"), NotificationType.WARNING)
-        .addAction(ShowLogAction.notificationAction())
+      val ignoreForProject = DiagnosticBundle.message("defender.config.suppress1")
+      notification(AndroidBundle.message("android.defender.config.failed"), NotificationType.WARNING)
+        .addAction(NotificationAction.createSimple(ActionsBundle.message("show.log.notification.text"), ShowLogAction::showLog))
+        .addAction(NotificationAction.createSimple(AndroidBundle.message("android.defender.config.failed.instructions"), ::showManualInstructions))
+        .addAction(NotificationAction.createSimpleExpiring(ignoreForProject) {
+          ignoreCheckForProject(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION, ::onIgnoreCallback)
+        })
         .notify(project)
     }
+  }
+
+  private fun showManualInstructions() {
+    BrowserUtil.browse(manualInstructionsLink)
+    trackShowingManualInstructions(BuildAttributionUiEvent.Page.PageType.WINDOWS_DEFENDER_NOTIFICATION)
+  }
+
+  private fun onIgnoreCallback() {
+    val action = ActionsBundle.message("action.ResetWindowsDefenderNotification.text")
+    notification(DiagnosticBundle.message("defender.config.restore", action), NotificationType.INFORMATION)
+      .notify(project)
   }
 }
 

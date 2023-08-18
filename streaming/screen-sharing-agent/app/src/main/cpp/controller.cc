@@ -206,7 +206,7 @@ void Controller::Run() {
   } catch (EndOfFile& e) {
     Log::D("Controller::Run: End of command stream");
   } catch (IoException& e) {
-    Log::Fatal("%s", e.GetMessage().c_str());
+    Log::Fatal(SOCKET_IO_ERROR, "%s", e.GetMessage().c_str());
   }
 }
 
@@ -283,7 +283,16 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
       motion_event_start_time_ = 0;
     }
   }
-  event.source = action == AMOTION_EVENT_ACTION_HOVER_MOVE ? AINPUT_SOURCE_MOUSE : AINPUT_SOURCE_STYLUS | AINPUT_SOURCE_TOUCHSCREEN;
+  if (action == AMOTION_EVENT_ACTION_HOVER_MOVE || message.action_button() != 0 || message.button_state() != 0) {
+    // AINPUT_SOURCE_MOUSE
+    // - when action_button() is non-zero, as the Android framework has special handling for mouse in performButtonActionOnTouchDown(),
+    //   which opens the context menu on right click.
+    // - when message.button_state() is non-zero, otherwise drag operations initiated by touch down with AINPUT_SOURCE_MOUSE will not
+    //   receiver mouse move events.
+    event.source = AINPUT_SOURCE_MOUSE;
+  } else {
+    event.source = AINPUT_SOURCE_STYLUS | AINPUT_SOURCE_TOUCHSCREEN;
+  }
 
   DisplayInfo display_info = Agent::GetDisplayInfo();
 
@@ -395,11 +404,12 @@ void Controller::ProcessSetDeviceOrientation(const SetDeviceOrientationMessage& 
 }
 
 void Controller::ProcessSetMaxVideoResolution(const SetMaxVideoResolutionMessage& message) {
-  if (message.width() <= 0 || message.height() <= 0) {
-    Log::E("An attempt to set an invalid video resolution: %dx%d", message.width(), message.height());
+  const Size& size = message.size();
+  if (size.width <= 0 || size.height <= 0) {
+    Log::E("An attempt to set an invalid video resolution: %dx%d", size.width, size.height);
     return;
   }
-  Agent::SetMaxVideoResolution(Size(message.width(), message.height()));
+  Agent::SetMaxVideoResolution(size);
 }
 
 void Controller::StopVideoStream() {

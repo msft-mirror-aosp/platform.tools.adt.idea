@@ -20,18 +20,19 @@ import org.junit.Test
 // TODO(b/289275521): This tests to be removed once google.play.sdk.index.show.sdk.policy.issues is removed
 class PolicyIssuesPsdTest : SdkIndexTestBase() {
   @Test
-  fun `policy issues not shown when flag false`() {
-    system.installation.addVmOption("-Dgoogle.play.sdk.index.show.sdk.policy.issues=false")
+  fun `policy issues shown when flag true`() {
+    system.installation.addVmOption("-Dgoogle.play.sdk.index.show.sdk.policy.issues=true")
     system.installation.addVmOption("-Didea.log.debug.categories=#com.android.tools.idea.gradle.structure.daemon.PsAnalyzerDaemon")
     verifySdkIndexIsInitializedAndUsedWhen(
       showFunction = { studio, _ ->
         openAndClosePSD(studio)
       },
       beforeClose = {
-        // An error and one warning should be shown:
+        // An error and two warnings should be shown:
         //   - com.startapp:inapp-sdk:3.9.1 error (blocking critical)
         //   - com.mopub:mopub-sdk:4.16.0 warning (outdated)
-        verifyPsdIssues(numWarnings = 1)
+        //   - com.stripe:stripe-android:version 9.3.2 (warning, policy issue non-blocking)
+        verifyPsdIssues(numWarnings = 2)
       },
       expectedIssues = setOf(
         "com.mopub:mopub-sdk version 4.16.0 has been marked as outdated by its author",

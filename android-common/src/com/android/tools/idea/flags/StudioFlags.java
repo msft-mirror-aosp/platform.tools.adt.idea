@@ -1265,7 +1265,7 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.deploy.differ",
     "LiveEdit: Resolve changed classes and group IDs with the class differ.",
     "If enabled, the class differ will be used inside of the LE compiler",
-    false
+    true
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_R8_DESUGAR = Flag.create(
@@ -1627,7 +1627,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = Flag.create(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
     "Whether or not SDK Index policy issues should be shown",
-    true
+    false
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 
@@ -1697,7 +1697,7 @@ public final class StudioFlags {
   // region STUDIO_BOT
   private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
   public static final Flag<Boolean> STUDIOBOT_ENABLED =
-    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
+    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", false);
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

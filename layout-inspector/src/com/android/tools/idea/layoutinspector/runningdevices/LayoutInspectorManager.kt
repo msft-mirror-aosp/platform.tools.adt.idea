@@ -140,6 +140,10 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         previousTab.disableLayoutInspector()
         previousTab.layoutInspector.stopInspector()
       }
+      if (previousTab != null) {
+        // Layout Inspector UI has been removed, dispose to trigger clean up.
+        Disposer.dispose(previousTab.tabComponents)
+      }
 
       field = value
 
@@ -294,7 +298,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
    *   device display is rendered.
    */
   class TabComponents(
-    val disposable: Disposable,
+    disposable: Disposable,
     val tabContentPanel: JComponent,
     val tabContentPanelContainer: Container,
     val displayView: AbstractDisplayView
@@ -322,10 +326,11 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       WrapLogic(tabComponents.tabContentPanel, tabComponents.tabContentPanelContainer),
     val layoutInspectorRenderer: LayoutInspectorRenderer =
       LayoutInspectorRenderer(
-        tabComponents.disposable,
+        tabComponents,
         layoutInspector.coroutineScope,
         layoutInspector.renderLogic,
         layoutInspector.renderModel,
+        layoutInspector.notificationModel,
         { tabComponents.displayView.displayRectangle },
         { tabComponents.displayView.screenScalingFactor },
         {
@@ -341,13 +346,17 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       )
   ) {
 
-    private var layoutInspectorDisposable: Disposable? = null
+    /**
+     * Disposable created each time the UI is injected, and disposed each time the UI is removed.
+     * It's used to keep track of the lifecycle of the UI.
+     */
+    private var uiDisposable: Disposable? = null
 
     fun enableLayoutInspector() {
       ApplicationManager.getApplication().assertIsDispatchThread()
 
-      val disposable = Disposer.newDisposable(tabComponents.disposable)
-      layoutInspectorDisposable = disposable
+      val disposable = Disposer.newDisposable(tabComponents)
+      uiDisposable = disposable
 
       wrapLogic.wrapComponent { centerPanel ->
         val inspectorPanel = BorderLayoutPanel()
@@ -377,8 +386,10 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
         val workBench =
           createLayoutInspectorWorkbench(project, disposable, layoutInspector, mainPanel)
+        workBench.isFocusCycleRoot = false
 
-        inspectorPanel.add(InspectorBanner(layoutInspector.notificationModel), BorderLayout.NORTH)
+        val inspectorBanner = InspectorBanner(disposable, layoutInspector.notificationModel)
+        inspectorPanel.add(inspectorBanner, BorderLayout.NORTH)
         inspectorPanel.add(workBench, BorderLayout.CENTER)
         inspectorPanel.border = JBUI.Borders.customLineTop(JBColor.border())
         inspectorPanel
@@ -395,8 +406,8 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     fun disableLayoutInspector() {
       ApplicationManager.getApplication().assertIsDispatchThread()
 
-      layoutInspectorDisposable?.let { Disposer.dispose(it) }
-      layoutInspectorDisposable = null
+      uiDisposable?.let { Disposer.dispose(it) }
+      uiDisposable = null
 
       wrapLogic.unwrapComponent()
       tabComponents.displayView.remove(layoutInspectorRenderer)
@@ -466,6 +477,9 @@ private fun createLayoutInspectorWorkbench(
     listOf(LayoutInspectorTreePanelDefinition(), LayoutInspectorPropertiesPanelDefinition())
   workbench.init(centerPanel, layoutInspector, toolsDefinition, false)
   DataManager.registerDataProvider(workbench, dataProviderForLayoutInspector(layoutInspector))
+
+  Disposer.register(parentDisposable) { DataManager.removeDataProvider(workbench) }
+
   return workbench
 }
 

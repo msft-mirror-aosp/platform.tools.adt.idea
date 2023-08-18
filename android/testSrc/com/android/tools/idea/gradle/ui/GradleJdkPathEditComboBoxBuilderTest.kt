@@ -25,8 +25,8 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.util.containers.MultiMap
-import kotlin.io.path.Path
 import java.io.File
+import kotlin.io.path.Path
 
 class GradleJdkPathEditComboBoxBuilderTest: LightPlatformTestCase() {
 
@@ -51,9 +51,10 @@ class GradleJdkPathEditComboBoxBuilderTest: LightPlatformTestCase() {
 
   private fun buildJdkPathEditComboBox(embeddedJdk: String, suggestedJdks: List<String>) =
     GradleJdkPathEditComboBoxBuilder.build(
-      initialSelectionJdkPath = null,
+      currentJdkPath = null,
       embeddedJdkPath = Path(embeddedJdk),
-      suggestedJdks = suggestedJdks.map { createMockSdk(it) }
+      suggestedJdks = suggestedJdks.map { createMockSdk(it) },
+      hintMessage = ""
     )
 
   private fun assertJdkItems(jdkComboBox: GradleJdkPathEditComboBox, expectedJdkPaths: List<String>) {
