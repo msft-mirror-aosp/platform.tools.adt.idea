@@ -18,15 +18,16 @@ package com.android.tools.idea.avdmanager;
 
 import static com.android.sdklib.internal.avd.GpuMode.OFF;
 import static com.android.sdklib.internal.avd.GpuMode.SWIFT;
+import static com.android.sdklib.repository.targets.SystemImage.ANDROID_TV_TAG;
 import static com.android.sdklib.repository.targets.SystemImage.DEFAULT_TAG;
 import static com.android.sdklib.repository.targets.SystemImage.GOOGLE_APIS_TAG;
 import static com.android.sdklib.repository.targets.SystemImage.GOOGLE_APIS_X86_TAG;
-import static com.android.sdklib.repository.targets.SystemImage.ANDROID_TV_TAG;
 import static com.android.sdklib.repository.targets.SystemImage.GOOGLE_TV_TAG;
 import static com.android.sdklib.repository.targets.SystemImage.WEAR_TAG;
-import static com.android.tools.idea.avdmanager.ConfigureAvdOptionsStep.gpuOtherMode;
-import static com.android.tools.idea.avdmanager.ConfigureAvdOptionsStep.isGoogleApiTag;
-import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.emulator.snapshot.SnapshotOuterClass;
 import com.android.repository.api.RepoManager;
@@ -35,6 +36,7 @@ import com.android.repository.impl.meta.TypeDetails;
 import com.android.repository.testframework.FakePackage;
 import com.android.repository.testframework.FakeProgressIndicator;
 import com.android.repository.testframework.FakeRepoManager;
+import com.android.resources.ScreenOrientation;
 import com.android.sdklib.ISystemImage;
 import com.android.sdklib.devices.Device;
 import com.android.sdklib.devices.DeviceManager;
@@ -46,6 +48,7 @@ import com.android.sdklib.repository.targets.SystemImageManager;
 import com.android.testutils.NoErrorsOrWarningsLogger;
 import com.android.testutils.file.InMemoryFileSystems;
 import com.android.tools.idea.observable.BatchInvoker;
+import com.android.tools.idea.testing.AndroidProjectRule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -63,25 +66,35 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import javax.swing.Icon;
 import javax.swing.JCheckBox;
-import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.annotations.NotNull;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
+@RunWith(JUnit4.class)
+public final class ConfigureAvdOptionsStepTest {
+  @Rule
+  public final AndroidProjectRule myRule = AndroidProjectRule.withSdk();
 
+  private ISystemImage mySnapshotSystemImage;
+
+  private DeviceManager myManager;
+  private Device myFoldable;
+  private Device myDesktop;
+  private Device myAutomotive;
+
+  private final Map<String, String> myPropertiesMap = Maps.newHashMap();
   private AvdInfo myQAvdInfo;
   private AvdInfo myMarshmallowAvdInfo;
   private AvdInfo myPreviewAvdInfo;
   private AvdInfo myZuluAvdInfo;
   private AvdInfo myExtensionsAvdInfo;
-  private ISystemImage mySnapshotSystemImage;
-  private final Map<String, String> myPropertiesMap = Maps.newHashMap();
-  private Device myFoldable;
-  private Device myDesktop;
-  private Device myAutomotive;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() {
     RepositoryPackages packages = new RepositoryPackages();
     IconLoader.activate();
 
@@ -94,7 +107,7 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     detailsQ.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
     detailsQ.setAbi("x86");
     detailsQ.setApiLevel(29);
-    pkgQ.setTypeDetails((TypeDetails) detailsQ);
+    pkgQ.setTypeDetails((TypeDetails)detailsQ);
     InMemoryFileSystems.recordExistingFile(pkgQ.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
 
     // Marshmallow image (API 23)
@@ -105,7 +118,7 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     detailsMarshmallow.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
     detailsMarshmallow.setAbi("x86");
     detailsMarshmallow.setApiLevel(23);
-    pkgMarshmallow.setTypeDetails((TypeDetails) detailsMarshmallow);
+    pkgMarshmallow.setTypeDetails((TypeDetails)detailsMarshmallow);
     InMemoryFileSystems.recordExistingFile(pkgMarshmallow.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
 
     // Preview image
@@ -117,7 +130,7 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     detailsPreview.setAbi("x86");
     detailsPreview.setApiLevel(99);
     detailsPreview.setCodename("Z"); // Setting a code name is the key!
-    pkgPreview.setTypeDetails((TypeDetails) detailsPreview);
+    pkgPreview.setTypeDetails((TypeDetails)detailsPreview);
     InMemoryFileSystems.recordExistingFile(pkgPreview.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
 
     // Image with an unknown API level
@@ -155,74 +168,83 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     FakeProgressIndicator progress = new FakeProgressIndicator();
     SystemImageManager systemImageManager = sdkHandler.getSystemImageManager(progress);
 
-    ISystemImage QImage = systemImageManager.getImageAt(
-      sdkHandler.getLocalPackage(qPath, progress).getLocation());
-    ISystemImage marshmallowImage = systemImageManager.getImageAt(
-      sdkHandler.getLocalPackage(marshmallowPath, progress).getLocation());
-    ISystemImage NPreviewImage = systemImageManager.getImageAt(
-      sdkHandler.getLocalPackage(previewPath, progress).getLocation());
-    ISystemImage ZuluImage = systemImageManager.getImageAt(
-      sdkHandler.getLocalPackage(zuluPath, progress).getLocation());
-    ISystemImage extensionsImage = systemImageManager.getImageAt(
-      sdkHandler.getLocalPackage(extensionsPath, progress).getLocation());
+    ISystemImage QImage = SystemImageManagers.getImageAt(systemImageManager, sdkHandler, qPath, progress);
+    ISystemImage marshmallowImage = SystemImageManagers.getImageAt(systemImageManager, sdkHandler, marshmallowPath, progress);
+    ISystemImage NPreviewImage = SystemImageManagers.getImageAt(systemImageManager, sdkHandler, previewPath, progress);
+    ISystemImage ZuluImage = SystemImageManagers.getImageAt(systemImageManager, sdkHandler, zuluPath, progress);
+    ISystemImage extensionsImage = SystemImageManagers.getImageAt(systemImageManager, sdkHandler, extensionsPath, progress);
 
     mySnapshotSystemImage = ZuluImage; // Re-use Zulu for the snapshot test
 
-    DeviceManager devMgr = DeviceManager.createInstance(sdkHandler, new NoErrorsOrWarningsLogger());
-    myFoldable = devMgr.getDevice("7.6in Foldable", "Generic");
-    myDesktop = devMgr.getDevice("desktop_small", "Google");
-    myAutomotive = devMgr.getDevice("automotive_1024p_landscape", "Google");
+    myManager = DeviceManager.createInstance(sdkHandler, new NoErrorsOrWarningsLogger());
+    myFoldable = myManager.getDevice("7.6in Foldable", "Generic");
+    myDesktop = myManager.getDevice("desktop_small", "Google");
+    myAutomotive = myManager.getDevice("automotive_1024p_landscape", "Google");
 
-    myQAvdInfo =
-      new AvdInfo("name", Paths.get("ini"), Paths.get("folder"), QImage, myPropertiesMap);
-    myMarshmallowAvdInfo =
-      new AvdInfo("name", Paths.get("ini"), Paths.get("folder"), marshmallowImage, myPropertiesMap);
-    myPreviewAvdInfo =
-      new AvdInfo("name", Paths.get("ini"), Paths.get("folder"), NPreviewImage, myPropertiesMap);
-    myZuluAvdInfo =
-      new AvdInfo("name", Paths.get("ini"), Paths.get("folder"), ZuluImage, myPropertiesMap);
-    myExtensionsAvdInfo =
-      new AvdInfo("name", Paths.get("ini"), Paths.get("folder"), extensionsImage, myPropertiesMap);
+    var ini = Paths.get("ini");
+    var folder = Paths.get("folder");
+
+    myQAvdInfo = new AvdInfo("name", ini, folder, QImage, myPropertiesMap);
+    myMarshmallowAvdInfo = new AvdInfo("name", ini, folder, marshmallowImage, myPropertiesMap);
+    myPreviewAvdInfo = new AvdInfo("name", ini, folder, NPreviewImage, myPropertiesMap);
+    myZuluAvdInfo = new AvdInfo("name", ini, folder, ZuluImage, myPropertiesMap);
+    myExtensionsAvdInfo = new AvdInfo("name", ini, folder, extensionsImage, myPropertiesMap);
 
     BatchInvoker.setOverrideStrategy(BatchInvoker.INVOKE_IMMEDIATELY_STRATEGY);
   }
 
-  @Override
-  protected void tearDown() throws Exception {
+  @After
+  public void tearDown() {
     BatchInvoker.clearOverrideStrategy();
     IconLoader.deactivate();
-    super.tearDown();
   }
 
-  public void testIsGoogleApiTag() {
-    assertThat(isGoogleApiTag(GOOGLE_APIS_TAG)).isTrue();
-    assertThat(isGoogleApiTag(ANDROID_TV_TAG)).isTrue();
-    assertThat(isGoogleApiTag(GOOGLE_TV_TAG)).isTrue();
-    assertThat(isGoogleApiTag(WEAR_TAG)).isTrue();
+  @Test
+  public void isGoogleApiTag() {
+    assertTrue(ConfigureAvdOptionsStep.isGoogleApiTag(GOOGLE_APIS_TAG));
+    assertTrue(ConfigureAvdOptionsStep.isGoogleApiTag(ANDROID_TV_TAG));
+    assertTrue(ConfigureAvdOptionsStep.isGoogleApiTag(GOOGLE_TV_TAG));
+    assertTrue(ConfigureAvdOptionsStep.isGoogleApiTag(WEAR_TAG));
 
-    assertThat(isGoogleApiTag(DEFAULT_TAG)).isFalse();
-    assertThat(isGoogleApiTag(GOOGLE_APIS_X86_TAG)).isFalse();
+    assertFalse(ConfigureAvdOptionsStep.isGoogleApiTag(DEFAULT_TAG));
+    assertFalse(ConfigureAvdOptionsStep.isGoogleApiTag(GOOGLE_APIS_X86_TAG));
   }
 
-  public void testGpuOtherMode() {
-    assertEquals(SWIFT, gpuOtherMode(23, true, true));
+  @Test
+  public void onEntering() {
+    // Arrange
+    var model = new AvdOptionsModel(myQAvdInfo);
+    model.device().setNullableValue(myManager.getDevice("pixel_tablet", "Google"));
 
-    assertEquals(OFF, gpuOtherMode(22, false, true));
-    assertEquals(OFF, gpuOtherMode(22, true, true));
-    assertEquals(OFF, gpuOtherMode(22, true, false));
-    assertEquals(OFF, gpuOtherMode(23, true, false));
+    var step = new ConfigureAvdOptionsStep(myRule.getProject(), model, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), step);
 
-    assertEquals(OFF, gpuOtherMode(23, false, false));
+    // Act
+    step.onEntering();
+
+    // Assert
+    assertEquals(ScreenOrientation.LANDSCAPE, step.getOrientationToggle().getSelectedElement());
   }
 
-  public void testAutomotiveDevice() {
-    ensureSdkManagerAvailable();
+  @Test
+  public void gpuOtherMode() {
+    assertEquals(SWIFT, ConfigureAvdOptionsStep.gpuOtherMode(23, true, true));
 
+    assertEquals(OFF, ConfigureAvdOptionsStep.gpuOtherMode(22, false, true));
+    assertEquals(OFF, ConfigureAvdOptionsStep.gpuOtherMode(22, true, true));
+    assertEquals(OFF, ConfigureAvdOptionsStep.gpuOtherMode(22, true, false));
+    assertEquals(OFF, ConfigureAvdOptionsStep.gpuOtherMode(23, true, false));
+
+    assertEquals(OFF, ConfigureAvdOptionsStep.gpuOtherMode(23, false, false));
+  }
+
+  @Test
+  public void automotiveDevice() {
     //Device without SdCard
     AvdOptionsModel optionsModelNoSdCard = new AvdOptionsModel(myQAvdInfo);
-    ConfigureAvdOptionsStep optionsStepNoSdCard = new ConfigureAvdOptionsStep(getProject(), optionsModelNoSdCard, newSkinChooser());
+    ConfigureAvdOptionsStep optionsStepNoSdCard = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModelNoSdCard, newSkinChooser());
     optionsStepNoSdCard.addListeners();
-    Disposer.register(getTestRootDisposable(), optionsStepNoSdCard);
+    Disposer.register(myRule.getTestRootDisposable(), optionsStepNoSdCard);
     optionsModelNoSdCard.device().setNullableValue(myAutomotive);
 
     assertFalse(optionsModelNoSdCard.useBuiltInSdCard().get());
@@ -230,21 +252,22 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
 
     // Device with SdCard
     AvdOptionsModel optionsModelWithSdCard = new AvdOptionsModel(myQAvdInfo);
-    ConfigureAvdOptionsStep optionsStepWithSdCard = new ConfigureAvdOptionsStep(getProject(), optionsModelWithSdCard, newSkinChooser());
+    ConfigureAvdOptionsStep optionsStepWithSdCard =
+      new ConfigureAvdOptionsStep(myRule.getProject(), optionsModelWithSdCard, newSkinChooser());
     optionsStepWithSdCard.addListeners();
-    Disposer.register(getTestRootDisposable(), optionsStepWithSdCard);
+    Disposer.register(myRule.getTestRootDisposable(), optionsStepWithSdCard);
     optionsModelWithSdCard.device().setNullableValue(myFoldable);
 
     assertTrue(optionsModelWithSdCard.useBuiltInSdCard().get());
     assertFalse(optionsModelWithSdCard.useExternalSdCard().get());
   }
 
-  public void testFoldedDevice() {
-    ensureSdkManagerAvailable();
+  @Test
+  public void foldedDevice() {
     AvdOptionsModel optionsModel = new AvdOptionsModel(myQAvdInfo);
-    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
+    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
     optionsStep.addListeners();
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsModel.device().setNullableValue(myFoldable);
 
     JBLabel label = optionsStep.getDeviceFrameTitle();
@@ -258,12 +281,12 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     assertFalse(skinChooser.isEnabled());
   }
 
-  public void testDesktopDevice() {
-    ensureSdkManagerAvailable();
+  @Test
+  public void desktopDevice() {
     AvdOptionsModel optionsModel = new AvdOptionsModel(myQAvdInfo);
-    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
+    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
     optionsStep.addListeners();
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsModel.device().setNullableValue(myDesktop);
 
     JBLabel label = optionsStep.getDeviceFrameTitle();
@@ -277,12 +300,12 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     assertTrue(skinChooser.isEnabled());
   }
 
-  public void testUpdateSystemImageData() {
-    ensureSdkManagerAvailable();
+  @Test
+  public void updateSystemImageData() {
     AvdOptionsModel optionsModel = new AvdOptionsModel(myMarshmallowAvdInfo);
 
-    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
 
     optionsStep.updateSystemImageData();
     Icon icon = optionsStep.getSystemImageIcon();
@@ -292,8 +315,8 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
 
     optionsModel = new AvdOptionsModel(myPreviewAvdInfo);
 
-    optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsStep.updateSystemImageData();
     icon = optionsStep.getSystemImageIcon();
     assertNotNull(icon);
@@ -302,8 +325,8 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
 
     optionsModel = new AvdOptionsModel(myZuluAvdInfo);
 
-    optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsStep.updateSystemImageData();
     assertEquals("Android API 99 x86", optionsStep.getSystemImageDetailsText());
     icon = optionsStep.getSystemImageIcon();
@@ -313,20 +336,21 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
 
     optionsModel = new AvdOptionsModel(myExtensionsAvdInfo);
 
-    optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsStep.updateSystemImageData();
     assertEquals("Android 12L x86 (Extension Level 3)", optionsStep.getSystemImageDetailsText());
   }
 
-  public void testPopulateSnapshotList() throws Exception {
+  @Test
+  public void populateSnapshotList() throws Exception {
     Path snapAvdDir = InMemoryFileSystems.createInMemoryFileSystemAndFolder("proto_avd");
     AvdInfo snapshotAvdInfo =
       new AvdInfo("snapAvd", Paths.get("ini"), snapAvdDir, mySnapshotSystemImage, myPropertiesMap);
     AvdOptionsModel optionsModel = new AvdOptionsModel(snapshotAvdInfo);
 
-    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(getProject(), optionsModel, newSkinChooser());
-    Disposer.register(getTestRootDisposable(), optionsStep);
+    ConfigureAvdOptionsStep optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinChooser());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
 
     Path snapshotDir = snapAvdDir.resolve("snapshots");
     Files.createDirectories(snapshotDir);
@@ -373,17 +397,11 @@ public class ConfigureAvdOptionsStepTest extends AndroidTestCase {
     OutputStream protoQuickOutputStream = Files.newOutputStream(protoQuickFile);
     protoQuickBuf.writeTo(protoQuickOutputStream);
 
-    List<String> snapshotList = optionsStep.getSnapshotNamesList("snapSelected");
-
-    // This list should NOT include 'default_boot'
-    assertThat(snapshotList.size()).isEqualTo(3);
-    assertThat(snapshotList.get(0)).isEqualTo("snapSelected"); // First because it's selected
-    assertThat(snapshotList.get(1)).isEqualTo("snapOldest");   // Next because of creation time
-    assertThat(snapshotList.get(2)).isEqualTo("snapNewest");
+    assertEquals(List.of("snapSelected", "snapOldest", "snapNewest"), optionsStep.getSnapshotNamesList("snapSelected"));
   }
 
   private @NotNull SkinChooser newSkinChooser() {
     Executor executor = MoreExecutors.directExecutor();
-    return new SkinChooser(getProject(), () -> Futures.immediateFuture(Collections.emptyList()), executor, executor);
+    return new SkinChooser(myRule.getProject(), () -> Futures.immediateFuture(Collections.emptyList()), executor, executor);
   }
 }

@@ -15,22 +15,28 @@
  */
 package com.android.tools.idea.devicemanagerv2.details
 
+import com.android.adblib.ClosedSessionException
 import com.android.adblib.ConnectedDevice
+import com.android.adblib.DeviceState
 import com.android.adblib.ShellCommandOutputElement
-import com.android.adblib.isOnline
+import com.android.adblib.scope
 import com.android.adblib.selector
 import com.android.adblib.shellAsLines
 import com.android.adblib.shellAsText
 import com.android.annotations.concurrency.UiThread
+import com.android.repository.io.recursiveSize
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.tools.adtui.device.ScreenDiagram
+import com.android.tools.adtui.util.getHumanizedSize
+import com.android.tools.idea.concurrency.AndroidDispatchers.diskIoThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.ibm.icu.number.NumberFormatter
 import com.ibm.icu.util.MeasureUnit
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.ui.JBUI
@@ -38,6 +44,7 @@ import java.awt.Cursor
 import java.awt.Font
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.io.IOException
 import java.text.Collator
 import java.time.Duration
 import java.util.Formatter
@@ -50,6 +57,11 @@ import javax.swing.JPanel
 import javax.swing.LayoutStyle
 import javax.swing.plaf.basic.BasicGraphicsUtils
 import kotlin.reflect.KProperty
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
@@ -75,6 +87,9 @@ internal class DeviceInfoPanel : JBPanel<DeviceInfoPanel>() {
   val availableStorageLabel = LabeledValue("Available storage")
   var availableStorage by availableStorageLabel
 
+  val sizeOnDiskLabel = LabeledValue("Size on disk").also { it.isVisible = false }
+  var sizeOnDisk by sizeOnDiskLabel
+
   val summarySection =
     InfoSection(
       "Summary",
@@ -84,7 +99,8 @@ internal class DeviceInfoPanel : JBPanel<DeviceInfoPanel>() {
         resolutionLabel,
         resolutionDpLabel,
         abiListLabel,
-        availableStorageLabel
+        availableStorageLabel,
+        sizeOnDiskLabel,
       )
     )
 
@@ -231,6 +247,18 @@ internal fun DeviceInfoPanel.populateDeviceInfo(properties: DeviceProperties) {
   }
 }
 
+internal suspend fun DeviceInfoPanel.populateSizeOnDiskLabel(properties: DeviceProperties) {
+  if (properties is LocalEmulatorProperties) {
+    try {
+      sizeOnDisk =
+        withContext(diskIoThread) { getHumanizedSize(properties.avdPath.recursiveSize()) }
+    } catch (e: IOException) {
+      logger<DeviceInfoPanel>().warn("Unable to compute size of device ${properties.avdName}")
+    }
+    sizeOnDiskLabel.isVisible = true
+  }
+}
+
 private fun createCopyPropertiesButton(infoSection: InfoSection) =
   JButton("Copy properties to clipboard", AllIcons.Actions.Copy).apply {
     border = null
@@ -262,29 +290,58 @@ private val EXCLUDED_LOCAL_AVD_PROPERTIES =
     AvdManager.AVD_INI_IMAGES_2,
   )
 
-internal suspend fun populateDeviceInfo(deviceInfoPanel: DeviceInfoPanel, handle: DeviceHandle) =
-  withContext(uiThread) {
-    val state = handle.state
-    val properties = state.properties
-    val device = state.connectedDevice?.takeIf { it.isOnline }
-
-    deviceInfoPanel.populateDeviceInfo(properties)
-
-    launch {
-      if (device != null && properties.isVirtual == false) {
-        deviceInfoPanel.powerLabel.isVisible = true
-        deviceInfoPanel.power = readDevicePower(device)
-      } else {
-        deviceInfoPanel.powerLabel.isVisible = false
-      }
-    }
-
-    launch {
-      if (device != null) {
-        deviceInfoPanel.availableStorage = readDeviceStorage(device)
-      }
-    }
+/** Launches a coroutine to monitor the device properties and update details when they change. */
+internal fun DeviceInfoPanel.trackDeviceProperties(scope: CoroutineScope, handle: DeviceHandle) {
+  scope.launch(uiThread) {
+    handle.stateFlow.map { it.properties }.distinctUntilChanged().collect { populateDeviceInfo(it) }
   }
+}
+
+/** Launches coroutines to monitor the state of the device power, storage, and size on disk. */
+internal fun DeviceInfoPanel.trackDevicePowerAndStorage(
+  scope: CoroutineScope,
+  handle: DeviceHandle,
+) {
+  scope.launch(uiThread) {
+    handle.stateFlow
+      .distinctUntilChangedBy { it.connectedDevice }
+      .collectLatest { state ->
+        populateSizeOnDiskLabel(state.properties)
+
+        val device = state.connectedDevice
+        if (device != null) {
+          device.scope.launch(uiThread) {
+            device.deviceInfoFlow
+              .map { it.deviceState == DeviceState.ONLINE }
+              .distinctUntilChanged()
+              .collectLatest { isOnline ->
+                val isPhysical = state.properties.isVirtual == false
+                powerLabel.isVisible = isOnline && isPhysical
+                if (isOnline) {
+                  if (isPhysical) {
+                    powerLabel.update { readDevicePower(device) }
+                  }
+                  availableStorageLabel.update { readDeviceStorage(device) }
+                }
+              }
+          }
+        } else {
+          powerLabel.isVisible = false
+        }
+      }
+  }
+}
+
+private suspend fun LabeledValue.update(updater: suspend () -> String) {
+  value.text =
+    runCatching { updater() }
+      .onFailure { e ->
+        if (e !is ClosedSessionException) {
+          logger<DeviceInfoPanel>().warn("Failed to read ${value.text.lowercase()}", e)
+        }
+      }
+      .getOrDefault("Unknown")
+}
 
 private suspend fun readDeviceStorage(device: ConnectedDevice): String {
   val output = device.shellStdoutLines("df /data")
@@ -302,8 +359,8 @@ private suspend fun readDevicePower(device: ConnectedDevice): String {
 
   return when {
     output.contains("Wireless powered: true") -> "Wireless"
-    output.contains("AC powered: true") -> "AC"
     output.contains("USB powered: true") -> "USB"
+    output.contains("AC powered: true") -> "AC"
     else -> Regex("level: (\\d+)").find(output)?.groupValues?.get(1)?.let { "Battery: $it" }
         ?: "Unknown"
   }

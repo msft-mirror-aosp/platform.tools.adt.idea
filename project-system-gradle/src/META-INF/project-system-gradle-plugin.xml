@@ -44,7 +44,8 @@
     <applicationService serviceImplementation="com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder"/>
     <compiler.optionsManager implementation="com.android.tools.idea.gradle.project.build.compiler.HideCompilerOptions" />
 
-    <projectConfigurable groupId="build" id="gradle.compiler"
+    <projectConfigurable groupId="build" id="gradle.compiler" bundle="messages.AndroidBundle"
+                         key="configurable.GradleCompilerSettingsConfigurable.displayName"
                          provider="com.android.tools.idea.gradle.project.build.compiler.GradleCompilerSettingsConfigurableProvider"/>
     <stepsBeforeRunProvider implementation="com.android.tools.idea.gradle.run.MakeBeforeRunTaskProvider"/>
     <projectOpenProcessor implementation="com.android.tools.idea.gradle.project.AndroidGradleProjectOpenProcessor" id="android-gradle"
@@ -128,8 +129,12 @@
                            implementationClass="com.android.tools.idea.gradle.completions.EnableAutoPopupInDeclarativeBuildCompletion" />
     <indexedRootsProvider implementation="com.android.tools.idea.gradle.index.VersionCatalogFileIndexContributor"/>
     <useScopeEnlarger implementation="com.android.tools.idea.gradle.navigation.GradleTomlUseScopeEnlarger"/>
-    <gotoDeclarationHandler implementation="com.android.tools.idea.gradle.refactoring.VersionCatalogGoToDeclarationHandler"/>
-    <gotoDeclarationHandler implementation="com.android.tools.idea.gradle.refactoring.DeclarativeGoToApiDeclarationHandler"/>
+    <vetoRenameCondition implementation="com.android.tools.idea.gradle.refactoring.GradleCatalogTomlVetoCondition"/>
+    <psi.referenceContributor language="TOML"
+                              implementation="com.android.tools.idea.gradle.catalog.VersionCatalogDependencyReferenceContributor" order="first"/>
+    <elementDescriptionProvider implementation="com.android.tools.idea.gradle.refactoring.VersionCatalogDescriptionProvider" order="first"/>
+    <gotoDeclarationHandler implementation="com.android.tools.idea.gradle.navigation.VersionCatalogGoToDeclarationHandler"/>
+    <gotoDeclarationHandler implementation="com.android.tools.idea.gradle.navigation.DeclarativeGoToApiDeclarationHandler"/>
     <renameHandler implementation="com.android.tools.idea.gradle.refactoring.GradleRenameModuleHandler" order="last"/>
     <renameInputValidator implementation="com.android.tools.idea.gradle.refactoring.GradleAwareSourceRootRenameValidator"/>
     <usageTypeProvider id="org.jetbrains.android.refactoring.GradleUsageTypeProvider"

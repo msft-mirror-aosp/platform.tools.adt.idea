@@ -215,6 +215,7 @@ studio_plugin(
             "//tools/adt/idea/observable:intellij.android.observable",
             "//tools/adt/idea/android-plugin:intellij.android.plugin",
             "//tools/adt/idea/android-plugin/descriptor:intellij.android.plugin.descriptor",
+            "//tools/adt/idea/preview-elements:intellij.android.preview-elements",
             "//tools/adt/idea/profilers-android:intellij.android.profilersAndroid",
             "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd",
             "//tools/adt/idea/project-system-gradle-repository-search:intellij.android.projectSystem.gradle.repositorySearch",
@@ -554,9 +555,9 @@ studio_plugin(
     libs = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:gradle-appengine-builder-model-0.1.0",
         "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-appengine-v1-rev9-1.22.0",
-        "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-source",
         "//tools/studio/google/cloud/tools/core-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
+        "//tools/adt/idea/.idea/libraries:google-api-services-sourcerepo",
     ],
     licenses = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:licenses",
@@ -921,6 +922,7 @@ iml_module(
         "//tools/vendor/google/targetsdkversion-upgrade-assistant[module]",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion[module]",
         "//tools/vendor/google/ml/sml-android:ml.sml-android[module]",
+        "//tools/vendor/google/ml/hallucination-detector:ml.hallucination-detector[module]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-clangd-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-clangdBridge-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-c-plugin",
@@ -956,7 +958,6 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-platform-langInjection",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-properties",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-repository-search",
-        "//prebuilts/tools/common/rust-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-sh",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-tasks",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-terminal",
@@ -1027,7 +1028,6 @@ iml_module(
 iml_studio_test(
     name = "StartUpTest",
     module = ":intellij.android.studio.integration",
-    tags = ["manual"],  # Flaky due to b/284516925
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
