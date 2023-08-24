@@ -38,6 +38,7 @@ import com.android.tools.profilers.memory.HeapProfdSessionArtifact
 import com.android.tools.profilers.memory.HprofSessionArtifact
 import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.google.common.annotations.VisibleForTesting
 import com.google.common.truth.Truth.assertThat
 import org.junit.Before
 import org.junit.Rule
@@ -768,7 +769,8 @@ class SessionsManagerTest {
   }
 
 
-  private class SessionsAspectObserver : AspectObserver() {
+  @VisibleForTesting
+  class SessionsAspectObserver : AspectObserver() {
     var selectedSessionChangedCount: Int = 0
     var profilingSessionChangedCount: Int = 0
     var sessionsChangedCount: Int = 0

@@ -651,7 +651,16 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     // Set the stage base on session type
     Common.SessionMetaData.SessionType sessionType = mySessionsManager.getSelectedSessionMetaData().getType();
     assert mySessionChangeListener.containsKey(sessionType);
-    mySessionChangeListener.get(sessionType).run();
+
+    // Disable the CPU_CAPTURE and MEMORY_CAPTURE session type change listener if the Task-Based UX is enabled. This prevents the automatic
+    // entering of the CpuCaptureStage or MainMemoryProfilerStage respectively. Prevention of entering these stages also prevents the
+    // parsing + insertion of a fake CPU_TRACE or MEMORY_TRACE event. This is done as, with the Task-Based UX enabled, the insertion of the
+    // CPU_TRACE or MEMORY_TRACE event will be done at import-time rather than when their respective stage is set.
+    if (!getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() ||
+        !sessionType.equals(Common.SessionMetaData.SessionType.CPU_CAPTURE) &&
+        !sessionType.equals(Common.SessionMetaData.SessionType.MEMORY_CAPTURE)) {
+      mySessionChangeListener.get(sessionType).run();
+    }
 
     // Profilers can query data depending on whether the agent is set. Even though we set the status above, delay until after the
     // session is properly assigned before firing this aspect change.

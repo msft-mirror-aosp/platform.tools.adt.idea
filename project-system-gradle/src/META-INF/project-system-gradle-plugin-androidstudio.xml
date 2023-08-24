@@ -15,6 +15,7 @@
   -->
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
   <extensions defaultExtensionNs="com.intellij">
+    <externalSystemNotificationExtension implementation="com.android.tools.idea.gradle.service.notification.GradleJvmNotificationExtension"/>
     <applicationInitializedListener id="Startup.AndroidGradleDisableAutoImportInitializer"
                                     implementation="com.android.tools.idea.projectsystem.gradle.AndroidGradleDisableAutoImportInitializer"/>
     <applicationInitializedListener id="Startup.AndroidGradleOpenProjectProcessorInitializer"
@@ -55,6 +56,9 @@
     <action id="MakeGradleProject" class="com.android.tools.idea.gradle.actions.MakeGradleProjectAction" use-shortcut-of="CompileDirty">
       <add-to-group group-id="BuildMenu" anchor="first"/>
       <add-to-group group-id="TouchBarDefault" anchor="before" relative-to-action="RunConfiguration"/>
+    </action>
+    <action internal="true" id="VerifyGradleTokensAction" class="com.android.tools.idea.projectsystem.VerifyGradleTokensAction">
+      <add-to-group group-id="Internal.Android"/>
     </action>
     <action id="MakeGradleModule" class="com.android.tools.idea.gradle.actions.MakeGradleModuleAction">
       <add-to-group group-id="Android.MainToolbarRight" anchor="first"/>

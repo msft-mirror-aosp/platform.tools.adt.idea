@@ -1406,6 +1406,16 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.render.quality", "Enable the usage of a render quality management mechanism for Compose Preview",
     "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
     false);
+
+  public static final Flag<Long> COMPOSE_PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = Flag.create(
+    COMPOSE, "compose.preview.render.quality.debounce.time", "Render quality debounce time",
+    "Milliseconds to wait before adjusting the quality of Previews, after a scroll or zoom change happens",
+    100L);
+
+  public static final Flag<Integer> COMPOSE_PREVIEW_RENDER_QUALITY_VISIBILITY_THRESHOLD = Flag.create(
+    COMPOSE, "compose.preview.render.quality.visibility.threshold", "Render quality zoom visibility threshold",
+    "When the zoom level is lower than this value, all previews will be rendered at low quality",
+    20);
   //endregion
 
   // region Wear surfaces
@@ -1637,6 +1647,7 @@ public final class StudioFlags {
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = Flag.create(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = Flag.create(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
   public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", true);

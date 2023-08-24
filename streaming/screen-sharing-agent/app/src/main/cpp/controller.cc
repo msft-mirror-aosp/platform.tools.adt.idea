@@ -88,6 +88,14 @@ bool ContainsMultipleDeviceStates(const string& states_text) {
   return states_text.find("DeviceState{") != states_text.rfind("DeviceState{");
 }
 
+bool CheckVideoSize(Size video_resolution) {
+  if (video_resolution.width > 0 && video_resolution.height > 0) {
+    return true;
+  }
+  Log::E("An attempt to set an invalid video resolution: %dx%d", video_resolution.width, video_resolution.height);
+  return false;
+}
+
 }  // namespace
 
 Controller::Controller(int socket_fd)
@@ -107,18 +115,17 @@ Controller::Controller(int socket_fd)
 }
 
 Controller::~Controller() {
-  Shutdown();
+  Stop();
   delete pointer_helper_;
   delete key_character_map_;
 }
 
-void Controller::Shutdown() {
+void Controller::Stop() {
   if (device_supports_multiple_states_) {
     DeviceStateManager::RemoveDeviceStateListener(&device_state_listener_);
   }
   input_stream_.Close();
   output_stream_.Close();
-  close(socket_fd_);
 }
 
 void Controller::Initialize() {
@@ -245,6 +252,10 @@ void Controller::ProcessMessage(const ControlMessage& message) {
       RequestDeviceState((const RequestDeviceStateMessage&) message);
       break;
 
+    case DisplayConfigurationRequest::TYPE:
+      SendDisplayConfigurations((const DisplayConfigurationRequest&) message);
+      break;
+
     default:
       Log::E("Unexpected message type %d", message.type());
       break;
@@ -284,7 +295,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
     event.source = AINPUT_SOURCE_STYLUS | AINPUT_SOURCE_TOUCHSCREEN;
   }
 
-  DisplayInfo display_info = Agent::GetDisplayInfo();
+  DisplayInfo display_info = Agent::GetDisplayInfo(message.display_id());
 
   for (auto& pointer : message.pointers()) {
     JObject properties = pointer_properties_.GetElement(jni_, event.pointer_count);
@@ -341,7 +352,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
 
   if (event.action == AMOTION_EVENT_ACTION_UP) {
     // This event may have started an app. Update the app-level display orientation.
-    Agent::SetVideoOrientation(DisplayStreamer::CURRENT_VIDEO_ORIENTATION);
+    Agent::SetVideoOrientation(message.display_id(), DisplayStreamer::CURRENT_VIDEO_ORIENTATION);
 
     if (!display_info.IsOn()) {
       ProcessKeyboardEvent(KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0));  // Wakeup the display.
@@ -390,11 +401,13 @@ void Controller::ProcessSetDeviceOrientation(const SetDeviceOrientationMessage& 
     Log::E("An attempt to set an invalid device orientation: %d", orientation);
     return;
   }
-  Agent::SetVideoOrientation(orientation);
+  Agent::SetVideoOrientationOfInternalDisplays(orientation);
 }
 
 void Controller::ProcessSetMaxVideoResolution(const SetMaxVideoResolutionMessage& message) {
-  Agent::SetMaxVideoResolution(message.max_video_size());
+  if (CheckVideoSize(message.max_video_size())) {
+    Agent::SetMaxVideoResolution(message.display_id(), message.max_video_size());
+  }
 }
 
 void Controller::StopVideoStream(const StopVideoStreamMessage& message) {
@@ -402,8 +415,10 @@ void Controller::StopVideoStream(const StopVideoStreamMessage& message) {
 }
 
 void Controller::StartVideoStream(const StartVideoStreamMessage& message) {
-  Agent::StartVideoStream(message.display_id(), message.max_video_size());
-  WakeUpDevice();
+  if (CheckVideoSize(message.max_video_size())) {
+    Agent::StartVideoStream(message.display_id(), message.max_video_size());
+    WakeUpDevice();
+  }
 }
 
 void Controller::WakeUpDevice() {
@@ -466,7 +481,7 @@ void Controller::OnDeviceStateChanged(int32_t device_state) {
   Log::D("Controller::OnDeviceStateChanged(%d)", device_state);
   int32_t previous_state = device_state_.exchange(device_state);
   if (previous_state != device_state) {
-    Agent::SetVideoOrientation(DisplayStreamer::CURRENT_DISPLAY_ORIENTATION);
+    Agent::SetVideoOrientation(PRIMARY_DISPLAY_ID, DisplayStreamer::CURRENT_DISPLAY_ORIENTATION);
   }
 }
 
@@ -478,6 +493,18 @@ void Controller::SendDeviceStateNotification() {
     notification.Serialize(output_stream_);
     output_stream_.Flush();
   }
+}
+
+void Controller::SendDisplayConfigurations(const DisplayConfigurationRequest& request) {
+  vector<int32_t> display_ids = DisplayManager::GetDisplayIds(jni_);
+  vector<pair<int32_t, DisplayInfo>> displays;
+  displays.reserve(display_ids.size());
+  for (auto display_id : display_ids) {
+    displays.emplace_back(display_id, DisplayManager::GetDisplayInfo(jni_, display_id));
+  }
+  DisplayConfigurationResponse response(request.request_id(), std::move(displays));
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
 void Controller::OnDisplayAdded(int32_t display_id) {
@@ -502,8 +529,7 @@ void Controller::SendPendingDisplayEvents() {
 
   for (auto event : display_events) {
     if (event.type == DisplayEvent::Type::ADDED) {
-      DisplayInfo display_info = DisplayManager::GetDisplayInfo(Jvm::GetJni(), event.display_id);
-      DisplayAddedNotification notification(event.display_id, display_info.logical_size, display_info.rotation);
+      DisplayAddedNotification notification(event.display_id);
       notification.Serialize(output_stream_);
       output_stream_.Flush();
     }

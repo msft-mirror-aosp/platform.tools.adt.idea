@@ -40,13 +40,13 @@ class SimpleHighlightingBenchmark {
 
   @Test
   fun simpleProjectHighlighting() {
-    disableExpensivePlatformAssertions(gradleRule.fixture)
-    enableAllDefaultInspections(gradleRule.fixture)
-
     // Load project.
     gradleRule.load(TestProjectPaths.SIMPLE_APPLICATION)
     gradleRule.generateSources() // Gets us closer to a production setup.
     waitForAsyncVfsRefreshes() // Avoids write actions during highlighting.
+
+    disableExpensivePlatformAssertions(gradleRule.fixture)
+    enableAllDefaultInspections(gradleRule.fixture)
 
     runInEdtAndWait {
       // Open editor.

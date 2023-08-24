@@ -42,6 +42,7 @@ void DisplayManager::InitializeStatics(Jni jni) {
     display_manager_global_ = display_manager_global_class_.CallStaticObjectMethod(get_instance_method);
 
     get_display_info_method_ = display_manager_global_class_.GetMethod("getDisplayInfo", "(I)Landroid/view/DisplayInfo;");
+    get_display_ids_method_ = display_manager_global_class_.GetMethod("getDisplayIds", "()[I");
 
     JClass display_info_class = jni.GetClass("android/view/DisplayInfo");
     logical_width_field_ = display_info_class.GetFieldId("logicalWidth", "I");
@@ -50,6 +51,7 @@ void DisplayManager::InitializeStatics(Jni jni) {
     rotation_field_ = display_info_class.GetFieldId("rotation", "I");
     layer_stack_field_ = display_info_class.GetFieldId("layerStack", "I");
     flags_field_ = display_info_class.GetFieldId("flags", "I");
+    type_field_ = display_info_class.GetFieldId("type", "I");
     state_field_ = display_info_class.GetFieldId("state", "I");
 
     if (Agent::api_level() >= 29) {
@@ -87,8 +89,21 @@ DisplayInfo DisplayManager::GetDisplayInfo(Jni jni, int32_t display_id) {
   int rotation = display_info.GetIntField(rotation_field_);
   int layer_stack = display_info.GetIntField(layer_stack_field_);
   int flags = display_info.GetIntField(flags_field_);
+  int type = display_info.GetIntField(type_field_);
   int state = display_info.GetIntField(state_field_);
-  return DisplayInfo(logical_width, logical_height, logical_density_dpi, rotation, layer_stack, flags, state);
+  return DisplayInfo(logical_width, logical_height, logical_density_dpi, rotation, layer_stack, flags, type, state);
+}
+
+vector<int32_t> DisplayManager::GetDisplayIds(Jni jni) {
+  InitializeStatics(jni);
+  JObject display_ids = display_manager_global_.CallObjectMethod(jni, get_display_ids_method_);
+  auto id_array = static_cast<jintArray>(display_ids.ref());
+  jsize size = jni->GetArrayLength(id_array);
+  jboolean is_copy;
+  jint* ids = jni->GetIntArrayElements(id_array, &is_copy);
+  vector<int32_t> result(ids, ids + size);
+  jni->ReleaseIntArrayElements(id_array, ids, 0);
+  return result;
 }
 
 void DisplayManager::RegisterDisplayListener(Jni jni, DisplayManager::DisplayListener* listener) {
@@ -170,12 +185,14 @@ VirtualDisplay DisplayManager::CreateVirtualDisplay(
 JClass DisplayManager::display_manager_global_class_;
 JObject DisplayManager::display_manager_global_;
 jmethodID DisplayManager::get_display_info_method_ = nullptr;
+jmethodID DisplayManager::get_display_ids_method_ = nullptr;
 jfieldID DisplayManager::logical_width_field_ = nullptr;
 jfieldID DisplayManager::logical_height_field_ = nullptr;
 jfieldID DisplayManager::logical_density_dpi_field_ = nullptr;
 jfieldID DisplayManager::rotation_field_ = nullptr;
 jfieldID DisplayManager::layer_stack_field_ = nullptr;
 jfieldID DisplayManager::flags_field_ = nullptr;
+jfieldID DisplayManager::type_field_ = nullptr;
 jfieldID DisplayManager::state_field_ = nullptr;
 JClass DisplayManager::display_manager_class_;
 jmethodID DisplayManager::create_virtual_display_method_ = nullptr;

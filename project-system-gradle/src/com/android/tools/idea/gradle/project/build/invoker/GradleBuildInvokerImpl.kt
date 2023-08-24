@@ -19,7 +19,6 @@ import com.android.builder.model.AndroidProject
 import com.android.tools.idea.explainer.IssueExplainer
 import com.android.tools.idea.gradle.filters.AndroidReRunBuildFilter
 import com.android.tools.idea.gradle.actions.ExplainSyncOrBuildOutput
-import com.android.tools.idea.gradle.project.ProjectStructure
 import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionManager
 import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionOutputLinkFilter
 import com.android.tools.idea.gradle.project.build.attribution.buildOutputLine
@@ -146,7 +145,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
    */
   private fun stopNativeDebugSessionOrStopBuild(): Boolean {
     val nativeDebugSession: XDebugSession = nativeDebugSessionFinder.findNativeDebugSession() ?: return false
-    return when (invokeAndWaitIfNeeded(ModalityState.NON_MODAL) { TerminateDebuggerChoice.promptUserToStopNativeDebugSession(project) }) {
+    return when (invokeAndWaitIfNeeded(ModalityState.nonModal()) { TerminateDebuggerChoice.promptUserToStopNativeDebugSession(project) }) {
       TerminateDebuggerChoice.TERMINATE_DEBUGGER -> {
         nativeDebugSession.stop()
         false
@@ -203,10 +202,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
   }
 
   override fun assemble(testCompileType: TestCompileType): ListenableFuture<AssembleInvocationResult> {
-    val modules = ProjectStructure.getInstance(project).leafHolderModules.toTypedArray().takeUnless { it.isEmpty() }
-      // If there is no Android modules an invocation of `assemble` below  will still fail but provide a notification to the user.
-      ?: ModuleManager.getInstance(project).modules
-    return assemble(modules, testCompileType)
+    return assemble(ModuleManager.getInstance(project).modules, testCompileType)
   }
 
   override fun assemble(modules: Array<Module>, testCompileType: TestCompileType): ListenableFuture<AssembleInvocationResult> {
@@ -241,7 +237,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     val buildMode = REBUILD
     val moduleManager: ModuleManager = ModuleManager.getInstance(project)
     val tasks: ListMultimap<Path, String> =
-      GradleTaskFinder.getInstance().findTasksToExecute(moduleManager.modules, buildMode, TestCompileType.NONE)
+      GradleTaskFinder.getInstance().findTasksToExecute(moduleManager.modules, buildMode, TestCompileType.ALL)
     return combineGradleInvocationResults(
       tasks.keySet()
         .map { rootPath -> executeTasks(buildMode, rootPath.toFile(), tasks.get(rootPath)) }
