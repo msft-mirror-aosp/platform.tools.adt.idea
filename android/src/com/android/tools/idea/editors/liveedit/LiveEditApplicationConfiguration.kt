@@ -46,7 +46,7 @@ class LiveEditApplicationConfiguration : SimplePersistentStateComponent<LiveEdit
   }
 
   class State : BaseState() {
-    var mode by enum(LIVE_EDIT)
+    var mode by enum(DISABLED)
     var leTriggerMode by enum(ON_HOTKEY)
   }
 
