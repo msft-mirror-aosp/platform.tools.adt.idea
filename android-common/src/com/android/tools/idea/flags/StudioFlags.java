@@ -93,7 +93,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_NEW_BASELINE_PROFILES_MODULE = Flag.create(
     NPW, "new.baseline.profiles.module", "New Baseline Profile Module",
     "Show template to create a new Baseline Profile module in the new module wizard.",
-    true);
+    false);
 
   public static final Flag<Boolean> NPW_ENABLE_GRADLE_VERSION_CATALOG = Flag.create(
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
@@ -1129,20 +1129,20 @@ public final class StudioFlags {
     ESSENTIALS_MODE, "essentials.mode.action.visible",
     "Show Essentials Mode visible in File drop down menu",
     "If enabled, makes Essential Highlighting action visible",
-    true
+    false
   );
   public static final Flag<Boolean> ESSENTIALS_HIGHLIGHTING_MODE = Flag.create(
     ESSENTIALS_MODE, "essential.highlighting.in.essentials.mode",
     "Essential Highlighting mode on in Essentials mode",
    "When enabled turns on Essential Highlighting mode when in Essentials Mode. Essential Highlighting mode enables " +
    "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
-   true);
+   false);
 
   public static final Flag<Boolean> ESSENTIALS_MODE_GETS_RECOMMENDED = Flag.create(
     ESSENTIALS_MODE, "essentials.mode.gets.recommend",
     "Essentials Mode is able to get recommended to the user",
     "When enabled this allows Android Studio to drive adoption of Essentials Mode by recommending users should try it out.",
-    true);
+    false);
 
   //endregion
 
@@ -1220,7 +1220,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_ESSENTIALS_MODE = Flag.create(
     COMPOSE, "preview.essentials.mode", "Enable Compose Preview Essentials Mode",
     "If enabled, Compose Preview Essentials Mode will be enabled.",
-    true);
+    false);
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_DOUBLE_RENDER = Flag.create(
     COMPOSE, "preview.double.render", "Enable the Compose double render mode",
@@ -1554,7 +1554,7 @@ public final class StudioFlags {
       "insights.change.aware.annotation",
       "Change-aware Annotation Support",
       "Enhance annotation to aid crash investigation with the recorded VCS info",
-      true);
+      false);
 
   public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
     Flag.create(
@@ -1562,7 +1562,7 @@ public final class StudioFlags {
       "insights.vcs",
       "VCS Support",
       "Enhance code navigation to aid crash investigation with the recorded VCS info",
-      true);
+      false);
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     Flag.create(
@@ -1643,6 +1643,7 @@ public final class StudioFlags {
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = Flag.create(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = Flag.create(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = Flag.create(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = Flag.create(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
   public static final Flag<Boolean> TSDKVUA_API_34 = Flag.create(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", true);
