@@ -21,7 +21,6 @@ import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.GradleProjectInfo;
 import com.android.tools.idea.project.AndroidProjectInfo;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
-import com.google.wireless.android.vending.developer.signing.tools.extern.export.ExportEncryptedPrivateKeyTool;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
@@ -58,7 +57,7 @@ public class GenerateSignedApkAction extends AnAction {
     assert !facets.isEmpty();
 
     ExportSignedPackageWizard wizard =
-      new ExportSignedPackageWizard(project, facets, true, allowBundleSigning(project), new ExportEncryptedPrivateKeyTool());
+      new ExportSignedPackageWizard(project, facets, true, allowBundleSigning(project));
     wizard.show();
   }
 

@@ -25,8 +25,8 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.annotations.KtAnnotated as KtAnnotatedSymbol
 import org.jetbrains.kotlin.analysis.api.annotations.annotationsByClassId
+import org.jetbrains.kotlin.analysis.api.annotations.hasAnnotation
 import org.jetbrains.kotlin.analysis.api.base.KtConstantValue.KtErrorConstantValue
 import org.jetbrains.kotlin.analysis.api.components.KtConstantEvaluationMode
 import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KtPropertySymbol
 import org.jetbrains.kotlin.analysis.api.calls.KtAnnotationCall
 import org.jetbrains.kotlin.analysis.api.calls.singleFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.calls.symbol
+import org.jetbrains.kotlin.analysis.api.symbols.KtDeclarationSymbol
 import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.asJava.findFacadeClass
 import org.jetbrains.kotlin.asJava.getAccessorLightMethods
@@ -279,21 +280,29 @@ val KtParameter.psiType get() = toLightElements().filterIsInstance(PsiParameter:
 val KtFunction.psiType get() = LightClassUtil.getLightClassMethod(this)?.returnType
 fun KtClassOrObject.toPsiType() =
   toLightElements().filterIsInstance(PsiClass::class.java).firstOrNull()?.let { AndroidPsiUtils.toPsiType(it) }
-fun KtAnnotated.hasAnnotation(fqn: String) = findAnnotation(FqName(fqn)) != null
 
-// TODO(jsjeon): Once available, use upstream util in `AnnotationModificationUtils`
-@OptIn(KtAllowAnalysisOnEdt::class)
-fun KtAnnotated.findAnnotation(fqName: FqName): KtAnnotationEntry? =
+fun KtAnnotated.hasAnnotation(classId: ClassId): Boolean =
   if (isK2Plugin()) {
-    allowAnalysisOnEdt {
-      analyze(this) {
-        val annotatedSymbol =
-          (this@findAnnotation as? KtDeclaration)?.getSymbol() as? KtAnnotatedSymbol
-        val annotations = annotatedSymbol?.annotationsByClassId(ClassId.topLevel(fqName))
-        annotations?.singleOrNull()?.psi as? KtAnnotationEntry
-      }
-    }
+    mapOnDeclarationSymbol { it.hasAnnotation(classId) } == true
   } else {
-    findAnnotationK1(fqName)
+    findAnnotationK1(classId.asSingleFqName()) != null
   }
 
+fun KtAnnotated.findAnnotation(classId: ClassId): KtAnnotationEntry? =
+  if (isK2Plugin()) {
+    findAnnotationK2(classId)
+  } else {
+    findAnnotationK1(classId.asSingleFqName())
+  }
+
+private fun KtAnnotated.findAnnotationK2(classId: ClassId): KtAnnotationEntry? =
+  mapOnDeclarationSymbol { it.annotationsByClassId(classId).singleOrNull()?.psi as? KtAnnotationEntry }
+
+@OptIn(KtAllowAnalysisOnEdt::class)
+private inline fun <T> KtAnnotated.mapOnDeclarationSymbol(block: KtAnalysisSession.(KtDeclarationSymbol) -> T?): T? =
+  allowAnalysisOnEdt {
+    analyze(this) {
+      val declaration = this@mapOnDeclarationSymbol as? KtDeclaration
+      declaration?.getSymbol()?.let { block(it) }
+    }
+  }

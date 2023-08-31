@@ -30,9 +30,7 @@ import com.android.tools.idea.common.error.IssuePanel
 import com.android.tools.idea.common.error.IssuePanelSplitter
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
-import com.android.tools.idea.common.surface.LayoutScannerConfiguration.Companion.DISABLED
 import com.android.tools.idea.common.surface.LayoutScannerEnabled
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.idea.res.ResourceNotificationManager.ResourceChangeListener
 import com.android.tools.idea.res.getFolderType
@@ -154,10 +152,7 @@ class VisualizationForm(
       VisualizationToolSettings.getInstance().globalState.lastSelectedConfigurationSet
     myCurrentModelsProvider = myCurrentConfigurationSet.createModelsProvider(this)
     val surfaceLayoutManager = myGridSurfaceLayoutManager
-    val config =
-      if (StudioFlags.NELE_VISUAL_LINT.get() && StudioFlags.NELE_ATF_IN_VISUAL_LINT.get())
-        LayoutScannerEnabled()
-      else DISABLED
+    val config = LayoutScannerEnabled()
     // Custom issue panel integration used.
     config.isIntegrateWithDefaultIssuePanel = false
     surface =
@@ -172,9 +167,7 @@ class VisualizationForm(
           sceneManager.setUseImagePool(false)
           // 0.5f makes it spend 50% memory.
           sceneManager.setQuality(0.5f)
-          if (StudioFlags.NELE_VISUAL_LINT.get()) {
-            sceneManager.setLogRenderErrors(false)
-          }
+          sceneManager.setLogRenderErrors(false)
           sceneManager
         }
         .setActionManagerProvider { surface: DesignSurface<*> ->
@@ -194,15 +187,7 @@ class VisualizationForm(
     myWorkBench = WorkBench(project, "Visualization", null, this)
     myWorkBench.setLoadingText("Loading...")
     myWorkBench.setToolContext(surface)
-    val mainComponent: JComponent =
-      if (
-        StudioFlags.NELE_VISUAL_LINT.get() &&
-          !StudioFlags.NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL.get()
-      ) {
-        IssuePanelSplitter(null, surface, myWorkBench)
-      } else {
-        myWorkBench
-      }
+    val mainComponent = IssuePanelSplitter(null, surface, myWorkBench)
     myLayoutManager =
       surface.sceneViewLayoutManager as NlDesignSurfacePositionableContentLayoutManager
     myActionToolbarPanel = createToolbarPanel()
@@ -292,17 +277,14 @@ class VisualizationForm(
     val toolbarComponent = actionToolbar.component
     toolbarComponent.border = BorderFactory.createEmptyBorder(0, 6, 0, 0)
     toolbarPanel.add(toolbarComponent, BorderLayout.CENTER)
-    if (StudioFlags.NELE_VISUAL_LINT.get()) {
-      val lintGroup = DefaultActionGroup()
-      lintGroup.add(IssuePanelToggleAction(surface))
-      val lintToolbar =
-        ActionManager.getInstance()
-          .createActionToolbar(ActionPlaces.EDITOR_TOOLBAR, lintGroup, true)
-      lintToolbar.setTargetComponent(surface)
-      lintToolbar.updateActionsImmediately()
-      ActionToolbarUtil.makeToolbarNavigable(lintToolbar)
-      toolbarPanel.add(lintToolbar.component, BorderLayout.EAST)
-    }
+    val lintGroup = DefaultActionGroup()
+    lintGroup.add(IssuePanelToggleAction(surface))
+    val lintToolbar =
+      ActionManager.getInstance().createActionToolbar(ActionPlaces.EDITOR_TOOLBAR, lintGroup, true)
+    lintToolbar.setTargetComponent(surface)
+    lintToolbar.updateActionsImmediately()
+    ActionToolbarUtil.makeToolbarNavigable(lintToolbar)
+    toolbarPanel.add(lintToolbar.component, BorderLayout.EAST)
   }
 
   private fun updateScreenMode() {
@@ -611,10 +593,8 @@ class VisualizationForm(
 
     // This render the added components.
     for (manager in surface.sceneManagers) {
-      if (StudioFlags.NELE_VISUAL_LINT.get()) {
-        visualLintHandler.setupForLayoutlibSceneManager(manager) {
-          !isActive || isRenderingCanceled.get()
-        }
+      visualLintHandler.setupForLayoutlibSceneManager(manager) {
+        !isActive || isRenderingCanceled.get()
       }
       renderFuture =
         renderFuture.thenCompose {
@@ -762,8 +742,7 @@ class VisualizationForm(
   companion object {
     @VisibleForTesting const val VISUALIZATION_DESIGN_SURFACE_NAME = "Layout Validation"
     private val VISUALIZATION_SUPPORTED_ACTIONS: Set<NlSupportedActions> =
-      if (StudioFlags.NELE_VISUAL_LINT.get()) ImmutableSet.of(NlSupportedActions.TOGGLE_ISSUE_PANEL)
-      else ImmutableSet.of()
+      ImmutableSet.of(NlSupportedActions.TOGGLE_ISSUE_PANEL)
 
     /** horizontal gap between different previews */
     @SwingCoordinate private val GRID_HORIZONTAL_SCREEN_DELTA = 100

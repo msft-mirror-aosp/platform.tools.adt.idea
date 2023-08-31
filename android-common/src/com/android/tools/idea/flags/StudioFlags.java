@@ -216,18 +216,6 @@ public final class StudioFlags {
 
   //region Layout Editor
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
-  public static final Flag<Boolean> NELE_MOTION_AREA_GRAPH = Flag.create(
-    NELE, "motion.area.graph", "Show area graph in Timeline panel",
-    "Show area graph in Timeline panel for Motion Editor.",
-    true);
-  public static final Flag<Boolean> NELE_MOTION_SAVE_GIF = Flag.create(
-    NELE, "motion.save.gif", "Enable save GIF feature",
-    "Enable save a selected transition as a GIF file in Motion Editor.",
-    true);
-  public static final Flag<Boolean> NELE_MOTION_HORIZONTAL = Flag.create(
-    NELE, "animated.motion.horizontal", "Display motion editor horizontally",
-    "Controls the placement of the motion editor (horizontal versus vertical).",
-    false);
 
   public static final Flag<Boolean> NELE_RENDER_DIAGNOSTICS = Flag.create(
     NELE, "diagnostics", "Enable rendering on-screen stats",
@@ -244,36 +232,10 @@ public final class StudioFlags {
     "New architecture for dragging widgets in Layout Editor",
     true);
 
-  public static final Flag<Boolean> NELE_PROPERTY_PANEL_ACTIONBAR = Flag.create(
-    NELE, "property.panel.actionbar", "Property Panel Actionbar",
-    "Support Actionbar in property panel",
-    false);
-
-  public static final Flag<Boolean> NELE_SHOW_RECYCLER_VIEW_SETUP_WIZARD = Flag.create(
-    NELE, "recyclerview.setup.wizard", "Show setup wizard for recycler view",
-    "When you right click recycler view in layout editor, you can now see \"Generate Adapter\" " +
-    "that takes you through setup wizard",
-    false);
-
-  public static final Flag<Boolean> NELE_LAYOUT_SCANNER_ADD_INCLUDE = Flag.create(
-    NELE, "toggle.layout.editor.validator.a11y.include", "Toggle whether to show included layout or not.",
-    "If the layout contains <include>, turning this flag on will run the scanner in the included layout.",
-    false);
-
-  public static final Flag<Boolean> NELE_LAYOUT_SCANNER_COMMON_ERROR_PANEL = Flag.create(
-    NELE, "toggle.layout.editor.validator.a11y.common.panel", "Enable common error panel to display scanner results.",
-    "If the xml layout contains atf results, it will be shown in the common error panel as well as issue panel.",
-    false);
-
   public static final Flag<Boolean> NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS = Flag.create(
     NELE, "use.shared.issue.panel.for.design.tools", "Enabled shared issue panels",
     "Use a shared issue panel to display the issue for all design tools",
     true);
-
-  public static final Flag<Boolean> NELE_SHOW_VISUAL_LINT_ISSUE_IN_COMMON_PROBLEMS_PANEL = Flag.create(
-    NELE, "show.issue.in.common.panel", "Enable showing issues in common problems panel.",
-    "If the xml layout contains any visual lint issues, it will be shown in the common error panel as well as in laytout validation issue panel.",
-    false);
 
   public static final Flag<Boolean> NELE_VISUAL_LINT_ALWAYS_RUN = Flag.create(
     NELE, "visual.lint.always.run", "Run visual lint in the background when the layout editor is opened",
@@ -285,30 +247,10 @@ public final class StudioFlags {
     "Use errors from the current file and qualifiers tab in the traffic light rendering for resource files.",
     true);
 
-  public static final Flag<Boolean> NELE_ON_SWIPE_PANEL = Flag.create(
-    NELE, "toggle.layout.editor.on.swipe.panel", "Toggle on swipe panel in motion editor.",
-    "Enable the new on swipe panel in the motion editor",
-    true);
-
-  public static final Flag<Boolean> NELE_OVERLAY_PROVIDER = Flag.create(
-    NELE, "toggle.overlay.provider.extension.point", "Toggle overlay provider extension point.",
-    "Enable the overlay provider extension point",
-    true);
-
   public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = Flag.create(
     NELE, "asset.repository.include.aars.through.project.system", "Include AARs through project system",
     "Include resource directories from AARs found through project system.",
     false);
-
-  public static final Flag<Boolean> NELE_VISUAL_LINT = Flag.create(
-    NELE, "visual.lint", "Enable visual linting for layouts",
-    "Enable all the various tools related to visual linting of layouts.",
-    true);
-
-  public static final Flag<Boolean> NELE_ATF_IN_VISUAL_LINT = Flag.create(
-    NELE, "visual.lint.atf", "Enable ATF integration in visual linting for layouts",
-    "Enable ATF integration in visual linting of layouts.",
-    true);
 
   public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = Flag.create(
     NELE, "atf.for.compose", "Enable ATF checks for Compose",
@@ -325,11 +267,6 @@ public final class StudioFlags {
     "Enable so that visual lint runs on previews in the Compose Preview.",
     false);
 
-  public static final Flag<Boolean> NELE_WARN_NEW_THREADS = Flag.create(
-    NELE, "preview.warn.new.threads", "Enable new threads warning",
-    "Display a warning if user code creates new threads in the preview",
-    true);
-
   public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = Flag.create(
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
@@ -343,29 +280,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_NEW_COMPONENT_TREE = Flag.create(
     NELE, "use.component.tree.builder", "Use the Component Tree builder",
     "If enabled, use the Component Tree builder for the Nele component tree",
-    true);
-  //endregion
-
-  //region Navigation Editor
-  private static final FlagGroup NAV_EDITOR = new FlagGroup(FLAGS, "nav", "Navigation Editor");
-  public static final Flag<Boolean> NAV_SAFE_ARGS_SUPPORT = Flag.create(
-    NAV_EDITOR, "safe.args.enabled", "Enable support for Safe Args",
-    "Generate in-memory Safe Args classes if the current module is using the feature.",
-    true);
-  //endregion
-
-  //region Resource Manager
-  private static final FlagGroup RES_MANAGER = new FlagGroup(FLAGS, "res.manager", "Resource Manager");
-  public static final Flag<Boolean> EXTENDED_TYPE_FILTERS = Flag.create(
-    RES_MANAGER, "extended.filters", "Enable extended filters for resources",
-    "Adds more filter options for resources based on the selected ResourceType. Includes options to filter by resource XML tag or "
-    + "File extension.",
-    true);
-
-  public static final Flag<Boolean> NAVIGATION_PREVIEW = Flag.create(
-    RES_MANAGER, "nav.preview", "Enable previews for Navigation resources",
-    "Adds a visual preview to the Navigation resources in the Resource Manager. The preview corresponds to the start destination " +
-    "of the graph.",
     true);
   //endregion
 
@@ -538,8 +452,15 @@ public final class StudioFlags {
     RUNDEBUG,
     "adb.jdwp.scache.enabled",
     "Enable JDWP SCache",
-    "Enables JDWP Speculative Cache (SCache). Requires restart",
+    "Enables JDWP Speculative Cache (SCache)",
     false);
+
+  public static final Flag<Boolean> JDWP_SCACHE_REMOTE_ONLY = Flag.create(
+    RUNDEBUG,
+    "adb.jdwp.scache.remote.only.enabled",
+    "Enable JDWP SCache for remote devices only",
+    "Enables JDWP Speculative Cache (SCache) for remote devices only",
+    true);
 
   public static final Flag<Boolean> SUPPORT_FEATURE_ON_FEATURE_DEPS = Flag.create(
     RUNDEBUG,
@@ -772,10 +693,6 @@ public final class StudioFlags {
     "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
 
-  public static final Flag<Boolean> GRADLE_VERSION_CATALOG_DISPLAY_BANNERS =
-    Flag.create(GRADLE_IDE, "gradle.version.catalog.banners", "IDE banners if Version Catalogs used",
-                "Display banners in Gradle-related tools when Version Catalogs are in use", false);
-
   public static final Flag<Boolean> DECLARATIVE_PLUGIN_STUDIO_SUPPORT =
     Flag.create(GRADLE_IDE, "declarative.plugin.studio.support", "Studio support for AGP declarative plugin",
                 "Enable support for gradle.build.toml in PSD and Assistants", false);
@@ -968,6 +885,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_MULTIPLE_DISPLAYS = Flag.create(
     DEVICE_MIRRORING, "multiple.displays", "Mirror All Displays",
     "Mirror all device displays",
+    false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = Flag.create(
+    DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
+    "Allow drag and drop of device tabs",
     false);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
@@ -1246,13 +1167,6 @@ public final class StudioFlags {
     "Slow down rendering of samples of compose elements inside documentation",
     "If enabled, slow down rendering of samples of compose elements inside documentation, this flag is used for demonstration of non-blocking behavior",
     false
-  );
-
-  public static final Flag<Boolean> COMPOSE_FUNCTION_EXTRACTION = Flag.create(
-    COMPOSE, "editor.function.extraction",
-    "Enables extracting @Composable function from other composables",
-    "If enabled, function extracted from @Composable function will annotated @Composable",
-    true
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ADVANCED_SETTINGS_MENU = Flag.create(

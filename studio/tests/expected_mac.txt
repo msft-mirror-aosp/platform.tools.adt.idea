@@ -529,7 +529,6 @@ Android Studio Preview.app/Contents/license/libwebp-decode.txt
 Android Studio Preview.app/Contents/license/libwebp-encode.txt
 Android Studio Preview.app/Contents/license/libz.txt
 Android Studio Preview.app/Contents/license/mockito-all-1.9.5-NOTICE
-Android Studio Preview.app/Contents/license/pepk-NOTICE
 Android Studio Preview.app/Contents/license/r8_license.txt
 Android Studio Preview.app/Contents/license/samplesindex-v1-1.0-SNAPSHOT.jar-NOTICE
 Android Studio Preview.app/Contents/license/saxon-conditions.html
@@ -2046,7 +2045,6 @@ Android Studio Preview.app/Contents/plugins/android/lib/google-oauth-client-1.34
 Android Studio Preview.app/Contents/plugins/android/lib/google-oauth-client-java6-1.34.1.jar
 Android Studio Preview.app/Contents/plugins/android/lib/inspectors-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/instantapps-api-1.8.jar
-Android Studio Preview.app/Contents/plugins/android/lib/jarutils.jar
 Android Studio Preview.app/Contents/plugins/android/lib/javacpp-1.5.9-macosx-x86_64.jar
 Android Studio Preview.app/Contents/plugins/android/lib/javacpp-1.5.9.jar
 Android Studio Preview.app/Contents/plugins/android/lib/javacpp-platform-1.5.9.jar
@@ -2092,7 +2090,6 @@ Android Studio Preview.app/Contents/plugins/android/lib/org.eclipse.elk.core-0.3
 Android Studio Preview.app/Contents/plugins/android/lib/org.eclipse.elk.graph-0.3.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/org.eclipse.emf.common-2.12.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/org.eclipse.emf.ecore-2.12.0.jar
-Android Studio Preview.app/Contents/plugins/android/lib/pepk.jar
 Android Studio Preview.app/Contents/plugins/android/lib/perfetto-protos.jar
 Android Studio Preview.app/Contents/plugins/android/lib/pixelprobe.jar
 Android Studio Preview.app/Contents/plugins/android/lib/play_vitals_java_proto.jar

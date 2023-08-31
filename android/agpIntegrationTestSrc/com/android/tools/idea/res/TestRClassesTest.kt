@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.res;
 
+import com.android.tools.idea.projectsystem.getAndroidTestModule
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidGradleTestCase
 import com.android.tools.idea.testing.AndroidGradleTests
@@ -434,16 +435,17 @@ class TransitiveTestRClassesTest : TestRClassesTest() {
     val libModule = getModule("lib")
     val service = ProjectLightResourceClassService.getInstance(project)
 
-    assertThat(service.getLightRClassesDefinedByModule(appModule, true).map { it.qualifiedName }).containsExactly(
+    assertThat(service.getLightRClassesDefinedByModule(appModule).map { it.qualifiedName }).containsExactly(
       "com.example.projectwithappandlib.app.R",
-      "com.example.projectwithappandlib.app.test.R"
     )
-    assertThat(service.getLightRClassesDefinedByModule(appModule, false).map { it.qualifiedName }).containsExactly(
-      "com.example.projectwithappandlib.app.R"
+    assertThat(service.getLightRClassesDefinedByModule(appModule.getAndroidTestModule()!!).map { it.qualifiedName }).containsExactly(
+      "com.example.projectwithappandlib.app.test.R",
     )
-    assertThat(service.getLightRClassesDefinedByModule(libModule, true).map { it.qualifiedName }).containsExactly(
+    assertThat(service.getLightRClassesDefinedByModule(libModule).map { it.qualifiedName }).containsExactly(
       "com.example.projectwithappandlib.lib.R",
-      "com.example.projectwithappandlib.lib.test.R"
+    )
+    assertThat(service.getLightRClassesDefinedByModule(libModule.getAndroidTestModule()!!).map { it.qualifiedName }).containsExactly(
+      "com.example.projectwithappandlib.lib.test.R",
     )
   }
 

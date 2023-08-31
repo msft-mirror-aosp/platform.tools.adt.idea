@@ -27,6 +27,8 @@ import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
+import com.android.tools.idea.projectsystem.isAndroidTestModule
+import com.android.tools.idea.projectsystem.isLinkedAndroidModule
 import com.android.tools.idea.res.ModuleRClass.SourceSet
 import com.android.tools.idea.res.ResourceRepositoryRClass.Transitivity
 import com.android.tools.idea.util.androidFacet
@@ -61,25 +63,12 @@ import java.io.IOException
 private data class ResourceClasses(
   val namespaced: PsiClass?,
   val nonNamespaced: PsiClass?,
-  val testNamespaced: PsiClass?,
-  val testNonNamespaced: PsiClass?
 ) {
   companion object {
-    val Empty = ResourceClasses(null, null, null, null)
+    val Empty = ResourceClasses(null, null)
   }
 
-  val all = sequenceOf(namespaced, nonNamespaced, testNamespaced, testNonNamespaced)
-
-  fun pickRelevant(namespacing: ResourceNamespacing, includeTestClasses: Boolean): Set<PsiClass?> {
-    return when (namespacing) {
-      ResourceNamespacing.REQUIRED -> {
-        if (includeTestClasses) setOf(namespaced, testNamespaced) else setOf(namespaced)
-      }
-      ResourceNamespacing.DISABLED -> {
-        if (includeTestClasses) setOf(nonNamespaced, testNonNamespaced) else setOf(nonNamespaced)
-      }
-    }
-  }
+  val all = sequenceOf(namespaced, nonNamespaced)
 }
 
 /**
@@ -164,7 +153,7 @@ class ProjectLightResourceClassService(private val project: Project) : LightReso
       .toList()
   }
 
-  override fun getLightRClassesAccessibleFromModule(module: Module, includeTestClasses: Boolean): Collection<PsiClass> {
+  override fun getLightRClassesAccessibleFromModule(module: Module): Collection<PsiClass> {
     val namespacing = StudioResourceRepositoryManager.getInstance(module)?.namespacing ?: return emptySet()
     val androidFacet = module.androidFacet ?: return emptySet()
 
@@ -180,17 +169,21 @@ class ProjectLightResourceClassService(private val project: Project) : LightReso
       result.add(getAarRClasses(aarLibrary))
     }
 
-    return result.flatMap { it.pickRelevant(namespacing, includeTestClasses) }.filterNotNull()
+    return result.mapNotNull {
+      when (namespacing) {
+        ResourceNamespacing.REQUIRED -> it.namespaced
+        ResourceNamespacing.DISABLED -> it.nonNamespaced
+      }
+    }
   }
 
-  override fun getLightRClassesDefinedByModule(module: Module, includeTestClasses: Boolean): Collection<PsiClass> {
+  override fun getLightRClassesDefinedByModule(module: Module): Collection<PsiClass> {
     val facet = module.androidFacet ?: return emptySet()
     val moduleRClasses = getModuleRClasses(facet)
     val relevant = if (ProjectNamespacingStatusService.getInstance(module.project).namespacesUsed) {
-      moduleRClasses.pickRelevant(ResourceNamespacing.DISABLED, includeTestClasses) +
-      moduleRClasses.pickRelevant(ResourceNamespacing.REQUIRED, includeTestClasses)
+      setOf(moduleRClasses.nonNamespaced, moduleRClasses.namespaced)
     } else {
-      moduleRClasses.pickRelevant(ResourceNamespacing.DISABLED, includeTestClasses)
+      setOf(moduleRClasses.nonNamespaced)
     }
 
     return relevant.filterNotNull()
@@ -225,20 +218,22 @@ class ProjectLightResourceClassService(private val project: Project) : LightReso
       // TODO: get this from the model
       val isLibraryProject = facet.configuration.isLibraryProject
 
-      val moduleSystem = facet.module.getModuleSystem()
+      val module = facet.module
+      val moduleSystem = module.getModuleSystem()
       val transitivity = if (moduleSystem.isRClassTransitive) Transitivity.TRANSITIVE else Transitivity.NON_TRANSITIVE
 
-      val fieldModifier =
-        if (isLibraryProject || !moduleSystem.applicationRClassConstantIds) FieldModifier.NON_FINAL else FieldModifier.FINAL
+      val isTestModule = module.isLinkedAndroidModule() && module.isAndroidTestModule()
 
-      val testFieldModifier =
-        if (isLibraryProject || !moduleSystem.testRClassConstantIds) FieldModifier.NON_FINAL else FieldModifier.FINAL
+      val useConstantIds = if (isTestModule) moduleSystem.testRClassConstantIds else moduleSystem.applicationRClassConstantIds
+
+      val fieldModifier =
+        if (isLibraryProject || !useConstantIds) FieldModifier.NON_FINAL else FieldModifier.FINAL
+
+      val sourceSet = if (isTestModule) SourceSet.TEST else SourceSet.MAIN
 
       ResourceClasses(
-        nonNamespaced = ModuleRClass(facet, psiManager, SourceSet.MAIN, transitivity, fieldModifier),
-        testNonNamespaced = ModuleRClass(facet, psiManager, SourceSet.TEST, transitivity, testFieldModifier),
-        namespaced = ModuleRClass(facet, psiManager, SourceSet.MAIN, Transitivity.NON_TRANSITIVE, fieldModifier),
-        testNamespaced = ModuleRClass(facet, psiManager, SourceSet.TEST, Transitivity.NON_TRANSITIVE, testFieldModifier)
+        nonNamespaced = ModuleRClass(facet, psiManager, sourceSet, transitivity, fieldModifier),
+        namespaced = ModuleRClass(facet, psiManager, sourceSet, Transitivity.NON_TRANSITIVE, fieldModifier),
       )
     }
   }
@@ -268,9 +263,7 @@ class ProjectLightResourceClassService(private val project: Project) : LightReso
         },
         nonNamespaced = aarLibrary.symbolFile?.toFile()?.takeIf { it.exists() }?.let { symbolFile ->
           TransitiveAarRClass(psiManager, ideaLibrary, packageName, symbolFile, aarLibrary.address)
-        },
-        testNamespaced = null,
-        testNonNamespaced = null
+        }
       )
     }
   }

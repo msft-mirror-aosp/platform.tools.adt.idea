@@ -40,9 +40,11 @@ import com.android.tools.idea.vitals.client.VitalsClient
 import com.android.tools.idea.vitals.createVitalsFilters
 import com.android.tools.idea.vitals.datamodel.VitalsConnection
 import com.google.gct.login.LoginState
+import com.google.gct.login.LoginStatus
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageType
@@ -79,7 +81,7 @@ class VitalsConfigurationManager(
   override val project: Project,
   @VisibleForTesting val cache: AppInsightsCache,
   private val client: AppInsightsClient,
-  loginState: Flow<Boolean> = LoginState.loggedIn
+  loginState: Flow<LoginStatus> = service<LoginState>().loginStatus
 ) : AppInsightsConfigurationManager, Disposable {
 
   private val logger = Logger.getInstance(VitalsConfigurationManager::class.java)
@@ -90,9 +92,9 @@ class VitalsConfigurationManager(
   private val queryConnectionsFlow =
     flow {
         refreshConfigurationFlow
-          .combine(loginState) { _, loggedIn -> loggedIn }
-          .collect { loggedIn ->
-            if (loggedIn) {
+          .combine(loginState) { _, loginStatus -> loginStatus }
+          .collect { loginStatus ->
+            if (loginStatus is LoginStatus.LoggedIn) {
               val connections = client.listConnections()
               if (connections is LoadingState.Ready) {
                 Logger.getInstance(VitalsConfigurationManager::class.java)

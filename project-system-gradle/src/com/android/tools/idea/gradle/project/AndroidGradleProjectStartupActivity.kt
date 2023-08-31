@@ -21,6 +21,7 @@ import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
+import com.android.tools.idea.gradle.project.facet.ndk.NativeHeaderRootType
 import com.android.tools.idea.gradle.project.facet.ndk.NativeSourceRootType
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
@@ -98,13 +99,14 @@ class AndroidGradleProjectStartupActivity : StartupActivity {
     removeGradleProducersFromIgnoredList(project)
 
     if (shouldSyncOrAttachModels()) {
+      // Initially, IJ loads the state of workspace model from the cache and in DelayedProjectSynchronizer synchronizes the state of
+      // workspace model with project model files using JpsProjectModelSynchronizer. Since that activity runs async we need to detect
+      // when the JPS was loaded, otherwise, any change will be overridden.
       JpsProjectLoadingManager.getInstance(project).jpsProjectLoaded {
         invokeAndWaitIfNeeded {
-          runWriteAction {
-            removePointlessModules(project)
-          }
+          removePointlessModules(project)
+          attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
         }
-        attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
       }
     }
 
@@ -116,34 +118,39 @@ private val LOG = Logger.getInstance(AndroidGradleProjectStartupActivity::class.
 
 private fun removePointlessModules(project: Project) {
   val moduleManager = ModuleManager.getInstance(project)
-  val emptyModulesToRemove = mutableListOf<Module>()
-  val nativeOnlySourceRootsModulesToRemove = mutableListOf<Module>()
+  val emptyModulesToRemove = mutableListOf<Pair<Module, Module.() -> Unit>>()
+  val nativeOnlySourceRootsModulesToRemove = mutableListOf<Pair<Module, Module.() -> Unit>>()
 
   moduleManager.modules.forEach { module ->
     if (module.isLoaded && ExternalSystemModulePropertyManager.getInstance(module).getExternalSystemId().isNullOrEmpty()) {
       if (module.isEmptyModule()) {
-        emptyModulesToRemove.add(module)
-      } else if (module.hasOnlyNativeSourceRoots()) {
-        nativeOnlySourceRootsModulesToRemove.add(module)
+        emptyModulesToRemove.add(Pair(module) {
+          LOG.warn("Disposing module '$name' which is empty, not registered with the external system and '$moduleFilePath' does not exist.")
+        })
+      } else if (module.hasOnlyNativeRoots()) {
+        nativeOnlySourceRootsModulesToRemove.add(Pair(module) {
+          LOG.warn("Disposing module '$name' which is not registered with the external system and contains only native roots.")
+        })
       }
     }
   }
 
-  removeModules(emptyModulesToRemove, moduleManager) {
-    LOG.warn("Disposed module '$name' which is empty, not registered with the external system and '$moduleFilePath' does not exist.")
-  }
-  removeModules(nativeOnlySourceRootsModulesToRemove, moduleManager) {
-    LOG.warn("Disposed module '$name' which is not registered with the external system and contains only native source roots.")
-  }
+  removeModules(
+    moduleManager,
+    modules = emptyModulesToRemove + nativeOnlySourceRootsModulesToRemove
+  )
 }
 
-private fun removeModules(modules: List<Module>, moduleManager: ModuleManager, onRemovingModule: Module.() -> Unit ) {
-  with(moduleManager.getModifiableModel()) {
-    modules.forEach {
-      onRemovingModule(it)
-      disposeModule(it)
+private fun removeModules(moduleManager: ModuleManager, modules: List<Pair<Module, Module.() -> Unit>>) {
+  if (modules.isEmpty()) return
+  runWriteAction {
+    with(moduleManager.getModifiableModel()) {
+      modules.forEach { (module, onRemovingModule) ->
+        onRemovingModule(module)
+        disposeModule(module)
+      }
+      commit()
     }
-    commit()
   }
 }
 
@@ -345,6 +352,7 @@ private fun additionalProjectSetup(project: Project) {
     project.getService(AssistantInvoker::class.java).maybeRecommendPluginUpgrade(project, info)
   }
   ProjectStructure.getInstance(project).analyzeProjectStructure()
+  GradleVersionCatalogDetector.getInstance(project).maybeSuggestToml(project)
 }
 
 private fun removeGradleProducersFromIgnoredList(project: Project) {
@@ -358,5 +366,8 @@ private fun Module.isEmptyModule() =
   moduleFile == null &&
   rootManager.let { roots -> roots.contentEntries.isEmpty() && roots.orderEntries.all { it is ModuleSourceOrderEntry } }
 
-private fun Module.hasOnlyNativeSourceRoots() =
-  rootManager.let { roots -> roots.sourceRoots.isNotEmpty() && roots.getSourceRoots(NativeSourceRootType).size == roots.sourceRoots.size }
+private fun Module.hasOnlyNativeRoots() =
+  rootManager.let { roots ->
+    roots.sourceRoots.isNotEmpty() &&
+    roots.getSourceRoots(NativeSourceRootType).size + roots.getSourceRoots(NativeHeaderRootType).size == roots.sourceRoots.size
+  }

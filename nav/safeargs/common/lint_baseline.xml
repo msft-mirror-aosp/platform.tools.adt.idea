@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="5" by="lint 8.2.0-dev">
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="53"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="54"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="55"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="56"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="57"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightActionBuilderClass.kt"
+            line="58"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsBuilderClass.kt"
+            line="67"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsBuilderClass.kt"
+            line="68"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsClass.kt"
+            line="66"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsClass.kt"
+            line="67"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsClass.kt"
+            line="68"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsClass.kt"
+            line="69"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightArgsClass.kt"
+            line="70"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightDirectionsClass.kt"
+            line="80"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightDirectionsClass.kt"
+            line="81"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightDirectionsClass.kt"
+            line="82"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/psi/java/LightDirectionsClass.kt"
+            line="83"/>
+    </issue>
+
+    <issue
+        id="AvoidByLazy"
+        message="Avoid `by lazy` for simple lazy initialization">
+        <location
+            file="src/com/android/tools/idea/nav/safeargs/index/NavData.kt"
+            line="119"/>
+    </issue>
+
+</issues>
