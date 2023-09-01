@@ -34,6 +34,18 @@ class Precompiler(private val project: Project, private val inlineCandidateCache
     val output = mutableListOf<ByteArray>()
     ApplicationManager.getApplication().runReadAction {
       val ktFile = PsiManager.getInstance(project).findFile(file) as KtFile? ?: return@runReadAction
+
+      // Don't precompile contents from source jars and other read-only files.
+      // (Technically it is doable but Android Studio doesn't track the dependencies of those jars so they are usually full of errors)
+      if (!ktFile.isWritable) {
+        return@runReadAction
+      }
+
+      // Don't precompile .kts files.
+      if (ktFile.isScript()) {
+        return@runReadAction
+      }
+
       compileKtFile(ktFile, output)
     }
     return output
