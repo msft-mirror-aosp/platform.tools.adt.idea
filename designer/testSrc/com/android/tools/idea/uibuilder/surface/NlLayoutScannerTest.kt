@@ -16,21 +16,15 @@
 package com.android.tools.idea.uibuilder.surface
 
 import com.android.testutils.MockitoKt.whenever
-import com.android.tools.idea.common.analytics.CommonNopTracker
-import com.android.tools.idea.common.analytics.CommonUsageTracker
 import com.android.tools.idea.common.error.IssueModel
-import com.android.tools.idea.common.error.IssuePanel
-import com.android.tools.idea.common.error.IssueSource
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.LayoutScannerEnabled
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.uibuilder.LayoutTestCase
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.validator.LayoutValidator
 import com.android.tools.idea.validator.ValidatorData
 import com.android.tools.idea.validator.ValidatorResult
 import com.android.tools.rendering.RenderResult
-import com.google.wireless.android.sdk.stats.LayoutEditorEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -58,72 +52,12 @@ class NlLayoutScannerTest {
 
   private fun createScanner(): NlLayoutScanner {
     val issueModel: IssueModel = Mockito.mock(IssueModel::class.java)
-    val issuePanel: IssuePanel = Mockito.mock(IssuePanel::class.java)
     whenever(mockSurface.issueModel).thenReturn(issueModel)
-    whenever(mockSurface.issuePanel).thenReturn(issuePanel)
     return NlLayoutScanner(mockSurface, projectRule.fixture.testRootDisposable!!)
   }
 
   @Test
-  fun issuePanelExpanded() {
-    val scanner = createScanner()
-    val usageTracker = CommonUsageTracker.getInstance(mockSurface) as CommonNopTracker
-    usageTracker.resetLastTrackedEvent()
-
-    val issue =
-      NlAtfIssue(ScannerTestHelper.createTestIssueBuilder().build(), IssueSource.NONE, mockModel)
-    scanner.issuePanelListener.onIssueExpanded(issue, true)
-
-    LayoutTestCase.assertEquals(
-      LayoutEditorEvent.LayoutEditorEventType.ATF_AUDIT_RESULT,
-      usageTracker.lastTrackedEvent
-    )
-  }
-
-  @Test
-  fun issuePanelCollapsed() {
-    val scanner = createScanner()
-    val usageTracker = CommonUsageTracker.getInstance(mockSurface) as CommonNopTracker
-    usageTracker.resetLastTrackedEvent()
-
-    val issue =
-      NlAtfIssue(ScannerTestHelper.createTestIssueBuilder().build(), IssueSource.NONE, mockModel)
-    scanner.issuePanelListener.onIssueExpanded(issue, false)
-
-    LayoutTestCase.assertNull(usageTracker.lastTrackedEvent)
-  }
-
-  @Test
-  fun issueIssueExpanded() {
-    val scanner = createScanner()
-    val usageTracker = CommonUsageTracker.getInstance(mockSurface) as CommonNopTracker
-    usageTracker.resetLastTrackedEvent()
-
-    val issue =
-      NlAtfIssue(ScannerTestHelper.createTestIssueBuilder().build(), IssueSource.NONE, mockModel)
-    scanner.issuePanelListener.onIssueExpanded(issue, true)
-
-    LayoutTestCase.assertEquals(
-      LayoutEditorEvent.LayoutEditorEventType.ATF_AUDIT_RESULT,
-      usageTracker.lastTrackedEvent
-    )
-  }
-
-  @Test
-  fun issueIssueCollapsed() {
-    val scanner = createScanner()
-    val usageTracker = CommonUsageTracker.getInstance(mockSurface) as CommonNopTracker
-    usageTracker.resetLastTrackedEvent()
-
-    val issue =
-      NlAtfIssue(ScannerTestHelper.createTestIssueBuilder().build(), IssueSource.NONE, mockModel)
-    scanner.issuePanelListener.onIssueExpanded(issue, false)
-
-    LayoutTestCase.assertNull(usageTracker.lastTrackedEvent)
-  }
-
-  @Test
-  fun pauseAndresume() {
+  fun pauseAndResume() {
     val scanner = createScanner()
     try {
       scanner.pause()

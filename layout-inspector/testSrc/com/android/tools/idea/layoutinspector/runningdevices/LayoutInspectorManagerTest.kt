@@ -275,36 +275,48 @@ class LayoutInspectorManagerTest {
   @RunsInEdt
   fun testSelectedTabIsRemoved() = withEmbeddedLayoutInspector {
     val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
-    var stopInspectorCounts = 0
-    layoutInspector.stopInspectorListeners.add { stopInspectorCounts += 1 }
 
     fakeToolWindowManager.setSelectedContent(tab1)
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(3)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
+
     fakeToolWindowManager.setSelectedContent(tab2)
+
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(0)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(1)
+
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
+
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(3)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     assertDoesNotHaveWorkbench(tab1)
     assertHasWorkbench(tab2)
 
     fakeToolWindowManager.setSelectedContent(tab1)
 
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(3)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
+
     assertHasWorkbench(tab1)
     assertDoesNotHaveWorkbench(tab2)
 
     fakeToolWindowManager.removeContent(tab1)
 
-    // Assert that the workbench was not removed from tab1. It should not be removed because in the
-    // real world tab1 doesn't exist anymore after being removed, so trying to remove the workbench
-    // from it would cause problems.
-    // The workbench is disposed, so it's empty. Just check that it's still in the view hierarchy
-    assertThat(tab1.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>())
-      .hasSize(1)
+    assertDoesNotHaveWorkbench(tab1)
+    assertThat(layoutInspector.deviceModel?.selectedDevice).isNull()
 
-    // The same for stopping the inspector, it should not be called because the device is not
-    // connected anymore.
-    assertThat(stopInspectorCounts).isEqualTo(2)
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(3)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
+
     assertHasWorkbench(tab2)
+
+    fakeToolWindowManager.removeContent(tab2)
+
+    assertThat(layoutInspector.inspectorModel.selectionListeners).hasSize(0)
+    assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(1)
   }
 
   @Test

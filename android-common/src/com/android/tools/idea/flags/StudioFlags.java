@@ -227,21 +227,6 @@ public final class StudioFlags {
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
     false);
 
-  public static final Flag<Boolean> NELE_DRAG_PLACEHOLDER = Flag.create(
-    NELE, "drag.placeholder", "Dragging widgets with Placeholders",
-    "New architecture for dragging widgets in Layout Editor",
-    true);
-
-  public static final Flag<Boolean> NELE_USE_SHARED_ISSUE_PANEL_FOR_DESIGN_TOOLS = Flag.create(
-    NELE, "use.shared.issue.panel.for.design.tools", "Enabled shared issue panels",
-    "Use a shared issue panel to display the issue for all design tools",
-    true);
-
-  public static final Flag<Boolean> NELE_VISUAL_LINT_ALWAYS_RUN = Flag.create(
-    NELE, "visual.lint.always.run", "Run visual lint in the background when the layout editor is opened",
-    "Enable so that visual lint always runs in the background of the layout editor for select configurations. This is also known as the background linting",
-    true);
-
   public static final Flag<Boolean> NELE_USE_CUSTOM_TRAFFIC_LIGHTS_FOR_RESOURCES = Flag.create(
     NELE, "use.custom.traffic.lights.for.resources", "Base traffic lights on the errors from the shared issue panel",
     "Use errors from the current file and qualifiers tab in the traffic light rendering for resource files.",
@@ -271,11 +256,6 @@ public final class StudioFlags {
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
     false);
-
-  public static final Flag<Boolean> NELE_DYNAMIC_THEMING_ACTION = Flag.create(
-    NELE, "dynamic.theming.action", "Enable previewing dynamic themes in Design Tools",
-    "If enabled, Design Tools have an action to use various backgrounds to preview dynamic themes.",
-    true);
 
   public static final Flag<Boolean> NELE_NEW_COMPONENT_TREE = Flag.create(
     NELE, "use.component.tree.builder", "Use the Component Tree builder",
@@ -1319,7 +1299,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY = Flag.create(
     COMPOSE, "compose.preview.render.quality", "Enable the usage of a render quality management mechanism for Compose Preview",
     "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
-    false);
+    true);
 
   public static final Flag<Long> COMPOSE_PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = Flag.create(
     COMPOSE, "compose.preview.render.quality.debounce.time", "Render quality debounce time",
@@ -1453,6 +1433,14 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       false);
 
+  public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.add.device",
+      "Direct Access Add Device",
+      "Enable the new FTL DirectAccess Add Device workflow.",
+      false);
+
   public static final Flag<String> DIRECT_ACCESS_ENDPOINT =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1497,6 +1485,15 @@ public final class StudioFlags {
       "Crashlytics Integration Test Mode",
       "Set Crashlytics to be in integration test mode.",
       false);
+
+  public static final Flag<Boolean> CRASHLYTICS_2023H2_UI =
+    Flag.create(
+      APP_INSIGHTS,
+      "crashlytics.2023h2.ui",
+      "Crashlytics UI changes for 2023H2",
+      "Enabled Variants, Logs & Keys, Multi-event",
+      false
+    );
 
   public static final Flag<Boolean> PLAY_VITALS_ENABLED =
     Flag.create(

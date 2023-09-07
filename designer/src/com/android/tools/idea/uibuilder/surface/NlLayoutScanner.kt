@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.uibuilder.surface
 
-import com.android.tools.idea.common.error.Issue
-import com.android.tools.idea.common.error.IssuePanel
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.LayoutScannerControl
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
@@ -54,29 +52,12 @@ class NlLayoutScanner(surface: NlDesignSurface, parent: Disposable) :
     get() = lintIntegrator.issues
 
   /** Render specific metrics data */
-  var renderMetric = RenderResultMetricData()
+  private var renderMetric = RenderResultMetricData()
 
   @VisibleForTesting val listeners = HashSet<Listener>()
 
   /** Tracks metric related to atf */
-  @VisibleForTesting private val metricTracker = NlLayoutScannerMetricTracker(surface)
-
-  /** Listener for issue panel open/close */
-  @VisibleForTesting
-  val issuePanelListener =
-    object : IssuePanel.EventListener {
-      override fun onPanelExpanded(isExpanded: Boolean) {
-        if (isExpanded) {
-          metricTracker.trackIssues(issues, renderMetric)
-        }
-      }
-
-      override fun onIssueExpanded(issue: Issue?, isExpanded: Boolean) {
-        if (isExpanded && issue != null) {
-          metricTracker.trackFirstExpanded(issue)
-        }
-      }
-    }
+  private val metricTracker = NlLayoutScannerMetricTracker(surface)
 
   private val atfIssueEventListener =
     object : NlAtfIssue.EventListener {
@@ -91,7 +72,6 @@ class NlLayoutScanner(surface: NlDesignSurface, parent: Disposable) :
 
   init {
     Disposer.register(parent, this)
-    surface.issuePanel.addEventListener(issuePanelListener)
 
     // Enabling this will retrieve text character locations from TextView to improve the
     // accuracy of TextContrastCheck in ATF

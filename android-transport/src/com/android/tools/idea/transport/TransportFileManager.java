@@ -150,7 +150,8 @@ public final class TransportFileManager implements TransportFileCopier {
         copyFileToDevice(HostFiles.TRACEBOX);
       }
     }
-    else if (isAtLeastP(myDevice)) {
+    else if (myDevice.getVersion().getFeatureLevel() == AndroidVersion.VersionCodes.P) {
+      // Profiler is side-loading Perfetto on P. On Q+, the system image's Perfetto is used.
       copyFileToDevice(HostFiles.PERFETTO);
       copyFileToDevice(HostFiles.PERFETTO_SO);
       copyFileToDevice(HostFiles.TRACED);
@@ -189,10 +190,6 @@ public final class TransportFileManager implements TransportFileCopier {
    */
   private static boolean isAtLeastO(IDevice device) {
     return device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.O;
-  }
-
-  private static boolean isAtLeastP(IDevice device) {
-    return device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.P;
   }
 
   /**
@@ -319,7 +316,7 @@ public final class TransportFileManager implements TransportFileCopier {
          * Starting with API 34 there is an additional check that a dex cannot be writable (see dalvik_system_DexFile.cc).
          */
         if (fileName.endsWith(".jar")) {
-          String cmd = "chmod 555 " + deviceFilePath;
+          String cmd = "chmod 444 " + deviceFilePath;
           myDevice.executeShellCommand(cmd, new NullOutputReceiver());
         }
       }

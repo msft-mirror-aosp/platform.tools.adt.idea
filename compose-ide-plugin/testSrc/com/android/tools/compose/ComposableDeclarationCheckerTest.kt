@@ -15,14 +15,21 @@
  */
 package com.android.tools.compose
 
-import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
+import com.android.tools.idea.testing.AndroidProjectRule
 import org.jetbrains.android.compose.stubComposeRuntime
 import org.jetbrains.android.compose.stubKotlinStdlib
+import org.jetbrains.kotlin.idea.base.plugin.isK2Plugin
+import org.junit.Rule
+import org.junit.Test
 
 /**
- * Tests for [ComposeSampleResolutionService]
+ * Tests for [ComposableDeclarationChecker]
  */
-class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
+class ComposableDeclarationCheckerTest {
+  @get:Rule
+  val androidProject = AndroidProjectRule.inMemory()
+
+  @Test
   fun testPropertyWithInitializer() {
     doTest(
       """
@@ -34,28 +41,59 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testComposableFunctionReferences() {
-    doTest(
-      """
+    if (!isK2Plugin()) {
+      doTest(
+        """
       import androidx.compose.runtime.Composable
 
       @Composable fun A() {}
-      val aCallable: () -> Unit = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported">::A</error>
-      val bCallable: @Composable () -> Unit =<error descr="Expecting an expression"> </error><error descr="Property getter or setter expected"><!COMPOSABLE_FUNCTION_REFERENCE,TYPE_MISMATCH!>::A</error>
-      val cCallable = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported">::A</error>
+      val aCallable: () -> Unit = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>
+      val bCallable: @Composable () -> Unit = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES"><error descr="[TYPE_MISMATCH] Type inference failed. Expected type mismatch: inferred type is KFunction0<Unit> but @Composable () -> Unit was expected" textAttributesKey="ERRORS_ATTRIBUTES">::A</error></error>
+      val cCallable = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>
       fun doSomething(fn: () -> Unit) { print(fn) }
       @Composable fun B(content: @Composable () -> Unit) {
           content()
-          doSomething(<error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported">::A</error>)
-          B(<error descr="Expecting ')'"><error descr="Expecting an expression"><</error></error><error descr="Unexpected tokens (use ';' to separate expressions on the same line)">!COMPOSABLE_FUNCTION_REFERENCE,TYPE_MISMATCH!>::A)</error>
+          doSomething(<error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>)
+          B(<error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES"><error descr="[TYPE_MISMATCH] Type inference failed. Expected type mismatch: inferred type is KFunction0<Unit> but @Composable () -> Unit was expected" textAttributesKey="ERRORS_ATTRIBUTES">::A</error></error>)
       }
         """
-    )
+      )
+    } else {
+      // In K2, we are taking composability into account when resolving function references,
+      // so trying to resolve `::A` in a context where we expect a non-composable function
+      // type fails with an `UNRESOLVED_REFERENCE` error, instead of a
+      // `COMPOSABLE_FUNCTION_REFERENCE` error in the plugin.
+      doTest(
+        """
+      import androidx.compose.runtime.Composable
+
+      @Composable fun A() {}
+      val aCallable: () -> Unit = ::<error descr="[UNRESOLVED_REFERENCE] Unresolved reference: A" textAttributesKey="WRONG_REFERENCES_ATTRIBUTES">A</error>
+      val bCallable: @Composable () -> Unit = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>
+      val cCallable = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>
+      fun doSomething(fn: () -> Unit) { print(fn) }
+      @Composable fun B(content: @Composable () -> Unit) {
+          content()
+          <error descr="[INAPPLICABLE_CANDIDATE] Inapplicable candidate(s): fun doSomething(fn: () -> Unit): Unit" textAttributesKey="ERRORS_ATTRIBUTES">doSomething</error>(::<error descr="[UNRESOLVED_REFERENCE] Unresolved reference: A" textAttributesKey="WRONG_REFERENCES_ATTRIBUTES">A</error>)
+          B(<error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported" textAttributesKey="ERRORS_ATTRIBUTES">::A</error>)
+      }
+        """
+      )
+    }
   }
 
+  @Test
   fun testNonComposableFunctionReferences() {
-    doTest(
-      """
+    // This code fails for two different reasons in K1 and K2. In K1, the code fails with
+    // a TYPE_MISMATCH, since we infer a non-composable function type in a context where a
+    // composable function type is expected. In K2, we can promote non-composable function
+    // types to composable function types (as this matches the behavior for suspend functions),
+    // but we explicitly forbid composable function references.
+    if (!isK2Plugin()) {
+      doTest(
+        """
         import androidx.compose.runtime.Composable
 
         fun A() {}
@@ -69,9 +107,28 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
             B(<error descr="[TYPE_MISMATCH] Type inference failed. Expected type mismatch: inferred type is KFunction0<Unit> but @Composable () -> Unit was expected">::A</error>)
         }
         """
-    )
+      )
+    } else {
+      doTest(
+        """
+        import androidx.compose.runtime.Composable
+
+        fun A() {}
+        val aCallable: () -> Unit = ::A
+        val bCallable: @Composable () -> Unit = <error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported">::A</error>
+        val cCallable = ::A
+        fun doSomething(fn: () -> Unit) { print(fn) }
+        @Composable fun B(content: @Composable () -> Unit) {
+            content()
+            doSomething(::A)
+            B(<error descr="[COMPOSABLE_FUNCTION_REFERENCE] Function References of @Composable functions are not currently supported">::A</error>)
+        }
+        """
+      )
+    }
   }
 
+  @Test
   fun testPropertyWithJustGetter() {
     doTest(
       """
@@ -83,6 +140,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testPropertyWithGetterAndSetter() {
     doTest(
       """
@@ -103,6 +161,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testPropertyGetterAllForms() {
     doTest(
       """
@@ -119,9 +178,11 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testSuspendComposable() {
-    doTest(
-      """
+    if (!isK2Plugin()) {
+      doTest(
+        """
       import androidx.compose.runtime.Composable
 
       @Composable suspend fun <error descr="[COMPOSABLE_SUSPEND_FUN] Composable function cannot be annotated as suspend">Foo</error>() {}
@@ -139,12 +200,41 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
           acceptSuspend(<error descr="Expecting ')'"><error descr="Expecting an expression"><</error></error><error descr="Unexpected tokens (use ';' to separate expressions on the same line)">!COMPOSABLE_SUSPEND_FUN, TYPE_MISMATCH!>@Composable suspend fun()</error> <warning descr="[UNUSED_LAMBDA_EXPRESSION] The lambda expression is unused. If you mean a block, you can use 'run { ... }'">{ }</warning><error descr="Unexpected tokens (use ';' to separate expressions on the same line)">)</error>
       }
         """
-    )
+      )
+    } else {
+      // In K2, the frontend forbids function types with multiple kinds, so
+      // `@Composable suspend` function types get turned into error types. This is the
+      // reason for the additional ARGUMENT_TYPE_MISMATCH errors.
+      doTest(
+        """
+      import androidx.compose.runtime.Composable
+
+      @Composable suspend fun <error descr="[COMPOSABLE_SUSPEND_FUN] Composable function cannot be annotated as suspend">Foo</error>() {}
+
+      fun acceptSuspend(fn: suspend () -> Unit) { print(fn) }
+      fun acceptComposableSuspend(fn: <error descr="[AMBIGUOUS_FUNCTION_TYPE_KIND] Multiple functional type conversions are not allowed for a single type. Detected type conversions: [suspend, @Composable]">@Composable suspend () -> Unit</error>) { print(fn.hashCode()) }
+
+      val foo: suspend () -> Unit = <error descr="[INITIALIZER_TYPE_MISMATCH] Initializer type mismatch: expected kotlin/coroutines/SuspendFunction0<kotlin/Unit>, actual androidx/compose/runtime/internal/ComposableFunction0<kotlin/Unit>">@Composable {}</error>
+      val bar: suspend () -> Unit = {}
+      fun Test() {
+          val composableLambda = @Composable {}
+          acceptSuspend @Composable <error descr="[ARGUMENT_TYPE_MISMATCH] Argument type mismatch: actual type is androidx/compose/runtime/internal/ComposableFunction0<kotlin/Unit> but kotlin/coroutines/SuspendFunction0<kotlin/Unit> was expected">{}</error>
+          acceptComposableSuspend @Composable <error descr="[ARGUMENT_TYPE_MISMATCH] Argument type mismatch: actual type is androidx/compose/runtime/internal/ComposableFunction0<kotlin/Unit> but @R|androidx/compose/runtime/Composable|()  kotlin/Function0<kotlin/Unit> was expected">{}</error>
+          acceptComposableSuspend(<error descr="[ARGUMENT_TYPE_MISMATCH] Argument type mismatch: actual type is androidx/compose/runtime/internal/ComposableFunction0<kotlin/Unit> but @R|androidx/compose/runtime/Composable|()  kotlin/Function0<kotlin/Unit> was expected">composableLambda</error>)
+          acceptSuspend(<error descr="Expecting ')'"><error descr="Expecting an expression"><</error></error><error descr="Unexpected tokens (use ';' to separate expressions on the same line)">!COMPOSABLE_SUSPEND_FUN, TYPE_MISMATCH!>@Composable suspend fun()</error> { }<error descr="Unexpected tokens (use ';' to separate expressions on the same line)">)</error>
+      }
+        """
+      )
+    }
   }
 
+  @Test
   fun testMissingComposableOnOverride() {
-    doTest(
-      """
+    // In K1, we report the `CONFLICTING_OVERLOADS` error on properties as well as property
+    // accessors. In K2 we only report the error on property accessors.
+    if (!isK2Plugin()) {
+      doTest(
+        """
       import androidx.compose.runtime.Composable
 
       interface Foo {
@@ -176,9 +266,46 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
       }
 
         """
-    )
+      )
+    } else {
+      doTest(
+        """
+      import androidx.compose.runtime.Composable
+
+      interface Foo {
+          @Composable
+          fun composableFunction(param: Boolean): Boolean
+          fun nonComposableFunction(param: Boolean): Boolean
+          val nonComposableProperty: Boolean
+      }
+
+      object FakeFoo : Foo {
+          <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [fun composableFunction(param: Boolean): Boolean, @Composable() fun composableFunction(param: Boolean): Boolean]">override fun composableFunction(param: Boolean)</error> = true
+          <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [@Composable() fun nonComposableFunction(param: Boolean): Boolean, fun nonComposableFunction(param: Boolean): Boolean]">@Composable override fun nonComposableFunction(param: Boolean)</error> = true
+          override val nonComposableProperty: Boolean <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [@Composable() get(): Boolean, get(): Boolean]">@Composable get()</error> = true
+      }
+
+      interface Bar {
+          @Composable
+          fun composableFunction(param: Boolean): Boolean
+          val composableProperty: Boolean @Composable get()<EOLError descr="Expecting function body"></EOLError>
+          fun nonComposableFunction(param: Boolean): Boolean
+          val nonComposableProperty: Boolean
+      }
+
+      object FakeBar : Bar {
+          <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [fun composableFunction(param: Boolean): Boolean, @Composable() fun composableFunction(param: Boolean): Boolean]">override fun composableFunction(param: Boolean)</error> = true
+          override val composableProperty: Boolean <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [get(): Boolean, @Composable() get(): Boolean]">get()</error> = true
+          <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [@Composable() fun nonComposableFunction(param: Boolean): Boolean, fun nonComposableFunction(param: Boolean): Boolean]">@Composable override fun nonComposableFunction(param: Boolean)</error> = true
+          override val nonComposableProperty: Boolean <error descr="[CONFLICTING_OVERLOADS] Conflicting overloads: [@Composable() get(): Boolean, get(): Boolean]">@Composable get()</error> = true
+      }
+
+        """
+      )
+    }
   }
 
+  @Test
   fun testComposableMainFun1() {
     doTest(
       """
@@ -189,6 +316,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testComposableMainFun2() {
     doTest(
       """
@@ -203,6 +331,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testComposableMainFun3() {
     doTest(
       """
@@ -219,6 +348,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testInferenceOverComplexConstruct1() {
     doTest(
       """
@@ -228,6 +358,7 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
+  @Test
   fun testInferenceOverComplexConstruct2() {
     doTest(
       """
@@ -238,7 +369,9 @@ class ComposableDeclarationCheckerTest : JavaCodeInsightFixtureTestCase() {
     )
   }
 
-  private fun doTest(expectedText: String): Unit = myFixture.run {
+  private fun doTest(expectedText: String): Unit = androidProject.fixture.run {
+    setUpCompilerArgumentsForComposeCompilerPlugin(project)
+
     stubComposeRuntime()
     stubKotlinStdlib()
 

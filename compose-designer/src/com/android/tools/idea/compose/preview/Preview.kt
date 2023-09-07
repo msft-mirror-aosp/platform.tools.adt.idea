@@ -221,14 +221,16 @@ fun configureLayoutlibSceneManager(
     setShrinkRendering(!showDecorations)
     interactive = isInteractive
     isUsePrivateClassLoader = requestPrivateClassLoader
-    setQuality(quality)
     setShowDecorations(showDecorations)
     // The Compose Preview has its own way to track out of date files so we ask the Layoutlib
     // Scene Manager to not report it via the regular log.
     doNotReportOutOfDateUserClasses()
     if (runAtfChecks || runVisualLinting) {
+      // Visual Linting and ATF need full quality for accurate results.
+      setQuality(getDefaultPreviewQuality())
       setCustomContentHierarchyParser(accessibilityBasedHierarchyParser)
     } else {
+      setQuality(quality)
       setCustomContentHierarchyParser(null)
     }
     layoutScannerConfig.isLayoutScannerEnabled = runAtfChecks
@@ -1641,8 +1643,9 @@ class ComposePreviewRepresentation(
               val config = baseConfig.copy(deviceSpec = device)
               val displaySettings =
                 baseDisplaySettings.copy(
-                  name = "${baseDisplaySettings.name} - ${referenceDeviceIds[device]}",
-                  group = message("ui.check.mode.screen.size.group")
+                  name = "${baseDisplaySettings.name} - ${effectiveDeviceIds[device]}",
+                  group = message("ui.check.mode.screen.size.group"),
+                  showDecoration = true
                 )
 
               val singleInstance =

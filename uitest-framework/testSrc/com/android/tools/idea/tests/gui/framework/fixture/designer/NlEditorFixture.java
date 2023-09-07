@@ -32,11 +32,9 @@ import com.android.tools.idea.tests.gui.framework.GuiTests;
 import com.android.tools.idea.tests.gui.framework.fixture.ComponentFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.ComponentTreeFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.WorkBenchLoadingPanelFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.IssuePanelFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.MorphDialogFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.NlConfigurationToolbarFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.NlDesignSurfaceFixture;
-import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.NlRhsConfigToolbarFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.layout.NlViewActionToolbarFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.HostPanelFixture;
 import com.android.tools.idea.tests.gui.framework.fixture.designer.naveditor.NavDesignSurfaceFixture;
@@ -271,13 +269,6 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, DesignerE
   }
 
   @NotNull
-  public NlRhsConfigToolbarFixture getRhsConfigToolbar() {
-    ActionToolbarImpl toolbar =
-      GuiTests.waitUntilShowing(robot(), target(), Matchers.byName(ActionToolbarImpl.class, "NlRhsConfigToolbar"));
-    return new NlRhsConfigToolbarFixture(this, toolbar);
-  }
-
-  @NotNull
   public JTreeFixture getComponentTree() {
     JTreeFixture fixture = new JTreeFixture(robot(), (JTree)robot().finder().findByName(target(), "componentTree"));
 
@@ -481,11 +472,6 @@ public class NlEditorFixture extends ComponentFixture<NlEditorFixture, DesignerE
   @NotNull
   public Point getScrollPosition() {
     return myDesignSurfaceFixture.target().getScrollPosition();
-  }
-
-  @NotNull
-  public IssuePanelFixture getIssuePanel() {
-    return myDesignSurfaceFixture.getIssuePanelFixture();
   }
 
   public void enlargeBottomComponentSplitter() {

@@ -42,6 +42,15 @@ class WearTilePreviewElementFinderTest {
   @Before
   fun setUp() {
     fixture.addFileToProjectAndInvalidate(
+      "android/content/Context.kt",
+      // language=kotlin
+      """
+        package android.content
+
+        class Context
+      """.trimIndent()
+    )
+    fixture.addFileToProjectAndInvalidate(
       "androidx/wear/tiles/tooling/preview/TilePreview.kt",
       // language=kotlin
       """
@@ -55,6 +64,8 @@ class WearTilePreviewElementFinderTest {
             const val SQUARE = "id:wearos_square"
             const val RECT = "id:wearos_rect"
         }
+
+        class TilePreviewData
 
         annotation class TilePreview(
             val name: String = "",
@@ -77,51 +88,86 @@ class WearTilePreviewElementFinderTest {
         """
         package com.android.test
 
+        import android.content.Context
         import androidx.wear.tiles.TileService
         import androidx.wear.tiles.tooling.preview.TilePreview
+        import androidx.wear.tiles.tooling.preview.TilePreviewData
         import androidx.wear.tiles.tooling.preview.WearDevices
 
         @TilePreview
         class ThisShouldNotBePreviewed : TileService
 
         @TilePreview
-        private fun tilePreview() {
+        private fun tilePreview(): TilePreviewData {
+          return TilePreviewData()
         }
 
         @TilePreview(
           device = WearDevices.LARGE_ROUND
         )
-        private fun largeRoundTilePreview() {
+        private fun largeRoundTilePreview(): TilePreviewData {
+          return TilePreviewData()
         }
 
         @TilePreview(
           name = "some name"
         )
-        private fun namedTilePreview() {
+        private fun namedTilePreview(): TilePreviewData {
+          return TilePreviewData()
         }
 
         @TilePreview(
           group = "some group",
           device = WearDevices.SQUARE
         )
-        private fun tilePreviewWithGroup() {
+        private fun tilePreviewWithGroup(): TilePreviewData {
+          return TilePreviewData()
         }
 
         fun someRandomMethod() {
         }
 
+        fun anotherRandomMethodReturningTilePreviewData(): TilePreviewData {
+          return TilePreviewData()
+        }
+
         @TilePreview(
           locale = "fr"
         )
-        private fun tilePreviewWithLocale() {
+        private fun tilePreviewWithLocale(): TilePreviewData {
+          return TilePreviewData()
         }
 
         @TilePreview(
           fontScale = 1.2f
         )
-        private fun tilePreviewWithFontScale() {
+        private fun tilePreviewWithFontScale(): TilePreviewData {
+          return TilePreviewData()
         }
 
+        @TilePreview
+        fun tilePreviewWithParameter(x: Int): TilePreviewData {
+          return TilePreviewData()
+        }
+
+        @TilePreview
+        fun tilePreviewWithWrongReturnType(): Int {
+          return 42
+        }
+
+        @TilePreview
+        fun tilePreviewWithNoReturnType() {
+        }
+
+        @TilePreview
+        fun tilePreviewWithContextParameter(context: Context): TilePreviewData {
+          return TilePreviewData()
+        }
+
+        @TilePreview
+        fun tilePreviewWithTooManyParameters(context: Context, x: Int): TilePreviewData {
+          return TilePreviewData()
+        }
         """
           .trimIndent()
       )
@@ -134,9 +180,11 @@ class WearTilePreviewElementFinderTest {
         package com.android.test
 
         import androidx.wear.tiles.tooling.preview.TilePreview
+        import androidx.wear.tiles.tooling.preview.TilePreviewData
 
         @TilePreview
-        private fun tilePreviewInAnotherFile() {
+        private fun tilePreviewInAnotherFile(): TilePreviewData {
+          return TilePreviewData()
         }
         """
           .trimIndent()
@@ -171,7 +219,7 @@ class WearTilePreviewElementFinderTest {
     runBlocking {
       val previewElements =
         WearTilePreviewElementFinder.findPreviewElements(project, previewsTest.virtualFile)
-      assertThat(previewElements).hasSize(6)
+      assertThat(previewElements).hasSize(7)
 
       previewElements.elementAt(0).let {
         assertThat(it.displaySettings.name).isEqualTo("tilePreview")
@@ -311,6 +359,23 @@ class WearTilePreviewElementFinderTest {
          """
                 .trimIndent()
             )
+        }
+      }
+      previewElements.elementAt(6).let {
+        assertThat(it.displaySettings.name).isEqualTo("tilePreviewWithContextParameter")
+        assertThat(it.displaySettings.group).isNull()
+        assertThat(it.displaySettings.showBackground).isTrue()
+        assertThat(it.displaySettings.showDecoration).isFalse()
+        assertThat(it.displaySettings.backgroundColor).isEqualTo("#ff000000")
+        assertThat(it.configuration.device).isEqualTo("id:wearos_small_round")
+        assertThat(it.configuration.locale).isNull()
+        assertThat(it.configuration.fontScale).isEqualTo(1f)
+
+        ReadAction.run<Throwable> {
+          assertThat(it.previewBodyPsi?.psiRange?.range)
+            .isEqualTo(previewsTest.textRange("tilePreviewWithContextParameter"))
+          assertThat(it.previewElementDefinitionPsi?.element?.text)
+            .isEqualTo("@TilePreview")
         }
       }
     }

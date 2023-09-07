@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.ui.resourcemanager.explorer
 
-import com.android.tools.adtui.util.ActionToolbarUtil
 import com.android.tools.idea.ui.resourcemanager.ResourceManagerTracking
 import com.android.tools.idea.ui.resourcemanager.actions.ExpandAction
 import com.android.tools.idea.ui.resourcemanager.actions.RefreshDesignAssetAction
@@ -422,6 +421,9 @@ class ResourceExplorerListView(
   }
 
   private fun setContentPanel() {
+    // Because we are reusing the UI items, we should clear the selection
+    // to avoid interaction issues
+    sectionList.getLists().forEach { it.selectionModel.clearSelection() }
     removeAll()
     add(contentPanel)
     revalidate()
@@ -549,7 +551,7 @@ class ResourceExplorerListView(
       .filterNot { it.assetSets.isEmpty() }
       .map(this::createSection)
       .toList()
-    if (!sections.isEmpty()) {
+    if (sections.isNotEmpty()) {
       sectionListModel.addSections(sections)
     }
     else {
@@ -686,10 +688,6 @@ class ResourceExplorerListView(
 
   fun addSelectionListener(listener: SelectionListener) {
     listeners += listener
-  }
-
-  fun removeSelectionListener(listener: SelectionListener) {
-    listeners -= listener
   }
 
   interface SelectionListener {

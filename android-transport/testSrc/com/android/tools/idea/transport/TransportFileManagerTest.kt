@@ -76,7 +76,7 @@ class TransportFileManagerTest {
 
     fileManager.copyHostFileToDevice(hostFile)
     verify(mockDevice, times(1)).pushFile(hostPathCaptor.capture(), devicePathCaptor.capture())
-    verify(mockDevice, times(1)).executeShellCommand(eq("chmod 555 ${TransportFileManager.DEVICE_DIR}perfa.jar"), any())
+    verify(mockDevice, times(1)).executeShellCommand(eq("chmod 444 ${TransportFileManager.DEVICE_DIR}perfa.jar"), any())
 
     val expectedPaths = listOf(
       Pair("dev" + File.separator + "perfa.jar", "perfa.jar")
@@ -272,9 +272,8 @@ class TransportFileManagerTest {
 
     // Files expected to be copied for device Q include TRANSPORT, PERFA, PERFA_OKHTTP, JVMTI_AGENT, SIMPLEPERF
     testNumberOfFilesToCopy(true, 29, 5)
-    // Files expected to be copied for device Q include TRANSPORT, PERFA, PERFA_OKHTTP, JVMTI_AGENT, SIMPLEPERF, PERFETTO, PERFETTO_SO,
-    // TRACED, TRACED_PROBE
-    testNumberOfFilesToCopy(false, 29, 9)
+    // Files expected to be copied for device Q include TRANSPORT, PERFA, PERFA_OKHTTP, JVMTI_AGENT, SIMPLEPERF
+    testNumberOfFilesToCopy(false, 29, 5)
   }
 
   private fun testNumberOfFilesToCopy(traceboxFlag: Boolean, apiLevel: Int, expectedNumberOfFiles: Int) {

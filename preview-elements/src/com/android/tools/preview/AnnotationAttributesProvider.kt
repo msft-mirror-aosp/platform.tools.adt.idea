@@ -17,6 +17,9 @@ package com.android.tools.preview
 
 /** Provides a unified interface to access annotation attributes (parameters). */
 interface AnnotationAttributesProvider {
+
+  fun <T> getAttributeValue(attributeName: String): T?
+
   fun getIntAttribute(attributeName: String): Int?
 
   fun getStringAttribute(attributeName: String): String?
@@ -24,4 +27,8 @@ interface AnnotationAttributesProvider {
   fun getFloatAttribute(attributeName: String): Float?
 
   fun getBooleanAttribute(attributeName: String): Boolean?
+
+  fun <T> getDeclaredAttributeValue(attributeName: String): T?
+
+  fun findClassNameValue(name: String): String?
 }

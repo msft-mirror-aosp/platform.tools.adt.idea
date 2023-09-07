@@ -122,7 +122,7 @@ public class RenderTask {
     public BufferedImage getImage(int width, int height) {
       @SuppressWarnings("UndesirableClassUsage")
       BufferedImage image =
-        new BufferedImage(Math.max(MIN_BITMAP_SIZE_PX, width), Math.max(MIN_BITMAP_SIZE_PX, height), BufferedImage.TYPE_INT_ARGB);
+        new BufferedImage(Math.max(MIN_BITMAP_SIZE_PX, width), Math.max(MIN_BITMAP_SIZE_PX, height), BufferedImage.TYPE_INT_ARGB_PRE);
       image.setAccelerationPriority(1f);
 
       return image;
@@ -891,7 +891,7 @@ public class RenderTask {
         return myImageFactoryDelegate.getImage(width, height);
       }
 
-      return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+      return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
     }), RenderAsyncActionExecutor.DEFAULT_RENDER_THREAD_TIMEOUT_MS * 10, TimeUnit.MILLISECONDS)
       .handle((result, ex) -> {
         if (ex != null) {
@@ -1084,10 +1084,10 @@ public class RenderTask {
           }
           return result;
         }).handle((result, ex) -> {
-          // After render clean-up. Dispose the GapWorker cache.
-          RenderSessionCleaner.clearGapWorkerCache(myLayoutlibCallback);
-          RenderSessionCleaner.clearFontRequestWorker(myLayoutlibCallback);
           ModuleClassLoader moduleClassLoader = myModuleClassLoaderReference.getClassLoader();
+          // After render clean-up. Dispose the GapWorker cache.
+          RenderSessionCleaner.clearGapWorkerCache(moduleClassLoader);
+          RenderSessionCleaner.clearFontRequestWorker(moduleClassLoader);
           return result.createWithStats(new RenderResultStats(
             inflateResult != null ? inflateResult.getStats().getInflateDurationMs() : result.getStats().getInflateDurationMs(),
             System.currentTimeMillis() - startRenderTimeMs,
@@ -1414,6 +1414,6 @@ public class RenderTask {
    */
   @NotNull
   private CompletableFuture<Void> disposeRenderSession(@NotNull RenderSession renderSession) {
-    return RenderSessionCleaner.dispose(renderSession, myLayoutlibCallback);
+    return RenderSessionCleaner.dispose(renderSession, myModuleClassLoaderReference.getClassLoader());
   }
 }
