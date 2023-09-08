@@ -3,5 +3,5 @@ visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio"])
 
 STUDIO_CODENAME = "Hedgehog"
 STUDIO_VERSION = "Beta"
-STUDIO_MICRO_PATCH = "1.19"
-STUDIO_RELEASE_NUMBER = 3
+STUDIO_MICRO_PATCH = "1.20"
+STUDIO_RELEASE_NUMBER = 4
