@@ -367,20 +367,8 @@ public class SampleDataResourceItem implements ResourceItem, ResolvableResourceI
 
   @Override
   @NotNull
-  public ResourceReference getReferenceToSelf() {
-    return new ResourceReference(getNamespace(), getType(), getName());
-  }
-
-  @Override
-  @NotNull
   public FolderConfiguration getConfiguration() {
     return DEFAULT_CONFIGURATION;
-  }
-
-  @Override
-  @NotNull
-  public String getKey() {
-    return getType() + "/" + getName();
   }
 
   @Override

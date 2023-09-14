@@ -57,8 +57,8 @@ import org.w3c.dom.Node;
 /**
  * Static utilities for generating scaled-down {@link Icon} instances from image resources to display in the gutter.
  */
-public class GutterIconFactory {
-  private static final Logger LOG = Logger.getInstance(GutterIconCache.class);
+class GutterIconFactory {
+  private static final Logger LOG = Logger.getInstance(GutterIconFactory.class);
   private static final int RENDERING_SCALING_FACTOR = 10;
 
   /**
@@ -71,10 +71,10 @@ public class GutterIconFactory {
    * that the XML file does not contain any unresolved references (otherwise, this method returns null).
    */
   @Nullable
-  public static Icon createIcon(@NotNull VirtualFile file, @Nullable RenderResources resolver, int maxWidth, int maxHeight, @NotNull AndroidFacet facet) {
+  public static Icon createIcon(@NotNull VirtualFile file, @Nullable RenderResources resolver, @NotNull AndroidFacet facet, int maxWidth, int maxHeight) {
     String path = file.getPath();
     if (path.endsWith(DOT_XML)) {
-      return createXmlIcon(file, resolver, maxWidth, maxHeight, facet);
+      return createXmlIcon(file, resolver, facet, maxWidth, maxHeight);
     }
 
     return createBitmapIcon(file, maxWidth, maxHeight);
@@ -96,8 +96,9 @@ public class GutterIconFactory {
   }
 
   @Nullable
-  private static Icon createXmlIcon(@NotNull VirtualFile file, @Nullable RenderResources resolver, int maxWidth, int maxHeight,
-                                    @NotNull AndroidFacet facet) {
+  private static Icon createXmlIcon(@NotNull VirtualFile file, @Nullable RenderResources resolver,
+                                    @NotNull AndroidFacet facet,
+                                    int maxWidth, int maxHeight) {
     try {
       String xml = getXmlContent(file);
       Image image;

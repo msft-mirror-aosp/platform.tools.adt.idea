@@ -154,12 +154,6 @@ public class ScrollInteraction extends Interaction {
 
   @Override
   public void commit(@NotNull InteractionEvent event) {
-    //noinspection MagicConstant // it is annotated as @InputEventMask in Kotlin.
-    end(event.getInfo().getX(), event.getInfo().getY(), event.getInfo().getModifiersEx());
-  }
-
-  @Override
-  public void end(@SwingCoordinate int x, @SwingCoordinate int y, @JdkConstants.InputEventMask int modifiersEx) {
     // Reset scroll multiplier back to 1
     myScrollMultiplier = 1;
     myHandler.commit(myScrolledAmount);
@@ -168,12 +162,6 @@ public class ScrollInteraction extends Interaction {
 
   @Override
   public void cancel(@NotNull InteractionEvent event) {
-    //noinspection MagicConstant // it is annotated as @InputEventMask in Kotlin.
-    cancel(event.getInfo().getX(), event.getInfo().getY(), event.getInfo().getModifiersEx());
-  }
-
-  @Override
-  public void cancel(@SwingCoordinate int x, @SwingCoordinate int y, @JdkConstants.InputEventMask int modifiersEx) {
     // Make sure we reset the scroll to where it was
     myHandler.update(0);
     mySceneView.getSceneManager().requestLayoutAndRenderAsync(false);

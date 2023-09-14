@@ -53,6 +53,11 @@ public final class StudioFlags {
     return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
   }
 
+  private static boolean applicationIsInternal() {
+    Application application = ApplicationManager.getApplication();
+    return application != null && !application.isUnitTestMode() && application.isInternal();
+  }
+
   @TestOnly
   public static void validate() {
     FLAGS.validate();
@@ -80,6 +85,12 @@ public final class StudioFlags {
     NPW, "show.kts.gradle.combobox", "Show KTS/Gradle Combobox",
     "Show KTS/Gradle Combobox to which build script is used for the generated code",
     true);
+
+  public static final Flag<Boolean> NPW_SHOW_AGP_VERSION_COMBO_BOX = Flag.create(
+    NPW, "show.agp.version.combobox", "Show AGP version combobox",
+    "Show a combobox to select the version of Android Gradle plugin used for the new project",
+    applicationIsInternal());
+
   public static final Flag<Boolean> NPW_NEW_NATIVE_MODULE = Flag.create(
     NPW, "new.native.module", "New Android Native Module",
     "Show template to create a new Android Native module in the new module wizard.",
@@ -373,14 +384,6 @@ public final class StudioFlags {
     "Show ADB server management mode settings",
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
-
-  public static final Flag<Boolean> MERGED_DEVICE_FILE_EXPLORER_AND_DEVICE_MONITOR_TOOL_WINDOW_ENABLED = Flag.create(
-    RUNDEBUG,
-    "adb.device.monitor.enable",
-    "Enable the \"Device Explorer\" tool window",
-    "Enable the \"Device Explorer\" tool window which contains Device File Explorer and Device Monitor.\n" +
-    "Changing the value of this flag requires restarting Android Studio.",
-    true);
 
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
     RUNDEBUG,

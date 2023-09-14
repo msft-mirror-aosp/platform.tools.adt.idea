@@ -76,12 +76,6 @@ public abstract class Interaction implements Interaction2 {
   /** Initial AWT mask when the interaction started. */
   @InputEventMask protected int myStartMask;
 
-  @Override
-  @NotNull
-  public List<Layer> createOverlays() {
-    return Collections.emptyList();
-  }
-
   /**
    * Handles initialization of this interaction. Called when the interaction is
    * starting.
@@ -121,18 +115,5 @@ public abstract class Interaction implements Interaction2 {
    */
   @Deprecated
   public void end(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask int modifiersEx) {
-  }
-
-  /**
-   * Handles termination of the interaction. This method is called when the
-   * interaction has be canceled.
-   *
-   * @param x           The most recent mouse x coordinate applicable to this interaction
-   * @param y           The most recent mouse y coordinate applicable to this interaction
-   * @param modifiersEx current modifier key masks
-   * @deprecated Use {@link #cancel(InteractionEvent)} instead.
-   */
-  @Deprecated
-  public void cancel(@SwingCoordinate int x, @SwingCoordinate int y, @InputEventMask int modifiersEx) {
   }
 }

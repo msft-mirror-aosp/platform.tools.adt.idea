@@ -146,37 +146,37 @@ maven_repository(
         "@maven//:androidx.compose.animation.animation_1.3.0",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.animation.animation_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.compiler.compiler_1.3.2",
-        "@maven//:androidx.compose.compiler.compiler_1.4.3",
+        "@maven//:androidx.compose.compiler.compiler_1.5.1",
         "@maven//:androidx.compose.compose-bom_2022.10.00",
-        "@maven//:androidx.compose.compose-bom_2023.03.00",
+        "@maven//:androidx.compose.compose-bom_2023.08.00",
         "@maven//:androidx.compose.foundation.foundation-android_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.foundation.foundation-layout_1.3.0",
-        "@maven//:androidx.compose.foundation.foundation-layout_1.4.0",
+        "@maven//:androidx.compose.foundation.foundation-layout_1.5.0",
         "@maven//:androidx.compose.foundation.foundation_1.3.0",
-        "@maven//:androidx.compose.foundation.foundation_1.4.0",
+        "@maven//:androidx.compose.foundation.foundation_1.5.0",
         "@maven//:androidx.compose.foundation.foundation_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.material.material_1.3.0",
-        "@maven//:androidx.compose.material.material_1.4.0",
         "@maven//:androidx.compose.material.material_1.4.3",  # Necessary for Compose for TV.
+        "@maven//:androidx.compose.material.material_1.5.0",
         "@maven//:androidx.compose.material.material_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.material3.material3_1.0.0",
-        "@maven//:androidx.compose.material3.material3_1.0.1",
+        "@maven//:androidx.compose.material3.material3_1.1.1",
         "@maven//:androidx.compose.ui.ui-graphics-android_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-test-android_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-test-junit4-android_1.5.0-beta01",
         "@maven//:androidx.compose.ui.ui-test-junit4_1.3.0",
-        "@maven//:androidx.compose.ui.ui-test-junit4_1.4.0",
+        "@maven//:androidx.compose.ui.ui-test-junit4_1.5.0",
         "@maven//:androidx.compose.ui.ui-test-junit4_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.ui.ui-test-junit4_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-test-manifest_1.3.0",
-        "@maven//:androidx.compose.ui.ui-test-manifest_1.4.0",
+        "@maven//:androidx.compose.ui.ui-test-manifest_1.5.0",
         "@maven//:androidx.compose.ui.ui-test-manifest_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.ui.ui-test-manifest_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-tooling-android_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-tooling-data-android_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-tooling-preview-android_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-tooling-preview_1.5.0-beta01",  # Necessary for Compose for TV.
-        "@maven//:androidx.compose.ui.ui-tooling_1.4.0",
+        "@maven//:androidx.compose.ui.ui-tooling_1.5.0",
         "@maven//:androidx.compose.ui.ui-tooling_1.5.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.ui.ui-tooling_1.5.0-beta01",  # Necessary for Compose for TV.
         "@maven//:androidx.compose.ui.ui-unit-android_1.5.0-beta01",  # Necessary for Compose for TV.
@@ -185,6 +185,7 @@ maven_repository(
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.4",
         "@maven//:androidx.core.core-ktx_1.0.1",
+        "@maven//:androidx.core.core-ktx_1.10.0",  # Compose Activity
         "@maven//:androidx.core.core-ktx_1.10.1",
         "@maven//:androidx.core.core-ktx_1.11.0-alpha04",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.core.core-ktx_1.11.0-beta01",  # Necessary for Compose for TV.
@@ -196,7 +197,7 @@ maven_repository(
         "@maven//:androidx.core.core-splashscreen_1.0.1",
         "@maven//:androidx.core.core_1.5.0-beta01",
         "@maven//:androidx.core.core_1.5.0-rc02",
-        "@maven//:androidx.emoji2.emoji2-views-helper_1.3.0",
+        "@maven//:androidx.emoji2.emoji2-views-helper_1.4.0",
         "@maven//:androidx.emoji2.emoji2-views-helper_1.4.0-beta03",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.fragment.fragment-ktx_1.6.0",
         "@maven//:androidx.fragment.fragment_1.3.0",
@@ -239,6 +240,7 @@ maven_repository(
         "@maven//:androidx.wear.wear_1.2.0",
         "@maven//:com.android.application.com.android.application.gradle.plugin_7.2.0",
         "@maven//:com.android.application.com.android.application.gradle.plugin_7.4.1",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_8.1.0",
         "@maven//:com.android.support.appcompat-v7_25.4.0",
         "@maven//:com.android.support.appcompat-v7_28.0.0",
         "@maven//:com.android.support.constraint.constraint-layout_1.0.2",
@@ -282,6 +284,7 @@ maven_repository(
         "@maven//:com.google.code.gson.gson_2.2.4",
         "@maven//:com.google.code.gson.gson_2.6.2",
         "@maven//:com.google.dagger.dagger-compiler_2.6",
+        "@maven//:com.google.dagger.dagger_2.6",
         "@maven//:com.google.errorprone.error_prone_annotations_2.3.2",
         "@maven//:com.google.firebase.firebase-common_12.0.1",
         "@maven//:com.google.guava.guava_28.2-jre",
@@ -295,6 +298,7 @@ maven_repository(
         "@maven//:commons-lang.commons-lang_2.4",
         "@maven//:commons-logging.commons-logging_1.1.1",
         "@maven//:javax.annotation.javax.annotation-api_1.2",
+        "@maven//:javax.annotation.javax.annotation-api_1.3.2",
         "@maven//:javax.inject.javax.inject_1",
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.apache.commons.commons-compress_1.21",
@@ -306,9 +310,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-bom_1.8.0",
         "@maven//:org.jetbrains.kotlin.kotlin-compiler-embeddable_1.9.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.9.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.0",
@@ -2201,6 +2203,21 @@ java_test(
         "testData/SimpleApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.intellijplatform.ReformatFileTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "DaggerSymbolResolutionTest",
+    size = "large",
+    data = COMMON_DATA + glob([
+        "testData/Dagger2App/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.annotator.DaggerSymbolResolutionTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",

@@ -172,27 +172,10 @@ public final class PsiResourceItem implements ResourceItem {
 
   @Override
   @NotNull
-  public ResourceReference getReferenceToSelf() {
-    return new ResourceReference(getNamespace(), myType, myName);
-  }
-
-  @Override
-  @NotNull
   public FolderConfiguration getConfiguration() {
     PsiResourceFile source = getSourceFile();
     assert source != null : "getConfiguration called on a PsiResourceItem with no source";
     return source.getFolderConfiguration();
-  }
-
-  @Override
-  @NotNull
-  public String getKey() {
-    String qualifiers = getConfiguration().getQualifierString();
-    if (!qualifiers.isEmpty()) {
-      return myType.getName() + '-' + qualifiers + '/' + myName;
-    }
-
-    return myType.getName() + '/' + myName;
   }
 
   @Nullable

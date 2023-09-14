@@ -168,6 +168,11 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   }
 
   @NotNull
+  public StudioProfilers getStudioProfilers() {
+    return myProfilers;
+  }
+
+  @NotNull
   public Common.Session getSelectedSession() {
     return mySelectedSession;
   }
@@ -212,6 +217,10 @@ public class SessionsManager extends AspectModel<SessionAspect> {
 
   public static boolean isSessionAlive(@NotNull Common.Session session) {
     return session.getEndTimestamp() == Long.MAX_VALUE;
+  }
+
+  public static boolean isSessionImported(Common.Session session) {
+    return session.getPid() == 0;
   }
 
   @NotNull
@@ -287,11 +296,17 @@ public class SessionsManager extends AspectModel<SessionAspect> {
                                       myProfilers.getSupportLevelForSession(sessionItem.getSession()));
       }
       if (sessionStateChanged) {
-        setSessionInternal(sessionItem.getSession());
+        boolean isTaskBasedUXEnabled = myProfilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
+        // Do not auto-select the imported session (pid == 0) if Task-Based UX is enabled.
+        if (!isTaskBasedUXEnabled || !isSessionImported(sessionItem.getSession())) {
+          setSessionInternal(sessionItem.getSession());
+        }
         if (sessionItem.isOngoing()) {
           setProfilingSession(sessionItem.getSession());
         }
-        setSessionInternal(sessionItem.getSession());
+        if (!isTaskBasedUXEnabled || !isSessionImported(sessionItem.getSession())) {
+          setSessionInternal(sessionItem.getSession());
+        }
       }
       final SessionItem item = sessionItem;
       sessionArtifacts.add(item);

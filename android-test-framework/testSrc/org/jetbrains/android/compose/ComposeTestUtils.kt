@@ -142,6 +142,7 @@ fun CodeInsightTestFixture.stubKotlinStdlib() {
     """
     package kotlin.io
     fun print(message: Any?) {}
+    fun println(message: Any?) {}
     """.trimIndent()
   )
   addFileToProject(
@@ -168,6 +169,45 @@ fun CodeInsightTestFixture.stubKotlinStdlib() {
     object Math {
       fun random(): Float = 0.5
     }
+    """.trimIndent()
+  )
+
+  addFileToProject(
+    "src/kotlin/util/Lazy.kt",
+    // language=kotlin
+    """
+    package kotlin
+
+    interface Lazy<out T> {
+      val value: T
+    }
+
+    inline operator fun <T> Lazy<T>.getValue(thisRef: Any?, property: KProperty<*>): T = value
+
+    fun <T> lazy(init: () -> T): Lazy<T> = SynchronizedLazyImpl(init)
+
+    private class SynchronizedLazyImpl<out T>(init: () -> T) : Lazy<T> {
+      private var _value: Any? = null
+      override val value: T
+        get() {
+          if (_value == null) {
+            _value = init()
+          }
+          return _value
+        }
+    }
+    """.trimIndent()
+  )
+
+  addFileToProject(
+    "src/kotlin/util/Standard.kt",
+    // language=kotlin
+    """
+    package kotlin
+
+    import java.lang.Exception
+
+    inline fun TODO(): Nothing = throw Exception()
     """.trimIndent()
   )
 }

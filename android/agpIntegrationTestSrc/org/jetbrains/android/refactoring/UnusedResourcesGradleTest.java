@@ -18,14 +18,13 @@ package org.jetbrains.android.refactoring;
 import static com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject.openPreparedTestProject;
 import static com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.prepareTestProject;
 import static com.android.tools.idea.testing.AndroidGradleTestUtilsKt.getTextForFile;
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject;
+import com.android.tools.idea.projectsystem.ModuleSystemUtil;
 import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule;
+import com.google.common.collect.ImmutableSet;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.testFramework.RunsInEdt;
@@ -46,16 +45,16 @@ public class UnusedResourcesGradleTest {
   public void testGroovy() {
     final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_GROOVY);
     openPreparedTestProject(preparedProject, project -> {
-      assertTrue(getTextForFile(project, "app/build.gradle").contains("resValue"));
-      UnusedResourcesHandler.invoke(project, null, null, true, true);
+      assertThat(getTextForFile(project, "app/build.gradle")).contains("resValue");
+      UnusedResourcesHandler.invokeSilent(project, null, null);
 
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"app_name\">Hello World</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/src/main/res/values/strings.xml"));
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "</resources>\n");
 
-      assertFalse(getTextForFile(project, "app/build.gradle").contains("resValue"));
+      assertThat(getTextForFile(project, "app/build.gradle")).doesNotContain("resValue");
     });
   }
 
@@ -63,18 +62,18 @@ public class UnusedResourcesGradleTest {
   public void testGroovyMultiModule() {
     final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_MULTI_MODULE);
     openPreparedTestProject(preparedProject, project -> {
-      assertTrue(getTextForFile(project, "app/build.gradle").contains("resValue"));
+      assertThat(getTextForFile(project, "app/build.gradle")).contains("resValue");
 
-      UnusedResourcesHandler.invoke(project, null, null, true, true);
+      UnusedResourcesHandler.invokeSilent(project, null, null);
 
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"app_name\">Hello World</string>\n" +
-                   "    <string name=\"used_from_test\">Referenced from test</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/src/main/res/values/strings.xml"));
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "    <string name=\"used_from_test\">Referenced from test</string>\n" +
+        "</resources>\n");
 
-      assertFalse(getTextForFile(project, "app/build.gradle").contains("resValue"));
+      assertThat(getTextForFile(project, "app/build.gradle")).doesNotContain("resValue");
     });
   }
 
@@ -88,24 +87,56 @@ public class UnusedResourcesGradleTest {
 
       ModuleManager moduleManager = ModuleManager.getInstance(project);
       Module app = moduleManager.findModuleByName("project.app.main"); // module name derived from test name + gradle name
-      assertNotNull(app);
+      assertThat(app).isNotNull();
 
-      UnusedResourcesHandler.invoke(project, new Module[]{app}, null, true, true);
+      UnusedResourcesHandler.invokeSilent(project, ImmutableSet.of(app), null);
 
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"app_name\">Hello World</string>\n" +
-                   "    <string name=\"used_from_test\">Referenced from test</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/src/main/res/values/strings.xml"));
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "    <string name=\"used_from_test\">Referenced from test</string>\n" +
+        "</resources>\n");
 
       // Make sure it *didn't* delete resources from the library since it's not included in the module list!
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"unusedlib\">Unused string in library</string>\n" +
-                   "    <string name=\"usedlib\">String used from app</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/mylibrary/src/main/res/values/values.xml"));
+      assertThat(getTextForFile(project, "app/mylibrary/src/main/res/values/values.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"unusedlib\">Unused string in library</string>\n" +
+        "    <string name=\"usedlib\">String used from app</string>\n" +
+        "</resources>\n");
+    });
+  }
+
+  @Test
+  public void testSpecificHolderModule() {
+    // Same as testSpecificModule, except that the test runs against the linked holder module.
+    final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_MULTI_MODULE);
+    openPreparedTestProject(preparedProject, project -> {
+
+      ModuleManager moduleManager = ModuleManager.getInstance(project);
+      Module app = moduleManager.findModuleByName("project.app.main"); // module name derived from test name + gradle name
+      assertThat(app).isNotNull();
+      Module holderModule = ModuleSystemUtil.getHolderModule(app);
+      assertThat(holderModule).isNotNull();
+      assertThat(holderModule).isNotSameAs(app);
+
+      UnusedResourcesHandler.invokeSilent(project, ImmutableSet.of(holderModule), null);
+
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "    <string name=\"used_from_test\">Referenced from test</string>\n" +
+        "</resources>\n");
+
+      // Make sure it *didn't* delete resources from the library since it's not included in the module list!
+      assertThat(getTextForFile(project, "app/mylibrary/src/main/res/values/values.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"unusedlib\">Unused string in library</string>\n" +
+        "    <string name=\"usedlib\">String used from app</string>\n" +
+        "</resources>\n");
     });
   }
 
@@ -119,27 +150,27 @@ public class UnusedResourcesGradleTest {
       ModuleManager moduleManager = ModuleManager.getInstance(project);
       Module app =
         moduleManager.findModuleByName("project.app.mylibrary.main"); // module name derived from test name + gradle name
-      assertNotNull(app);
+      assertThat(app).isNotNull();
 
-      UnusedResourcesHandler.invoke(project, new Module[]{app}, null, true, true);
+      UnusedResourcesHandler.invokeSilent(project, ImmutableSet.of(app), null);
 
       // Make sure we have NOT deleted the unused resources in app
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"app_name\">Hello World</string>\n" +
-                   "    <string name=\"newstring\">@string/usedlib</string>\n" +
-                   "    <string name=\"used_from_test\">Referenced from test</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/src/main/res/values/strings.xml"));
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "    <string name=\"newstring\">@string/usedlib</string>\n" +
+        "    <string name=\"used_from_test\">Referenced from test</string>\n" +
+        "</resources>\n");
 
       // Make sure we have removed the unused resource in the library (@string/unusedlib), but we
       // have *not* removed the resource which is unused in the library but still referenced outside of
       // it (in app)
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"usedlib\">String used from app</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/mylibrary/src/main/res/values/values.xml"));
+      assertThat(getTextForFile(project, "app/mylibrary/src/main/res/values/values.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"usedlib\">String used from app</string>\n" +
+        "</resources>\n");
     });
   }
 
@@ -148,17 +179,17 @@ public class UnusedResourcesGradleTest {
     // Like testGroovy, but this one verifies analysis and updating of build.gradle.kts files instead.
     final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_KTS);
     openPreparedTestProject(preparedProject, project -> {
-      assertTrue(getTextForFile(project, "app/build.gradle.kts").contains("resValue"));
+      assertThat(getTextForFile(project, "app/build.gradle.kts")).contains("resValue");
 
-      UnusedResourcesHandler.invoke(project, null, null, true, true);
+      UnusedResourcesHandler.invokeSilent(project, null, null);
 
-      assertEquals("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                   "<resources>\n" +
-                   "    <string name=\"app_name\">Hello World</string>\n" +
-                   "</resources>\n",
-                   getTextForFile(project, "app/src/main/res/values/strings.xml"));
+      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        "<resources>\n" +
+        "    <string name=\"app_name\">Hello World</string>\n" +
+        "</resources>\n");
 
-      assertFalse(getTextForFile(project, "app/build.gradle.kts").contains("resValue"));
+      assertThat(getTextForFile(project, "app/build.gradle.kts")).doesNotContain("resValue");
     });
   }
 }

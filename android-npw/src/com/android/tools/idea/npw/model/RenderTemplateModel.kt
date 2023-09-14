@@ -151,6 +151,7 @@ class RenderTemplateModel private constructor(
         useGenericInstrumentedTests = newTemplate.useGenericInstrumentedTests
         useGenericLocalTests = newTemplate.useGenericLocalTests
         projectTemplateDataBuilder.language = language.value
+        projectTemplateDataBuilder.agpVersion = agpVersion.get()
 
         projectTemplateDataBuilder.debugKeyStoreSha1 = getSha1DebugKeystoreSilently(androidFacet)
 
@@ -281,6 +282,6 @@ class RenderTemplateModel private constructor(
         Language.Java
     }
 
-    fun getComposeKotlinVersion(): String = "1.8.10"
+    fun getComposeKotlinVersion(): String = "1.9.0"
   }
 }

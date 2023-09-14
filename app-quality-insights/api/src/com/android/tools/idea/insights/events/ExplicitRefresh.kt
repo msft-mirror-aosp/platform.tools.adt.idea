@@ -31,6 +31,7 @@ object ExplicitRefresh : ChangeEvent {
     StateTransition(
       state.copy(
         issues = LoadingState.Loading,
+        currentIssueVariants = LoadingState.Ready(null),
         currentIssueDetails = LoadingState.Ready(null),
         currentNotes = LoadingState.Ready(null)
       ),
