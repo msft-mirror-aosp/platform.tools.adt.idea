@@ -35,6 +35,7 @@ import com.intellij.analysis.problemsView.toolWindow.ProblemsViewTab
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.components.Service
@@ -547,7 +548,9 @@ class IssuePanelService(private val project: Project) {
     parentDisposable: Disposable,
     name: String,
     displayName: String,
-    surface: NlDesignSurface
+    surface: NlDesignSurface,
+    postIssueUpdateListener: () -> Unit,
+    additionalDataProvider: DataProvider
   ) {
     val contentManager =
       ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)?.contentManager
@@ -555,16 +558,19 @@ class IssuePanelService(private val project: Project) {
 
     var uiCheckIssuePanel = nameToTabMap[name]?.first
     if (uiCheckIssuePanel == null) {
+      val issueProvider =
+        DesignToolsIssueProvider(parentDisposable, project, NotSuppressedFilter, name)
       uiCheckIssuePanel =
         DesignerCommonIssuePanel(
           parentDisposable,
           project,
           DesignerCommonIssuePanelModelProvider.getInstance(project).createModel(),
           { UICheckNodeFactory },
-          DesignToolsIssueProvider(parentDisposable, project, NotSuppressedFilter, name)
-        ) {
-          "UI Check did not find any issues to report"
-        }
+          issueProvider,
+          { "UI Check did not find any issues to report" },
+          additionalDataProvider
+        )
+      issueProvider.registerUpdateListener(postIssueUpdateListener)
 
       val tab =
         contentManager.factory
@@ -659,7 +665,7 @@ fun DesignSurface<*>.setIssuePanelVisibilityNoTracking(
  * @param show whether to show or hide the issue panel.
  * @param runnable optional task to execute after the visibility of issue panel is changed.
  *
- * TODO(b/298229332): Revisit this function to see if we can remove the DesignSurface dependency.
+ * TODO(b/300646581): Revisit this function to see if we can remove the DesignSurface dependency.
  */
 fun DesignSurface<*>.setIssuePanelVisibility(show: Boolean, runnable: Runnable? = null) {
   analyticsManager.trackShowIssuePanel()

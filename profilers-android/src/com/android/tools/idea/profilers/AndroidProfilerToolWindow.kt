@@ -32,6 +32,14 @@ import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.args.TaskArgs
+import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.CallstackSampleTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.JavaKotlinMethodSampleTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.JavaKotlinMethodTraceTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.SystemTraceTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory.HeapDumpTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory.JavaKotlinAllocationsTaskHandler
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory.NativeAllocationsTaskHandler
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -53,6 +61,9 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
   private val ideProfilerServices: IntellijProfilerServices
   private val ideProfilerComponents: IdeProfilerComponents
   val profilers: StudioProfilers
+  private var currentTaskHandler: ProfilerTaskHandler? = null
+  private val taskHandlers = HashMap<ProfilerTaskType, ProfilerTaskHandler>()
+
   private lateinit var homeTab: StudioProfilersHomeTab
   private lateinit var homePanel: JPanel
   private lateinit var profilersTab: StudioProfilersTab
@@ -69,7 +80,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     TransportService.getInstance()
 
     val client = ProfilerClient(TransportService.channelName)
-    profilers = StudioProfilers(client, ideProfilerServices)
+    profilers = StudioProfilers(client, ideProfilerServices, project, taskHandlers)
     val navigator = ideProfilerServices.codeNavigator
     // CPU ABI architecture, when needed by the code navigator, should be retrieved from StudioProfiler selected session.
     navigator.cpuArchSource = Supplier { profilers.sessionsManager.selectedSessionMetaData.processAbi }
@@ -90,6 +101,9 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
 
     ideProfilerComponents = IntellijProfilerComponents(project, ideProfilerServices.featureTracker)
 
+    // Create and store the task handlers in a map.
+    initializeTaskHandlers()
+
     if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
       homeTab = StudioProfilersHomeTab(project, profilers, ideProfilerComponents)
       homePanel = JPanel(BorderLayout())
@@ -105,8 +119,15 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     initializeProfilerTab()
   }
 
-  private fun createTaskTab() {
-    createNewTab(profilersPanel, "<Task Name>", true)
+  private fun initializeTaskHandlers() {
+    val sessionsManager = profilers.sessionsManager
+    taskHandlers[ProfilerTaskType.SYSTEM_TRACE] = SystemTraceTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.CALLSTACK_SAMPLE] = CallstackSampleTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE] = JavaKotlinMethodTraceTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE] = JavaKotlinMethodSampleTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.HEAP_DUMP] = HeapDumpTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.NATIVE_ALLOCATIONS] = NativeAllocationsTaskHandler(sessionsManager)
+    taskHandlers[ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS] = JavaKotlinAllocationsTaskHandler(sessionsManager)
   }
 
   @VisibleForTesting
@@ -144,11 +165,6 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     profilersPanel.add(profilersTab.view.component)
     profilersPanel.revalidate()
     profilersPanel.repaint()
-
-    // TODO(b/277797528) Remove once the task tab supports an L2 or L3 stage.
-    if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
-      profilers.setDefaultStage()
-    }
   }
 
   fun openHomeTab() {
@@ -162,13 +178,19 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
   }
 
   fun openTaskTab(taskType: ProfilerTaskType, taskArgs: TaskArgs?) {
-    // The taskType and taskArgs will be utilized in the (to-be-added) task handlers.
-    val content = findTaskTab()
-    if (content != null) {
-      window.getContentManager().setSelectedContent(content)
+    val taskTab = findTaskTab()
+    val taskName = taskHandlers[taskType]?.getTaskName() ?: "Task Not Supported Yet"
+    if (taskTab != null) {
+      taskTab.displayName = taskName
+      window.getContentManager().setSelectedContent(taskTab)
     }
     else {
-      createTaskTab()
+      createNewTab(profilersPanel, taskName, true)
+    }
+    currentTaskHandler?.exit()
+    currentTaskHandler = taskHandlers[taskType]
+    currentTaskHandler?.let { taskHandler ->
+      val enterSuccessful = taskHandler.enter(taskArgs)
     }
   }
 

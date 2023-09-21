@@ -13,12 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.insights.vcs
+package com.android.tools.idea.ui.validation.validators
 
-import com.android.tools.idea.project.DefaultModuleSystem
-import com.android.tools.idea.projectsystem.getModuleSystem
-import com.intellij.openapi.module.Module
+import com.android.tools.adtui.validation.Validator
+import java.nio.file.InvalidPathException
+import java.nio.file.Paths
 
-fun Module.updateVcsInfoFlagInModel(enable: Boolean) {
-  (getModuleSystem() as DefaultModuleSystem).enableVcsInfo = enable
+class StringPathValidator(private val pathValidator: PathValidator) : Validator<String> {
+
+  override fun validate(value: String): Validator.Result {
+    val path = try {
+      Paths.get(value)
+    }
+    catch (e: InvalidPathException) {
+      return Validator.Result(Validator.Severity.ERROR, "${pathValidator.pathName} in not a valid file system path")
+    }
+    return pathValidator.validate(path)
+  }
 }

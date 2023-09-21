@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.devicemanager;
+package com.android.tools.profilers
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-
-public final class CountDownLatchAssert {
-  private CountDownLatchAssert() {
-  }
-
-  public static void await(@NotNull CountDownLatch latch) throws InterruptedException {
-    if (!latch.await(60, TimeUnit.SECONDS)) {
-      Assert.fail();
-    }
-  }
+interface ExportableArtifact {
+  val exportableName: String
+  val exportExtension: String
 }

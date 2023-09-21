@@ -251,17 +251,17 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = Flag.create(
     NELE, "atf.for.compose", "Enable ATF checks for Compose",
     "Allow running accessibility checks for Compose using ATF.",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = Flag.create(
     NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = Flag.create(
     NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
     "Enable so that visual lint runs on previews in the Compose Preview.",
-    false);
+    true);
 
   public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = Flag.create(
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
@@ -1436,6 +1436,14 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       false);
 
+  public static final Flag<Boolean> USE_UXR_202309_FILTER =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.uxr202309",
+      "UXR 202309 Device Filter",
+      "Use custom device filter (for 2023-09 UXR study)",
+      false);
+
   public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1533,11 +1541,15 @@ public final class StudioFlags {
                 "Revamped App Links Assistant (new surfaces and navigation between surfaces).", true);
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
-                "Improvements to Website Association Generator.", false);
+                "Improvements to Website Association Generator.", true);
   public static final Flag<String> DEEPLINKS_GRPC_SERVER =
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",
                 "deeplinkassistant-pa.googleapis.com");
+
+  public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
+    Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
+                "Improvements to the Create App Links functionalities.", false);
   // endregion App Links Assistant
 
   // region GOOGLE_PLAY_SDK_INDEX

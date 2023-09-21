@@ -21,6 +21,7 @@ import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.tools.idea.imports.MavenClassRegistryBase.LibraryImportData
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
+import org.jetbrains.kotlin.name.FqName
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.nio.charset.StandardCharsets.UTF_8
@@ -52,6 +53,10 @@ class MavenClassRegistryTest {
                 },
                 {
                   "fqn": "androidx.activity.FakeFunctionKt.FakeFunction"
+                },
+                {
+                  "xfqn": "androidx.activity.FakeFunctionKt.FakeFunction",
+                  "rcvr": "with.a.Receiver"
                 }
               ]
             },
@@ -126,7 +131,7 @@ class MavenClassRegistryTest {
 
     assertThat(mavenClassRegistry.lookup.topLevelFunctionsMap).containsExactlyEntriesIn(
       mapOf(
-        "PickVisualMediaRequest" to listOf(
+        FunctionSpecifier("PickVisualMediaRequest", null) to listOf(
           LibraryImportData(
             artifact = "androidx.activity:activity",
             importedItemFqName = "androidx.activity.result.PickVisualMediaRequest",
@@ -134,7 +139,7 @@ class MavenClassRegistryTest {
             version = "1.1.0"
           )
         ),
-        "FakeFunction" to listOf(
+        FunctionSpecifier("FakeFunction", null) to listOf(
           LibraryImportData(
             artifact = "androidx.activity:activity",
             importedItemFqName = "androidx.activity.FakeFunction",
@@ -148,7 +153,15 @@ class MavenClassRegistryTest {
             version = "1.1.0"
           )
         ),
-        "AnnotationFunction" to listOf(
+        FunctionSpecifier("FakeFunction", FqName("with.a.Receiver")) to listOf(
+          LibraryImportData(
+            artifact = "androidx.activity:activity",
+            importedItemFqName = "androidx.activity.FakeFunction",
+            importedItemPackageName = "androidx.activity",
+            version = "1.1.0"
+          ),
+        ),
+        FunctionSpecifier("AnnotationFunction", null) to listOf(
           LibraryImportData(
             artifact = "androidx.annotation:annotation",
             importedItemFqName = "androidx.annotation.AnnotationFunction",
@@ -361,6 +374,10 @@ class MavenClassRegistryTest {
                 },
                 {
                   "has_no_fqn": "should be ignored"
+                },
+                {
+                  "xfqn": "foo.bar.baz.FacadeFileKt.someExtensionFunction",
+                  "rcvr": "amazingReceiver"
                 }
               ]
             }
@@ -373,12 +390,18 @@ class MavenClassRegistryTest {
 
     assertThat(mavenClassRegistry.lookup.topLevelFunctionsMap).containsExactlyEntriesIn(
       mapOf(
-        "someFqn" to listOf(LibraryImportData(
+        FunctionSpecifier("someFqn", null) to listOf(LibraryImportData(
           artifact = "group3:artifact3",
           importedItemFqName = "someFqn",
           importedItemPackageName = "",
           version = "1"
-        ))
+        )),
+        FunctionSpecifier("someExtensionFunction", FqName("amazingReceiver")) to listOf(LibraryImportData(
+        artifact = "group3:artifact3",
+        importedItemFqName = "foo.bar.baz.someExtensionFunction",
+        importedItemPackageName = "foo.bar.baz",
+        version = "1"
+      ))
       )
     )
   }
@@ -541,24 +564,38 @@ class MavenClassRegistryTest {
 
   @Test
   fun kotlinTopLevelFunction_fromJvmQualifiedName() {
+    with(KotlinTopLevelFunction.fromJvmQualifiedName("com.example.FileFacadeKt.foo", "com.example.Receiver")) {
+      assertThat(simpleName).isEqualTo("foo")
+      assertThat(packageName).isEqualTo("com.example")
+      assertThat(kotlinFqName.asString()).isEqualTo("com.example.foo")
+      assertThat(receiverFqName?.asString()).isEqualTo("com.example.Receiver")
+    }
+  }
+
+  @Test
+  fun kotlinTopLevelFunction_fromJvmQualifiedName_withNullReceiver() {
     with(KotlinTopLevelFunction.fromJvmQualifiedName("com.example.FileFacadeKt.foo")) {
       assertThat(simpleName).isEqualTo("foo")
       assertThat(packageName).isEqualTo("com.example")
       assertThat(kotlinFqName.asString()).isEqualTo("com.example.foo")
+      assertThat(receiverFqName).isNull()
     }
   }
 
   @Test
   fun kotlinTopLevelFunction_fromJvmQualifiedName_noPackageName() {
-    with(KotlinTopLevelFunction.fromJvmQualifiedName("FileFacadeKt.foo")) {
+    with(KotlinTopLevelFunction.fromJvmQualifiedName("FileFacadeKt.foo", "com.example.Receiver")) {
       assertThat(simpleName).isEqualTo("foo")
       assertThat(packageName).isEqualTo("")
       assertThat(kotlinFqName.asString()).isEqualTo("foo")
+      assertThat(receiverFqName?.asString()).isEqualTo("com.example.Receiver")
     }
   }
 
   @Test
   fun kotlinTopLevelFunction_fromJvmQualifiedName_noFacadeFile() {
-    assertThrows(IllegalArgumentException::class.java) { KotlinTopLevelFunction.fromJvmQualifiedName("foo") }
+    assertThrows(IllegalArgumentException::class.java) {
+      KotlinTopLevelFunction.fromJvmQualifiedName("foo", "com.example.Receiver")
+    }
   }
 }

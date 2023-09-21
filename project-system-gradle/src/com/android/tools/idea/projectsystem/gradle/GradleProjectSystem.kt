@@ -86,7 +86,7 @@ import org.jetbrains.android.facet.AndroidFacet
 import java.io.File
 import java.nio.file.Path
 
-class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
+open class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
   private val moduleHierarchyProvider: GradleModuleHierarchyProvider = GradleModuleHierarchyProvider(project)
   private val mySyncManager: ProjectSystemSyncManager = GradleProjectSystemSyncManager(project)
   private val myBuildManager: ProjectSystemBuildManager = GradleProjectSystemBuildManager(project)
@@ -168,9 +168,9 @@ class GradleProjectSystem(val project: Project) : AndroidProjectSystem {
     )
   }
 
-  override fun validateRunConfiguration(runConfiguration: RunConfiguration): List<ValidationError> {
+  override fun validateRunConfiguration(runConfiguration: RunConfiguration, quickFixCallback: Runnable?): List<ValidationError> {
     val context = runConfiguration.getGradleContext() ?: return super.validateRunConfiguration(runConfiguration)
-    return GradleApkProvider.doValidate(context.androidFacet, context.isTestConfiguration, context.alwaysDeployApkFromBundle)
+    return GradleApkProvider.doValidate(context.androidFacet, context.isTestConfiguration, context.alwaysDeployApkFromBundle, quickFixCallback)
   }
 
   internal fun getBuiltApksForSelectedVariant(

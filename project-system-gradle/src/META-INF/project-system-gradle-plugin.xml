@@ -110,6 +110,9 @@
     <projectViewNodeDecorator id="android.build.node.decorator" implementation="com.android.tools.idea.gradle.projectView.BuildNodeDecorator"/>
     <generatedSourcesFilter implementation="com.android.tools.idea.gradle.roots.AndroidGeneratedSourcesFilter"/>
     <editorNotificationProvider implementation="com.android.tools.idea.gradle.notification.GeneratedFileNotificationProvider"/>
+    <editorNotificationProvider implementation="com.android.tools.idea.gradle.service.notification.ProjectJarFileTracker$JarFileNotificationProvider"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.service.notification.ProjectJarFileTracker"/>
+
     <cachesInvalidator implementation="com.android.tools.idea.gradle.project.sync.idea.data.IdeaSyncCachesInvalidator"/>
     <completion.contributor language="any"
                             implementationClass="com.android.tools.idea.gradle.completions.GradleDependencyCompletionContributor" />
@@ -232,6 +235,9 @@
   <extensions defaultExtensionNs="org.jetbrains.android.actions">
     <newResourceCreationHandler
       implementation="com.android.tools.idea.gradle.actions.GradleNewResourceCreationHandler" />
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.model">
+    <mergedManifestInfoToken implementation="com.android.tools.idea.model.MergedManifestInfoGradleToken"/>
   </extensions>
   <actions>
     <action id="Android.SyncProject" class="com.android.tools.idea.gradle.actions.SyncProjectAction" icon="StudioIcons.Shell.Toolbar.GRADLE_SYNC">

@@ -24,6 +24,7 @@ import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
+import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
@@ -81,6 +82,7 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -118,8 +120,13 @@ import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.problems.WolfTheProblemSolver
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
-import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.util.ui.UIUtil
+import java.io.File
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import javax.swing.JComponent
+import kotlin.properties.Delegates
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -149,11 +156,6 @@ import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
-import java.io.File
-import java.time.Duration
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import javax.swing.JComponent
 
 /** [Notification] group ID. Must match the `groupNotification` entry of `compose-designer.xml`. */
 const val PREVIEW_NOTIFICATION_GROUP_ID = "Compose Preview Notification"
@@ -536,7 +538,25 @@ class ComposePreviewRepresentation(
   override val availableGroupsFlow: MutableStateFlow<Set<PreviewGroup.Named>> =
     MutableStateFlow(setOf())
 
-  private val navigationHandler = ComposePreviewNavigationHandler()
+  @VisibleForTesting
+  val navigationHandler =
+    ComposePreviewNavigationHandler().apply {
+      Disposer.register(this@ComposePreviewRepresentation, this)
+    }
+
+  override var isUiCheckFilterEnabled: Boolean by
+    Delegates.observable(false) { _, oldValue, newValue ->
+      if (oldValue == newValue) return@observable
+      launch(uiThread) {
+        if (newValue) {
+          surface.updateSceneViewVisibilities {
+            it.sceneManager.model in uiCheckFilterFlow.value.modelsWithErrors
+          }
+        } else {
+          surface.updateSceneViewVisibilities { true }
+        }
+      }
+    }
 
   private val previewElementModelAdapter =
     object : ComposePreviewElementModelAdapter() {
@@ -587,13 +607,35 @@ class ComposePreviewRepresentation(
     uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
     surface.background = Colors.INTERACTIVE_BACKGROUND_COLOR
     withContext(uiThread) {
-      IssuePanelService.getInstance(project)
-        .startUiCheck(
-          this@ComposePreviewRepresentation,
-          instance.instanceId,
-          instance.displaySettings.name,
-          surface
-        )
+      IssuePanelService.getInstance(project).startUiCheck(
+        this@ComposePreviewRepresentation,
+        instance.instanceId,
+        instance.displaySettings.name,
+        surface,
+        {
+          val models = mutableSetOf<NlModel>()
+          surface.visualLintIssueProvider
+            .getIssues()
+            .map { it.source }
+            .filterIsInstance<VisualLintIssueProvider.VisualLintIssueSource>()
+            .filter { models.addAll(it.models) }
+          uiCheckFilterFlow.value.modelsWithErrors = models
+          if (isUiCheckFilterEnabled) {
+            ApplicationManager.getApplication().invokeLater {
+              surface.updateSceneViewVisibilities { it.sceneManager.model in models }
+              surface.repaint()
+            }
+          }
+        }
+      ) {
+        // Pass preview manager and instance to the tab created for this UI Check preview.
+        // This enables restarting the UI Check mode from an action inside the tab.
+        when (it) {
+          COMPOSE_PREVIEW_MANAGER.name -> this@ComposePreviewRepresentation
+          COMPOSE_PREVIEW_ELEMENT_INSTANCE.name -> instance
+          else -> null
+        }
+      }
     }
     forceRefresh().join()
   }
@@ -643,13 +685,13 @@ class ComposePreviewRepresentation(
     }
   }
   private fun getSlowData(dataId: String): Any? {
-  return when {
-    // The Compose preview NlModels do not point to the actual file but to a synthetic file
-    // generated for Layoutlib. This ensures we return the right file.
-    CommonDataKeys.VIRTUAL_FILE.`is`(dataId) -> psiFilePointer.virtualFile
-    else -> null
+    return when {
+      // The Compose preview NlModels do not point to the actual file but to a synthetic file
+      // generated for Layoutlib. This ensures we return the right file.
+      CommonDataKeys.VIRTUAL_FILE.`is`(dataId) -> psiFilePointer.virtualFile
+      else -> null
+    }
   }
-}
 
   private val delegateInteractionHandler = DelegateInteractionHandler()
   private val sceneComponentProvider = ComposeSceneComponentProvider()
@@ -683,6 +725,7 @@ class ComposePreviewRepresentation(
         composeWorkBench.mainSurface,
         NavigatingInteractionHandler(
           composeWorkBench.mainSurface,
+          navigationHandler,
           isSelectionEnabled = { StudioFlags.COMPOSE_PREVIEW_SELECTION.get() }
         )
       )
@@ -1256,6 +1299,7 @@ class ComposePreviewRepresentation(
         previewElementModelAdapter,
         if (atfChecksEnabled || visualLintingEnabled) accessibilityModelUpdater
         else defaultModelUpdater,
+        navigationHandler,
         this::configureLayoutlibSceneManagerForPreviewElement
       )
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
@@ -1380,7 +1424,7 @@ class ComposePreviewRepresentation(
             withContext(workerThread) {
               filteredPreviewElementsInstancesFlow.value.toList().sortByDisplayAndSourcePosition()
             }
-          composeWorkBench.hasContent = previewsToRender.isNotEmpty()
+          composeWorkBench.hasContent = previewsToRender.isNotEmpty() || isUiCheckPreview
           if (!needsFullRefresh) {
             requestLogger.debug(
               "No updates on the PreviewElements, just refreshing the existing ones"
@@ -1599,6 +1643,7 @@ class ComposePreviewRepresentation(
    * and generate multiple previews, one per reference device for the user to check.
    */
   sealed class UiCheckModeFilter {
+    var modelsWithErrors: Set<NlModel> = emptySet()
     abstract val basePreviewInstance: ComposePreviewElementInstance?
     abstract fun filterPreviewInstances(
       previewInstances: Collection<ComposePreviewElementInstance>

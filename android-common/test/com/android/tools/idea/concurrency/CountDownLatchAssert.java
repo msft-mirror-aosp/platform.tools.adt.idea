@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.device.explorer.files.actions;
+package com.android.tools.idea.concurrency;
 
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.project.DumbAwareAction;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Assert;
 
-public class HelpAction extends DumbAwareAction {
-  @Override
-  public void update(@NotNull AnActionEvent e) {
-    e.getPresentation().setEnabled(false);
+public final class CountDownLatchAssert {
+  private CountDownLatchAssert() {
   }
 
-  @Override
-  public void actionPerformed(@NotNull AnActionEvent e) {
+  public static void await(@NotNull CountDownLatch latch) throws InterruptedException {
+    if (!latch.await(60, TimeUnit.SECONDS)) {
+      Assert.fail();
+    }
   }
 }
