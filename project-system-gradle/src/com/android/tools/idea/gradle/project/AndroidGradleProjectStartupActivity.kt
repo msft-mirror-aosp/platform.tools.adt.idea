@@ -69,6 +69,7 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.openapi.startup.StartupActivity
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.platform.PlatformProjectOpenProcessor
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.execution.test.runner.AllInPackageGradleConfigurationProducer
@@ -100,7 +101,7 @@ class AndroidGradleProjectStartupActivity : StartupActivity {
     removeGradleProducersFromIgnoredList(project)
 
     if (shouldSyncOrAttachModels()) {
-      JpsProjectLoadingManager.getInstance(project).jpsProjectLoaded {
+      whenAllModulesLoaded(project) {
         invokeAndWaitIfNeeded {
           removePointlessModules(project)
           attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
@@ -120,6 +121,18 @@ class AndroidGradleProjectStartupActivity : StartupActivity {
 }
 
 private val LOG = Logger.getInstance(AndroidGradleProjectStartupActivity::class.java)
+
+private fun whenAllModulesLoaded(project: Project, callback: () -> Unit) {
+  if (project.getUserData(PlatformProjectOpenProcessor.PROJECT_LOADED_FROM_CACHE_BUT_HAS_NO_MODULES) == true) {
+    // All modules are loaded at this point and JpsProjectLoadingManager.jpsProjectLoaded is not triggered, so invoke callback directly.
+    callback()
+  } else {
+    // Initially, IJ loads the state of workspace model from the cache and in DelayedProjectSynchronizer synchronizes the state of
+    // workspace model with project model files using JpsProjectModelSynchronizer. Since that activity runs async we need to detect
+    // when the JPS was loaded, otherwise, any change will be overridden.
+    JpsProjectLoadingManager.getInstance(project).jpsProjectLoaded { callback() }
+  }
+}
 
 private fun removePointlessModules(project: Project) {
   val moduleManager = ModuleManager.getInstance(project)
