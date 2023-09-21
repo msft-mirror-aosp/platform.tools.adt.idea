@@ -20,6 +20,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.psi.PsiFile
 import junit.framework.Assert
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -171,6 +172,7 @@ class BasicCompileTest {
   }
 
   @Test
+  @Ignore // CLASS DIFFER ONLY
   fun publicInlineFunction() {
     try {
       val cache = initialCache(mapOf("HasPublicInline.kt" to "public inline fun publicInlineFun() = 1"))
@@ -184,6 +186,7 @@ class BasicCompileTest {
   }
 
   @Test
+  @Ignore // CLASS DIFFER ONLY
   fun renamedFile() {
     val cache = initialCache(mapOf("RenamedFile.kt" to """
       @file:kotlin.jvm.JvmName("CustomJvmName")
@@ -203,6 +206,7 @@ class BasicCompileTest {
   }
 
   @Test
+  @Ignore // CLASS DIFFER ONLY
   fun modifyConstructor() {
     val cache = initialCache(mapOf("ModifyConstructor.kt" to """
       class MyClass() {
@@ -230,6 +234,7 @@ class BasicCompileTest {
   }
 
   @Test
+  @Ignore // CLASS DIFFER ONLY
   fun modifyStaticInit() {
     val cache = initialCache(mapOf("ModifyStaticInit.kt" to """
       val x = 1
