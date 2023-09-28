@@ -50,14 +50,25 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.ui.popup.list.ListPopupImpl
 import org.jetbrains.android.refactoring.isAndroidx
 import org.jetbrains.android.util.AndroidBundle
+import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.types.KtNonErrorClassType
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.base.plugin.isK2Plugin
+import org.jetbrains.kotlin.idea.base.utils.fqname.fqName
+import org.jetbrains.kotlin.idea.structuralsearch.resolveExprType
 import org.jetbrains.kotlin.idea.util.ImportInsertHelperImpl
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtUserType
+import org.jetbrains.kotlin.types.error.ErrorType
+
+private const val ALL_RECEIVER_TYPES = "*"
 
 /**
  * An action which recognizes classes from key Maven artifacts and offers to add a dependency on
@@ -367,7 +378,7 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
     if (version.isNullOrEmpty()) GradleCoordinate.parseCoordinateString("$artifact:+")
     else GradleCoordinate.parseCoordinateString("$artifact:$version")
 
-  private fun findResolvable(
+  private tailrec fun findResolvable(
     element: PsiElement,
     caret: Int,
     resolve: (String, String?) -> Resolvable?
@@ -401,13 +412,14 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
       // down the chain for the actual imported class symbol and scan on that one instead.
       if (element.parent is KtNameReferenceExpression) {
         when (val current = element.parent.parent) {
-          is KtDotQualifiedExpression -> {
-            var curr: KtDotQualifiedExpression? = current
+          is KtDotQualifiedExpression,
+          is KtCallExpression -> {
+            var curr =
+              current as? KtDotQualifiedExpression ?: current.parent as? KtDotQualifiedExpression
             while (curr != null) {
-              // TODO(b/300296134): Use receiver type if available.
               curr
                 .formText()
-                ?.let { resolveWithoutReceiver(it) }
+                ?.let { resolve(it.first, it.second) }
                 ?.let {
                   return it
                 }
@@ -436,34 +448,59 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
     // scenario, where you've just typed in the symbol you're interested in) PSI picks the element
     // on the right of the caret, which is the next element, not the symbol element.
     if (caret == element.textOffset || element is PsiWhiteSpace) {
-      if (element.prevSibling != null) {
-        return resolveWithoutReceiver(element.prevSibling.text)
-      }
+      // Find the element at the previous position.
       val targetOffset = caret - 1
-      var curr = element.parent
-      while (curr != null && curr.textOffset > targetOffset) {
-        curr = curr.parent
-      }
-      if (curr != null) {
-        val text = curr.findElementAt(targetOffset - curr.textOffset)?.text ?: element.text
-        return resolveWithoutReceiver(text)
+      element.parentContainingOffset(targetOffset)?.findElementAtAbsoluteOffset(targetOffset)?.let {
+        return findResolvable(it, targetOffset, resolve)
       }
     }
 
     return resolveWithoutReceiver(element.text)
   }
 
-  private fun KtDotQualifiedExpression.formText(): String? {
-    val referenceNameElement = selectorExpression
-    if (referenceNameElement != null) {
-      var left: PsiElement = referenceNameElement
-      while (left.firstChild != null) {
-        left = left.firstChild
+  /**
+   * Walks up the tree of parent [PsiElement]s until it finds one that contains the [targetOffset].
+   */
+  private tailrec fun PsiElement.parentContainingOffset(targetOffset: Int): PsiElement? =
+    if (textRange.contains(targetOffset)) this else parent?.parentContainingOffset(targetOffset)
+
+  /**
+   * Like [PsiElement.findElementAt], but with a [targetOffset] corrected for the relative offset of
+   * `this` [PsiElement] in the document.
+   */
+  private fun PsiElement.findElementAtAbsoluteOffset(targetOffset: Int): PsiElement? =
+    findElementAt(targetOffset - textRange.startOffset)
+
+  @OptIn(KtAllowAnalysisOnEdt::class)
+  private fun KtDotQualifiedExpression.formText(): Pair<String, String>? {
+    val referenceNameElement =
+      when (val selector = selectorExpression) {
+        null -> return null
+        is KtCallExpression -> selector.calleeExpression ?: return null // Get rid of any parens.
+        else -> selector
       }
-      return "${receiverExpression.text}.${left.text}"
+    var left: PsiElement = referenceNameElement
+    while (left.firstChild != null) {
+      left = left.firstChild
+    }
+    val receiverExpr =
+      (receiverExpression as? KtDotQualifiedExpression)?.selectorExpression ?: receiverExpression
+    if (isK2Plugin()) {
+      allowAnalysisOnEdt {
+        analyze(receiverExpr) {
+          (receiverExpr.getKtType() as? KtNonErrorClassType)?.classId?.asFqNameString()?.let {
+            return left.text to it
+          }
+        }
+      }
+    } else {
+      val receiverType = receiverExpr.resolveExprType()?.takeUnless { it is ErrorType }
+      receiverType?.fqName?.asString()?.let {
+        return left.text to it
+      }
     }
 
-    return null
+    return "${receiverExpression.text}.${left.text}" to ALL_RECEIVER_TYPES
   }
 
   private fun findLibraryData(
@@ -472,6 +509,10 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
     receiverType: String?,
     completionFileType: FileType?
   ): Collection<MavenClassRegistryBase.LibraryImportData> {
+    if (receiverType == ALL_RECEIVER_TYPES) {
+      return getMavenClassRegistry()
+        .findLibraryDataAnyReceiver(text, project.isAndroidx(), completionFileType)
+    }
     return getMavenClassRegistry()
       .findLibraryData(text, receiverType, project.isAndroidx(), completionFileType)
   }

@@ -185,6 +185,7 @@ open class NlPropertyItem(
         override fun uriToPrefix(namespaceUri: String): String? = withTag { tag ->
           tag.getPrefixByNamespace(namespaceUri)
         }
+
         override fun prefixToUri(namespacePrefix: String): String? = withTag { tag ->
           tag.getNamespaceByPrefix(namespacePrefix).nullize()
         }
@@ -195,6 +196,7 @@ open class NlPropertyItem(
     object : HelpSupport {
       override val help = HelpActions.help
       override val secondaryHelp = HelpActions.secondaryHelp
+
       override fun browse() {
         model.browseToValue(this@NlPropertyItem)
       }
@@ -205,6 +207,7 @@ open class NlPropertyItem(
       override val completion: EditorCompletion = { getCompletionValues() }
       override val allowCustomValues: Boolean
         get() = type.allowCustomValues
+
       override val validation = { text: String? -> validate(text) }
       override val execution = { runnable: Runnable ->
         ApplicationManager.getApplication().executeOnPooledThread(runnable)
@@ -260,12 +263,40 @@ open class NlPropertyItem(
     return asResourceValue(resolveValueAsReference(value))
   }
 
+  /**
+   * Resolves the [reference] from a theme overlay IF the component declares one via the
+   * "android:theme" attribute. If there is no overlay in the component for this [NlPropertyItem]
+   * the method returns null.
+   */
+  private fun asResourceValueFromOverlay(reference: ResourceReference?): ResourceValue? {
+    if (reference?.resourceType != ResourceType.ATTR) return null
+    val themeOverlayAttribute =
+      firstComponent?.getAttribute(ANDROID_URI, SdkConstants.ATTR_THEME) ?: return null
+    val themeOverlayUrl = ResourceUrl.parse(themeOverlayAttribute) ?: return null
+
+    val namespace =
+      ResourceNamespace.fromNamespacePrefix(
+        themeOverlayUrl.namespace,
+        ResourceNamespace.RES_AUTO,
+        ResourceNamespace.Resolver.EMPTY_RESOLVER
+      )
+    val themeReference =
+      themeOverlayUrl.resolve(
+        namespace ?: ResourceNamespace.RES_AUTO,
+        ResourceNamespace.Resolver.EMPTY_RESOLVER
+      ) ?: return null
+
+    val themeOverlayStyle = resolver?.getStyle(themeReference) ?: return null
+    return resolver?.findItemInStyle(themeOverlayStyle, reference)
+  }
+
   private fun asResourceValue(reference: ResourceReference?): ResourceValue? {
     if (reference == null) {
       return null
     }
     if (reference.resourceType == ResourceType.ATTR) {
-      val resValue = resolver?.findItemInTheme(reference) ?: return null
+      val resValue =
+        asResourceValueFromOverlay(reference) ?: resolver?.findItemInTheme(reference) ?: return null
       return resolver?.resolveResValue(resValue)
     } else {
       return resolver?.getResolvedResource(reference)

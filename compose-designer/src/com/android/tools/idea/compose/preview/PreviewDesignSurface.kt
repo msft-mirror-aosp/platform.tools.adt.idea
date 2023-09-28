@@ -35,6 +35,7 @@ import com.android.tools.idea.uibuilder.surface.layout.GridSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.GroupedGridSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.GroupedListSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
+import com.android.tools.idea.uibuilder.surface.layout.PositionableGroup
 import com.android.tools.idea.uibuilder.surface.layout.SingleDirectionLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.VerticalOnlyLayoutManager
 import com.android.tools.rendering.RenderAsyncActionExecutor
@@ -55,32 +56,30 @@ private val PREVIEW_FRAME_PADDING_PROVIDER: (Double) -> Int = { scale ->
   }.toInt()
 }
 
-private val NO_GROUP_TRANSFORM:
-  (Collection<PositionableContent>) -> List<List<PositionableContent>> =
-  {
-    // FIXME(b/258718991): we decide not group the previews for now.
-    listOf(it.toList())
-  }
+private val NO_GROUP_TRANSFORM: (Collection<PositionableContent>) -> List<PositionableGroup> = {
+  // FIXME(b/258718991): we decide not group the previews for now.
+  listOf(PositionableGroup(it.toList()))
+}
 
-@Suppress("unused") // b/258718991
-private val GROUP_BY_GROUP_ID_TRANSFORM:
-  (Collection<PositionableContent>) -> List<List<PositionableContent>> =
+private val GROUP_BY_BASE_COMPONENT: (Collection<PositionableContent>) -> List<PositionableGroup> =
   { contents ->
     val groups = mutableMapOf<String?, MutableList<PositionableContent>>()
     for (content in contents) {
-      groups.getOrPut(content.groupId) { mutableListOf() }.add(content)
+      groups.getOrPut(content.organizationGroup) { mutableListOf() }.add(content)
     }
-    // Put the previews which don't have group first.
-    // TODO(b/245363234)?: Consider to sort the group by name?
-    val nulls = groups.remove(null)
-    if (nulls != null) listOf(nulls) + groups.values.toList() else groups.values.toList()
+
+    // Put previews which are the only preview in a group last as one group.
+    val singles = groups.filter { it.value.size == 1 }
+    singles.forEach { groups.remove(it.key) }
+    groups.values.map { PositionableGroup(it) } +
+      listOf(PositionableGroup(singles.values.flatten()))
   }
 
 /** Toolbar option to select [LayoutMode.Gallery] layout. */
 internal val PREVIEW_LAYOUT_GALLERY_OPTION =
   SurfaceLayoutManagerOption(
     message("gallery.mode.title"),
-    GroupedGridSurfaceLayoutManager(5, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
+    GroupedGridSurfaceLayoutManager(5, 0, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
     DesignSurface.SceneViewAlignment.LEFT,
   )
 
@@ -90,13 +89,18 @@ internal val BASE_LAYOUT_MANAGER_OPTIONS =
       SurfaceLayoutManagerOption(
         // TODO(b/289994157) Change name to "List"
         message("vertical.groups"),
-        GroupedListSurfaceLayoutManager(5, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
+        GroupedListSurfaceLayoutManager(5, PREVIEW_FRAME_PADDING_PROVIDER, GROUP_BY_BASE_COMPONENT),
         DesignSurface.SceneViewAlignment.LEFT
       ),
       SurfaceLayoutManagerOption(
         // TODO(b/289994157) Change name to "Grid"
         message("grid.groups"),
-        GroupedGridSurfaceLayoutManager(5, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
+        GroupedGridSurfaceLayoutManager(
+          5,
+          25,
+          PREVIEW_FRAME_PADDING_PROVIDER,
+          GROUP_BY_BASE_COMPONENT
+        ),
         DesignSurface.SceneViewAlignment.LEFT,
       )
     )
@@ -132,7 +136,7 @@ internal val BASE_LAYOUT_MANAGER_OPTIONS =
       ),
       SurfaceLayoutManagerOption(
         message("new.grid.layout.title"),
-        GroupedGridSurfaceLayoutManager(5, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
+        GroupedGridSurfaceLayoutManager(5, 0, PREVIEW_FRAME_PADDING_PROVIDER, NO_GROUP_TRANSFORM),
         DesignSurface.SceneViewAlignment.LEFT,
       )
     )

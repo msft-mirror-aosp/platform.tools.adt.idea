@@ -814,14 +814,6 @@ public final class StudioFlags {
     false);
   //endregion
 
-  //region Streaming
-  private static final FlagGroup STREAMING = new FlagGroup(FLAGS, "streaming", "Streaming");
-  public static final Flag<Boolean> STREAMING_HARDWARE_INPUT_BUTTON = Flag.create(
-    STREAMING, "hardware.input.button", "Show Hardware Input Button",
-    "Shows the hardware input button on the running device toolbar", true);
-
-  //endregion
-
   //region Embedded Emulator
   private static final FlagGroup EMBEDDED_EMULATOR = new FlagGroup(FLAGS, "embedded.emulator", "Embedded Emulator");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS = Flag.create(
@@ -868,7 +860,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_MULTIPLE_DISPLAYS = Flag.create(
     DEVICE_MIRRORING, "multiple.displays", "Mirror All Displays",
     "Mirror all device displays",
-    false);
+    true);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = Flag.create(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
@@ -1181,13 +1173,6 @@ public final class StudioFlags {
    false
   );
 
-  public static final Flag<Integer> COMPOSE_LIVE_LITERALS_UPDATE_RATE = Flag.create(
-    COMPOSE, "deploy.live.literals.updaterate",
-    "Update rate of live literals edits",
-    "The rate of which live literals are updated in milliseconds",
-    50
-  );
-
   public static final Flag<Boolean> COMPOSE_DEBUG_BOUNDS = Flag.create(
     COMPOSE, "preview.debug.bounds",
     "Enable the debug bounds switch controls",
@@ -1273,7 +1258,8 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GROUP_LAYOUT = Flag.create(
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
-    "If enabled, multiple previews associated with composable will be grouped", false);
+    "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
+    "enabling or disabling (File -> Invalidate Caches...)", false);
 
   public static final Flag<Boolean> COMPOSE_NEW_PREVIEW_LAYOUT = Flag.create(
     COMPOSE, "new.preview.layout", "Enable the new layout options of Compose Preview",

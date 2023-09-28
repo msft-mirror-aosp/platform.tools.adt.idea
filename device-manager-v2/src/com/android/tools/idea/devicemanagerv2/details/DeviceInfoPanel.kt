@@ -110,6 +110,7 @@ internal class DeviceInfoPanel : JBPanel<DeviceInfoPanel>() {
       layout.replace(field, value)
       field = value
     }
+
   var propertiesSection: JComponent = JPanel()
     @UiThread
     set(value) {
@@ -227,7 +228,7 @@ class LabeledValue(label: String) {
 
 internal fun DeviceInfoPanel.populateDeviceInfo(properties: DeviceProperties) {
   apiLevel = properties.androidVersion?.apiStringWithExtension ?: "Unknown"
-  abiList = properties.abi?.toString() ?: "Unknown"
+  abiList = properties.primaryAbi?.toString() ?: "Unknown"
   resolution = properties.resolution?.toString() ?: "Unknown"
   val resolutionDp = properties.resolutionDp
   this.resolutionDp = resolutionDp?.toString() ?: "Unknown"
@@ -361,8 +362,8 @@ private suspend fun readDevicePower(device: ConnectedDevice): String {
     output.contains("Wireless powered: true") -> "Wireless"
     output.contains("USB powered: true") -> "USB"
     output.contains("AC powered: true") -> "AC"
-    else -> Regex("level: (\\d+)").find(output)?.groupValues?.get(1)?.let { "Battery: $it" }
-        ?: "Unknown"
+    else ->
+      Regex("level: (\\d+)").find(output)?.groupValues?.get(1)?.let { "Battery: $it" } ?: "Unknown"
   }
 }
 

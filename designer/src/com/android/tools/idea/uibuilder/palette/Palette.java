@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.palette;
 
-import com.android.annotations.NonNull;
+import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.uibuilder.api.PaletteComponentHandler;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.api.XmlType;
@@ -91,8 +91,8 @@ public class Palette {
   }
 
   @NotNull
-  public Set<String> getGradleCoordinateIds() {
-    Set<String> gradleCoordinateIds = new HashSet<>();
+  public Set<GoogleMavenArtifactId> getGoogleMavenArtifactIds() {
+    Set<GoogleMavenArtifactId> gradleCoordinateIds = new HashSet<>();
     accept(item -> item.addGradleCoordinateId(gradleCoordinateIds));
     return gradleCoordinateIds;
   }
@@ -310,10 +310,11 @@ public class Palette {
       return myHandler.getIcon(myTagName);
     }
 
-    @NonNull
-    public String getGradleCoordinateId() {
+    @Nullable
+    public GoogleMavenArtifactId getGradleCoordinateId() {
       if (myGradleCoordinateId != null) {
-        return myGradleCoordinateId;
+        GoogleMavenArtifactId id = GoogleMavenArtifactId.find(myGradleCoordinateId);
+        if (id != null) return id;
       }
       return myHandler.getGradleCoordinateId(myTagName);
     }
@@ -408,10 +409,10 @@ public class Palette {
       }
     }
 
-    private void addGradleCoordinateId(@NotNull Set<String> coordinateIds) {
-      String coordinateId = getGradleCoordinateId();
+    private void addGradleCoordinateId(@NotNull Set<GoogleMavenArtifactId> coordinateIds) {
+      GoogleMavenArtifactId coordinateId = getGradleCoordinateId();
 
-      if (!coordinateId.isEmpty()) {
+      if (coordinateId != null) {
         coordinateIds.add(coordinateId);
       }
     }

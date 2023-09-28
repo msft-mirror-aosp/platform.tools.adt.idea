@@ -37,6 +37,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
@@ -52,10 +53,10 @@ import com.intellij.usageView.UsageInfo
 import com.intellij.usageView.UsageViewDescriptor
 import com.intellij.usageView.UsageViewUtil
 import com.intellij.util.IncorrectOperationException
-import java.io.File
 import org.jetbrains.kotlin.ir.types.impl.IrErrorClassImpl.startOffset
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile
+import java.io.File
 
 class UnusedResourcesProcessor(project: Project, filter: Filter? = null) :
   BaseRefactoringProcessor(project, null) {
@@ -68,6 +69,37 @@ class UnusedResourcesProcessor(project: Project, filter: Filter? = null) :
   private object AllFilter : Filter {
     override fun shouldProcessFile(psiFile: PsiFile) = true
     override fun shouldProcessResource(resource: String?) = true
+  }
+
+  class FileFilter private constructor(
+    private val files: Set<PsiFile>,
+    private val directories: Set<PsiDirectory>) : Filter {
+
+    override fun shouldProcessFile(psiFile: PsiFile): Boolean {
+      if (psiFile in files) return true
+
+      if (directories.isEmpty()) return false
+
+      var dir = psiFile.containingDirectory
+      while (dir != null) {
+        if (dir in directories) return true
+        dir = dir.parentDirectory
+      }
+
+      return false
+    }
+
+    override fun shouldProcessResource(resource: String?) = true
+
+    companion object {
+      @JvmStatic
+      fun from(elements: Collection<PsiElement>) : FileFilter {
+        val files = elements.mapNotNull { it.containingFile }.toSet()
+        val dirs = elements.mapNotNull { it as? PsiDirectory }.toSet()
+
+        return FileFilter(files, dirs)
+      }
+    }
   }
 
   private var elements = PsiElement.EMPTY_ARRAY

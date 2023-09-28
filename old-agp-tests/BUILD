@@ -1,6 +1,6 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
-load(":agp_versions.bzl", "AGP_3_1_4", "AGP_3_3_2", "AGP_3_5", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_7_4", "AGP_8_0", "AGP_8_1", "AGP_8_2", "GRADLE_5_3_1", "GRADLE_5_5", "GRADLE_6_7_1", "GRADLE_7_0_2", "GRADLE_7_2", "GRADLE_7_3_3", "GRADLE_7_4", "GRADLE_7_5", "GRADLE_8_0", "GRADLE_8_2", "GRADLE_LATEST", "generate_old_agp_tests_from_list")
+load(":agp_versions.bzl", "AGP_3_1_4", "AGP_3_3_2", "AGP_3_5", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_7_4", "AGP_8_0", "AGP_8_1", "AGP_8_2", "GRADLE_5_3_1", "GRADLE_5_5", "GRADLE_6_7_1", "GRADLE_7_0_2", "GRADLE_7_2", "GRADLE_7_3_3", "GRADLE_7_4", "GRADLE_7_5", "GRADLE_8_0", "GRADLE_8_2", "GRADLE_LATEST", "local_generate_old_agp_tests_from_list")
 
 # managed by go/iml_to_build
 iml_module(
@@ -158,6 +158,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.5.21",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.6.10",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.5.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_1.9.20-Beta",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.7.20",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
@@ -180,7 +181,7 @@ COMMON_OLD_AGP_TEST_TARGETS_TAGS = [
     "no_test_windows",
 ]
 
-generate_old_agp_tests_from_list(
+local_generate_old_agp_tests_from_list(
     tests_list = [
         {
             "additional_jdks": ["11"],

@@ -35,6 +35,7 @@ import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
@@ -173,7 +174,6 @@ internal class DeviceViewTest {
   fun setUp() {
     BitRateManager.getInstance().clear()
     device = agentRule.connectDevice("Pixel 5", 30, Dimension(1080, 2340))
-    StudioFlags.STREAMING_HARDWARE_INPUT_BUTTON.override(true, testRootDisposable)
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
     focusManager = FakeKeyboardFocusManager(testRootDisposable)
   }
@@ -190,15 +190,15 @@ internal class DeviceViewTest {
     val frameListener = AbstractDisplayView.FrameListener { _, _, _, _ -> ++frameListenerCalls }
 
     view.addFrameListener(frameListener)
-    waitForCondition(2, SECONDS) { fakeUi.render(); view.frameNumber == agent.frameNumber }
+    waitForCondition(2, SECONDS) { fakeUi.render(); view.frameNumber == agent.getFrameNumber(PRIMARY_DISPLAY_ID) }
 
     assertThat(frameListenerCalls).isGreaterThan(0u)
     assertThat(frameListenerCalls).isEqualTo(view.frameNumber)
     val framesBeforeRemoving = view.frameNumber
     view.removeFrameListener(frameListener)
 
-    runBlocking { agent.renderDisplay(1) }
-    waitForCondition(2, SECONDS) { fakeUi.render(); view.frameNumber == agent.frameNumber }
+    runBlocking { agent.renderDisplay(PRIMARY_DISPLAY_ID, 1) }
+    waitForCondition(2, SECONDS) { fakeUi.render(); view.frameNumber == agent.getFrameNumber(PRIMARY_DISPLAY_ID) }
 
     // If removal didn't work, the frame number part would fail here.
     assertThat(view.frameNumber).isGreaterThan(framesBeforeRemoving)
@@ -210,7 +210,7 @@ internal class DeviceViewTest {
     createDeviceView(200, 300, 2.0)
     assertThat(agent.commandLine).matches("CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process" +
                                           " $DEVICE_PATH_BASE com.android.tools.screensharing.Main" +
-                                          " --socket=screen-sharing-agent-\\d+ --max_size=400,600 --flags=1")
+                                          " --socket=screen-sharing-agent-\\d+ --max_size=400,600 --flags=5")
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
@@ -321,7 +321,7 @@ internal class DeviceViewTest {
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
         MotionEventMessage(listOf(MotionEventMessage.Pointer(1007, 2107, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0))
 
-    runBlocking { agent.setDisplayOrientationCorrection(2) }
+    runBlocking { agent.setDisplayOrientationCorrection(PRIMARY_DISPLAY_ID, 2) }
     waitForFrame()
     assertThat(view.displayOrientationQuadrants).isEqualTo(2)
     assertThat(view.displayOrientationCorrectionQuadrants).isEqualTo(2)
@@ -596,7 +596,7 @@ internal class DeviceViewTest {
     waitForFrame()
 
     agent.bitRate = 2000000
-    runBlocking { agent.renderDisplay(1) }
+    runBlocking { agent.renderDisplay(PRIMARY_DISPLAY_ID, 1) }
     waitForFrame()
     assertThat(BitRateManager.getInstance().toXmlString()).isEqualTo(
         "<BitRateManager>\n" +
@@ -621,7 +621,7 @@ internal class DeviceViewTest {
     ::BIT_RATE_STABILITY_FRAME_COUNT.override(3, testRootDisposable) // Replace with a smaller value to speed up test.
     agent.bitRate = 5000000
     for (i in 0 until BIT_RATE_STABILITY_FRAME_COUNT) {
-      runBlocking { agent.renderDisplay(1) }
+      runBlocking { agent.renderDisplay(PRIMARY_DISPLAY_ID, 1) }
       waitForFrame()
     }
     assertThat(BitRateManager.getInstance().toXmlString()).isEqualTo(
@@ -1062,7 +1062,7 @@ internal class DeviceViewTest {
     // DeviceView has to be disposed before DeviceClient.
     val disposable = Disposer.newDisposable()
     Disposer.register(testRootDisposable, disposable)
-    view = DeviceView(disposable, deviceClient, UNKNOWN_ORIENTATION, agentRule.project)
+    view = DeviceView(disposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, agentRule.project)
     fakeUi = FakeUi(wrapInScrollPane(view, width, height), screenScale)
   }
 
@@ -1082,15 +1082,17 @@ internal class DeviceViewTest {
   private fun getGoldenFile(name: String): Path =
     TestUtils.resolveWorkspacePathUnchecked("$GOLDEN_FILE_PATH/${name}.png")
 
-  private fun getNextControlMessageAndWaitForFrame(): ControlMessage {
+  private fun getNextControlMessageAndWaitForFrame(displayId: Int = PRIMARY_DISPLAY_ID): ControlMessage {
     val message = agent.getNextControlMessage(5, SECONDS)
-    waitForFrame()
+    waitForFrame(displayId)
     return message
   }
 
   /** Waits for all video frames to be received. */
-  private fun waitForFrame() {
-    waitForCondition(2, SECONDS) { view.isConnected && agent.frameNumber > 0u && renderAndGetFrameNumber() == agent.frameNumber }
+  private fun waitForFrame(displayId: Int = PRIMARY_DISPLAY_ID) {
+    waitForCondition(2, SECONDS) {
+      view.isConnected && agent.getFrameNumber(displayId) > 0u && renderAndGetFrameNumber() == agent.getFrameNumber(displayId)
+    }
   }
 
   private fun renderAndGetFrameNumber(): UInt {

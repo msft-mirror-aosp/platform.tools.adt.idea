@@ -17,14 +17,19 @@ package com.android.tools.idea.appinspection.inspectors.network.model
 
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
+import com.android.tools.idea.appinspection.inspectors.network.model.Intention.InsertData
+import com.android.tools.idea.appinspection.inspectors.network.model.Intention.QueryForHttpData
+import com.android.tools.idea.appinspection.inspectors.network.model.Intention.QueryForSpeedData
+import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.concurrency.createChildScope
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.MICROSECONDS
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -35,6 +40,86 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import studio.network.inspection.NetworkInspectorProtocol.Event
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent
+
+/**
+ * The data backend of network inspector.
+ *
+ * It collects all the events sent by the inspector and makes them available for queries based on
+ * time ranges.
+ */
+interface NetworkInspectorDataSource {
+  val connectionEventFlow: Flow<HttpConnectionEvent>
+
+  suspend fun queryForHttpData(range: Range): List<HttpData>
+
+  suspend fun queryForSpeedData(range: Range): List<Event>
+}
+
+class NetworkInspectorDataSourceImpl(
+  messenger: AppInspectorMessenger,
+  parentScope: CoroutineScope,
+  replayCacheSize: Int = 1
+) : NetworkInspectorDataSource {
+  val scope = parentScope.createChildScope()
+  private val channel = Channel<Intention>()
+  override val connectionEventFlow: Flow<HttpConnectionEvent> =
+    messenger.eventFlow
+      .map { data -> Event.parseFrom(data) }
+      .onEach { data -> channel.send(InsertData(data)) }
+      .mapNotNull { if (it.hasHttpConnectionEvent()) it.httpConnectionEvent else null }
+      .shareIn(scope, SharingStarted.Eagerly, replayCacheSize)
+
+  init {
+    scope.coroutineContext[Job]!!.invokeOnCompletion { e -> channel.close(e) }
+    scope.launch {
+      try {
+        processEvents(channel)
+      } catch (e: CancellationException) {
+        channel.close(e.cause)
+      }
+    }
+  }
+
+  override suspend fun queryForHttpData(range: Range) =
+    withContext(scope.coroutineContext) {
+      val deferred = CompletableDeferred<List<HttpData>>()
+      channel.send(QueryForHttpData(range, deferred))
+      deferred.await()
+    }
+
+  override suspend fun queryForSpeedData(range: Range) =
+    withContext(scope.coroutineContext) {
+      val deferred = CompletableDeferred<List<Event>>()
+      channel.send(QueryForSpeedData(range, deferred))
+      deferred.await()
+    }
+}
+
+/**
+ * An actor that is used to maintain synchronization of the data collected from network inspector
+ * against the frequent updates and queried performed against it.
+ *
+ * It performs two types of work:
+ * 1. Collects events sent from the network inspector and accumulates them.
+ * 2. Performs queries from UI frontend on the collected data.
+ */
+private fun CoroutineScope.processEvents(commandChannel: ReceiveChannel<Intention>) = launch {
+  val speedData = mutableListOf<Event>()
+  val httpData = HttpDataCollector()
+
+  commandChannel.consumeEach { command ->
+    when (command) {
+      is QueryForSpeedData -> command.deferred.complete(searchRange(speedData, command.range))
+      is QueryForHttpData -> command.deferred.complete(httpData.getDataForRange(command.range))
+      is InsertData -> {
+        when {
+          command.event.hasSpeedEvent() -> speedData.add(command.event)
+          command.event.hasHttpConnectionEvent() -> httpData.processEvent(command.event)
+        }
+      }
+    }
+  }
+}
 
 /**
  * Performs a binary search on the data using timestamp and returns the index at which a
@@ -79,8 +164,8 @@ private fun List<Event>.findStartIndex(startIndex: Int): Int {
  * This function is designed to be fast (logN) because it gets called frequently by the frontend.
  */
 private fun searchRange(data: List<Event>, range: Range): List<Event> {
-  val min = TimeUnit.MICROSECONDS.toNanos(range.min.toLong())
-  val max = TimeUnit.MICROSECONDS.toNanos(range.max.toLong())
+  val min = MICROSECONDS.toNanos(range.min.toLong())
+  val max = MICROSECONDS.toNanos(range.max.toLong())
 
   // If the result of binary search is less than 0, the index of the start or end element is gotten
   // by:
@@ -109,108 +194,9 @@ private fun searchRange(data: List<Event>, range: Range): List<Event> {
 private sealed class Intention {
   class QueryForSpeedData(val range: Range, val deferred: CompletableDeferred<List<Event>>) :
     Intention()
-  class QueryForHttpData(val range: Range, val deferred: CompletableDeferred<List<Event>>) :
+
+  class QueryForHttpData(val range: Range, val deferred: CompletableDeferred<List<HttpData>>) :
     Intention()
+
   class InsertData(val event: Event) : Intention()
-}
-
-/**
- * An actor that is used to maintain synchronization of the data collected from network inspector
- * against the frequent updates and queried performed against it.
- *
- * It performs two types of work: 1) collects events sent from the network inspector and accumulates
- * them. 2) performs queries from UI frontend on the collected data.
- */
-private fun CoroutineScope.processEvents(commandChannel: ReceiveChannel<Intention>) = launch {
-  val speedData = mutableListOf<Event>()
-  val httpMap = mutableMapOf<Long, MutableList<Event>>()
-
-  for (command in commandChannel) {
-    if (command is Intention.InsertData) {
-      if (command.event.hasSpeedEvent()) {
-        speedData.add(command.event)
-      } else if (command.event.hasHttpConnectionEvent()) {
-        httpMap
-          .getOrPut(command.event.httpConnectionEvent.connectionId) { mutableListOf() }
-          .add(command.event)
-      }
-    } else if (command is Intention.QueryForSpeedData) {
-      command.deferred.complete(searchRange(speedData, command.range))
-    } else if (command is Intention.QueryForHttpData) {
-      val min = TimeUnit.MICROSECONDS.toNanos(command.range.min.toLong())
-      val max = TimeUnit.MICROSECONDS.toNanos(command.range.max.toLong())
-      val results =
-        httpMap.values
-          .filter { data -> intersectsRange(min, max, data) }
-          .flatten()
-          .sortedBy { event -> event.timestamp }
-      command.deferred.complete(results)
-    }
-  }
-}
-
-private fun intersectsRange(min: Long, max: Long, data: List<Event>): Boolean {
-  val firstEventTimestamp = data.firstOrNull()?.timestamp ?: return false
-  val lastEventTimestamp = data.last().timestamp
-  if (
-    firstEventTimestamp in min..max ||
-      lastEventTimestamp in min..max ||
-      (firstEventTimestamp < min && lastEventTimestamp > max)
-  ) {
-    return true
-  }
-  return false
-}
-
-/**
- * The data backend of network inspector.
- *
- * It collects all the events sent by the inspector and makes them available for queries based on
- * time ranges.
- */
-interface NetworkInspectorDataSource {
-  val connectionEventFlow: Flow<HttpConnectionEvent>
-  suspend fun queryForHttpData(range: Range): List<Event>
-  suspend fun queryForSpeedData(range: Range): List<Event>
-}
-
-class NetworkInspectorDataSourceImpl(
-  messenger: AppInspectorMessenger,
-  parentScope: CoroutineScope,
-  replayCacheSize: Int = 1
-) : NetworkInspectorDataSource {
-  val scope = parentScope.createChildScope()
-  private val channel = Channel<Intention>()
-  override val connectionEventFlow: Flow<HttpConnectionEvent>
-
-  init {
-    scope.coroutineContext[Job]!!.invokeOnCompletion { e -> channel.close(e) }
-    scope.launch {
-      try {
-        processEvents(channel)
-      } catch (e: CancellationException) {
-        channel.close(e.cause)
-      }
-    }
-    connectionEventFlow =
-      messenger.eventFlow
-        .map { data -> Event.parseFrom(data) }
-        .onEach { data -> channel.send(Intention.InsertData(data)) }
-        .mapNotNull { if (it.hasHttpConnectionEvent()) it.httpConnectionEvent else null }
-        .shareIn(scope, SharingStarted.Eagerly, replayCacheSize)
-  }
-
-  override suspend fun queryForHttpData(range: Range) =
-    withContext(scope.coroutineContext) {
-      val deferred = CompletableDeferred<List<Event>>()
-      channel.send(Intention.QueryForHttpData(range, deferred))
-      deferred.await()
-    }
-
-  override suspend fun queryForSpeedData(range: Range) =
-    withContext(scope.coroutineContext) {
-      val deferred = CompletableDeferred<List<Event>>()
-      channel.send(Intention.QueryForSpeedData(range, deferred))
-      deferred.await()
-    }
 }

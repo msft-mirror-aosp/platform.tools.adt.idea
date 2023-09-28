@@ -19,6 +19,7 @@ import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.model.scaleBy
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
+import com.android.tools.idea.uibuilder.surface.layout.PositionablePanel
 import com.android.tools.idea.uibuilder.surface.layout.getScaledContentSize
 import com.android.tools.idea.uibuilder.surface.layout.horizontal
 import com.android.tools.idea.uibuilder.surface.layout.margin
@@ -97,7 +98,7 @@ class SceneViewPeerPanel(
   private val sceneViewLeftBar: JComponent?,
   private val sceneViewRightBar: JComponent?,
   private val sceneViewErrorsPanel: JComponent?,
-) : JPanel() {
+) : JPanel(), PositionablePanel {
 
   /**
    * Contains cached layout data that can be used by this panel to verify when it's been invalidated
@@ -109,18 +110,20 @@ class SceneViewPeerPanel(
   private val cachedScaledContentSize = Dimension()
   private val cachedPreferredSize = Dimension()
 
-  val positionableAdapter =
+  override val positionableAdapter =
     object : PositionableContent {
-      override val groupId: String?
-        get() = this@SceneViewPeerPanel.sceneView.sceneManager.model.groupId
+      override val organizationGroup: String?
+        get() = sceneView.sceneManager.model.organizationGroup
 
       override val scale: Double
         get() = sceneView.scale
 
       override val x: Int
         get() = sceneView.x
+
       override val y: Int
         get() = sceneView.y
+
       override val isVisible: Boolean
         get() = sceneView.isVisible
 
@@ -130,11 +133,11 @@ class SceneViewPeerPanel(
           sceneView.margin.also {
             // Extend top to account for the top toolbar
             it.top += sceneViewTopPanel.preferredSize.height
+            it.bottom += sceneViewBottomPanel.preferredSize.height
+            it.left += sceneViewLeftPanel.preferredSize.width
+            it.right += sceneViewRightPanel.preferredSize.width
             if (sceneViewErrorsPanel?.isVisible == true) {
-              // Calculating panel margins to always keep shown the error panel when zooming
               it.bottom += sceneViewCenterPanel.preferredSize.height
-              it.left += sceneViewLeftPanel.preferredSize.width
-              it.right += sceneViewRightPanel.preferredSize.width
             }
           }
 
@@ -281,8 +284,7 @@ class SceneViewPeerPanel(
                 }
               }
             }
-          }
-            ?: hideToolbar()
+          } ?: hideToolbar()
         }
 
         private fun JPanel.designSurfaceContains(p: Point): Boolean {
@@ -407,7 +409,7 @@ class SceneViewPeerPanel(
       centerPanelHeight
     )
     sceneViewRightPanel.setBounds(
-      sceneViewLeftPanel.preferredSize.width + sceneViewCenterPanel.width,
+      sceneViewLeftPanel.preferredSize.width + positionableAdapter.scaledContentSize.width,
       sceneViewTopPanel.preferredSize.height,
       sceneViewRightPanel.preferredSize.width,
       centerPanelHeight

@@ -14,5 +14,7 @@
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="intellij.android.layoutlib-loader" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.analyzer" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.layoutlib" scope="TEST" />
   </component>
 </module>

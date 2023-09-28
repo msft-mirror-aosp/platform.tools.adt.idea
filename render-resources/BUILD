@@ -15,6 +15,8 @@ iml_module(
         "//tools/adt/idea/layoutlib-loader:intellij.android.layoutlib-loader[module]",
         "//tools/base/resource-repository:studio.android.sdktools.resource-repository[module]",
         "//tools/base/zipflinger:studio.android.sdktools.zipflinger[module]",
+        "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer[module]",
+        "//tools/base/apkparser:studio.android.sdktools.binary-resources[module]",
     ],
 )
 
@@ -30,6 +32,8 @@ kotlin_library(
     deps = [
         "//prebuilts/tools/common/lint-psi/intellij-core",
         "//tools/adt/idea/layoutlib-loader:tools.layoutlib-loader",
+        "//tools/base/apkparser:tools.binary-resources",
+        "//tools/base/apkparser/analyzer:tools.analyzer",
         "//tools/base/common:tools.common",
         "//tools/base/layoutlib-api:tools.layoutlib-api",
         "//tools/base/resource-repository:tools.resource-repository",
@@ -46,6 +50,7 @@ iml_module(
     iml_files = ["intellij.android.render-resources.tests.iml"],
     # keep sorted
     test_data = [
+        "//tools/adt/idea/render-resources/testData",
         "//tools/base/resource-repository/test/resources",
     ],
     test_srcs = ["testSrc"],
@@ -59,6 +64,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/layoutlib-loader:intellij.android.layoutlib-loader[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
+        "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer[module, test]",
+        "//tools/adt/idea/layoutlib:intellij.android.layoutlib[module, test]",
     ],
 )
 
@@ -71,6 +78,7 @@ kotlin_test(
     ]),
     # keep sorted
     data = [
+        "//tools/adt/idea/render-resources/testData",
         "//tools/base/resource-repository/test/resources",
     ],
     jvm_flags = ["-Dtest.suite.jar=tools.render-resources.tests.jar"],
@@ -79,8 +87,10 @@ kotlin_test(
         ":tools.render-resources",
         "//prebuilts/tools/common/lint-psi/intellij-core",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
+        "//tools/adt/idea/layoutlib:tools.layoutlib",
         "//tools/adt/idea/layoutlib-loader:tools.layoutlib-loader",
         "//tools/analytics-library/shared:tools.analytics-shared",
+        "//tools/base/apkparser/analyzer:tools.analyzer.maven",
         "//tools/base/common:tools.common",
         "//tools/base/layoutlib-api:tools.layoutlib-api",
         "//tools/base/resource-repository:tools.resource-repository",

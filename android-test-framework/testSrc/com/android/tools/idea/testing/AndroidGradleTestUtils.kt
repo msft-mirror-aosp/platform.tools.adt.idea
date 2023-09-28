@@ -760,7 +760,8 @@ fun AndroidProjectStubBuilder.buildDefaultConfigStub() = IdeProductFlavorContain
     name = "default",
     proguardFiles = emptyList(),
     resValues = emptyMap(),
-    versionNameSuffix = null
+    versionNameSuffix = null,
+    isDefault = null
   ),
   sourceProvider = mainSourceProvider,
   extraSourceProviders = listOfNotNull(androidTestSourceProviderContainer, unitTestSourceProviderContainer)
@@ -783,7 +784,8 @@ fun AndroidProjectStubBuilder.buildDebugBuildTypeStub(): IdeBuildTypeContainerIm
         isRenderscriptDebuggable = true,
         renderscriptOptimLevel = 1,
         isMinifyEnabled = false,
-        isZipAlignEnabled = true
+        isZipAlignEnabled = true,
+        isDefault = null
       ),
       debugSourceProvider,
       listOfNotNull(
@@ -810,7 +812,8 @@ fun AndroidProjectStubBuilder.buildReleaseBuildTypeStub(): IdeBuildTypeContainer
         isRenderscriptDebuggable = false,
         renderscriptOptimLevel = 1,
         isMinifyEnabled = true,
-        isZipAlignEnabled = true
+        isZipAlignEnabled = true,
+        isDefault = null
       ),
       sourceProvider = releaseSourceProvider,
       extraSourceProviders = listOf())
@@ -836,7 +839,7 @@ fun AndroidProjectStubBuilder.buildMainArtifactStub(
     dependencies =
       androidLibraryDependencies(variant).orEmpty().map {
         IdeDependencyCoreImpl(
-          internedModels.internAndroidLibrary(LibraryIdentity.fromIdeModel(it.library)) { it.library },
+          internedModels.internAndroidLibrary(it.library) { it.library },
           dependencies = listOf()
         )
       } +
@@ -887,7 +890,6 @@ fun AndroidProjectStubBuilder.buildMainArtifactStub(
       apkFromBundleTaskOutputListingFile = buildPath.resolve("intermediates/apk_from_bundle_ide_model/$variant/output.json").path
     ),
     codeShrinker = null,
-    modelSyncFiles = listOf(),
     privacySandboxSdkInfo = null,
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap()
@@ -951,7 +953,6 @@ fun AndroidProjectStubBuilder.buildAndroidTestArtifactStub(
       apkFromBundleTaskOutputListingFile = buildPath.resolve("intermediates/apk_from_bundle_ide_model/$variant/output.json").path
     ),
     codeShrinker = null,
-    modelSyncFiles = listOf(),
     privacySandboxSdkInfo = null,
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap()
@@ -1061,7 +1062,6 @@ fun AndroidProjectStubBuilder.buildTestFixturesArtifactStub(
       apkFromBundleTaskOutputListingFile = buildPath.resolve("intermediates/apk_from_bundle_ide_model/$variant/output.json").path
     ),
     codeShrinker = null,
-    modelSyncFiles = listOf(),
     privacySandboxSdkInfo = null,
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap()
@@ -2311,10 +2311,18 @@ fun JavaCodeInsightTestFixture.makeAutoIndexingOnCopy(): JavaCodeInsightTestFixt
 
 
 fun verifySyncSkipped(project: Project, disposable: Disposable) {
-  assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult()).isEqualTo(ProjectSystemSyncManager.SyncResult.SKIPPED)
+  verifySyncResult(project, disposable, ProjectSystemSyncManager.SyncResult.SKIPPED)
+}
+
+fun verifySyncSuccessful(project: Project, disposable: Disposable) {
+  verifySyncResult(project, disposable, ProjectSystemSyncManager.SyncResult.SUCCESS)
+}
+
+private fun verifySyncResult(project: Project, disposable: Disposable, expectedSyncResult: ProjectSystemSyncManager.SyncResult) {
+  assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult()).isEqualTo(expectedSyncResult)
   project.verifyModelsAttached()
   var completed = false
-  project.runWhenSmartAndSynced(disposable, callback = Consumer {
+  project.runWhenSmartAndSynced(disposable, callback = {
     completed = true
   })
   assertThat(completed).isTrue()
