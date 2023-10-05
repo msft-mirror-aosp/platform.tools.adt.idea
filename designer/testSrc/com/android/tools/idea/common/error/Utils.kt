@@ -42,14 +42,14 @@ internal data class TestIssue(
 }
 
 internal object EmptyIssueSource : IssueSource {
-  override val file: VirtualFile? = null
+  override val files: Set<VirtualFile> = emptySet()
   override val displayText: String = ""
 }
 
-internal class IssueSourceWithFile(
-  override val file: VirtualFile,
-  override val displayText: String = ""
-) : IssueSource
+internal class IssueSourceWithFile(file: VirtualFile, override val displayText: String = "") :
+  IssueSource {
+  override val files: Set<VirtualFile> = setOf(file)
+}
 
 internal class DesignerCommonIssueTestProvider(private val issues: List<Issue>) :
   DesignerCommonIssueProvider<Any> {
@@ -57,7 +57,9 @@ internal class DesignerCommonIssueTestProvider(private val issues: List<Issue>) 
 
   override fun getFilteredIssues(): List<Issue> = issues.filter(viewOptionFilter)
 
-  override fun registerUpdateListener(listener: Runnable) = Unit
+  override fun registerUpdateListener(listener: () -> Unit) = Unit
+
+  override fun removeUpdateListener(listener: () -> Unit) = Unit
 
   override fun dispose() = Unit
 }

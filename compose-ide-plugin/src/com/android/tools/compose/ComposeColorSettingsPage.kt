@@ -16,7 +16,8 @@
 
 package com.android.tools.compose
 
-import com.android.tools.compose.code.ComposeStateReadAnnotator
+import com.android.tools.compose.code.state.COMPOSE_STATE_READ_TEXT_ATTRIBUTES_KEY
+import com.android.tools.compose.code.state.COMPOSE_STATE_READ_TEXT_ATTRIBUTES_NAME
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
@@ -27,7 +28,7 @@ import javax.swing.Icon
 import org.jetbrains.kotlin.idea.highlighter.KotlinColorSettingsPage
 import org.jetbrains.kotlin.idea.highlighter.KotlinHighlightingColors
 
-// This class is used by AndroidStudio to allow the user to change the style of Compose attributes.
+// This class is used by Android Studio to allow the user to change the style of Compose attributes.
 class ComposeColorSettingsPage : ColorSettingsPage {
   override fun getHighlighter(): SyntaxHighlighter {
     return KotlinColorSettingsPage().highlighter
@@ -36,11 +37,9 @@ class ComposeColorSettingsPage : ColorSettingsPage {
   override fun getAdditionalHighlightingTagToDescriptorMap():
     MutableMap<String, TextAttributesKey> {
     val attributes = HashMap<String, TextAttributesKey>()
-    attributes[ComposableHighlighterExtension.COMPOSABLE_CALL_TEXT_ATTRIBUTES_NAME] =
-      ComposableHighlighterExtension.COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY
+    attributes[COMPOSABLE_CALL_TEXT_ATTRIBUTES_NAME] = COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY
     if (StudioFlags.COMPOSE_STATE_READ_HIGHLIGHTING_ENABLED.get()) {
-      attributes[ComposeStateReadAnnotator.COMPOSE_STATE_READ_TEXT_ATTRIBUTES_NAME] =
-        ComposeStateReadAnnotator.COMPOSE_STATE_READ_TEXT_ATTRIBUTES_KEY
+      attributes[COMPOSE_STATE_READ_TEXT_ATTRIBUTES_NAME] = COMPOSE_STATE_READ_TEXT_ATTRIBUTES_KEY
     }
     attributes["ANNOTATION"] = KotlinHighlightingColors.ANNOTATION
     attributes["KEYWORD"] = KotlinHighlightingColors.KEYWORD
@@ -56,10 +55,7 @@ class ComposeColorSettingsPage : ColorSettingsPage {
   override fun getAttributeDescriptors(): Array<AttributesDescriptor> {
     // TODO: this needs to be localized.
     return arrayOf(
-      AttributesDescriptor(
-        "Calls to @Compose functions",
-        ComposableHighlighterExtension.COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY
-      )
+      AttributesDescriptor("Calls to @Compose functions", COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY)
     )
   }
 

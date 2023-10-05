@@ -105,7 +105,6 @@ public final class StudioFlags {
     NPW, "new.baseline.profiles.module", "New Baseline Profile Module",
     "Show template to create a new Baseline Profile module in the new module wizard.",
     true);
-
   public static final Flag<Boolean> NPW_ENABLE_GRADLE_VERSION_CATALOG = Flag.create(
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
     "Use Gradle Version Catalogs for dependencies added in the new project/module wizard. (when existing project already uses Version Catalogs for new modules)",
@@ -295,6 +294,13 @@ public final class StudioFlags {
     "Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> GENERATE_BASELINE_PROFILE_GUTTER_ICON = Flag.create(
+    RUNDEBUG,
+    "baselineprofile.guttericon.enabled",
+    "Enables generating baseline profiles from gutter icon",
+    "When opening a UI test with applied BaselineProfileRule, an option to generate baseline profiles is shown in the gutter popup.",
+    true);
+
   public static final Flag<Boolean> DELTA_INSTALL = Flag.create(
     RUNDEBUG,
     "deltainstall",
@@ -385,6 +391,13 @@ public final class StudioFlags {
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
 
+  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = Flag.create(
+    RUNDEBUG,
+    "deployment.target.deviceprovisioner",
+    "Use Device Provisioner to provide deployment targets",
+    "Uses the Device Provisioner to get the list of potential devices to deploy to.",
+    false);
+
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
     RUNDEBUG,
     "adb.device.explorer.package.filter.enable",
@@ -436,7 +449,7 @@ public final class StudioFlags {
     "adb.jdwp.scache.enabled",
     "Enable JDWP SCache",
     "Enables JDWP Speculative Cache (SCache)",
-    false);
+    true);
 
   public static final Flag<Boolean> JDWP_SCACHE_REMOTE_ONLY = Flag.create(
     RUNDEBUG,
@@ -1016,7 +1029,7 @@ public final class StudioFlags {
     EDITOR, "render.drawables.in.autocomplete.enabled",
     "Enable rendering of drawable resources in autocomplete popup UI",
     "If enabled, renders drawable resources in the autocomplete popup UI.",
-    false
+    true
   );
 
   public static final FlagGroup ESSENTIALS_MODE = new FlagGroup(FLAGS, "essentialsmode", "Essentials Mode");
@@ -1299,6 +1312,11 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.render.quality.visibility.threshold", "Render quality zoom visibility threshold",
     "When the zoom level is lower than this value, all previews will be rendered at low quality",
     20);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME = Flag.create(
+    COMPOSE, "compose.preview.render.quality.notify.time", "Notify refresh time for render quality refreshes",
+    "If enabled, the time taken in render quality refreshes will be notified each time",
+    false);
   //endregion
 
   // region Wear surfaces
@@ -1532,10 +1550,15 @@ public final class StudioFlags {
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",
                 "deeplinkassistant-pa.googleapis.com");
-
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
                 "Improvements to the Create App Links functionalities.", false);
+  public static final Flag<Boolean> DATALAYER_MEMORY_IMPROVEMENT =
+    Flag.create(APP_LINKS_ASSISTANT, "datalayer.memory.improvement", "Data layer memory improvements",
+                "Memory improvements in the data layer.", true);
+  public static final Flag<Boolean> IMPACT_TRACKING =
+    Flag.create(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
+                "Impact tracking for the App Links Assistant", false);
   // endregion App Links Assistant
 
   // region GOOGLE_PLAY_SDK_INDEX
@@ -1615,6 +1638,10 @@ public final class StudioFlags {
   private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
   public static final Flag<Boolean> STUDIOBOT_ENABLED =
     Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
+    Flag.create(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
+                "When enabled, inline code completion suggestions will be shown.", false);
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

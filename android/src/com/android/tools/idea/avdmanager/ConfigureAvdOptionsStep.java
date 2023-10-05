@@ -39,7 +39,9 @@ import com.android.tools.adtui.ASGallery;
 import com.android.tools.adtui.util.FormScalingUtil;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.adtui.validation.ValidatorPanel;
+import com.android.tools.idea.avdmanager.skincombobox.Collector;
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBox;
+import com.android.tools.idea.avdmanager.skincombobox.SkinComboBoxModel;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.log.LogWrapper;
 import com.android.tools.idea.observable.AbstractProperty;
@@ -259,7 +261,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
   private ArrayList<SnapshotListItem> mySnapshotList;
 
   public ConfigureAvdOptionsStep(@Nullable Project project, @NotNull AvdOptionsModel model) {
-    this(project, model, new SkinComboBox(project));
+    this(project, model, new SkinComboBox(project, new SkinComboBoxModel(new Collector(DeviceSkinUpdater::updateSkins)::collect)));
   }
 
   @VisibleForTesting
@@ -955,7 +957,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     myBindings.bindTwoWay(new SelectedProperty(myFastBootRadioButton), getModel().useFastBoot());
     myBindings.bindTwoWay(new SelectedProperty(myChooseBootRadioButton), getModel().useChosenSnapshotBoot());
 
-    myBindings.bindTwoWay(new CustomSkinDefinition(mySkinComboBox), getModel().getAvdDeviceData().customSkinFile());
+    myBindings.bindTwoWay(new SkinComboBoxProperty(mySkinComboBox), getModel().getAvdDeviceData().customSkinFile());
     myBindings.bindTwoWay(new SelectedItemProperty<>(myChosenSnapshotComboBox), getModel().getAvdDeviceData().selectedSnapshotFile());
     myOrientationToggle.addListSelectionListener(event -> {
       var orientation = Objects.requireNonNullElse(myOrientationToggle.getSelectedElement(), ScreenOrientation.PORTRAIT);
@@ -1194,13 +1196,16 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     // Enable if NOT Play Store
     boolean enable = !myModel.isPlayStoreCompatible();
 
+    boolean isAutomotive = myModel.getAvdDeviceData().isAutomotive().get();
+
     // Enforce the restrictions
     myChangeDeviceButton.setEnabled(enable);
     myChangeSystemImageButton.setEnabled(enable && deviceIsPresent);
 
     myHostGraphics.setEnabled(enable);
     myQemu2CheckBox.setEnabled(enable);
-    myRamStorage.setEnabled(enable);
+    // Do not enforce ram restriction if it is automotive
+    myRamStorage.setEnabled(enable | isAutomotive);
     myVmHeapStorage.setEnabled(enable);
     myBuiltInRadioButton.setEnabled(enable);
     myExternalRadioButton.setEnabled(enable);

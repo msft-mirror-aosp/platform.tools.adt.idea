@@ -1,9 +1,9 @@
-load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
-load("//tools/base/common:version.bzl", "LAST_STABLE_BUILD_VERSION")
-load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
-load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
+load("//tools/base/bazel:bazel.bzl", "iml_module")
+load("//tools/base/common:version.bzl", "LAST_STABLE_BUILD_VERSION")
+load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
 app_icon(
     name = "nightly-icon",
@@ -52,16 +52,11 @@ studio_plugin(
         "//prebuilts/tools/common/m2:flatbuffers-java",
         "//prebuilts/tools/common/m2:tensorflow-lite-metadata",
         "//prebuilts/tools/common/m2:trace-perfetto-library",
-        "//prebuilts/tools/common/m2:compose-desktop-animation",
-        "//prebuilts/tools/common/m2:compose-desktop-foundation",
-        "//prebuilts/tools/common/m2:compose-desktop-material",
-        "//prebuilts/tools/common/m2:compose-desktop-runtime",
-        "//prebuilts/tools/common/m2:compose-desktop-ui",
         "//prebuilts/tools/common/m2:oauth2",
-        "//prebuilts/tools/common/m2:skiko",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/.idea/libraries:asm-tools",
+        "//tools/adt/idea/.idea/libraries:compose-desktop",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:ffmpeg",
         "//tools/adt/idea/.idea/libraries:google-api-client",
@@ -71,6 +66,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:HdrHistogram",
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/.idea/libraries:jetty",
+        "//tools/adt/idea/.idea/libraries:jewel",
         "//tools/adt/idea/.idea/libraries:kotlinx-coroutines-guava",
         "//tools/adt/idea/.idea/libraries:kotlin-multiplatform-android-models-proto",
         "//tools/adt/idea/.idea/libraries:kxml2",
@@ -1052,6 +1048,16 @@ iml_studio_test(
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.UpdateTest",
+)
+
+iml_studio_test(
+    name = "WebpSupportTest",
+    module = ":intellij.android.studio.integration",
+    # TODO(b/302730760) enable test when WebP support is fully fixed
+    tags = ["manual"],
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.WebpSupportTest",
 )
 
 exports_files(

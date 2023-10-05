@@ -25,13 +25,13 @@
   <depends>org.jetbrains.kotlin</depends>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
-    <highlighterExtension implementation="com.android.tools.compose.ComposableHighlighterExtension"/>
+    <highlighterExtension implementation="com.android.tools.compose.ComposableHighlightingVisitorExtension"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
     <dependencySupport coordinate="androidx.compose.runtime:runtime" kind="java" displayName="Jetpack Compose"/>
 
-    <annotator language="kotlin" implementationClass="com.android.tools.compose.code.ComposeStateReadAnnotator"/>
+    <annotator language="kotlin" implementationClass="com.android.tools.compose.code.state.ComposeStateReadAnnotator"/>
 
     <additionalTextAttributes scheme="Default" file="colorschemes/ComposableHighlighterExtensionColorSchemeDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposableHighlighterExtensionColorSchemeDarcula.xml"/>

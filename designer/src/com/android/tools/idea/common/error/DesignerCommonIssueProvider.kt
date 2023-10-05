@@ -18,7 +18,6 @@ package com.android.tools.idea.common.error
 import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueModel
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
-import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
@@ -32,7 +31,9 @@ interface DesignerCommonIssueProvider<T> : Disposable {
 
   fun getFilteredIssues(): List<Issue>
 
-  fun registerUpdateListener(listener: Runnable)
+  fun registerUpdateListener(listener: () -> Unit)
+
+  fun removeUpdateListener(listener: () -> Unit)
 
   fun interface Filter : (Issue) -> Boolean
 }
@@ -50,18 +51,8 @@ object NotSuppressedFilter : DesignerCommonIssueProvider.Filter {
 class SelectedEditorFilter(project: Project) : DesignerCommonIssueProvider.Filter {
   private val editorManager: FileEditorManager = FileEditorManager.getInstance(project)
 
-  @Suppress("UnstableApiUsage")
   override fun invoke(issue: Issue): Boolean {
-    return if (issue is VisualLintRenderIssue) {
-      val files =
-        issue.source.models
-          .map { BackedVirtualFile.getOriginFileIfBacked(it.virtualFile).name }
-          .distinct()
-      editorManager.selectedEditor?.file?.let { files.contains(it.name) } ?: false
-    } else {
-      val issuedFile = issue.source.file?.let { BackedVirtualFile.getOriginFileIfBacked(it) }
-      editorManager.selectedEditor?.file?.let { it == issuedFile } ?: false
-    }
+    return editorManager.selectedEditor?.file?.let { issue.source.files.contains(it) } ?: false
   }
 }
 
@@ -84,7 +75,7 @@ class DesignToolsIssueProvider(
 
   @GuardedBy("mapLock") private val sourceToIssueMap = mutableMapOf<Any, List<Issue>>()
 
-  private val listeners = mutableListOf<Runnable>()
+  private val listeners = mutableListOf<() -> Unit>()
   private val messageBusConnection = project.messageBus.connect(parentDisposable)
 
   private var _viewOptionFilter: DesignerCommonIssueProvider.Filter = EmptyFilter
@@ -92,7 +83,7 @@ class DesignToolsIssueProvider(
     get() = _viewOptionFilter
     set(value) {
       _viewOptionFilter = value
-      listeners.forEach { it.run() }
+      listeners.forEach { it() }
     }
 
   init {
@@ -116,7 +107,7 @@ class DesignToolsIssueProvider(
             sourceToIssueMap[source] = issues
           }
         }
-        listeners.forEach { it.run() }
+        listeners.forEach { it() }
       }
     )
 
@@ -128,11 +119,11 @@ class DesignToolsIssueProvider(
       FileEditorManagerListener.FILE_EDITOR_MANAGER,
       object : FileEditorManagerListener {
         override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
-          listeners.forEach { it.run() }
+          listeners.forEach { it() }
         }
 
         override fun selectionChanged(event: FileEditorManagerEvent) {
-          listeners.forEach { it.run() }
+          listeners.forEach { it() }
         }
       }
     )
@@ -143,8 +134,12 @@ class DesignToolsIssueProvider(
     return values.flatten().filter(issueFilter).filter(viewOptionFilter)
   }
 
-  override fun registerUpdateListener(listener: Runnable) {
+  override fun registerUpdateListener(listener: () -> Unit) {
     listeners.add(listener)
+  }
+
+  override fun removeUpdateListener(listener: () -> Unit) {
+    listeners.remove(listener)
   }
 
   override fun dispose() {

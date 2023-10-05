@@ -101,7 +101,6 @@ void WriteChannelHeader(const string& codec_name, int socket_fd) {
     if (errno != EBADF && errno != EPIPE) {
       Log::Fatal(SOCKET_IO_ERROR, "Error writing to video socket - %s", strerror(errno));
     }
-    TRACE;
     Agent::Shutdown();
   }
 }
@@ -290,7 +289,7 @@ void Agent::Shutdown() {
 }
 
 int64_t Agent::GetLastTouchEventTime() {
-  return last_touch_time_millis_.load();
+  return last_touch_time_millis_;
 }
 
 void Agent::RecordTouchEvent() {

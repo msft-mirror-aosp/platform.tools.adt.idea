@@ -30,6 +30,7 @@
 #include "agent.h"
 #include "jvm.h"
 #include "log.h"
+#include "string_printf.h"
 
 namespace screensharing {
 
@@ -53,9 +54,10 @@ constexpr double SQRT_2 = 1.41421356237;
 constexpr double SQRT_10 = 3.16227766017;
 
 struct CodecOutputBuffer {
-  explicit CodecOutputBuffer(AMediaCodec* codec)
+  explicit CodecOutputBuffer(AMediaCodec* codec, int32_t display_id)
       : index(-1),
         codec(codec),
+        display_id(display_id),
         info(),
         buffer(),
         size() {
@@ -70,16 +72,16 @@ struct CodecOutputBuffer {
   [[nodiscard]] bool Deque(int64_t timeout_us) {
     index = AMediaCodec_dequeueOutputBuffer(codec, &info, timeout_us);
     if (index < 0) {
-      Log::W("AMediaCodec_dequeueOutputBuffer returned %ld", static_cast<long>(index));
+      Log::W("Display %d: AMediaCodec_dequeueOutputBuffer returned %ld", display_id, static_cast<long>(index));
       return false;
     }
     if (Log::IsEnabled(Log::Level::VERBOSE)) {
-      Log::V("CodecOutputBuffer::Deque: index:%ld offset:%d size:%d flags:0x%x, presentationTimeUs:%" PRId64,
-             static_cast<long>(index), info.offset, info.size, info.flags, info.presentationTimeUs);
+      Log::V("Display %d: CodecOutputBuffer::Deque: index:%ld offset:%d size:%d flags:0x%x, presentationTimeUs:%" PRId64,
+             display_id, static_cast<long>(index), info.offset, info.size, info.flags, info.presentationTimeUs);
     }
     buffer = AMediaCodec_getOutputBuffer(codec, static_cast<size_t>(index), &size);
     if (buffer == nullptr) {
-      Log::W("CodecOutputBuffer::Deque: AMediaCodec_getOutputBuffer(codec, %ld, &size) returned null", static_cast<long>(index));
+      Log::W("Display %d: AMediaCodec_getOutputBuffer(codec, %ld, &size) returned null", display_id, static_cast<long>(index));
       return false;
     }
     return true;
@@ -95,6 +97,7 @@ struct CodecOutputBuffer {
 
   ssize_t index;
   AMediaCodec* codec;
+  int32_t display_id;
   AMediaCodecBufferInfo info;
   uint8_t* buffer;
   size_t size;
@@ -148,8 +151,8 @@ int32_t RoundUpToMultipleOf(int32_t value, int32_t power_of_two) {
 }
 
 Size ComputeVideoSize(Size rotated_display_size, const CodecInfo& codec_info, Size max_video_resolution) {
-  int32_t max_width = min(max_video_resolution.width, codec_info.max_resolution.width);
-  int32_t max_height = min(max_video_resolution.height, codec_info.max_resolution.height);
+  int32_t max_width = min(max(max_video_resolution.width, rotated_display_size.width / 2), codec_info.max_resolution.width);
+  int32_t max_height = min(max(max_video_resolution.height, rotated_display_size.height / 2), codec_info.max_resolution.height);
   double display_width = rotated_display_size.width;
   double display_height = rotated_display_size.height;
   double scale = max(min(1.0, min(max_width / display_width, max_height / display_height)),
@@ -170,7 +173,7 @@ Size ComputeVideoSize(Size rotated_display_size, const CodecInfo& codec_info, Si
 }
 
 Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_video_resolution, int32_t bit_rate,
-                    AMediaFormat* media_format, const DisplayInfo& display_info) {
+                    AMediaFormat* media_format, const DisplayInfo& display_info, int32_t display_id) {
   Size video_size = ComputeVideoSize(display_info.logical_size, codec_info, max_video_resolution);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_WIDTH, video_size.width);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_HEIGHT, video_size.height);
@@ -178,10 +181,11 @@ Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_vi
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_BIT_RATE, bit_rate);
   media_status_t status = AMediaCodec_configure(codec, media_format, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
   if (status != AMEDIA_OK) {
-    Log::Fatal(VIDEO_ENCODER_CONFIGURATION_ERROR, "AMediaCodec_configure returned %d for video_size=%dx%d bit rate=%d",
-               status, video_size.width, video_size.height, bit_rate);
+    Log::Fatal(VIDEO_ENCODER_CONFIGURATION_ERROR, "Display %d: AMediaCodec_configure returned %d for video_size=%dx%d bit rate=%d",
+               display_id, status, video_size.width, video_size.height, bit_rate);
   }
-  Log::I("Configured %s video_size=%dx%d bit rate=%d", codec_info.name.c_str(), video_size.width, video_size.height, bit_rate);
+  Log::I("Display %d: configured %s video_size=%dx%d bit rate=%d",
+         display_id, codec_info.name.c_str(), video_size.width, video_size.height, bit_rate);
   return video_size;
 }
 
@@ -257,15 +261,16 @@ void DisplayStreamer::Run() {
                  display_id_, codec_info_->name.c_str());
     }
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
-    Log::D("display_info: %s", display_info.ToDebugString().c_str());
+    Log::D("Display %d: display_info: %s", display_id_, display_info.ToDebugString().c_str());
     VirtualDisplay virtual_display;
     JObject display_token;
+    string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
     if (DisplayManager::CanCreateVirtualDisplay(jni)) {
       virtual_display = DisplayManager::CreateVirtualDisplay(
-          jni, "studio.screen.sharing", display_info.logical_size.width, display_info.logical_size.height, display_id_, nullptr);
+          jni, display_name.c_str(), display_info.logical_size.width, display_info.logical_size.height, display_id_, nullptr);
     } else {
       bool secure = Agent::api_level() < 31;  // Creation of secure displays is not allowed on API 31+.
-      display_token = SurfaceControl::CreateDisplay(jni, "studio.screen.sharing", secure);
+      display_token = SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure);
       if (display_token.IsNull()) {
         Log::Fatal(VIRTUAL_DISPLAY_CREATION_ERROR, "Display %d: unable to create a virtual display", display_id_);
       }
@@ -281,9 +286,9 @@ void DisplayStreamer::Run() {
         display_info.rotation = 0;
         rotation_correction = 2;
       }
-      Size video_size =
-          ConfigureCodec(codec, *codec_info_, max_video_resolution_.Rotated(rotation_correction), bit_rate_, media_format, display_info);
-      Log::D("Display %d: rotation=%d rotation_correction = %d video_size = %dx%d",
+      Size video_size = ConfigureCodec(
+          codec, *codec_info_, max_video_resolution_.Rotated(rotation_correction), bit_rate_, media_format, display_info, display_id_);
+      Log::D("Display %d: rotation=%d rotation_correction=%d video_size=%dx%d",
              display_id_, display_info.rotation, rotation_correction, video_size.width, video_size.height);
       media_status_t status = AMediaCodec_createInputSurface(codec, &surface);  // Requires API 26.
       if (status != AMEDIA_OK) {
@@ -337,7 +342,7 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(AMediaCodec* codec, VideoPa
   bool continue_streaming = true;
   bool first_frame_after_start = true;
   while (continue_streaming && IsCodecRunning()) {
-    CodecOutputBuffer codec_buffer(codec);
+    CodecOutputBuffer codec_buffer(codec, display_id_);
     if (!codec_buffer.Deque(-1)) {
       if (++consequent_deque_error_count_ >= MAX_SUBSEQUENT_ERRORS && !ReduceBitRate()) {
         ExitCode exitCode = bit_rate_ <= MIN_BIT_RATE ? WEAK_VIDEO_ENCODER : REPEATED_VIDEO_ENCODER_ERRORS;
@@ -363,13 +368,13 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(AMediaCodec* codec, VideoPa
       // of the first frame.
       media_status_t status = AMediaCodec_setParameters(codec, sync_frame_request);
       if (status != AMEDIA_OK) {
-        Log::E("AMediaCodec_setParameters returned %d", status);
+        Log::E("Display %d: AMediaCodec_setParameters returned %d", display_id_, status);
       }
       first_frame_after_start = false;
     }
     int64_t delta = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count() - Agent::GetLastTouchEventTime();
     if (delta < 1000) {
-      Log::D("Video packet of %d bytes at %" PRIi64 " ms since last touch event", codec_buffer.info.size, delta);
+      Log::D("Display %d: video packet of %d bytes at %" PRIi64 " ms since last touch event", display_id_, codec_buffer.info.size, delta);
     }
     packet_header->origination_timestamp_us = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
     if (codec_buffer.IsConfig()) {

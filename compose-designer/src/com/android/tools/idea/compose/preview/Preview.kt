@@ -53,6 +53,7 @@ import com.android.tools.idea.editors.fast.CompilationResult
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.flags.StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME
 import com.android.tools.idea.log.LoggerWithFixedInfo
 import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.modes.essentials.EssentialsModeMessenger
@@ -558,6 +559,22 @@ class ComposePreviewRepresentation(
       }
     }
 
+  private val postIssueUpdateListenerForUiCheck = {
+    val models = mutableSetOf<NlModel>()
+    surface.visualLintIssueProvider
+      .getIssues()
+      .map { it.source }
+      .filterIsInstance<VisualLintIssueProvider.VisualLintIssueSource>()
+      .filter { models.addAll(it.models) }
+    uiCheckFilterFlow.value.modelsWithErrors = models
+    if (isUiCheckFilterEnabled) {
+      ApplicationManager.getApplication().invokeLater {
+        surface.updateSceneViewVisibilities { it.sceneManager.model in models }
+        surface.repaint()
+      }
+    }
+  }
+
   private val previewElementModelAdapter =
     object : ComposePreviewElementModelAdapter() {
       override fun createDataContext(previewElement: ComposePreviewElementInstance) =
@@ -612,21 +629,7 @@ class ComposePreviewRepresentation(
         instance.instanceId,
         instance.displaySettings.name,
         surface,
-        {
-          val models = mutableSetOf<NlModel>()
-          surface.visualLintIssueProvider
-            .getIssues()
-            .map { it.source }
-            .filterIsInstance<VisualLintIssueProvider.VisualLintIssueSource>()
-            .filter { models.addAll(it.models) }
-          uiCheckFilterFlow.value.modelsWithErrors = models
-          if (isUiCheckFilterEnabled) {
-            ApplicationManager.getApplication().invokeLater {
-              surface.updateSceneViewVisibilities { it.sceneManager.model in models }
-              surface.repaint()
-            }
-          }
-        }
+        postIssueUpdateListenerForUiCheck
       ) {
         // Pass preview manager and instance to the tab created for this UI Check preview.
         // This enables restarting the UI Check mode from an action inside the tab.
@@ -637,6 +640,16 @@ class ComposePreviewRepresentation(
         }
       }
     }
+    forceRefresh().join()
+  }
+
+  private suspend fun onUiCheckPreviewStop() {
+    uiCheckFilterFlow.value.basePreviewInstance?.let {
+      IssuePanelService.getInstance(project)
+        .stopUiCheck(it.instanceId, surface, postIssueUpdateListenerForUiCheck)
+    }
+    uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
+    withContext(uiThread) { surface.updateSceneViewVisibilities { true } }
     forceRefresh().join()
   }
 
@@ -1476,7 +1489,11 @@ class ComposePreviewRepresentation(
       }
 
       launch(uiThread) {
-        if (!composeWorkBench.isMessageBeingDisplayed) {
+        if (
+          !composeWorkBench.isMessageBeingDisplayed &&
+            (refreshRequest.type != RefreshType.QUALITY ||
+              COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME.get())
+        ) {
           // Only notify the preview refresh time if there are previews to show.
           val durationString =
             Duration.ofMillis((System.nanoTime() - startTime) / 1_000_000).toDisplayString()
@@ -1795,10 +1812,7 @@ class ComposePreviewRepresentation(
       }
       is PreviewMode.UiCheck -> {
         log.debug("Stopping UI check")
-        uiCheckFilterFlow.value.basePreviewInstance?.let {
-          IssuePanelService.getInstance(project).stopUiCheck(it.instanceId, surface)
-        }
-        uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
+        onUiCheckPreviewStop()
       }
       is PreviewMode.AnimationInspection -> {
         onInteractivePreviewStop()

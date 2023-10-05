@@ -70,7 +70,7 @@ internal class DeviceController(
     private set
   private val responseCallbacks = ResponseCallbackMap()
   private val requestIdCounter = AtomicInteger()
-  val requestIdGenerator: () -> Int
+  private val requestIdGenerator: () -> Int
     get() = { requestIdCounter.getAndIncrement() }
 
   init {
@@ -200,7 +200,6 @@ internal class DeviceController(
 
   private fun onResponse(response: CorrelatedMessage) {
     val continuation = responseCallbacks.remove(response.requestId) ?: return
-    response as ControlMessage
     if (response is ErrorResponse) {
       continuation.resumeWithException(StatusRuntimeException(Status.UNKNOWN.withDescription(response.errorMessage)))
     }
@@ -270,10 +269,14 @@ internal class DeviceController(
   }
 
   private fun onDeviceStateChanged(message: DeviceStateNotification) {
-    currentFoldingState = supportedFoldingStates.find { it.id == message.deviceState }
+    setFoldingState(message.deviceState)
     for (listener in deviceStateListeners) {
       listener.onDeviceStateChanged(message.deviceState)
     }
+  }
+
+  fun setFoldingState(stateId: Int) {
+    currentFoldingState = supportedFoldingStates.find { it.id == stateId }
   }
 
   private fun onDisplayAdded(message: DisplayAddedNotification) {

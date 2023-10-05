@@ -389,7 +389,7 @@ void Controller::ProcessTextInput(const TextInputMessage& message) {
   for (uint16_t c: text) {
     JObjectArray event_array = key_character_map_->GetEvents(&c, 1);
     if (event_array.IsNull()) {
-      Log::E("Unable to map character '\\u%04X' to key events", c);
+      Log::E(jni_.GetAndClearException(), "Unable to map character '\\u%04X' to key events", c);
       continue;
     }
     auto len = event_array.GetLength();
@@ -491,12 +491,13 @@ void Controller::OnDeviceStateChanged(int32_t device_state) {
 }
 
 void Controller::SendDeviceStateNotification() {
-  int32_t device_state = device_state_.exchange(-1);
-  if (device_state >= 0) {
+  int32_t device_state = device_state_;
+  if (device_state != previous_device_state_) {
     Log::D("Sending DeviceStateNotification(%d)", device_state);
     DeviceStateNotification notification(device_state);
     notification.Serialize(output_stream_);
     output_stream_.Flush();
+    previous_device_state_ = device_state;
   }
 }
 
@@ -507,7 +508,7 @@ void Controller::SendDisplayConfigurations(const DisplayConfigurationRequest& re
   for (auto display_id : display_ids) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni_, display_id);
     if (display_info.IsOn() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
-      Log::D("Returning display configuration: displayId=%d state=%d flags=0x%2x %dx%d orientation=%d",
+      Log::D("Returning display configuration: displayId=%d state=%d flags=0x%2x size=%dx%d orientation=%d",
              display_id, display_info.state, display_info.flags, display_info.logical_size.width, display_info.logical_size.height,
              display_info.rotation);
       displays.emplace_back(display_id, display_info);

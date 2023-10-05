@@ -18,6 +18,7 @@ package com.android.tools.idea.editors.manifest;
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
 import static com.android.tools.idea.gradle.util.GradleUtil.getDependencyDisplayName;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
+import static com.android.utils.SdkUtils.parseDecoratedFileUrlString;
 import static com.intellij.openapi.command.WriteCommandAction.writeCommandAction;
 
 import com.android.SdkConstants;
@@ -41,14 +42,16 @@ import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.projectsystem.SourceProviderManager;
-import com.android.tools.idea.rendering.StudioHtmlLinkManager;
-import com.android.tools.rendering.HtmlLinkManager;
 import com.android.utils.FileUtils;
 import com.android.utils.HtmlBuilder;
 import com.android.utils.PositionXmlParser;
+import com.android.utils.SdkUtils;
+import com.android.utils.SdkUtils.FileLineColumnUrlData;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import com.google.common.collect.Streams;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.browsers.BrowserLauncher;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -98,15 +101,20 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import javax.swing.Icon;
 import javax.swing.JEditorPane;
 import javax.swing.JMenuItem;
@@ -125,6 +133,7 @@ import javax.swing.tree.TreeSelectionModel;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -169,7 +178,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
   private boolean myManifestEditable;
   private final List<ManifestFileWithMetadata> myFiles = new ArrayList<>();
   private final List<ManifestFileWithMetadata> myOtherFiles = new ArrayList<>();
-  private final StudioHtmlLinkManager myHtmlLinkManager = new StudioHtmlLinkManager();
+  private final HtmlLinkManager myHtmlLinkManager = new HtmlLinkManager();
   private VirtualFile myFile;
   private final Color myBackgroundColor;
   private Map<PathString, ExternalAndroidLibrary> myLibrariesByManifestDir;
@@ -225,7 +234,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     HyperlinkListener hyperLinkListener = e -> {
       if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
         String url = e.getDescription();
-        myHtmlLinkManager.handleUrl(url, facet.getModule(), null, false, HtmlLinkManager.NOOP_SURFACE);
+        myHtmlLinkManager.handleUrl(url, facet.getModule(), null);
       }
     };
     details.addHyperlinkListener(hyperLinkListener);
@@ -238,20 +247,23 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     JMenuItem gotoItem = new JBMenuItem("Go to Declaration");
     gotoItem.addActionListener(e -> {
       TreePath treePath = myTree.getSelectionPath();
-      final ManifestTreeNode node = (ManifestTreeNode)treePath.getLastPathComponent();
-      if (node != null) {
-        goToDeclaration(node.getUserObject());
+      if (treePath != null) {
+        if (treePath.getLastPathComponent() instanceof ManifestTreeNode node) {
+          goToDeclaration(node.getUserObject());
+        }
       }
     });
     myPopup.add(gotoItem);
     myRemoveItem = new JBMenuItem("Remove");
     myRemoveItem.addActionListener(e -> {
       TreePath treePath = myTree.getSelectionPath();
-      final ManifestTreeNode node = (ManifestTreeNode)treePath.getLastPathComponent();
-
-      WriteCommandAction.writeCommandAction(myFacet.getModule().getProject(), ManifestUtils.getMainManifest(myFacet)).withName("Removing manifest tag").run(()-> {
-        ManifestUtils.toolsRemove(ManifestUtils.getMainManifest(myFacet), node.getUserObject());
-      });
+      if (treePath != null) {
+        if (treePath.getLastPathComponent() instanceof ManifestTreeNode node) {
+          WriteCommandAction.writeCommandAction(myFacet.getModule().getProject(), ManifestUtils.getMainManifest(myFacet))
+            .withName("Removing manifest tag")
+            .run(() -> ManifestUtils.toolsRemove(ManifestUtils.getMainManifest(myFacet), node.getUserObject()));
+        }
+      }
     });
     myPopup.add(myRemoveItem);
 
@@ -315,9 +327,8 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
       .registerCustomShortcutSet(ActionManager.getInstance().getAction(IdeActions.ACTION_GOTO_DECLARATION).getShortcutSet(), myTree);
   }
 
-  @NotNull
-  private TreeSpeedSearch addSpeedSearch() {
-    return TreeSpeedSearch.installOn(myTree);
+  private void addSpeedSearch() {
+    TreeSpeedSearch.installOn(myTree);
   }
 
 
@@ -419,7 +430,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
           }
           else {
             File location = record.getActionLocation().getFile().getSourceFile();
-            if (location != null && !files.contains(location)) {
+            if (location != null) {
               files.add(location);
             }
           }
@@ -480,7 +491,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     List<MergingReport.Record> errors =
       myManifest.getLoggingRecords().stream()
         .filter(record -> record.getSeverity().equals(MergingReport.Record.Severity.ERROR))
-        .collect(Collectors.toList());
+        .toList();
     if (!errors.isEmpty()) {
       appendMergeRecordTitle(sb, "Merge Errors");
       errors.forEach((record) -> prepareErrorRecord(sb, record));
@@ -488,7 +499,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
 
     List<MergingReport.Record> warnings = myManifest.getLoggingRecords().stream()
       .filter(record -> record.getSeverity().equals(MergingReport.Record.Severity.WARNING))
-      .collect(Collectors.toList());
+      .toList();
     if (!warnings.isEmpty()) {
       appendMergeRecordTitle(sb, "Merge Warnings");
       warnings.forEach((record) -> prepareErrorRecord(sb, record));
@@ -571,8 +582,14 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     sb.addHtml(getHtmlForErrorRecord(record.getSeverity()));
     sb.add(" ");
     try {
-      sb.addHtml(getErrorHtml(myFacet, record.getMessage(), record.getSourceLocation(), myHtmlLinkManager,
-                              LocalFileSystem.getInstance().findFileByIoFile(myFiles.get(0).getFile()), myManifestEditable));
+      File ioFile = myFiles.get(0).getFile();
+      if (ioFile != null) {
+        sb.addHtml(getErrorHtml(myFacet, record.getMessage(), record.getSourceLocation(), myHtmlLinkManager,
+                                LocalFileSystem.getInstance().findFileByIoFile(ioFile), myManifestEditable));
+      }
+      else {
+        sb.add(record.getMessage());
+      }
     }
     catch (Exception ex) {
       Logger.getInstance(ManifestPanel.class).error("error getting error html", ex);
@@ -675,20 +692,18 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
   }
 
   private int getFileIndex(@NotNull File file) {
-    int index = 0;
-    for (ManifestFileWithMetadata metadata : myFiles) {
-      if (file.getAbsolutePath().equals(metadata.getFile().getAbsolutePath())) {
-        return index;
-      }
-      index++;
-    }
-    for (ManifestFileWithMetadata metadata : myOtherFiles) {
-      if (file.getAbsolutePath().equals(metadata.getFile().getAbsolutePath())) {
-        return index;
-      }
-      index++;
-    }
-    return index;
+    BiFunction<ManifestFileWithMetadata, Integer, Integer> f = (m, i) -> {
+      File metadataFile = m.getFile();
+      if (metadataFile == null) return null;
+      if (file.getAbsolutePath().equals(metadataFile.getAbsolutePath())) return i;
+      return null;
+    };
+    Stream<ManifestFileWithMetadata> metadataFiles = Streams.concat(myFiles.stream(), myOtherFiles.stream());
+    Stream<Integer> indices = IntStream.range(0, myFiles.size() + myOtherFiles.size()).boxed();
+    return Streams.zip(metadataFiles, indices, f)
+      .filter(Objects::nonNull)
+      .findFirst()
+      .orElseGet(() -> myFiles.size() + myOtherFiles.size());
   }
 
   private boolean canRemove(@NotNull Node node) {
@@ -750,16 +765,10 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
       String action = message.substring(index, message.indexOf(' ', index));
       sb.add(message.substring(0, index));
       message = message.substring(index);
-      if ("add".equals(action)) {
-        sb.addHtml(getErrorAddHtml(facet, message, position, htmlLinkManager,
-                                   currentlyOpenFile));
-      }
-      else if ("use".equals(action)) {
-        sb.addHtml(getErrorUseHtml(facet, message, position, htmlLinkManager,
-                                   currentlyOpenFile));
-      }
-      else if ("remove".equals(action)) {
-        sb.add(message);
+      switch (action) {
+        case "add" -> sb.addHtml(getErrorAddHtml(facet, message, position, htmlLinkManager, currentlyOpenFile));
+        case "use" -> sb.addHtml(getErrorUseHtml(facet, message, position, htmlLinkManager, currentlyOpenFile));
+        case "remove" -> sb.add(message);
       }
     }
     else {
@@ -814,9 +823,9 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
   /**
    * First attempt to get an XmlFile from the file where we detected the error during manifest merger but fallback to the main manifest
    * if we fail.
-   *
-   * This file is usually the main manifest file of this facet but not always. In case when we have a dynamic feature withina module,
-   * the module's main manifest differ from the file where the manifest merger error is detected.
+   * <p>
+   * This file is usually the main manifest file of this facet but not always. In case when we have a dynamic feature within a module,
+   * the module's main manifest differs from the file where the manifest merger error is detected.
    *
    * @param facet Android Facet
    * @param manifestErrorSourceFile A file where we detected an error during manifest merger.
@@ -894,7 +903,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     Runnable link =
       () -> {
         Runnable linkAction = () -> {
-          // We reparse the buildModel as it is possible that it has change since this link was created.
+          // We reparse the buildModel as it is possible that it has changed since this link was created.
           ProjectBuildModel pbm = ProjectBuildModel.get(facet.getModule().getProject());
           GradleBuildModel gbm = pbm.getModuleBuildModel(facet.getModule());
 
@@ -904,7 +913,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
 
           gbm.android().defaultConfig().minSdkVersion().setValue(finalMinSdk);
           ApplicationManager.getApplication().invokeAndWait(() -> WriteCommandAction
-            .runWriteCommandAction(facet.getModule().getProject(), "Update build file minSdkVersion", null, () -> pbm.applyChanges(),
+            .runWriteCommandAction(facet.getModule().getProject(), "Update build file minSdkVersion", null, pbm::applyChanges,
                                    gbm.getPsiFile()));
           // We must make sure that the files have been updated before we sync, we block above but not here.
           Runnable syncRunnable = () -> requestSync(facet.getModule().getProject());
@@ -938,9 +947,8 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
                                 final @NotNull String attributeName,
                                 final @NotNull String attributeValue) {
     final Project project = file.getProject();
-    writeCommandAction(project).withName("Apply manifest suggestion").run(() -> {
-      ManifestUtils.addToolsAttribute(file, element, attributeName, attributeValue);
-    });
+    writeCommandAction(project).withName("Apply manifest suggestion")
+      .run(() -> ManifestUtils.addToolsAttribute(file, element, attributeName, attributeValue));
   }
 
   @NotNull
@@ -977,7 +985,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
 
     if (file != null && NAV_FILE_PATTERN.matcher(FileUtils.toSystemIndependentPath(file.toString())).matches()) {
       String source = "";
-      Boolean isProjectFile = false;
+      boolean isProjectFile = false;
 
 
       File resDir = file.getParentFile() == null ? null : file.getParentFile().getParentFile();
@@ -1045,7 +1053,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
       if (source == null) {
         source = file.getName();
         if (!SourcePosition.UNKNOWN.equals(sourcePosition)) {
-          source += ":" + String.valueOf(sourcePosition);
+          source += ":" + sourcePosition;
         }
       }
       return new ManifestXmlWithMetadata(ManifestXmlType.ANDROID_MANIFEST_XML, file, source, isProjectFile, sourcePosition);
@@ -1054,70 +1062,37 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
   }
 
   private void describePosition(@NotNull HtmlBuilder sb, ManifestFileWithMetadata manifestFile) {
-    if (manifestFile instanceof InjectedBuildDotGradleFile) {
-      InjectedBuildDotGradleFile injectedFile = (InjectedBuildDotGradleFile) manifestFile;
-      if (injectedFile.getFile() != null) {
-        sb.addHtml("<a href=\"");
-        sb.add(injectedFile.getFile() .toURI().toString());
-        sb.addHtml("\">");
-        sb.add(injectedFile.getFile() .getName());
-        sb.addHtml("</a>");
-        sb.add(" injection");
-      } else {
-        sb.add("build.gradle injection (source location unknown)");
+    if (manifestFile instanceof InjectedBuildDotGradleFile injectedFile) {
+      File file = injectedFile.getFile();
+      if (file != null) {
+        sb.addLink(null, file.getName(), " injection", myHtmlLinkManager.createFileLink(file));
+      }
+      else {
+        sb.add("Injection from Gradle build file (source location unknown)");
       }
       return;
     }
-    if (manifestFile instanceof ManifestXmlWithMetadata) {
-      ManifestXmlWithMetadata manifestXml = (ManifestXmlWithMetadata)manifestFile;
-
-      if (manifestXml.getType() == ManifestXmlType.NAVIGATION_XML) {
-        sb.addHtml("<a href=\"");
-        sb.add(manifestXml.getFile().toURI().toString());
-        if (!SourcePosition.UNKNOWN.equals(manifestXml.getSourcePosition())) {
-          sb.add(":");
-          sb.add(String.valueOf(manifestXml.getSourcePosition().getStartLine()));
-          sb.add(":");
-          sb.add(String.valueOf(manifestXml.getSourcePosition().getStartColumn()));
-        }
-        sb.addHtml("\">");
-
-        sb.add(manifestXml.getSourceLibrary());
-        sb.addHtml("</a>");
-        sb.add(" navigation file");
-
-        if (!SourcePosition.UNKNOWN.equals(manifestXml.getSourcePosition())) {
-          sb.add(", line ");
-          sb.add(Integer.toString(manifestXml.getSourcePosition().getStartLine()));
-        }
-        return;
-      }
-
-      if (manifestXml.getType() == ManifestXmlType.ANDROID_MANIFEST_XML) {
-        sb.addHtml("<a href=\"");
-
-        sb.add(manifestXml.getFile().toURI().toString());
-        if (!SourcePosition.UNKNOWN.equals(manifestXml.getSourcePosition())) {
-          sb.add(":");
-          sb.add(String.valueOf(manifestXml.getSourcePosition().getStartLine()));
-          sb.add(":");
-          sb.add(String.valueOf(manifestXml.getSourcePosition().getStartColumn()));
-        }
-        sb.addHtml("\">");
-
-        sb.add(manifestXml.getSourceLibrary());
-        sb.addHtml("</a>");
-        sb.add(" manifest");
-
-        if (FileUtil.filesEqual(manifestXml.getFile(), VfsUtilCore.virtualToIoFile(myFile))) {
-          sb.add(" (this file)");
-        }
-
-        if (!SourcePosition.UNKNOWN.equals(manifestXml.getSourcePosition())) {
-          sb.add(", line ");
-          sb.add(Integer.toString(manifestXml.getSourcePosition().getStartLine()));
+    if (manifestFile instanceof ManifestXmlWithMetadata manifestXml) {
+      SourcePosition position = manifestXml.getSourcePosition();
+      String urlString;
+      String textAfter = " unknown manifest XML file";
+      switch (manifestXml.getType()) {
+        case NAVIGATION_XML -> textAfter = " navigation file";
+        case ANDROID_MANIFEST_XML -> {
+          textAfter = " manifest";
+          if (FileUtil.filesEqual(manifestXml.getFile(), VfsUtilCore.virtualToIoFile(myFile))) {
+            textAfter += " (this file)";
+          }
         }
       }
+      if (SourcePosition.UNKNOWN.equals(position)) {
+        urlString = myHtmlLinkManager.createFileLink(manifestXml.getFile());
+      }
+      else {
+        urlString = myHtmlLinkManager.createFileLink(manifestXml.getFile(), position.getStartLine(), position.getStartColumn());
+        textAfter += ", line " + position.getStartLine();
+      }
+      sb.addLink(null, manifestXml.getSourceLibrary(), textAfter, urlString);
     }
   }
 
@@ -1147,8 +1122,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     @Override
     public int getChildCount() {
       Node obj = getUserObject();
-      if (obj instanceof Element) {
-        Element element = (Element)obj;
+      if (obj instanceof Element element) {
         NamedNodeMap attributes = element.getAttributes();
         int count = attributes.getLength();
         NodeList childNodes = element.getChildNodes();
@@ -1168,8 +1142,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     @NotNull
     public ManifestTreeNode getChildAt(int index) {
       Node obj = getUserObject();
-      if (children == null && obj instanceof Element) {
-        Element element = (Element)obj;
+      if (children == null && obj instanceof Element element) {
         NamedNodeMap attributes = element.getAttributes();
         for (int i = 0, n = attributes.getLength(); i < n; i++) {
           add(new ManifestTreeNode(attributes.item(i)));
@@ -1196,12 +1169,10 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     @NotNull
     public String toString() {
       Node obj = getUserObject();
-      if (obj instanceof Attr) {
-        Attr xmlAttribute = (Attr)obj;
+      if (obj instanceof Attr xmlAttribute) {
         return xmlAttribute.getName() + " = " + xmlAttribute.getValue();
       }
-      if (obj instanceof Element) {
-        Element xmlTag = (Element)obj;
+      if (obj instanceof Element xmlTag) {
         return xmlTag.getTagName();
       }
       return obj.toString();
@@ -1264,13 +1235,11 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
                                       boolean leaf,
                                       int row,
                                       boolean hasFocus) {
-      if (value instanceof ManifestTreeNode) {
-        ManifestTreeNode node = (ManifestTreeNode)value;
+      if (value instanceof ManifestTreeNode node) {
 
         setIcon(getNodeIcon(node.getUserObject()));
 
-        if (node.getUserObject() instanceof Element) {
-          Element element = (Element)node.getUserObject();
+        if (node.getUserObject() instanceof Element element) {
           append("<");
 
           append(element.getTagName(), myTagNameAttributes);
@@ -1278,8 +1247,7 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
             append(" ... " + getCloseTag(node));
           }
         }
-        if (node.getUserObject() instanceof Attr) {
-          Attr attr = (Attr)node.getUserObject();
+        if (node.getUserObject() instanceof Attr attr) {
           // if we are the last child, add ">"
           ManifestTreeNode parent = node.getParent();
           assert parent != null; // can not be null if we are a XmlAttribute
@@ -1328,6 +1296,61 @@ public class ManifestPanel extends JPanel implements TreeSelectionListener {
     @Override
     public Color getFileColorFor(Object object) {
       return object == null? null : getNodeColor((Node)object);
+    }
+  }
+
+  @VisibleForTesting
+  public static class HtmlLinkManager {
+    ArrayList<Runnable> runnables = new ArrayList<>(5);
+
+    private static final String URL_SCHEME_RUNNABLE = "runnable:";
+
+    public void handleUrl(@NotNull String url, @NotNull Module module, @Nullable PsiFile file) {
+      if (url.startsWith("http:") || url.startsWith("https:")) {
+        BrowserLauncher.getInstance().browse(url, null, module.getProject());
+      }
+      else if (url.startsWith("file:")) {
+        Project project = module.getProject();
+        FileLineColumnUrlData data = parseDecoratedFileUrlString(url);
+        int line = data.line == null ? -1 : data.line;
+        int column = data.column == null ? 0 : data.column;
+        try {
+          File ioFile = SdkUtils.urlToFile(data.urlString);
+          VirtualFile virtualFile = LocalFileSystem.getInstance().findFileByIoFile(ioFile);
+          if (virtualFile != null) {
+            OpenFileDescriptor descriptor = new OpenFileDescriptor(project, virtualFile, line, column);
+            FileEditorManager manager = FileEditorManager.getInstance(project);
+            manager.openTextEditor(descriptor, true);
+          }
+        }
+        catch (MalformedURLException e) { // Ignore
+        }
+      }
+      else if (url.startsWith(URL_SCHEME_RUNNABLE)) {
+        String idString = url.substring(URL_SCHEME_RUNNABLE.length());
+        int id = Integer.decode(idString);
+        runnables.get(id).run();
+      }
+    }
+
+    public String createRunnableLink(Runnable runnable) {
+      runnables.add(runnable);
+      return URL_SCHEME_RUNNABLE + (runnables.size() - 1);
+    }
+
+    public String createFileLink(@NotNull File file) {
+      return createFileLink(file, null, null);
+    }
+
+    public String createFileLink(@NotNull File file, @Nullable Integer line, @Nullable Integer col) {
+      String fileUrlString = file.toURI().toString();
+      if (line != null) {
+        fileUrlString += ":" + line;
+        if (col != null) {
+          fileUrlString += ":" + col;
+        }
+      }
+      return fileUrlString;
     }
   }
 }

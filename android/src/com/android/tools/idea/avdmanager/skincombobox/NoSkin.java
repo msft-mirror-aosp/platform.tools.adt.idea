@@ -19,16 +19,21 @@ import com.android.tools.idea.avdmanager.SkinUtils;
 import java.nio.file.Path;
 import org.jetbrains.annotations.NotNull;
 
-final class NoSkin implements Skin {
-  static final Skin INSTANCE = new NoSkin();
+public final class NoSkin implements Skin {
+  public static final Skin INSTANCE = new NoSkin();
 
   private NoSkin() {
   }
 
+  /**
+   * Resolves collisions in favor of this. If the user creates a hardware profile with no skin Collector will return it wrapped in a
+   * DefaultSkin, which would collide with NoSkin.INSTANCE.
+   */
   @NotNull
   @Override
   public Skin merge(@NotNull Skin skin) {
-    throw new UnsupportedOperationException();
+    assert skin.path().equals(SkinUtils.noSkin()) : skin;
+    return this;
   }
 
   @NotNull

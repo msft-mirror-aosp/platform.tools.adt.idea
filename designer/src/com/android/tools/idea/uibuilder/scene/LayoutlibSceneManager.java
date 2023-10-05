@@ -918,8 +918,8 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @Override
   @NotNull
   public CompletableFuture<Void> requestLayoutAndRenderAsync(boolean animate) {
-    // Don't render if we're just showing the blueprint
-    if (getDesignSurface().getScreenViewProvider() == NlScreenViewProvider.BLUEPRINT) {
+    // Don't re-render if we're just showing the blueprint
+    if (myRenderedVersion != null && getDesignSurface().getScreenViewProvider() == NlScreenViewProvider.BLUEPRINT) {
       return requestLayoutAsync(animate);
     }
 
@@ -1186,10 +1186,10 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
               if (result == null || !result.getRenderResult().isSuccess()) {
                 // Do not ignore ClassNotFoundException on inflate
                 if (exception instanceof ClassNotFoundException) {
-                  logger.addMessage(RenderProblem.createPlain(ERROR,
-                                                              "Error inflating the preview",
-                                                              renderModule.getProject(),
-                                                              logger.getLinkManager(), exception, ShowFixFactory.INSTANCE));
+                  logger.addMessage(RenderProblem.createHtml(ERROR,
+                                                             "Error inflating the preview",
+                                                             renderModule.getProject(),
+                                                             logger.getLinkManager(), exception, ShowFixFactory.INSTANCE));
                 }
                 else {
                   logger.error(ILayoutLog.TAG_INFLATE, "Error inflating the preview", exception, null, null);

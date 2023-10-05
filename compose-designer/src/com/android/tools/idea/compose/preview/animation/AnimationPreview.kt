@@ -31,6 +31,7 @@ import com.android.tools.idea.compose.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineLine
 import com.android.tools.idea.compose.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.compose.preview.util.createToolbarWithNavigation
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_ANIMATED_CONTENT
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_INFINITE_TRANSITION
@@ -573,10 +574,16 @@ class AnimationPreview(
     private val tabTimelineParent = JPanel(BorderLayout())
 
     val tabComponent =
-      JPanel(TabularLayout("Fit,*,Fit", "30px,*")).apply {
-        val toolbar = DefaultToolbarImpl(rootComponent, "State", stateComboBox.extraActions)
-        add(toolbar.component, TabularLayout.Constraint(0, 2))
-        add(tabScrollPane, TabularLayout.Constraint(1, 0, 3))
+      JPanel(TabularLayout("*,Fit", "32px,*")).apply {
+        //    |  playbackControls                            |  toolbar  |
+        //    ------------------------------------------------------------
+        //    |                                                          |
+        //    |                     tabScrollPane                        |
+        //    |                                                          |
+        val toolbar =
+          createToolbarWithNavigation(rootComponent, "State", stateComboBox.extraActions)
+        add(toolbar.component, TabularLayout.Constraint(0, 1))
+        add(tabScrollPane, TabularLayout.Constraint(1, 0, 2))
         tabScrollPane.setViewportView(tabTimelineParent)
         add(
           playbackControls.createToolbar(listOf(FreezeAction(previewState, elementState, tracker))),
