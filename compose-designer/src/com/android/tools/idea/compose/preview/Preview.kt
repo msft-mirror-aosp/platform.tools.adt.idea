@@ -83,7 +83,6 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
 import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode
 import com.android.tools.idea.util.toDisplayString
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -298,21 +297,6 @@ class ComposePreviewRepresentation(
   private val previewModeManager: PreviewModeManager =
     CommonPreviewModeManager(scope = this, onEnter = ::onEnter, onExit = ::onExit)
 
-  private val interactiveMode: ComposePreviewManager.InteractiveMode
-    get() =
-      when (val currentMode = mode) {
-        is PreviewMode.Switching ->
-          when {
-            currentMode.currentMode is PreviewMode.Interactive ->
-              ComposePreviewManager.InteractiveMode.STOPPING
-            currentMode.newMode is PreviewMode.Interactive ->
-              ComposePreviewManager.InteractiveMode.STARTING
-            else -> ComposePreviewManager.InteractiveMode.DISABLED
-          }
-        is PreviewMode.Interactive -> ComposePreviewManager.InteractiveMode.READY
-        else -> ComposePreviewManager.InteractiveMode.DISABLED
-      }
-
   private val isStartingOrInInteractiveMode: Boolean
     get() = currentOrNextMode is PreviewMode.Interactive
 
@@ -325,6 +309,9 @@ class ComposePreviewRepresentation(
       onInitActivate = { activate(false) },
       onResumeActivate = { activate(true) },
       onDeactivate = {
+        qualityPolicy.deactivate()
+        allowQualityChangeIfInactive.set(true)
+        requestRefresh(type = RefreshType.QUALITY)
         log.debug("onDeactivate")
         if (isStartingOrInInteractiveMode) {
           interactiveManager.pause()
@@ -562,14 +549,14 @@ class ComposePreviewRepresentation(
   private val postIssueUpdateListenerForUiCheck = {
     val models = mutableSetOf<NlModel>()
     surface.visualLintIssueProvider
-      .getIssues()
+      .getUnsuppressedIssues()
       .map { it.source }
-      .filterIsInstance<VisualLintIssueProvider.VisualLintIssueSource>()
-      .filter { models.addAll(it.models) }
+      .forEach { models.addAll(it.models) }
     uiCheckFilterFlow.value.modelsWithErrors = models
     if (isUiCheckFilterEnabled) {
       ApplicationManager.getApplication().invokeLater {
         surface.updateSceneViewVisibilities { it.sceneManager.model in models }
+        surface.zoomToFit()
         surface.repaint()
       }
     }
@@ -759,9 +746,11 @@ class ComposePreviewRepresentation(
   val surface: NlDesignSurface
     get() = composeWorkBench.mainSurface
 
+  private val allowQualityChangeIfInactive = AtomicBoolean(false)
+  private val qualityPolicy = ComposePreviewRenderQualityPolicy { surface.screenScalingFactor }
   private val qualityManager: RenderQualityManager =
     if (StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.get())
-      DefaultRenderQualityManager(surface, ComposePreviewRenderQualityPolicy) {
+      DefaultRenderQualityManager(surface, qualityPolicy) {
         requestRefresh(type = RefreshType.QUALITY)
       }
     else SimpleRenderQualityManager { getDefaultPreviewQuality() }
@@ -803,6 +792,10 @@ class ComposePreviewRepresentation(
     get() = composeWorkBench.component
 
   // region Lifecycle handling
+  @VisibleForTesting
+  var buildListenerSetupFinished = false
+    private set
+
   /**
    * Completes the initialization of the preview. This method is only called once after the first
    * [onActivate] happens.
@@ -826,12 +819,19 @@ class ComposePreviewRepresentation(
          */
         private var animationInspectionsEnabled = false
 
+        override fun startedListening() {
+          buildListenerSetupFinished = true
+        }
+
         override fun buildSucceeded() {
           log.debug("buildSucceeded")
           module?.let {
-            // When the build completes successfully, we do not need the overlay until a
-            // modifications has happened.
-            ModuleClassLoaderOverlays.getInstance(it).invalidateOverlayPaths()
+            // When the build completes successfully, we do not need the overlay until a new
+            // modification happens. But invalidation should not be done when this listener is
+            // called during setup, as a consequence of an old build (see startedListening)
+            if (buildListenerSetupFinished) {
+              ModuleClassLoaderOverlays.getInstance(it).invalidateOverlayPaths()
+            }
           }
 
           val file = psiFilePointer.element
@@ -1092,6 +1092,8 @@ class ComposePreviewRepresentation(
   private fun CoroutineScope.activate(resume: Boolean) {
     log.debug("onActivate")
 
+    qualityPolicy.activate()
+
     initializeFlows()
 
     if (!resume) {
@@ -1193,7 +1195,6 @@ class ComposePreviewRepresentation(
         !isRefreshing &&
           (projectBuildStatus as? ProjectStatus.OutOfDate)?.areResourcesOutOfDate ?: false,
         isRefreshing,
-        interactiveMode,
       )
 
     // This allows us to display notifications synchronized with any other change detection. The
@@ -1389,10 +1390,15 @@ class ComposePreviewRepresentation(
       }
     }
 
-    // Make sure not to start refreshes when deactivated.
-    // But don't launch in the activation scope to avoid cancelling the refresh mid-way when a
-    // simple tab change happens.
-    if (!lifecycleManager.isActive()) {
+    // Make sure not to start refreshes when deactivated, unless it is the first quality refresh
+    // that happens since deactivation. This is expected to happen to decrease the quality of its
+    // previews when deactivating. Also, don't launch refreshes in the activation scope to avoid
+    // cancelling the refresh mid-way when a simple tab change happens.
+    if (
+      !lifecycleManager.isActive() &&
+        !(refreshRequest.type == RefreshType.QUALITY &&
+          allowQualityChangeIfInactive.getAndSet(false))
+    ) {
       refreshProgressIndicator.processFinish()
       requestLogger.debug(
         "Inactive representation (${psiFilePointer.containingFile?.name}), no work being done"

@@ -53,6 +53,7 @@ import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport;
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewportScroller;
 import com.android.tools.idea.common.surface.layout.ReferencePointScroller;
 import com.android.tools.idea.common.surface.layout.TopBoundCenterScroller;
+import com.android.tools.idea.common.surface.layout.TopLeftCornerScroller;
 import com.android.tools.idea.common.surface.layout.ZoomCenterScroller;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.build.GradleBuildState;
@@ -70,11 +71,13 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.scene.RenderListener;
 import com.android.tools.idea.uibuilder.surface.interaction.CanvasResizeInteraction;
 import com.android.tools.idea.uibuilder.surface.layout.GridSurfaceLayoutManager;
+import com.android.tools.idea.uibuilder.surface.layout.GroupedGridSurfaceLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.GroupedListSurfaceLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.SingleDirectionLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.SurfaceLayoutManager;
 import com.android.tools.idea.uibuilder.visual.VisualizationToolWindowFactory;
 import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode;
+import com.android.tools.idea.uibuilder.visual.visuallint.ViewVisualLintIssueProvider;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService;
 import com.android.tools.rendering.RenderResult;
@@ -167,6 +170,9 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     private boolean mySetDefaultScreenViewProvider = false;
 
     private double myMaxFitIntoZoomLevel = Double.MAX_VALUE;
+
+    private Function<DesignSurface<LayoutlibSceneManager>, VisualLintIssueProvider> myVisualLintIssueProviderFactory =
+      NlDesignSurface::viewVisualLintIssueProviderFactory;
 
     private Builder(@NotNull Project project, @NotNull Disposable parentDisposable) {
       myProject = project;
@@ -334,6 +340,12 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     }
 
     @NotNull
+    public Builder setVisualLintIssueProvider(Function<DesignSurface<LayoutlibSceneManager>, VisualLintIssueProvider> issueProviderFactory) {
+      myVisualLintIssueProviderFactory = issueProviderFactory;
+      return this;
+    }
+
+    @NotNull
     public NlDesignSurface build() {
       SurfaceLayoutManager layoutManager = myLayoutManager != null ? myLayoutManager : createDefaultSurfaceLayoutManager();
       if (myMinScale > myMaxScale) {
@@ -355,7 +367,8 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
         myZoomControlsPolicy,
         mySupportedActions,
         myShouldRenderErrorsPanel,
-        myMaxFitIntoZoomLevel);
+        myMaxFitIntoZoomLevel,
+        myVisualLintIssueProviderFactory);
 
       if (myScreenViewProvider != null) {
         surface.setScreenViewProvider(myScreenViewProvider, mySetDefaultScreenViewProvider);
@@ -376,7 +389,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
    */
   private final BiFunction<NlDesignSurface, NlModel, LayoutlibSceneManager> mySceneManagerProvider;
 
-  @NotNull private SurfaceLayoutManager myLayoutManager;
   @SurfaceScale private final double myMinScale;
   @SurfaceScale private final double myMaxScale;
 
@@ -411,7 +423,8 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
                           ZoomControlsPolicy zoomControlsPolicy,
                           @NotNull Set<NlSupportedActions> supportedActions,
                           boolean shouldRenderErrorsPanel,
-                          double maxFitIntoZoomLevel) {
+                          double maxFitIntoZoomLevel,
+                          @NotNull Function<DesignSurface<LayoutlibSceneManager>, VisualLintIssueProvider> issueProviderFactory) {
     super(project, parentDisposable, actionManagerProvider, interactableProvider, interactionHandlerProvider,
           (surface) -> new NlDesignSurfacePositionableContentLayoutManager((NlDesignSurface)surface, defaultLayoutManager),
           actionHandlerProvider,
@@ -420,11 +433,10 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
           maxFitIntoZoomLevel);
     myAnalyticsManager = new NlAnalyticsManager(this);
     myAccessoryPanel.setSurface(this);
-    myLayoutManager = defaultLayoutManager;
     mySceneManagerProvider = sceneManagerProvider;
     mySupportedActions = supportedActions;
     myShouldRenderErrorsPanel = shouldRenderErrorsPanel;
-    myVisualLintIssueProvider = new VisualLintIssueProvider(this);
+    myVisualLintIssueProvider = issueProviderFactory.apply(this);
     myMinScale = minScale;
     myMaxScale = maxScale;
 
@@ -481,6 +493,14 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @NotNull
   public static NlDesignSurfaceActionHandler defaultActionHandlerProvider(@NotNull DesignSurface<LayoutlibSceneManager> surface) {
     return new NlDesignSurfaceActionHandler(surface);
+  }
+
+  /**
+   * {@link VisualLintIssueProvider} factory that produces a {@link ViewVisualLintIssueProvider} for view-based layouts.
+   */
+  @NotNull
+  public static VisualLintIssueProvider viewVisualLintIssueProviderFactory(@NotNull DesignSurface<LayoutlibSceneManager> surface) {
+    return new ViewVisualLintIssueProvider(surface);
   }
 
   @NotNull
@@ -873,29 +893,36 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     boolean changed = super.setScale(scale, x, y);
     if (changed) {
       DesignSurfaceViewport port = getViewport();
+      Point scrollPosition = getScrollPosition();
+      SurfaceLayoutManager layoutManager = ((NlDesignSurfacePositionableContentLayoutManager)getSceneViewLayoutManager())
+        .getLayoutManager();
 
-      if (myLayoutManager instanceof GroupedListSurfaceLayoutManager) {
-        Point scrollPosition = getScrollPosition();
+      if (layoutManager instanceof GroupedListSurfaceLayoutManager) { // new list mode
         if(x < 0 || y < 0) {
+          // zoom with top-center of the visible area as anchor
           myViewportScroller = new TopBoundCenterScroller(
-            new Dimension(port.getViewSize()), new Point(scrollPosition));
+            new Dimension(port.getViewSize()), new Point(scrollPosition), port.getExtentSize(), previousScale, getScale());
         }
         else {
+          // zoom with mouse position as anchor, and considering its relative position to the existing scene views
           myViewportScroller = new ReferencePointScroller(
             new Dimension(port.getViewSize()), new Point(scrollPosition),
-            new Point(x, y), getScale()/previousScale, findSceneViewRectangles(),
+            new Point(x, y), previousScale, getScale(), findSceneViewRectangles(),
             (SceneView sceneView) -> mySceneViewPanel.findMeasuredSceneViewRectangle(sceneView,
                                                                                      getPositionableContent(),
                                                                                      getExtentSize()));
         }
+      } else if(layoutManager instanceof GroupedGridSurfaceLayoutManager) { // new grid mode
+        // zoom with top-left corner of the visible area as anchor
+        myViewportScroller = new TopLeftCornerScroller(
+          new Dimension(port.getViewSize()), new Point(scrollPosition), previousScale, getScale());
       }
-      else if (!(myLayoutManager instanceof GridSurfaceLayoutManager)) {
+      else if (!(layoutManager instanceof GridSurfaceLayoutManager)) {
         Point zoomCenterInView;
         if (x < 0 || y < 0) {
           x = port.getViewportComponent().getWidth() / 2;
           y = port.getViewportComponent().getHeight() / 2;
         }
-        Point scrollPosition = getScrollPosition();
         zoomCenterInView = new Point(scrollPosition.x + x, scrollPosition.y + y);
 
         myViewportScroller = new ZoomCenterScroller(new Dimension(port.getViewSize()), new Point(scrollPosition), zoomCenterInView);

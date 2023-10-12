@@ -1,6 +1,6 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
-load(":agp_versions.bzl", "AGP_3_1_4", "AGP_3_3_2", "AGP_3_5", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_7_4", "AGP_8_0", "AGP_8_1", "AGP_8_2", "GRADLE_5_3_1", "GRADLE_5_5", "GRADLE_6_7_1", "GRADLE_7_0_2", "GRADLE_7_2", "GRADLE_7_3_3", "GRADLE_7_4", "GRADLE_7_5", "GRADLE_8_0", "GRADLE_8_2", "GRADLE_LATEST", "local_generate_old_agp_tests_from_list")
+load(":agp_versions.bzl", "AGP_3_1_4", "AGP_3_3_2", "AGP_3_5", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_7_4", "AGP_8_0", "AGP_8_1", "AGP_8_2", "GRADLE_5_3_1", "GRADLE_5_5", "GRADLE_6_7_1", "GRADLE_7_0_2", "GRADLE_7_2", "GRADLE_7_3_3", "GRADLE_7_4", "GRADLE_7_5", "GRADLE_8_0", "GRADLE_8_2", "local_generate_old_agp_tests_from_list")
 
 # managed by go/iml_to_build
 iml_module(
@@ -135,11 +135,15 @@ maven_repository(
         "@maven//:com.google.guava.guava_23.0",
         "@maven//:com.google.guava.guava_28.1-jre",
         "@maven//:com.google.protobuf.protobuf-bom_3.17.2",
+        "@maven//:com.google.protobuf.protobuf-bom_3.19.3",
         "@maven//:com.google.protobuf.protobuf-java-util_3.17.2",
+        "@maven//:com.google.protobuf.protobuf-java-util_3.19.3",
         "@maven//:com.google.protobuf.protobuf-java_3.17.2",
+        "@maven//:com.google.protobuf.protobuf-java_3.19.3",
         "@maven//:com.google.truth.truth_0.44",
         "@maven//:com.linkedin.testbutler.test-butler-app_1.3.1",
         "@maven//:commons-codec.commons-codec_1.9",
+        "@maven//:commons-io.commons-io_2.4",
         "@maven//:commons-lang.commons-lang_2.4",
         "@maven//:it.unimi.dsi.fastutil_7.2.0",
         "@maven//:junit.junit_4.13.2",
@@ -171,6 +175,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
         "@maven//:org.jetbrains.markdown_0.2.1",
+        "@maven//:org.junit.junit-bom_5.9.3",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
@@ -182,6 +187,7 @@ COMMON_OLD_AGP_TEST_TARGETS_TAGS = [
 ]
 
 local_generate_old_agp_tests_from_list(
+    name = "OldAgpTests",
     tests_list = [
         {
             "additional_jdks": ["11"],

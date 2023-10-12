@@ -21,7 +21,7 @@ import com.android.tools.idea.common.error.IssueProviderListener
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.rendering.StudioRenderService
-import com.android.tools.idea.rendering.createLogger
+import com.android.tools.idea.rendering.createHtmlLogger
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel
 import com.android.tools.idea.rendering.parsers.PsiXmlFile
 import com.android.tools.idea.rendering.taskBuilder
@@ -302,7 +302,6 @@ class VisualLintService(val project: Project) : Disposable {
       if (VisualLintErrorType.LOCALE_TEXT !in ignoredTypes) {
         LocaleAnalyzer(baseConfigIssues).let {
           targetIssueProvider.addAllIssues(
-            it.type,
             it.analyze(result, model, getSeverity(it.type), runningInBackground)
           )
         }
@@ -321,7 +320,7 @@ class VisualLintService(val project: Project) : Disposable {
       .filter { !ignoredTypes.contains(it.type) }
       .forEach {
         val issues = it.analyze(result, model, getSeverity(it.type), runningInBackground)
-        targetIssueProvider.addAllIssues(it.type, issues)
+        targetIssueProvider.addAllIssues(issues)
       }
   }
 
@@ -345,7 +344,7 @@ class VisualLintService(val project: Project) : Disposable {
 /** Inflates a model, then returns the completable future with render result. */
 fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture<RenderResult> {
   val renderService = StudioRenderService.getInstance(model.project)
-  val logger = renderService.createLogger(model.project)
+  val logger = renderService.createHtmlLogger(model.project)
 
   return renderService
     .taskBuilder(model.facet, model.configuration, logger)

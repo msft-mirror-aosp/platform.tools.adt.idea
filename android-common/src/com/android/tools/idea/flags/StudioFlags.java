@@ -105,6 +105,7 @@ public final class StudioFlags {
     NPW, "new.baseline.profiles.module", "New Baseline Profile Module",
     "Show template to create a new Baseline Profile module in the new module wizard.",
     true);
+
   public static final Flag<Boolean> NPW_ENABLE_GRADLE_VERSION_CATALOG = Flag.create(
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
     "Use Gradle Version Catalogs for dependencies added in the new project/module wizard. (when existing project already uses Version Catalogs for new modules)",
@@ -292,13 +293,6 @@ public final class StudioFlags {
     RUNDEBUG, "android.bundle.build.enabled", "Enable the Build Bundle action",
     "If enabled, the \"Build Bundle(s)\" menu item is enabled. " +
     "Changing the value of this flag requires restarting Android Studio.",
-    true);
-
-  public static final Flag<Boolean> GENERATE_BASELINE_PROFILE_GUTTER_ICON = Flag.create(
-    RUNDEBUG,
-    "baselineprofile.guttericon.enabled",
-    "Enables generating baseline profiles from gutter icon",
-    "When opening a UI test with applied BaselineProfileRule, an option to generate baseline profiles is shown in the gutter popup.",
     true);
 
   public static final Flag<Boolean> DELTA_INSTALL = Flag.create(
@@ -1454,7 +1448,7 @@ public final class StudioFlags {
       "direct.access.add.device",
       "Direct Access Add Device",
       "Enable the new FTL DirectAccess Add Device workflow.",
-      false);
+      true);
 
   public static final Flag<String> DIRECT_ACCESS_ENDPOINT =
     Flag.create(
@@ -1545,7 +1539,7 @@ public final class StudioFlags {
                 "Revamped App Links Assistant (new surfaces and navigation between surfaces).", true);
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
-                "Improvements to Website Association Generator.", true);
+                "Improvements to Website Association Generator.", false);
   public static final Flag<String> DEEPLINKS_GRPC_SERVER =
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",

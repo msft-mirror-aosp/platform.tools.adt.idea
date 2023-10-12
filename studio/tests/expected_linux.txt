@@ -2063,6 +2063,7 @@ android-studio/plugins/android/lib/libstudio.android-test-plugin-result-listener
 android-studio/plugins/android/lib/libstudio.proto.jar
 android-studio/plugins/android/lib/libversion.jar
 android-studio/plugins/android/lib/lint-ide.jar
+android-studio/plugins/android/lib/logcat-proto.jar
 android-studio/plugins/android/lib/manifest-merger.jar
 android-studio/plugins/android/lib/memory-usage.jar
 android-studio/plugins/android/lib/network_inspector_java_proto.jar
@@ -2299,6 +2300,15 @@ android-studio/plugins/android/resources/device-art-resources/pixel_7/mask.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_7_pro/back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_7_pro/layout
 android-studio/plugins/android/resources/device-art-resources/pixel_7_pro/mask.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_7a/back.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_7a/layout
+android-studio/plugins/android/resources/device-art-resources/pixel_7a/mask.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_8/back.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_8/layout
+android-studio/plugins/android/resources/device-art-resources/pixel_8/mask.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_8_pro/back.webp
+android-studio/plugins/android/resources/device-art-resources/pixel_8_pro/layout
+android-studio/plugins/android/resources/device-art-resources/pixel_8_pro/mask.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_back.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_fore.webp
 android-studio/plugins/android/resources/device-art-resources/pixel_c/land_shadow.webp

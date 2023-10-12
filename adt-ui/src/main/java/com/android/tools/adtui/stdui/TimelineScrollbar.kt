@@ -84,8 +84,9 @@ class TimelineScrollbar(val timeline: Timeline, zoomPanComponent: JComponent) :
       if (isMenuKeyDown) {
         val anchor = (it.x.toFloat() / it.component.width).toDouble()
         timeline.zoom(getZoomWheelDelta() * count, anchor)
-      } else if (isScrollable()) {
-        timeline.panView(getPanWheelDelta() * count)
+      } else if (isScrollable() && timeline is StreamingTimeline) {
+        // Save the mouse wheel scroll event to be reflected in the timeline model and UI on next timeline update.
+        timeline.addMouseScrollWheelEvent(getPanWheelDelta() * count)
       }
       checkStream = count > 0
     }

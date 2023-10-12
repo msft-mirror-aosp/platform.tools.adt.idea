@@ -260,7 +260,6 @@ class ComposePreviewRepresentationGradleTest {
     ImageDiffUtil.assertImageSimilar("testImage", firstRender, thirdRender, 10.0, 20)
   }
 
-  @Ignore("b/269427611")
   @Test
   fun `MultiPreview annotation changes are reflected in the previews without rebuilding`() =
     runBlocking {
@@ -269,16 +268,17 @@ class ComposePreviewRepresentationGradleTest {
       FastPreviewManager.getInstance(project).disable(DISABLED_FOR_A_TEST)
       val otherPreviewsFile = getPsiFile(project, SimpleComposeAppPaths.APP_OTHER_PREVIEWS.path)
 
-      // Add an annotation class annotated with Preview in OtherPreviews.kt
-      runWriteActionAndWait {
-        fixture.openFileInEditor(otherPreviewsFile.virtualFile)
-        fixture.moveCaret("|@Preview")
-        fixture.editor.executeAndSave { insertText("@Preview\nannotation class MyAnnotation\n\n") }
-        PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
-        FileDocumentManager.getInstance().saveAllDocuments()
-      }
-
       projectRule.runAndWaitForRefresh {
+        // Add an annotation class annotated with Preview in OtherPreviews.kt
+        runWriteActionAndWait {
+          fixture.openFileInEditor(otherPreviewsFile.virtualFile)
+          fixture.moveCaret("|@Preview")
+          fixture.editor.executeAndSave {
+            insertText("@Preview\nannotation class MyAnnotation\n\n")
+          }
+          PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+          FileDocumentManager.getInstance().saveAllDocuments()
+        }
         // Annotate DefaultPreview with the new MultiPreview annotation class
         runWriteActionAndWait {
           fixture.openFileInEditor(psiMainFile.virtualFile)
@@ -289,18 +289,17 @@ class ComposePreviewRepresentationGradleTest {
         }
       }
       withContext(uiThread) {
-        fakeUi.root.validate()
         fakeUi.layoutAndDispatchEvents()
+        projectRule.validate()
       }
-
-      projectRule.waitForAllRefreshesToFinish()
       assertEquals(
         """
-        DefaultPreview
         DefaultPreview - MyAnnotation 1
+        DefaultPreview
+        TwoElementsPreview
         NavigatablePreview
         OnlyATextNavigation
-        TwoElementsPreview
+        MyPreviewWithInline
       """
           .trimIndent(),
         fakeUi
@@ -310,42 +309,30 @@ class ComposePreviewRepresentationGradleTest {
           .joinToString("\n")
       )
 
-      // Simulate what happens when leaving the MainActivity.kt tab in the editor
-      // TODO(b/232092986) This is actually not a tab change, but currently we don't have a better
-      // way of simulating it, and this is the only relevant consequence of changing tabs for this
-      // test.
-      composePreviewRepresentation.onDeactivate()
-
-      // Modify the Preview annotating MyAnnotation
-      runWriteActionAndWait {
-        fixture.openFileInEditor(otherPreviewsFile.virtualFile)
-        fixture.moveCaret("@Preview|")
-        fixture.editor.executeAndSave { insertText("(name = \"newName\")") }
-        PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
-        FileDocumentManager.getInstance().saveAllDocuments()
-      }
-
-      projectRule.runAndWaitForRefresh(35.seconds) {
-        // Simulate what happens when changing back to the MainActivity.kt tab in the editor
-        // TODO(b/232092986) This is actually not a tab change, but currently we don't have a better
-        // way of simulating it, and this is the only relevant consequence of changing tabs for this
-        // test.
-        runWriteActionAndWait { fixture.openFileInEditor(psiMainFile.virtualFile) }
-        composePreviewRepresentation.onActivate()
+      projectRule.runAndWaitForRefresh {
+        // Modify the Preview annotating MyAnnotation
+        runWriteActionAndWait {
+          fixture.openFileInEditor(otherPreviewsFile.virtualFile)
+          fixture.moveCaret("@Preview|")
+          fixture.editor.executeAndSave { insertText("(name = \"newName\")") }
+          PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+          FileDocumentManager.getInstance().saveAllDocuments()
+        }
       }
 
       withContext(uiThread) {
-        fakeUi.root.validate()
         fakeUi.layoutAndDispatchEvents()
+        projectRule.validate()
       }
 
       assertEquals(
         """
-        DefaultPreview
         DefaultPreview - newName
+        DefaultPreview
+        TwoElementsPreview
         NavigatablePreview
         OnlyATextNavigation
-        TwoElementsPreview
+        MyPreviewWithInline
       """
           .trimIndent(),
         fakeUi
@@ -388,40 +375,6 @@ class ComposePreviewRepresentationGradleTest {
     assertTrue(composePreviewRepresentation.status().isOutOfDate)
     projectRule.buildAndRefresh()
     assertFalse(composePreviewRepresentation.status().isOutOfDate)
-  }
-
-  // Regression test for b/246963901
-  @Ignore("b/270198240")
-  @Test
-  fun `second build doesn't trigger refresh on first nor second activation`() = runBlocking {
-    // This test only makes sense when fast preview is disabled,
-    // as some build related logic is being tested.
-    FastPreviewManager.getInstance(project).disable(DISABLED_FOR_A_TEST)
-    repeat(2) {
-      runWriteActionAndWait {
-        projectRule.fixture.openFileInEditor(psiMainFile.virtualFile)
-        projectRule.fixture.moveCaret("Text(text = \"Hello \$name!\")|")
-        projectRule.fixture.type("\nText(\"added during test execution\")")
-        PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
-        FileDocumentManager.getInstance().saveAllDocuments()
-      }
-      withContext(uiThread) {
-        PlatformTestUtil.dispatchAllEventsInIdeEventQueue() // Consume editor events
-      }
-
-      projectRule.waitForAllRefreshesToFinish()
-      assertTrue(composePreviewRepresentation.status().isOutOfDate)
-      // First build after modification should trigger refresh
-      projectRule.buildAndRefresh()
-      assertFalse(composePreviewRepresentation.status().isOutOfDate)
-      // Second build shouldn't trigger refresh
-      assertFails { projectRule.buildAndRefresh(15.seconds) }
-
-      // Deactivating and activating the representation shouldn't affect its
-      // behaviour for the next repetition of the code above
-      composePreviewRepresentation.onDeactivate()
-      composePreviewRepresentation.onActivate()
-    }
   }
 
   @Test
@@ -548,7 +501,7 @@ class ComposePreviewRepresentationGradleTest {
     runBlocking {
       val otherPreviewsFile = getPsiFile(project, SimpleComposeAppPaths.APP_OTHER_PREVIEWS.path)
 
-      composePreviewRepresentation.onDeactivate()
+      projectRule.runAndWaitForRefresh { composePreviewRepresentation.onDeactivate() }
 
       // Modifying otherPreviewsFile should not trigger a refresh in the main file representation
       // (nor in any inactive one).
@@ -588,7 +541,7 @@ class ComposePreviewRepresentationGradleTest {
 
     val otherPreviewsFile = getPsiFile(project, SimpleComposeAppPaths.APP_OTHER_PREVIEWS.path)
 
-    composePreviewRepresentation.onDeactivate()
+    projectRule.runAndWaitForRefresh { composePreviewRepresentation.onDeactivate() }
 
     // Modifying otherPreviewsFile should not trigger a refresh in the main file representation
     // (nor in any inactive one).
@@ -618,7 +571,7 @@ class ComposePreviewRepresentationGradleTest {
   }
 
   @Test
-  fun testPreviewRenderQuality() = runBlocking {
+  fun testPreviewRenderQuality_zoom() = runBlocking {
     try {
       StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.override(true)
       // We need to set up things again to make sure that the flag change takes effect
@@ -674,6 +627,67 @@ class ComposePreviewRepresentationGradleTest {
       withContext(uiThread) { fakeUi.root.validate() }
       assertEquals(
         ComposePreviewRenderQualityPolicy.scaleVisibilityThreshold * 2,
+        (fakeUi
+            .findAllComponents<SceneViewPeerPanel>()
+            .first { it.displayName == firstPreview!!.displayName }
+            .sceneView
+            .sceneManager as LayoutlibSceneManager)
+          .lastRenderQuality
+      )
+    } finally {
+      StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.clearOverride()
+    }
+  }
+
+  @Test
+  fun testPreviewRenderQuality_lifecycle() = runBlocking {
+    try {
+      StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.override(true)
+      // We need to set up things again to make sure that the flag change takes effect
+      projectRule.resetInitialConfiguration()
+      withContext(uiThread) { fakeUi.root.validate() }
+
+      var firstPreview: SceneViewPeerPanel? = null
+      // zoom and center to one preview (quality change refresh should happen)
+      projectRule.runAndWaitForRefresh {
+        firstPreview = fakeUi.findAllComponents<SceneViewPeerPanel>().first { it.isShowing }
+        firstPreview!!.sceneView.let {
+          previewView.mainSurface.zoomAndCenter(
+            it,
+            Rectangle(Point(it.x, it.y), it.scaledContentSize)
+          )
+        }
+      }
+      withContext(uiThread) { fakeUi.root.validate() }
+      // Default quality should have been used
+      assertEquals(
+        getDefaultPreviewQuality(),
+        (fakeUi
+            .findAllComponents<SceneViewPeerPanel>()
+            .first { it.displayName == firstPreview!!.displayName }
+            .sceneView
+            .sceneManager as LayoutlibSceneManager)
+          .lastRenderQuality
+      )
+
+      // Now deactivate the preview representation (quality change refresh should happen)
+      projectRule.runAndWaitForRefresh { composePreviewRepresentation.onDeactivate() }
+      withContext(uiThread) { fakeUi.root.validate() }
+      assertEquals(
+        ComposePreviewRenderQualityPolicy.lowestQuality,
+        (fakeUi
+            .findAllComponents<SceneViewPeerPanel>()
+            .first { it.displayName == firstPreview!!.displayName }
+            .sceneView
+            .sceneManager as LayoutlibSceneManager)
+          .lastRenderQuality
+      )
+
+      // Now reactivate the preview representation (quality change refresh should happen)
+      projectRule.runAndWaitForRefresh { composePreviewRepresentation.onActivate() }
+      withContext(uiThread) { fakeUi.root.validate() }
+      assertEquals(
+        getDefaultPreviewQuality(),
         (fakeUi
             .findAllComponents<SceneViewPeerPanel>()
             .first { it.displayName == firstPreview!!.displayName }
