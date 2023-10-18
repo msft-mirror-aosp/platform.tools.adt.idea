@@ -701,6 +701,8 @@
                     interface="com.android.tools.idea.run.AndroidLaunchTaskContributor"/>
     <extensionPoint qualifiedName="com.android.rendering.renderErrorContributor"
                     interface="com.android.tools.idea.rendering.RenderErrorContributor$Provider"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.rendering.renderIssueCollectionConsumer"
+                    interface="com.android.tools.idea.rendering.RenderIssueCollectionConsumer$Provider"/>
     <extensionPoint qualifiedName="com.android.tools.idea.ui.guiTestingStatusProvider"
                     interface="com.android.tools.idea.ui.GuiTestingStatusProvider"
                     dynamic="false"/>
@@ -731,7 +733,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.android.rendering">
-    <renderErrorContributor implementation="com.android.tools.idea.rendering.RenderErrorContributor$Provider"/>
+    <renderErrorContributor implementation="com.android.tools.idea.rendering.RenderErrorContributorImpl$Provider"/>
   </extensions>
 
   <xi:include href="new-deployment-target-selection.xml" xpointer="xpointer(/idea-plugin/*)"/>

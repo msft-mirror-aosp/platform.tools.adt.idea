@@ -20,12 +20,10 @@
 
 #include "accessors/display_info.h"
 #include "accessors/virtual_display.h"
-#include "copy_on_write_list.h"
+#include "concurrent_list.h"
 #include "jvm.h"
 
 namespace screensharing {
-
-constexpr int32_t DEFAULT_DISPLAY = 0; // See android.view.Display.DEFAULT_DISPLAY
 
 class DisplayListenerDispatcher;
 
@@ -43,18 +41,14 @@ public:
   static DisplayInfo GetDisplayInfo(Jni jni, int32_t display_id);
   static std::vector<int32_t> GetDisplayIds(Jni jni);
   static void AddDisplayListener(Jni jni, DisplayListener* listener);
-  static void RemoveDisplayListener(Jni jni, DisplayListener* listener);
+  static void RemoveDisplayListener(DisplayListener* listener);
   static void RemoveAllDisplayListeners(Jni jni);
 
   static void OnDisplayAdded(Jni jni, int32_t display_id);
   static void OnDisplayChanged(Jni jni, int32_t display_id);
   static void OnDisplayRemoved(Jni jni, int32_t display_id);
 
-  static bool CanCreateVirtualDisplay(Jni jni) {
-    InitializeStatics(jni);
-    return create_virtual_display_method_ != nullptr;
-  }
-
+  // Requires API 34+.
   static VirtualDisplay CreateVirtualDisplay(
       Jni jni, const char* name, int32_t width, int32_t height, int32_t display_id, ANativeWindow* surface);
 
@@ -84,7 +78,7 @@ private:
   static jmethodID create_virtual_display_method_;
 
   // List of display listeners.
-  static CopyOnWriteList<DisplayListener*> display_listeners_;
+  static ConcurrentList<DisplayListener> display_listeners_;
 
   static DisplayListenerDispatcher* display_listener_dispatcher_;
 

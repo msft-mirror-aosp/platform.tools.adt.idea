@@ -69,8 +69,14 @@ const val NOTE2_BODY = "Update: I managed to reproduce this issue."
 
 val NOW = Instant.parse("2022-06-08T10:00:00Z")
 
+const val REVISION_74081e5f = "74081e5f56a58788f3243fe8410c4b66e9c7c902"
+
 val REPO_INFO =
-  RepoInfo(vcsKey = VCS_CATEGORY.TEST_VCS, rootPath = PROJECT_ROOT_PREFIX, revision = "123")
+  RepoInfo(
+    vcsKey = VCS_CATEGORY.TEST_VCS,
+    rootPath = PROJECT_ROOT_PREFIX,
+    revision = REVISION_74081e5f
+  )
 
 val SAMPLE_KEYS = listOf(CustomKey("CSRF_TOKEN", "screen_view"), CustomKey("RAY_ID", "abcdeefg"))
 val SAMPLE_LOGS = listOf(Log(FAKE_10_HOURS_AGO, "fake_log", mapOf("key" to "value")))
@@ -82,7 +88,7 @@ val ISSUE1 =
       "Issue1",
       "com.google.crash.Crash",
       FailureType.FATAL,
-      "Sample Event",
+      "projects/814265703514/apps/1:814265703514:android:1199bc7542be2276/events/6525E9C102DC000122D0184211881FA3_1867297287814199602",
       "1.2.3",
       "2.0.0",
       8L,
@@ -95,6 +101,8 @@ val ISSUE1 =
       emptyList()
     ),
     Event(
+      name =
+        "projects/814265703514/apps/1:814265703514:android:1199bc7542be2276/events/6525E9C102DC000122D0184211881FA3_1867297287814199602",
       eventData =
         EventData(
           device = Device(manufacturer = "Google", model = "Pixel 4a"),
@@ -191,7 +199,7 @@ val ISSUE2 =
       "Issue2",
       "com.google.crash.Crash",
       FailureType.NON_FATAL,
-      "Sample Event 2",
+      "projects/814265703514/apps/1:814265703514:android:1199bc7542be2276/events/652731D4013400016ABAED130A6E5D76_1867295448974866474",
       "1.0.0",
       "2.0.0",
       12L,
@@ -204,6 +212,8 @@ val ISSUE2 =
       emptyList()
     ),
     Event(
+      name =
+        "projects/814265703514/apps/1:814265703514:android:1199bc7542be2276/events/652731D4013400016ABAED130A6E5D76_1867295448974866474",
       eventData =
         EventData(
           device = Device(manufacturer = "Samsung", model = "Galaxy 9000"),
@@ -326,6 +336,16 @@ val ISSUE_VARIANT =
     impactedDevicesCount = 1,
     eventsCount = 1,
     event = ISSUE1.sampleEvent
+  )
+
+val ISSUE_VARIANT2 =
+  IssueVariant(
+    id = "variant2",
+    sampleEvent = "sample_event_2",
+    uri = "firebase.google.com",
+    impactedDevicesCount = 1,
+    eventsCount = 1,
+    event = ISSUE2.sampleEvent
   )
 
 // Used for testing cached issues because their counts are zeroed out.

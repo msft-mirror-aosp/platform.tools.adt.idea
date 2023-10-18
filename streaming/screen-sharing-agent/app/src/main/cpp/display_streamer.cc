@@ -216,6 +216,7 @@ void DisplayStreamer::Start() {
       Jvm::AttachCurrentThread((string("DisplayStreamer ") + to_string(display_id_)).c_str());
       Run();
       Jvm::DetachCurrentThread();
+      Log::D("Display %d: streaming terminated", display_id_);
     });
   }
 }
@@ -248,7 +249,7 @@ void DisplayStreamer::Run() {
 
   AMediaFormat* media_format = CreateMediaFormat(codec_info_->mime_type);
 
-  WindowManager::WatchRotation(jni, &display_rotation_watcher_);
+  WindowManager::WatchRotation(jni, display_id_, &display_rotation_watcher_);
   DisplayManager::AddDisplayListener(jni, this);
   VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = 0};
 
@@ -261,11 +262,14 @@ void DisplayStreamer::Run() {
                  display_id_, codec_info_->name.c_str());
     }
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
+    if (!display_info.IsValid()) {
+      break;
+    }
     Log::D("Display %d: display_info: %s", display_id_, display_info.ToDebugString().c_str());
     VirtualDisplay virtual_display;
     JObject display_token;
     string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
-    if (DisplayManager::CanCreateVirtualDisplay(jni)) {
+    if (Agent::api_level() >= 34) {
       virtual_display = DisplayManager::CreateVirtualDisplay(
           jni, display_name.c_str(), display_info.logical_size.width, display_info.logical_size.height, display_id_, nullptr);
     } else {
@@ -329,8 +333,8 @@ void DisplayStreamer::Run() {
   }
 
   AMediaFormat_delete(media_format);
-  WindowManager::RemoveRotationWatcher(jni, &display_rotation_watcher_);
-  DisplayManager::RemoveDisplayListener(jni, this);
+  WindowManager::RemoveRotationWatcher(jni, display_id_, &display_rotation_watcher_);
+  DisplayManager::RemoveDisplayListener(this);
 
   if (!continue_streaming) {
     Agent::Shutdown();
@@ -419,17 +423,17 @@ void DisplayStreamer::SetVideoOrientation(int32_t orientation) {
   Agent::session_environment().DisableAccelerometerRotation();
 
   Jni jni = Jvm::GetJni();
-  bool rotation_was_frozen = WindowManager::IsRotationFrozen(jni);
+  bool rotation_was_frozen = WindowManager::IsRotationFrozen(jni, display_id_);
 
   scoped_lock lock(mutex_);
   if (orientation == CURRENT_VIDEO_ORIENTATION) {
     orientation = video_orientation_;
   }
   if (orientation >= 0) {
-    WindowManager::FreezeRotation(jni, orientation);
+    WindowManager::FreezeRotation(jni, display_id_, orientation);
     // Restore the original state of auto-display_rotation.
     if (!rotation_was_frozen) {
-      WindowManager::ThawRotation(jni);
+      WindowManager::ThawRotation(jni, display_id_);
     }
 
     if (video_orientation_ != orientation) {
@@ -485,10 +489,6 @@ bool DisplayStreamer::ReduceBitRate() {
 DisplayStreamer::DisplayRotationWatcher::DisplayRotationWatcher(DisplayStreamer* display_streamer)
     : display_streamer(display_streamer),
       display_rotation(-1) {
-}
-
-DisplayStreamer::DisplayRotationWatcher::~DisplayRotationWatcher() {
-  WindowManager::RemoveRotationWatcher(Jvm::GetJni(), this);
 }
 
 void DisplayStreamer::DisplayRotationWatcher::OnRotationChanged(int32_t new_rotation) {

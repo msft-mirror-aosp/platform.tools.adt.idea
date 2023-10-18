@@ -35,6 +35,8 @@ namespace screensharing {
 using namespace std;
 using namespace std::chrono;
 
+const char ATTRIBUTION_TAG[] = "studio.screen.sharing";
+
 namespace {
 
 constexpr int CHANNEL_HEADER_LENGTH = 20;
@@ -238,7 +240,7 @@ void Agent::SetVideoOrientation(int32_t display_id, int32_t orientation) {
 void Agent::SetVideoOrientationOfInternalDisplays(int32_t orientation) {
   for (auto& it : display_streamers_) {
     DisplayInfo display_info = GetDisplayInfo(it.first);
-    if (display_info.type == DisplayInfo::TYPE_INTERNAL) {
+    if (display_info.IsValid() && display_info.type == DisplayInfo::TYPE_INTERNAL) {
       DisplayStreamer& display_streamer = it.second;
       display_streamer.SetVideoOrientation(orientation);
     }

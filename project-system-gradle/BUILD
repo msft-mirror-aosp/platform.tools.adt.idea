@@ -73,6 +73,10 @@ iml_module(
             ],
             "test_filter": "com.android.tools.idea.gradle.project.sync.jdk.integration",
         },
+        "kts.indexes": {
+            "test_filter": "com.android.tools.idea.gradle.navigation.DeclarativeGotoApiDeclarationHandlerTest",
+            "shard_count": 2,
+        },
         "other": {
             "shard_count": 27,
         },
@@ -276,7 +280,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.6.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit",
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_1.9.20-Beta",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.5.2",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.6.4",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",

@@ -441,7 +441,7 @@ android-studio/lib/ant/lib/libraries.properties
 android-studio/lib/ant/src.zip
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-232.9921.47.2321.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-232.10072.27.2321.__BUILD_NUMBER__
 android-studio/lib/byte-buddy-agent.jar
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/error-prone-annotations.jar
@@ -2722,6 +2722,7 @@ android-studio/plugins/emojipicker/lib/emojipicker.jar
 android-studio/plugins/firebase-testing/lib/firebase-testing.jar
 android-studio/plugins/firebase-testing/lib/gmd-code-completion.jar
 android-studio/plugins/firebase-testing/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
+android-studio/plugins/firebase-testing/lib/google-api-services-monitoring-v3-rev20230806-2.0.0.jar
 android-studio/plugins/firebase-testing/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 android-studio/plugins/firebase-testing/lib/google-api-services-testing-v1-revsnapshot-1.25.0.jar
 android-studio/plugins/firebase-testing/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
@@ -3222,7 +3223,6 @@ android-studio/plugins/vcs-gitlab/lib/vcs-gitlab.jar
 android-studio/plugins/vcs-hg/lib/vcs-hg.jar
 android-studio/plugins/vcs-svn/lib/vcs-svn.jar
 android-studio/plugins/webp/lib/libwebp/linux/libwebp_jni.so
-android-studio/plugins/webp/lib/libwebp/linux/libwebp_jni64.so
 android-studio/plugins/webp/lib/webp.jar
 android-studio/plugins/yaml/lib/yaml.jar
 android-studio/product-info.json

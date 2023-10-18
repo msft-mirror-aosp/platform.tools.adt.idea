@@ -16,11 +16,11 @@
 package com.android.tools.idea.appinspection.ide.resolver
 
 import com.android.flags.junit.FlagRule
-import com.android.tools.idea.appinspection.ide.resolver.blaze.BlazeArtifactResolver
 import com.android.tools.idea.appinspection.ide.resolver.http.HttpArtifactResolver
-import com.android.tools.idea.appinspection.ide.resolver.moduleSystem.ModuleSystemArtifactResolver
 import com.android.tools.idea.appinspection.inspector.api.service.TestFileService
 import com.android.tools.idea.flags.StudioFlags.APP_INSPECTION_USE_SNAPSHOT_JAR
+import com.android.tools.idea.projectsystem.ProjectSystemService
+import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.IdeBrand
@@ -47,27 +47,26 @@ class ArtifactResolverFactoryTest(private val ideBrand: IdeBrand) {
     when (ideBrand) {
       IdeBrand.ANDROID_STUDIO ->
         run {
+          ProjectSystemService.getInstance(projectRule.project)
+            .replaceProjectSystemForTests(GradleProjectSystem(projectRule.project))
           assertThat(
-              ArtifactResolverFactory(TestFileService()) { ideBrand }
-                .getArtifactResolver(projectRule.project)
+              ArtifactResolverFactory(TestFileService()).getArtifactResolver(projectRule.project)
             )
             .isInstanceOf(HttpArtifactResolver::class.java)
 
           APP_INSPECTION_USE_SNAPSHOT_JAR.override(true)
 
           assertThat(
-              ArtifactResolverFactory(TestFileService()) { ideBrand }
-                .getArtifactResolver(projectRule.project)
+              ArtifactResolverFactory(TestFileService()).getArtifactResolver(projectRule.project)
             )
-            .isInstanceOf(ModuleSystemArtifactResolver::class.java)
+            .isInstanceOf(GradleModuleSystemArtifactResolver::class.java)
         }
       IdeBrand.ANDROID_STUDIO_WITH_BLAZE ->
         run {
           assertThat(
-              ArtifactResolverFactory(TestFileService()) { ideBrand }
-                .getArtifactResolver(projectRule.project)
+              ArtifactResolverFactory(TestFileService()).getArtifactResolver(projectRule.project)
             )
-            .isInstanceOf(BlazeArtifactResolver::class.java)
+            .isInstanceOf(HttpArtifactResolver::class.java)
         }
     }
   }

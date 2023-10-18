@@ -26,6 +26,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.ComposePreviewElementsModel
+import com.android.tools.idea.compose.buildlisteners.PreviewBuildListenersManager
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
@@ -63,6 +64,7 @@ import com.android.tools.idea.preview.NavigatingInteractionHandler
 import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
+import com.android.tools.idea.preview.getDefaultPreviewQuality
 import com.android.tools.idea.preview.interactive.InteractivePreviewManager
 import com.android.tools.idea.preview.interactive.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
@@ -71,9 +73,7 @@ import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
-import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.needsBuild
-import com.android.tools.idea.projectsystem.setupBuildListener
 import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
@@ -229,12 +229,10 @@ fun configureLayoutlibSceneManager(
     // The Compose Preview has its own way to track out of date files so we ask the Layoutlib
     // Scene Manager to not report it via the regular log.
     doNotReportOutOfDateUserClasses()
+    setQuality(quality)
     if (runAtfChecks || runVisualLinting) {
-      // Visual Linting and ATF need full quality for accurate results.
-      setQuality(getDefaultPreviewQuality())
       setCustomContentHierarchyParser(accessibilityBasedHierarchyParser)
     } else {
-      setQuality(quality)
       setCustomContentHierarchyParser(null)
     }
     layoutScannerConfig.isLayoutScannerEnabled = runAtfChecks
@@ -293,6 +291,8 @@ class ComposePreviewRepresentation(
   private val psiFilePointer = runReadAction { SmartPointerManager.createPointer(psiFile) }
   private val project
     get() = psiFilePointer.project
+
+  private val previewBuildListenersManager: PreviewBuildListenersManager
 
   private val previewModeManager: PreviewModeManager =
     CommonPreviewModeManager(scope = this, onEnter = ::onEnter, onExit = ::onExit)
@@ -425,6 +425,14 @@ class ComposePreviewRepresentation(
             ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.PREVIEW_LITE_MODE_SWITCH
           )
         }
+      )
+
+    previewBuildListenersManager =
+      PreviewBuildListenersManager(
+        { psiFilePointer },
+        ::invalidate,
+        ::requestRefresh,
+        ::requestVisibilityAndNotificationsUpdate
       )
   }
 
@@ -599,8 +607,6 @@ class ComposePreviewRepresentation(
       .logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
     interactiveManager.start()
     requestVisibilityAndNotificationsUpdate()
-
-    surface.background = Colors.INTERACTIVE_BACKGROUND_COLOR
     ActivityTracker.getInstance().inc()
   }
 
@@ -608,9 +614,20 @@ class ComposePreviewRepresentation(
     log.debug(
       "Starting UI check. ATF checks enabled: $atfChecksEnabled, Visual Linting enabled: $visualLintingEnabled"
     )
+    qualityManager.pause()
     uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
-    surface.background = Colors.INTERACTIVE_BACKGROUND_COLOR
     withContext(uiThread) {
+      if (
+        (surface.sceneViewLayoutManager as LayoutManagerSwitcher).isLayoutManagerSelected(
+          PREVIEW_LAYOUT_GALLERY_OPTION.layoutManager
+        )
+      ) {
+        // Gallery layout does not make sense for UI Check mode. So if coming from Gallery mode,
+        // switch to the default layout.
+        (surface.sceneViewLayoutManager as LayoutManagerSwitcher).setLayoutManager(
+          DEFAULT_PREVIEW_LAYOUT_MANAGER
+        )
+      }
       IssuePanelService.getInstance(project).startUiCheck(
         this@ComposePreviewRepresentation,
         instance.instanceId,
@@ -631,6 +648,7 @@ class ComposePreviewRepresentation(
   }
 
   private suspend fun onUiCheckPreviewStop() {
+    qualityManager.resume()
     uiCheckFilterFlow.value.basePreviewInstance?.let {
       IssuePanelService.getInstance(project)
         .stopUiCheck(it.instanceId, surface, postIssueUpdateListenerForUiCheck)
@@ -791,11 +809,6 @@ class ComposePreviewRepresentation(
   override val component: JComponent
     get() = composeWorkBench.component
 
-  // region Lifecycle handling
-  @VisibleForTesting
-  var buildListenerSetupFinished = false
-    private set
-
   /**
    * Completes the initialization of the preview. This method is only called once after the first
    * [onActivate] happens.
@@ -805,117 +818,15 @@ class ComposePreviewRepresentation(
     if (isDisposed.get()) {
       log.info("Preview was closed before the initialization completed.")
     }
-    val psiFile = psiFilePointer.element
-    requireNotNull(psiFile) { "PsiFile was disposed before the preview initialization completed." }
-    val module = runReadAction { psiFile.module }
 
-    setupBuildListener(
-      project,
-      object : BuildListener {
-        /**
-         * True if the animation inspection was open at the beginning of the build. If open, we will
-         * force a refresh after the build has completed since the animations preview panel
-         * refreshes only when a refresh happens.
-         */
-        private var animationInspectionsEnabled = false
-
-        override fun startedListening() {
-          buildListenerSetupFinished = true
-        }
-
-        override fun buildSucceeded() {
-          log.debug("buildSucceeded")
-          module?.let {
-            // When the build completes successfully, we do not need the overlay until a new
-            // modification happens. But invalidation should not be done when this listener is
-            // called during setup, as a consequence of an old build (see startedListening)
-            if (buildListenerSetupFinished) {
-              ModuleClassLoaderOverlays.getInstance(it).invalidateOverlayPaths()
-            }
-          }
-
-          val file = psiFilePointer.element
-          if (file == null) {
-            log.debug("invalid PsiFile")
-            return
-          }
-
-          // If Fast Preview is enabled, prefetch the daemon for the current configuration.
-          // This should not happen when essentials mode is enabled.
-          if (
-            module != null &&
-              !module.isDisposed &&
-              FastPreviewManager.getInstance(project).isEnabled &&
-              !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-          ) {
-            FastPreviewManager.getInstance(project).preStartDaemon(module)
-          }
-
-          afterBuildComplete(isSuccessful = true)
-        }
-
-        override fun buildFailed() {
-          log.debug("buildFailed")
-
-          afterBuildComplete(isSuccessful = false)
-
-          // This ensures the animations panel is showed again after the build completes.
-          if (animationInspectionsEnabled) requestRefresh()
-        }
-
-        override fun buildCleaned() {
-          log.debug("buildCleaned")
-
-          buildFailed()
-        }
-
-        override fun buildStarted() {
-          log.debug("buildStarted")
-          animationInspectionsEnabled = isAnimationPreviewEnabled
-
-          composeWorkBench.updateProgress(message("panel.building"))
-          afterBuildStarted()
-        }
-      },
-      this
-    )
-
-    FastPreviewManager.getInstance(project)
-      .addListener(
-        this,
-        object : FastPreviewManager.Companion.FastPreviewManagerListener {
-          override fun onCompilationStarted(files: Collection<PsiFile>) {
-            psiFilePointer.element?.let { editorFile ->
-              if (files.any { it.isEquivalentTo(editorFile) }) afterBuildStarted()
-            }
-          }
-
-          override fun onCompilationComplete(
-            result: CompilationResult,
-            files: Collection<PsiFile>
-          ) {
-            // Notify on any Fast Preview compilation to ensure we refresh all the previews
-            // correctly.
-            afterBuildComplete(result == CompilationResult.Success)
-          }
-        }
-      )
-  }
-
-  /** Called after a project build has completed. */
-  private fun afterBuildComplete(isSuccessful: Boolean) {
-    if (isSuccessful) {
-      invalidate()
-      requestRefresh()
-    } else requestVisibilityAndNotificationsUpdate()
-  }
-
-  private fun afterBuildStarted() {
-    // When building, invalidate the Animation Inspector, since the animations are now obsolete and
-    // new ones will be subscribed once
-    // build is complete and refresh is triggered.
-    ComposePreviewAnimationManager.invalidate(psiFilePointer)
-    requestVisibilityAndNotificationsUpdate()
+    // This callback is passed to setupPreviewBuildListeners, which will check for its value to
+    // decide if refresh should be called when the build fails (by default, we don't refresh). We
+    // want that to happen if the animation inspection was open at the beginning of the build. This
+    // ensures the animations panel is showed again after the build completes
+    val shouldRefreshAfterBuildFailed = { isAnimationPreviewEnabled }
+    previewBuildListenersManager.setupPreviewBuildListeners(this, shouldRefreshAfterBuildFailed) {
+      composeWorkBench.updateProgress(message("panel.building"))
+    }
   }
 
   /** Initializes the flows that will listen to different events and will call [requestRefresh]. */
@@ -1071,6 +982,9 @@ class ComposePreviewRepresentation(
       }
     }
   }
+
+  @TestOnly
+  fun hasBuildListenerSetupFinished() = previewBuildListenersManager.buildListenerSetupFinished
 
   /**
    * Whether fast preview is available. In addition to checking its normal availability from
@@ -1457,11 +1371,18 @@ class ComposePreviewRepresentation(
             composeWorkBench.refreshExistingPreviewElements(
               refreshProgressIndicator,
               previewElementModelAdapter::modelToElement,
-              this@ComposePreviewRepresentation::configureLayoutlibSceneManagerForPreviewElement
-            ) { sceneManager ->
-              refreshRequest.type != RefreshType.QUALITY ||
-                qualityManager.needsQualityChange(sceneManager)
-            }
+              this@ComposePreviewRepresentation::configureLayoutlibSceneManagerForPreviewElement,
+              refreshFilter = { sceneManager ->
+                refreshRequest.type != RefreshType.QUALITY ||
+                  qualityManager.needsQualityChange(sceneManager)
+              },
+              refreshOrder = { sceneManager ->
+                // decreasing quality before increasing
+                qualityManager
+                  .getTargetQuality(sceneManager)
+                  .compareTo(sceneManager.lastRenderQuality)
+              }
+            )
           } else {
             refreshProgressIndicator.text =
               message("refresh.progress.indicator.refreshing.all.previews")
@@ -1764,7 +1685,6 @@ class ComposePreviewRepresentation(
     when (mode) {
       is PreviewMode.Default -> {
         sceneComponentProvider.enabled = true
-        surface.background = Colors.DEFAULT_BACKGROUND_COLOR
         singlePreviewElementInstance = null
         forceRefresh().join()
         surface.repaint()
@@ -1793,18 +1713,24 @@ class ComposePreviewRepresentation(
             updateAnimationPanelVisibility()
           }
           updateAnimationPanelVisibility()
-          surface.background = Colors.INTERACTIVE_BACKGROUND_COLOR
         }
         forceRefresh().join()
       }
       is PreviewMode.Gallery -> {
-        surface.background = Colors.DEFAULT_BACKGROUND_COLOR
         singlePreviewElementInstance = mode.selected as ComposePreviewElementInstance
+        withContext(uiThread) {
+          val layoutManager = surface.sceneViewLayoutManager as LayoutManagerSwitcher
+          if (!layoutManager.isLayoutManagerSelected(PREVIEW_LAYOUT_GALLERY_OPTION.layoutManager)) {
+            // The only allowed layout manager for Gallery mode is the one from
+            // PREVIEW_LAYOUT_GALLERY_OPTION
+            layoutManager.setLayoutManager(PREVIEW_LAYOUT_GALLERY_OPTION.layoutManager)
+          }
+        }
       }
       is PreviewMode.Switching,
       is PreviewMode.Settable -> {}
     }
-
+    surface.background = mode.backgroundColor
     withUiContext { currentLayoutMode = mode.layoutMode }
   }
 

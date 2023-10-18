@@ -57,9 +57,9 @@ void DisplayManager::InitializeStatics(Jni jni) {
       display_listener_dispatcher_ = new DisplayListenerDispatcher();
     }
 
-    if (Agent::api_level() >= 33) {
+    if (Agent::api_level() >= 34) {
       display_manager_class_ = jni.GetClass("android/hardware/display/DisplayManager");
-      create_virtual_display_method_ = display_manager_class_.FindStaticMethod(
+      create_virtual_display_method_ = display_manager_class_.GetStaticMethod(
           "createVirtualDisplay", "(Ljava/lang/String;IIILandroid/view/Surface;)Landroid/hardware/display/VirtualDisplay;");
     }
 
@@ -73,7 +73,8 @@ DisplayInfo DisplayManager::GetDisplayInfo(Jni jni, int32_t display_id) {
   InitializeStatics(jni);
   JObject display_info = display_manager_global_.CallObjectMethod(jni, get_display_info_method_, display_id);
   if (display_info.IsNull()) {
-    Log::Fatal(DISPLAY_MANAGER_ERROR, jni.GetAndClearException(), "Unable to obtain a android.view.DisplayInfo");
+    Log::W(jni.GetAndClearException(), "DisplayManagerGlobal.getDisplayInfo(%d) returned null", display_id);
+    return DisplayInfo();
   }
   if (Log::IsEnabled(Log::Level::DEBUG)) {
     Log::D("display_info=%s", display_info.ToString().c_str());
@@ -112,7 +113,7 @@ void DisplayManager::AddDisplayListener(Jni jni, DisplayListener* listener) {
   }
 }
 
-void DisplayManager::RemoveDisplayListener(Jni jni, DisplayListener* listener) {
+void DisplayManager::RemoveDisplayListener(DisplayListener* listener) {
   {
     scoped_lock lock(static_initialization_mutex);
     if (display_listener_dispatcher_ == nullptr) {
@@ -139,35 +140,30 @@ void DisplayManager::RemoveAllDisplayListeners(Jni jni) {
 void DisplayManager::OnDisplayAdded(Jni jni, int32_t display_id) {
   InitializeStatics(jni);
   Log::D("DisplayManager::OnDisplayAdded %d", display_id);
-  for (auto listener : display_listeners_.Get()) {
+  display_listeners_.ForEach([display_id](auto listener) {
     listener->OnDisplayAdded(display_id);
-  }
+  });
 }
 
 void DisplayManager::OnDisplayRemoved(Jni jni, int32_t display_id) {
   InitializeStatics(jni);
   Log::D("DisplayManager::OnDisplayRemoved %d", display_id);
-  for (auto listener : display_listeners_.Get()) {
+  display_listeners_.ForEach([display_id](auto listener) {
     listener->OnDisplayRemoved(display_id);
-  }
+  });
 }
 
 void DisplayManager::OnDisplayChanged(Jni jni, int32_t display_id) {
   InitializeStatics(jni);
   Log::D("DisplayManager::OnDisplayChanged %d", display_id);
-  for (auto listener : display_listeners_.Get()) {
+  display_listeners_.ForEach([display_id](auto listener) {
     listener->OnDisplayChanged(display_id);
-  }
+  });
 }
 
 VirtualDisplay DisplayManager::CreateVirtualDisplay(
     Jni jni, const char* name, int32_t width, int32_t height, int32_t display_id, ANativeWindow* surface) {
   InitializeStatics(jni);
-  if (create_virtual_display_method_ == nullptr) {
-    Log::E("The DisplayManager.createVirtualDisplay static method is unavailable");
-    return VirtualDisplay();
-  }
-
   return VirtualDisplay(jni, display_manager_class_.CallStaticObjectMethod(
       jni, create_virtual_display_method_, JString(jni, name).ref(), width, height, display_id, SurfaceToJava(jni, surface).ref()));
 }
@@ -186,7 +182,7 @@ jfieldID DisplayManager::type_field_ = nullptr;
 jfieldID DisplayManager::state_field_ = nullptr;
 JClass DisplayManager::display_manager_class_;
 jmethodID DisplayManager::create_virtual_display_method_ = nullptr;
-CopyOnWriteList<DisplayManager::DisplayListener*> DisplayManager::display_listeners_;
+ConcurrentList<DisplayManager::DisplayListener> DisplayManager::display_listeners_;
 DisplayListenerDispatcher* DisplayManager::display_listener_dispatcher_ = nullptr;
 
 }  // namespace screensharing

@@ -141,7 +141,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.appcompat.appcompat_1.6.1",
-        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.1.1",
+        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0-rc02",
         "@maven//:androidx.compose.animation.animation-core-android_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.animation.animation_1.3.0",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.animation.animation_1.5.0-beta01",  # Necessary for Compose for TV
@@ -1906,6 +1906,8 @@ java_test(
 
 java_test(
     name = "NavigateToLayoutFromNavGraphTest",
+    size = "enormous",
+    timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
         "//prebuilts/studio/layoutlib:build.prop",
@@ -1930,8 +1932,7 @@ java_test(
 
 java_test(
     name = "RefactoringFlowTest",
-    size = "enormous",
-    timeout = "long",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2116,6 +2117,28 @@ java_test(
         "//prebuilts/studio/layoutlib/data/keyboards",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.AddComposeMultiPreviewTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "CyclicMultiPreviewTest",
+    size = "large",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+    ] + glob([
+        "testData/ComposeMultiPreviewSample/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.CyclicMultiPreviewTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
@@ -2362,6 +2385,21 @@ java_test(
 )
 
 java_test(
+    name = "VerifyNpwPhoneAndTabletViewsTemplatesTest",
+    size = "large",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+    ],
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.VerifyNpwPhoneAndTabletViewsTemplatesTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
     name = "VerifyNpwWearOSTemplatesTest",
     size = "large",
     data = COMMON_DATA + [
@@ -2428,7 +2466,10 @@ java_test(
 
 java_test(
     name = "UnusedResourceEvaluationTest2",
-    data = COMMON_DATA,
+    size = "large",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+    ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.UnusedResourceEvaluationTest2"],
     tags = COMMON_TAGS + [
         "no_windows",
@@ -2872,6 +2913,7 @@ java_test(
 
 java_test(
     name = "ShortcutNavigationTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/debugger/NdkHelloJni/**",
     ]),
@@ -2879,8 +2921,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/115567466
-        "qa_unreliable",  # b/115567466
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -3283,18 +3323,6 @@ java_test(
         "no_windows",
         "qa_smoke",
     ],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
-    name = "NewJavaProjectToKotlinProjectConversionTest",
-    data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "@maven//:com.google.code.gson.gson_2.6.2",
-    ],
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.kotlin.NewJavaProjectToKotlinProjectConversionTest"],
-    tags = COMMON_TAGS + ["manual"],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )

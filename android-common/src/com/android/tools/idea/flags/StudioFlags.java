@@ -1332,6 +1332,17 @@ public final class StudioFlags {
     true);
   // endregion
 
+  // region Wear Health Services
+
+  private static final FlagGroup WEAR_HEALTH_SERVICES = new FlagGroup(FLAGS, "wear.health.services", "Wear Health Services");
+
+  public static final Flag<Boolean> SYNTHETIC_HAL_PANEL = Flag.create(
+    WEAR_HEALTH_SERVICES, "synthetic.hal.panel.enabled", "Enable synthetic HAL panel",
+    "If enabled, a button to display panel for modifying emulator sensors will appear",
+    false
+  );
+  // endregion
+
   // region App Inspection
   private static final FlagGroup APP_INSPECTION = new FlagGroup(FLAGS, "appinspection", "App Inspection");
   public static final Flag<Boolean> ENABLE_APP_INSPECTION_TOOL_WINDOW = Flag.create(
@@ -1434,14 +1445,6 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       false);
 
-  public static final Flag<Boolean> USE_UXR_202309_FILTER =
-    Flag.create(
-      FIREBASE_TEST_LAB,
-      "direct.access.uxr202309",
-      "UXR 202309 Device Filter",
-      "Use custom device filter (for 2023-09 UXR study)",
-      false);
-
   public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1457,6 +1460,15 @@ public final class StudioFlags {
       "FTL Direct Access endpoint",
       "The URL for FTL Direct Access to connect to, in host:port form (with no protocol specified).",
       "testing.googleapis.com"
+    );
+
+  public static final Flag<String> DIRECT_ACCESS_MONITORING_ENDPOINT =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.monitoring.endpoint",
+      "FTL Direct Access Monitoring endpoint",
+      "The URL for FTL Direct Access to monitor quota usage and limit.",
+      "monitoring.googleapis.com"
     );
   // endregion Firebase Test Lab
 

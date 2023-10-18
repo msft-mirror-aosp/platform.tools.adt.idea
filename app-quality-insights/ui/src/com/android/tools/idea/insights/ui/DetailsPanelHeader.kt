@@ -16,22 +16,8 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.adtui.common.AdtUiUtils
-import com.android.tools.adtui.util.ActionToolbarUtil
-import com.android.tools.idea.insights.AppInsightsIssue
-import com.android.tools.idea.insights.AppInsightsProjectLevelController
+import com.android.tools.idea.insights.IssueDetails
 import com.android.tools.idea.insights.IssueVariant
-import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.Selection
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.ActionToolbar
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.actionSystem.IdeActions
-import com.intellij.openapi.actionSystem.ex.ActionUtil
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.actions.AbstractToggleUseSoftWrapsAction
-import com.intellij.openapi.editor.impl.softwrap.SoftWrapAppliancePlaces
 import com.intellij.openapi.ui.getUserData
 import com.intellij.openapi.ui.putUserData
 import com.intellij.openapi.util.Key
@@ -40,80 +26,78 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.ui.util.preferredWidth
 import com.intellij.util.ui.JBUI
+import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
+import java.awt.event.ItemEvent
 import javax.swing.Box
 import javax.swing.BoxLayout
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.border.CompoundBorder
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.annotations.VisibleForTesting
 
-private val KEY = Key.create<Pair<String, String>>("android.aqi.details.header")
+@VisibleForTesting val KEY = Key.create<Pair<String, String>>("android.aqi.details.header")
 
 class DetailsPanelHeader(
-  editor: Editor,
-  private val controller: AppInsightsProjectLevelController,
-  private val supportsVariants: Boolean
+  private val variantComboBox: VariantComboBox? = null,
+  private val onVariantSelected: (IssueVariant?) -> Unit = {}
 ) : JPanel(BorderLayout()) {
   @VisibleForTesting val titleLabel = JBLabel()
 
-  private val wrapAction =
-    object : AbstractToggleUseSoftWrapsAction(SoftWrapAppliancePlaces.CONSOLE, false) {
-      init {
-        ActionUtil.copyFrom(this, IdeActions.ACTION_EDITOR_USE_SOFT_WRAPS)
-      }
-
-      override fun getEditor(e: AnActionEvent) = editor
-
-      override fun getActionUpdateThread() = ActionUpdateThread.EDT
-    }
-
+  // User, event counts
+  @VisibleForTesting val eventsCountLabel = JLabel(StudioIcons.AppQualityInsights.ISSUE)
   @VisibleForTesting
-  val toolbar =
-    ActionManager.getInstance()
-      .createActionToolbar("StackTraceToolbar", DefaultActionGroup(wrapAction), true)
-
-  @VisibleForTesting
-  val comboBoxStateFlow = MutableStateFlow<VariantComboBoxState>(DisabledComboBoxState.empty)
-  private val variantComboBox = VariantComboBox(controller.coroutineScope, comboBoxStateFlow)
-  @VisibleForTesting
-  val variantPanel =
-    transparentPanel(BorderLayout()).apply {
-      isVisible = false
-      add(JBLabel("|").apply { border = JBUI.Borders.empty(0, 5) }, BorderLayout.WEST)
-      add(variantComboBox, BorderLayout.CENTER)
-    }
-  private val contentPanel =
+  val usersCountLabel = JLabel(StudioIcons.LayoutEditor.Palette.QUICK_CONTACT_BADGE)
+  private val countsPanel =
     transparentPanel().apply {
-      layout = BoxLayout(this, BoxLayout.X_AXIS)
-      add(titleLabel)
-      add(Box.createHorizontalStrut(5))
-      add(variantPanel)
+      add(eventsCountLabel)
+      add(usersCountLabel)
+      border = JBUI.Borders.emptyRight(5)
     }
+
+  @VisibleForTesting val variantPanel: JPanel
 
   init {
-    border = JBUI.Borders.empty()
-    add(contentPanel, BorderLayout.WEST)
-    toolbar.targetComponent = this
-    toolbar.layoutPolicy = ActionToolbar.NOWRAP_LAYOUT_POLICY
-    toolbar.setReservePlaceAutoPopupIcon(false)
-    ActionToolbarUtil.makeToolbarNavigable(toolbar)
-    toolbar.component.apply {
-      isOpaque = false
-      isVisible = false
+    if (variantComboBox != null) {
+      variantComboBox.renderer = variantComboBoxListCellRenderer
+      variantComboBox.addItemListener { itemEvent ->
+        if (itemEvent.stateChange == ItemEvent.SELECTED) {
+          (itemEvent.item as? VariantRow)?.let { onVariantSelected(it.issueVariant) }
+        }
+      }
+
+      variantComboBox.model.addListener {
+        val (className, methodName) = titleLabel.getUserData(KEY) ?: return@addListener
+        titleLabel.text = generateTitleLabelText(className, methodName)
+      }
+      variantPanel =
+        transparentPanel(BorderLayout()).apply {
+          isVisible = false
+          add(JBLabel("|").apply { border = JBUI.Borders.empty(0, 5) }, BorderLayout.WEST)
+          add(variantComboBox, BorderLayout.CENTER)
+        }
+    } else {
+      variantPanel = transparentPanel().apply { isVisible = false }
     }
-    add(toolbar.component, BorderLayout.EAST)
+
+    val contentPanel =
+      transparentPanel().apply {
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
+        add(titleLabel)
+        add(Box.createHorizontalStrut(5))
+        add(variantPanel)
+      }
+
+    add(contentPanel, BorderLayout.WEST)
+    add(countsPanel, BorderLayout.EAST)
     border =
       CompoundBorder(JBUI.Borders.customLineBottom(JBColor.border()), JBUI.Borders.emptyLeft(8))
     preferredSize = Dimension(0, JBUIScale.scale(28))
-    variantComboBox.renderer = variantComboBoxListCellRenderer
-    variantComboBox.addItemListener { itemEvent ->
-      (itemEvent.item as? VariantRow)?.let { controller.selectIssueVariant(it.issueVariant) }
-    }
+
     addComponentListener(
       object : ComponentAdapter() {
         override fun componentResized(e: ComponentEvent) {
@@ -127,16 +111,17 @@ class DetailsPanelHeader(
   fun clear() {
     titleLabel.icon = null
     titleLabel.text = null
-    toolbar.component.isVisible = false
+    countsPanel.isVisible = false
     variantPanel.isVisible = false
   }
 
-  fun updateWithIssue(issue: AppInsightsIssue) {
-    titleLabel.icon = issue.issueDetails.fatality.getIcon()
-    val (className, methodName) = issue.issueDetails.getDisplayTitle()
-    toolbar.component.isVisible = true
-    if (supportsVariants) {
-      comboBoxStateFlow.value = DisabledComboBoxState.loading
+  fun updateWithIssue(issueDetails: IssueDetails) {
+    titleLabel.icon = issueDetails.fatality.getIcon()
+    val (className, methodName) = issueDetails.getDisplayTitle()
+    countsPanel.isVisible = true
+    eventsCountLabel.text = issueDetails.eventsCount.formatNumberToPrettyString()
+    usersCountLabel.text = issueDetails.impactedDevicesCount.formatNumberToPrettyString()
+    if (variantComboBox != null) {
       variantPanel.isVisible = true
       titleLabel.putUserData(KEY, Pair(className, methodName))
       titleLabel.text = generateTitleLabelText(className, methodName)
@@ -149,26 +134,9 @@ class DetailsPanelHeader(
     }
   }
 
-  fun updateComboBox(
-    issue: AppInsightsIssue,
-    variants: LoadingState.Done<Selection<IssueVariant>?>
-  ) {
-    require(supportsVariants)
-    when (variants) {
-      is LoadingState.Ready -> {
-        comboBoxStateFlow.value =
-          if (variants.value?.items.isNullOrEmpty()) DisabledComboBoxState.empty
-          else PopulatedComboBoxState(issue, variants.value!!)
-      }
-      is LoadingState.Failure -> {
-        comboBoxStateFlow.value = DisabledComboBoxState.failure
-      }
-    }
-  }
-
   @VisibleForTesting
   fun generateTitleLabelText(className: String, methodName: String): String {
-    val contentWidth = width - toolbar.component.width
+    val contentWidth = width - countsPanel.width
     var remainingWidth = contentWidth - 5 - variantPanel.preferredWidth - 20
     if (remainingWidth <= 0) return "<html></html>"
     val shrunkenMethodText =
