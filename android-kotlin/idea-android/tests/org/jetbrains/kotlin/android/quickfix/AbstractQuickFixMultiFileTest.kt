@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.android.quickfix
 
+import com.android.tools.tests.AdtTestProjectDescriptors
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.quickFix.ActionHint
@@ -36,18 +37,17 @@ import com.intellij.util.PathUtil
 import junit.framework.ComparisonFailure
 import junit.framework.TestCase
 import org.jetbrains.kotlin.android.DirectiveBasedActionUtils
-import org.jetbrains.kotlin.android.KotlinLightProjectDescriptor
+import org.jetbrains.kotlin.android.InTextDirectivesUtils
 import org.jetbrains.kotlin.android.KotlinTestUtils
 import org.jetbrains.kotlin.idea.base.plugin.isK2Plugin
 import org.jetbrains.kotlin.psi.KtFile
 import java.io.File
-import java.util.ArrayList
 import java.util.regex.Pattern
 
 // Largely copied from the Kotlin test framework (after taking over android-kotlin sources).
 abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureTestCase() {
 
-  override fun getProjectDescriptor(): LightProjectDescriptor = KotlinLightProjectDescriptor.INSTANCE
+  override fun getProjectDescriptor(): LightProjectDescriptor = AdtTestProjectDescriptors.kotlin()
 
   override fun setUp() {
     super.setUp()
@@ -87,6 +87,10 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureTestCa
     extraFiles.mapTo(testFiles) { file -> File(mainFileDir, file.name).path }
 
     myFixture.configureByFiles(*testFiles.toTypedArray())
+
+    if (isK2Plugin() && InTextDirectivesUtils.isDirectiveDefined(originalFileText, "// SKIP-K2")) {
+      return
+    }
 
     CommandProcessor.getInstance().executeCommand(project, {
       try {
@@ -140,10 +144,7 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureTestCa
   }
 
   private val availableActions: List<IntentionAction>
-    get() {
-      myFixture.doHighlighting()
-      return myFixture.availableIntentions
-    }
+    get() = myFixture.availableIntentions + myFixture.getAllQuickFixes()
 
   class TestFile internal constructor(val path: String, val content: String)
 

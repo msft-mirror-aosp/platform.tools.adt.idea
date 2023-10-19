@@ -132,6 +132,9 @@ studio_plugin(
         "android-kotlin.jar": [
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
+            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
+            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k1",
+            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k2",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.output.parser",
         ],
         "android-profilers.jar": [
@@ -230,6 +233,7 @@ studio_plugin(
             "//tools/adt/idea/threading-checker:intellij.android.threading-checker",
             "//tools/adt/idea/android-transport:intellij.android.transport",
             "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing",
+            "//tools/adt/idea/wear-whs:intellij.android.wear-whs",
             "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
             "//tools/adt/idea/wizard:intellij.android.wizard",
             "//tools/adt/idea/native-symbolizer:native-symbolizer",
@@ -646,6 +650,7 @@ studio_plugin(
             "//tools/vendor/google/ml/sml-android:ml.sml-android",
         ],
     },
+    visibility = ["//visibility:public"],
     deps = [
         ":org.jetbrains.android",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",

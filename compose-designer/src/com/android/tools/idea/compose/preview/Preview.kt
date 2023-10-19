@@ -28,7 +28,6 @@ import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.buildlisteners.PreviewBuildListenersManager
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
-import com.android.tools.idea.compose.preview.designinfo.hasDesignInfoProviders
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
 import com.android.tools.idea.compose.preview.fast.requestFastPreviewRefreshAndTrack
@@ -102,6 +101,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -513,23 +513,15 @@ class ComposePreviewRepresentation(
   /**
    * Filter that can be applied to select a single instance. Setting this filter will trigger a
    * refresh.
-   *
-   * TODO(b/290579075): replace this variable with a method
    */
-  private var singlePreviewElementInstance: ComposePreviewElementInstance?
-    get() = (filterFlow.value as? ComposePreviewElementsModel.Filter.Single)?.instance
-    set(newValue) {
-      val previousValue = (filterFlow.value as? ComposePreviewElementsModel.Filter.Single)?.instance
-      if (newValue != previousValue) {
-        log.debug("New instance selection: $newValue")
-        filterFlow.value =
-          if (newValue != null) {
-            ComposePreviewElementsModel.Filter.Single(newValue)
-          } else {
-            ComposePreviewElementsModel.Filter.Disabled
-          }
+  private fun setSingleFilterFlowValue(newValue: ComposePreviewElementInstance?) {
+    filterFlow.value =
+      if (newValue != null) {
+        ComposePreviewElementsModel.Filter.Single(newValue)
+      } else {
+        ComposePreviewElementsModel.Filter.Disabled
       }
-    }
+  }
 
   override val availableGroupsFlow: MutableStateFlow<Set<PreviewGroup.Named>> =
     MutableStateFlow(setOf())
@@ -580,7 +572,6 @@ class ComposePreviewRepresentation(
           .toPreviewXml()
           // Whether to paint the debug boundaries or not
           .toolsAttribute("paintBounds", showDebugBoundaries.toString())
-          .toolsAttribute("findDesignInfoProviders", hasDesignInfoProviders.toString())
           .apply {
             if (isAnimationPreviewEnabled) {
               // If the animation inspection is active, start the PreviewAnimationClock with
@@ -598,7 +589,7 @@ class ComposePreviewRepresentation(
     // We should call this before assigning the instance to singlePreviewElementInstance
     val quickRefresh = shouldQuickRefresh()
     val peerPreviews = filteredPreviewElementsInstancesFlow.value.size
-    singlePreviewElementInstance = instance
+    setSingleFilterFlowValue(instance)
     sceneComponentProvider.enabled = false
     val startUpStart = System.currentTimeMillis()
     forceRefresh(if (quickRefresh) RefreshType.QUICK else RefreshType.NORMAL).join()
@@ -674,10 +665,6 @@ class ComposePreviewRepresentation(
         else -> null
       }
   }
-
-  override val hasDesignInfoProviders: Boolean
-    get() =
-      runReadAction { psiFilePointer.element?.module }?.let { hasDesignInfoProviders(it) } ?: false
 
   override var showDebugBoundaries: Boolean = false
     set(value) {
@@ -1200,10 +1187,10 @@ class ComposePreviewRepresentation(
     val numberOfPreviewsToRender = filteredPreviews.size
     if (log.isDebugEnabled) log.debug("doRefresh of $numberOfPreviewsToRender elements.")
     val psiFile =
-      runReadAction {
+      readAction {
         val element = psiFilePointer.element
 
-        return@runReadAction if (element == null || !element.isValid) {
+        return@readAction if (element == null || !element.isValid) {
           log.warn("doRefresh with invalid PsiFile")
           null
         } else {
@@ -1537,7 +1524,7 @@ class ComposePreviewRepresentation(
           IllegalStateException("Preview File is no valid")
         )
     val previewFileModule =
-      runReadAction { previewFile.module }
+      readAction { previewFile.module }
         ?: return CompilationResult.RequestException(
           IllegalStateException("Preview File does not have a valid module")
         )
@@ -1546,7 +1533,7 @@ class ComposePreviewRepresentation(
         .filterIsInstance<KtFile>()
         .filter { modifiedFile ->
           if (modifiedFile.isEquivalentTo(previewFile)) return@filter true
-          val modifiedFileModule = runReadAction { modifiedFile.module } ?: return@filter false
+          val modifiedFileModule = readAction { modifiedFile.module } ?: return@filter false
 
           // Keep the file if the file is from this module or from a module we depend on
           modifiedFileModule == previewFileModule ||
@@ -1685,7 +1672,7 @@ class ComposePreviewRepresentation(
     when (mode) {
       is PreviewMode.Default -> {
         sceneComponentProvider.enabled = true
-        singlePreviewElementInstance = null
+        setSingleFilterFlowValue(null)
         forceRefresh().join()
         surface.repaint()
       }
@@ -1697,7 +1684,7 @@ class ComposePreviewRepresentation(
       }
       is PreviewMode.AnimationInspection -> {
         ComposePreviewAnimationManager.onAnimationInspectorOpened()
-        singlePreviewElementInstance = mode.selected as ComposePreviewElementInstance
+        setSingleFilterFlowValue(mode.selected as ComposePreviewElementInstance)
         sceneComponentProvider.enabled = false
 
         withContext(uiThread) {
@@ -1717,7 +1704,7 @@ class ComposePreviewRepresentation(
         forceRefresh().join()
       }
       is PreviewMode.Gallery -> {
-        singlePreviewElementInstance = mode.selected as ComposePreviewElementInstance
+        setSingleFilterFlowValue(mode.selected as ComposePreviewElementInstance)
         withContext(uiThread) {
           val layoutManager = surface.sceneViewLayoutManager as LayoutManagerSwitcher
           if (!layoutManager.isLayoutManagerSelected(PREVIEW_LAYOUT_GALLERY_OPTION.layoutManager)) {
