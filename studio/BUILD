@@ -245,6 +245,7 @@ studio_plugin(
             "//tools/adt/idea/server-flags:intellij.android.server-flags",
             "//tools/adt/idea/codenavigation:codenavigation",
             "//tools/adt/idea/execution/common:intellij.android.execution.common",
+            "//tools/base/environment-services:studio.intellij.android.environment-services",
             "//tools/base/kotlin-multiplatform-models:studio.android.kotlin-multiplatform-models",
         ],
         "artwork.jar": [
@@ -728,6 +729,7 @@ android_studio(
         ],
     }),
     searchable_options = "//tools/adt/idea/searchable-options",
+    selector = "AndroidStudio",
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,
     version_micro_patch = STUDIO_MICRO_PATCH,

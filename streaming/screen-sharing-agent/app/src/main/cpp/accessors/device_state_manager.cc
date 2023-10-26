@@ -32,12 +32,12 @@ namespace screensharing {
 using namespace std;
 
 bool DeviceStateManager::InitializeStatics(Jni jni) {
-  if (Agent::api_level() < 31) {
+  if (Agent::feature_level() < 31) {
     return false;  // Support for device states was introduced in API 31.
   }
 
   {
-    scoped_lock lock(static_initialization_mutex_);
+    unique_lock lock(static_initialization_mutex_);
 
     if (device_state_manager_.IsNull()) {
       device_state_manager_ =
@@ -46,7 +46,7 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
       jmethodID register_callback_method =
           device_state_manager_class.GetMethod("registerCallback", "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V");
       request_state_method_ = device_state_manager_class.GetMethod("requestState", "(Landroid/os/IBinder;II)V");
-      if (Agent::api_level() >= 33) {
+      if (Agent::feature_level() >= 33) {
         cancel_state_request_method_ = device_state_manager_class.GetMethod("cancelStateRequest", "()V");
       }
       get_device_state_info_method_ =
@@ -68,7 +68,7 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
     }
   }
 
-  scoped_lock lock(state_mutex_);
+  unique_lock lock(state_mutex_);
   if (current_state_ < 0) {
     JObject state_info = device_state_manager_.CallObjectMethod(jni, get_device_state_info_method_);
     if (state_info.IsNull()) {
@@ -84,7 +84,7 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
 }
 
 string DeviceStateManager::GetSupportedStates() {
-  if (Agent::api_level() < 31) {
+  if (Agent::feature_level() < 31) {
     return "";  // 'cmd device_state print-states' was introduced in API 31.
   }
   return ExecuteShellCommand("cmd device_state print-states");
@@ -106,14 +106,14 @@ void DeviceStateManager::RequestState(Jni jni, int32_t state_id, int32_t flags) 
   // Call IDeviceStateManager.requestState.
   device_state_manager_.CallVoidMethod(jni, request_state_method_, token.ref(), state_id, flags);
   {
-    scoped_lock lock(state_mutex_);
+    unique_lock lock(state_mutex_);
     state_overridden_ = true;
   }
 }
 
 void DeviceStateManager::AddDeviceStateListener(DeviceStateListener* listener) {
   device_state_listeners_.Add(listener);
-  scoped_lock lock(state_mutex_);
+  unique_lock lock(state_mutex_);
   if (current_state_ >= 0) {
     listener->OnDeviceStateChanged(current_state_);
   }
@@ -130,7 +130,7 @@ void DeviceStateManager::OnDeviceStateChanged(Jni jni, jobject device_state_info
   bool cancel_state_override;
   bool state_changed;
   {
-    scoped_lock lock(state_mutex_);
+    unique_lock lock(state_mutex_);
     cancel_state_override = state_overridden_ && base_state != current_base_state_;
     state_changed = current_state != current_state_;
     current_base_state_ = base_state;
@@ -153,7 +153,7 @@ void DeviceStateManager::NotifyListeners(int32_t device_state) {
   });
 }
 
-std::mutex DeviceStateManager::static_initialization_mutex_;
+mutex DeviceStateManager::static_initialization_mutex_;
 JObject DeviceStateManager::device_state_manager_;
 jmethodID DeviceStateManager::get_device_state_info_method_ = nullptr;
 jmethodID DeviceStateManager::request_state_method_ = nullptr;
@@ -163,7 +163,7 @@ jfieldID DeviceStateManager::current_state_field_ = nullptr;
 JClass DeviceStateManager::binder_class_;
 jmethodID DeviceStateManager::binder_constructor_ = nullptr;
 ConcurrentList<DeviceStateManager::DeviceStateListener> DeviceStateManager::device_state_listeners_;
-std::mutex DeviceStateManager::state_mutex_;
+mutex DeviceStateManager::state_mutex_;
 int32_t DeviceStateManager::current_base_state_ = -1;
 int32_t DeviceStateManager::current_state_ = -1;
 bool DeviceStateManager::state_overridden_ = false;

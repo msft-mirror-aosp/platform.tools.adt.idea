@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.project;
 
-import static com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID;
+import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.GRADLE_SYSTEM_ID;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_PROJECT_MODIFIED;
 import static com.intellij.notification.NotificationType.ERROR;
 import static com.intellij.openapi.util.text.StringUtil.join;
@@ -53,7 +53,7 @@ public class SupportedModuleChecker {
    */
   public void checkForSupportedModules(@NotNull Project project) {
     Module[] modules = ModuleManager.getInstance(project).getModules();
-    if (modules.length == 0 || !GradleProjectInfo.getInstance(project).isBuildWithGradle()) {
+    if (modules.length == 0 || !Info.getInstance(project).isBuildWithGradle()) {
       return;
     }
     List<Module> unsupportedModules = new ArrayList<>();

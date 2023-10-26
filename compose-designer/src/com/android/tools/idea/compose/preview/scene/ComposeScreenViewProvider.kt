@@ -33,7 +33,7 @@ import com.android.tools.idea.uibuilder.surface.layer.BorderColor
 import com.android.tools.idea.uibuilder.surface.layer.BorderLayer
 import com.android.tools.idea.uibuilder.surface.layer.ClassLoadingDebugLayer
 import com.android.tools.idea.uibuilder.surface.layer.DiagnosticsLayer
-import com.android.tools.idea.uibuilder.surface.layer.WarningLayer
+import com.android.tools.idea.uibuilder.surface.layer.UiCheckWarningLayer
 import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.LayoutEditorState
@@ -68,13 +68,17 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
               SceneLayer(surface, it, false).apply {
                 isShowOnHover = true
                 setShowOnHoverFilter { sceneView ->
-                  (previewManager.isInNormalMode || previewManager.isUiCheckPreview) &&
+                  (previewManager.mode.isNormal || previewManager.isUiCheckPreview) &&
                     (!StudioFlags.COMPOSE_PREVIEW_SELECTION.get() ||
                       sceneView.isRootComponentSelected())
                 }
+              },
+            )
+            add(
+              UiCheckWarningLayer(it) {
+                previewManager.isUiCheckPreview && surface.isIssueTabSelected
               }
             )
-            add(WarningLayer(it) { previewManager.isUiCheckPreview && surface.isIssueTabSelected })
             StudioFlags.NELE_CLASS_PRELOADING_DIAGNOSTICS.ifEnabled {
               add(ClassLoadingDebugLayer(surface.models.first().facet.module))
             }

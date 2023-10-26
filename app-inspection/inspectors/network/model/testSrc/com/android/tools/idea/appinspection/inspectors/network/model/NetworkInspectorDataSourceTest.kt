@@ -17,11 +17,10 @@ package com.android.tools.idea.appinspection.inspectors.network.model
 
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
+import com.android.tools.idea.appinspection.inspectors.network.model.analytics.StubNetworkInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.Executors
-import kotlin.test.fail
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -42,7 +41,8 @@ class NetworkInspectorDataSourceTest {
     val httpEvent = requestStarted(id = 1, timestampNanos = 1002, url = "www.google.com")
     val testMessenger =
       TestMessenger(scope, flowOf(speedEvent.toByteArray(), httpEvent.toByteArray()))
-    val dataSource = NetworkInspectorDataSourceImpl(testMessenger, scope)
+    val dataSource =
+      NetworkInspectorDataSourceImpl(testMessenger, scope, StubNetworkInspectorTracker())
     testMessenger.await()
 
     assertThat(dataSource.queryForSpeedData(Range(1.0, 2.0))).containsExactly(speedEvent)
@@ -83,7 +83,8 @@ class NetworkInspectorDataSourceTest {
           speedEvent8.toByteArray()
         )
       )
-    val dataSource = NetworkInspectorDataSourceImpl(testMessenger, scope)
+    val dataSource =
+      NetworkInspectorDataSourceImpl(testMessenger, scope, StubNetworkInspectorTracker())
     testMessenger.await()
 
     // basic inclusive search
@@ -166,7 +167,8 @@ class NetworkInspectorDataSourceTest {
           end4.toByteArray()
         )
       )
-    val dataSource = NetworkInspectorDataSourceImpl(testMessenger, scope)
+    val dataSource =
+      NetworkInspectorDataSourceImpl(testMessenger, scope, StubNetworkInspectorTracker())
     testMessenger.await()
 
     assertThat(dataSource.queryForHttpData(Range(1.0, 2.0)))
@@ -194,25 +196,6 @@ class NetworkInspectorDataSourceTest {
         ),
       )
       .inOrder()
-  }
-
-  @Test
-  fun cleanUpChannelOnDispose() = runBlocking {
-    val testMessenger =
-      TestMessenger(scope, flow { throw ArithmeticException("Something went wrong!") })
-    val dataSource = NetworkInspectorDataSourceImpl(testMessenger, scope)
-    testMessenger.await()
-    try {
-      dataSource.queryForSpeedData(Range(0.0, 5.0))
-      fail()
-    } catch (e: Throwable) {
-      assertThat(e).isInstanceOf(CancellationException::class.java)
-      var cause: Throwable? = e.cause
-      while (cause != null && cause !is ArithmeticException) {
-        cause = cause.cause
-      }
-      assertThat(cause).isInstanceOf(ArithmeticException::class.java)
-    }
   }
 }
 

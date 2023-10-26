@@ -151,8 +151,17 @@ int32_t RoundUpToMultipleOf(int32_t value, int32_t power_of_two) {
 }
 
 Size ComputeVideoSize(Size rotated_display_size, const CodecInfo& codec_info, Size max_video_resolution) {
-  int32_t max_width = min(max(max_video_resolution.width, rotated_display_size.width / 2), codec_info.max_resolution.width);
-  int32_t max_height = min(max(max_video_resolution.height, rotated_display_size.height / 2), codec_info.max_resolution.height);
+  int32_t max_width = max_video_resolution.width;
+  int32_t max_height = max_video_resolution.height;
+  if (max_width < min(rotated_display_size.width, codec_info.max_resolution.width) / 2 ||
+      max_height < min(rotated_display_size.height, codec_info.max_resolution.height) / 2) {
+    // The size of the host display image is less than half of the display size.
+    // Produce video in double resolution to have better quality after scaling down.
+    max_width *= 2;
+    max_height *= 2;
+  }
+  max_width = min(max_width, codec_info.max_resolution.width);
+  max_height = min(max_height, codec_info.max_resolution.height);
   double display_width = rotated_display_size.width;
   double display_height = rotated_display_size.height;
   double scale = max(min(1.0, min(max_width / display_width, max_height / display_height)),
@@ -246,15 +255,14 @@ void DisplayStreamer::OnDisplayChanged(int32_t display_id) {
 
 void DisplayStreamer::Run() {
   Jni jni = Jvm::GetJni();
-
-  AMediaFormat* media_format = CreateMediaFormat(codec_info_->mime_type);
-
   WindowManager::WatchRotation(jni, display_id_, &display_rotation_watcher_);
   DisplayManager::AddDisplayListener(jni, this);
-  VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = 0};
 
+  AMediaFormat* media_format = CreateMediaFormat(codec_info_->mime_type);
+  VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = 0};
   bool continue_streaming = true;
   consequent_deque_error_count_ = 0;
+
   while (continue_streaming && !streamer_stopped_ && !Agent::IsShuttingDown()) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
     if (!display_info.IsValid()) {
@@ -269,11 +277,11 @@ void DisplayStreamer::Run() {
     VirtualDisplay virtual_display;
     JObject display_token;
     string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
-    if (Agent::api_level() >= 34) {
+    if (Agent::feature_level() >= 34) {
       virtual_display = DisplayManager::CreateVirtualDisplay(
           jni, display_name.c_str(), display_info.logical_size.width, display_info.logical_size.height, display_id_, nullptr);
     } else {
-      bool secure = Agent::api_level() < 31;  // Creation of secure displays is not allowed on API 31+.
+      bool secure = Agent::feature_level() < 31;  // Creation of secure displays is not allowed on API 31+.
       display_token = SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure);
       if (display_token.IsNull()) {
         Log::Fatal(VIRTUAL_DISPLAY_CREATION_ERROR, "Display %d: unable to create a virtual display", display_id_);
@@ -281,7 +289,11 @@ void DisplayStreamer::Run() {
     }
     ANativeWindow* surface = nullptr;
     {
-      scoped_lock lock(mutex_);
+      unique_lock lock(mutex_);
+      if (codec_stop_pending_) {
+        codec_stop_pending_ = false;
+        continue;  // Start another loop to refresh display information.
+      }
       display_info_ = display_info;
       int32_t rotation_correction = video_orientation_ >= 0 ? NormalizeRotation(video_orientation_ - display_info.rotation) : 0;
       if (display_info.rotation == 2 && rotation_correction == 0) {
@@ -411,7 +423,7 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(AMediaCodec* codec, VideoPa
 void DisplayStreamer::SetVideoOrientation(int32_t orientation) {
   Log::D("Display %d: setting video orientation %d", display_id_, orientation);
   if (orientation == CURRENT_DISPLAY_ORIENTATION) {
-    scoped_lock lock(mutex_);
+    unique_lock lock(mutex_);
     if (video_orientation_ >= 0) {
       Agent::session_environment().RestoreAccelerometerRotation();
       video_orientation_ = -1;
@@ -425,7 +437,7 @@ void DisplayStreamer::SetVideoOrientation(int32_t orientation) {
   Jni jni = Jvm::GetJni();
   bool rotation_was_frozen = WindowManager::IsRotationFrozen(jni, display_id_);
 
-  scoped_lock lock(mutex_);
+  unique_lock lock(mutex_);
   if (orientation == CURRENT_VIDEO_ORIENTATION) {
     orientation = video_orientation_;
   }
@@ -444,7 +456,7 @@ void DisplayStreamer::SetVideoOrientation(int32_t orientation) {
 }
 
 void DisplayStreamer::SetMaxVideoResolution(Size max_video_resolution) {
-  scoped_lock lock(mutex_);
+  unique_lock lock(mutex_);
   if (max_video_resolution_ != max_video_resolution) {
     max_video_resolution_ = max_video_resolution;
     StopCodecUnlocked();
@@ -452,17 +464,19 @@ void DisplayStreamer::SetMaxVideoResolution(Size max_video_resolution) {
 }
 
 DisplayInfo DisplayStreamer::GetDisplayInfo() {
-  scoped_lock lock(mutex_);
+  unique_lock lock(mutex_);
   return display_info_;
 }
 
 void DisplayStreamer::StopCodec() {
-  scoped_lock lock(mutex_);
+  unique_lock lock(mutex_);
   StopCodecUnlocked();
 }
 
 void DisplayStreamer::StopCodecUnlocked() {
-  if (running_codec_ != nullptr) {
+  if (running_codec_ == nullptr) {
+    codec_stop_pending_ = true;
+  } else {
     Log::D("Display %d: stopping codec", display_id_);
     AMediaCodec_stop(running_codec_);
     running_codec_ = nullptr;
@@ -471,7 +485,7 @@ void DisplayStreamer::StopCodecUnlocked() {
 }
 
 bool DisplayStreamer::IsCodecRunning() {
-  scoped_lock lock(mutex_);
+  unique_lock lock(mutex_);
   return running_codec_ != nullptr;
 }
 
@@ -493,7 +507,8 @@ DisplayStreamer::DisplayRotationWatcher::DisplayRotationWatcher(DisplayStreamer*
 
 void DisplayStreamer::DisplayRotationWatcher::OnRotationChanged(int32_t new_rotation) {
   auto old_rotation = display_rotation.exchange(new_rotation);
-  Log::D("DisplayRotationWatcher::OnRotationChanged: new_rotation=%d old_rotation=%d", new_rotation, old_rotation);
+  Log::D("Display %d: DisplayRotationWatcher::OnRotationChanged: new_rotation=%d old_rotation=%d",
+         display_streamer->display_id_, new_rotation, old_rotation);
   if (new_rotation != old_rotation) {
     display_streamer->StopCodec();
   }

@@ -32,7 +32,7 @@ using namespace std;
 static mutex static_initialization_mutex; // Protects initialization of static fields.
 
 void DisplayManager::InitializeStatics(Jni jni) {
-  scoped_lock lock(static_initialization_mutex);
+  unique_lock lock(static_initialization_mutex);
 
   if (display_manager_global_class_.IsNull()) {
     display_manager_global_class_ = jni.GetClass("android/hardware/display/DisplayManagerGlobal");
@@ -53,11 +53,11 @@ void DisplayManager::InitializeStatics(Jni jni) {
     type_field_ = display_info_class.GetFieldId("type", "I");
     state_field_ = display_info_class.GetFieldId("state", "I");
 
-    if (Agent::api_level() >= 29) {
+    if (Agent::feature_level() >= 29) {
       display_listener_dispatcher_ = new DisplayListenerDispatcher();
     }
 
-    if (Agent::api_level() >= 34) {
+    if (Agent::feature_level() >= 34) {
       display_manager_class_ = jni.GetClass("android/hardware/display/DisplayManager");
       create_virtual_display_method_ = display_manager_class_.GetStaticMethod(
           "createVirtualDisplay", "(Ljava/lang/String;IIILandroid/view/Surface;)Landroid/hardware/display/VirtualDisplay;");
@@ -115,7 +115,7 @@ void DisplayManager::AddDisplayListener(Jni jni, DisplayListener* listener) {
 
 void DisplayManager::RemoveDisplayListener(DisplayListener* listener) {
   {
-    scoped_lock lock(static_initialization_mutex);
+    unique_lock lock(static_initialization_mutex);
     if (display_listener_dispatcher_ == nullptr) {
       return;
     }
@@ -128,7 +128,7 @@ void DisplayManager::RemoveDisplayListener(DisplayListener* listener) {
 
 void DisplayManager::RemoveAllDisplayListeners(Jni jni) {
   {
-    scoped_lock lock(static_initialization_mutex);
+    unique_lock lock(static_initialization_mutex);
     if (display_listener_dispatcher_ == nullptr) {
       return;
     }

@@ -31,7 +31,6 @@ COMMON_DATA = [
     "//tools/base/build-system:gradle-distrib",
     "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
     "//tools/base/build-system/integration-test:kotlin_gradle_plugin_for_compose_prebuilts",
-    "//tools/base/third_party/kotlin:kotlin-m2repository",
     "//tools/data-binding:data_binding_runtime.zip",
     "//tools/vendor/google/testing/display:xvfb",
 ]
@@ -123,12 +122,6 @@ maven_repository(
     name = "test_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "//tools/adt/idea/kotlin-integration:kotlin-android-extensions-runtime-for-ide-plugin",
-        "//tools/adt/idea/kotlin-integration:kotlin-gradle-plugin-api-for-ide-plugin",
-        "//tools/adt/idea/kotlin-integration:kotlin-gradle-plugin-for-ide-plugin",
-        "//tools/adt/idea/kotlin-integration:kotlin-reflect-for-ide-plugin",
-        "//tools/adt/idea/kotlin-integration:kotlin-script-runtime-for-ide-plugin",
-        "//tools/adt/idea/kotlin-integration:kotlin-stdlib-jdk8-for-ide-plugin",
         "@maven//:android.arch.navigation.navigation-fragment_1.0.0",
         "@maven//:android.arch.navigation.navigation-ui_1.0.0",
         "@maven//:android.arch.persistence.room.runtime_1.0.0",
@@ -1931,6 +1924,31 @@ java_test(
 )
 
 java_test(
+    name = "FragmentAttributeSectionsValidationTest",
+    size = "large",
+    data = COMMON_DATA + [
+        # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "@maven//:com.android.support.support-annotations_28.0.0",
+        "@maven//:com.android.support.appcompat-v7_26.1.0",
+    ] + glob([
+        "testData/SimpleApplication/**",
+    ]) + glob(["testData/LayoutTest/**"]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.FragmentAttributeSectionsValidationTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
     name = "RefactoringFlowTest",
     size = "large",
     data = COMMON_DATA + glob([
@@ -2139,6 +2157,28 @@ java_test(
         "testData/ComposeMultiPreviewSample/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.CyclicMultiPreviewTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "AddNewPreviewTest",
+    size = "large",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+    ] + glob([
+        "testData/ComposeMultiPreviewSample/**",
+    ]),
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.AddNewPreviewTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
@@ -2442,7 +2482,6 @@ java_test(
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.VerifyNpwAndroidTVTemplatesTest"],
     tags = COMMON_TAGS + [
-        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -2898,12 +2937,12 @@ java_test(
 
 java_test(
     name = "CLionIntegrationTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/debugger/CLionNdkHelloJni/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.CLionIntegrationTest"],
     tags = COMMON_TAGS + [
-        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -3519,6 +3558,7 @@ java_test(
 # fat test
 java_test(
     name = "AddAppCompatLibTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/NoAppCompatLibApp/**",
     ]),

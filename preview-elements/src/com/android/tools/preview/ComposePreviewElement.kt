@@ -42,7 +42,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import java.awt.Dimension
+import java.awt.image.BufferedImage
 import java.util.Objects
+import java.util.function.Consumer
 import kotlin.math.max
 import kotlin.math.min
 import org.jetbrains.annotations.TestOnly
@@ -102,7 +104,7 @@ private fun PreviewConfiguration.applyTo(
   highestApiTarget: (Configuration) -> IAndroidTarget?,
   devicesProvider: (Configuration) -> Collection<Device>,
   defaultDeviceProvider: (Configuration) -> Device?,
-  @AndroidDpCoordinate customSize: Dimension? = null
+  @AndroidDpCoordinate customSize: Dimension? = null,
 ) {
   fun updateRenderConfigurationTargetIfChanged(newTarget: IAndroidTarget) {
     if (renderConfiguration.target?.hashString() != newTarget.hashString()) {
@@ -111,6 +113,7 @@ private fun PreviewConfiguration.applyTo(
   }
 
   renderConfiguration.startBulkEditing()
+  renderConfiguration.imageTransformation = imageTransformation
   if (apiLevel != UNDEFINED_API_LEVEL) {
     val newTarget =
       renderConfiguration.settings.targets.firstOrNull { it.version.apiLevel == apiLevel }
@@ -187,9 +190,9 @@ fun PreviewConfiguration.applyConfigurationForTest(
   renderConfiguration: Configuration,
   highestApiTarget: (Configuration) -> IAndroidTarget?,
   devicesProvider: (Configuration) -> Collection<Device>,
-  defaultDeviceProvider: (Configuration) -> Device?
+  defaultDeviceProvider: (Configuration) -> Device?,
 ) {
-  applyTo(renderConfiguration, highestApiTarget, devicesProvider, defaultDeviceProvider, null)
+  applyTo(renderConfiguration, highestApiTarget, devicesProvider, defaultDeviceProvider)
 }
 
 @TestOnly
@@ -197,7 +200,7 @@ fun ComposePreviewElement.applyConfigurationForTest(
   renderConfiguration: Configuration,
   highestApiTarget: (Configuration) -> IAndroidTarget?,
   devicesProvider: (Configuration) -> Collection<Device>,
-  defaultDeviceProvider: (Configuration) -> Device?
+  defaultDeviceProvider: (Configuration) -> Device?,
 ) {
   configuration.applyTo(
     renderConfiguration,
@@ -220,6 +223,7 @@ internal constructor(
   val uiMode: Int,
   val deviceSpec: String,
   val wallpaper: Int,
+  val imageTransformation: Consumer<BufferedImage>?,
 ) {
   companion object {
     /**
@@ -237,6 +241,7 @@ internal constructor(
       uiMode: Int? = null,
       device: String? = null,
       wallpaper: Int? = null,
+      imageTransformation: Consumer<BufferedImage>? = null,
     ): PreviewConfiguration =
       // We only limit the sizes. We do not limit the API because using an incorrect API level will
       // throw an exception that
@@ -253,6 +258,7 @@ internal constructor(
         uiMode = uiMode ?: 0,
         deviceSpec = device ?: NO_DEVICE_SPEC,
         wallpaper = wallpaper ?: NO_WALLPAPER_SELECTED,
+        imageTransformation = imageTransformation,
       )
   }
 }
@@ -270,7 +276,7 @@ data class PreviewParameter(
   val name: String,
   val index: Int,
   val providerClassFqn: String,
-  val limit: Int
+  val limit: Int,
 )
 
 /** Definition of a Composable preview element */
@@ -280,13 +286,12 @@ interface ComposePreviewElement : MethodPreviewElement {
 
   /** Preview element configuration that affects how LayoutLib resolves the resources */
   val configuration: PreviewConfiguration
-}
-/**
- * Definition of a preview element template. This element can dynamically spawn one or more
- * [ComposePreviewElementInstance]s.
- */
-interface ComposePreviewElementTemplate : ComposePreviewElement {
-  fun instances(renderContext: ModuleRenderContext? = null): Sequence<ComposePreviewElementInstance>
+
+  /**
+   * [ComposePreviewElementInstance]s that this [ComposePreviewElement] can be resolved into. A single [ComposePreviewElement] can produce
+   * multiple [ComposePreviewElementInstance]s for example if @Composable method has parameters.
+   */
+  fun resolve(): Sequence<ComposePreviewElementInstance>
 }
 
 /** Definition of a preview element */
@@ -299,6 +304,8 @@ abstract class ComposePreviewElementInstance : ComposePreviewElement, XmlSeriali
    * opening the animation inspector.
    */
   var hasAnimations = false
+
+  override fun resolve(): Sequence<ComposePreviewElementInstance> = sequenceOf(this)
 
   override fun toPreviewXml(): PreviewXmlBuilder {
     val width = dimensionToString(configuration.width, VALUE_WRAP_CONTENT)
@@ -350,7 +357,7 @@ class SingleComposePreviewElementInstance(
   override val displaySettings: PreviewDisplaySettings,
   override val previewElementDefinitionPsi: SmartPsiElementPointer<PsiElement>?,
   override val previewBodyPsi: SmartPsiElementPointer<PsiElement>?,
-  override val configuration: PreviewConfiguration
+  override val configuration: PreviewConfiguration,
 ) : ComposePreviewElementInstance() {
   override val instanceId: String = methodFqn
 
@@ -365,7 +372,7 @@ class SingleComposePreviewElementInstance(
       showBackground: Boolean = false,
       backgroundColor: String? = null,
       displayPositioning: DisplayPositioning = DisplayPositioning.NORMAL,
-      configuration: PreviewConfiguration = PreviewConfiguration.cleanAndGet()
+      configuration: PreviewConfiguration = PreviewConfiguration.cleanAndGet(),
     ) =
       SingleComposePreviewElementInstance(
         composableMethodFqn,
@@ -384,12 +391,13 @@ class SingleComposePreviewElementInstance(
   }
 }
 
-class ParametrizedComposePreviewElementInstance(
+class
+ParametrizedComposePreviewElementInstance(
   private val basePreviewElement: ComposePreviewElement,
   parameterName: String,
   val providerClassFqn: String,
   val index: Int,
-  val maxIndex: Int
+  val maxIndex: Int,
 ) : ComposePreviewElementInstance(), ComposePreviewElement by basePreviewElement {
   override val instanceId: String = "$methodFqn#$parameterName$index"
 
@@ -423,14 +431,12 @@ open class ParametrizedComposePreviewElementTemplate(
   private val basePreviewElement: ComposePreviewElement,
   val parameterProviders: Collection<PreviewParameter>,
   private val renderContextFactory: (PsiFile?) -> ModuleRenderContext?,
-) : ComposePreviewElementTemplate, ComposePreviewElement by basePreviewElement {
+) : ComposePreviewElement by basePreviewElement {
   /**
    * Returns a [Sequence] of "instantiated" [ComposePreviewElement]s. The [ComposePreviewElement]s
    * will be populated with data from the parameter providers.
    */
-  override fun instances(
-    renderContext: ModuleRenderContext?
-  ): Sequence<ComposePreviewElementInstance> {
+  override fun resolve(): Sequence<ComposePreviewElementInstance> {
     assert(parameterProviders.isNotEmpty()) { "ParametrizedPreviewElement used with no parameters" }
 
     if (parameterProviders.size > 1) {
@@ -438,7 +444,7 @@ open class ParametrizedComposePreviewElementTemplate(
         .warn("Currently only one ParameterProvider is supported, rest will be ignored")
     }
 
-    val moduleRenderContext = renderContext ?: renderContextFactory(basePreviewElement.containingFile) ?: return sequenceOf()
+    val moduleRenderContext = renderContextFactory(basePreviewElement.containingFile) ?: return sequenceOf()
     ModuleClassLoaderManager.get()
       .getPrivate(
         ParametrizedComposePreviewElementTemplate::class.java.classLoader,
@@ -453,7 +459,7 @@ open class ParametrizedComposePreviewElementTemplate(
 
   private fun loadPreviewParameterProvider(
     classLoader: ClassLoader,
-    previewParameter: PreviewParameter
+    previewParameter: PreviewParameter,
   ): Sequence<ComposePreviewElementInstance> {
     try {
       val parameterProviderClass = classLoader.loadClass(previewParameter.providerClassFqn)
@@ -535,20 +541,3 @@ open class ParametrizedComposePreviewElementTemplate(
 
   override fun hashCode(): Int = Objects.hash(basePreviewElement, parameterProviders)
 }
-
-/**
- * Resolves an abstract [ComposePreviewElement] into a (possibly empty) sequence of
- * [ComposePreviewElementInstance].
- *
- * TODO: Consider making [resolve] a polymorphic method.
- */
-fun ComposePreviewElement.resolve(): Sequence<ComposePreviewElementInstance> =
-  when (this) {
-    is ComposePreviewElementTemplate -> this.instances()
-    is ComposePreviewElementInstance -> sequenceOf(this)
-    else -> {
-      Logger.getInstance(ComposePreviewElement::class.java)
-        .warn("Class was not instance or template ${this::class.qualifiedName}")
-      emptySequence()
-    }
-  }

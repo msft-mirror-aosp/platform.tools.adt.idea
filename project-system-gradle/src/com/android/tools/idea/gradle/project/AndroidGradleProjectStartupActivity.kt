@@ -41,7 +41,7 @@ import com.android.tools.idea.gradle.project.sync.idea.findAndSetupSelectedCache
 import com.android.tools.idea.gradle.project.sync.idea.getSelectedVariantAndAbis
 import com.android.tools.idea.gradle.project.upgrade.AgpVersionChecker
 import com.android.tools.idea.gradle.project.upgrade.AssistantInvoker
-import com.android.tools.idea.gradle.util.GradleUtil.GRADLE_SYSTEM_ID
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.GRADLE_SYSTEM_ID
 import com.android.tools.idea.model.AndroidModel
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger
 import com.intellij.execution.RunConfigurationProducerService
@@ -86,15 +86,16 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 class AndroidGradleProjectStartupActivity : StartupActivity {
   override fun runActivity(project: Project) {
     val gradleProjectInfo = GradleProjectInfo.getInstance(project)
+    val info = Info.getInstance(project)
 
     fun shouldSyncOrAttachModels(): Boolean {
       if (gradleProjectInfo.isSkipStartupActivity) return false
 
       // Opening an IDEA project with Android modules (AS and IDEA - i.e. previously synced).
-      if (gradleProjectInfo.androidModules.isNotEmpty()) return true
+      if (info.androidModules.isNotEmpty()) return true
 
       // Opening a Gradle project with .idea but no .iml files or facets (Typical for AS but not in IDEA)
-      return IdeInfo.getInstance().isAndroidStudio && gradleProjectInfo.isBuildWithGradle
+      return IdeInfo.getInstance().isAndroidStudio && info.isBuildWithGradle
     }
 
     // Make sure we remove Gradle producers from the ignoredProducers list for old projects that used to run tests through AndroidJunit.

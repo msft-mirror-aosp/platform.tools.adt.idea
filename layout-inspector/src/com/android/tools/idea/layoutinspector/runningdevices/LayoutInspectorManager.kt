@@ -403,6 +403,15 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
         toolsPanel.add(workBench, BorderLayout.CENTER)
         workBench.component.border = JBUI.Borders.customLineTop(JBColor.border())
 
+        val layoutInspectorProvider = dataProviderForLayoutInspector(layoutInspector)
+        DataManager.registerDataProvider(workBench, layoutInspectorProvider)
+        DataManager.registerDataProvider(toolbar.component, layoutInspectorProvider)
+
+        Disposer.register(disposable) {
+          DataManager.removeDataProvider(workBench)
+          DataManager.removeDataProvider(toolbar.component)
+        }
+
         val splitPanel =
           OnePixelSplitter(true, SPLITTER_KEY, 0.65f).apply {
             firstComponent = centerPanel
@@ -417,7 +426,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
       }
       tabComponents.displayView.add(layoutInspectorRenderer)
 
-      layoutInspector.inspectorModel.selectionListeners.add(selectionChangedListener)
+      layoutInspector.inspectorModel.addSelectionListener(selectionChangedListener)
       layoutInspector.processModel?.addSelectedProcessListeners(
         EdtExecutorService.getInstance(),
         selectedProcessListener
@@ -436,7 +445,7 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
       wrapLogic.unwrapComponent()
       tabComponents.displayView.remove(layoutInspectorRenderer)
-      layoutInspector.inspectorModel.selectionListeners.remove(selectionChangedListener)
+      layoutInspector.inspectorModel.removeSelectionListener(selectionChangedListener)
       layoutInspector.processModel?.removeSelectedProcessListener(selectedProcessListener)
 
       tabComponents.tabContentPanelContainer.revalidate()
@@ -504,9 +513,6 @@ private fun createLayoutInspectorWorkbench(
   val toolsDefinition =
     listOf(LayoutInspectorTreePanelDefinition(), LayoutInspectorPropertiesPanelDefinition())
   workbench.init(layoutInspector, toolsDefinition, false)
-  DataManager.registerDataProvider(workbench, dataProviderForLayoutInspector(layoutInspector))
-
-  Disposer.register(parentDisposable) { DataManager.removeDataProvider(workbench) }
 
   return workbench
 }

@@ -5,6 +5,8 @@ import static com.android.tools.idea.rendering.classloading.ReflectionUtilKt.fin
 import static org.jetbrains.android.uipreview.ModuleClassLoaderUtil.INTERNAL_PACKAGE;
 
 import com.android.layoutlib.reflection.TrackingThreadLocal;
+import com.android.tools.idea.projectsystem.ClassContent;
+import com.android.tools.idea.rendering.classloading.loaders.CachingClassLoaderLoader;
 import com.android.tools.rendering.RenderService;
 import com.android.tools.rendering.classloading.ModuleClassLoader;
 import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsRead;
@@ -219,7 +221,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
   }
 
   @NotNull
-  private static ProjectSystemClassLoader createDefaultProjectSystemClassLoader(
+  private static CachingClassLoaderLoader createDefaultProjectSystemClassLoader(
     @NotNull Module theModule, @NotNull Supplier<PsiFile> psiFileProvider
   ) {
     WeakReference<Module> moduleRef = new WeakReference<>(theModule);
@@ -301,7 +303,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
    * the result of this call until a PSI modification happens.
    */
   @VisibleForTesting
-  boolean isUserCodeUpToDateNonCached() { return ModuleClassLoaderUtil.isUserCodeUpToDate(myImpl); }
+  boolean isUserCodeUpToDateNonCached() { return myImpl.isUserCodeUpToDate(); }
 
   /**
    * Checks whether any of the .class files loaded by this loader have changed since the creation of this class loader. Always returns
@@ -370,8 +372,8 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
    * Injects the given file with the passed fqcn so it looks like loaded from the project. Only for testing.
    */
   @TestOnly
-  void injectProjectClassFile(@NotNull String fqcn, @NotNull VirtualFile file) {
-    myImpl.injectProjectClassFile(fqcn, file);
+  void injectProjectClassFile(@NotNull String fqcn, @NotNull ClassContent classContent) {
+    myImpl.injectProjectClassFile(fqcn, classContent);
   }
 
   /**

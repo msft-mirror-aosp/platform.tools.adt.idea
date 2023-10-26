@@ -71,7 +71,7 @@ import com.android.tools.idea.gradle.project.sync.stackTraceAsMultiLineMessage
 import com.android.tools.idea.gradle.project.sync.toException
 import com.android.tools.idea.gradle.project.upgrade.AssistantInvoker
 import com.android.tools.idea.gradle.util.AndroidGradleSettings
-import com.android.tools.idea.gradle.util.GradleUtil
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.gradle.util.LocalProperties
 import com.android.tools.idea.io.FilePaths
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
@@ -684,7 +684,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
   }
 
   override fun getExtraJvmArgs(): List<Pair<String, String>> {
-    if (ExternalSystemApiUtil.isInProcessMode(GradleUtil.GRADLE_SYSTEM_ID)) {
+    if (ExternalSystemApiUtil.isInProcessMode(GradleProjectSystemUtil.GRADLE_SYSTEM_ID)) {
       val args: MutableList<Pair<String, String>> = ArrayList()
       if (IdeInfo.getInstance().isAndroidStudio) {
         // Inject javaagent args.
@@ -765,8 +765,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     AndroidSyncExceptionType.AGP_VERSIONS_MISMATCH -> GradleSyncFailure.MULTIPLE_ANDROID_PLUGIN_VERSIONS
     AndroidSyncExceptionType.NO_VALID_NATIVE_ABI_FOUND -> GradleSyncFailure.ANDROID_SYNC_NO_VALID_NATIVE_ABI_FOUND
     AndroidSyncExceptionType.NO_VARIANTS_FOUND -> GradleSyncFailure.ANDROID_SYNC_NO_VARIANTS_FOUND
-    //TODO(b/292231180): at the moment there is no value for this failure generated in JdkImportCheck.validateProjectGradleJdk
-    AndroidSyncExceptionType.JDK_IMPORT_CHECK -> GradleSyncFailure.UNKNOWN_GRADLE_FAILURE
+    AndroidSyncExceptionType.JDK_IMPORT_CHECK -> GradleSyncFailure.ANDROID_SYNC_JDK_IMPORT_CHECK
   }
 
   private fun displayInternalWarningIfForcedUpgradesAreDisabled() {
@@ -939,7 +938,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       isTest: Boolean
     ) {
       // Code adapted from KaptProjectResolverExtension
-      val newLibrary = LibraryData(GradleUtil.GRADLE_SYSTEM_ID, name)
+      val newLibrary = LibraryData(GradleProjectSystemUtil.GRADLE_SYSTEM_ID, name)
       val existingData = moduleDataNode.children.asSequence()
         .map { obj: DataNode<*> -> obj.data }
         .filter { data: Any? -> data is LibraryDependencyData && newLibrary.externalName == data.externalName }

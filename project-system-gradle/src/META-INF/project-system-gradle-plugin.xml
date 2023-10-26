@@ -78,6 +78,8 @@
     <projectService serviceImplementation="org.jetbrains.android.exportSignedPackage.GenerateSignedApkSettings"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.dependencies.GradleDependencyManager"/>
     <projectService serviceImplementation="com.android.tools.idea.gradle.project.sync.jdk.GradleJdkValidationManager"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.project.GradleProjectInfo"/>
+    <projectService serviceImplementation="com.android.tools.idea.gradle.project.Info"/>
     <facet.toolWindow id="Build Variants"
                       facetIdList="android,android-gradle"
                       anchor="left"
@@ -156,12 +158,25 @@
       <className>org.jetbrains.android.intentions.AndroidAddLibraryDependencyAction</className>
       <category>Android</category>
     </intentionAction>
+    <runLineMarkerContributor language="JAVA" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor"/>
+    <runLineMarkerContributor language="kotlin" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor"/>
+    <configurationType implementation="com.android.tools.idea.run.configuration.AndroidBaselineProfileRunConfigurationType"/>
+    <programRunner implementation="com.android.tools.idea.run.AndroidBaselineProfileProgramRunner" order="after DefaultStudioProgramRunner"/>
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.actions">
+    <exportProjectZipExcludesContributor implementation="com.android.tools.idea.actions.ExportProjectZipExcludesGradleContributor"/>
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.run.editor">
+    <androidDebuggerInfoProvider implementation="com.android.tools.idea.run.editor.AndroidAppAndroidDebuggerInfoProvider" />
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.kotlin.idea">
     <extrasSerialization implementation="org.jetbrains.kotlin.android.extensions.KotlinAndroidExtrasSerializationService"/>
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <mppProjectResolve implementation="org.jetbrains.kotlin.android.extensions.KotlinMppAndroidProjectResolverExtension"/>
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.editors.manifest">
+    <manifestPanelToken implementation="com.android.tools.idea.editors.manifest.ManifestPanelGradleToken"/>
   </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
@@ -179,8 +194,6 @@
     <listener class="com.android.tools.idea.gradle.project.sync.listeners.MigrateGradleJvmFromHardcodedNamesSyncListener"
               topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
     <listener class="com.android.tools.idea.gradle.project.sync.listeners.InitializeGradleLocalJavaHomeListener"
-              topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
-    <listener class="com.android.tools.idea.gradle.project.sync.issues.FailuresReporterSyncListener"
               topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
   </projectListeners>
   <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
@@ -312,6 +325,13 @@
             text="Migrate BuildConfig to Gradle Build Files"
             description="Enable buildConfig for those modules that need it only">
       <add-to-group group-id="RefactoringMenu"/>
+    </action>
+    <action
+        id="AndroidX.BaselineProfile.RunGenerate"
+        class="com.android.tools.idea.run.configuration.BaselineProfileAction"
+        text="Generate Baseline Profile"
+        icon="StudioIcons.Shell.Toolbar.RUN"
+        description="Generate the Baseline Profile for the selected app. Note that generation is always per app and cannot be done for a single method or class.">
     </action>
   </actions>
 

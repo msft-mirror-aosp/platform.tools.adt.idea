@@ -64,6 +64,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -148,7 +149,7 @@ class RenderErrorTest {
     runBlocking {
       delayUntilCondition(delayPerIterationMs = 200, timeout = 30.seconds) {
         panels
-          .singleOrNull { it.displayName == "PreviewWithRenderErrors - _device_class_phone" }
+          .singleOrNull { it.displayName == "Medium Phone - PreviewWithRenderErrors" }
           ?.takeIf { it.sceneView.hasRenderErrors() }
           ?.also { sceneViewPanelWithErrors = it } != null
       }
@@ -179,7 +180,7 @@ class RenderErrorTest {
     runBlocking {
       delayUntilCondition(delayPerIterationMs = 200, timeout = 30.seconds) {
         panels
-          .singleOrNull { it.displayName == "PreviewWithoutRenderErrors - _device_class_phone" }
+          .singleOrNull { it.displayName == "Medium Phone - PreviewWithoutRenderErrors" }
           ?.also { sceneViewPanelWithoutErrors = it } != null
       }
     }
@@ -229,6 +230,7 @@ class RenderErrorTest {
     assertEquals("RenderError.kt", navigatable.file.name)
   }
 
+  @Ignore("b/307260641")
   @Test
   fun testVisualLintErrors() {
     val modelsWithIssues =
@@ -293,13 +295,12 @@ class RenderErrorTest {
           ?.also { uiCheckElement = it } != null
       }
 
-      composePreviewRepresentation.setMode(
+      composePreviewRepresentation.mode =
         PreviewMode.UiCheck(
           selected = uiCheckElement,
           atfChecksEnabled = true,
           visualLintingEnabled = true,
-        ),
-      )
+        )
 
       delayUntilCondition(
         250,
@@ -312,13 +313,13 @@ class RenderErrorTest {
 
   private fun stopUiCheck() {
     runBlocking {
-      composePreviewRepresentation.setMode(PreviewMode.Default)
+      composePreviewRepresentation.mode = PreviewMode.Default
 
       delayUntilCondition(
         250,
         timeout = 2.minutes,
       ) {
-        composePreviewRepresentation.isInNormalMode
+        composePreviewRepresentation.mode.isNormal
       }
     }
   }

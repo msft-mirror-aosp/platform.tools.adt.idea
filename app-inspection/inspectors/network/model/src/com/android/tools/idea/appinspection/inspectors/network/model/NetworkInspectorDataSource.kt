@@ -17,26 +17,15 @@ package com.android.tools.idea.appinspection.inspectors.network.model
 
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
-import com.android.tools.idea.appinspection.inspectors.network.model.Intention.InsertData
-import com.android.tools.idea.appinspection.inspectors.network.model.Intention.QueryForHttpData
-import com.android.tools.idea.appinspection.inspectors.network.model.Intention.QueryForSpeedData
+import com.android.tools.idea.appinspection.inspectors.network.model.analytics.NetworkInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.concurrency.createChildScope
-import java.util.concurrent.TimeUnit.MICROSECONDS
-import kotlinx.coroutines.CompletableDeferred
+import com.intellij.util.containers.ContainerUtil
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import studio.network.inspection.NetworkInspectorProtocol.Event
-import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent
 
 /**
  * The data backend of network inspector.
@@ -45,148 +34,65 @@ import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent
  * time ranges.
  */
 interface NetworkInspectorDataSource {
-  val connectionEventFlow: Flow<HttpConnectionEvent>
+  fun queryForHttpData(range: Range): List<HttpData>
 
-  suspend fun queryForHttpData(range: Range): List<HttpData>
+  fun queryForSpeedData(range: Range): List<Event>
 
-  suspend fun queryForSpeedData(range: Range): List<Event>
+  fun addOnExtendTimelineListener(listener: (Long) -> Unit)
 }
 
 class NetworkInspectorDataSourceImpl(
-  messenger: AppInspectorMessenger,
+  private val messenger: AppInspectorMessenger,
   parentScope: CoroutineScope,
-  replayCacheSize: Int = 1
+  private val usageTracker: NetworkInspectorTracker,
 ) : NetworkInspectorDataSource {
   val scope = parentScope.createChildScope()
-  private val channel = Channel<Intention>()
-  override val connectionEventFlow: Flow<HttpConnectionEvent> =
-    messenger.eventFlow
-      .map { data -> Event.parseFrom(data) }
-      .onEach { data -> channel.send(InsertData(data)) }
-      .mapNotNull { if (it.hasHttpConnectionEvent()) it.httpConnectionEvent else null }
-      .shareIn(scope, SharingStarted.Eagerly, replayCacheSize)
+  private val listeners = ContainerUtil.createLockFreeCopyOnWriteList<(Long) -> Unit>()
+  private val speedData = CopyOnWriteArrayList<Event>()
+  private val httpData = HttpDataCollector()
 
   init {
-    scope.launch { processEvents() }
+    start()
   }
 
-  override suspend fun queryForHttpData(range: Range) =
-    withContext(scope.coroutineContext) {
-      val deferred = CompletableDeferred<List<HttpData>>()
-      channel.send(QueryForHttpData(range, deferred))
-      deferred.await()
-    }
-
-  override suspend fun queryForSpeedData(range: Range) =
-    withContext(scope.coroutineContext) {
-      val deferred = CompletableDeferred<List<Event>>()
-      channel.send(QueryForSpeedData(range, deferred))
-      deferred.await()
-    }
-
-  /**
-   * An actor that is used to maintain synchronization of the data collected from network inspector
-   * against the frequent updates and queried performed against it.
-   *
-   * It performs two types of work:
-   * 1. Collects events sent from the network inspector and accumulates them.
-   * 2. Performs queries from UI frontend on the collected data.
-   */
-  private suspend fun processEvents() {
-    val speedData = mutableListOf<Event>()
-    val httpData = HttpDataCollector()
-
-    channel.consumeEach { command ->
-      when (command) {
-        is QueryForSpeedData -> command.deferred.complete(searchRange(speedData, command.range))
-        is QueryForHttpData -> command.deferred.complete(httpData.getDataForRange(command.range))
-        is InsertData -> {
+  fun start() {
+    scope.launch {
+      messenger.eventFlow
+        .map { Event.parseFrom(it) }
+        .collect { event ->
+          notifyTimelineExtended(event.timestamp)
           when {
-            command.event.hasSpeedEvent() -> speedData.add(command.event)
-            command.event.hasHttpConnectionEvent() -> httpData.processEvent(command.event)
+            event.hasSpeedEvent() -> speedData.add(event)
+            event.hasHttpConnectionEvent() -> handleHttpEvent(httpData, event)
           }
         }
-      }
     }
   }
-}
 
-/**
- * Performs a binary search on the data using timestamp and returns the index at which a
- * hypothetical event with [timestamp] should be inserted. Or return the index of the event that
- * matches [timestamp].
- */
-private fun List<Event>.binarySearch(timestamp: Long): Int {
-  return binarySearch(
-    Event.newBuilder().setTimestamp(timestamp).build(),
-    compareBy { it.timestamp }
-  )
-}
+  override fun addOnExtendTimelineListener(listener: (Long) -> Unit) {
+    listeners.add(listener)
+  }
 
-/**
- * The two functions below are only required when binary search finds an element matching either the
- * start or the end of the range. Binary search has the caveat that if the search target has
- * multiple entries - in our case multiple events with the same timestamp - it doesn't guarantee
- * which entry it will return. To amend that, we manually search to the left or right of the index
- * to see if we truly have the start or end index.
- */
-private fun List<Event>.findEndIndex(startIndex: Int): Int {
-  for (i in startIndex + 1 until size) {
-    if (get(i).timestamp != get(startIndex).timestamp) {
-      return i - 1
+  override fun queryForHttpData(range: Range): List<HttpData> = httpData.getDataForRange(range)
+
+  override fun queryForSpeedData(range: Range): List<Event> = speedData.searchRange(range)
+
+  private fun handleHttpEvent(httpData: HttpDataCollector, event: Event) {
+    httpData.processEvent(event)
+    val httpConnectionEvent = event.httpConnectionEvent
+    if (httpConnectionEvent.hasHttpResponseIntercepted()) {
+      val interception = httpConnectionEvent.httpResponseIntercepted
+      usageTracker.trackResponseIntercepted(
+        statusCode = interception.statusCode,
+        headerAdded = interception.headerAdded,
+        headerReplaced = interception.headerReplaced,
+        bodyReplaced = interception.bodyReplaced,
+        bodyModified = interception.bodyModified
+      )
     }
   }
-  return size - 1
-}
 
-private fun List<Event>.findStartIndex(startIndex: Int): Int {
-  for (i in startIndex - 1 downTo 0) {
-    if (get(i).timestamp != get(startIndex).timestamp) {
-      return i + 1
-    }
+  private fun notifyTimelineExtended(timestampNs: Long) {
+    listeners.forEach { listener -> listener(timestampNs) }
   }
-  return 0
-}
-
-/**
- * Return all events that fall within [range] inclusive.
- *
- * This function is designed to be fast (logN) because it gets called frequently by the frontend.
- */
-private fun searchRange(data: List<Event>, range: Range): List<Event> {
-  val min = MICROSECONDS.toNanos(range.min.toLong())
-  val max = MICROSECONDS.toNanos(range.max.toLong())
-
-  // If the result of binary search is less than 0, the index of the start or end element is gotten
-  // by:
-  // 1) solving for x in the formula (result = -x - 1)
-  // 2) startIndex = x, endIndex = x - 1
-  val startIndex =
-    data.binarySearch(min).let { pos ->
-      if (pos < 0) {
-        -pos - 1
-      } else data.findStartIndex(pos)
-    }
-  val endIndex =
-    data.binarySearch(max).let { pos ->
-      if (pos < 0) {
-        -pos - 2
-      } else data.findEndIndex(pos)
-    }
-
-  return data.slice(startIndex..endIndex)
-}
-
-/**
- * These objects are used to communicate with the actor. They specify the work the actor needs to
- * perform.
- */
-private sealed class Intention {
-  class QueryForSpeedData(val range: Range, val deferred: CompletableDeferred<List<Event>>) :
-    Intention()
-
-  class QueryForHttpData(val range: Range, val deferred: CompletableDeferred<List<HttpData>>) :
-    Intention()
-
-  class InsertData(val event: Event) : Intention()
 }

@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.roots;
 
-import com.android.tools.idea.gradle.project.GradleProjectInfo;
+import com.android.tools.idea.gradle.project.Info;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.intellij.openapi.project.Project;
@@ -24,7 +24,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 
-import static com.android.tools.idea.gradle.util.GradleUtil.BUILD_DIR_DEFAULT_NAME;
+import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.BUILD_DIR_DEFAULT_NAME;
 import static com.intellij.openapi.vfs.VfsUtilCore.isAncestor;
 import static com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile;
 
@@ -39,7 +39,7 @@ public class AndroidGeneratedSourcesFilter extends GeneratedSourcesFilter {
 
   @Override
   public boolean isGeneratedSource(@NotNull VirtualFile file, @NotNull Project project) {
-    GradleProjectInfo projectInfo = GradleProjectInfo.getInstance(project);
+    Info projectInfo = Info.getInstance(project);
     GradleAndroidModel androidModel = GradleProjectSystemUtil.findAndroidModelInModule(project, file);
     return isGeneratedSource(file, project, projectInfo, androidModel);
   }
@@ -47,7 +47,7 @@ public class AndroidGeneratedSourcesFilter extends GeneratedSourcesFilter {
   @VisibleForTesting
   public static boolean isGeneratedSource(@NotNull VirtualFile file,
                                           @NotNull Project project,
-                                          GradleProjectInfo projectInfo, GradleAndroidModel androidModel) {
+                                          Info projectInfo, GradleAndroidModel androidModel) {
     if (androidModel != null) {
       return isAncestor(androidModel.getAndroidProject().getBuildFolder(), virtualToIoFile(file), false);
     }

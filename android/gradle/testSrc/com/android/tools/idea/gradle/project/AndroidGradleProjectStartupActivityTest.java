@@ -36,7 +36,7 @@ import org.jetbrains.annotations.Nullable;
  * Tests for {@link AndroidGradleProjectStartupActivity}.
  */
 public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCase {
-  private GradleProjectInfo myGradleProjectInfo;
+  private Info myInfo;
   private AndroidGradleProjectStartupActivity myStartupActivity;
   private GradleSyncInvoker mySyncInvoker;
   private GradleSyncInvoker.Request myRequest;
@@ -56,8 +56,8 @@ public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCa
       }
     };
     ServiceContainerUtil.replaceService(ApplicationManager.getApplication(), GradleSyncInvoker.class, mySyncInvoker, project);
-    myGradleProjectInfo = mock(GradleProjectInfo.class);
-    ServiceContainerUtil.replaceService(myProject, GradleProjectInfo.class, myGradleProjectInfo, project);
+    myInfo = mock(Info.class);
+    ServiceContainerUtil.replaceService(myProject, Info.class, myInfo, project);
 
     myStartupActivity = new AndroidGradleProjectStartupActivity();
   }
@@ -65,7 +65,7 @@ public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCa
   @Override
   protected void tearDown() throws Exception {
     try {
-      myGradleProjectInfo = null;
+      myInfo = null;
     }
     finally {
       super.tearDown();
@@ -76,7 +76,7 @@ public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCa
     // this test only works in AndroidStudio due to a number of isAndroidStudio checks inside AndroidGradleProjectStartupActivity
     if (!IdeInfo.getInstance().isAndroidStudio()) return;
 
-    when(myGradleProjectInfo.isBuildWithGradle()).thenReturn(true);
+    when(myInfo.isBuildWithGradle()).thenReturn(true);
 
     Project project = getProject();
     myStartupActivity.runActivity(project);
@@ -85,8 +85,8 @@ public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCa
   }
 
   public void testRunActivityWithExistingGradleProject() {
-    when(myGradleProjectInfo.isBuildWithGradle()).thenReturn(true);
-    when(myGradleProjectInfo.getAndroidModules()).thenReturn(Collections.singletonList(new MockModule(getTestRootDisposable())));
+    when(myInfo.isBuildWithGradle()).thenReturn(true);
+    when(myInfo.getAndroidModules()).thenReturn(Collections.singletonList(new MockModule(getTestRootDisposable())));
 
     Project project = getProject();
     myStartupActivity.runActivity(project);
@@ -96,7 +96,7 @@ public class AndroidGradleProjectStartupActivityTest extends HeavyPlatformTestCa
   }
 
   public void testRunActivityWithNonGradleProject() {
-    when(myGradleProjectInfo.isBuildWithGradle()).thenReturn(false);
+    when(myInfo.isBuildWithGradle()).thenReturn(false);
 
     Project project = getProject();
     myStartupActivity.runActivity(project);

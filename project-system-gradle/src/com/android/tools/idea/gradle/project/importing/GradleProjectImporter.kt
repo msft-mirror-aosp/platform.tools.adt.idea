@@ -20,10 +20,11 @@ import com.android.tools.idea.Projects
 import com.android.tools.idea.flags.StudioFlags.GRADLE_USES_LOCAL_JAVA_HOME_FOR_NEW_CREATED_PROJECTS
 import com.android.tools.idea.gradle.config.GradleConfigManager
 import com.android.tools.idea.gradle.project.GradleProjectInfo
+import com.android.tools.idea.gradle.project.Info
 import com.android.tools.idea.gradle.project.sync.SdkSync
 import com.android.tools.idea.gradle.project.sync.jdk.JdkUtils
 import com.android.tools.idea.gradle.project.ProjectMigrationsPersistentState
-import com.android.tools.idea.gradle.util.GradleUtil
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.gradle.util.LocalProperties
 import com.android.tools.idea.io.FilePaths
 import com.android.tools.idea.project.ANDROID_PROJECT_TYPE
@@ -148,7 +149,7 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
 
       // In practice, it really does not matter where the compiler output folder is. Gradle handles that. This is done just to please
       // IDEA.
-      val compilerOutputFolderPath = File(Projects.getBaseDirPath(newProject), FileUtil.join(GradleUtil.BUILD_DIR_DEFAULT_NAME, "classes"))
+      val compilerOutputFolderPath = File(Projects.getBaseDirPath(newProject), FileUtil.join(GradleProjectSystemUtil.BUILD_DIR_DEFAULT_NAME, "classes"))
       val compilerOutputFolderUrl = FilePaths.pathToIdeaUrl(compilerOutputFolderPath)
       val compilerProjectExt = CompilerProjectExtension.getInstance(newProject)!!
       compilerProjectExt.setCompilerOutputUrl(compilerOutputFolderUrl)
@@ -165,7 +166,7 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
    */
   @JvmOverloads
   fun createProject(projectName: String, projectFolderPath: File, useDefaultProjectAsTemplate: Boolean = false): Project {
-    GradleProjectInfo.beginInitializingGradleProjectAt(projectFolderPath).use { ignored ->
+    Info.beginInitializingGradleProjectAt(projectFolderPath).use { ignored ->
       val newProject = ProjectManagerEx.getInstanceEx().newProject(
         Path.of(projectFolderPath.path),
         OpenProjectTask {

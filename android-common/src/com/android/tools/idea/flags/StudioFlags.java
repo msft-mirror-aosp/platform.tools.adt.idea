@@ -105,7 +105,6 @@ public final class StudioFlags {
     NPW, "new.baseline.profiles.module", "New Baseline Profile Module",
     "Show template to create a new Baseline Profile module in the new module wizard.",
     true);
-
   public static final Flag<Boolean> NPW_ENABLE_GRADLE_VERSION_CATALOG = Flag.create(
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
     "Use Gradle Version Catalogs for dependencies added in the new project/module wizard. (when existing project already uses Version Catalogs for new modules)",
@@ -258,6 +257,11 @@ public final class StudioFlags {
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
     true);
 
+  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = Flag.create(
+    NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
+    "Enable colorblind Check mode in UI Check Mode for Compose preview",
+    false);
+
   public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = Flag.create(
     NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
     "Enable so that visual lint runs on previews in the Compose Preview.",
@@ -293,6 +297,13 @@ public final class StudioFlags {
     RUNDEBUG, "android.bundle.build.enabled", "Enable the Build Bundle action",
     "If enabled, the \"Build Bundle(s)\" menu item is enabled. " +
     "Changing the value of this flag requires restarting Android Studio.",
+    true);
+
+  public static final Flag<Boolean> GENERATE_BASELINE_PROFILE_GUTTER_ICON = Flag.create(
+    RUNDEBUG,
+    "baselineprofile.guttericon.enabled",
+    "Enables generating baseline profiles from gutter icon",
+    "When opening a UI test with applied BaselineProfileRule, an option to generate baseline profiles is shown in the gutter popup.",
     true);
 
   public static final Flag<Boolean> DELTA_INSTALL = Flag.create(
@@ -568,6 +579,14 @@ public final class StudioFlags {
     "export.import.enable",
     "Enable Export/Import feature",
     "Enable Export/Import feature",
+    true
+  );
+
+  public static final Flag<Boolean> LOGCAT_PROTOBUF_ENABLED = Flag.create(
+    LOGCAT,
+    "protobuf.enable",
+    "Enable Logcat Protobuf format",
+    "Enable Logcat Protobuf format",
     true
   );
   //endregion
@@ -867,6 +886,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_MULTIPLE_DISPLAYS = Flag.create(
     DEVICE_MIRRORING, "multiple.displays", "Mirror All Displays",
     "Mirror all device displays",
+    true);
+  public static final Flag<Boolean> B_303684492_WORKAROUND = Flag.create(
+    DEVICE_MIRRORING, "b.303684492.workaround", "Workaround for Bug 303684492",
+    "Workaround for Android bug 303684492",
     true);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = Flag.create(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
@@ -1383,6 +1406,11 @@ public final class StudioFlags {
     "Enables interceptions on network requests and responses",
     true
   );
+  public static final Flag<Boolean> NETWORK_INSPECTOR_STATIC_TIMELINE = Flag.create(
+    NETWORK_INSPECTOR, "static.timeline", "Use static timeline in Network Inspector",
+    "Use static timeline in Network Inspector",
+    true
+  );
   // endregion
 
   // region BackgroundTask Inspector
@@ -1513,7 +1541,7 @@ public final class StudioFlags {
       "crashlytics.variants",
       "Crashlytics Variants Support",
       "Enabled Variant Selection in AQI Crashlytics",
-      false
+      true
     );
 
   public static final Flag<Boolean> CRASHLYTICS_J_UI =

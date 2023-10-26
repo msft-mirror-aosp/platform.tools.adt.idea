@@ -67,7 +67,6 @@
       <module fileurl="file://$PROJECT_DIR$/../../base/profgen/profgen/android.sdktools.profgen.iml" filepath="$PROJECT_DIR$/../../base/profgen/profgen/android.sdktools.profgen.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/repository/android.sdktools.repository.iml" filepath="$PROJECT_DIR$/../../base/repository/android.sdktools.repository.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/resource-repository/android.sdktools.resource-repository.iml" filepath="$PROJECT_DIR$/../../base/resource-repository/android.sdktools.resource-repository.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../base/previewlib/cli/android.sdktools.screenshot.cli.iml" filepath="$PROJECT_DIR$/../../base/previewlib/cli/android.sdktools.screenshot.cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/sdk-common/android.sdktools.sdk-common.iml" filepath="$PROJECT_DIR$/../../base/sdk-common/android.sdktools.sdk-common.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/sdk-common/gradle/android.sdktools.sdk-common.gradle.iml" filepath="$PROJECT_DIR$/../../base/sdk-common/gradle/android.sdktools.sdk-common.gradle.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/sdklib/android.sdktools.sdklib.iml" filepath="$PROJECT_DIR$/../../base/sdklib/android.sdktools.sdklib.iml" />
@@ -248,6 +247,7 @@
       <module fileurl="file://$PROJECT_DIR$/device-monitor-toolwindow/intellij.android.device-monitor-toolwindow.tests.iml" filepath="$PROJECT_DIR$/device-monitor-toolwindow/intellij.android.device-monitor-toolwindow.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/intellij.android.device.tests/intellij.android.device.tests.iml" filepath="$PROJECT_DIR$/intellij.android.device.tests/intellij.android.device.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/editing/intellij.android.editing.tests.iml" filepath="$PROJECT_DIR$/android/editing/intellij.android.editing.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../base/environment-services/intellij.android.environment-services.iml" filepath="$PROJECT_DIR$/../../base/environment-services/intellij.android.environment-services.iml" />
       <module fileurl="file://$PROJECT_DIR$/execution/common/intellij.android.execution.common.iml" filepath="$PROJECT_DIR$/execution/common/intellij.android.execution.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/execution/common/intellij.android.execution.common.tests.iml" filepath="$PROJECT_DIR$/execution/common/intellij.android.execution.common.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/explainer/intellij.android.explainer.iml" filepath="$PROJECT_DIR$/explainer/intellij.android.explainer.iml" />

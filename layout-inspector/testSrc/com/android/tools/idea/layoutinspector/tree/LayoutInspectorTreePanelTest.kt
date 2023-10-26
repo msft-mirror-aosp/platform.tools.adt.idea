@@ -428,7 +428,7 @@ class LayoutInspectorTreePanelTest {
 
     var selectedView: ViewNode? = null
     var selectionOrigin = SelectionOrigin.INTERNAL
-    model.selectionListeners.add { _, newSelection, origin ->
+    model.addSelectionListener { _, newSelection, origin ->
       selectedView = newSelection
       selectionOrigin = origin
     }
@@ -953,7 +953,7 @@ class LayoutInspectorTreePanelTest {
     val compose1 = model[COMPOSE1] as ComposeViewNode
     val compose2 = model[COMPOSE2] as ComposeViewNode
     var selectionUpdate = 0
-    model.selectionListeners.add { _, _, _ -> selectionUpdate++ }
+    model.addSelectionListener { _, _, _ -> selectionUpdate++ }
 
     assertThat(compose1.recompositions.count).isEqualTo(7)
     assertThat(compose1.recompositions.skips).isEqualTo(14)
@@ -1031,35 +1031,15 @@ class LayoutInspectorTreePanelTest {
 
     setToolContext(panel, inspectorRule.inspector)
 
-    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners).hasSize(1)
-
-    var connectionListenersCount1 = 0
-    inspectorRule.inspector.inspectorModel.connectionListeners.forEach {
-      connectionListenersCount1 += 1
-    }
-    assertThat(connectionListenersCount1).isEqualTo(2)
-
-    var modificationListenerCount1 = 0
-    inspectorRule.inspector.inspectorModel.modificationListeners.forEach {
-      modificationListenerCount1++
-    }
-    assertThat(modificationListenerCount1).isEqualTo(4)
+    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(1)
+    assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(2)
+    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(4)
 
     Disposer.dispose(disposable)
 
-    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners).hasSize(0)
-
-    var connectionListenersCount2 = 0
-    inspectorRule.inspector.inspectorModel.connectionListeners.forEach {
-      connectionListenersCount2 += 1
-    }
-    assertThat(connectionListenersCount2).isEqualTo(0)
-
-    var modificationListenerCount2 = 0
-    inspectorRule.inspector.inspectorModel.modificationListeners.forEach {
-      modificationListenerCount2++
-    }
-    assertThat(modificationListenerCount2).isEqualTo(2)
+    assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(0)
+    assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(0)
+    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(2)
   }
 
   private fun setToolContext(tree: LayoutInspectorTreePanel, inspector: LayoutInspector) {

@@ -16,7 +16,8 @@
 package com.android.tools.idea.layoutinspector.ui
 
 import com.android.tools.idea.layoutinspector.LayoutInspector
-import com.android.tools.idea.layoutinspector.model.InspectorModelModificationListener
+import com.android.tools.idea.layoutinspector.model.InspectorModel
+import com.android.tools.idea.util.ListenerCollection
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.util.concurrent.Executors
@@ -36,7 +37,7 @@ class LayoutInspectorLoadingObserver(
     fun onStopLoading()
   }
 
-  var listeners = mutableListOf<Listener>()
+  var listeners = ListenerCollection.createWithDirectExecutor<Listener>()
 
   val isLoading
     get() = _isLoading.get()
@@ -54,9 +55,8 @@ class LayoutInspectorLoadingObserver(
     }
   }
 
-  private val inspectorModelModificationListener = InspectorModelModificationListener { _, _, _ ->
-    setIsLoading(false)
-  }
+  private val inspectorModelModificationListener =
+    InspectorModel.ModificationListener { _, _, _ -> setIsLoading(false) }
 
   init {
     Disposer.register(parentDisposable, this)
@@ -65,7 +65,7 @@ class LayoutInspectorLoadingObserver(
       Executors.newSingleThreadExecutor(),
       selectedProcessListener
     )
-    layoutInspector.inspectorModel.modificationListeners.add(inspectorModelModificationListener)
+    layoutInspector.inspectorModel.addModificationListener(inspectorModelModificationListener)
   }
 
   override fun dispose() {
@@ -73,7 +73,7 @@ class LayoutInspectorLoadingObserver(
 
     layoutInspector.stopInspectorListeners.remove(stopInspectorListener)
     layoutInspector.processModel?.removeSelectedProcessListener(selectedProcessListener)
-    layoutInspector.inspectorModel.modificationListeners.remove(inspectorModelModificationListener)
+    layoutInspector.inspectorModel.removeModificationListener(inspectorModelModificationListener)
   }
 
   private fun setIsLoading(isLoading: Boolean) {

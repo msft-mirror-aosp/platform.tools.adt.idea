@@ -62,7 +62,8 @@ internal class DeviceToolWindowPanel(
   disposableParent: Disposable,
   private val project: Project,
   val deviceClient: DeviceClient,
-) : StreamingDevicePanel(DeviceId.ofPhysicalDevice(deviceClient.deviceSerialNumber), DEVICE_MAIN_TOOLBAR_ID, STREAMING_SECONDARY_TOOLBAR_ID) {
+) : StreamingDevicePanel(
+    DeviceId.ofPhysicalDevice(deviceClient.deviceSerialNumber), DEVICE_MAIN_TOOLBAR_ID, STREAMING_SECONDARY_TOOLBAR_ID) {
 
   val deviceSerialNumber: String
     get() = deviceClient.deviceSerialNumber
@@ -248,6 +249,9 @@ internal class DeviceToolWindowPanel(
       contentDisposable?.let {
         AndroidCoroutineScope(it).launch {
           val displays = deviceClient.deviceController?.getDisplayConfigurations() ?: return@launch
+          if (displays.isEmpty()) {
+            return@launch // All displays are turned off.
+          }
           EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
             if (contentDisposable != null) {
               reconfigureDisplayPanels(displays)
