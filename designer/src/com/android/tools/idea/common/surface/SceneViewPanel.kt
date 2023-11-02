@@ -96,10 +96,9 @@ internal class SceneViewPanel(
     // Invalidate the current components
     removeAll()
     designSurfaceSceneViews.forEachIndexed { index, sceneView ->
-      val toolbar = actionManagerProvider().getSceneViewContextToolbar(sceneView)
+      val toolbarActions = actionManagerProvider().sceneViewContextToolbarActions
       val bottomBar = actionManagerProvider().getSceneViewBottomBar(sceneView)
-      val statusIcon = actionManagerProvider().getSceneViewStatusIcon(sceneView)
-      statusIcon?.isVisible = false
+      val statusIconAction = actionManagerProvider().sceneViewStatusIconAction
 
       // The left bar is only added for the first panel
       val leftBar = if (index == 0) actionManagerProvider().getSceneViewLeftBar(sceneView) else null
@@ -115,8 +114,8 @@ internal class SceneViewPanel(
         SceneViewPeerPanel(
             sceneView,
             labelPanel,
-            statusIcon,
-            toolbar,
+            statusIconAction,
+            toolbarActions,
             bottomBar,
             leftBar,
             rightBar,

@@ -25,6 +25,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
@@ -111,20 +112,20 @@ public abstract class ActionManager<S extends DesignSurface<?>> {
   public abstract DefaultActionGroup getToolbarActions(@NotNull List<NlComponent> selection);
 
   /**
-   * Returns the context toolbar for a {@link SceneView}. This toolbar should contain actions
-   * that are specific to this {@link SceneView}. The method returns null if no toolbar is needed.
+   * Returns the actions for the context toolbar of a {@link SceneView}. The actions should be
+   * specific to a {@link SceneView}. The method returns an empty list if no toolbar is needed.
    */
-  @Nullable
-  public JComponent getSceneViewContextToolbar(@NotNull SceneView sceneView) {
-    return null;
+  @NotNull
+  public List<AnAction> getSceneViewContextToolbarActions() {
+    return Collections.emptyList();
   }
 
   /**
-   * Returns a component with the status icon for a {@link SceneView}.
+   * Returns an action with the status icon for a {@link SceneView}.
    * The method returns null when the status icon is not needed.
    */
   @Nullable
-  public JComponent getSceneViewStatusIcon(@NotNull SceneView sceneView) {
+  public AnAction getSceneViewStatusIconAction() {
     return null;
   }
 
@@ -137,7 +138,7 @@ public abstract class ActionManager<S extends DesignSurface<?>> {
   }
 
   /**
-   * Returns the bottom bar for a {@link SceneView}. This is similar to {@link #getSceneViewContextToolbar(SceneView)} but this bar is at
+   * Returns the bottom bar for a {@link SceneView}. This bar is at
    * the bottom of the {@link SceneView} while context toolbar is at the top.
    */
   @Nullable

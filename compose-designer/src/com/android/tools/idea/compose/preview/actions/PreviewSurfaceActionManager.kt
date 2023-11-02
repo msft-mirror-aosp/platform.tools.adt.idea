@@ -26,17 +26,15 @@ import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
-import com.android.tools.idea.preview.actions.createStatusIcon
 import com.android.tools.idea.preview.actions.hideIfRenderErrors
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.Separator
-import com.intellij.openapi.actionSystem.ex.ActionManagerEx
-import com.intellij.util.ui.JBUI
 import javax.swing.JComponent
 
 /** [ActionManager] to be used by the Compose Preview. */
@@ -88,48 +86,23 @@ internal class PreviewSurfaceActionManager(
   override fun getToolbarActions(selection: MutableList<NlComponent>): DefaultActionGroup =
     DefaultActionGroup()
 
-  override fun getSceneViewContextToolbar(sceneView: SceneView): JComponent =
-    ActionManagerEx.getInstanceEx()
-      .createActionToolbar(
-        "sceneView",
-        DefaultActionGroup(
-          listOf(Separator()) +
-            listOfNotNull(
-                EnableUiCheckAction { sceneView.scene.sceneManager.model.dataContext },
-                AnimationInspectorAction { sceneView.scene.sceneManager.model.dataContext },
-                EnableInteractiveAction(
-                  isEssentialsModeEnabled = {
-                    ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-                  },
-                  essentialsModeDescription =
-                    message("action.interactive.essentials.mode.description")
-                ) {
-                  sceneView.scene.sceneManager.model.dataContext
-                },
-                DeployToDeviceAction { sceneView.scene.sceneManager.model.dataContext },
-              )
-              .disabledIfRefreshingOrRenderErrors(sceneView)
-              .hideIfRenderErrors(sceneView)
-              .visibleOnlyInStaticPreview()
-        ),
-        true,
-        false
-      )
-      .apply {
-        // Do not allocate space for the "see more" chevron if not needed
-        setReservePlaceAutoPopupIcon(false)
-        setShowSeparatorTitles(true)
-        targetComponent = surface
-      }
-      .component
-      .apply {
-        isOpaque = false
-        border = JBUI.Borders.empty()
-      }
+  override fun getSceneViewContextToolbarActions(): List<AnAction> =
+    listOf(Separator()) +
+      listOfNotNull(
+          EnableUiCheckAction(),
+          AnimationInspectorAction(),
+          EnableInteractiveAction(
+            isEssentialsModeEnabled = {
+              ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
+            },
+            essentialsModeDescription = message("action.interactive.essentials.mode.description")
+          ),
+          DeployToDeviceAction(),
+        )
+        .disabledIfRefreshingOrRenderErrors()
+        .hideIfRenderErrors()
+        .visibleOnlyInStaticPreview()
 
-  override fun getSceneViewStatusIcon(sceneView: SceneView) =
-    createStatusIcon(
-      ComposePreviewStatusIconAction(sceneView).visibleOnlyInStaticPreview(),
-      surface
-    )
+  override fun getSceneViewStatusIconAction(): AnAction =
+    ComposePreviewStatusIconAction().visibleOnlyInStaticPreview()
 }

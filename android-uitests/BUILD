@@ -969,7 +969,6 @@ java_test(
     size = "large",
     data = COMMON_DATA + [
         "//prebuilts/android-emulator:emulator",
-        "@system_image_latest_default_x86_64//:images",
     ] + glob(["testData/TextInput/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.emulator.end2end.EmbeddedEmulatorTest"],
     tags = COMMON_TAGS + ["manual"],  # b/154963251
@@ -1140,10 +1139,11 @@ java_test(
 java_test(
     name = "StudioDefaultJDKTest",
     size = "large",
-    data = COMMON_DATA,
+    data = COMMON_DATA + glob([
+        "testData/SimpleApplication/**",
+    ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.newpsd.StudioDefaultJDKTest"],
     tags = COMMON_TAGS + [
-        "no_mac",
         "no_windows",
         "qa_smoke",
     ],
@@ -2109,14 +2109,12 @@ java_test(
 java_test(
     name = "NewComposeProjectTest",
     size = "large",
-    timeout = "long",
     data = COMMON_DATA,
     flaky = True,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.NewComposeProjectTest"],
     tags = COMMON_TAGS + [
         "no_windows",
-        "ui_test",
-        "very_flaky",  # b/255152721, b/263061905, b/263957563
+        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2659,6 +2657,7 @@ java_test(
 
 java_test(
     name = "PrivateResourceTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
     ] + glob([
@@ -2668,8 +2667,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/111889561
-        "qa_unreliable",  # b/111889561
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -2886,6 +2883,7 @@ java_test(
 
 java_test(
     name = "ImageAssetErrorCheckTest",
+    size = "large",
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",

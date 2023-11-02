@@ -21,7 +21,6 @@ import com.android.tools.idea.appinspection.inspectors.network.model.analytics.N
 import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
 import com.android.tools.idea.concurrency.createChildScope
 import com.intellij.util.containers.ContainerUtil
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -39,31 +38,43 @@ interface NetworkInspectorDataSource {
   fun queryForSpeedData(range: Range): List<Event>
 
   fun addOnExtendTimelineListener(listener: (Long) -> Unit)
+
+  fun start()
 }
 
 class NetworkInspectorDataSourceImpl(
   private val messenger: AppInspectorMessenger,
   parentScope: CoroutineScope,
-  private val usageTracker: NetworkInspectorTracker,
+  usageTracker: NetworkInspectorTracker,
 ) : NetworkInspectorDataSource {
   val scope = parentScope.createChildScope()
   private val listeners = ContainerUtil.createLockFreeCopyOnWriteList<(Long) -> Unit>()
-  private val speedData = CopyOnWriteArrayList<Event>()
-  private val httpData = HttpDataCollector()
+  private val dataHandler = DataHandler(usageTracker)
 
-  init {
-    start()
-  }
+  @Volatile private var isStarted = false
 
-  fun start() {
+  override fun start() {
+    if (isStarted) {
+      return
+    }
+    synchronized(this) {
+      if (isStarted) {
+        return
+      }
+      isStarted = true
+    }
     scope.launch {
       messenger.eventFlow
         .map { Event.parseFrom(it) }
         .collect { event ->
-          notifyTimelineExtended(event.timestamp)
-          when {
-            event.hasSpeedEvent() -> speedData.add(event)
-            event.hasHttpConnectionEvent() -> handleHttpEvent(httpData, event)
+          val result =
+            when {
+              event.hasSpeedEvent() -> dataHandler.handleSpeedEvent(event)
+              event.hasHttpConnectionEvent() -> dataHandler.handleHttpConnectionEvent(event)
+              else -> null
+            }
+          if (result?.updateTimeline == true) {
+            notifyTimelineExtended(event.timestamp)
           }
         }
     }
@@ -73,24 +84,10 @@ class NetworkInspectorDataSourceImpl(
     listeners.add(listener)
   }
 
-  override fun queryForHttpData(range: Range): List<HttpData> = httpData.getDataForRange(range)
+  override fun queryForHttpData(range: Range): List<HttpData> =
+    dataHandler.getHttpDataForRange(range)
 
-  override fun queryForSpeedData(range: Range): List<Event> = speedData.searchRange(range)
-
-  private fun handleHttpEvent(httpData: HttpDataCollector, event: Event) {
-    httpData.processEvent(event)
-    val httpConnectionEvent = event.httpConnectionEvent
-    if (httpConnectionEvent.hasHttpResponseIntercepted()) {
-      val interception = httpConnectionEvent.httpResponseIntercepted
-      usageTracker.trackResponseIntercepted(
-        statusCode = interception.statusCode,
-        headerAdded = interception.headerAdded,
-        headerReplaced = interception.headerReplaced,
-        bodyReplaced = interception.bodyReplaced,
-        bodyModified = interception.bodyModified
-      )
-    }
-  }
+  override fun queryForSpeedData(range: Range): List<Event> = dataHandler.getSpeedForRange(range)
 
   private fun notifyTimelineExtended(timestampNs: Long) {
     listeners.forEach { listener -> listener(timestampNs) }

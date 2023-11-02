@@ -178,6 +178,9 @@
   <extensions defaultExtensionNs="com.android.tools.idea.editors.manifest">
     <manifestPanelToken implementation="com.android.tools.idea.editors.manifest.ManifestPanelGradleToken"/>
   </extensions>
+  <extensions defaultExtensionNs="org.jetbrains.android.refactoring">
+    <unusedResourcesToken implementation="org.jetbrains.android.refactoring.UnusedResourcesGradleToken"/>
+  </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
               topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
@@ -304,10 +307,6 @@
     </action>
     <action id="AndroidMigrateToAppCompatAction" class="org.jetbrains.android.refactoring.MigrateToAppCompatAction" text="Migrate to AppCompat..."
             description="Migrates app to AppCompat">
-      <add-to-group group-id="RefactoringMenu"/>
-    </action>
-    <action id="AndroidMigrateToAndroidxAction" class="org.jetbrains.android.refactoring.MigrateToAndroidxAction" text="Migrate to AndroidX..."
-            description="Migrates to AndroidX package names">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
     <action id="AndroidMigrateToResourceNamespacesAction" class="org.jetbrains.android.refactoring.namespaces.MigrateToResourceNamespacesAction" text="Migrate to Resource Namespaces..."

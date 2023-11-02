@@ -27,7 +27,6 @@ import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.DesignSurfaceSettings
-import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.common.type.DesignerEditorFileType
 import com.android.tools.idea.common.type.typeOf
 import com.android.tools.idea.configurations.ConfigurationManager
@@ -45,6 +44,7 @@ import com.android.tools.idea.uibuilder.type.DrawableFileType
 import com.android.tools.idea.uibuilder.type.getPreviewConfig
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -54,7 +54,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.function.Consumer
-import javax.swing.JComponent
 import javax.swing.JPanel
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.uipreview.AndroidEditorSettings
@@ -248,13 +247,13 @@ class PreviewEditorActionManagerProvider(
   surface: NlDesignSurface,
   private val fileType: DesignerEditorFileType?
 ) : NlActionManager(surface) {
-  override fun getSceneViewContextToolbar(sceneView: SceneView): JComponent? {
+  override fun getSceneViewContextToolbarActions(): List<AnAction> {
     return when (fileType) {
       is AnimatedStateListFileType,
       is AnimatedStateListTempFileType,
       is AnimatedVectorFileType,
-      is AnimationListFileType -> null
-      else -> super.getSceneViewContextToolbar(sceneView)
+      is AnimationListFileType -> emptyList()
+      else -> super.getSceneViewContextToolbarActions()
     }
   }
 }

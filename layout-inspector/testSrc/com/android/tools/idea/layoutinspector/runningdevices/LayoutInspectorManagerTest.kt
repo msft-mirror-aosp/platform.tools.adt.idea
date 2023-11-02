@@ -36,8 +36,8 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
 import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
-import com.android.tools.idea.layoutinspector.ui.InspectorBanner
-import com.android.tools.idea.layoutinspector.ui.toolbar.actions.SingleDeviceSelectProcessAction
+import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
+import com.android.tools.idea.layoutinspector.runningdevices.ui.LayoutInspectorRenderer
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
@@ -45,7 +45,6 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.DataManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionToolbar
-import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.ApplicationRule
@@ -53,8 +52,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
-import java.awt.Component
-import java.awt.Container
+import javax.swing.JComponent
 import javax.swing.JPanel
 import org.junit.After
 import org.junit.Before
@@ -159,11 +157,11 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
   }
 
   @Test
@@ -174,11 +172,11 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
   }
 
   @Test
@@ -188,12 +186,12 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
   }
 
   @Test
@@ -203,21 +201,21 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
 
-    assertDoesNotHaveWorkbench(tab1)
-    assertHasWorkbench(tab2)
+    verifyUiRemoved(tab1)
+    verifyUiInjected(tab2)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
-    assertHasWorkbench(tab2)
+    verifyUiRemoved(tab1)
+    verifyUiInjected(tab2)
 
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab2)
+    verifyUiRemoved(tab2)
   }
 
   @Test
@@ -236,10 +234,10 @@ class LayoutInspectorManagerTest {
 
     // Verify toolbar has access to data provider
     val toolbar =
-      tab1.container.allChildren().filterIsInstance<ActionToolbar>().first {
-        it.component.name == "LayoutInspector.MainToolbar"
+      tab1.container.allChildren().filterIsInstance<JComponent>().first {
+        it.name == "EmbeddedLayoutInspector.Toolbar"
       }
-    val dataProvider2 = DataManager.getDataProvider(toolbar.component)
+    val dataProvider2 = DataManager.getDataProvider(toolbar)
     val layoutInspector2 = dataProvider2!!.getData(LAYOUT_INSPECTOR_DATA_KEY.name)
     assertThat(layoutInspector2).isEqualTo(layoutInspector)
 
@@ -248,7 +246,7 @@ class LayoutInspectorManagerTest {
     val dataContext3 = DataManager.getDataProvider(workbench)
     assertThat(dataContext3).isNull()
 
-    val dataContext4 = DataManager.getDataProvider(toolbar.component)
+    val dataContext4 = DataManager.getDataProvider(toolbar)
     assertThat(dataContext4).isNull()
   }
 
@@ -259,13 +257,13 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
 
     // adding a new tab that doesn't have Layout Inspector enabled
     fakeToolWindowManager.addContent(tab2)
 
-    assertHasWorkbench(tab1)
-    assertDoesNotHaveWorkbench(tab2)
+    verifyUiInjected(tab1)
+    verifyUiRemoved(tab2)
   }
 
   @Test
@@ -279,13 +277,13 @@ class LayoutInspectorManagerTest {
     fakeToolWindowManager.setSelectedContent(tab2)
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
 
-    assertDoesNotHaveWorkbench(tab1)
-    assertHasWorkbench(tab2)
+    verifyUiRemoved(tab1)
+    verifyUiInjected(tab2)
 
     fakeToolWindowManager.setSelectedContent(tab1)
 
-    assertHasWorkbench(tab1)
-    assertDoesNotHaveWorkbench(tab2)
+    verifyUiInjected(tab1)
+    verifyUiRemoved(tab2)
   }
 
   @Test
@@ -309,26 +307,26 @@ class LayoutInspectorManagerTest {
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(3)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
-    assertDoesNotHaveWorkbench(tab1)
-    assertHasWorkbench(tab2)
+    verifyUiRemoved(tab1)
+    verifyUiInjected(tab2)
 
     fakeToolWindowManager.setSelectedContent(tab1)
 
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(3)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
-    assertHasWorkbench(tab1)
-    assertDoesNotHaveWorkbench(tab2)
+    verifyUiInjected(tab1)
+    verifyUiRemoved(tab2)
 
     fakeToolWindowManager.removeContent(tab1)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
     assertThat(layoutInspector.deviceModel?.selectedDevice).isNull()
 
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(3)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
-    assertHasWorkbench(tab2)
+    verifyUiInjected(tab2)
 
     fakeToolWindowManager.removeContent(tab2)
 
@@ -403,7 +401,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
     val notifications1 = notificationModel.notifications
     assertThat(notifications1).hasSize(1)
     val firstNotification = notifications1.single()
@@ -418,7 +416,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
     val notifications2 = notificationModel.notifications
     assertThat(notifications2).hasSize(1)
 
@@ -437,7 +435,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
   }
 
   @Test
@@ -477,13 +475,13 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
     assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector)
       .containsExactly(tab1.deviceId)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
     assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector).isEmpty()
   }
 
@@ -494,13 +492,13 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    assertHasWorkbench(tab1)
+    verifyUiInjected(tab1)
     assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector)
       .containsExactly(tab1.deviceId)
 
     Disposer.dispose(layoutInspectorManager)
 
-    assertDoesNotHaveWorkbench(tab1)
+    verifyUiRemoved(tab1)
     assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector).isEmpty()
   }
 
@@ -562,77 +560,12 @@ class LayoutInspectorManagerTest {
     assertThat(fakeForegroundProcessDetection.startInvokeCounter).isEqualTo(4)
     assertThat(fakeForegroundProcessDetection.stopInvokeCounter).isEqualTo(4)
   }
+}
 
-  private fun assertHasWorkbench(tabInfo: TabInfo) {
-    assertThat(tabInfo.content.allParents().filterIsInstance<Splitter>()).hasSize(1)
-    assertThat(tabInfo.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>())
-      .hasSize(1)
+private fun verifyUiInjected(tabInfo: TabInfo) {
+  verifyUiInjected(UiConfig.HORIZONTAL, tabInfo.content, tabInfo.container, tabInfo.displayView)
+}
 
-    val splitter = tabInfo.content.allParents().filterIsInstance<Splitter>().first()
-
-    assertThat(splitter.allChildren().filterIsInstance<WorkBench<LayoutInspector>>()).hasSize(1)
-
-    val workbench = splitter.allChildren().filterIsInstance<WorkBench<LayoutInspector>>().first()
-    assertThat(workbench.isFocusCycleRoot).isFalse()
-
-    val toolbars =
-      tabInfo.container.allChildren().filterIsInstance<ActionToolbar>().filter {
-        it.component.name == "LayoutInspector.MainToolbar"
-      }
-
-    assertThat(toolbars).hasSize(1)
-
-    assertThat(toolbars.first().actions.filterIsInstance<SingleDeviceSelectProcessAction>())
-      .hasSize(1)
-    assertThat(toolbars.first().actions.filterIsInstance<ToggleDeepInspectAction>()).hasSize(1)
-
-    val inspectorBanner = tabInfo.container.allChildren().filterIsInstance<InspectorBanner>()
-
-    assertThat(inspectorBanner).hasSize(1)
-
-    assertThat(tabInfo.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>())
-      .hasSize(1)
-  }
-
-  private fun assertDoesNotHaveWorkbench(tabInfo: TabInfo) {
-    assertThat(tabInfo.content.allParents().filterIsInstance<Splitter>()).hasSize(0)
-    assertThat(tabInfo.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>())
-      .hasSize(0)
-    assertThat(tabInfo.content.parent).isEqualTo(tabInfo.container)
-
-    val toolbars =
-      tabInfo.container.allChildren().filterIsInstance<ActionToolbar>().filter {
-        it.component.name == "LayoutInspector.MainToolbar"
-      }
-
-    assertThat(toolbars).hasSize(0)
-
-    val inspectorBanner = tabInfo.container.allChildren().filterIsInstance<InspectorBanner>()
-
-    assertThat(inspectorBanner).hasSize(0)
-
-    assertThat(tabInfo.displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>())
-      .hasSize(0)
-  }
-
-  private fun Component.allParents(): List<Container> {
-    val parents = mutableListOf<Container>()
-    var component = this
-    while (component.parent != null) {
-      parents.add(component.parent)
-      component = component.parent
-    }
-    return parents
-  }
-
-  private fun Container.allChildren(): List<Component> {
-    val children = mutableListOf<Component>()
-    for (component in components) {
-      children.add(component)
-      if (component is Container) {
-        children.addAll(component.allChildren())
-      }
-    }
-    return children
-  }
+private fun verifyUiRemoved(tabInfo: TabInfo) {
+  verifyUiRemoved(tabInfo.content, tabInfo.container, tabInfo.displayView)
 }

@@ -53,10 +53,11 @@ studio_plugin(
         "//prebuilts/tools/common/m2:tensorflow-lite-metadata",
         "//prebuilts/tools/common/m2:trace-perfetto-library",
         "//prebuilts/tools/common/m2:oauth2",
+        "//prebuilts/tools/common/m2:jewel-ide",
+        "//prebuilts/tools/common/m2:compose-desktop",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/.idea/libraries:asm-tools",
-        "//tools/adt/idea/.idea/libraries:compose-desktop",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:ffmpeg",
         "//tools/adt/idea/.idea/libraries:google-api-client",
@@ -66,7 +67,6 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:HdrHistogram",
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/.idea/libraries:jetty",
-        "//tools/adt/idea/.idea/libraries:jewel",
         "//tools/adt/idea/.idea/libraries:kotlinx-coroutines-guava",
         "//tools/adt/idea/.idea/libraries:kotlin-multiplatform-android-models-proto",
         "//tools/adt/idea/.idea/libraries:kxml2",
@@ -228,6 +228,7 @@ studio_plugin(
             "//tools/adt/idea/render-resources:intellij.android.render-resources",
             "//tools/adt/idea/rendering:intellij.android.rendering",
             "//tools/adt/idea/room:intellij.android.room",
+            "//tools/adt/idea/samples-browser:samples-browser",
             "//tools/adt/idea/sdk-updates:intellij.android.sdkUpdates",
             "//tools/adt/idea/android-test-retention:intellij.android.testRetention",
             "//tools/adt/idea/threading-checker:intellij.android.threading-checker",
@@ -559,19 +560,17 @@ studio_plugin(
     directory = "google-cloud-tools-as",
     libs = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:gradle-appengine-builder-model-0.1.0",
-        "//tools/studio/google/cloud/tools/core-plugin/lib:google-api-services-appengine-v1-rev9-1.22.0",
-        "//tools/studio/google/cloud/tools/core-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
+        "//tools/studio/google/cloud/tools/android-studio-plugin/lib:google-api-services-appengine",
+        "//tools/studio/google/cloud/tools/android-studio-plugin/third_party/gradle-appengine-builder-model:gradle-appengine-builder-model-0.1.0",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
-        "//tools/adt/idea/.idea/libraries:google-api-services-sourcerepo",
+        "//prebuilts/tools/common/m2:google-api-services-sourcerepo",
     ],
     licenses = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:licenses",
-        "//tools/studio/google/cloud/tools/core-plugin/lib:licenses",
     ],
     modules = {
         "google-cloud-tools-as.jar": [
             "//tools/studio/google/cloud/tools/android-studio-plugin:google-cloud-tools-as",
-            "//tools/studio/google/cloud/tools/core-plugin:google-cloud-tools-core-as",
         ],
     },
     visibility = ["//visibility:public"],
@@ -919,7 +918,6 @@ iml_module(
         "//tools/vendor/google/firebase[module]",
         "//tools/studio/google/cloud/testing/directaccess[module]",
         "//tools/studio/google/cloud/testing/firebase-testing[module]",
-        "//tools/studio/google/cloud/tools/core-plugin:google-cloud-tools-core-as[module]",
         "//tools/studio/google/cloud/tools/google-login-plugin:google-login-as[module]",
         "//tools/adt/idea/smali:intellij.android.smali[module]",
         "//tools/studio/google/cloud/testing/test-recorder[module]",
@@ -1006,10 +1004,7 @@ iml_studio_test(
     ],
     module = ":intellij.android.studio.integration",
     tags_linux = ["block-network"],
-    tags_windows = [
-        "block-network",
-        "manual",  # b/305290519
-    ],
+    tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.UpdateTest",
 )
 

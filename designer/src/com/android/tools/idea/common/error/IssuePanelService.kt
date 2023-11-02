@@ -162,6 +162,11 @@ class IssuePanelService(private val project: Project) {
       object : ContentManagerListener {
         override fun selectionChanged(event: ContentManagerEvent) {
           val content = event.content
+          val panel = tabToPanelMap[content]
+          panel?.get()?.let {
+            it.updateIssueOrder()
+            it.updateIssueVisibility()
+          }
           val selectedTab =
             when (getTabCategory(content)) {
               TabCategory.CURRENT_FILE -> UniversalProblemsPanelEvent.ActivatedTab.CURRENT_FILE
@@ -182,7 +187,7 @@ class IssuePanelService(private val project: Project) {
         object : FileEditorManagerListener {
           override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
             val editor = source.getSelectedEditor(file)
-            updateIssuePanelVisibility(file, editor, true)
+            updateIssuePanelVisibility(file, editor)
           }
 
           override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
@@ -193,18 +198,10 @@ class IssuePanelService(private val project: Project) {
           }
 
           override fun selectionChanged(event: FileEditorManagerEvent) {
-            updateIssuePanelVisibility(event.newFile, event.newEditor, false)
+            event.newFile?.let { updateIssuePanelVisibility(it, event.newEditor) }
           }
 
-          private fun updateIssuePanelVisibility(
-            newFile: VirtualFile?,
-            newEditor: FileEditor?,
-            selectIfVisible: Boolean
-          ) {
-            if (newFile == null) {
-              setSharedIssuePanelVisibility(false)
-              return
-            }
+          private fun updateIssuePanelVisibility(newFile: VirtualFile, newEditor: FileEditor?) {
             if (isSupportedDesignerFileType(newFile)) {
               addIssuePanel()
               return
@@ -478,12 +475,6 @@ class IssuePanelService(private val project: Project) {
 
   fun getSharedIssuePanel(): DesignerCommonIssuePanel? =
     nameToTabMap[SHARED_ISSUE_PANEL_TAB_NAME]?.get()?.let { tabToPanelMap[it]?.get() }
-
-  fun getSelectedIssuePanel(): DesignerCommonIssuePanel? {
-    return ProblemsView.getToolWindow(project)?.contentManager?.selectedContent?.let {
-      tabToPanelMap[it]?.get()
-    }
-  }
 
   /** Focus IJ's problems pane if Problems Panel is visible. Or do nothing otherwise. */
   fun focusIssuePanelIfVisible() {

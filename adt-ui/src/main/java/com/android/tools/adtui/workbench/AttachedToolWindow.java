@@ -121,6 +121,12 @@ class AttachedToolWindow<T> implements ToolWindowCallback, Disposable {
     setDefaultProperty(PropertyType.AUTO_HIDE, definition.getAutoHide().isAutoHide());
     setDefaultProperty(PropertyType.MINIMIZED, minimizedByDefault);
     updateContent();
+    if (myDefinition.overrideSide()) {
+      setProperty(PropertyType.LEFT, definition.getSide().isLeft());
+    }
+    if (myDefinition.overrideSplit()) {
+      setProperty(PropertyType.SPLIT, definition.getSplit().isBottom());
+    }
     AnAction globalFindAction = ActionManager.getInstance().getAction(ACTION_FIND);
     if (globalFindAction != null) {
       new FindAction().registerCustomShortcutSet(globalFindAction.getShortcutSet(), myPanel, this);
@@ -417,8 +423,13 @@ class AttachedToolWindow<T> implements ToolWindowCallback, Disposable {
       rightGroup.addAll(content.getAdditionalActions());
       rightGroup.add(Separator.getInstance());
     }
-    rightGroup.add(new GearAction());
-    rightGroup.add(new HideAction());
+    if (myDefinition.showGearAction()) {
+      rightGroup.add(new GearAction());
+    }
+    if (myDefinition.showHideAction()) {
+      rightGroup.add(new HideAction());
+    }
+
     ActionToolbar actionToolbar = ActionManager.getInstance().createActionToolbar("AttachedToolWindow", rightGroup, true);
     ActionToolbarUtil.makeToolbarNavigable(actionToolbar);
     actionToolbar.setMinimumButtonSize(myDefinition.getButtonSize());

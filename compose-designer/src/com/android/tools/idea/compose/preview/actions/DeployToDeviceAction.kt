@@ -16,11 +16,11 @@
 package com.android.tools.idea.compose.preview.actions
 
 import com.android.tools.compose.COMPOSE_PREVIEW_ACTIVITY_FQN
-import com.android.tools.idea.compose.preview.COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.runconfiguration.ComposePreviewRunConfiguration
 import com.android.tools.idea.compose.preview.runconfiguration.ComposePreviewRunConfigurationType
+import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.projectsystem.isTestFile
 import com.android.tools.preview.ComposePreviewElement
 import com.android.tools.preview.ParametrizedComposePreviewElementInstance
@@ -30,23 +30,17 @@ import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import icons.StudioIcons.Compose.Toolbar.RUN_ON_DEVICE
 import org.jetbrains.kotlin.idea.base.util.module
 
-/**
- * Action to run a Compose Preview on a device/emulator.
- *
- * @param dataContextProvider returns the [DataContext] containing the Compose Preview associated
- *   information.
- */
-internal class DeployToDeviceAction(private val dataContextProvider: () -> DataContext) :
+/** Action to run a Compose Preview on a device/emulator. */
+internal class DeployToDeviceAction :
   AnAction(message("action.run.title"), message("action.run.description"), RUN_ON_DEVICE) {
 
   override fun actionPerformed(e: AnActionEvent) {
-    previewElement()?.let {
+    e.dataContext.previewElement()?.let {
       val psiElement = it.previewElementDefinitionPsi?.element
       val project = psiElement?.project ?: return@actionPerformed
       val module = psiElement.module ?: return@actionPerformed
@@ -58,7 +52,8 @@ internal class DeployToDeviceAction(private val dataContextProvider: () -> DataC
   override fun update(e: AnActionEvent) {
     super.update(e)
     val isTestFile =
-      previewElement()?.previewBodyPsi?.let { isTestFile(it.project, it.virtualFile) } ?: false
+      e.dataContext.previewElement()?.previewBodyPsi?.let { isTestFile(it.project, it.virtualFile) }
+        ?: false
     e.presentation.apply {
       val isEssentialsModeEnabled = ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
       isEnabled = !isTestFile && !isEssentialsModeEnabled
@@ -107,8 +102,6 @@ internal class DeployToDeviceAction(private val dataContextProvider: () -> DataC
       DefaultRunExecutor.getRunExecutorInstance()
     )
   }
-
-  private fun previewElement() = dataContextProvider().getData(COMPOSE_PREVIEW_ELEMENT_INSTANCE)
 }
 
 /**

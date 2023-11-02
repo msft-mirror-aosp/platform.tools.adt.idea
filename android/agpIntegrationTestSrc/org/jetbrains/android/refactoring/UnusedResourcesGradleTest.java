@@ -53,19 +53,21 @@ public class UnusedResourcesGradleTest {
   public void testGroovy() {
     final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_GROOVY);
     openPreparedTestProject(preparedProject, project -> {
-      assertThat(getTextForFile(project, "app/build.gradle")).contains("resValue");
+      assertThat(getTextForFile(project, "mipmap/build.gradle")).contains("resValue");
 
       UnusedResourcesProcessor processor = new UnusedResourcesProcessor(project, null);
       processor.setIncludeIds(true);
       processor.run();
 
-      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+      assertThat(getTextForFile(project, "mipmap/src/main/res/values/strings.xml")).isEqualTo(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
         "<resources>\n" +
         "    <string name=\"app_name\">Hello World</string>\n" +
         "</resources>\n");
 
-      assertThat(getTextForFile(project, "app/build.gradle")).doesNotContain("resValue");
+      String appBuildGradleText = getTextForFile(project, "mipmap/build.gradle");
+      assertThat(appBuildGradleText).doesNotContain("resValue");
+      assertThat(appBuildGradleText).contains("android");
     });
   }
 
@@ -86,7 +88,9 @@ public class UnusedResourcesGradleTest {
         "    <string name=\"used_from_test\">Referenced from test</string>\n" +
         "</resources>\n");
 
-      assertThat(getTextForFile(project, "app/build.gradle")).doesNotContain("resValue");
+      String appBuildGradleText = getTextForFile(project, "app/build.gradle");
+      assertThat(appBuildGradleText).doesNotContain("resValue");
+      assertThat(appBuildGradleText).contains("android");
     });
   }
 
@@ -163,19 +167,21 @@ public class UnusedResourcesGradleTest {
     // Like testGroovy, but this one verifies analysis and updating of build.gradle.kts files instead.
     final var preparedProject = prepareTestProject(projectRule, AndroidCoreTestProject.UNUSED_RESOURCES_KTS);
     openPreparedTestProject(preparedProject, project -> {
-      assertThat(getTextForFile(project, "app/build.gradle.kts")).contains("resValue");
+      assertThat(getTextForFile(project, "mipmap/build.gradle.kts")).contains("resValue");
 
       UnusedResourcesProcessor processor = new UnusedResourcesProcessor(project, null);
       processor.setIncludeIds(true);
       processor.run();
 
-      assertThat(getTextForFile(project, "app/src/main/res/values/strings.xml")).isEqualTo(
+      assertThat(getTextForFile(project, "mipmap/src/main/res/values/strings.xml")).isEqualTo(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
         "<resources>\n" +
         "    <string name=\"app_name\">Hello World</string>\n" +
         "</resources>\n");
 
-      assertThat(getTextForFile(project, "app/build.gradle.kts")).doesNotContain("resValue");
+      String appBuildGradleKtsText = getTextForFile(project, "mipmap/build.gradle.kts");
+      assertThat(appBuildGradleKtsText).doesNotContain("resValue");
+      assertThat(appBuildGradleKtsText).contains("android");
     });
   }
 

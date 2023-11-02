@@ -3,6 +3,7 @@ package com.android.tools.idea.run.configuration
 import ai.grazie.utils.capitalize
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
+import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.help.AndroidWebHelpProvider
 import com.android.tools.idea.projectsystem.gradle.getGradlePluginVersion
@@ -19,12 +20,9 @@ import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
+import com.intellij.execution.configurations.WithoutOwnBeforeRunSteps
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
-import com.intellij.execution.ui.ConfigurationModuleSelector
-import com.intellij.execution.ui.RunConfigurationFragmentedEditor
-import com.intellij.execution.ui.SettingsEditorFragment
-import com.intellij.openapi.externalSystem.service.execution.configuration.SettingsFragmentsContainer
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.options.SettingsEditor
@@ -90,7 +88,10 @@ class AndroidBaselineProfileRunConfigurationType : ConfigurationType {
 }
 
 class AndroidBaselineProfileRunConfiguration(project: Project, factory: ConfigurationFactory, name: String? = factory.name) :
-  AndroidRunConfigurationBase(project, factory, name, true), RunConfigurationWithSuppressedDefaultRunAction, RunConfigurationWithSuppressedDefaultDebugAction, PreferGradleMake {
+  AndroidRunConfigurationBase(project, factory, name, true), RunConfigurationWithSuppressedDefaultRunAction, RunConfigurationWithSuppressedDefaultDebugAction, PreferGradleMake, WithoutOwnBeforeRunSteps {
+
+  @JvmField
+  var generateAllVariants: Boolean = false
 
   override fun setModule(module: Module?) {
     super.setModule(module)
@@ -119,17 +120,11 @@ class AndroidBaselineProfileRunConfiguration(project: Project, factory: Configur
     return AndroidBaselineProfileConfigurationExecutor(env, deployFutures)
   }
 
-  fun getVariant(): String? {
-    return configurationModule.module?.let {
-      GradleAndroidModel.get(it)?.selectedVariant?.name?.let { name ->
-        // Force name to be "Release" instead of "Debug".
-        if (name.lowercase().endsWith("debug")) name.substring(0, name.length - "debug".length) + "Release" else name
-      }
-    }
-  }
-
   fun getTaskNames(): List<String> {
-    return listOf("generate${(getVariant() ?: "").capitalize()}BaselineProfile")
+    val variantName = if (generateAllVariants) "" else configurationModule.module?.let {
+      GradleAndroidModel.get(it)?.selectedVariant?.name?.capitalize() ?: ""
+    }
+    return listOf("generate${variantName}BaselineProfile")
   }
 
   fun getPath(): String? {
@@ -145,10 +140,14 @@ class AndroidBaselineProfileRunConfiguration(project: Project, factory: Configur
   }
 
   override fun validate(executor: Executor?): MutableList<ValidationError> {
-    val validationErrors = mutableListOf<ValidationError>()
-    applicationIdProvider ?: return validationErrors.apply { add(ValidationError.fatal("No application ID provider supplied")) }
-    configurationModule.module ?: return validationErrors.apply { add(ValidationError.fatal("No module specified in configuration")) }
-    configurationModule.module?.getGradlePluginVersion() ?: return validationErrors.apply { add(ValidationError.fatal("Could not determine AGP version")) }
-    return validationErrors
+    val module = configurationModule.module ?: return mutableListOf(ValidationError.fatal("No module specified in configuration"))
+    applicationIdProvider ?: return mutableListOf(ValidationError.fatal("Application ID cannot be found"))
+    module.getGradlePluginVersion() ?: return mutableListOf(ValidationError.fatal("Could not determine AGP version"))
+    val model = GradleAndroidModel.get(module) ?: return mutableListOf(ValidationError.fatal("Target module ${module.name} is not a Gradle Android module."))
+    if (!generateAllVariants && model.isDebuggable) {
+      return mutableListOf(ValidationError.fatal(
+        "Target module's selected variant is debuggable. Please use Build Variants tools window to change the variant of ${module.name}."))
+    }
+    return mutableListOf()
   }
 }

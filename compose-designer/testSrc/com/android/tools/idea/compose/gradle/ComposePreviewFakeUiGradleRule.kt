@@ -20,6 +20,7 @@ import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.compose.gradle.preview.TestComposePreviewView
 import com.android.tools.idea.compose.gradle.preview.displayName
 import com.android.tools.idea.compose.preview.ComposePreviewRefreshManager
+import com.android.tools.idea.compose.preview.ComposePreviewRefreshType
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.TEST_DATA_PATH
 import com.android.tools.idea.compose.preview.waitForSmartMode
@@ -40,7 +41,6 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-import java.util.concurrent.CountDownLatch
 import javax.swing.JPanel
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -68,7 +68,7 @@ class ComposePreviewFakeUiGradleRule(
   testDataPath: String = TEST_DATA_PATH,
   kotlinVersion: String = DEFAULT_KOTLIN_VERSION,
   projectRule: AndroidGradleProjectRule = AndroidGradleProjectRule(),
-  enableRenderQuality: Boolean = true
+  enableRenderQuality: Boolean = StudioFlags.COMPOSE_PREVIEW_RENDER_QUALITY.get()
 ) : ComposeGradleProjectRule(projectPath, testDataPath, kotlinVersion, projectRule) {
 
   // The logger must be initialized later since at this point the logger framework is not ready yet
@@ -155,22 +155,27 @@ class ComposePreviewFakeUiGradleRule(
   }
 
   fun resetInitialConfiguration() {
+    composePreviewRepresentation.onDeactivate()
+    composePreviewRepresentation.dispose()
     setUpPreview()
   }
 
-  /** Executes [runnable], expecting it to cause a refresh to start running. */
+  /**
+   * Executes [runnable], expecting it to cause a refresh of type [expectedRefreshType] to start
+   * running.
+   */
   suspend fun waitForAnyRefreshToStart(
-    timeout: Duration = DEFAULT_REFRESH_TIMEOUT,
+    timeout: Duration,
+    expectedRefreshType: ComposePreviewRefreshType,
     runnable: suspend () -> Unit
   ) = coroutineScope {
-    val countDownLatch = CountDownLatch(1)
     // Make sure to start waiting for the change before triggering it
     val awaitingJob = launch {
-      refreshManager.isRefreshingFlow.awaitStatus(
+      refreshManager.refreshingTypeFlow.awaitStatus(
         "Timeout waiting for refresh to start",
         timeout
-      ) { isRefreshing ->
-        isRefreshing
+      ) {
+        it == expectedRefreshType
       }
     }
     runnable()
@@ -181,10 +186,12 @@ class ComposePreviewFakeUiGradleRule(
   }
 
   /** Wait for all running refreshes to complete. */
-  suspend fun waitForAllRefreshesToFinish(timeout: Duration = DEFAULT_REFRESH_TIMEOUT) {
-    refreshManager.isRefreshingFlow.awaitStatus("Timeout waiting for refresh to finish", timeout) {
-      isRefreshing ->
-      !isRefreshing
+  suspend fun waitForAllRefreshesToFinish(timeout: Duration) {
+    refreshManager.refreshingTypeFlow.awaitStatus(
+      "Timeout waiting for refresh to finish",
+      timeout
+    ) {
+      it == null
     }
   }
 
@@ -194,17 +201,19 @@ class ComposePreviewFakeUiGradleRule(
    * waiting.
    */
   suspend fun runAndWaitForRefresh(
-    timeout: Duration = DEFAULT_BUILD_AND_REFRESH_TIMEOUT,
+    anyRefreshStartTimeout: Duration = DEFAULT_REFRESH_TIMEOUT,
+    allRefreshesFinishTimeout: Duration = DEFAULT_REFRESH_TIMEOUT,
+    expectedRefreshType: ComposePreviewRefreshType = ComposePreviewRefreshType.NORMAL,
     aRefreshMustStart: Boolean = true,
     runnable: suspend () -> Unit
   ) {
-    waitForAllRefreshesToFinish()
+    waitForAllRefreshesToFinish(timeout = 5.seconds)
     try {
-      waitForAnyRefreshToStart(runnable = runnable)
+      waitForAnyRefreshToStart(anyRefreshStartTimeout, expectedRefreshType, runnable)
     } catch (t: Throwable) {
       if (aRefreshMustStart) throw t
     }
-    waitForAllRefreshesToFinish(timeout)
+    waitForAllRefreshesToFinish(allRefreshesFinishTimeout)
   }
 
   /** Builds the project and waits for the preview panel to refresh. It also does zoom to fit. */
@@ -220,7 +229,10 @@ class ComposePreviewFakeUiGradleRule(
       fakeUi.root.validate()
       if (zoomToFit) {
         // zoom to fit might (but not always) trigger a render quality change
-        runAndWaitForRefresh(aRefreshMustStart = false) {
+        runAndWaitForRefresh(
+          expectedRefreshType = ComposePreviewRefreshType.QUALITY,
+          aRefreshMustStart = false
+        ) {
           previewView.mainSurface.zoomToFit()
           fakeUi.root.validate()
         }

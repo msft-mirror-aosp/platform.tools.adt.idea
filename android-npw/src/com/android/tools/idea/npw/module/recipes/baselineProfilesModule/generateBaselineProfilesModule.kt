@@ -16,12 +16,10 @@
 package com.android.tools.idea.npw.module.recipes.baselineProfilesModule
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.FILTER_ARG_BASELINE_PROFILE
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.FILTER_ARG_MACROBENCHMARK
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.createModule
-import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.generateBuildVariants
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.getTargetModelProductFlavors
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.src.baselineProfileBenchmarksJava
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.src.baselineProfileBenchmarksKt
@@ -59,17 +57,14 @@ fun RecipeExecutor.generateBaselineProfilesModule(
   useGmd: Boolean,
   useVersionCatalog: Boolean
 ) {
-  val projectBuildModel = ProjectBuildModel.getOrLog(targetModule.project) ?: return
-  val targetModuleAndroidModel = projectBuildModel.getModuleBuildModel(targetModule)?.android() ?: return
   val targetModuleGradleModel = GradleAndroidModel.get(targetModule) ?: return
-  val targetApplicationId = targetModuleAndroidModel.namespace().valueAsString() ?: "com.example.application"
+  val targetApplicationId = targetModuleGradleModel.applicationId
 
   addClasspathDependency("androidx.benchmark:benchmark-baseline-profile-gradle-plugin:+", BASELINE_PROFILES_PLUGIN_MIN_REV)
 
   val gmdSpec = if (useGmd) GmdSpec(GMD_DEVICE, GMD_API, GMD_SYSTEM_IMAGE_SOURCE) else null
 
   val flavors = getTargetModelProductFlavors(targetModuleGradleModel)
-  val variants = generateBuildVariants(flavors, "release")
 
   createModule(
     newModule = newModule,
@@ -98,7 +93,7 @@ fun RecipeExecutor.generateBaselineProfilesModule(
 
   // Only do the actions for the default executor, not when just finding references.
   if (this !is FindReferencesRecipeExecutor) {
-    setupRunConfigurations(variants, targetModule)
+    setupRunConfigurations(targetModule)
   }
 }
 
@@ -191,7 +186,6 @@ fun RecipeExecutor.createTestClasses(
  */
 @VisibleForTesting
 fun setupRunConfigurations(
-  variants: List<String>,
   targetModule: Module,
   runManager: RunManager = RunManager.getInstance(targetModule.project)
 ) {
@@ -199,30 +193,15 @@ fun setupRunConfigurations(
 
   val configFactory = AndroidBaselineProfileRunConfigurationType.getInstance().factory
 
-  variants
-    .ifEmpty { listOf(null) } // If there's no variant, we add one placeholder, so that we create at least one run configuration
-    .forEachIndexed { index, variantName ->
-      var runName = RUN_CONFIGURATION_NAME
-      if (variants.size > 1) {
-        runName += " [$variantName]"
-      }
-
-      val runConfig = AndroidBaselineProfileRunConfiguration(project, configFactory, runName).apply {
-        setModule(targetModule)
-      }
-
-      val runConfigSettings = runManager.createConfiguration(runConfig, configFactory)
-      // Persists in .idea folder
-      runConfigSettings.storeInDotIdeaFolder()
-      runManager.addConfiguration(runConfigSettings)
-
-      // Select first run configuration
-      if (index == 0) {
-        runManager.selectedConfiguration = runConfigSettings
-      }
-    }
+  val runConfigForSelected = AndroidBaselineProfileRunConfiguration(project, configFactory, RUN_CONFIGURATION_NAME).apply {
+    setModule(targetModule)
+  }
+  val runConfigSettingsForSelected = runManager.createConfiguration(runConfigForSelected, configFactory)
+  // Persists in .idea folder
+  runConfigSettingsForSelected.storeInDotIdeaFolder()
+  runManager.addConfiguration(runConfigSettingsForSelected)
+  runManager.selectedConfiguration = runConfigSettingsForSelected
 }
-
 
 @VisibleForTesting
 fun Module.getModuleNameForGradleTask(): String {

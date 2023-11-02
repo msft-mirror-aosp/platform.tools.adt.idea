@@ -16,10 +16,10 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.flags.ifEnabled
+import com.android.tools.idea.actions.ColorBlindModeAction
 import com.android.tools.idea.common.editor.ToolbarActionGroups
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
-import com.android.tools.idea.compose.preview.actions.ComposeColorBlindAction
 import com.android.tools.idea.compose.preview.actions.ComposeFilterShowHistoryAction
 import com.android.tools.idea.compose.preview.actions.ComposeFilterTextAction
 import com.android.tools.idea.compose.preview.actions.ComposeNotificationGroup
@@ -59,6 +59,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.thisLogger
@@ -116,11 +117,13 @@ private class ComposePreviewToolbar(private val surface: DesignSurface<*>) :
             },
             additionalActionProvider = {
               if (StudioFlags.COMPOSE_COLORBLIND_MODE.get() && surface is NlDesignSurface)
-                ComposeColorBlindAction(surface)
+                ColorBlindModeAction(surface.screenViewProvider) { surface.setColorBlindMode(it) }
               else null
             },
           )
           .visibleOnlyInStaticPreview(),
+        Separator.getInstance().visibleOnlyInUiCheck(),
+        UiCheckDropDownAction().visibleOnlyInUiCheck(),
         ComposeViewControlAction(
             layoutManagerSwitcher = surface.sceneViewLayoutManager as LayoutManagerSwitcher,
             layoutManagers = BASE_LAYOUT_MANAGER_OPTIONS,
@@ -132,7 +135,6 @@ private class ComposePreviewToolbar(private val surface: DesignSurface<*>) :
             onSurfaceLayoutSelected = { _, _ -> },
           )
           .visibleOnlyInUiCheck(),
-        UiCheckDropDownAction().visibleOnlyInUiCheck(),
         StudioFlags.COMPOSE_DEBUG_BOUNDS.ifEnabled { ShowDebugBoundaries() },
       ),
     ) {

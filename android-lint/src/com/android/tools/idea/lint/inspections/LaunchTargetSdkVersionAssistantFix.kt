@@ -19,7 +19,6 @@ import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.assistant.OpenAssistSidePanelAction
 import com.android.tools.idea.lint.common.AndroidQuickfixContexts
 import com.android.tools.idea.lint.common.DefaultLintQuickFix
-import com.android.tools.lint.checks.GradleDetector
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -40,7 +39,7 @@ class LaunchTargetSdkVersionAssistantFix :
     endElement: PsiElement,
     context: AndroidQuickfixContexts.Context
   ) {
-    GradleDetector.Companion.stopFlaggingTargetSdkEdits()
+    stopFlaggingTargetSdkEditsForSession(startElement.project)
     OpenAssistSidePanelAction()
       .openWindow("DeveloperServices.TargetSDKVersionUpgradeAssistant", startElement.project)
   }
