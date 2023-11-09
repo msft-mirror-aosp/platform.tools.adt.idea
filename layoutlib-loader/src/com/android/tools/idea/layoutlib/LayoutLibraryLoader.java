@@ -17,24 +17,26 @@
 package com.android.tools.idea.layoutlib;
 
 import com.android.SdkConstants;
+import com.android.annotations.NonNull;
+import com.android.annotations.Nullable;
 import com.android.ide.common.rendering.api.Bridge;
 import com.android.ide.common.rendering.api.ILayoutLog;
 import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.internal.project.ProjectProperties;
 import com.android.tools.environment.Logger;
+import com.android.utils.ComputerArchUtilsKt;
+import com.android.utils.CpuArchitecture;
 import com.android.utils.ILogger;
-import com.intellij.openapi.extensions.ExtensionPointName;
-import com.intellij.openapi.util.SystemInfo;
-import com.intellij.util.containers.ContainerUtil;
-import com.intellij.util.system.CpuArch;
 import java.io.File;
+import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.WeakHashMap;
+import java.util.function.Supplier;
 
 /**
  * Loads a {@link LayoutLibrary}
@@ -42,14 +44,13 @@ import java.util.Map;
 public class LayoutLibraryLoader {
   protected static final Logger LOG = Logger.getInstance("#org.jetbrains.android.uipreview.LayoutLibraryLoader");
 
-  private static final Map<IAndroidTarget, LayoutLibrary> ourLibraryCache =
-    ContainerUtil.createWeakKeySoftValueMap();
+  private static final Map<IAndroidTarget, SoftReference<LayoutLibrary>> ourLibraryCache = new WeakHashMap<>();
 
   private LayoutLibraryLoader() {
   }
 
-  @NotNull
-  private static LayoutLibrary loadImpl(@NotNull IAndroidTarget target, @NotNull Map<String, Map<String, Integer>> enumMap)
+  @NonNull
+  private static LayoutLibrary loadImpl(@NonNull IAndroidTarget target, @NonNull Map<String, Map<String, Integer>> enumMap)
     throws RenderingException {
     final Path fontFolderPath = (target.getPath(IAndroidTarget.FONTS));
     if (!Files.exists(fontFolderPath) || !Files.isDirectory(fontFolderPath)) {
@@ -77,7 +78,7 @@ public class LayoutLibraryLoader {
     String dataPath = target.getPath(IAndroidTarget.DATA).toString().replace('\\', '/');
     String[] keyboardPaths = new String[] { dataPath + "/keyboards/Generic.kcm" };
 
-    LayoutLibrary library = LayoutLibraryProvider.EP_NAME.computeSafeIfAny(LayoutLibraryProvider::getLibrary);
+    LayoutLibrary library = LayoutLibraryLoader.getLayoutLibraryProvider().map(LayoutLibraryProvider::getLibrary).orElse(null);
     if (library == null ||
         !library.init(buildPropMap != null ? buildPropMap : Collections.emptyMap(), fontFolderPath.toFile(),
                       getNativeLibraryPath(dataPath), dataPath + "/icu/icudt72l.dat", keyboardPaths, enumMap, layoutLog)) {
@@ -86,55 +87,61 @@ public class LayoutLibraryLoader {
     return library;
   }
 
-  @NotNull
-  private static String getNativeLibraryPath(@NotNull String dataPath) {
+  @NonNull
+  private static String getNativeLibraryPath(@NonNull String dataPath) {
     return dataPath + "/" + getPlatformName() + "/lib64/";
   }
 
-  @NotNull
+  @NonNull
   private static String getPlatformName() {
-    if (SystemInfo.isWindows) return "win";
-    else if (SystemInfo.isMac) return CpuArch.isArm64() ? "mac-arm" : "mac";
-    else if (SystemInfo.isLinux) return "linux";
-    else return "";
+    return switch(SdkConstants.currentPlatform()) {
+      case SdkConstants.PLATFORM_WINDOWS -> "win";
+      case SdkConstants.PLATFORM_DARWIN -> ComputerArchUtilsKt.getJvmArchitecture() == CpuArchitecture.ARM ? "mac-arm" : "mac";
+      case SdkConstants.PLATFORM_LINUX -> "linux";
+      default -> "";
+    };
   }
 
   /**
    * Loads and initializes layoutlib.
    */
-  @NotNull
+  @NonNull
   public static synchronized LayoutLibrary load(
-    @NotNull IAndroidTarget target,
-    @NotNull Map<String, Map<String, Integer>> enumMap,
-    @NotNull Supplier<Boolean> hasExternalCrash)
+    @NonNull IAndroidTarget target,
+    @NonNull Map<String, Map<String, Integer>> enumMap,
+    @NonNull Supplier<Boolean> hasExternalCrash)
     throws RenderingException {
     if (Bridge.hasNativeCrash()) {
       throw new RenderingException("Rendering disabled following a crash");
     }
-    LayoutLibrary library = ourLibraryCache.get(target);
+    SoftReference<LayoutLibrary> libraryRef = ourLibraryCache.get(target);
+    LayoutLibrary library = libraryRef != null ? libraryRef.get() : null;
     if (library == null || library.isDisposed()) {
       if (hasExternalCrash.get()) {
         Bridge.setNativeCrash(true);
         throw new RenderingException("Rendering disabled following a crash");
       }
       library = loadImpl(target, enumMap);
-      ourLibraryCache.put(target, library);
+      ourLibraryCache.put(target, new SoftReference<>(library));
     }
 
     return library;
   }
 
+  @NonNull
+  public static Optional<LayoutLibraryProvider> getLayoutLibraryProvider() {
+    return ServiceLoader.load(LayoutLibraryProvider.class, LayoutLibraryProvider.class.getClassLoader()).findFirst();
+  }
+
   /**
    * Extension point for the Android plugin to have access to layoutlib in a separate plugin.
    */
-  public static abstract class LayoutLibraryProvider {
-    public static final ExtensionPointName<LayoutLibraryProvider> EP_NAME =
-      new ExtensionPointName<>("com.android.tools.idea.layoutlib.layoutLibraryProvider");
+  public interface LayoutLibraryProvider {
 
-    @NotNull
-    public abstract LayoutLibrary getLibrary();
+    @Nullable
+    LayoutLibrary getLibrary();
 
-    @NotNull
-    public abstract Class<?> getFrameworkRClass();
+    @Nullable
+    Class<?> getFrameworkRClass();
   }
 }

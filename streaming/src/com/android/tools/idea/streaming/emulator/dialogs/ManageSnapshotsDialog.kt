@@ -33,6 +33,7 @@ import com.google.common.util.concurrent.Futures.immediateFuture
 import com.intellij.CommonBundle
 import com.intellij.execution.runners.ExecutionUtil.getLiveIndicator
 import com.intellij.ide.ui.LafManagerListener
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -129,7 +130,7 @@ internal class ManageSnapshotsDialog(
 
   private val snapshotTableModel = SnapshotTableModel()
   private val snapshotTable = SnapshotTable(snapshotTableModel)
-  private val takeSnapshotButton = JButton("Create Snapshot").apply {
+  private val createSnapshotButton = JButton("Create Snapshot").apply {
     addActionListener { createSnapshot() }
   }
   private val runningOperationLabel = JBLabel().apply {
@@ -200,7 +201,7 @@ internal class ManageSnapshotsDialog(
       }
       row {
         cell {
-          component(takeSnapshotButton)
+          component(createSnapshotButton)
           component(runningOperationLabel)
         }
       }
@@ -309,8 +310,8 @@ internal class ManageSnapshotsDialog(
     val completionTracker = object : EmptyStreamObserver<SnapshotPackage>() {
 
       init {
-        takeSnapshotButton.transferFocusBackward() // Transfer focus to the table.
-        takeSnapshotButton.isEnabled = false // Disable the button temporarily.
+        createSnapshotButton.transferFocusBackward() // Transfer focus to the table.
+        createSnapshotButton.isEnabled = false // Disable the button temporarily.
         startLongOperation("Saving snapshot...")
         emulatorView.showLongRunningOperationIndicator("Saving state...")
       }
@@ -343,7 +344,7 @@ internal class ManageSnapshotsDialog(
       @UiThread
       private fun finished() {
         emulatorView.hideLongRunningOperationIndicator()
-        takeSnapshotButton.isEnabled = true // Re-enable the button.
+        createSnapshotButton.isEnabled = true // Re-enable the button.
         endLongOperation()
       }
 
@@ -657,10 +658,25 @@ internal class ManageSnapshotsDialog(
   }
 
   private fun invokeLaterIfDialogIsShowing(runnable: Runnable) {
-    EventQueue.invokeLater {
-      if (dialogManager != null) {
-        runnable.run()
+    dialogManager?.disposable?.let {
+      val disposableRunnable = DisposableRunnable(runnable)
+      Disposer.register(it, disposableRunnable)
+      EventQueue.invokeLater {
+        disposableRunnable.run()
       }
+    }
+  }
+
+  private class DisposableRunnable(runnable: Runnable) : Runnable, Disposable {
+
+    private var nullableRunnable: Runnable? = runnable
+
+    override fun run() {
+      nullableRunnable?.run()
+    }
+
+    override fun dispose() {
+      nullableRunnable = null
     }
   }
 

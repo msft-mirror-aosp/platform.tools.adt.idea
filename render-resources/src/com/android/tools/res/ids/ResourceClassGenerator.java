@@ -25,22 +25,20 @@ import com.android.resources.RClassNaming;
 import com.android.resources.ResourceType;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.Computable;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.org.objectweb.asm.ClassWriter;
-import org.jetbrains.org.objectweb.asm.MethodVisitor;
-import org.jetbrains.org.objectweb.asm.Type;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
 
 import java.util.*;
 
 import static com.android.tools.log.LogAnonymizer.anonymizeClassName;
 import static com.android.tools.log.LogAnonymizer.isPublicClass;
-import static org.jetbrains.org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.*;
 
 /**
  * The {@linkplain ResourceClassGenerator} can generate R classes on the fly for a given resource repository.
@@ -191,8 +189,7 @@ public class ResourceClassGenerator {
    */
   @NotNull
   private static List<ResourceReference> getStyleableAttributes(@NotNull ResourceItem item) {
-    ResourceValue resourceValue = ApplicationManager.getApplication().runReadAction(
-      (Computable<ResourceValue>)() -> item.getResourceValue());
+    ResourceValue resourceValue = item.getResourceValue();
     assert resourceValue instanceof StyleableResourceValue;
     StyleableResourceValue dv = (StyleableResourceValue)resourceValue;
     return Lists.transform(dv.getAllAttributes(), ResourceValue::asReference);

@@ -50,14 +50,16 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
-import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
+import org.jetbrains.plugins.gradle.util.GradleConstants
+import java.nio.file.Path
 
 class AndroidBaselineProfileConfigurationExecutor(
   val env: ExecutionEnvironment,
@@ -67,16 +69,20 @@ class AndroidBaselineProfileConfigurationExecutor(
 
   private val LOG = Logger.getInstance(this::class.java)
   private val NOTIFICATION_GROUP_ID = "Baseline Profile"
-  private val notificationGroup = NotificationGroup.findRegisteredGroup(NOTIFICATION_GROUP_ID) ?: NotificationGroup(NOTIFICATION_GROUP_ID,
-                                                                                                                    NotificationDisplayType.BALLOON,
-                                                                                                                    true,
-                                                                                                                    "Baseline Profile",
-                                                                                                                    null)
+  private val notificationGroup =
+    NotificationGroup.findRegisteredGroup(NOTIFICATION_GROUP_ID)
+      ?: NotificationGroup(
+        NOTIFICATION_GROUP_ID,
+        NotificationDisplayType.BALLOON,
+        true,
+        "Baseline Profile",
+        null
+      )
   private val project = env.project
   private val stats = RunStats.from(env)
-  private val applicationIdProvider = configuration.applicationIdProvider ?: throw RuntimeException(
-    "Can't get ApplicationIdProvider for AndroidTestRunConfiguration"
-  )
+  private val applicationIdProvider =
+    configuration.applicationIdProvider
+      ?: throw RuntimeException("Can't get ApplicationIdProvider for AndroidTestRunConfiguration")
 
   override fun run(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
     LOG.info("Generate Baseline Profile(s)")
@@ -185,13 +191,48 @@ class AndroidBaselineProfileConfigurationExecutor(
     project: Project,
     devices: List<IDevice>,
   ): GradleExecutionSettings {
+    val initScriptFile = File.createTempFile("initScript", ".gradle.kts", Path.of(FileUtil.getTempDirectory()).toFile()).apply {
+      deleteOnExit()
+    }
+    initScriptFile.writeText("""
+      afterProject {
+        pluginManager.withPlugin("androidx.baselineprofile") {
+          val baselineExt = extensions.findByName("baselineProfile") ?: return@withPlugin
+          val extClass: Class<*> = try {
+            baselineExt.javaClass.classLoader.loadClass(
+                "androidx.baselineprofile.gradle.producer.BaselineProfileProducerExtension"
+            )
+          } catch (_: Exception) { null } ?: return@withPlugin
+
+          val baselineExtWithType = extensions.findByType(extClass) ?: return@withPlugin
+
+          val setterMethod = try {
+            extClass.getMethod("setUseConnectedDevices", Boolean::class.java)
+          } catch (_: Exception) { null } ?: return@withPlugin
+
+          try {
+            // Enable useConnectedDevices flag.
+            setterMethod(baselineExtWithType, true)
+          } catch (_: Exception) { }
+
+          // Clear managed devices.
+          val getterMethodForManagedDevices = try {
+            extClass.getMethod("getManagedDevices")
+          } catch (_: Exception) { null } ?: return@withPlugin
+
+          val managedDevices = try {
+            getterMethodForManagedDevices(baselineExtWithType) as? MutableList<*>
+          } catch (_: Exception) { null } ?: return@withPlugin
+          managedDevices.clear()
+        }
+      }
+    """.trimIndent())
     return GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project).apply {
       // Add an environmental variable to filter connected devices for selected devices.
-      val deviceSerials = devices.joinToString(",") { device ->
-        device.serialNumber
-      }
+      val deviceSerials = devices.joinToString(",") { device -> device.serialNumber }
       withEnvironmentVariables(mapOf(("ANDROID_SERIAL" to deviceSerials)))
       configuration.getFilterArgument()?.let { withArgument(it) }
+      withArgument("--init-script=${initScriptFile.absolutePath}")
     }
   }
 

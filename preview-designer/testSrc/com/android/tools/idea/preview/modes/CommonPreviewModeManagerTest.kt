@@ -1,7 +1,6 @@
 package com.android.tools.idea.preview.modes
 
 import com.android.testutils.MockitoKt.mock
-import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.preview.PreviewElement
@@ -30,34 +29,38 @@ class CommonPreviewModeManagerTest {
   }
 
   @Test
-  fun testOnExitAndOnEnterAreCalledWithOldAndNewModes(): Unit = runBlocking {
-    val modes =
-      listOf(
-        PreviewMode.Default, // default manager mode
-        PreviewMode.Interactive(mock<PreviewElement>()),
-        PreviewMode.Default,
-        PreviewMode.UiCheck(mock<PreviewElement>(), atfChecksEnabled = true),
-      )
+  fun testRestoreMode(): Unit = runBlocking {
+    val manager = CommonPreviewModeManager()
+    val previewElement = mock<PreviewElement>()
 
-    val newModes = modes.drop(1) // drop the first one as it's the default mode of the manager
-    val oldModes = modes.dropLast(1) // onExit should not be called on the newest mode
+    manager.setMode(PreviewMode.Interactive(previewElement))
 
-    val onExitArguments = mutableListOf<PreviewMode>()
-    val onEnterArguments = mutableListOf<PreviewMode>()
+    assertThat(manager.mode.value).isInstanceOf(PreviewMode.Interactive::class.java)
 
-    val manager =
-      CommonPreviewModeManager(
-        scope = scope,
-        onEnter = { onEnterArguments += it },
-        onExit = { onExitArguments += it },
-      )
+    manager.restorePrevious()
+    assertThat(manager.mode.value).isEqualTo(PreviewMode.Default())
 
-    for (i in newModes.indices) {
-      manager.mode = newModes[i]
-      delayUntilCondition(200) { onExitArguments.size == i + 1 }
-    }
+    manager.setMode(PreviewMode.Default(GRID_LAYOUT_MANAGER_OPTIONS))
+    manager.setMode(PreviewMode.UiCheck(previewElement, GRID_LAYOUT_MANAGER_OPTIONS))
+    manager.setMode(PreviewMode.UiCheck(previewElement, LIST_LAYOUT_MANAGER_OPTION))
+    manager.restorePrevious()
+    assertThat(manager.mode.value).isEqualTo(PreviewMode.Default(GRID_LAYOUT_MANAGER_OPTIONS))
+  }
 
-    assertThat(onEnterArguments).isEqualTo(newModes)
-    assertThat(onExitArguments).isEqualTo(oldModes)
+  @Test
+  fun testChangeModeLayout(): Unit = runBlocking {
+    val manager = CommonPreviewModeManager()
+    val previewElement = mock<PreviewElement>()
+
+    assertThat(manager.mode.value).isEqualTo(PreviewMode.Default())
+
+    manager.setMode(PreviewMode.Gallery(previewElement))
+    assertThat(manager.mode.value.layoutOption).isEqualTo(PREVIEW_LAYOUT_GALLERY_OPTION)
+
+    manager.setMode(PreviewMode.UiCheck(previewElement))
+    assertThat(manager.mode.value.layoutOption).isEqualTo(GRID_LAYOUT_MANAGER_OPTIONS)
+
+    manager.setMode(PreviewMode.UiCheck(previewElement, LIST_LAYOUT_MANAGER_OPTION))
+    assertThat(manager.mode.value.layoutOption).isEqualTo(LIST_LAYOUT_MANAGER_OPTION)
   }
 }

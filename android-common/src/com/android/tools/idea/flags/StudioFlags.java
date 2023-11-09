@@ -850,6 +850,10 @@ public final class StudioFlags {
 
   //region Embedded Emulator
   private static final FlagGroup EMBEDDED_EMULATOR = new FlagGroup(FLAGS, "embedded.emulator", "Embedded Emulator");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_RESIZABLE_FOLDING = Flag.create(
+    EMBEDDED_EMULATOR, "resizable.folding", "Folding Support in Resizable AVD",
+    "Folding toolbar button in the Foldable mode of Resizable AVD",
+    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS = Flag.create(
     EMBEDDED_EMULATOR, "screenshot.statistics", "Enable Collection of Screenshot Statistics",
     "Captures statistics of received Emulator screenshots",
@@ -1012,7 +1016,7 @@ public final class StudioFlags {
     EDITOR, "samples.support.enabled",
     "Enable supports of samples (tag inside KDoc) that are used in quick documentation",
     "Enable supports of samples (tag inside KDoc) that are used in quick documentation",
-    false
+    true
   );
 
   public static final Flag<Boolean> DAGGER_SUPPORT_ENABLED = Flag.create(
@@ -1216,13 +1220,6 @@ public final class StudioFlags {
     "Enable the SpringSpec picker",
     "If enabled, a picker will be available in SpringSpec calls on the Editor gutter",
     false
-  );
-
-  public static final Flag<Boolean> COMPOSE_COLORBLIND_MODE = Flag.create(
-    COMPOSE, "preview.colorblind",
-    "Enable the colorblind mode for Compose previews",
-    "If enabled, the user can change the mode of Compose previews, between different types of colorblind modes",
-    true
   );
 
   public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = Flag.create(
@@ -1699,6 +1696,14 @@ public final class StudioFlags {
                 "Maximum total number of all types of run configurations that can be reached after autocreating Wear Run Configs. Wear Run Configurations will not be created if this limit is breached.",
                 10);
   // endregion WEAR_RUN_CONFIGS_AUTOCREATE
+
+  // region GOOGLE_LOGIN
+  private static final FlagGroup GOOGLE_LOGIN =
+    new FlagGroup(FLAGS, "google.login", "Google Login");
+  public static final Flag<Boolean> ENABLE_SETTINGS_ACCOUNT_UI =
+    Flag.create(GOOGLE_LOGIN, "enabled", "Enable new login settings UI",
+                "When enabled, a login settings page will replace the popup from the login action in the top right.", false);
+  // endregion GOOGLE_LOGIN
 
   private StudioFlags() { }
 }

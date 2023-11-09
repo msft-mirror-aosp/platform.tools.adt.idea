@@ -19,8 +19,10 @@ import com.android.tools.idea.compose.preview.LayoutMode
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.Colors
 import com.android.tools.preview.PreviewElement
+import com.google.common.base.Objects
 import com.intellij.openapi.actionSystem.DataKey
 import java.awt.Color
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Interface used for Preview Representations that support [PreviewMode]s. Classes implementing this
@@ -29,13 +31,21 @@ import java.awt.Color
  */
 interface PreviewModeManager {
   /** The current [PreviewMode]. */
-  var mode: PreviewMode
+  val mode: StateFlow<PreviewMode>
 
   /** Sets the mode to the previous mode, if any. */
   fun restorePrevious()
 
+  fun setMode(mode: PreviewMode)
+
   companion object {
     val KEY = DataKey.create<PreviewModeManager>("PreviewModeManager")
+
+    fun areModesOfDifferentType(mode1: PreviewMode?, mode2: PreviewMode?): Boolean {
+      // TODO(b/309802158): Find a better way to check whether the new mode is of the same type
+      //  as the old one.
+      return mode1?.javaClass != mode2?.javaClass
+    }
   }
 }
 
@@ -59,20 +69,100 @@ sealed class PreviewMode {
   /** Background color. */
   open val backgroundColor: Color = Colors.DEFAULT_BACKGROUND_COLOR
 
-  object Default : PreviewMode()
+  open val layoutOption: SurfaceLayoutManagerOption = LIST_LAYOUT_MANAGER_OPTION
 
-  sealed class Focus<T : PreviewElement>(val selected: T) : PreviewMode()
+  open val selected: PreviewElement? = null
+
+  /**
+   * Returns a [PreviewMode] with the same content as the current one, but with a different layout
+   * option if that is allowed by the mode. Modes that want to react to layout changes have to
+   * override this.
+   */
+  open fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+    return this
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as PreviewMode
+    return layoutMode == other.layoutMode &&
+      backgroundColor == other.backgroundColor &&
+      layoutOption == other.layoutOption &&
+      selected == other.selected
+  }
+
+  override fun hashCode(): Int {
+    return Objects.hashCode(layoutMode, backgroundColor, layoutOption, selected)
+  }
+
+  class Default(
+    override val layoutOption: SurfaceLayoutManagerOption = LIST_LAYOUT_MANAGER_OPTION
+  ) : PreviewMode() {
+    override fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+      return Default(layoutOption)
+    }
+  }
+
+  sealed class Focus<T : PreviewElement>(override val selected: T) : PreviewMode()
 
   class UiCheck(
-    selected: PreviewElement,
+    val baseElement: PreviewElement,
+    override val layoutOption: SurfaceLayoutManagerOption = GRID_LAYOUT_MANAGER_OPTIONS,
     val atfChecksEnabled: Boolean = StudioFlags.NELE_ATF_FOR_COMPOSE.get(),
     val visualLintingEnabled: Boolean = StudioFlags.NELE_COMPOSE_VISUAL_LINT_RUN.get()
-  ) : Focus<PreviewElement>(selected) {
+  ) : PreviewMode() {
     override val backgroundColor: Color = Colors.ACTIVE_BACKGROUND_COLOR
+
+    override fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+      return UiCheck(baseElement, layoutOption, atfChecksEnabled, visualLintingEnabled)
+    }
+
+    override fun equals(other: Any?): Boolean {
+      return super.equals(other) && baseElement == (other as UiCheck).baseElement
+    }
+
+    override fun hashCode(): Int {
+      return Objects.hashCode(super.hashCode(), baseElement)
+    }
   }
+
   // TODO(b/290579083): extract Essential mode outside of PreviewMode
-  class Gallery(selected: PreviewElement) : Focus<PreviewElement>(selected) {
+  class Gallery(override val selected: PreviewElement?) : PreviewMode() {
     override val layoutMode: LayoutMode = LayoutMode.Gallery
+    override val layoutOption: SurfaceLayoutManagerOption = PREVIEW_LAYOUT_GALLERY_OPTION
+
+    /**
+     * If list of previews is updated while [PreviewMode.Gallery] is selected - [selected] element
+     * might become invalid and new [Gallery] mode with new corresponding [selected] element should
+     * be created. At the moment there is no exact match which preview element is which after
+     * update. So we are doing our best guess to select new element.
+     */
+    fun newMode(
+      newElements: Collection<PreviewElement>,
+      previousElements: Set<PreviewElement>,
+    ): Gallery {
+      // Try to match which element was selected before
+      // If selectedKey was removed select first key. If it was only updated (i.e. if a
+      // parameter value has changed), we select the new key corresponding to it.
+
+      // That is a trivial case. When the selected key is present, keep the selection.
+      if (newElements.contains(selected)) return this
+
+      // Try to guess which exactly element was updated. Select the only element what changed.
+      // For example: the element what was selected before was updated. In this case only one
+      // element has changed compare to previously available elements. So we are trying to find
+      // this updated element.
+      val newSelected =
+        (newElements subtract previousElements).singleOrNull()
+          // We couldn't find any best match. Default to the first key.
+          ?: newElements.firstOrNull()
+
+      // TODO(b/292482974): Find the correct key when there are Multipreview changes
+
+      return Gallery(newSelected)
+    }
   }
 
   class Interactive(selected: PreviewElement) : Focus<PreviewElement>(selected) {

@@ -39,9 +39,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
-const val OUTER_FUNCTION = "Outer"
+private const val OUTER_FUNCTION = "Outer"
 
-val COMPOSE_RUNTIME_IMPORTS =
+private val COMPOSE_RUNTIME_IMPORTS =
   listOf(
     "Composable",
     "MutableState",

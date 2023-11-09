@@ -18,12 +18,14 @@ package com.android.tools.idea.layoutinspector.resource
 import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.packageNameHash
+import com.intellij.execution.RunManager
 import com.intellij.ide.util.PsiNavigationSupport
 import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
-import com.intellij.psi.PsiClassOwner
+import com.intellij.psi.PsiFileSystemItem
+import com.intellij.psi.PsiManager
+import com.intellij.psi.search.ExecutionSearchScopes
 import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Service for finding Composable function locations. */
@@ -45,9 +47,22 @@ open class ComposeResolver(val project: Project) {
    */
   @Slow
   protected fun findKotlinFile(fileName: String, packageNameMatcher: (String) -> Boolean): KtFile? {
-    val files = FilenameIndex.getFilesByName(project, fileName, GlobalSearchScope.allScope(project))
-    return files.asSequence().filterIsInstance<PsiClassOwner>().find {
-      packageNameMatcher(it.packageName)
-    } as? KtFile
+    // Attempt to load scope from current configuration, fallback to all scopes if configuration is
+    // null.
+    val configuration = RunManager.getInstance(project).selectedConfiguration?.configuration
+    val scope = ExecutionSearchScopes.executionScope(project, configuration)
+    val files = FilenameIndex.getVirtualFilesByName(fileName, scope)
+    val psiManager = PsiManager.getInstance(project)
+    val sourceFiles: List<PsiFileSystemItem> =
+      files.mapNotNull {
+        when {
+          !it.isValid -> null
+          it.isDirectory -> null
+          else -> psiManager.findFile(it)
+        }
+      }
+    return sourceFiles.filterIsInstance<KtFile>().find {
+      packageNameMatcher(it.packageFqName.asString())
+    }
   }
 }

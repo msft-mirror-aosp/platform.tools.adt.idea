@@ -476,7 +476,7 @@
     <projectService serviceImplementation="com.android.tools.idea.project.AndroidNotification"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.DeploymentService"/>
 
-    <projectService serviceImplementation="com.android.tools.idea.run.profiler.TaskSettingConfigsState" />
+    <projectService serviceImplementation="com.android.tools.idea.run.profiler.CpuProfilerConfigsState" />
     <projectService serviceInterface="com.android.tools.configurations.ConfigurationStateManager"
                     serviceImplementation="com.android.tools.idea.configurations.StudioConfigurationStateManager"/>
 
@@ -732,6 +732,9 @@
                     area="IDEA_PROJECT"/>
     <extensionPoint qualifiedName="org.jetbrains.android.refactoring.unusedResourcesToken"
                     interface="org.jetbrains.android.refactoring.UnusedResourcesToken"
+                    area="IDEA_PROJECT"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.actions.annotations.inferAnnotationsToken"
+                    interface="com.android.tools.idea.actions.annotations.InferAnnotationsToken"
                     area="IDEA_PROJECT"/>
   </extensionPoints>
 

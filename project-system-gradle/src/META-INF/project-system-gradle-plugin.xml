@@ -181,6 +181,9 @@
   <extensions defaultExtensionNs="org.jetbrains.android.refactoring">
     <unusedResourcesToken implementation="org.jetbrains.android.refactoring.UnusedResourcesGradleToken"/>
   </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.actions.annotations">
+    <inferAnnotationsToken implementation="com.android.tools.idea.actions.annotations.InferAnnotationsGradleToken"/>
+  </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
               topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
@@ -234,7 +237,7 @@
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.MissingPlatformIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.MissingNdkIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.SdkBuildToolsTooLowIssueChecker"/>
-    <issueChecker implementation="com.android.tools.idea.gradle.project.sync.idea.issues.JdkImportIssueChecker"/>
+    <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.UnsupportedJdkMinimumVersionIssueChecker"/>
     <issueChecker id="UnsupportedGradleVersionIssueChecker" implementation="com.android.tools.idea.gradle.project.sync.errors.UnsupportedGradleVersionIssueChecker"/>
     <importCustomizer implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleImportCustomizer"/>
     <settingsControlProvider implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleSettingsControlProvider"/>
@@ -328,8 +331,8 @@
     <action
         id="AndroidX.BaselineProfile.RunGenerate"
         class="com.android.tools.idea.run.configuration.BaselineProfileAction"
-        text="Generate Baseline Profile"
-        icon="StudioIcons.Shell.Toolbar.RUN"
+        text="Generate Entire App Baseline Profile"
+        icon="StudioIcons.Wizards.Modules.BASELINE_PROFILE_GENERATE"
         description="Generate the Baseline Profile for the selected app. Note that generation is always per app and cannot be done for a single method or class.">
     </action>
   </actions>

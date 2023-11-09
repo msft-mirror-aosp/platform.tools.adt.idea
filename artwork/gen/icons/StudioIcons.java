@@ -613,17 +613,30 @@ public final class StudioIcons {
   }
 
   public static final class LayoutInspector {
-    /** 16x16 */ public static final @NotNull Icon CLEAR_OVERLAY = load("studio/icons/layout-inspector/clear-overlay.svg", -1652919964, 2);
-    /** 16x16 */ public static final @NotNull Icon COLOR_PICKER = load("studio/icons/layout-inspector/color-picker.svg", 1116890585, 2);
-    /** 16x16 */ public static final @NotNull Icon DEGREE = load("studio/icons/layout-inspector/degree.svg", 1105688030, 2);
-    /** 16x16 */ public static final @NotNull Icon LIVE_UPDATES = load("studio/icons/layout-inspector/live-updates.svg", 1983742476, 2);
-    /** 16x16 */ public static final @NotNull Icon LOAD_OVERLAY = load("studio/icons/layout-inspector/load-overlay.svg", 1948533727, 2);
-    /** 16x16 */ public static final @NotNull Icon MODE_2D = load("studio/icons/layout-inspector/mode-2d.svg", -1927736976, 2);
-    /** 16x16 */ public static final @NotNull Icon MODE_3D = load("studio/icons/layout-inspector/mode-3d.svg", 827332356, 2);
-    /** 16x16 */ public static final @NotNull Icon RECOMPOSITION_COUNT = load("studio/icons/layout-inspector/recomposition-count.svg", 1842447064, 2);
-    /** 16x16 */ public static final @NotNull Icon RECOMPOSITION_SKIPPED = load("studio/icons/layout-inspector/recomposition-skipped.svg", 726595515, 2);
-    /** 16x16 */ public static final @NotNull Icon RESET_VIEW = load("studio/icons/layout-inspector/reset-view.svg", 808052532, 2);
-    /** 16x16 */ public static final @NotNull Icon SNAPSHOT = load("studio/icons/layout-inspector/snapshot.svg", 1128695371, 2);
+    public static final class Panel {
+      /** 16x16 */ public static final @NotNull Icon BOTTOM_SWAP = load("studio/icons/layout-inspector/panel/bottom-swap.svg", 1718238040, 2);
+      /** 16x16 */ public static final @NotNull Icon BOTTOM = load("studio/icons/layout-inspector/panel/bottom.svg", 1283759878, 2);
+      /** 16x16 */ public static final @NotNull Icon LEFT_VERTICAL_SWAP = load("studio/icons/layout-inspector/panel/left-vertical-swap.svg", -110248358, 2);
+      /** 16x16 */ public static final @NotNull Icon LEFT_VERTICAL = load("studio/icons/layout-inspector/panel/left-vertical.svg", 2036932888, 2);
+      /** 16x16 */ public static final @NotNull Icon RIGHT_VERTICAL_SWAP = load("studio/icons/layout-inspector/panel/right-vertical-swap.svg", 1627200642, 2);
+      /** 16x16 */ public static final @NotNull Icon RIGHT_VERTICAL = load("studio/icons/layout-inspector/panel/right-vertical.svg", -825125833, 2);
+      /** 16x16 */ public static final @NotNull Icon VERTICAL_SPLIT_SWAP = load("studio/icons/layout-inspector/panel/vertical-split-swap.svg", -1544534346, 2);
+      /** 16x16 */ public static final @NotNull Icon VERTICAL_SPLIT = load("studio/icons/layout-inspector/panel/vertical-split.svg", 2016407216, 2);
+    }
+
+    public static final class Toolbar {
+      /** 16x16 */ public static final @NotNull Icon CLEAR_OVERLAY = load("studio/icons/layout-inspector/toolbar/clear-overlay.svg", -1930193000, 2);
+      /** 16x16 */ public static final @NotNull Icon COLOR_PICKER = load("studio/icons/layout-inspector/toolbar/color-picker.svg", -1871758966, 2);
+      /** 16x16 */ public static final @NotNull Icon DEGREE = load("studio/icons/layout-inspector/toolbar/degree.svg", 1105688030, 2);
+      /** 16x16 */ public static final @NotNull Icon LIVE_UPDATES = load("studio/icons/layout-inspector/toolbar/live-updates.svg", 1983742476, 2);
+      /** 16x16 */ public static final @NotNull Icon LOAD_OVERLAY = load("studio/icons/layout-inspector/toolbar/load-overlay.svg", 1807574104, 2);
+      /** 16x16 */ public static final @NotNull Icon MODE_2D = load("studio/icons/layout-inspector/toolbar/mode-2d.svg", 1751569432, 2);
+      /** 16x16 */ public static final @NotNull Icon MODE_3D = load("studio/icons/layout-inspector/toolbar/mode-3d.svg", -1789394265, 2);
+      /** 16x16 */ public static final @NotNull Icon RECOMPOSITION_COUNT = load("studio/icons/layout-inspector/toolbar/recomposition-count.svg", 1842447064, 2);
+      /** 16x16 */ public static final @NotNull Icon RECOMPOSITION_SKIPPED = load("studio/icons/layout-inspector/toolbar/recomposition-skipped.svg", 726595515, 2);
+      /** 16x16 */ public static final @NotNull Icon RESET_VIEW = load("studio/icons/layout-inspector/toolbar/reset-view.svg", 446737381, 2);
+      /** 16x16 */ public static final @NotNull Icon SNAPSHOT = load("studio/icons/layout-inspector/toolbar/snapshot.svg", 1128695371, 2);
+    }
   }
 
   public static final class Logcat {
@@ -891,6 +904,7 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon ANDROID_THINGS = load("studio/icons/wizards/modules/android-things.svg", -1767582343, 2);
       /** 16x16 */ public static final @NotNull Icon ANDROID_TV = load("studio/icons/wizards/modules/android-tv.svg", 1354658815, 2);
       /** 16x16 */ public static final @NotNull Icon AUTOMOTIVE = load("studio/icons/wizards/modules/automotive.svg", -1211404863, 2);
+      /** 14x14 */ public static final @NotNull Icon BASELINE_PROFILE_GENERATE = load("studio/icons/wizards/modules/baseline-profile-generate.svg", 1893574134, 2);
       /** 16x16 */ public static final @NotNull Icon BASELINE_PROFILE = load("studio/icons/wizards/modules/baseline-profile.svg", -45303928, 2);
       /** 16x16 */ public static final @NotNull Icon BENCHMARK = load("studio/icons/wizards/modules/benchmark.svg", -1382249542, 2);
       /** 16x16 */ public static final @NotNull Icon DYNAMIC_FEATURE = load("studio/icons/wizards/modules/dynamic-feature.svg", 981095810, 2);

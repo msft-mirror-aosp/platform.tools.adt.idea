@@ -105,6 +105,11 @@ iml_module(
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
+    runtime_deps = [
+        "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
+        "//tools/adt/idea/gradle-dsl-toml:intellij.android.gradle.dsl.toml",
+    ],
+    # do not sort: must match IML order
     deps = [
         "//prebuilts/studio/intellij-sdk:studio-sdk",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
@@ -142,6 +147,7 @@ maven_repository(
     name = "test_deps",
     # keep sorted: for buildifier
     artifacts = [
+        "@maven//:androidx.activity.activity-ktx_1.8.0",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.benchmark.benchmark-baseline-profile-gradle-plugin_1.2.0-rc02",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0-rc02",
@@ -151,8 +157,11 @@ maven_repository(
         "@maven//:androidx.core.core-ktx_1.2.0",
         "@maven//:androidx.core.core-ktx_1.6.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.3.1",
+        "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.6.1",
+        "@maven//:androidx.lifecycle.lifecycle-runtime-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-runtime_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.3.1",
+        "@maven//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.6.1",
         "@maven//:androidx.navigation.navigation-fragment-ktx_2.3.5",
         "@maven//:androidx.navigation.navigation-ui-ktx_2.3.5",
         "@maven//:androidx.profileinstaller.profileinstaller_1.3.1",

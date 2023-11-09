@@ -17,6 +17,7 @@ package com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory
 
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory
+import com.android.tools.profilers.SupportLevel
 import com.android.tools.profilers.memory.AllocationSessionArtifact
 import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact
 import com.android.tools.profilers.memory.MainMemoryProfilerStage
@@ -39,8 +40,11 @@ class JavaKotlinAllocationsTaskHandler(sessionsManager: SessionsManager) : Memor
   }
 
   override fun stopCapture(stage: MainMemoryProfilerStage) {
-    // Stopping a Java/Kotlin Allocations capture is invoked and only accessible within the Allocations stage itself, thus we leave it to
-    // the respective stage to handle stopping of the allocations, and leave this method definition empty.
+    // For non-legacy (O+ api devices) allocation tracking, stopping a Java/Kotlin Allocations capture is invoked and only accessible
+    // within the Allocations stage itself, thus the following call to stop the memory recording is not needed for a non-legacy recording,
+    // and we leave it to the Allocation stage to handle stopping of the allocations. For legacy (pre-O api devices), we can invoke the
+    // stop via the interim stage: MainMemoryProfilerStage.
+    stage.stopMemoryRecording()
   }
 
   override fun loadTask(args: TaskArgs?): Boolean {
@@ -70,6 +74,9 @@ class JavaKotlinAllocationsTaskHandler(sessionsManager: SessionsManager) : Memor
       null
     }
   }
+
+  override fun checkDeviceAndProcess(device: Common.Device, process: Common.Process) =
+    SupportLevel.of(process.exposureLevel).isFeatureSupported(SupportLevel.Feature.MEMORY_JVM_RECORDING)
 
   override fun supportsArtifact(artifact: SessionArtifact<*>?): Boolean {
     return artifact is AllocationSessionArtifact || artifact is LegacyAllocationsSessionArtifact

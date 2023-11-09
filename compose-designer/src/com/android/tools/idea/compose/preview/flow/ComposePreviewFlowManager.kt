@@ -19,7 +19,6 @@ import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.UiCheckModeFilter
 import com.android.tools.idea.compose.preview.PreviewGroup
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
-import com.android.tools.idea.compose.preview.previewElementFlowForFile
 import com.android.tools.idea.compose.preview.util.isFastPreviewAvailable
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
@@ -32,6 +31,7 @@ import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.editors.build.outOfDateKtFiles
 import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.preview.modes.PreviewMode
+import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.openapi.Disposable
@@ -39,6 +39,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -180,7 +181,7 @@ internal class ComposePreviewFlowManager {
   @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
   fun CoroutineScope.initializeFlows(
     disposable: Disposable,
-    mode: PreviewMode,
+    previewModeManager: PreviewModeManager,
     psiCodeFileChangeDetectorService: PsiCodeFileChangeDetectorService,
     psiFilePointer: SmartPsiElementPointer<PsiFile>,
     invalidate: () -> Unit,
@@ -198,7 +199,16 @@ internal class ComposePreviewFlowManager {
         ComposePreviewElementsModel.instantiatedPreviewElementsFlow(
             previewElementFlowForFile(psiFilePointer).map { it.sortByDisplayAndSourcePosition() },
           )
-          .collectLatest { allPreviewElementsInFileFlow.value = it }
+          .collectLatest {
+            val previousElements = allPreviewElementsInFileFlow.value.toSet()
+            allPreviewElementsInFileFlow.value = it
+            (previewModeManager.mode.value as? PreviewMode.Gallery)?.let { oldMode ->
+              oldMode.newMode(allPreviewElementsInFileFlow.value, previousElements)?.let { newMode
+                ->
+                previewModeManager.setMode(newMode)
+              }
+            }
+          }
       }
 
       launch(workerThread) {
@@ -235,16 +245,27 @@ internal class ComposePreviewFlowManager {
 
       // Trigger refreshes on available previews changes
       launch(workerThread) {
-        filteredPreviewElementsInstancesFlow.collectLatest {
-          if (it.isEmpty() && mode is PreviewMode.UiCheck) {
-            // If there are no previews for UI Check mode, then the original composable
-            // was renamed or removed. We should quit UI Check mode.
-            restorePreviousMode()
-          } else {
+        // When "subscribing" to the changes of a MutableStateFlow like this one, it will always
+        // immediately collect an initial value, but we want to ignore this first value in order
+        // to avoid invalidating files in every tab change.
+        val isInitialValue = AtomicBoolean(true)
+        filteredPreviewElementsInstancesFlow
+          .filter {
+            return@filter if (
+              it.isEmpty() && previewModeManager.mode.value is PreviewMode.UiCheck
+            ) {
+              // If there are no previews for UI Check mode, then the original composable
+              // was renamed or removed. We should quit UI Check mode and filter out this
+              // value from the flow
+              restorePreviousMode()
+              isInitialValue.set(false)
+              false
+            } else !isInitialValue.getAndSet(false)
+          }
+          .collectLatest {
             invalidate()
             requestRefresh()
           }
-        }
       }
 
       // Flow to collate and process refreshNotificationsAndVisibilityFlow requests.
@@ -338,8 +359,8 @@ internal class ComposePreviewFlowManager {
 
             if (
               !EssentialsMode.isEnabled() &&
-                mode !is PreviewMode.Interactive &&
-                mode !is PreviewMode.AnimationInspection &&
+                previewModeManager.mode.value !is PreviewMode.Interactive &&
+                previewModeManager.mode.value !is PreviewMode.AnimationInspection &&
                 !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
             )
               requestRefresh()

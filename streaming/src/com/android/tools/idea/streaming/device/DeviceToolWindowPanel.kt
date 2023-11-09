@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.device
 
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
+import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.deviceprovisioner.DEVICE_HANDLE_KEY
 import com.android.tools.idea.flags.StudioFlags
@@ -50,6 +51,7 @@ import com.intellij.ui.JBColor
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap
 import kotlinx.coroutines.launch
 import java.awt.EventQueue
+import java.util.concurrent.TimeoutException
 import java.util.function.IntFunction
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -61,6 +63,7 @@ import javax.swing.JPanel
 internal class DeviceToolWindowPanel(
   disposableParent: Disposable,
   private val project: Project,
+  val deviceHandle: DeviceHandle,
   val deviceClient: DeviceClient,
 ) : StreamingDevicePanel(
     DeviceId.ofPhysicalDevice(deviceClient.deviceSerialNumber), DEVICE_MAIN_TOOLBAR_ID, STREAMING_SECONDARY_TOOLBAR_ID) {
@@ -73,13 +76,13 @@ internal class DeviceToolWindowPanel(
 
   override val description: String
     get() {
-      val properties = deviceClient.deviceHandle.state.properties
+      val properties = deviceClient.deviceConfig.deviceProperties
       val api = properties.androidVersion?.apiStringWithoutExtension ?: "${deviceClient.deviceConfig.apiLevel}"
       return "${properties.title} API $api ${"($deviceSerialNumber)".htmlColored(JBColor.GRAY)}"
     }
 
   override val icon: Icon
-    get() = ExecutionUtil.getLiveIndicator(deviceClient.deviceHandle.state.properties.icon)
+    get() = ExecutionUtil.getLiveIndicator(deviceClient.deviceConfig.deviceProperties.icon)
 
   override val isClosable: Boolean = true
 
@@ -219,7 +222,7 @@ internal class DeviceToolWindowPanel(
       DEVICE_VIEW_KEY.name -> primaryDisplayView
       DEVICE_CLIENT_KEY.name -> deviceClient
       DEVICE_CONTROLLER_KEY.name -> deviceClient.deviceController
-      DEVICE_HANDLE_KEY.name -> deviceClient.deviceHandle
+      DEVICE_HANDLE_KEY.name -> deviceHandle
       ScreenshotAction.SCREENSHOT_OPTIONS_KEY.name ->
           primaryDisplayView?.let { if (it.isConnected) DeviceScreenshotOptions(deviceSerialNumber, deviceConfig, it) else null }
       ScreenRecorderAction.SCREEN_RECORDER_PARAMETERS_KEY.name ->
@@ -248,7 +251,13 @@ internal class DeviceToolWindowPanel(
     fun onDisplaysChanged() {
       contentDisposable?.let {
         AndroidCoroutineScope(it).launch {
-          val displays = deviceClient.deviceController?.getDisplayConfigurations() ?: return@launch
+          val displays = try {
+            deviceClient.deviceController?.getDisplayConfigurations() ?: return@launch
+          }
+          catch (e: TimeoutException) {
+            thisLogger().warn("Unable to get device display configurations", e)
+            return@launch
+          }
           if (displays.isEmpty()) {
             return@launch // All displays are turned off.
           }

@@ -128,6 +128,7 @@ maven_repository(
         "@maven//:androidx.activity.activity-compose_1.7.2",
         "@maven//:androidx.activity.activity-ktx_1.6.0",
         "@maven//:androidx.activity.activity-ktx_1.7.0",
+        "@maven//:androidx.activity.activity-ktx_1.8.0",
         "@maven//:androidx.annotation.annotation-jvm_1.6.0",
         "@maven//:androidx.annotation.annotation_1.6.0",
         "@maven//:androidx.appcompat.appcompat_1.0.2",
@@ -203,6 +204,7 @@ maven_repository(
         "@maven//:androidx.lifecycle.lifecycle-extensions_2.2.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-process_2.6.1",
+        "@maven//:androidx.lifecycle.lifecycle-runtime-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-runtime_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-savedstate_2.6.1",
@@ -246,7 +248,7 @@ maven_repository(
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.support-v4_27.1.1",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
-        "@maven//:com.android.tools.build.bundletool_1.15.5",
+        "@maven//:com.android.tools.build.bundletool_1.15.6",
         "@maven//:com.android.tools.build.gradle_7.1.0",
         "@maven//:com.android.tools.build.gradle_7.2.0",
         "@maven//:com.android.tools.build.gradle_7.3.1",
@@ -873,6 +875,7 @@ java_test(
 
 java_test(
     name = "CodeConversionFromJavaToKotlinTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/JavaToKotlinCode/**",
     ]),
@@ -1756,12 +1759,12 @@ java_test(
 
 java_test(
     name = "ManuallyAddNavLibTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.ManuallyAddNavLibTest"],
     tags = COMMON_TAGS + [
-        "manual",
         "no_windows",
         "qa_fast",
     ],
@@ -2177,6 +2180,26 @@ java_test(
         "testData/ComposeMultiPreviewSample/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.AddNewPreviewTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "RemovePreviewTest",
+    size = "large",
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/layoutlib/data:native_libs",
+        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib/data/icu",
+        "//prebuilts/studio/layoutlib/data/keyboards",
+    ],
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.RemovePreviewTest"],
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
@@ -2975,8 +2998,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/111997969
-        "qa_unreliable",  # b/111997969
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -3633,8 +3654,6 @@ java_test(
     tags = COMMON_TAGS + [
         "no_windows",
         "qa_fast",
-        "qa_fast_unreliable",  # b/115679328
-        "qa_unreliable",  # b/115679328
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
